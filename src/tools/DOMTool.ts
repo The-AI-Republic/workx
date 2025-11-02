@@ -27,7 +27,7 @@ import { DomService } from './dom/DomService';
  * Unified DOM tool request (discriminated union by action type)
  */
 export interface DOMToolRequest {
-  action: 'snapshot' | 'click' | 'type' | 'keypress';
+  action: 'snapshot' | 'click' | 'type' | 'keypress' | 'scroll';
   tab_id?: number;
   node_id?: number; // Numeric CDP nodeId
   text?: string;
@@ -80,8 +80,8 @@ export class DOMTool extends BaseTool {
     {
       action: {
         type: 'string',
-        description: 'Action type: snapshot (capture DOM), click (click element), type (input text), keypress (keyboard input)',
-        enum: ['snapshot', 'click', 'type', 'keypress'],
+        description: 'Action type: snapshot (capture DOM), click (click element), type (input text), keypress (keyboard input), scroll (scroll element into view)',
+        enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
       },
       tab_id: {
         type: 'number',
@@ -187,6 +187,8 @@ export class DOMTool extends BaseTool {
         return await this.executeType(tabId, typedRequest.node_id!, typedRequest.text!, typedRequest.options);
       case 'keypress':
         return await this.executeKeypress(tabId, typedRequest.key!, typedRequest.options);
+      case 'scroll':
+        return await this.executeScroll(tabId, typedRequest.node_id!, typedRequest.options);
       default:
         throw new Error(`Unknown action: ${typedRequest.action}`);
     }
@@ -262,6 +264,21 @@ export class DOMTool extends BaseTool {
     return await domService.keypress(key, modifiers);
   }
 
+  /**
+   * Execute scroll action
+   */
+  private async executeScroll(
+    tabId: number,
+    nodeId: number,
+    options?: { block?: 'start' | 'center' | 'end' | 'nearest'; inline?: 'start' | 'center' | 'end' | 'nearest' }
+  ): Promise<ActionResult> {
+    this.log('debug', 'Executing scroll', { tabId, nodeId, options });
+
+    // Always use CDP-based implementation
+    const domService = await DomService.forTab(tabId);
+    return await domService.scrollIntoView(nodeId, options);
+  }
+
   // ============================================================================
   // v3.0 Request Validation & Error Handling
   // ============================================================================
@@ -277,8 +294,8 @@ export class DOMTool extends BaseTool {
     const req = request as any;
 
     // Validate action
-    if (!['snapshot', 'click', 'type', 'keypress'].includes(req.action)) {
-      return `Invalid action: ${req.action}. Must be one of: snapshot, click, type, keypress`;
+    if (!['snapshot', 'click', 'type', 'keypress', 'scroll'].includes(req.action)) {
+      return `Invalid action: ${req.action}. Must be one of: snapshot, click, type, keypress, scroll`;
     }
 
     // Validate tab_id if provided
@@ -315,6 +332,15 @@ export class DOMTool extends BaseTool {
       case 'keypress':
         if (!req.key || typeof req.key !== 'string') {
           return 'key is required for keypress action';
+        }
+        return null;
+
+      case 'scroll':
+        if (req.node_id === undefined || typeof req.node_id !== 'number') {
+          return 'node_id is required for scroll action and must be a number';
+        }
+        if (!Number.isInteger(req.node_id)) {
+          return 'node_id must be an integer';
         }
         return null;
 
