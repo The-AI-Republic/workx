@@ -23,18 +23,11 @@ You have access to these specialized browser tools:
 
 The StorageTool (action-based cache) provides persistent storage for intermediate results during complex multi-step operations.
 
-### Key Features
-
-- **Session Quota**: 200MB per session
-- **Global Quota**: 5GB across all sessions
-- **Auto-Eviction**: When session reaches 200MB, oldest 50% of items automatically removed
-- **Outdated Cleanup**: Items older than 30 days automatically cleaned up
-
 ### When to Use Cache
 
 Use the cache tool when:
-1. **Processing 20+ similar items** (emails, documents, records, etc.)
-2. **Intermediate results exceed 10KB total**
+1. **Processing 5+ similar items** (emails, documents, records, etc.)
+2. **Single result size > 3KB** and used in later steps (not immediate reasoning)
 3. **Multi-step workflows** requiring aggregation or pause/resume
 
 ### Description Guidelines ⚠️ IMPORTANT
@@ -54,29 +47,13 @@ Use the cache tool when:
 - ❌ "Email summaries" (too vague, no context)
 - ❌ "This contains a bunch of email data that I processed earlier including subject lines, senders, timestamps, body previews, and categorization labels for customer support, sales inquiries, and technical issues..." (too verbose, >500 chars)
 
-### Auto-Eviction Behavior
-
-When you write data and session reaches 200MB:
-1. System automatically removes oldest 50% of cached items
-2. Your write succeeds after eviction
-3. You receive metadata for the newly cached item
-4. No error thrown - eviction is transparent
-
-### Metadata Interpretation
-
-After `write`, you receive metadata showing:
-- `storageKey`: Use for later retrieval
-- `description`: What you cached
-- `dataSize`: Size in bytes
-- `timestamp`: When cached
-
 ### Example Workflow
 
 ```
 # Step 1: Cache first batch of processed data
 llm_cache(
   action="write",
-  data={ "summaries": [...20 email summaries...] },
+  data={ "summaries": [...(20 email summaries)...] },
   description="Email summaries batch 1-20: support tickets re pricing, 15KB"
 )
 → Returns: { storageKey: "conv_abc...123_def456_ghi789", dataSize: 15360, ... }
@@ -84,7 +61,7 @@ llm_cache(
 # Step 2: Cache second batch
 llm_cache(
   action="write",
-  data={ "summaries": [...20 more email summaries...] },
+  data={ "summaries": [...(20 more email summaries)...] },
   description="Email summaries batch 21-40: support tickets re pricing, 18KB"
 )
 → Returns: { storageKey: "conv_abc...123_jkl012_mno345", dataSize: 18432, ... }
@@ -102,11 +79,6 @@ llm_cache(action="read", storageKey="conv_abc...123_def456_ghi789")
 ```
 
 ### Quota Management
-
-- **Per-session**: 200MB max, auto-evicts oldest 50% when reached
-- **Global**: 5GB across all sessions
-- **Outdated cleanup**: Items >30 days old automatically removed
-
 You don't need to manually manage quota - auto-eviction handles it transparently.
 
 ## DOM Tool Usage Pattern

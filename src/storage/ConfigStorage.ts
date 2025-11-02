@@ -22,7 +22,7 @@ export class ConfigStorage implements IConfigStorage {
   private readonly versionKey = STORAGE_KEYS.CONFIG_VERSION;
   private cache: IAgentConfig | null = null;
   private cacheTimestamp: number = 0;
-  private readonly cacheTTL = 5000; // 5 seconds cache
+  private readonly cacheTTL = 10 * 60 * 1000; // 10 minutes cache
   private dbAdapter: IndexedDBAdapter;
   private initPromise: Promise<void> | null = null;
 

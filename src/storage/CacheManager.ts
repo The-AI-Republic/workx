@@ -5,7 +5,7 @@ const DEFAULT_CONFIG: CacheConfig = {
   maxSize: 50 * 1024 * 1024, // 50MB
   defaultTTL: 3600000, // 1 hour
   evictionPolicy: 'lru',
-  compressionThreshold: 1024, // Compress entries > 1KB
+  compressionThreshold: 50 * 1024, // Compress entries > 50KB
   persistToStorage: true
 };
 
