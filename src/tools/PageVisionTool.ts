@@ -344,6 +344,7 @@ export class PageVisionTool extends BaseTool {
   }
 
 
+
   /**
    * Validate Chrome context
    */
