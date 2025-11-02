@@ -8,13 +8,10 @@
 import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
 import type {
   ScreenshotToolRequest,
-  ScreenshotToolResponse,
   ScreenshotResponseData,
-  ResponseMetadata,
-  ErrorDetails,
-  ErrorCodeType
+  ActionResponseData,
+  ResponseData,
 } from './screenshot/types';
-import { ErrorCode } from './screenshot/types';
 import { ScreenshotService } from './screenshot/ScreenshotService';
 import { ScreenshotFileManager } from './screenshot/ScreenshotFileManager';
 import { CoordinateActionService } from './screenshot/CoordinateActionService';
@@ -26,8 +23,8 @@ import { CoordinateActionService } from './screenshot/CoordinateActionService';
  */
 export class PageScreenShotTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
-    'page_screenshot',
-    'Visual page screenshot and coordinate-based interaction tool. Captures viewport screenshots and performs coordinate-based actions (click, type, scroll, keypress) for visual analysis. Use as complement to browser_dom when visual understanding is needed.',
+    'page_vision',
+    'Visual page screenshot and coordinate-based interaction tool. Captures viewport screenshots and performs coordinate-based actions (click, type, scroll, keypress) for visual analysis. Use as complement to browser_dom when visual understanding is needed. COORDINATES ARE AUTOMATICALLY CLIPPED: Simply provide coordinates based on your visual analysis of the screenshot image. The system will automatically clip out-of-bounds coordinates to the nearest valid position within the viewport.',
     {
       action: {
         type: 'string',
@@ -40,15 +37,15 @@ export class PageScreenShotTool extends BaseTool {
       },
       coordinates: {
         type: 'object',
-        description: 'Screen coordinates for click, type, or scroll actions (x, y in pixels)',
+        description: 'Screen coordinates for click, type, or scroll actions (x, y in pixels). Provide coordinates based on your visual analysis of the screenshot image. Out-of-bounds coordinates are automatically clipped to valid viewport bounds - no manual validation needed.',
         properties: {
           x: {
             type: 'number',
-            description: 'Horizontal coordinate in pixels from left edge',
+            description: 'Horizontal coordinate in pixels from left edge of image',
           },
           y: {
             type: 'number',
-            description: 'Vertical coordinate in pixels from top edge',
+            description: 'Vertical coordinate in pixels from top edge of image',
           },
         },
       },
@@ -102,63 +99,58 @@ export class PageScreenShotTool extends BaseTool {
   }
 
   /**
+   * Override execute to inject action into metadata
+   */
+  async execute(request: BaseToolRequest, options?: BaseToolOptions): Promise<any> {
+    const typedRequest = request as ScreenshotToolRequest;
+
+    // Inject action into metadata so it's available in the response
+    const enrichedOptions = {
+      ...options,
+      metadata: {
+        ...options?.metadata,
+        action: typedRequest.action,
+      },
+    };
+
+    return super.execute(request, enrichedOptions);
+  }
+
+  /**
    * Execute screenshot tool action
+   *
+   * Returns raw data only - BaseTool.execute() will wrap it in the standard response format
    */
   protected async executeImpl(
     request: BaseToolRequest,
     options?: BaseToolOptions
-  ): Promise<ScreenshotToolResponse> {
+  ): Promise<ResponseData> {
     const typedRequest = request as ScreenshotToolRequest;
-    const startTime = Date.now();
 
-    try {
-      // Validate Chrome context
-      this.validateChromeContext();
+    // Validate Chrome context
+    this.validateChromeContext();
 
-      // Get target tab
-      const targetTab = typedRequest.tab_id
-        ? await this.validateTabId(typedRequest.tab_id)
-        : await this.getActiveTab();
+    // Get target tab
+    const targetTab = typedRequest.tab_id
+      ? await this.validateTabId(typedRequest.tab_id)
+      : await this.getActiveTab();
 
-      const tabId = targetTab.id!;
+    const tabId = targetTab.id!;
 
-      // Route by action type
-      let data: any;
-      switch (typedRequest.action) {
-        case 'screenshot':
-          data = await this.executeScreenshot(tabId, typedRequest);
-          break;
-        case 'click':
-          data = await this.executeClick(tabId, typedRequest);
-          break;
-        case 'type':
-          data = await this.executeType(tabId, typedRequest);
-          break;
-        case 'scroll':
-          data = await this.executeScrollAction(tabId, typedRequest);
-          break;
-        case 'keypress':
-          data = await this.executeKeypress(tabId, typedRequest);
-          break;
-        default:
-          throw new Error(`Unknown action: ${typedRequest.action}`);
-      }
-
-      const metadata: ResponseMetadata = {
-        duration_ms: Date.now() - startTime,
-        tab_id: tabId,
-        timestamp: new Date().toISOString(),
-        tool_version: '1.0.0',
-      };
-
-      return {
-        success: true,
-        action: typedRequest.action,
-        data,
-        metadata,
-      };
-    } catch (error: any) {
-      return this.handleError(error, typedRequest.action, Date.now() - startTime);
+    // Route by action type - return raw data, BaseTool.execute() will wrap it
+    switch (typedRequest.action) {
+      case 'screenshot':
+        return await this.executeScreenshot(tabId, typedRequest);
+      case 'click':
+        return await this.executeClick(tabId, typedRequest);
+      case 'type':
+        return await this.executeType(tabId, typedRequest);
+      case 'scroll':
+        return await this.executeScrollAction(tabId, typedRequest);
+      case 'keypress':
+        return await this.executeKeypress(tabId, typedRequest);
+      default:
+        throw new Error(`Unknown action: ${typedRequest.action}`);
     }
   }
 
@@ -207,7 +199,7 @@ export class PageScreenShotTool extends BaseTool {
   private async executeClick(
     tabId: number,
     request: ScreenshotToolRequest
-  ): Promise<any> {
+  ): Promise<ActionResponseData> {
     if (!request.coordinates) {
       throw new Error('VALIDATION_ERROR: coordinates required for click action');
     }
@@ -239,7 +231,7 @@ export class PageScreenShotTool extends BaseTool {
   private async executeType(
     tabId: number,
     request: ScreenshotToolRequest
-  ): Promise<any> {
+  ): Promise<ActionResponseData> {
     if (!request.coordinates) {
       throw new Error('VALIDATION_ERROR: coordinates required for type action');
     }
@@ -272,7 +264,7 @@ export class PageScreenShotTool extends BaseTool {
   private async executeScrollAction(
     tabId: number,
     request: ScreenshotToolRequest
-  ): Promise<any> {
+  ): Promise<ActionResponseData> {
     if (!request.coordinates) {
       throw new Error('VALIDATION_ERROR: coordinates required for scroll action');
     }
@@ -299,7 +291,7 @@ export class PageScreenShotTool extends BaseTool {
   private async executeKeypress(
     tabId: number,
     request: ScreenshotToolRequest
-  ): Promise<any> {
+  ): Promise<ActionResponseData> {
     if (!request.key) {
       throw new Error('VALIDATION_ERROR: key required for keypress action');
     }
@@ -323,76 +315,62 @@ export class PageScreenShotTool extends BaseTool {
   /**
    * Validate coordinates are within viewport bounds
    */
-  private async validateCoordinates(tabId: number, coordinates: { x: number; y: number }): Promise<void> {
+  /**
+   * Validate and clip coordinates to viewport bounds
+   *
+   * This method automatically adjusts out-of-bounds coordinates to the nearest valid coordinate.
+   * LLM provides coordinates based on image analysis, and we clip them to actual viewport bounds.
+   *
+   * @param tabId - Target tab ID
+   * @param coordinates - Requested coordinates (may be out of bounds)
+   * @returns Clipped coordinates guaranteed to be within viewport bounds
+   */
+  private async validateCoordinates(
+    tabId: number,
+    coordinates: { x: number; y: number }
+  ): Promise<{ x: number; y: number; clipped: boolean }> {
     // Get viewport bounds via CDP
     const result = await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
       expression: '({ width: window.innerWidth, height: window.innerHeight })',
       returnByValue: true
-    });
+    }) as { result?: { value: { width: number; height: number } } };
+
+    if (!result?.result?.value) {
+      throw new Error('INVALID_COORDINATES: Failed to get viewport bounds');
+    }
 
     const viewport = result.result.value;
 
-    if (coordinates.x < 0 || coordinates.x > viewport.width || coordinates.y < 0 || coordinates.y > viewport.height) {
-      throw new Error(
-        `INVALID_COORDINATES: Coordinates (${coordinates.x}, ${coordinates.y}) are outside viewport bounds (${viewport.width}x${viewport.height})`
-      );
-    }
-  }
+    // Calculate valid bounds (0 to width-1, 0 to height-1)
+    const maxX = viewport.width - 1;
+    const maxY = viewport.height - 1;
 
-  /**
-   * Handle errors from action execution
-   */
-  private handleError(
-    error: any,
-    action: string,
-    duration: number
-  ): ScreenshotToolResponse {
-    const errorMessage = error?.message || String(error);
+    // Clip coordinates to valid range
+    const clippedX = Math.max(0, Math.min(coordinates.x, maxX));
+    const clippedY = Math.max(0, Math.min(coordinates.y, maxY));
 
-    this.log('error', `Screenshot tool action failed: ${errorMessage}`, { action });
+    const wasClipped = clippedX !== coordinates.x || clippedY !== coordinates.y;
 
-    // Map error to code
-    let code: ErrorCodeType = ErrorCode.SCREENSHOT_FAILED;
-    if (errorMessage.includes('TAB_NOT_FOUND') || errorMessage.includes('No tab with id')) {
-      code = ErrorCode.TAB_NOT_FOUND;
-    } else if (errorMessage.includes('CDP_CONNECTION_LOST')) {
-      code = ErrorCode.CDP_CONNECTION_LOST;
-    } else if (errorMessage.includes('SIZE_LIMIT_EXCEEDED')) {
-      code = ErrorCode.SIZE_LIMIT_EXCEEDED;
-    } else if (errorMessage.includes('FILE_STORAGE_ERROR')) {
-      code = ErrorCode.FILE_STORAGE_ERROR;
-    } else if (errorMessage.includes('INVALID_COORDINATES')) {
-      code = ErrorCode.INVALID_COORDINATES;
-    } else if (errorMessage.includes('VALIDATION_ERROR') || errorMessage.includes('is required')) {
-      code = ErrorCode.VALIDATION_ERROR;
+    if (wasClipped) {
+      this.log('info', 'Coordinates clipped to viewport bounds', {
+        requested: { x: coordinates.x, y: coordinates.y },
+        clipped: { x: clippedX, y: clippedY },
+        viewport: { width: viewport.width, height: viewport.height, maxX, maxY }
+      });
     }
 
-    const errorDetails: ErrorDetails = {
-      code,
-      message: errorMessage,
-      details: {
-        action,
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-    };
+    // Update the coordinates object in-place (will be used by caller)
+    coordinates.x = clippedX;
+    coordinates.y = clippedY;
 
-    return {
-      success: false,
-      action,
-      error: errorDetails,
-      metadata: {
-        duration_ms: duration,
-        tab_id: -1,
-        timestamp: new Date().toISOString(),
-        tool_version: '1.0.0',
-      },
-    };
+    return { x: clippedX, y: clippedY, clipped: wasClipped };
   }
+
 
   /**
    * Validate Chrome context
    */
-  private validateChromeContext(): void {
+  protected validateChromeContext(): void {
     if (typeof chrome === 'undefined' || !chrome.tabs) {
       throw new Error('VALIDATION_ERROR: Chrome extension context required');
     }
@@ -401,7 +379,7 @@ export class PageScreenShotTool extends BaseTool {
   /**
    * Get active tab
    */
-  private async getActiveTab(): Promise<chrome.tabs.Tab> {
+  protected async getActiveTab(): Promise<chrome.tabs.Tab> {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) {
       throw new Error('TAB_NOT_FOUND: No active tab found');
@@ -412,7 +390,7 @@ export class PageScreenShotTool extends BaseTool {
   /**
    * Validate tab ID exists
    */
-  private async validateTabId(tabId: number): Promise<chrome.tabs.Tab> {
+  protected async validateTabId(tabId: number): Promise<chrome.tabs.Tab> {
     try {
       const tab = await chrome.tabs.get(tabId);
       return tab;
@@ -424,7 +402,7 @@ export class PageScreenShotTool extends BaseTool {
   /**
    * Log helper
    */
-  private log(level: 'debug' | 'info' | 'error', message: string, data?: any): void {
+  protected log(level: 'debug' | 'info' | 'error', message: string, data?: any): void {
     const prefix = '[PageScreenShotTool]';
     if (level === 'error') {
       console.error(prefix, message, data);

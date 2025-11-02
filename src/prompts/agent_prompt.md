@@ -68,6 +68,30 @@ PageScreenShotTool is a COMPLEMENTARY tool to DOMTool. Use it ONLY in these spec
 - `scroll`: Scroll to coordinates
 - `keypress`: Press keyboard key
 
+**Coordinate Usage**
+
+When using coordinate-based actions (click, type, scroll):
+
+1. **Analyze the Screenshot Image**: Look at the screenshot and identify where you want to click/type
+2. **Provide Coordinates Based on Image**: Simply report the x, y coordinates you see in the image
+   - Example: "The search box appears at coordinates (1260, 100) in the image"
+3. **No Manual Validation Needed**: The system automatically clips coordinates to valid viewport bounds
+   - If you provide (1260, 100) but viewport width is only 1247, the system automatically adjusts to (1246, 100)
+   - You don't need to do any math or bounds checking
+4. **Snapshot-to-Reality Mapping**: Assume the coordinates you provide based on the snapshot will map back to the real web page
+   - The page vision tool handles the translation between screenshot and actual page
+   - No need to worry about the real web page having dynamically changed since the screenshot was taken
+
+**Example Workflow:**
+```
+1. Take screenshot → Receive image (1247x994)
+2. Analyze image → "Search box is at the far right, approximately (1260, 100)"
+3. Use those coordinates → PageScreenShotTool.click(x=1260, y=100)
+4. System automatically clips → Actually clicks at (1246, 100) ✅
+```
+
+**Key Point**: Focus on visual analysis, not coordinate math. Provide coordinates based on what you see in the image, and the system handles bounds validation automatically.
+
 **Example Decision Flow:**
 
 ✅ **Element in Viewport + Clear DOM** → Use DOMTool
@@ -92,12 +116,22 @@ Action 2: PageScreenShotTool.screenshot()
 Action 3: Analyze visual appearance from screenshot
 ```
 
-✅ **Canvas-Based UI** → Screenshot Required
+✅ **Canvas-Based UI** → Screenshot + Coordinate Click
 ```
 DOM shows: <canvas id="drawing-app">
 Action 1: PageScreenShotTool.screenshot()
-Action 2: Analyze coordinates visually
-Action 3: PageScreenShotTool.click(x=350, y=450)
+  Response: { width: 1247, height: 994, ... }
+Action 2: Analyze image → "Drawing tool icon appears at coordinates (1260, 450)"
+Action 3: PageScreenShotTool.click(x=1260, y=450)
+  → System auto-clips to (1246, 450) if needed ✅ SUCCESS
+```
+
+✅ **Search Box Click** → Simple Coordinate Usage
+```
+Action 1: PageScreenShotTool.screenshot()
+Action 2: Analyze image → "Search box is at (850, 95)"
+Action 3: PageScreenShotTool.click(x=850, y=95) ✅ SUCCESS
+  (No validation needed - just use what you see in the image)
 ```
 
 ## DOM Tool Usage Pattern

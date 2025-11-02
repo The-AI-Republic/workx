@@ -90,4 +90,99 @@ export class ScreenshotFileManager {
       return false;
     }
   }
+
+  /**
+   * Download screenshot as a file using Chrome downloads API
+   * 
+   * @param base64DataOrFilename - Base64 screenshot data OR filename (if omitted, reads from storage)
+   * @param filename - Optional filename (defaults to screenshot_TIMESTAMP.png)
+   * @returns Promise that resolves with the download ID
+   * @throws Error if screenshot not found in storage or download fails
+   */
+  static async downloadScreenshot(base64DataOrFilename?: string, filename?: string): Promise<number> {
+    try {
+      let base64Data: string | null;
+      let downloadFilename: string;
+
+      // Determine if first arg is data or filename
+      if (!base64DataOrFilename || base64DataOrFilename.endsWith('.png')) {
+        // First arg is filename or missing - read from storage
+        base64Data = await this.getScreenshot();
+        downloadFilename = base64DataOrFilename || `screenshot_${Date.now()}.png`;
+
+        if (!base64Data) {
+          throw new Error('No screenshot found in storage');
+        }
+      } else {
+        // First arg is base64 data
+        base64Data = base64DataOrFilename;
+        downloadFilename = filename || `screenshot_${Date.now()}.png`;
+      }
+
+      // Ensure data has the proper data URI format
+      const dataUri = base64Data.startsWith('data:')
+        ? base64Data
+        : `data:image/png;base64,${base64Data}`;
+
+      // Use chrome.downloads API to trigger download
+      const downloadId = await chrome.downloads.download({
+        url: dataUri,
+        filename: downloadFilename,
+        saveAs: false // Set to true if you want the save dialog
+      });
+
+      console.log(`[ScreenshotFileManager] Screenshot download initiated: ${downloadFilename} (ID: ${downloadId})`);
+      return downloadId;
+    } catch (error: any) {
+      console.error('[ScreenshotFileManager] Failed to download screenshot:', error);
+      throw new Error(`DOWNLOAD_ERROR: ${error.message}`);
+    }
+  }
+
+  /**
+   * Download screenshot using blob URL (fallback method for contexts without chrome.downloads)
+   * Works in side panel, popup, or content scripts
+   *
+   * @param base64Data - Base64-encoded PNG screenshot data
+   * @param filename - Optional filename (defaults to screenshot_TIMESTAMP.png)
+   */
+  static downloadScreenshotViaBlob(base64Data: string, filename?: string): void {
+    try {
+      const downloadFilename = filename || `screenshot_${Date.now()}.png`;
+
+      // Strip data URI prefix if present
+      const base64 = base64Data.replace(/^data:image\/png;base64,/, '');
+
+      // Convert base64 to blob
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = downloadFilename;
+      link.style.display = 'none';
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+
+      console.log(`[ScreenshotFileManager] Screenshot downloaded via blob: ${downloadFilename}`);
+    } catch (error: any) {
+      console.error('[ScreenshotFileManager] Failed to download screenshot via blob:', error);
+      throw new Error(`DOWNLOAD_ERROR: ${error.message}`);
+    }
+  }
 }

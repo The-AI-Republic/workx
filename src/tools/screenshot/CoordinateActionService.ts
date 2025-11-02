@@ -221,18 +221,38 @@ export class CoordinateActionService {
    * Uses chrome.debugger to send CDP commands
    */
   static async forTab(tabId: number): Promise<CoordinateActionService> {
-    // Verify debugger is attached
+    // Check if debugger is already attached
+    let isAttached = false;
     try {
-      await chrome.debugger.sendCommand({ tabId }, 'Input.dispatchMouseEvent', {
-        type: 'mouseMoved',
-        x: 0,
-        y: 0
+      await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
+        expression: '1+1',
+        returnByValue: true
       });
+      isAttached = true;
     } catch (error: any) {
-      if (error.message?.includes('No target')) {
-        throw new Error('CDP_CONNECTION_LOST: Debugger not attached to tab. Ensure DomService.forTab() was called first.');
+      // Debugger not attached - will attach below
+      isAttached = false;
+    }
+
+    // Attach debugger if not already attached
+    if (!isAttached) {
+      try {
+        console.log(`[CoordinateActionService] Attaching debugger to tab ${tabId}...`);
+        await chrome.debugger.attach({ tabId }, '1.3');
+        console.log(`[CoordinateActionService] Debugger attached successfully to tab ${tabId}`);
+      } catch (error: any) {
+        console.error(`[CoordinateActionService] Failed to attach debugger to tab ${tabId}:`, error);
+
+        // Check for common errors
+        if (error.message?.includes('Another debugger is already attached')) {
+          // Debugger is attached by another process (DevTools, DomService, etc.) - this is OK
+          console.log(`[CoordinateActionService] Debugger already attached by another process - proceeding`);
+        } else if (error.message?.includes('Cannot access')) {
+          throw new Error(`CDP_CONNECTION_LOST: Cannot attach debugger to tab ${tabId}. Tab may be a protected page (chrome://, chrome-extension://, etc.)`);
+        } else {
+          throw new Error(`CDP_CONNECTION_LOST: Failed to attach debugger to tab ${tabId}: ${error.message}`);
+        }
       }
-      // Ignore "not attached" errors on this test command
     }
 
     // Create send command wrapper

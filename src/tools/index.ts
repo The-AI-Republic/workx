@@ -60,8 +60,8 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
           return toolsConfig.storage_tool === true;
         case 'tab_tool':
           return toolsConfig.tab_tool === true;
-        case 'page_screenshot_tool':
-          return toolsConfig.page_screenshot_tool === true;
+        case 'page_vision_tool':
+          return toolsConfig.page_vision_tool === true;
         case 'page_action':
           return toolsConfig.page_action_tool === true;
         default:
@@ -148,9 +148,9 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
     }
 
     // PageScreenShot Tool
-    if (isToolEnabled('page_screenshot_tool')) {
+    if (isToolEnabled('page_vision_tool')) {
       const pageScreenShotTool = new PageScreenShotTool();
-      await registerTool('page_screenshot', pageScreenShotTool);
+      await registerTool('page_vision', pageScreenShotTool);
     } else {
       console.log('PageScreenShotTool disabled in configuration, skipping...');
     }
