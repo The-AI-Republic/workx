@@ -64,7 +64,7 @@ export interface ScreenshotResponseData {
 }
 
 export interface ActionResponseData {
-  coordinates_used: Coordinates;
+  coordinates_used?: Coordinates; // Optional - keypress action doesn't use coordinates
   action_timestamp: string;
 }
 

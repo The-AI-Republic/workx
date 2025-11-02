@@ -30,8 +30,6 @@ export class ScreenshotFileManager {
       await chrome.storage.local.set({
         [SCREENSHOT_CACHE_KEY]: base64Data
       });
-
-      console.log(`[ScreenshotFileManager] Screenshot saved (${sizeInMB.toFixed(2)}MB) to key "${SCREENSHOT_CACHE_KEY}"`);
     } catch (error: any) {
       console.error('[ScreenshotFileManager] Failed to save screenshot:', error);
       throw new Error(`FILE_STORAGE_ERROR: ${error.message}`);
@@ -53,7 +51,6 @@ export class ScreenshotFileManager {
         return null;
       }
 
-      console.log(`[ScreenshotFileManager] Screenshot retrieved from key "${SCREENSHOT_CACHE_KEY}"`);
       return screenshotData;
     } catch (error: any) {
       console.error('[ScreenshotFileManager] Failed to retrieve screenshot:', error);
@@ -69,7 +66,6 @@ export class ScreenshotFileManager {
   static async deleteScreenshot(): Promise<void> {
     try {
       await chrome.storage.local.remove(SCREENSHOT_CACHE_KEY);
-      console.log(`[ScreenshotFileManager] Screenshot deleted from key "${SCREENSHOT_CACHE_KEY}"`);
     } catch (error: any) {
       console.error('[ScreenshotFileManager] Failed to delete screenshot:', error);
       throw new Error(`FILE_STORAGE_ERROR: ${error.message}`);

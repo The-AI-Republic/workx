@@ -98,47 +98,41 @@ export async function get_formatted_input(prompt: Prompt): Promise<ResponseItem[
   // Clone the input array to prevent mutations
   const items = [...prompt.input];
 
-  // Process items to inject screenshots where needed
-  const processedItems = await Promise.all(
-    items.map(async (item) => {
-      // Only process function_call_output items
-      if (item.type !== 'function_call_output') {
-        return item;
-      }
-
-      // Check if this is a screenshot tool response
+  // Iterate backwards to find the last screenshot function call output
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    
+    if (item?.type === 'function_call_output') {
       try {
         const output = JSON.parse(item.output);
-
-        // Check if this is a screenshot action response with image_file_id
-        if (output?.data?.image_file_id === 'screenshot_cache' && output?.action === 'screenshot') {
-          // Retrieve screenshot from storage
+        
+        // If it's a screenshot action, get the image and insert it after this item
+        if (output?.metadata?.toolName === 'page_vision' && output?.metadata?.action === 'screenshot') {
           const screenshotData = await ScreenshotFileManager.getScreenshot();
 
           if (screenshotData) {
-            // Convert to data URL
+            // Convert screenshot data to data URL
             const dataUrl = `data:image/png;base64,${screenshotData}`;
 
-            // Return modified item with image content
-            // We need to convert function_call_output to a message with image content
-            return {
+            // Insert image message right after the function call output
+            items.splice(i + 1, 0, {
               type: 'message' as const,
               role: 'user',
               content: [
-                { type: 'input_text' as const, text: `Screenshot captured: ${output.data.width}x${output.data.height}` },
+                { type: 'input_text' as const, text: `Current Screenshot captured by page_vision tool: ${output.data.width}x${output.data.height}` },
                 { type: 'input_image' as const, image_url: dataUrl }
               ]
-            } as ResponseItem;
+            } as ResponseItem);
           }
+
+          // Only process the last screenshot in the list
+          break;
         }
       } catch (error) {
-        // Not JSON or not a screenshot response, return as-is
-        console.debug('[PromptHelpers] Item is not a screenshot response:', error);
+        console.debug('[PromptHelpers] Failed to parse function call output:', error);
       }
+    }
+  }
 
-      return item;
-    })
-  );
-
-  return processedItems;
+  return items;
 }

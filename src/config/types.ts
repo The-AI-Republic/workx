@@ -164,6 +164,7 @@ export interface IToolsConfig {
   network_intercept_tool?: boolean;
   data_extraction_tool?: boolean;
   page_action_tool?: boolean;
+  page_vision_tool?: boolean;
 
   // Agent execution tool toggles
   execCommand?: boolean;

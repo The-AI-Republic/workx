@@ -81,7 +81,7 @@ export class ResponseStream {
   ) {
     this.config = {
       maxBufferSize: 1000,
-      eventTimeout: 30000, // 30 seconds
+      eventTimeout: 60000, // 60 seconds
       enableBackpressure: true,
       ...config
     };

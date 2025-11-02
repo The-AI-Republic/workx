@@ -40,8 +40,6 @@ export class ScreenshotService {
         captureBeyondViewport: false // Only capture visible viewport
       });
 
-      console.log(`[ScreenshotService] Captured viewport screenshot (${viewport.width}x${viewport.height})`);
-
       return {
         base64Data: screenshot.data,
         viewport
@@ -124,14 +122,43 @@ export class ScreenshotService {
    * Uses chrome.debugger to send CDP commands
    */
   static async forTab(tabId: number): Promise<ScreenshotService> {
-    // Verify debugger is attached
+    // Check if debugger is already attached
+    let isAttached = false;
+    try {
+      await chrome.debugger.sendCommand({ tabId }, 'Runtime.evaluate', {
+        expression: '1+1',
+        returnByValue: true
+      });
+      isAttached = true;
+    } catch (error: any) {
+      // Debugger not attached - will attach below
+      isAttached = false;
+    }
+
+    // Attach debugger if not already attached
+    if (!isAttached) {
+      try {
+        await chrome.debugger.attach({ tabId }, '1.3');
+      } catch (error: any) {
+        console.error(`[ScreenshotService] Failed to attach debugger to tab ${tabId}:`, error);
+
+        // Check for common errors
+        if (error.message?.includes('Another debugger is already attached')) {
+          // Debugger is attached by another process (DevTools, DomService, etc.) - this is OK
+        } else if (error.message?.includes('Cannot access')) {
+          throw new Error(`CDP_CONNECTION_LOST: Cannot attach debugger to tab ${tabId}. Tab may be a protected page (chrome://, chrome-extension://, etc.)`);
+        } else {
+          throw new Error(`CDP_CONNECTION_LOST: Failed to attach debugger to tab ${tabId}: ${error.message}`);
+        }
+      }
+    }
+
+    // Enable Page domain (required for screenshots)
     try {
       await chrome.debugger.sendCommand({ tabId }, 'Page.enable', {});
     } catch (error: any) {
-      if (error.message?.includes('No target')) {
-        throw new Error('CDP_CONNECTION_LOST: Debugger not attached to tab. Ensure DomService.forTab() was called first.');
-      }
-      throw error;
+      console.error(`[ScreenshotService] Failed to enable Page domain:`, error);
+      throw new Error(`SCREENSHOT_FAILED: Failed to enable Page domain: ${error.message}`);
     }
 
     // Create send command wrapper

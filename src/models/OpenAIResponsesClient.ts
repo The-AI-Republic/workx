@@ -32,7 +32,6 @@ import type { TokenUsage } from './types/TokenUsage';
 import { SSEEventParser } from './SSEEventParser';
 import { RequestQueue, RequestPriority, type QueuedRequest } from './RequestQueue';
 import { get_full_instructions, get_formatted_input } from './PromptHelpers';
-import { ScreenshotFileManager } from '../tools/screenshot/ScreenshotFileManager';
 
 /**
  * SSE Event structure from OpenAI Responses API
@@ -358,7 +357,8 @@ export class OpenAIResponsesClient extends ModelClient {
     }
 
     // Create stream and start processing asynchronously
-    const stream = new ResponseStream();
+    // Use 5-minute event timeout for LLM reasoning (matches turn timeout)
+    const stream = new ResponseStream(undefined, { eventTimeout: 300000 });
 
     // Spawn async task to populate stream from SSE
     (async () => {
@@ -551,13 +551,6 @@ export class OpenAIResponsesClient extends ModelClient {
       }
     } finally {
       reader.releaseLock();
-
-      // Cleanup screenshot after stream completion
-      try {
-        await ScreenshotFileManager.deleteScreenshot();
-      } catch (error) {
-        console.debug('[OpenAIResponsesClient] Screenshot cleanup failed (may not exist):', error);
-      }
     }
   }
 
@@ -645,13 +638,6 @@ export class OpenAIResponsesClient extends ModelClient {
       }
     } finally {
       reader.releaseLock();
-
-      // Cleanup screenshot after stream completion
-      try {
-        await ScreenshotFileManager.deleteScreenshot();
-      } catch (error) {
-        console.debug('[OpenAIResponsesClient] Screenshot cleanup failed (may not exist):', error);
-      }
     }
   }
 
