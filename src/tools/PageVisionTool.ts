@@ -1,5 +1,5 @@
 /**
- * PageScreenShotTool - CDP-based screenshot capture and coordinate-based interaction
+ * PageVisionTool - CDP-based screenshot capture and coordinate-based interaction
  *
  * Provides visual page analysis and coordinate-based interactions as a complement
  * to DOM-based page operations.
@@ -17,11 +17,11 @@ import { ScreenshotFileManager } from './screenshot/ScreenshotFileManager';
 import { CoordinateActionService } from './screenshot/CoordinateActionService';
 
 /**
- * PageScreenShotTool v1.0
+ * PageVisionTool v1.0
  *
  * CDP-based screenshot and coordinate interaction tool for visual page analysis
  */
-export class PageScreenShotTool extends BaseTool {
+export class PageVisionTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
     'page_vision',
     'Visual page screenshot and coordinate-based interaction tool. Captures viewport screenshots and performs coordinate-based actions (click, type, scroll, keypress) for visual analysis. Use as complement to browser_dom when visual understanding is needed. COORDINATES ARE AUTOMATICALLY CLIPPED: Simply provide coordinates based on your visual analysis of the screenshot image. The system will automatically clip out-of-bounds coordinates to the nearest valid position within the viewport.',
@@ -380,7 +380,7 @@ export class PageScreenShotTool extends BaseTool {
    * Log helper
    */
   protected log(level: 'debug' | 'info' | 'error', message: string, data?: any): void {
-    const prefix = '[PageScreenShotTool]';
+    const prefix = '[PageVisionTool]';
     if (level === 'error') {
       console.error(prefix, message, data);
     } else if (level === 'info') {

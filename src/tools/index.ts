@@ -11,7 +11,7 @@ import { DOMTool } from './DOMTool';
 import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { TabTool } from './TabTool';
-import { PageScreenShotTool } from './PageScreenShotTool';
+import { PageVisionTool } from './PageVisionTool';
 import type { IToolsConfig } from '../config/types';
 
 // Re-export all tools
@@ -26,7 +26,7 @@ export { DOMTool } from './DOMTool';
 export { NavigationTool } from './NavigationTool';
 export { StorageTool } from './StorageTool';
 export { TabTool } from './TabTool';
-export { PageScreenShotTool } from './PageScreenShotTool';
+export { PageVisionTool } from './PageVisionTool';
 
 /**
  * Register browser automation tools based on configuration
@@ -147,12 +147,12 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
       console.log('TabTool disabled in configuration, skipping...');
     }
 
-    // PageScreenShot Tool
+    // PageVision Tool
     if (isToolEnabled('page_vision_tool')) {
-      const pageScreenShotTool = new PageScreenShotTool();
-      await registerTool('page_vision', pageScreenShotTool);
+      const pageVisionTool = new PageVisionTool();
+      await registerTool('page_vision', pageVisionTool);
     } else {
-      console.log('PageScreenShotTool disabled in configuration, skipping...');
+      console.log('PageVisionTool disabled in configuration, skipping...');
     }
 
     // Page Action Tool - REMOVED: Functionality merged into DOMTool v3.0

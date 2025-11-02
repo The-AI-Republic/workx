@@ -1,5 +1,5 @@
 /**
- * Type definitions for PageScreenShotTool
+ * Type definitions for PageVisionTool
  * CDP-based screenshot capture and coordinate-based interaction
  */
 
