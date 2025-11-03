@@ -1,5 +1,5 @@
 /**
- * T038: Configuration validation functions
+ * Configuration validation functions
  */
 
 import type {

@@ -1,5 +1,5 @@
 /**
- * T007: Full Stream Lifecycle Integration Test
+ * Full Stream Lifecycle Integration Test
  * Reference: quickstart.md Step 4
  *
  * Tests complete flow: create client → stream() → iterate events → complete
@@ -21,7 +21,7 @@ import {
   SSE_FAILED_STREAM,
 } from './fixtures/sse-events';
 
-describe('T007: Full Stream Lifecycle Integration', () => {
+describe('Full Stream Lifecycle Integration', () => {
   let client: OpenAIResponsesClient;
   let mockModelFamily: ModelFamily;
   let mockProvider: ModelProviderInfo;

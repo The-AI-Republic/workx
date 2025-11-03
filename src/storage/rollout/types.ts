@@ -1,9 +1,5 @@
 /**
  * TypeScript type definitions for RolloutRecorder
- * Preserves exact names and structures from Rust implementation
- *
- * Source: browserx-rs/core/src/rollout/ and browserx-rs/protocol/src/protocol.rs
- * Target: browserx-chrome/src/storage/rollout/
  */
 
 // ============================================================================
@@ -23,7 +19,6 @@ export type ConversationId = string;
 
 /**
  * Parameters for creating a RolloutRecorder instance.
- * TypeScript equivalent of Rust's RolloutRecorderParams enum.
  */
 export type RolloutRecorderParams =
   | {
@@ -56,7 +51,6 @@ export interface GitInfo {
 
 /**
  * Metadata about a conversation session.
- * TypeScript equivalent of Rust's SessionMeta struct.
  */
 export interface SessionMeta {
   /** Conversation unique identifier */
@@ -75,7 +69,6 @@ export interface SessionMeta {
 
 /**
  * Session metadata with optional Git information.
- * TypeScript equivalent of Rust's SessionMetaLine struct.
  */
 export interface SessionMetaLine extends SessionMeta {
   /** Git repository information */
@@ -130,9 +123,8 @@ export type EventMsg = any;
 
 /**
  * A single item in a rollout recording.
- * TypeScript equivalent of Rust's RolloutItem enum.
  *
- * Discriminated union matching Rust serde tag format:
+ * Discriminated union format:
  * { "type": "session_meta", "payload": { ... } }
  */
 export type RolloutItem =

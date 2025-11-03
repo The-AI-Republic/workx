@@ -62,7 +62,6 @@ export interface EventStyle {
 
 /**
  * Style Presets - Predefined styles for common event types
- * Based on Rust terminal color mapping
  */
 export const STYLE_PRESETS: Record<string, EventStyle> = {
   task_started: {

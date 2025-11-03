@@ -213,8 +213,6 @@ export class TurnManager {
             break;
 
           case 'RateLimits':
-            // Update rate limits (deferred until token usage available)
-            // In the Rust version, this is handled by sess.update_rate_limits
             break;
 
           case 'Completed': {
@@ -530,8 +528,6 @@ export class TurnManager {
         };
       }
     } else if (item.type === 'message' || item.type === 'reasoning' || item.type === 'web_search_call') {
-      // Use event mapping to convert ResponseItem to EventMsg(s)
-      // This matches the Rust logic in browserx.rs line 2219-2235
       const showRawReasoning = this.session.showRawAgentReasoning() ?? false;
       const eventMsgs = mapResponseItemToEventMessages(item as ResponseItem, showRawReasoning);
 
