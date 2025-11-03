@@ -238,7 +238,7 @@ export class OpenAIResponsesClient extends ModelClient {
     const payload: ResponsesApiRequest = {
       model: this.currentModel,
       instructions: fullInstructions,
-      input: get_formatted_input(prompt),
+      input: await get_formatted_input(prompt),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
@@ -357,7 +357,9 @@ export class OpenAIResponsesClient extends ModelClient {
     }
 
     // Create stream and start processing asynchronously
-    const stream = new ResponseStream();
+    // Use 30-minute event timeout for LLM reasoning (extended for reasoning models like o1)
+    // Reasoning models can take >5 minutes without sending events during complex reasoning
+    const stream = new ResponseStream(undefined, { eventTimeout: 1800000 });
 
     // Spawn async task to populate stream from SSE
     (async () => {
@@ -390,7 +392,7 @@ export class OpenAIResponsesClient extends ModelClient {
     const payload: ResponsesApiRequest = {
       model: this.currentModel,
       instructions: fullInstructions,
-      input: get_formatted_input(prompt),
+      input: await get_formatted_input(prompt),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,

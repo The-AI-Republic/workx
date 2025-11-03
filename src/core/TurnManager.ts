@@ -139,11 +139,15 @@ export class TurnManager {
           retries++;
           const delay = this.calculateRetryDelay(retries, error);
 
+          const summary = this.extractStreamErrorSummary(error);
+
           // Notify about retry attempt
           await this.emitStreamError(
-            `Stream error: ${error instanceof Error ? error.message : String(error)}; retrying ${retries}/${this.config.maxRetries} in ${delay}ms`,
+            `Stream error: ${summary}`,
             true,
-            retries
+            retries,
+            delay,
+            this.config.maxRetries
           );
 
           await this.sleep(delay);
@@ -941,15 +945,103 @@ export class TurnManager {
   /**
    * Emit stream error event
    */
-  private async emitStreamError(error: string, retrying: boolean, attempt?: number): Promise<void> {
+  private async emitStreamError(
+    error: string,
+    retrying: boolean,
+    attempt?: number,
+    delayMs?: number,
+    maxRetries?: number
+  ): Promise<void> {
+    const data: StreamErrorEvent = {
+      error,
+      retrying,
+    };
+
+    if (typeof attempt === 'number') {
+      data.attempt = attempt;
+    }
+    if (typeof delayMs === 'number') {
+      data.delayMs = delayMs;
+    }
+    if (typeof maxRetries === 'number') {
+      data.maxRetries = maxRetries;
+    }
+
     await this.emitEvent({
       type: 'StreamError',
-      data: {
-        error,
-        retrying,
-        attempt,
-      },
+      data,
     });
+  }
+
+  /**
+   * Extract a concise summary for the current stream error.
+   */
+  private extractStreamErrorSummary(error: unknown): string {
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    if (!error) {
+      return 'Unknown stream error';
+    }
+
+    const visited = new Set<unknown>();
+    let current: unknown = error;
+    let description = '';
+
+    while (current && !visited.has(current)) {
+      visited.add(current);
+      description = this.describeError(current);
+
+      const next = this.getErrorCause(current);
+      if (!next) {
+        break;
+      }
+
+      current = next;
+    }
+
+    return description || 'Unknown stream error';
+  }
+
+  /**
+   * Describe an error-like value as a readable string.
+   */
+  private describeError(value: unknown): string {
+    if (value instanceof Error) {
+      const name = value.name && value.name !== 'Error' ? `${value.name}: ` : '';
+      const message = value.message || '(no message)';
+      return `${name}${message}`;
+    }
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value && typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '[object Object]';
+      }
+    }
+
+    return 'Unknown stream error';
+  }
+
+  /**
+   * Retrieve the `cause` field from an error-like value when available.
+   */
+  private getErrorCause(value: unknown): unknown | undefined {
+    if (value instanceof Error && 'cause' in value) {
+      return (value as Error & { cause?: unknown }).cause;
+    }
+
+    if (value && typeof value === 'object' && 'cause' in (value as any)) {
+      return (value as { cause?: unknown }).cause;
+    }
+
+    return undefined;
   }
 
   /**
