@@ -982,6 +982,87 @@ export class DomService {
     }
   }
 
+  /**
+   * Scroll element into view with configurable alignment
+   */
+  async scrollIntoView(
+    nodeId: number,
+    options?: { block?: 'start' | 'center' | 'end' | 'nearest'; inline?: 'start' | 'center' | 'end' | 'nearest' }
+  ): Promise<ActionResult> {
+    const start = Date.now();
+
+    try {
+      // Get backendNodeId from nodeId
+      const backendNodeId = nodeId;
+
+      // Use CDP's scrollIntoViewIfNeeded for basic scrolling
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
+
+      // If specific alignment options provided, use JavaScript scrollIntoView
+      if (options?.block || options?.inline) {
+        const scrollOptions = JSON.stringify({
+          behavior: 'smooth',
+          block: options.block || 'center',
+          inline: options.inline || 'nearest'
+        });
+
+        await this.sendCommand('Runtime.evaluate', {
+          expression: `
+            (function() {
+              const node = document.querySelector('[data-node-id="${nodeId}"]');
+              if (node) {
+                node.scrollIntoView(${scrollOptions});
+              }
+            })()
+          `,
+          returnByValue: true
+        });
+      }
+
+      // Wait for scroll animation to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      this.invalidateSnapshot();
+
+      const duration = Date.now() - start;
+      this.trackActionMetrics('scroll', duration, true);
+
+      return {
+        success: true,
+        duration,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: true,
+          valueChanged: false
+        },
+        nodeId,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    } catch (error: any) {
+      this.invalidateSnapshot();
+
+      const duration = Date.now() - start;
+      this.trackActionMetrics('scroll', duration, false, error.message);
+
+      return {
+        success: false,
+        duration,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
   // T092: Performance metrics tracking helper
   private trackActionMetrics(actionType: 'click' | 'type' | 'scroll' | 'keypress', duration: number, success: boolean, error?: string): void {
     if (!this.config.enableMetrics) return;

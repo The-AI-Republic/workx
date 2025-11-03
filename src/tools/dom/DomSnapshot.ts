@@ -11,6 +11,7 @@ import type { SerializationOptions } from '../../types/domTool';
 import { getTextContent } from './utils';
 import { SerializationPipeline } from './serializers/SerializationPipeline';
 import { DEFAULT_SERIALIZATION_OPTIONS } from '../../types/domTool';
+import type { ViewportBounds } from '../screenshot/ViewportDetector';
 
 export class DomSnapshot implements IDomSnapshot {
   readonly virtualDom: VirtualNode;
@@ -306,6 +307,11 @@ export class DomSnapshot implements IDomSnapshot {
         ];
       }
 
+      // inViewport (calculate from boundingBox and viewport bounds)
+      if (node.boundingBox) {
+        serializedNode.inViewport = this.calculateInViewport(node.boundingBox);
+      }
+
       // Build states object from accessibility info
       if (opts.metadata.includeStates) {
         const states: Record<string, boolean | string> = {};
@@ -332,6 +338,44 @@ export class DomSnapshot implements IDomSnapshot {
     }
 
     return serializedNode;
+  }
+
+  /**
+   * Calculate if element is in viewport (>50% visibility threshold)
+   */
+  private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }): boolean {
+    const viewport = this.pageContext.viewport;
+
+    // Handle zero-size elements
+    if (boundingBox.width === 0 || boundingBox.height === 0) {
+      return false;
+    }
+
+    // Convert element coordinates to viewport coordinates
+    const elemLeft = boundingBox.x - viewport.scrollX;
+    const elemTop = boundingBox.y - viewport.scrollY;
+    const elemRight = elemLeft + boundingBox.width;
+    const elemBottom = elemTop + boundingBox.height;
+
+    // Calculate intersection with viewport bounds
+    const intersectLeft = Math.max(elemLeft, 0);
+    const intersectTop = Math.max(elemTop, 0);
+    const intersectRight = Math.min(elemRight, viewport.width);
+    const intersectBottom = Math.min(elemBottom, viewport.height);
+
+    // Check if there's any intersection
+    const hasIntersection = intersectRight > intersectLeft && intersectBottom > intersectTop;
+    if (!hasIntersection) {
+      return false;
+    }
+
+    // Calculate visibility percentage
+    const intersectArea = (intersectRight - intersectLeft) * (intersectBottom - intersectTop);
+    const elementArea = boundingBox.width * boundingBox.height;
+    const visibilityPercent = (intersectArea / elementArea) * 100;
+
+    // Return true if >50% visible
+    return visibilityPercent > 50;
   }
 
   /**

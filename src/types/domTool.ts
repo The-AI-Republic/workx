@@ -165,6 +165,9 @@ export interface SerializedNode {
 
   /** Element states (disabled, checked, etc.) - may be moved to collection-level */
   states?: Record<string, boolean | string>;
+
+  /** Whether element is currently visible in viewport (>50% intersection) */
+  inViewport?: boolean;
 }
 
 
