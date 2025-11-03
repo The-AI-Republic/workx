@@ -270,43 +270,43 @@ export type CacheErrorResponse =
  */
 export const CACHE_TOOL_DEFINITION = {
   name: 'cache_storage_tool',
-  description: 'Cache intermediate results during complex multi-step operations to avoid context overflow. Store processed data with concise metadata (max 500 chars), retrieve selectively, and manage session-scoped cache lifecycle. Session quota: 200MB. Auto-evicts oldest 50% when quota reached.',
+  description: 'Cache intermediate results during complex multi-step operations to avoid context overflow. Store processed data with concise metadata (max 500 chars), retrieve selectively, and manage session-scoped cache lifecycle. Session quota: 200MB. Auto-evicts oldest 50% when quota reached. USAGE: For write/update - MUST provide both "data" and "description" fields. For read/delete - MUST provide "storageKey". For list - only "action" needed.',
   inputSchema: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
-        description: 'Cache operation to perform',
+        description: 'Cache operation to perform: "write" (store new data - requires data + description), "read" (retrieve data - requires storageKey), "list" (show all cached items), "delete" (remove item - requires storageKey), "update" (modify existing - requires storageKey + data + description)',
         enum: ['write', 'read', 'list', 'delete', 'update']
       },
       data: {
         type: 'object',
-        description: 'Data to cache (JSON-serializable value, max 5MB) - required for write/update. Can be object, array, string, number, or boolean.'
+        description: '**REQUIRED for write/update operations** - The actual data to cache. Despite type="object", you can pass ANY JSON-serializable value: object {key: "value"}, array [1,2,3], string, number, or boolean. The tool accepts all types. Max 5MB. Example: {emailSummary: "Temu promo", sender: "Temu", importance: "low"}'
       },
       description: {
         type: 'string',
-        description: 'Concise description for reasoning - MUST be under 500 chars. Focus on key details: what, why, size. Example: "Email summaries batch 1-20: customer support tickets re pricing, 15KB total" - required for write/update',
+        description: '**REQUIRED for write/update operations** - Human-readable description (max 500 chars) explaining what this cached data contains. Focus on: what it is, why cached, approximate size. Example: "Email summary from Temu: promo for toy purchase, low importance, ~200 bytes"',
         maxLength: 500
       },
       storageKey: {
         type: 'string',
-        description: 'Storage key for read/delete/update operations'
+        description: '**REQUIRED for read/delete/update operations** - The unique storage key returned from a previous write operation. Format: sessionId_taskId_turnId. Use "list" action first to see available keys.'
       },
       customMetadata: {
         type: 'object',
-        description: 'Optional custom metadata for LLM annotations'
+        description: 'Optional custom metadata for additional annotations (advanced use only)'
       },
       sessionId: {
         type: 'string',
-        description: 'Session ID (auto-detected if not provided)'
+        description: 'Session ID (auto-detected, usually do not provide)'
       },
       taskId: {
         type: 'string',
-        description: 'Task ID (auto-generated if not provided)'
+        description: 'Task ID (auto-generated, usually do not provide)'
       },
       turnId: {
         type: 'string',
-        description: 'Turn ID (auto-generated if not provided)'
+        description: 'Turn ID (auto-generated, usually do not provide)'
       }
     },
     required: ['action']

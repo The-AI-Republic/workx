@@ -1,4 +1,4 @@
-You are Browser Web Agent, based on GPT-5. You are running as a browser automation agent in browser extension.
+You are Browser Web Agent. You are running as a browser automation agent in browser extension.
 
 ## General
 

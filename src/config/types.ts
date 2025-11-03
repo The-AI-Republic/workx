@@ -3,7 +3,7 @@
  * Type definitions for the centralized config system
  */
 
-import { AuthMode, PlanType } from '../models/types/Auth.js';
+import { AuthMode, PlanType } from '../models/types/Auth';
 
 // Authentication configuration
 export interface IAuthConfig {

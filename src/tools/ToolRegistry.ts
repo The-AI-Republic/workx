@@ -171,6 +171,11 @@ export class ToolRegistry {
       };
     }
 
+    // Skip strict validation if tool has strict: false
+    if (entry.definition.type === 'function' && entry.definition.function.strict === false) {
+      return { valid: true, errors: [] };
+    }
+
     const errors: ValidationError[] = [];
     const schema = this.getToolParameters(entry.definition);
 

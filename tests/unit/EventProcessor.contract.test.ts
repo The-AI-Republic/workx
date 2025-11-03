@@ -129,7 +129,7 @@ describe('EventProcessor Contract Tests', () => {
     expect(result).not.toBeNull();
     expect(result?.category).toBe('error');
     expect(result?.title).toBe('STREAM ERROR');
-    expect(result?.content).toBe('Stream connection failed (retrying...)');
+    expect(result?.content).toBe('Stream connection failed\nRetrying (attempt 2)');
     expect(result?.status).toBe('error');
   });
 
@@ -149,6 +149,34 @@ describe('EventProcessor Contract Tests', () => {
 
     expect(result).not.toBeNull();
     expect(result?.content).toBe('Stream terminated');
+  });
+
+  it('should include detail metadata for StreamError event', () => {
+    const event: Event = {
+      id: 'evt_503',
+      msg: {
+        type: 'StreamError',
+        data: {
+          error: 'Stream error: TypeError: Failed to fetch',
+          retrying: true,
+          attempt: 1,
+          maxRetries: 3,
+          delayMs: 1500,
+          details: 'Cause chain: ResponseStreamError: Stream error -> TypeError: Failed to fetch',
+        },
+      },
+    };
+
+    const result = processor.processEvent(event);
+
+    expect(result).not.toBeNull();
+    expect(result?.content).toBe(
+      [
+        'Stream error: TypeError: Failed to fetch',
+        'Cause chain: ResponseStreamError: Stream error -> TypeError: Failed to fetch',
+        'Retrying (attempt 1/3) in 1500ms',
+      ].join('\n')
+    );
   });
 
   it('should clear state on reset', () => {

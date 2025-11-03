@@ -13,6 +13,16 @@ import type {
 } from './types';
 
 /**
+ * Event Queue Entry - responses from agent
+ */
+export interface Event {
+  /** Unique id for this Event */
+  id: string;
+  /** Event message */
+  msg: EventMsg;
+}
+
+/**
  * Complete EventMsg enumeration
  */
 export type EventMsg =
@@ -229,6 +239,18 @@ export interface StreamErrorEvent {
   error: string;
   retrying: boolean;
   attempt?: number;
+  /**
+   * Optional human-readable detail about the underlying root cause.
+   */
+  details?: string;
+  /**
+   * Delay before the next retry attempt, when applicable.
+   */
+  delayMs?: number;
+  /**
+   * Maximum number of retry attempts configured for the turn.
+   */
+  maxRetries?: number;
 }
 
 export interface PatchApplyBeginEvent {
