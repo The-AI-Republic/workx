@@ -11,31 +11,307 @@
 import { BaseTool, type BaseToolRequest, type BaseToolOptions } from './BaseTool';
 import { SessionCacheManager } from '../storage/SessionCacheManager';
 import { IndexedDBAdapter } from '../storage/IndexedDBAdapter';
-import type {
-  CacheToolRequest,
-  CacheWriteRequest,
-  CacheReadRequest,
-  CacheListRequest,
-  CacheDeleteRequest,
-  CacheUpdateRequest,
-  CacheWriteResponse,
-  CacheReadResponse,
-  CacheListResponse,
-  CacheDeleteResponse,
-  CacheUpdateResponse,
-  CacheErrorResponse,
-  QuotaExceededError,
-  ItemNotFoundError,
-  DataTooLargeError
-} from '../../specs/011-storage-cache/contracts/storage-tool-api';
-import { CACHE_TOOL_DEFINITION, CacheErrorType } from '../../specs/011-storage-cache/contracts/storage-tool-api';
 import {
   QuotaExceededError as SessionQuotaExceededError,
   DataTooLargeError as SessionDataTooLargeError,
   ItemNotFoundError as SessionItemNotFoundError,
-  CorruptedDataError as SessionCorruptedDataError
+  CorruptedDataError as SessionCorruptedDataError,
+  CACHE_CONSTANTS
 } from '../storage/SessionCacheManager';
-import { CACHE_CONSTANTS } from '../storage/SessionCacheManager';
+
+// ============================================================================
+// Cache Tool API Types (Tool Definition Data Structures)
+// ============================================================================
+
+/**
+ * Base request for all StorageTool cache operations
+ */
+export interface CacheToolRequest {
+  /** The cache operation to perform */
+  action: 'write' | 'read' | 'list' | 'delete' | 'update';
+
+  /** Session ID (auto-extracted from context if not provided) */
+  sessionId?: string;
+
+  /** Task ID (auto-generated if not provided) */
+  taskId?: string;
+
+  /** Turn ID (auto-generated if not provided) */
+  turnId?: string;
+}
+
+/**
+ * Write operation request - store new cached item
+ */
+export interface CacheWriteRequest extends CacheToolRequest {
+  action: 'write';
+
+  /** The data to cache (any JSON-serializable value) */
+  data: any;
+
+  /** Human-readable description for LLM reasoning (max 500 chars) */
+  description: string;
+
+  /** Optional custom metadata for LLM annotations */
+  customMetadata?: Record<string, any>;
+}
+
+/**
+ * Read operation request - retrieve cached item by key
+ */
+export interface CacheReadRequest extends CacheToolRequest {
+  action: 'read';
+
+  /** Storage key of item to retrieve */
+  storageKey: string;
+}
+
+/**
+ * List operation request - get all cached items metadata for session
+ */
+export interface CacheListRequest extends CacheToolRequest {
+  action: 'list';
+
+  /** Optional session ID filter (defaults to current session) */
+  sessionId?: string;
+}
+
+/**
+ * Delete operation request - remove cached item by key
+ */
+export interface CacheDeleteRequest extends CacheToolRequest {
+  action: 'delete';
+
+  /** Storage key of item to delete */
+  storageKey: string;
+}
+
+/**
+ * Update operation request - modify existing cached item
+ */
+export interface CacheUpdateRequest extends CacheToolRequest {
+  action: 'update';
+
+  /** Storage key of item to update */
+  storageKey: string;
+
+  /** New data (replaces existing data) */
+  data: any;
+
+  /** New description (replaces existing description) */
+  description: string;
+
+  /** Optional custom metadata (replaces existing metadata) */
+  customMetadata?: Record<string, any>;
+}
+
+/**
+ * Lightweight metadata returned to LLM (not full data)
+ * Designed to stay under 700 bytes for context efficiency
+ */
+export interface CacheMetadata {
+  /** Composite storage key */
+  storageKey: string;
+
+  /** Human-readable description */
+  description: string;
+
+  /** Timestamp when created/updated (Unix ms) */
+  timestamp: number;
+
+  /** Serialized size of data field (bytes) */
+  dataSize: number;
+
+  /** Session identifier */
+  sessionId: string;
+
+  /** Task identifier */
+  taskId: string;
+
+  /** Turn identifier */
+  turnId: string;
+}
+
+/**
+ * Full cached item (includes data payload)
+ * Only returned on explicit read operations
+ */
+export interface CachedItem extends CacheMetadata {
+  /** The actual cached data (JSON-serializable) */
+  data: any;
+
+  /** Optional custom metadata */
+  customMetadata?: Record<string, any>;
+}
+
+/**
+ * Response for write operations
+ * Returns only metadata to keep LLM context efficient
+ */
+export interface CacheWriteResponse {
+  success: true;
+  metadata: CacheMetadata;
+  message: string; // Human-readable confirmation
+}
+
+/**
+ * Response for read operations
+ * Returns full item with data payload
+ */
+export interface CacheReadResponse {
+  success: true;
+  item: CachedItem;
+}
+
+/**
+ * Response for list operations
+ * Returns array of metadata (not full data)
+ */
+export interface CacheListResponse {
+  success: true;
+  items: CacheMetadata[];
+  totalCount: number;
+  totalSize: number; // Total bytes across all items
+  sessionQuotaUsed: number; // Bytes used out of 200MB quota
+  sessionQuotaRemaining: number; // Bytes remaining
+}
+
+/**
+ * Response for delete operations
+ */
+export interface CacheDeleteResponse {
+  success: true;
+  storageKey: string;
+  message: string;
+}
+
+/**
+ * Response for update operations
+ * Returns updated metadata
+ */
+export interface CacheUpdateResponse {
+  success: true;
+  metadata: CacheMetadata;
+  message: string;
+}
+
+/**
+ * Specific error types for different failure scenarios
+ */
+export enum CacheErrorType {
+  QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
+  ITEM_NOT_FOUND = 'ITEM_NOT_FOUND',
+  STORAGE_UNAVAILABLE = 'STORAGE_UNAVAILABLE',
+  DATA_TOO_LARGE = 'DATA_TOO_LARGE',
+  CORRUPTED_DATA = 'CORRUPTED_DATA',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+}
+
+/**
+ * Base error for all cache operations
+ */
+export interface CacheError {
+  success: false;
+  error: string;
+  errorType: CacheErrorType;
+  message: string; // Actionable guidance for LLM
+  details?: any;
+}
+
+/**
+ * Quota exceeded error (session over 200MB limit)
+ */
+export interface QuotaExceededError extends CacheError {
+  errorType: CacheErrorType.QUOTA_EXCEEDED;
+  currentSize: number;
+  attemptedSize: number;
+  quotaLimit: number;
+}
+
+/**
+ * Item not found error (invalid storage key)
+ */
+export interface ItemNotFoundError extends CacheError {
+  errorType: CacheErrorType.ITEM_NOT_FOUND;
+  storageKey: string;
+}
+
+/**
+ * Storage unavailable error (IndexedDB disabled/blocked)
+ */
+export interface StorageUnavailableError extends CacheError {
+  errorType: CacheErrorType.STORAGE_UNAVAILABLE;
+  reason: string;
+}
+
+/**
+ * Data too large error (single item exceeds 5MB)
+ */
+export interface DataTooLargeError extends CacheError {
+  errorType: CacheErrorType.DATA_TOO_LARGE;
+  dataSize: number;
+  maxSize: number;
+}
+
+/**
+ * Union type for all cache errors
+ */
+export type CacheErrorResponse =
+  | QuotaExceededError
+  | ItemNotFoundError
+  | StorageUnavailableError
+  | DataTooLargeError
+  | CacheError;
+
+/**
+ * Tool definition for BaseTool integration
+ * This is the schema passed to the LLM for tool discovery
+ */
+export const CACHE_TOOL_DEFINITION = {
+  name: 'cache_storage_tool',
+  description: 'Cache intermediate results during complex multi-step operations to avoid context overflow. Store processed data with concise metadata (max 500 chars), retrieve selectively, and manage session-scoped cache lifecycle. Session quota: 200MB. Auto-evicts oldest 50% when quota reached.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'Cache operation to perform',
+        enum: ['write', 'read', 'list', 'delete', 'update']
+      },
+      data: {
+        type: 'object',
+        description: 'Data to cache (JSON-serializable value, max 5MB) - required for write/update. Can be object, array, string, number, or boolean.'
+      },
+      description: {
+        type: 'string',
+        description: 'Concise description for reasoning - MUST be under 500 chars. Focus on key details: what, why, size. Example: "Email summaries batch 1-20: customer support tickets re pricing, 15KB total" - required for write/update',
+        maxLength: 500
+      },
+      storageKey: {
+        type: 'string',
+        description: 'Storage key for read/delete/update operations'
+      },
+      customMetadata: {
+        type: 'object',
+        description: 'Optional custom metadata for LLM annotations'
+      },
+      sessionId: {
+        type: 'string',
+        description: 'Session ID (auto-detected if not provided)'
+      },
+      taskId: {
+        type: 'string',
+        description: 'Task ID (auto-generated if not provided)'
+      },
+      turnId: {
+        type: 'string',
+        description: 'Turn ID (auto-generated if not provided)'
+      }
+    },
+    required: ['action']
+  }
+} as const;
 
 /**
  * Storage Tool Request Interface
@@ -87,6 +363,24 @@ export class StorageTool extends BaseTool {
   };
 
   /**
+   * Override execute to inject action into metadata
+   */
+  async execute(request: BaseToolRequest, options?: BaseToolOptions): Promise<any> {
+    const typedRequest = request as StorageToolRequest;
+
+    // Inject action into metadata so it's available in the response
+    const enrichedOptions = {
+      ...options,
+      metadata: {
+        ...options?.metadata,
+        action: typedRequest.action,
+      },
+    };
+
+    return super.execute(request, enrichedOptions);
+  }
+
+  /**
    * Override parameter validation to allow any JSON-serializable data
    * BaseTool's default validation is too strict for the 'data' field
    */
@@ -121,6 +415,10 @@ export class StorageTool extends BaseTool {
   async close(): Promise<void> {
     await this.cacheManager.close();
   }
+
+  // ============================================================================
+  // Cache Operation Execution
+  // ============================================================================
 
   /**
    * Execute cache operation
@@ -347,6 +645,10 @@ export class StorageTool extends BaseTool {
     }
   }
 
+  // ============================================================================
+  // Error Handling
+  // ============================================================================
+
   /**
    * Convert SessionCacheManager errors to CacheErrorResponse
    */
@@ -423,6 +725,10 @@ export class StorageTool extends BaseTool {
       details
     };
   }
+
+  // ============================================================================
+  // Cache Management Methods
+  // ============================================================================
 
   /**
    * Get cache statistics for debugging

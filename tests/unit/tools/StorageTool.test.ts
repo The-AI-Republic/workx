@@ -6,9 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { StorageTool } from '../../../src/tools/StorageTool';
+import { StorageTool, CacheErrorType } from '../../../src/tools/StorageTool';
 import { IndexedDBAdapter } from '../../../src/storage/IndexedDBAdapter';
-import { CacheErrorType } from '../../../specs/011-storage-cache/contracts/storage-tool-api';
 
 describe('StorageTool', () => {
   let tool: StorageTool;
