@@ -1,6 +1,6 @@
 /**
  * Unit tests for ClickableCache
- * T047: Test caching, clear, hit/miss stats
+ * Test caching, clear, hit/miss stats
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

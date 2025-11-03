@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * EventDisplay - Base component for rendering processed events (T032)
+   * EventDisplay - Base component for rendering processed events
    *
    * This component selects the appropriate child component based on event category
    * and handles common event behaviors (collapsing, selection, interactions).

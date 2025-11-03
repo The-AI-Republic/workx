@@ -6,7 +6,7 @@
  * 2. Structure Simplification: Collapse wrappers, deduplicate attributes
  * 3. Payload Optimization: Sequential ID remapping, field normalization, compact encoding
  *
- * T011: Core pipeline orchestrator
+ * Core pipeline orchestrator
  */
 
 import { VirtualNode } from '../types';
@@ -19,20 +19,20 @@ import {
   IIdRemapper
 } from '../types';
 
-// T027: Import filters
+// Import filters
 import { VisibilityFilter } from './filters/VisibilityFilter';
 import { TextNodeFilter } from './filters/TextNodeFilter';
 import { NoiseFilter } from './filters/NoiseFilter';
 import { SemanticContainerFilter } from './filters/SemanticContainerFilter';
 import { PaintOrderFilter } from './filters/PaintOrderFilter';
 
-// T028: Import simplifiers
+// Import simplifiers
 import { TextCollapser } from './simplifiers/TextCollapser';
 import { LayoutSimplifier } from './simplifiers/LayoutSimplifier';
 import { AttributeDeduplicator } from './simplifiers/AttributeDeduplicator';
 import { PropagatingBoundsFilter } from './simplifiers/PropagatingBoundsFilter';
 
-// T029: Import optimizers
+// Import optimizers
 import { AttributePruner } from './optimizers/AttributePruner';
 import { FieldNormalizer } from './optimizers/FieldNormalizer';
 import { NumericCompactor } from './optimizers/NumericCompactor';
@@ -207,7 +207,7 @@ export class SerializationPipeline {
     return optimized;
   }
 
-  // ========== Filter Implementations (T013-T017) ==========
+  // ========== Filter Implementations ==========
 
   private applyVisibilityFilter(tree: VirtualNode): VirtualNode {
     const filter = new VisibilityFilter();
@@ -239,7 +239,7 @@ export class SerializationPipeline {
     return filtered || tree;
   }
 
-  // ========== Simplifier Implementations (T018-T021) ==========
+  // ========== Simplifier Implementations ==========
 
   private applyTextCollapser(tree: VirtualNode): VirtualNode {
     const collapser = new TextCollapser();
@@ -261,10 +261,10 @@ export class SerializationPipeline {
     return filter.filter(tree);
   }
 
-  // ========== Optimizer Implementations (T022-T026) ==========
+  // ========== Optimizer Implementations ==========
 
   private applyIdRemapping(tree: VirtualNode): VirtualNode {
-    // T022: Register nodes with IdRemapper during traversal
+    // Register nodes with IdRemapper during traversal
     this.traverseAndRegisterIds(tree);
     return tree;
   }

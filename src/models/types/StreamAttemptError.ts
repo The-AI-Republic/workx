@@ -1,14 +1,12 @@
 /**
  * Internal error classification for stream retry logic
- * Rust Reference: browserx-rs/core/src/client.rs Lines 447-486
  *
- * This enum-like class matches the Rust StreamAttemptError enum
- * and provides retry logic, backoff calculation, and error conversion.
+ * Provides retry logic, backoff calculation, and error conversion.
  */
 
 /**
  * StreamAttemptError represents the three types of errors that can occur
- * during streaming attempts, matching Rust's classification:
+ * during streaming attempts:
  * - RetryableHttp: HTTP errors that can be retried (429, 500-599, 401)
  * - RetryableTransport: Network/transport errors that can be retried
  * - Fatal: Non-retryable errors (4xx except 401/429)
@@ -37,7 +35,6 @@ export class StreamAttemptError extends Error {
 
   /**
    * Create a retryable HTTP error (e.g., 429 rate limit, 500 server error)
-   * Rust Reference: client.rs:450
    */
   static retryableHttp(status: number, retryAfter?: number): StreamAttemptError {
     return new StreamAttemptError('RetryableHttp', `HTTP ${status}`, { status, retryAfter });
@@ -45,7 +42,6 @@ export class StreamAttemptError extends Error {
 
   /**
    * Create a retryable transport/network error
-   * Rust Reference: client.rs:453
    */
   static retryableTransport(error: Error): StreamAttemptError {
     return new StreamAttemptError('RetryableTransport', error.message, { cause: error });
@@ -53,7 +49,6 @@ export class StreamAttemptError extends Error {
 
   /**
    * Create a fatal (non-retryable) error
-   * Rust Reference: client.rs:456
    */
   static fatal(error: Error): StreamAttemptError {
     return new StreamAttemptError('Fatal', error.message, { cause: error });
@@ -61,16 +56,15 @@ export class StreamAttemptError extends Error {
 
   /**
    * Classify an HTTP status code into the appropriate error type
-   * Rust Reference: client.rs:447-456
    *
-   * Classification rules (matching Rust):
+   * Classification rules:
    * - 401: Retryable (auth refresh)
    * - 429: Retryable (rate limit)
    * - 500-599: Retryable (server errors)
    * - Other 4xx: Fatal (client errors)
    */
   static fromHttpStatus(status: number, retryAfter?: number): StreamAttemptError {
-    // Retryable status codes matching Rust logic
+    // Retryable status codes
     if (status === 401 || status === 429 || status >= 500) {
       return StreamAttemptError.retryableHttp(status, retryAfter);
     }
@@ -85,8 +79,7 @@ export class StreamAttemptError extends Error {
   }
 
   /**
-   * Calculate backoff delay matching Rust formula: 2^(attempt+1) * 1000ms + jitter
-   * Rust Reference: client.rs:458-471
+   * Calculate backoff delay: 2^(attempt+1) * 1000ms + jitter
    *
    * @param attempt The current attempt number (0-based)
    * @returns Delay in milliseconds before next retry
@@ -110,8 +103,7 @@ export class StreamAttemptError extends Error {
   }
 
   /**
-   * Convert to BrowserxError for throwing
-   * Rust Reference: client.rs:473-485
+   * Convert to error for throwing
    *
    * @returns Error suitable for throwing to user code
    */
@@ -145,7 +137,6 @@ export class StreamAttemptError extends Error {
 
   /**
    * Check if this error is retryable
-   * Rust Reference: Implicit in enum variants
    */
   isRetryable(): boolean {
     return this.type !== 'Fatal';

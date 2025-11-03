@@ -1,10 +1,9 @@
 /**
  * SSEEventParser Contract Tests
  * Reference: contracts/SSE.contract.md
- * Rust Reference: browserx-rs/core/src/client.rs:624-848
  *
  * These tests verify that the TypeScript SSE event parsing
- * matches the Rust process_sse logic exactly.
+ * implements all 11 event type mappings correctly.
  *
  * EXPECTED: Tests will FAIL if SSEEventParser doesn't implement
  * all 11 event type mappings correctly.
@@ -59,8 +58,8 @@ describe('SSEEventParser Contract', () => {
     });
   });
 
-  describe('Event Type Mapping - Rust client.rs:712-846', () => {
-    describe('1. response.created → Created (line 767-770)', () => {
+  describe('Event Type Mapping', () => {
+    describe('1. response.created → Created', () => {
       it('maps to Created event', () => {
         const data = parseSSELine(SSE_RESPONSE_CREATED);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -74,7 +73,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('2. response.output_item.done → OutputItemDone (line 731-742)', () => {
+    describe('2. response.output_item.done → OutputItemDone', () => {
       it('maps to OutputItemDone with item', () => {
         const data = parseSSELine(SSE_OUTPUT_ITEM_DONE);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -89,7 +88,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('3. response.output_text.delta → OutputTextDelta (line 743-749)', () => {
+    describe('3. response.output_text.delta → OutputTextDelta', () => {
       it('maps to OutputTextDelta with delta text', () => {
         const data = parseSSELine(SSE_OUTPUT_TEXT_DELTA);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -105,7 +104,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('4. response.reasoning_summary_text.delta → ReasoningSummaryDelta (line 751-757)', () => {
+    describe('4. response.reasoning_summary_text.delta → ReasoningSummaryDelta', () => {
       it('maps to ReasoningSummaryDelta', () => {
         const data = parseSSELine(SSE_REASONING_SUMMARY_DELTA);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -119,7 +118,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('5. response.reasoning_text.delta → ReasoningContentDelta (line 759-766)', () => {
+    describe('5. response.reasoning_text.delta → ReasoningContentDelta', () => {
       it('maps to ReasoningContentDelta', () => {
         const data = parseSSELine(SSE_REASONING_CONTENT_DELTA);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -133,7 +132,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('6. response.reasoning_summary_part.added → ReasoningSummaryPartAdded (line 837-842)', () => {
+    describe('6. response.reasoning_summary_part.added → ReasoningSummaryPartAdded', () => {
       it('maps to ReasoningSummaryPartAdded', () => {
         const data = parseSSELine(SSE_REASONING_SUMMARY_PART_ADDED);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -148,7 +147,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('7. response.output_item.added (web_search) → WebSearchCallBegin (line 819-835)', () => {
+    describe('7. response.output_item.added (web_search) → WebSearchCallBegin', () => {
       it('maps to WebSearchCallBegin with callId', () => {
         const data = parseSSELine(SSE_WEB_SEARCH_CALL_BEGIN);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -162,7 +161,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('8. response.completed → Store for later (line 798-811)', () => {
+    describe('8. response.completed → Store for later', () => {
       it('stores completion data without yielding immediately', () => {
         const data = parseSSELine(SSE_RESPONSE_COMPLETED);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -177,7 +176,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('9. response.failed → Throw error (line 772-795)', () => {
+    describe('9. response.failed → Throw error', () => {
       it('throws error on failed response', () => {
         const data = parseSSELine(SSE_RESPONSE_FAILED);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -191,7 +190,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('10. Ignored events (line 813-818, 844)', () => {
+    describe('10. Ignored events', () => {
       it('ignores response.in_progress', () => {
         const data = parseSSELine(SSE_RESPONSE_IN_PROGRESS);
         if (!data) throw new Error('Failed to parse SSE line');
@@ -230,7 +229,7 @@ describe('SSEEventParser Contract', () => {
       });
     });
 
-    describe('11. Unknown events → Log debug, don\'t fail (line 845)', () => {
+    describe('11. Unknown events → Log debug, don\'t fail', () => {
       it('returns empty array for unknown event types', () => {
         const data = '{"type":"response.unknown_event_type","data":{}}';
         const event = parser.parse(data);
@@ -242,7 +241,7 @@ describe('SSEEventParser Contract', () => {
     });
   });
 
-  describe('Field name conversion - Rust → TypeScript', () => {
+  describe('Field name conversion', () => {
     it('converts response_id to responseId (camelCase)', () => {
       const data = parseSSELine(SSE_RESPONSE_COMPLETED);
       if (!data) throw new Error('Failed to parse SSE line');
@@ -250,7 +249,7 @@ describe('SSEEventParser Contract', () => {
       const event = parser.parse(data);
       const responseEvents = parser.processEvent(event!);
 
-      // Contract: Rust field names → camelCase in TypeScript
+      // Contract: field names in camelCase
       if (responseEvents.length > 0 && responseEvents[0].type === 'Completed') {
         expect((responseEvents[0] as any).responseId).toBeDefined();
         // Should NOT have snake_case

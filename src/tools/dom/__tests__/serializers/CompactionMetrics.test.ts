@@ -1,6 +1,6 @@
 /**
  * Unit tests for CompactionMetrics
- * T048: Test metric tracking and compaction score calculation
+ * Test metric tracking and compaction score calculation
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

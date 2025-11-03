@@ -10,7 +10,6 @@ import type { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
- * Note: Anthropic removed - not supported in Rust browserx-rs implementation
  */
 export type ModelProvider = 'openai';
 
@@ -42,7 +41,7 @@ const STORAGE_KEYS = {
 
 /**
  * Model name to provider mapping
- * Note: Only OpenAI models supported (matching Rust browserx-rs implementation)
+ * Note: Only OpenAI models supported
  */
 const MODEL_PROVIDER_MAP: Record<string, ModelProvider> = {
   // OpenAI models
@@ -376,7 +375,7 @@ export class ModelClientFactory {
     switch (config.provider) {
       case 'openai':
         // Use the experimental OpenAI Responses API client by default
-        // Construct minimal provider and model family configs aligned with browserx-rs
+        // Construct minimal provider and model family configs
         const baseUrl = config.options?.baseUrl;
         const organization = config.options?.organization;
 

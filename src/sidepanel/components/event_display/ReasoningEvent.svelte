@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * ReasoningEvent - Renders agent reasoning/thinking process (T037)
+   * ReasoningEvent - Renders agent reasoning/thinking process
    */
   import type { ProcessedEvent } from '../../../types/ui';
 

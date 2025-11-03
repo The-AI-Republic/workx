@@ -129,7 +129,7 @@ describe('SSEEventParser', () => {
         }
       };
 
-      // Failed events throw error (matches Rust contract)
+      // Failed events throw error
       expect(() => parser.processEvent(event)).toThrow('Rate limit reached. Please try again in 1.5s.');
     });
 

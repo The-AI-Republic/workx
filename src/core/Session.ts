@@ -830,7 +830,7 @@ export class Session {
   }
 
   // ========================================================================
-  // NEW METHODS: Browser-Compatible Session Methods from browserx-rs
+  // Browser-Compatible Session Methods
   // ========================================================================
 
   /**

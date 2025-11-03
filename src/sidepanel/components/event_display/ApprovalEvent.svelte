@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * ApprovalEvent - Renders interactive approval requests (T039)
+   * ApprovalEvent - Renders interactive approval requests
    */
   import type { ProcessedEvent } from '../../../types/ui';
 

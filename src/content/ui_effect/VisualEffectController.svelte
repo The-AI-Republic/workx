@@ -89,7 +89,7 @@
         await initializeWaterRipple();
       }
 
-      // Add viewport resize handler (T039)
+      // Add viewport resize handler
       window.addEventListener('resize', handleViewportResize);
 
       mountComplete = true;
@@ -488,7 +488,7 @@
   }
 
   /**
-   * Handle viewport resize (T039)
+   * Handle viewport resize
    *
    * Recalculates coordinate system for ongoing animations.
    * Water ripple canvas will automatically resize via its own resize handler.

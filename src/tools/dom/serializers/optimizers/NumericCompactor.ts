@@ -14,7 +14,7 @@
  * - Omit zero values when possible
  * - Use array notation instead of object (less verbose)
  *
- * T025: Stage 3 Payload Optimization
+ * Stage 3 Payload Optimization
  */
 
 import { VirtualNode } from '../../types';

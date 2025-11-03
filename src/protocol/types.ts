@@ -123,8 +123,7 @@ export type SandboxPolicy =
     };
 
 /**
- * Protocol model types ported from browserx-rs/protocol/src/models.rs
- * These types represent the structured data from API responses
+ * Protocol model types for structured data from API responses
  */
 
 /**

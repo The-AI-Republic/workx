@@ -1,5 +1,5 @@
 /**
- * TurnManager implementation - ports run_turn functionality from browserx-rs
+ * TurnManager implementation
  * Manages individual conversation turns, handles model streaming, and coordinates tool calls
  */
 
@@ -65,7 +65,6 @@ export interface Prompt {
 
 /**
  * TurnManager handles execution of individual conversation turns
- * Port of run_turn and try_run_turn functions from browserx-rs/core/src/browserx.rs
  */
 export class TurnManager {
   private session: Session;
@@ -509,7 +508,6 @@ export class TurnManager {
 
   /**
    * Handle a complete response item from the model
-   * Port of handle_response_item from browserx-rs
    */
   private async handleResponseItem(item: any): Promise<any | undefined> {
     // Check item type and handle accordingly

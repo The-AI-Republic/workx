@@ -19,7 +19,7 @@
  * - Hoists important attributes (id, class, data-*) to child
  * - Does not collapse if wrapper has meaningful styles/layout
  *
- * T019: Stage 2 Structure Simplification
+ * Stage 2 Structure Simplification
  */
 
 import { VirtualNode } from '../../types';

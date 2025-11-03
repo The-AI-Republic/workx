@@ -22,7 +22,7 @@
  * 3. Elements with unique aria-labels
  * 4. Parent is not a propagating container
  *
- * T021: Stage 2 Structure Simplification
+ * Stage 2 Structure Simplification
  */
 
 import { VirtualNode } from '../../types';

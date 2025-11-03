@@ -1,5 +1,5 @@
 /**
- * T030-T032: Chrome storage wrapper for configuration
+ * Chrome storage wrapper for configuration
  */
 
 import type { IAgentConfig, IConfigStorage, IStorageInfo } from '../config/types';

@@ -22,7 +22,7 @@
  * - Preserve custom roles (e.g., role="tab" on <button>)
  * - Preserve data-* attributes (used for testing/interaction)
  *
- * T020: Stage 2 Structure Simplification
+ * Stage 2 Structure Simplification
  */
 
 import { VirtualNode } from '../../types';

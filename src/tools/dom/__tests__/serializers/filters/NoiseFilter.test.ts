@@ -1,6 +1,6 @@
 /**
  * Unit tests for NoiseFilter
- * T034: Test script, style, meta removal
+ * Test script, style, meta removal
  */
 
 import { describe, it, expect } from 'vitest';

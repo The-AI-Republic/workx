@@ -12,7 +12,7 @@
  * These elements provide functionality or metadata but have no
  * interactive content for the LLM to act upon.
  *
- * T015: Stage 1 Signal Filtering
+ * Stage 1 Signal Filtering
  */
 
 import { VirtualNode } from '../../types';
