@@ -557,17 +557,7 @@ export class TaskRunner {
       if (messageItem.type === 'message' && messageItem.role === 'assistant' && !response) {
         itemsToRecord.push(messageItem);
       }
-      // Case 2: LocalShellCall with FunctionCallOutput response
-      // Rust lines 1717-1727
-      else if (
-        messageItem.type === 'local_shell_call' &&
-        response?.type === 'function_call_output'
-      ) {
-        taskComplete = false;
-        itemsToRecord.push(messageItem);
-        itemsToRecord.push(response as ResponseItem);
-      }
-      // Case 3: FunctionCall with FunctionCallOutput response
+      // Case 2: FunctionCall with FunctionCallOutput response
       // Rust lines 1729-1739
       else if (
         messageItem.type === 'function_call' &&
@@ -577,7 +567,7 @@ export class TaskRunner {
         itemsToRecord.push(messageItem);
         itemsToRecord.push(response as ResponseItem);
       }
-      // Case 4: CustomToolCall with CustomToolCallOutput response
+      // Case 3: CustomToolCall with CustomToolCallOutput response
       // Rust lines 1741-1750
       else if (
         messageItem.type === 'custom_tool_call' &&
@@ -587,17 +577,17 @@ export class TaskRunner {
         itemsToRecord.push(messageItem);
         itemsToRecord.push(response as ResponseItem);
       }
-      // Case 5: FunctionCall with McpToolCallOutput response
+      // Case 4: FunctionCall with McpToolCallOutput response
       // Rust lines 1752-1773
       // Note: In TypeScript, MCP tool outputs are converted to FunctionCallOutput
-      // in the handleResponseItem method, so they follow the same pattern as Case 3
+      // in the handleResponseItem method, so they follow the same pattern as Case 2
 
-      // Case 6: Reasoning item without response
+      // Case 5: Reasoning item without response
       // Rust lines 1776-1790
       else if (messageItem.type === 'reasoning' && !response) {
         itemsToRecord.push(messageItem);
       }
-      // Case 7: Unexpected combinations (warning)
+      // Case 6: Unexpected combinations (warning)
       // Rust lines 1791-1793
       else if (response) {
         console.warn(

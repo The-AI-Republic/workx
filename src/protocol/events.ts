@@ -240,10 +240,6 @@ export interface StreamErrorEvent {
   retrying: boolean;
   attempt?: number;
   /**
-   * Optional human-readable detail about the underlying root cause.
-   */
-  details?: string;
-  /**
    * Delay before the next retry attempt, when applicable.
    */
   delayMs?: number;
