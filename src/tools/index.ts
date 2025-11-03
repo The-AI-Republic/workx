@@ -76,7 +76,8 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
         console.log(`Registering ${toolName}...`);
 
         await registry.register(definition, async (params, context) => {
-          return toolInstance.execute(params);
+          // Pass context (including sessionId) to tool's execute method via options.metadata
+          return toolInstance.execute(params, { metadata: context });
         });
       } else {
         console.log(`${toolName} already registered, skipping...`);

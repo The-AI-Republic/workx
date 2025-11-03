@@ -89,6 +89,7 @@ PageVisionTool is a COMPLEMENTARY tool to DOMTool. Use it ONLY in these specific
 
 1. **Visual Understanding Needed**: When DOM structure alone cannot convey visual layout, styling, or spatial relationships
    - Canvas-based UIs, WebGL content, complex visualizations
+   - PDF content analysis when no good OSS tool is available for text extraction
    - Styled elements where appearance matters (buttons, colors, layouts)
    - Image-heavy pages where visual context is crucial
 
