@@ -30,11 +30,6 @@ export {
   type ModelClientConfig,
 } from './ModelClientFactory';
 
-// Authentication management
-export {
-  ChromeAuthManager,
-} from './ChromeAuthManager';
-
 // Performance optimizations
 export {
   SSEEventParser,

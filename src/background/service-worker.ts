@@ -126,7 +126,26 @@ function setupMessageHandlers(): void {
   
   // Handle ping/pong for connection testing
   router.on(MessageType.PING, async () => {
-    return { success: true, data: { type: MessageType.PONG, timestamp: Date.now() } };
+    return { type: MessageType.PONG, timestamp: Date.now() };
+  });
+
+  // Handle health check - validates agent is ready with API key
+  router.on(MessageType.HEALTH_CHECK, async () => {
+    if (!agent) {
+      return {
+        type: MessageType.HEALTH_STATUS,
+        ready: false,
+        message: 'Agent not initialized',
+        timestamp: Date.now(),
+      };
+    }
+
+    const status = await agent.isReady();
+    return {
+      type: MessageType.HEALTH_STATUS,
+      ...status,
+      timestamp: Date.now(),
+    };
   });
 
   // Handle session reset
@@ -144,9 +163,9 @@ function setupMessageHandlers(): void {
       await session.reset();
 
       console.log('Session reset complete');
-      return { success: true, data: { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() } };
+      return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
     }
-    return { success: false, error: 'Agent not initialized' };
+    throw new Error('Agent not initialized');
   });
 
   // Handle stop agent session (from visual effects Stop Agent button)

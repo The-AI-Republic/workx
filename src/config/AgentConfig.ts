@@ -11,8 +11,7 @@ import type {
   IConfigChangeEvent,
   IExportData,
   IToolsConfig,
-  IToolSpecificConfig,
-  IProviderStatus
+  IToolSpecificConfig
 } from './types';
 import { ConfigValidationError } from './types';
 import { ConfigStorage } from '../storage/ConfigStorage';
@@ -55,18 +54,25 @@ export class AgentConfig implements IConfigService {
    * Called automatically on first config access
    */
   public async initialize(): Promise<void> {
-    if (this.initialized) return;
+    if (this.initialized) {
+      console.log('[AgentConfig] Already initialized, skipping');
+      return;
+    }
 
     try {
+      console.log('[AgentConfig] Starting initialization...');
       const storedConfig = await this.storage.get();
+      console.log('[AgentConfig] Storage.get() returned:', storedConfig ? 'Config object' : 'null');
 
       if (storedConfig) {
+        console.log('[AgentConfig] Found stored config with selectedModelId:', storedConfig.selectedModelId);
         this.currentConfig = mergeWithDefaults(storedConfig);
-        console.log('[AgentConfig] Loaded config from storage, selectedModelId:', this.currentConfig.selectedModelId);
+        console.log('[AgentConfig] After merge, selectedModelId:', this.currentConfig.selectedModelId);
       } else {
         // First time setup
         console.log('[AgentConfig] No stored config found, using defaults');
         this.currentConfig = getDefaultAgentConfig();
+        console.log('[AgentConfig] Default config selectedModelId:', this.currentConfig.selectedModelId);
       }
 
       // Ensure all models have IDs and registry is populated
@@ -519,18 +525,11 @@ export class AgentConfig implements IConfigService {
   async setProviderApiKey(providerId: string, apiKey: string): Promise<IProviderConfig> {
     this.ensureInitialized();
 
-  // Use static import for encryption utilities
-
-    // Get or create provider configuration
-    let provider = this.currentConfig.providers[providerId];
+    // Check if provider exists
+    const provider = this.currentConfig.providers[providerId];
     if (!provider) {
-      const defaults = getDefaultProviders();
-      if (!defaults[providerId]) {
-        console.error(`[AgentConfig] Unknown provider: ${providerId}`);
-        throw new Error(`Unknown provider: ${providerId}`);
-      }
-      provider = { ...defaults[providerId] };
-      console.log(`[AgentConfig] Creating new provider config for: ${providerId}`);
+      console.error(`[AgentConfig] Provider not found: ${providerId}`);
+      throw new Error(`Provider not found: ${providerId}`);
     }
 
     // Encrypt and store API key

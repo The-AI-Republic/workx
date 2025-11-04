@@ -24,7 +24,6 @@
   let saveMessageType: 'success' | 'error' | 'info' | '' = '';
   let testResult: { valid: boolean; error?: string } | null = null;
   let isAuthenticated = false;
-  let currentAuthMode: AuthMode | null = null;
 
   // T011: Model configuration state
   // selectedModelId starts empty, will be loaded from AgentConfig in loadSettings()
@@ -36,7 +35,6 @@
   let currentProvider = 'openai';
   let currentProviderName = 'OpenAI';
   let currentProviderOrganization: string | null = null;
-  let providerValidationWarning = '';
 
   // Model selection array - flattened view of all models from all providers
   // Note: API keys are stored at PROVIDER level in AgentConfig, but cached here for UI convenience
@@ -53,8 +51,18 @@
     contextWindow: number;
     maxOutputTokens: number;
     baseUrl: string;
+    selected: boolean;       // Indicates if this model is currently selected
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
+
+  // Reactive statement to log when modelSelectionItems changes
+  $: {
+    console.log('[Settings] modelSelectionItems changed! Length:', modelSelectionItems.length);
+    if (modelSelectionItems.length > 0) {
+      console.log('[Settings] Model IDs in array:', modelSelectionItems.map(m => m.modelId));
+      console.log('[Settings] Current selectedModelId:', selectedModelId);
+    }
+  }
 
   // Settings component has its own AgentConfig instance (not shared with agent)
   let settingsConfig: AgentConfig | null = null;
@@ -98,17 +106,25 @@
 
       // Build model selection array - flatten models from all providers
       // Fetch API key from provider level and cache it in each model item for UI convenience
-      modelSelectionItems = [];
+      const tempModelItems: ModelSelectionItem[] = [];
       const providers = settingsConfig.getProviders();
 
+      console.log('[Settings] Building model selection items from providers:', Object.keys(providers));
+
       for (const [providerId, provider] of Object.entries(providers)) {
-        if (!provider.models || !Array.isArray(provider.models)) continue;
+        console.log('[Settings] Processing provider:', providerId, 'models:', provider.models?.length || 0);
+
+        if (!provider.models || !Array.isArray(provider.models)) {
+          console.warn('[Settings] Provider has no models array:', providerId);
+          continue;
+        }
 
         // Get API key for this provider (stored at provider level)
         const providerApiKey = await settingsConfig.getProviderApiKey(providerId);
 
         for (const model of provider.models) {
-          modelSelectionItems.push({
+          console.log('[Settings] Adding model:', model.id, model.name, 'from provider:', providerId);
+          tempModelItems.push({
             modelId: model.id,
             modelName: model.name,
             modelKey: model.modelKey,
@@ -118,12 +134,16 @@
             apiKey: providerApiKey,  // Cached from provider for UI convenience
             contextWindow: model.contextWindow,
             maxOutputTokens: model.maxOutputTokens,
-            baseUrl: provider.baseUrl || ''
+            baseUrl: provider.baseUrl || '',
+            selected: model.id === selectedModelId  // Mark as selected if it matches
           });
         }
       }
 
+      // Trigger reactivity by reassigning the array
+      modelSelectionItems = tempModelItems;
       console.log('[Settings] Built selection items:', modelSelectionItems.length, 'models');
+      console.log('[Settings] Model IDs:', modelSelectionItems.map(m => m.modelId).join(', '));
 
       // Validate selectedModelId loaded from AgentConfig
       if (!selectedModelId || selectedModelId === '') {
@@ -154,7 +174,6 @@
         apiKey = selectedItem.apiKey || '';
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
         isAuthenticated = !!selectedItem.apiKey;
-        currentAuthMode = isAuthenticated ? AuthMode.ApiKey : null;
 
         configuredFeatures = {
           reasoningEffort: null,
@@ -179,7 +198,6 @@
           apiKey = fallbackItem.apiKey || '';
           maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
           isAuthenticated = !!fallbackItem.apiKey;
-          currentAuthMode = isAuthenticated ? AuthMode.ApiKey : null;
           configuredFeatures = {
             reasoningEffort: null,
             reasoningSummary: undefined,
@@ -196,7 +214,6 @@
           apiKey = '';
           maskedApiKey = '';
           isAuthenticated = false;
-          currentAuthMode = null;
           configuredFeatures = {};
         }
       }
@@ -268,23 +285,6 @@
       console.log('[Settings] Currently selected model:', selectedModelId);
       console.log('[Settings] API key starts with:', apiKey.substring(0, 10) + '...');
 
-      // Validate API key format using provider-aware validation
-      const { validateApiKeyFormat } = await import('../config/validators');
-      const validation = validateApiKeyFormat(apiKey, currentProvider);
-
-      if (!validation.isValid) {
-        providerValidationWarning = '';
-        showMessage(validation.errors.join('. '), 'error');
-        return;
-      }
-
-      // Display warning if provider mismatch, but allow save
-      if (validation.warnings.length > 0) {
-        providerValidationWarning = validation.warnings.join(' ');
-      } else {
-        providerValidationWarning = '';
-      }
-
       // Save API key to provider level in storage
       // Note: This saves to the PROVIDER, not the individual model
       // All models under this provider will use this API key
@@ -292,7 +292,6 @@
 
       // Update component state
       isAuthenticated = true;
-      currentAuthMode = AuthMode.ApiKey;
       maskedApiKey = maskApiKey(apiKey);
 
       // Update cached API key in ALL model items from this provider
@@ -502,7 +501,6 @@
       apiKey = '';
       maskedApiKey = '';
       isAuthenticated = false;
-      currentAuthMode = null;
       testResult = null;
 
       // Clear cached API key in ALL model items from this provider
@@ -576,19 +574,6 @@
   }
 
   /**
-   * T039: Check if there's an active conversation
-   */
-  async function isConversationActive(): Promise<boolean> {
-    try {
-      const response = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
-      return response?.isActiveTurn || false;
-    } catch (error) {
-      console.error('Failed to check conversation status:', error);
-      return false;
-    }
-  }
-
-  /**
    * Handle model selection change
    * 3.1: Load related API key to field (empty if not available)
    * 3.2: Save model selection WITHOUT updating API key
@@ -620,7 +605,6 @@
       apiKey = selectedItem.apiKey || '';
       maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
       isAuthenticated = !!selectedItem.apiKey;
-      currentAuthMode = isAuthenticated ? AuthMode.ApiKey : null;
       
       // Update model features
       configuredFeatures = {
@@ -633,11 +617,14 @@
 
       // Clear validation errors and previous test results
       modelValidationError = '';
-      providerValidationWarning = '';
       testResult = null;
       clearMessage();
-      
-      modelSelectionItems = [...modelSelectionItems];
+
+      // Update selected flags for all models
+      modelSelectionItems = modelSelectionItems.map(item => ({
+        ...item,
+        selected: item.modelId === modelId
+      }));
 
       console.log('[Settings] Model changed - Summary:');
       console.log('  - Selected model:', selectedModelId, selectedItem.modelName);
@@ -647,9 +634,6 @@
       console.log('  - apiKey variable set to:', apiKey ? `${apiKey.substring(0, 10)}... (${apiKey.length} chars)` : 'EMPTY STRING');
       console.log('  - maskedApiKey set to:', maskedApiKey);
       console.log('  - isAuthenticated:', isAuthenticated);
-
-      // Check if there's an active conversation to show appropriate warning
-      const conversationActive = await isConversationActive();
 
       // 3.1: All UI state already updated above for instant feedback
 
@@ -664,28 +648,16 @@
         console.error('[Settings] Failed to notify agent of config update:', err);
       });
 
-      // Show appropriate message based on conversation state and API key availability
+      // Show appropriate message based on API key availability
       let message: string;
       let messageType: 'success' | 'info' | 'error';
 
-      if (conversationActive) {
-        // Active conversation - warn about clearing
-        if (apiKey) {
-          message = `Model changed to ${selectedItem.modelName}. The current conversation will be cleared and session will be reinitialized.`;
-          messageType = 'info';
-        } else {
-          message = `Model changed to ${selectedItem.modelName}. The current conversation will be cleared. Please configure your ${selectedItem.providerName} API key below.`;
-          messageType = 'info';
-        }
+      if (apiKey) {
+        message = `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`;
+        messageType = 'success';
       } else {
-        // No active conversation
-        if (apiKey) {
-          message = `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`;
-          messageType = 'success';
-        } else {
-          message = `Model changed to ${selectedItem.modelName}. Please configure your ${selectedItem.providerName} API key below.`;
-          messageType = 'info';
-        }
+        message = `Model changed to ${selectedItem.modelName}. Please configure your ${selectedItem.providerName} API key below.`;
+        messageType = 'info';
       }
 
       showMessage(message, messageType);
@@ -866,17 +838,6 @@
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
             Please input a valid API key.
-          </div>
-        {/if}
-
-        {#if providerValidationWarning}
-          <div class="message warning">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            {providerValidationWarning}
           </div>
         {/if}
       </div>

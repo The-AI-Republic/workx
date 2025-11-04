@@ -20,6 +20,7 @@
     contextWindow: number;
     maxOutputTokens: number;
     baseUrl: string;
+    selected: boolean;
   }> = [];
   export let disabled = false;
 
@@ -98,15 +99,23 @@
   $: currentModelData = modelSelectionItems.find(m => m.modelId === selectedModel);
   $: currentModelDisplay = currentModelData
     ? `${currentModelData.modelName} - ${currentModelData.providerName}`
-    : modelSelectionItems.length > 0
-      ? `Unknown model (${selectedModel})`
-      : 'No models available';
+    : disabled && modelSelectionItems.length === 0
+      ? 'Loading...'
+      : modelSelectionItems.length > 0
+        ? `Unknown model (${selectedModel})`
+        : 'No models available';
 
   // Debug logging for prop changes
   $: {
     console.log('[ModelSelector] selectedModel prop changed to:', selectedModel);
+    console.log('[ModelSelector] modelSelectionItems length:', modelSelectionItems?.length || 0);
+    console.log('[ModelSelector] modelSelectionItems:', modelSelectionItems);
     console.log('[ModelSelector] currentModelData:', currentModelData);
     console.log('[ModelSelector] currentModelDisplay:', currentModelDisplay);
+    if (modelSelectionItems?.length > 0) {
+      console.log('[ModelSelector] First model:', modelSelectionItems[0]);
+      console.log('[ModelSelector] Model IDs:', modelSelectionItems.map(m => m.modelId));
+    }
   }
 
   $: if (typeof window !== 'undefined') {

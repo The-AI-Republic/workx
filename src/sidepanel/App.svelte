@@ -24,6 +24,8 @@
   let showNewConvTooltip = false;
   let showWelcome = false;
   let scrollContainer: HTMLDivElement;
+  let agentReady = false;
+  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string } = { ready: false };
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -100,10 +102,25 @@
 
   async function checkConnection() {
     try {
-      const response = await router?.send(MessageType.PING);
-      isConnected = response?.type === MessageType.PONG;
+      const response = await router?.send(MessageType.HEALTH_CHECK);
+      isConnected = response?.type === MessageType.HEALTH_STATUS;
+
+      if (response?.type === MessageType.HEALTH_STATUS) {
+        agentReady = response.ready === true;
+        healthStatus = {
+          ready: response.ready === true,
+          message: response.message,
+          provider: response.provider,
+          model: response.model,
+        };
+      } else {
+        agentReady = false;
+        healthStatus = { ready: false, message: 'Unable to check agent status' };
+      }
     } catch {
       isConnected = false;
+      agentReady = false;
+      healthStatus = { ready: false, message: 'Connection error' };
     }
   }
 
@@ -159,7 +176,28 @@
   }
 
   async function sendMessage() {
-    if (!inputText.trim() || !isConnected) return;
+    if (!inputText.trim()) return;
+
+    // Check if connected
+    if (!isConnected) {
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Error: Not connected to agent. Please refresh the page.',
+        timestamp: Date.now(),
+      }];
+      return;
+    }
+
+    // Check if agent is ready (has API key)
+    if (!agentReady) {
+      const providerName = healthStatus.provider || 'the selected provider';
+      messages = [...messages, {
+        type: 'agent',
+        content: `Cannot send message: No API key configured for ${providerName}.\n\nPlease click the Settings button (⚙️) at the top right and configure your API key.`,
+        timestamp: Date.now(),
+      }];
+      return;
+    }
 
     const text = inputText.trim();
     inputText = '';
@@ -218,6 +256,8 @@
 
   function handleSettingsClose() {
     showSettings = false;
+    // Re-check health status in case API key was added
+    checkConnection();
   }
 
   function handleAuthUpdated(event: CustomEvent) {
@@ -254,15 +294,16 @@
   <TerminalContainer>
     <!-- Status Line -->
     <div class="flex justify-between mb-2">
-      <TerminalMessage type="system" content="Browserx For Chrome v0.0.1 (By AI Republic)" />
+      <TerminalMessage type="system" content="Browserx (By AI Republic)" />
       <div class="flex items-center space-x-2">
         {#if isProcessing}
           <TerminalMessage type="warning" content="[PROCESSING]" />
         {/if}
-        <TerminalMessage
-          type={isConnected ? 'system' : 'error'}
-          content={isConnected ? '[CONNECTED]' : '[DISCONNECTED]'}
-        />
+        {#if !isConnected}
+          <TerminalMessage type="error" content="[DISCONNECTED]" />
+        {:else if !agentReady}
+          <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
+        {/if}
       </div>
     </div>
 

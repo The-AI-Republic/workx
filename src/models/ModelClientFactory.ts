@@ -5,7 +5,6 @@
 
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
-import { ChromeAuthManager } from './ChromeAuthManager';
 import { AgentConfig } from '../config/AgentConfig';
 
 /**
@@ -59,7 +58,6 @@ const DEFAULT_MODEL = 'gpt-5';
 export class ModelClientFactory {
   private clientCache: Map<string, ModelClient> = new Map();
   private config?: AgentConfig;
-  private authManager?: ChromeAuthManager;
   private storageListener?: (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void;
 
   constructor() {
@@ -75,8 +73,6 @@ export class ModelClientFactory {
       // Check if any API key related storage changed
       const relevantKeys = [
         STORAGE_KEYS.OPENAI_API_KEY,
-        'browserx_api_key_encrypted', // ChromeAuthManager encrypted key
-        'browserx_auth_data', // ChromeAuthManager auth data
       ];
 
       for (const key of relevantKeys) {
@@ -252,21 +248,6 @@ export class ModelClientFactory {
    * @returns Promise resolving to the API key or null if not found
    */
   async loadApiKey(provider: ModelProvider): Promise<string | null> {
-    // First try to get API key from ChromeAuthManager if available
-    if (this.authManager) {
-      const apiKey = await this.authManager.retrieveApiKey();
-
-      if (apiKey) {
-        // Validate if this key is for OpenAI
-        // OpenAI keys start with 'sk-'
-        const isOpenAIKey = apiKey.startsWith('sk-');
-
-        if (provider === 'openai' && isOpenAIKey) {
-          return apiKey;
-        }
-      }
-    }
-
     return null;
   }
 
@@ -513,19 +494,25 @@ export class ModelClientFactory {
    */
   async initialize(config: AgentConfig): Promise<void> {
     this.config = config;
-    // Create ChromeAuthManager instance with the config
-    this.authManager = new ChromeAuthManager(config);
     // Clear cache when config changes to use new settings
     this.clientCache.clear();
   }
 
   /**
    * Get selected model from config
+   * Returns the modelKey of the currently selected model
    */
   getSelectedModel(): string {
     if (this.config) {
-      const modelConfig = this.config.getModelConfig();
-      return modelConfig.selected || DEFAULT_MODEL;
+      // Get selectedModelId from config
+      const configData = this.config.getConfig();
+      const selectedModelId = configData.selectedModelId;
+
+      // Look up the model in the registry
+      const modelData = this.config.getModelById(selectedModelId);
+      if (modelData) {
+        return modelData.model.modelKey;
+      }
     }
     return DEFAULT_MODEL;
   }
