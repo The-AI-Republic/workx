@@ -1,9 +1,8 @@
 /**
  * SSE Event Fixtures
- * Ported from browserx-rs/core/src/client.rs:1006-1085
  *
- * These fixtures match the Rust test fixtures for SSE event processing
- * and are used to validate that TypeScript SSE parsing matches Rust behavior.
+ * These fixtures are used to validate that TypeScript SSE parsing
+ * handles all event types correctly.
  */
 
 /**
@@ -116,7 +115,6 @@ export const SSE_DONE_SIGNAL = `data: [DONE]
 
 /**
  * Complete SSE stream example
- * Matches Rust test: parses_items_and_completed
  */
 export const SSE_COMPLETE_STREAM = `data: {"type":"response.created","response":{"id":"resp_001"}}
 
@@ -236,7 +234,6 @@ export function parseSSELine(line: string): string | null {
 
 /**
  * Expected ResponseEvent types for validation
- * These match the Rust ResponseEvent enum variants
  */
 export const EXPECTED_EVENT_TYPES = [
   'Created',

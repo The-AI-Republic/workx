@@ -3,7 +3,7 @@ import { DomService } from '../DomService';
 import type { SerializedDom, ActionResult } from '../types';
 
 /**
- * T094: Backward Compatibility Verification Tests
+ * Backward Compatibility Verification Tests
  *
  * These tests ensure that the CDP-based implementation maintains the same
  * interface and behavior as the original content-script-based implementation.

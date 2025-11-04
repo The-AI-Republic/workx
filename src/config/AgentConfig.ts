@@ -1,5 +1,5 @@
 /**
- * T033-T036, T043: Main centralized agent configuration class
+ * Main centralized agent configuration class
  */
 
 import type {
@@ -219,7 +219,7 @@ export class AgentConfig implements IConfigService {
     return newModel;
   }
 
-  // T035: Provider management
+  // Provider management
   getProviders(): Record<string, IProviderConfig> {
     this.ensureInitialized();
     return { ...this.currentConfig.providers };
@@ -363,7 +363,7 @@ export class AgentConfig implements IConfigService {
   }
 
 
-  // T036: Profile management
+  // Profile management
   getProfiles(): Record<string, IProfileConfig> {
     this.ensureInitialized();
     return { ...(this.currentConfig.profiles || {}) };
@@ -597,7 +597,7 @@ export class AgentConfig implements IConfigService {
     this.emitChangeEvent('tools' as any, oldConfig, this.currentConfig.tools.perToolConfig[toolName]);
   }
 
-  // T043: Event emitter functionality
+  // Event emitter functionality
   on(event: 'config-changed', handler: (e: IConfigChangeEvent) => void): void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());

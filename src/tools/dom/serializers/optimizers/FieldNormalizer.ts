@@ -16,7 +16,7 @@
  * Note: This optimization is applied during serialization to SerializedDom,
  * not to the VirtualNode tree itself. This class provides field name mapping.
  *
- * T024: Stage 3 Payload Optimization
+ * Stage 3 Payload Optimization
  */
 
 export class FieldNormalizer {

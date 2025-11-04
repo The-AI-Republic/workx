@@ -1,5 +1,5 @@
 /**
- * TurnManager implementation - ports run_turn functionality from browserx-rs
+ * TurnManager implementation
  * Manages individual conversation turns, handles model streaming, and coordinates tool calls
  */
 
@@ -65,7 +65,6 @@ export interface Prompt {
 
 /**
  * TurnManager handles execution of individual conversation turns
- * Port of run_turn and try_run_turn functions from browserx-rs/core/src/browserx.rs
  */
 export class TurnManager {
   private session: Session;
@@ -217,8 +216,6 @@ export class TurnManager {
             break;
 
           case 'RateLimits':
-            // Update rate limits (deferred until token usage available)
-            // In the Rust version, this is handled by sess.update_rate_limits
             break;
 
           case 'Completed': {
@@ -515,7 +512,6 @@ export class TurnManager {
 
   /**
    * Handle a complete response item from the model
-   * Port of handle_response_item from browserx-rs
    */
   private async handleResponseItem(item: any): Promise<any | undefined> {
     // Check item type and handle accordingly
@@ -534,8 +530,6 @@ export class TurnManager {
         };
       }
     } else if (item.type === 'message' || item.type === 'reasoning' || item.type === 'web_search_call') {
-      // Use event mapping to convert ResponseItem to EventMsg(s)
-      // This matches the Rust logic in browserx.rs line 2219-2235
       const showRawReasoning = this.session.showRawAgentReasoning() ?? false;
       const eventMsgs = mapResponseItemToEventMessages(item as ResponseItem, showRawReasoning);
 

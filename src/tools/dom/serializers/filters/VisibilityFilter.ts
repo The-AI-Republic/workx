@@ -11,7 +11,7 @@
  * Exception: Dialog/modal elements are preserved even if aria-hidden,
  * as they may contain interactive content that becomes visible.
  *
- * T013: Stage 1 Signal Filtering
+ * Stage 1 Signal Filtering
  */
 
 import type { VirtualNode } from '../../types';

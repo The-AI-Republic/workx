@@ -1,6 +1,6 @@
 /**
  * Unit tests for IdRemapper
- * T041: Test bidirectional mapping and sequential ID generation
+ * Test bidirectional mapping and sequential ID generation
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

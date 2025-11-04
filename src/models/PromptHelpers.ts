@@ -1,9 +1,7 @@
 /**
  * Prompt Helper Functions
  *
- * Utility functions for working with Prompt structures, aligned with Rust implementation.
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:42-68`
+ * Utility functions for working with Prompt structures.
  */
 
 import type { Prompt, ModelFamily, ResponseItem } from './types/ResponsesAPI';
@@ -13,10 +11,6 @@ import { SCREENSHOT_CACHE_KEY } from '@/tools/screenshot/types';
 
 /**
  * Get full instructions by combining base instructions with user instructions.
- *
- * Matches Rust's `impl Prompt::get_full_instructions(&self, model: &ModelFamily)`
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:42-64`
  *
  * @param prompt - The prompt containing optional instruction overrides
  * @param model - The model family configuration with base instructions
@@ -54,7 +48,6 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
   }
 
   // TODO: Add apply_patch tool instructions if needed (future enhancement)
-  // This matches Rust's logic at client_common.rs:47-60
   // if (!prompt.base_instructions_override && model.needs_special_apply_patch_instructions) {
   //   const hasApplyPatchTool = prompt.tools.some(tool =>
   //     tool.type === 'function' && tool.function.name === 'apply_patch'
@@ -71,10 +64,6 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
  * Get formatted input for API request.
  *
  * Returns a cloned copy of the input array to prevent mutations.
- *
- * Matches Rust's `impl Prompt::get_formatted_input(&self)`
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:66-68`
  *
  * @param prompt - The prompt containing input items
  * @returns Cloned array of ResponseItem

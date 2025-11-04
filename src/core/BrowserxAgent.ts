@@ -1,6 +1,6 @@
 /**
- * Main Browserx agent class - port of browserx.rs Browserx struct
- * Preserves the SQ/EQ (Submission Queue/Event Queue) architecture
+ * Main Browserx agent class
+ * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
  */
 
 import type { Submission, Op, Event, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
@@ -420,7 +420,6 @@ export class BrowserxAgent {
     // Check if task is running in Session
     if (this.session.hasRunningTask(submissionId)) {
       // Abort the specific task (currently aborts all tasks)
-      // Note: Rust pattern is to abort all tasks, not individual ones
       await this.session.abortAllTasks('UserInterrupt');
     }
   }

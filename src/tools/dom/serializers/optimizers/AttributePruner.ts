@@ -13,7 +13,7 @@
  * - Event handlers (onclick, onchange - redundant with tier detection)
  * - Layout attributes (width, height - redundant with boundingBox)
  *
- * T023: Stage 3 Payload Optimization
+ * Stage 3 Payload Optimization
  */
 
 import { VirtualNode } from '../../types';

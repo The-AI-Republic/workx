@@ -1,5 +1,5 @@
 /**
- * T007: Full Stream Lifecycle Integration Test
+ * Full Stream Lifecycle Integration Test
  * Reference: quickstart.md Step 4
  *
  * Tests complete flow: create client → stream() → iterate events → complete
@@ -21,7 +21,7 @@ import {
   SSE_FAILED_STREAM,
 } from './fixtures/sse-events';
 
-describe('T007: Full Stream Lifecycle Integration', () => {
+describe('Full Stream Lifecycle Integration', () => {
   let client: OpenAIResponsesClient;
   let mockModelFamily: ModelFamily;
   let mockProvider: ModelProviderInfo;
@@ -54,7 +54,7 @@ describe('T007: Full Stream Lifecycle Integration', () => {
     );
   });
 
-  describe('Basic stream lifecycle matching Rust behavior', () => {
+  describe('Basic stream lifecycle', () => {
     it('creates client → stream() → iterate events → complete', async () => {
       // Mock fetch to return SSE_COMPLETE_STREAM
       global.fetch = vi.fn().mockResolvedValue({
@@ -91,7 +91,7 @@ describe('T007: Full Stream Lifecycle Integration', () => {
         events.push(event);
       }
 
-      // Verify event sequence matches Rust test fixtures
+      // Verify event sequence
       expect(events.length).toBeGreaterThan(0);
 
       // Should have Created event
@@ -175,7 +175,7 @@ describe('T007: Full Stream Lifecycle Integration', () => {
       expect(completedEvent).not.toBeNull();
       expect((completedEvent as any).tokenUsage).toBeDefined();
 
-      // Verify field names match Rust struct (snake_case preserved)
+      // Verify field names (snake_case preserved)
       const usage = (completedEvent as any).tokenUsage;
       expect(usage.input_tokens).toBeDefined();
       expect(usage.output_tokens).toBeDefined();
@@ -329,7 +329,7 @@ describe('T007: Full Stream Lifecycle Integration', () => {
     });
   });
 
-  describe('Event order matches Rust implementation', () => {
+  describe('Event order', () => {
     it('maintains correct event sequence', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,

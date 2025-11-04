@@ -102,8 +102,8 @@ async function runVerification() {
 
   console.log('\n✓ Phase 6 implementation verification completed successfully!');
   console.log('\nSummary:');
-  console.log('- ✅ T018: Extended StreamProcessor to handle ResponseEvents');
-  console.log('- ✅ T019: Updated Chrome Message Routing for ResponseEvents');
+  console.log('- ✅ Extended StreamProcessor to handle ResponseEvents');
+  console.log('- ✅ Updated Chrome Message Routing for ResponseEvents');
   console.log('- ✅ Added new MessageType enums for all ResponseEvent variants');
   console.log('- ✅ Maintained backward compatibility with existing functionality');
   console.log('- ✅ Created comprehensive test coverage for new features');

@@ -466,4 +466,3 @@ npm test -- optimizers/IdRemapper.test.ts
 ## Version History
 
 - **v1.0.0** (2025-10-30): Initial three-stage pipeline implementation
-- Tag references: T011 (SerializationPipeline), T013-T017 (Filters), T018-T021 (Simplifiers), T022-T026 (Optimizers)

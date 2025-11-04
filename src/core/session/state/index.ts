@@ -1,6 +1,5 @@
 /**
  * State management module exports
- * Port of Rust state refactoring (commit 250b244ab)
  */
 
 // Export state classes

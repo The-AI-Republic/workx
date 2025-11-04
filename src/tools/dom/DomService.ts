@@ -18,7 +18,7 @@ export class DomService {
   private isAttached: boolean = false;
   private currentSnapshot: DomSnapshot | null = null;
   private config: ServiceConfig;
-  private metrics: PerformanceMetrics; // T092: Performance metrics tracking
+  private metrics: PerformanceMetrics; // Performance metrics tracking
 
   private constructor(tabId: number, config?: Partial<ServiceConfig>) {
     this.tabId = tabId;
@@ -31,7 +31,7 @@ export class DomService {
       ...config
     };
 
-    // T092: Initialize performance metrics
+    // Initialize performance metrics
     this.metrics = {
       snapshotCount: 0,
       snapshotCacheHits: 0,
@@ -76,7 +76,7 @@ export class DomService {
       // Listen for invalidation events
       chrome.debugger.onEvent.addListener(this.handleCdpEvent.bind(this));
 
-      // T079: Listen for debugger detach (connection loss)
+      // Listen for debugger detach (connection loss)
       chrome.debugger.onDetach.addListener(this.handleDebuggerDetach.bind(this));
 
       console.log(`[DomService] Attached to tab ${this.tabId}`);
@@ -113,7 +113,7 @@ export class DomService {
   }
 
   async getSerializedDom(): Promise<SerializedDom> {
-    // T092: Track cache hits/misses
+    // Track cache hits/misses
     if (!this.currentSnapshot || this.currentSnapshot.isStale()) {
       if (this.config.enableMetrics) {
         this.metrics.snapshotCacheMisses++;
@@ -134,13 +134,13 @@ export class DomService {
   /**
    * Build complete VirtualNode tree from CDP DOM and Accessibility APIs
    *
-   * CSP COMPATIBILITY (T052): CDP operates at browser level, bypassing Content-Security-Policy
+   * CSP COMPATIBILITY: CDP operates at browser level, bypassing Content-Security-Policy
    * restrictions that would block content script injection. This enables DOM access on high-security
    * sites (banking, enterprise apps) where traditional content scripts fail.
    *
    * The pierce: true parameter ensures cross-origin iframe and shadow DOM traversal.
    *
-   * T010: Enhanced with DOMSnapshot.captureSnapshot() for paint order and layout data
+   * Enhanced with DOMSnapshot.captureSnapshot() for paint order and layout data
    */
   async buildSnapshot(): Promise<DomSnapshot> {
     if (!this.isAttached) {
@@ -150,22 +150,22 @@ export class DomService {
     const start = Date.now();
     console.log(`[DomService] Building snapshot for tab ${this.tabId}...`);
 
-    // T082: Add timeout protection for slow-loading iframes
+    // Add timeout protection for slow-loading iframes
     const snapshotPromise = (async () => {
-      // T010: Parallel fetch: DOM tree + A11y tree + DOMSnapshot (paint order + layout)
+      // Parallel fetch: DOM tree + A11y tree + DOMSnapshot (paint order + layout)
       // Note: A11y fetch may fail on some CSP-restricted pages - we handle this gracefully
       // Note: DOMSnapshot may fail on older Chrome (<92) or CSP-restricted pages - graceful fallback
       const [domTree, axTree, domSnapshot] = await Promise.all([
         this.sendCommand<any>('DOM.getDocument', { depth: -1, pierce: true })
           .catch((error: any) => {
-            // T077: X-Frame-Options DENY detection
+            // X-Frame-Options DENY detection
             if (error.message?.includes('Frame') || error.message?.includes('X-Frame-Options')) {
               throw new Error('FRAME_DENIED: Page has X-Frame-Options DENY header. Cross-origin frames cannot be accessed.');
             }
             throw error;
           }),
         this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
-        // T010: Fetch paint order and layout data via DOMSnapshot.captureSnapshot()
+        // Fetch paint order and layout data via DOMSnapshot.captureSnapshot()
         this.sendCommand<any>('DOMSnapshot.captureSnapshot', {
           computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor'],
           includePaintOrder: true,
@@ -194,14 +194,14 @@ export class DomService {
       }
     }
 
-    // T010: Build layout map: backendNodeId → LayoutData from DOMSnapshot
+    // Build layout map: backendNodeId → LayoutData from DOMSnapshot
     const layoutMap = this.buildLayoutMap(domSnapshot);
 
     // Build VirtualNode tree
     let nodeCounter = 0;
 
     const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0): VirtualNode | null => {
-      // T078: Pathological case protection for deeply nested iframes
+      // Pathological case protection for deeply nested iframes
       if (depth > this.config.maxTreeDepth) {
         console.warn(`[DomService] Max tree depth (${this.config.maxTreeDepth}) reached at iframe depth ${iframeDepth}. Tree traversal stopped.`);
         return null;
@@ -216,7 +216,7 @@ export class DomService {
       const backendNodeId = cdpNode.backendNodeId;
       const axNode = axMap.get(backendNodeId);
       const heuristics = computeHeuristics(cdpNode.attributes);
-      const layoutData = layoutMap.get(backendNodeId); // T010: Get layout data
+      const layoutData = layoutMap.get(backendNodeId); // Get layout data
 
       const vNode: VirtualNode = {
         nodeId: cdpNode.nodeId,
@@ -244,7 +244,7 @@ export class DomService {
             }
           : undefined,
         heuristics,
-        // T010: Attach layout data from DOMSnapshot.captureSnapshot()
+        // Attach layout data from DOMSnapshot.captureSnapshot()
         boundingBox: layoutData?.boundingBox,
         paintOrder: layoutData?.paintOrder,
         computedStyle: layoutData?.computedStyle,
@@ -283,12 +283,12 @@ export class DomService {
 
     this.computeStats(virtualDom, stats);
 
-    // T084: Memory pressure detection for large pages
+    // Memory pressure detection for large pages
     if (stats.totalNodes > 50000) {
       console.warn(`[DomService] MEMORY_PRESSURE: Page has ${stats.totalNodes} nodes (>50k threshold). Consider reducing maxTreeDepth or limiting snapshot scope to improve performance.`);
     }
 
-    // Detect framework (T068: Framework Compatibility)
+    // Detect framework
     const framework = detectFramework(virtualDom);
     if (framework) {
       console.log(`[DomService] Detected framework: ${framework}`);
@@ -308,7 +308,7 @@ export class DomService {
 
     this.currentSnapshot = new DomSnapshot(virtualDom, pageContext, stats);
 
-    // T092: Track snapshot metrics
+    // Track snapshot metrics
     if (this.config.enableMetrics) {
       this.metrics.snapshotCount++;
       this.metrics.totalSnapshotDuration += stats.snapshotDuration;
@@ -347,7 +347,7 @@ export class DomService {
     }
   }
 
-  // T079: Handle CDP connection loss
+  // Handle CDP connection loss
   private handleDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
     if (source.tabId !== this.tabId) return;
 
@@ -363,7 +363,7 @@ export class DomService {
   }
 
   /**
-   * T010: Build layout map from DOMSnapshot data
+   * Build layout map from DOMSnapshot data
    * Extracts layout information (bounding boxes, paint order, styles, etc.) and maps
    * them to backendNodeIds for efficient lookup during tree construction
    */
@@ -612,7 +612,7 @@ export class DomService {
       try {
         boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
       } catch (error: any) {
-        // T083: SVG elements don't have box models - try getting content quads instead
+        // SVG elements don't have box models - try getting content quads instead
         if (error.message?.includes('Could not compute box model')) {
           if (node?.nodeName?.toLowerCase() === 'svg' || node?.nodeName?.toLowerCase().includes('svg')) {
             console.warn('[DomService] SVG element detected - using alternative click method');
@@ -625,7 +625,7 @@ export class DomService {
 
       let { content } = boxModel.model;
 
-      // T080: Element visibility verification
+      // Element visibility verification
       const width = Math.abs(content[2] - content[0]);
       const height = Math.abs(content[5] - content[1]);
       if (width === 0 || height === 0) {
@@ -1063,7 +1063,7 @@ export class DomService {
     }
   }
 
-  // T092: Performance metrics tracking helper
+  // Performance metrics tracking helper
   private trackActionMetrics(actionType: 'click' | 'type' | 'scroll' | 'keypress', duration: number, success: boolean, error?: string): void {
     if (!this.config.enableMetrics) return;
 
@@ -1079,12 +1079,12 @@ export class DomService {
     }
   }
 
-  // T092: Get current performance metrics
+  // Get current performance metrics
   getMetrics(): PerformanceMetrics {
     return { ...this.metrics };
   }
 
-  // T092: Reset performance metrics
+  // Reset performance metrics
   resetMetrics(): void {
     this.metrics = {
       snapshotCount: 0,
@@ -1108,7 +1108,7 @@ export class DomService {
     console.log('[DomService] Performance metrics reset');
   }
 
-  // T092: Get metrics summary for logging
+  // Get metrics summary for logging
   getMetricsSummary(): string {
     const cacheHitRate = this.metrics.snapshotCacheHits + this.metrics.snapshotCacheMisses > 0
       ? ((this.metrics.snapshotCacheHits / (this.metrics.snapshotCacheHits + this.metrics.snapshotCacheMisses)) * 100).toFixed(1)

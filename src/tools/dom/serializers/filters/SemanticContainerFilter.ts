@@ -13,7 +13,7 @@
  *
  * Non-landmarks require ≥1 interactive descendant to be preserved.
  *
- * T016: Stage 1 Signal Filtering
+ * Stage 1 Signal Filtering
  */
 
 import type { VirtualNode } from '../../types';

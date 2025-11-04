@@ -1,5 +1,5 @@
 /**
- * T037: Default centralized agent configuration values
+ * Default centralized agent configuration values
  */
 
 import type { IAgentConfig, IModelConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IAuthConfig } from './types';

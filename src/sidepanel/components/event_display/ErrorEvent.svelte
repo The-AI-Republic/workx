@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * ErrorEvent - Renders error messages with prominent styling (T034)
+   * ErrorEvent - Renders error messages with prominent styling
    */
   import type { ProcessedEvent } from '../../../types/ui';
 

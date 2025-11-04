@@ -21,7 +21,7 @@
  * - Preserves whitespace (concatenates as-is)
  * - Does not merge across element boundaries
  *
- * T018: Stage 2 Structure Simplification
+ * Stage 2 Structure Simplification
  */
 
 import { VirtualNode } from '../../types';

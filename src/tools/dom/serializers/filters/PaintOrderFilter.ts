@@ -19,7 +19,7 @@
  * - Loading spinners covering underlying elements
  * - Overlays and popups
  *
- * T017: Stage 1 Signal Filtering
+ * Stage 1 Signal Filtering
  */
 
 import type { VirtualNode } from '../../types';

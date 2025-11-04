@@ -1,6 +1,5 @@
 /**
- * IndexedDB-based configuration storage (refactored from chrome.storage.local)
- * Feature: 011-storage-cache - Unified storage backend
+ * IndexedDB-based configuration storage
  */
 
 import type { IAgentConfig, IConfigStorage, IStorageInfo } from '../config/types';

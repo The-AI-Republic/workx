@@ -1,5 +1,5 @@
 /**
- * TaskRunner implementation - ports run_task functionality from browserx-rs
+ * TaskRunner implementation
  * Manages task execution lifecycle, handles task cancellation, and emits progress events
  * Enhanced with AgentTask integration - contains the majority of task execution logic
  */
@@ -81,7 +81,6 @@ interface LoopOutcomeInit {
 
 /**
  * TaskRunner handles the execution of a complete task which may involve multiple turns
- * Port of run_task function from browserx-rs/core/src/browserx.rs
  * Enhanced with AgentTask coordination - maintains the majority of task execution logic
  */
 export class TaskRunner {
@@ -530,7 +529,6 @@ export class TaskRunner {
 
   /**
    * Process the results of a turn execution
-   * Ports logic from browserx-rs/core/src/browserx.rs lines 1707-1808
    */
   private async processTurnResult(
     turnResult: TurnRunResult
@@ -544,21 +542,16 @@ export class TaskRunner {
     let taskComplete = true;
     const itemsToRecord: ResponseItem[] = [];
 
-    // Process each response item (matches Rust logic lines 1709-1798)
+    // Process each response item
     for (const processedItem of processedItems) {
       const { item, response } = processedItem as ProcessedResponseItem;
       const messageItem = item as ResponseItem;
 
-      // Match the Rust implementation's pattern matching logic
-      // Lines 1711-1798 in browserx.rs
-
       // Case 1: Assistant message without response (task complete indicator)
-      // Rust: (ResponseItem::Message { role, .. }, None) if role == "assistant"
       if (messageItem.type === 'message' && messageItem.role === 'assistant' && !response) {
         itemsToRecord.push(messageItem);
       }
       // Case 2: FunctionCall with FunctionCallOutput response
-      // Rust lines 1729-1739
       else if (
         messageItem.type === 'function_call' &&
         response?.type === 'function_call_output'
@@ -568,7 +561,6 @@ export class TaskRunner {
         itemsToRecord.push(response as ResponseItem);
       }
       // Case 3: CustomToolCall with CustomToolCallOutput response
-      // Rust lines 1741-1750
       else if (
         messageItem.type === 'custom_tool_call' &&
         response?.type === 'custom_tool_call_output'
@@ -578,12 +570,10 @@ export class TaskRunner {
         itemsToRecord.push(response as ResponseItem);
       }
       // Case 4: FunctionCall with McpToolCallOutput response
-      // Rust lines 1752-1773
       // Note: In TypeScript, MCP tool outputs are converted to FunctionCallOutput
       // in the handleResponseItem method, so they follow the same pattern as Case 2
 
       // Case 5: Reasoning item without response
-      // Rust lines 1776-1790
       else if (messageItem.type === 'reasoning' && !response) {
         itemsToRecord.push(messageItem);
       }
@@ -602,17 +592,16 @@ export class TaskRunner {
         }
       }
 
-      // Collect responses for next turn (Rust lines 1795-1797)
-      // In TypeScript, responses are handled inline above
+      // Responses are handled inline above
     }
 
-    // Record processed items in conversation history (matches Rust lines 1801-1808)
+    // Record processed items in conversation history
     // Use recordConversationItemsDual to record both in-memory and persistent storage
     if (itemsToRecord.length > 0) {
       await this.session.recordConversationItemsDual(itemsToRecord);
     }
 
-    // Extract last assistant message from recorded items (matches Rust line 1836-1838)
+    // Extract last assistant message from recorded items
     const lastAgentMessage = this.getLastAssistantMessageFromTurn(itemsToRecord);
 
     // Check token limits
@@ -632,7 +621,6 @@ export class TaskRunner {
 
   /**
    * Extract last assistant message text from response items
-   * Ports get_last_assistant_message_from_turn from browserx-rs/core/src/browserx.rs lines 2275-2293
    */
   private getLastAssistantMessageFromTurn(responses: ResponseItem[]): string | undefined {
     // Iterate in reverse to find the last assistant message

@@ -1,6 +1,5 @@
 /**
- * Event types ported from browserx-rs/protocol/src/protocol.rs
- * Preserving exact event names and structures
+ * Event types
  */
 
 import type {
@@ -103,7 +102,6 @@ export interface TaskCompleteEvent {
   compaction_performed?: boolean;
   aborted?: boolean;
   abort_reason?: TurnAbortReason;
-  // Added for compatibility with Rust's AgentTurnComplete notification
   turn_id?: string;
   input_messages?: string[];
 }
