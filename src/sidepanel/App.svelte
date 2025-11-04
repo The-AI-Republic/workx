@@ -49,7 +49,6 @@
       try {
         // Test connection with ping
         await router.send(MessageType.PING);
-        console.log('Connected to background service worker');
         break;
       } catch (error) {
         retries++;
@@ -57,7 +56,6 @@
           console.warn('Failed to connect to background service worker after', maxRetries, 'attempts');
           break;
         }
-        console.log(`Connection attempt ${retries} failed, retrying in ${retryDelay}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
     }
@@ -66,7 +64,6 @@
     if (retries < maxRetries) {
       try {
         await router.requestSessionReset();
-        console.log('Session reset on side panel open');
       } catch (error) {
         // Non-critical error - log but don't block initialization
         const errorMessage = error instanceof Error
@@ -85,7 +82,6 @@
     });
 
     router.on(MessageType.STATE_UPDATE, (message) => {
-      console.log('State update:', message.payload);
     });
 
     // Check connection
@@ -262,7 +258,6 @@
 
   function handleAuthUpdated(event: CustomEvent) {
     // Handle auth updates if needed
-    console.log('Auth updated:', event.detail);
   }
 
   async function startNewConversation() {
@@ -278,7 +273,6 @@
     // Request session reset from backend
     try {
       await router.requestSessionReset();
-      console.log('New conversation started - session reset');
     } catch (error) {
       console.error('Failed to reset session:', error);
       messages = [...messages, {

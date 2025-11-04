@@ -25,20 +25,13 @@ export class ConfigStorage implements IConfigStorage {
   async get(): Promise<IAgentConfig | null> {
     // Check cache first
     if (this.cache && Date.now() - this.cacheTimestamp < this.cacheTTL) {
-      console.log('[ConfigStorage] Returning cached config');
       return this.cache;
     }
 
     try {
-      console.log('[ConfigStorage] Reading from chrome.storage.local with key:', this.configKey);
       const result = await chrome.storage.local.get(this.configKey);
-      console.log('[ConfigStorage] Raw result from chrome.storage.local:', result);
-      console.log('[ConfigStorage] Result keys:', Object.keys(result));
-      console.log('[ConfigStorage] Looking for key:', this.configKey);
-      console.log('[ConfigStorage] Has key?:', this.configKey in result);
 
       const data = result[this.configKey] || null;
-      console.log('[ConfigStorage] Extracted data:', data ? 'Found config with keys: ' + Object.keys(data).join(', ') : 'null');
 
       if (data) {
         this.cache = data;
@@ -57,13 +50,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async set(config: IAgentConfig): Promise<void> {
     try {
-      console.log('[ConfigStorage] Saving config to chrome.storage.local with key:', this.configKey);
-      console.log('[ConfigStorage] Config to save - selectedModelId:', config.selectedModelId);
-      console.log('[ConfigStorage] Config to save - providers:', Object.keys(config.providers));
-
       await chrome.storage.local.set({ [this.configKey]: config });
-
-      console.log('[ConfigStorage] Config saved successfully');
 
       // Update cache
       this.cache = config;

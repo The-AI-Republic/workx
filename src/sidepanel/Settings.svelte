@@ -55,13 +55,9 @@
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
 
-  // Reactive statement to log when modelSelectionItems changes
+  // Reactive statement to update when modelSelectionItems changes
   $: {
-    console.log('[Settings] modelSelectionItems changed! Length:', modelSelectionItems.length);
-    if (modelSelectionItems.length > 0) {
-      console.log('[Settings] Model IDs in array:', modelSelectionItems.map(m => m.modelId));
-      console.log('[Settings] Current selectedModelId:', selectedModelId);
-    }
+    // Updated when modelSelectionItems changes
   }
 
   // Settings component has its own AgentConfig instance (not shared with agent)
@@ -86,7 +82,6 @@
   async function loadSettings() {
     try {
       isInitializing = true;
-      console.log('[Settings] Creating isolated AgentConfig instance...');
 
       // Create new AgentConfig instance
       settingsConfig = new (AgentConfig as any)();
@@ -101,19 +96,12 @@
       const config = settingsConfig.getConfig();
       selectedModelId = config.selectedModelId;
 
-      console.log('[Settings] Loaded selectedModelId from AgentConfig:', selectedModelId);
-      console.log('[Settings] Full config:', { selectedModelId: config.selectedModelId, providers: Object.keys(config.providers || {}) });
-
       // Build model selection array - flatten models from all providers
       // Fetch API key from provider level and cache it in each model item for UI convenience
       const tempModelItems: ModelSelectionItem[] = [];
       const providers = settingsConfig.getProviders();
 
-      console.log('[Settings] Building model selection items from providers:', Object.keys(providers));
-
       for (const [providerId, provider] of Object.entries(providers)) {
-        console.log('[Settings] Processing provider:', providerId, 'models:', provider.models?.length || 0);
-
         if (!provider.models || !Array.isArray(provider.models)) {
           console.warn('[Settings] Provider has no models array:', providerId);
           continue;
@@ -123,7 +111,6 @@
         const providerApiKey = await settingsConfig.getProviderApiKey(providerId);
 
         for (const model of provider.models) {
-          console.log('[Settings] Adding model:', model.id, model.name, 'from provider:', providerId);
           tempModelItems.push({
             modelId: model.id,
             modelName: model.name,
@@ -142,15 +129,11 @@
 
       // Trigger reactivity by reassigning the array
       modelSelectionItems = tempModelItems;
-      console.log('[Settings] Built selection items:', modelSelectionItems.length, 'models');
-      console.log('[Settings] Model IDs:', modelSelectionItems.map(m => m.modelId).join(', '));
 
       // Validate selectedModelId loaded from AgentConfig
       if (!selectedModelId || selectedModelId === '') {
-        console.warn('[Settings] selectedModelId from AgentConfig is empty or invalid');
         if (modelSelectionItems.length > 0) {
           selectedModelId = modelSelectionItems[0].modelId;
-          console.warn('[Settings] Falling back to first available model:', selectedModelId);
           // Save the fallback selection to AgentConfig for next time
           await settingsConfig.setSelectedModel(selectedModelId);
         } else {
@@ -167,9 +150,6 @@
         currentProviderName = selectedItem.providerName;
         currentProviderOrganization = selectedItem.organization;  // Use cached organization
 
-        console.log('[Settings] Initial load - currentProvider:', currentProvider);
-        console.log('[Settings] Initial load - selectedItem:', { modelId: selectedItem.modelId, modelName: selectedItem.modelName, providerId: selectedItem.providerId });
-
         // Use cached API key from selectedItem
         apiKey = selectedItem.apiKey || '';
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
@@ -184,10 +164,8 @@
         };
       } else {
         // Model from AgentConfig not found in available models - fallback to first model
-        console.warn('[Settings] Model from AgentConfig not found in available models:', selectedModelId);
         if (modelSelectionItems.length > 0) {
           selectedModelId = modelSelectionItems[0].modelId;
-          console.warn('[Settings] Falling back to first available model:', selectedModelId);
           await settingsConfig.setSelectedModel(selectedModelId);
           
           // Load data for fallback model
@@ -218,7 +196,6 @@
         }
       }
 
-      console.log('[Settings] Loaded settings successfully');
     } catch (error) {
       console.error('[Settings] Failed to load settings:', error);
       showMessage('Failed to load settings', 'error');
@@ -281,9 +258,6 @@
 
     try {
       isSaving = true;
-      console.log('[Settings] Saving API key for provider:', currentProvider);
-      console.log('[Settings] Currently selected model:', selectedModelId);
-      console.log('[Settings] API key starts with:', apiKey.substring(0, 10) + '...');
 
       // Save API key to provider level in storage
       // Note: This saves to the PROVIDER, not the individual model
@@ -302,10 +276,7 @@
         }
       }
 
-      console.log('[Settings] API key saved to provider:', currentProvider);
       showMessage('API key saved successfully!', 'success');
-
-      console.log('[Settings] API key saved, notifying agent to re-initialize');
 
       // Send message to service worker to reload config and recreate BrowserxAgent
       chrome.runtime.sendMessage({
@@ -346,7 +317,6 @@
       );
 
       if (!selectedItem) {
-        console.error('[Settings] No matching model for selectedModelId:', selectedModelId);
         testResult = { valid: false, error: 'Selected model configuration missing' };
         showMessage('Connection failed: selected model configuration missing', 'error');
         return;
@@ -362,8 +332,6 @@
         showMessage('Connection failed: Base URL not configured', 'error');
         return;
       }
-
-      console.log('[Settings] Testing connection for provider:', providerId);
 
       // Use provider-specific testing method
       if (providerId === 'anthropic') {
@@ -413,10 +381,9 @@
       testResult = { valid: false, error: 'Invalid API key' };
       showMessage('Connection test failed: Invalid API key', 'error');
     } else {
-      const errorText = await response.text().catch(() => 'Unknown error');
+      await response.text().catch(() => 'Unknown error');
       testResult = { valid: false, error: `API error: ${response.status}` };
       showMessage(`Connection test failed: API error ${response.status}`, 'error');
-      console.error('[Settings] Anthropic API error:', errorText);
     }
   }
 
@@ -446,11 +413,9 @@
       });
 
       // If we got a response, the API key is valid
-      console.log('[Settings] OpenAI-compatible API test successful:', response.id);
       testResult = { valid: true };
       showMessage('Connection test successful!', 'success');
     } catch (error: any) {
-      console.error('[Settings] OpenAI-compatible API test failed:', error);
 
       // Parse OpenAI SDK error
       if (error?.status === 401 || error?.code === 'invalid_api_key') {
@@ -491,7 +456,6 @@
 
     try {
       isClearingAuth = true;
-      console.log('[Settings] Clearing API key for provider:', currentProvider);
 
       // Delete provider-level API key from storage
       // Note: This removes the key from the PROVIDER, affecting all models under this provider
@@ -510,7 +474,6 @@
         }
       }
 
-      console.log('[Settings] Cleared API key from provider:', currentProvider);
       showMessage(`${providerName} API key removed successfully`, 'info');
 
       // Send message to service worker to reload config and recreate BrowserxAgent
@@ -586,8 +549,6 @@
       isModelSwitching = true;
       const { modelId } = event.detail;
 
-      console.log('[Settings] Model changed to:', modelId);
-
       // Find the selected item from our pre-built selection array
       const selectedItem = modelSelectionItems.find(item => item.modelId === modelId);
       if (!selectedItem) {
@@ -626,26 +587,15 @@
         selected: item.modelId === modelId
       }));
 
-      console.log('[Settings] Model changed - Summary:');
-      console.log('  - Selected model:', selectedModelId, selectedItem.modelName);
-      console.log('  - Provider:', currentProvider, currentProviderName);
-      console.log('  - Organization:', currentProviderOrganization);
-      console.log('  - API key from cache:', selectedItem.apiKey ? `${selectedItem.apiKey.substring(0, 10)}... (${selectedItem.apiKey.length} chars)` : 'NONE');
-      console.log('  - apiKey variable set to:', apiKey ? `${apiKey.substring(0, 10)}... (${apiKey.length} chars)` : 'EMPTY STRING');
-      console.log('  - maskedApiKey set to:', maskedApiKey);
-      console.log('  - isAuthenticated:', isAuthenticated);
-
       // 3.1: All UI state already updated above for instant feedback
 
       // 3.2: Save model selection to storage WITHOUT updating API key
       // We only update selectedModelId, not the provider API keys
       await settingsConfig.setSelectedModel(modelId);
 
-      console.log('[Settings] Model selection saved to storage (API key NOT updated)');
-
       // 3.4: Trigger BrowserAgent re-initialization
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(err => {
-        console.error('[Settings] Failed to notify agent of config update:', err);
+      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
+        // Silently handle message errors
       });
 
       // Show appropriate message based on API key availability
@@ -662,7 +612,6 @@
 
       showMessage(message, messageType);
     } catch (error) {
-      console.error('[Settings] Failed to change model:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       showMessage(`Failed to change model: ${errorMessage}`, 'error');
 

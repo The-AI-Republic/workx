@@ -55,31 +55,21 @@ export class AgentConfig implements IConfigService {
    */
   public async initialize(): Promise<void> {
     if (this.initialized) {
-      console.log('[AgentConfig] Already initialized, skipping');
       return;
     }
 
     try {
-      console.log('[AgentConfig] Starting initialization...');
       const storedConfig = await this.storage.get();
-      console.log('[AgentConfig] Storage.get() returned:', storedConfig ? 'Config object' : 'null');
 
       if (storedConfig) {
-        console.log('[AgentConfig] Found stored config with selectedModelId:', storedConfig.selectedModelId);
         this.currentConfig = mergeWithDefaults(storedConfig);
-        console.log('[AgentConfig] After merge, selectedModelId:', this.currentConfig.selectedModelId);
       } else {
         // First time setup
-        console.log('[AgentConfig] No stored config found, using defaults');
         this.currentConfig = getDefaultAgentConfig();
-        console.log('[AgentConfig] Default config selectedModelId:', this.currentConfig.selectedModelId);
       }
 
       // Ensure all models have IDs and registry is populated
       await this.ensureModelIds();
-
-      console.log('[AgentConfig] After ensureModelIds, selectedModelId:', this.currentConfig.selectedModelId);
-      console.log('[AgentConfig] Model registry keys:', Object.keys(this.currentConfig.modelRegistry));
 
       await this.storage.set(this.currentConfig);
       this.initialized = true;
@@ -132,8 +122,6 @@ export class AgentConfig implements IConfigService {
    */
   private async ensureModelIds(): Promise<void> {
     let modified = false;
-    let modelsProcessed = 0;
-    let idsGenerated = 0;
 
     // Iterate through all providers and their models
     for (const provider of Object.values(this.currentConfig.providers)) {
@@ -143,14 +131,11 @@ export class AgentConfig implements IConfigService {
       }
 
       for (const model of provider.models) {
-        modelsProcessed++;
         // Generate ID if missing or empty
         if (!model.id || model.id === '') {
           // Generate random 6-digit ID
           model.id = this.generateRandomModelId();
-          idsGenerated++;
           modified = true;
-          console.log(`[AgentConfig] Generated ID ${model.id} for model ${model.name} (${model.modelKey}) in provider ${provider.id}`);
         }
 
         // Add to registry
@@ -161,14 +146,11 @@ export class AgentConfig implements IConfigService {
       }
     }
 
-    console.log(`[AgentConfig] Processed ${modelsProcessed} models, generated ${idsGenerated} new IDs`);
-
     // Ensure selectedModelId is valid, otherwise pick first available model
     if (!this.currentConfig.selectedModelId ||
         !this.currentConfig.modelRegistry[this.currentConfig.selectedModelId]) {
       const firstModelId = Object.keys(this.currentConfig.modelRegistry)[0];
       if (firstModelId) {
-        console.log(`[AgentConfig] Setting selectedModelId to first available model: ${firstModelId}`);
         this.currentConfig.selectedModelId = firstModelId;
         modified = true;
       } else {
@@ -178,7 +160,6 @@ export class AgentConfig implements IConfigService {
 
     // Save if we made any changes
     if (modified) {
-      console.log('[AgentConfig] Saving modified config with new model IDs');
       await this.storage.set(this.currentConfig);
     }
   }

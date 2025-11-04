@@ -112,8 +112,6 @@ export class BrowserxAgent {
 
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
-
-    console.log('[BrowserxAgent] Initialized successfully with model:', modelData.model.name, '(', modelData.provider.name, ')');
   }
 
   /**
@@ -135,8 +133,6 @@ export class BrowserxAgent {
   private async handleModelConfigChange(event: IConfigChangeEvent): Promise<void> {
     const oldModelId = event.oldValue;
     const newModelId = event.newValue;
-
-    console.log(`Model configuration changed: ${oldModelId} -> ${newModelId}`);
 
     // Reinitialize session when model changes
     if (oldModelId !== newModelId) {
@@ -162,8 +158,6 @@ export class BrowserxAgent {
 
         // Reinitialize session
         await this.session.initializeSession('create', this.session.conversationId, this.config);
-
-        console.log(`Session reinitialized with model: ${newModelId}`);
       } catch (error) {
         console.error('Failed to reinitialize session after model change:', error);
       }

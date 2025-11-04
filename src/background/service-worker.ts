@@ -29,13 +29,11 @@ let initializationPromise: Promise<void> | null = null;
 async function initialize(): Promise<void> {
   // If already initialized, return immediately
   if (isInitialized) {
-    console.log('Service worker already initialized, skipping...');
     return;
   }
 
   // If initialization is in progress, wait for it
   if (initializationPromise) {
-    console.log('Initialization already in progress, waiting...');
     return initializationPromise;
   }
 
@@ -54,12 +52,9 @@ async function initialize(): Promise<void> {
  * Actual initialization logic
  */
 async function doInitialize(): Promise<void> {
-  console.log('Initializing Browserx background service worker');
-
   // Initialize configuration singleton first
   agentConfig = AgentConfig.getInstance();
   await agentConfig.initialize();
-  console.log('[ServiceWorker] AgentConfig initialized');
 
   // Create agent instance with config (agent will initialize ModelClientFactory and ToolRegistry)
   agent = new BrowserxAgent(agentConfig!);
@@ -82,8 +77,6 @@ async function doInitialize(): Promise<void> {
 
   // Initialize storage layer
   await initializeStorage();
-
-  console.log('Service worker initialized');
 }
 
 /**
@@ -150,19 +143,16 @@ function setupMessageHandlers(): void {
 
   // Handle session reset
   router.on(MessageType.SESSION_RESET, async () => {
-    console.log('Session reset requested');
     if (agent) {
       // Get the current session
       const session = agent.getSession();
 
       // Abort all running tasks before resetting
-      console.log('Aborting all running tasks...');
       await session.abortAllTasks('user_interrupt');
 
       // Reset the session
       await session.reset();
 
-      console.log('Session reset complete');
       return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
     }
     throw new Error('Agent not initialized');
@@ -171,21 +161,17 @@ function setupMessageHandlers(): void {
   // Handle stop agent session (from visual effects Stop Agent button)
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'STOP_AGENT_SESSION') {
-      console.log('[ServiceWorker] Stop agent session requested from visual effects');
-
       (async () => {
         try {
           if (agent) {
             const session = agent.getSession();
 
             // Abort all running tasks
-            console.log('[ServiceWorker] Aborting all running tasks...');
             await session.abortAllTasks('user_stop_button');
 
             // Reset the session
             await session.reset();
 
-            console.log('[ServiceWorker] Agent session stopped');
             sendResponse({ success: true });
           } else {
             sendResponse({ success: false, error: 'Agent not initialized' });
@@ -242,13 +228,10 @@ function setupMessageHandlers(): void {
 
   // Handle configuration updates
   router.on(MessageType.CONFIG_UPDATE, async () => {
-    console.log('Configuration update requested, reloading config and recreating agent...');
-
     try {
       // Reload AgentConfig from storage
       if (agentConfig) {
         await agentConfig.reload();
-        console.log('AgentConfig reloaded from storage');
       } else {
         // Initialize a new configuration singleton
         agentConfig = AgentConfig.getInstance();
@@ -266,7 +249,6 @@ function setupMessageHandlers(): void {
       // Create new agent with updated config
       agent = new BrowserxAgent(agentConfig);
       await agent.initialize();
-      console.log('BrowserxAgent recreated with updated configuration');
 
       // Re-initialize browser tools with new config
       await initializeBrowserTools();
@@ -284,9 +266,6 @@ function setupMessageHandlers(): void {
 
     const { diffId, path, content } = message.payload;
     const diffTracker = agent.getDiffTracker();
-
-    // For now, just log the diff - proper integration pending
-    console.log(`Diff generated: ${diffId} for ${path}`);
 
     // Broadcast diff to UI
     if (router) {
@@ -318,8 +297,6 @@ function setupMessageHandlers(): void {
 function setupChromeListeners(): void {
   // Handle extension installation
   chrome.runtime.onInstalled.addListener((details) => {
-    console.log('Extension installed:', details.reason);
-    
     if (details.reason === 'install') {
       // Open welcome page on first install
       chrome.tabs.create({
@@ -517,16 +494,12 @@ async function initializeBrowserTools(): Promise<void> {
   const toolRegistry = agent.getToolRegistry();
   // Register all tools (await them to ensure they're registered before listTools is called)
   await registerTools(toolRegistry, agentConfig!.getToolsConfig());
-
-  console.log('Browser tools initialized');
 }
 
 /**
  * Initialize storage layer
  */
 async function initializeStorage(): Promise<void> {
-  console.log('Initializing storage layer...');
-
   // Initialize cache manager
   cacheManager = new CacheManager({
     maxSize: 50 * 1024 * 1024, // 50MB
@@ -540,20 +513,11 @@ async function initializeStorage(): Promise<void> {
 
   // Check storage quota
   const quota = await storageQuotaManager.getQuota();
-  console.log(`Storage usage: ${quota.percentage.toFixed(2)}% (${quota.usage} / ${quota.quota} bytes)`);
 
   // Request persistent storage if not already granted
   if (!quota.persistent) {
-    const granted = await storageQuotaManager.requestPersistentStorage();
-    if (granted) {
-      console.log('Persistent storage granted');
-    } else {
-      console.log('Persistent storage denied');
-    }
+    await storageQuotaManager.requestPersistentStorage();
   }
-
-  // Storage layer initialized - session initialization now happens in constructor
-  console.log('Storage layer initialized');
 }
 
 /**
@@ -617,16 +581,14 @@ function setupPeriodicTasks(): void {
           break;
         case 'cache-cleanup':
           if (cacheManager) {
-            const removed = await cacheManager.cleanup();
-            console.log(`Cache cleanup: ${removed} expired entries removed`);
+            await cacheManager.cleanup();
           }
           break;
         case 'quota-check':
           if (storageQuotaManager) {
             const shouldCleanup = await storageQuotaManager.shouldCleanup();
             if (shouldCleanup) {
-              const results = await storageQuotaManager.cleanup(70);
-              console.log('Quota cleanup results:', results);
+              await storageQuotaManager.cleanup(70);
             }
           }
           break;
@@ -641,8 +603,7 @@ function setupPeriodicTasks(): void {
 
     setInterval(async () => {
       if (cacheManager) {
-        const removed = await cacheManager.cleanup();
-        console.log(`Cache cleanup: ${removed} expired entries removed`);
+        await cacheManager.cleanup();
       }
     }, 30 * 60 * 1000); // Every 30 minutes
 
@@ -650,8 +611,7 @@ function setupPeriodicTasks(): void {
       if (storageQuotaManager) {
         const shouldCleanup = await storageQuotaManager.shouldCleanup();
         if (shouldCleanup) {
-          const results = await storageQuotaManager.cleanup(70);
-          console.log('Quota cleanup results:', results);
+          await storageQuotaManager.cleanup(70);
         }
       }
     }, 10 * 60 * 1000); // Every 10 minutes
@@ -667,8 +627,7 @@ function setupPeriodicTasks(): void {
 
     setInterval(async () => {
       if (cacheManager) {
-        const removed = await cacheManager.cleanup();
-        console.log(`Cache cleanup: ${removed} expired entries removed`);
+        await cacheManager.cleanup();
       }
     }, 30 * 60 * 1000); // Every 30 minutes
 
@@ -676,8 +635,7 @@ function setupPeriodicTasks(): void {
       if (storageQuotaManager) {
         const shouldCleanup = await storageQuotaManager.shouldCleanup();
         if (shouldCleanup) {
-          const results = await storageQuotaManager.cleanup(70);
-          console.log('Quota cleanup results:', results);
+          await storageQuotaManager.cleanup(70);
         }
       }
     }, 10 * 60 * 1000); // Every 10 minutes
@@ -689,10 +647,7 @@ function setupPeriodicTasks(): void {
  */
 async function performRolloutCleanup(): Promise<void> {
   try {
-    const deleted = await RolloutRecorder.cleanupExpired();
-    if (deleted > 0) {
-      console.log(`[RolloutCleanup] Cleaned up ${deleted} expired rollouts`);
-    }
+    await RolloutRecorder.cleanupExpired();
   } catch (error) {
     console.error('[RolloutCleanup] Failed to cleanup expired rollouts:', error);
   }
@@ -714,7 +669,6 @@ async function performRolloutCleanup(): Promise<void> {
 
   if (keysToRemove.length > 0) {
     await chrome.storage.local.remove(keysToRemove);
-    console.log(`[StorageCleanup] ${keysToRemove.length} temporary items removed`);
   }
 }
 
@@ -736,8 +690,6 @@ chrome.runtime.onInstalled.addListener(() => {
  * Handle service worker shutdown
  */
 chrome.runtime.onSuspend.addListener(async () => {
-  console.log('Service worker shutting down');
-
   // Cleanup resources
   if (agent) {
     const session = agent.getSession();
@@ -767,7 +719,6 @@ chrome.runtime.onSuspend.addListener(async () => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Initialize if not already initialized
   if (!isInitialized && !initializationPromise) {
-    console.log('Message received before initialization, initializing now...');
     initialize().then(() => {
       // Don't send response here - let the MessageRouter handle it
     }).catch(err => {

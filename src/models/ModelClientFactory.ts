@@ -77,7 +77,6 @@ export class ModelClientFactory {
 
       for (const key of relevantKeys) {
         if (changes[key]) {
-          console.log(`[ModelClientFactory] API key changed in ${areaName} storage, clearing cache`);
           this.clearCache();
           break;
         }
