@@ -15,9 +15,11 @@
     modelKey: string;
     providerId: string;
     providerName: string;
+    organization: string | null;
     apiKey: string | null;
     contextWindow: number;
     maxOutputTokens: number;
+    baseUrl: string;
   }> = [];
   export let disabled = false;
 

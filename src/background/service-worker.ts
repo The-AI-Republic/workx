@@ -59,7 +59,7 @@ async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
   agentConfig = AgentConfig.getInstance();
   await agentConfig.initialize();
-  console.log('AgentConfig initialized');
+  console.log('[ServiceWorker] AgentConfig initialized');
 
   // Create agent instance with config (agent will initialize ModelClientFactory and ToolRegistry)
   agent = new BrowserxAgent(agentConfig!);

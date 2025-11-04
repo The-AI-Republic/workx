@@ -27,27 +27,32 @@
   let currentAuthMode: AuthMode | null = null;
 
   // T011: Model configuration state
+  // selectedModelId starts empty, will be loaded from AgentConfig in loadSettings()
   let selectedModelId = '';
   let configuredFeatures: ConfiguredFeatures = {};
   let modelValidationError = '';
 
   // T022, T023: Provider-aware API key display
   let currentProvider = 'openai';
+  let currentProviderName = 'OpenAI';
+  let currentProviderOrganization: string | null = null;
   let providerValidationWarning = '';
 
-  // T044: Provider status tracking
-  let configuredProviders: string[] = [];
-
-  // Model selection array with all info (modelId, modelName, providerId, providerName, apiKey)
+  // Model selection array - flattened view of all models from all providers
+  // Note: API keys are stored at PROVIDER level in AgentConfig, but cached here for UI convenience
+  // This allows one provider to have multiple models, and handles cases where the same
+  // model might be available from different providers (e.g., GPT-5 from OpenAI vs Azure)
   interface ModelSelectionItem {
     modelId: string;
     modelName: string;
     modelKey: string;
-    providerId: string;
+    providerId: string;      // Reference to provider
     providerName: string;
-    apiKey: string | null;
+    organization: string | null;  // Provider organization (e.g., 'OpenAI', 'Anthropic')
+    apiKey: string | null;   // Cached from provider for UI convenience
     contextWindow: number;
     maxOutputTokens: number;
+    baseUrl: string;
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
 
@@ -75,24 +80,31 @@
       isInitializing = true;
       console.log('[Settings] Creating isolated AgentConfig instance...');
 
-      // Create new AgentConfig instance (NOT using getInstance - we want isolation)
+      // Create new AgentConfig instance
       settingsConfig = new (AgentConfig as any)();
+
+      // Ensure initialization succeeded
+      if (!settingsConfig) {
+        throw new Error('Failed to initialize AgentConfig');
+      }
       await settingsConfig.initialize();
 
-      // Get current config
+      // Get current config - selectedModelId should come from AgentConfig
       const config = settingsConfig.getConfig();
       selectedModelId = config.selectedModelId;
 
-      console.log('[Settings] Loaded config, selectedModelId:', selectedModelId);
+      console.log('[Settings] Loaded selectedModelId from AgentConfig:', selectedModelId);
+      console.log('[Settings] Full config:', { selectedModelId: config.selectedModelId, providers: Object.keys(config.providers || {}) });
 
-      // Build model selection array with all info
+      // Build model selection array - flatten models from all providers
+      // Fetch API key from provider level and cache it in each model item for UI convenience
       modelSelectionItems = [];
       const providers = settingsConfig.getProviders();
 
       for (const [providerId, provider] of Object.entries(providers)) {
         if (!provider.models || !Array.isArray(provider.models)) continue;
 
-        // Get API key for this provider
+        // Get API key for this provider (stored at provider level)
         const providerApiKey = await settingsConfig.getProviderApiKey(providerId);
 
         for (const model of provider.models) {
@@ -102,31 +114,43 @@
             modelKey: model.modelKey,
             providerId: provider.id,
             providerName: provider.name,
-            apiKey: providerApiKey,
+            organization: provider.organization || null,  // Provider organization
+            apiKey: providerApiKey,  // Cached from provider for UI convenience
             contextWindow: model.contextWindow,
-            maxOutputTokens: model.maxOutputTokens
+            maxOutputTokens: model.maxOutputTokens,
+            baseUrl: provider.baseUrl || ''
           });
         }
       }
 
       console.log('[Settings] Built selection items:', modelSelectionItems.length, 'models');
 
-      // Validate selectedModelId
+      // Validate selectedModelId loaded from AgentConfig
       if (!selectedModelId || selectedModelId === '') {
+        console.warn('[Settings] selectedModelId from AgentConfig is empty or invalid');
         if (modelSelectionItems.length > 0) {
           selectedModelId = modelSelectionItems[0].modelId;
-          console.warn('[Settings] selectedModelId was empty, using first available:', selectedModelId);
+          console.warn('[Settings] Falling back to first available model:', selectedModelId);
+          // Save the fallback selection to AgentConfig for next time
+          await settingsConfig.setSelectedModel(selectedModelId);
         } else {
-          console.error('[Settings] No models available');
+          console.error('[Settings] No models available in configuration');
           showMessage('No models available. Please check configuration.', 'error');
           return;
         }
       }
 
-      // Load data for currently selected model
+      // Verify the selectedModelId from AgentConfig exists in available models
       const selectedItem = modelSelectionItems.find(item => item.modelId === selectedModelId);
       if (selectedItem) {
         currentProvider = selectedItem.providerId;
+        currentProviderName = selectedItem.providerName;
+        currentProviderOrganization = selectedItem.organization;  // Use cached organization
+
+        console.log('[Settings] Initial load - currentProvider:', currentProvider);
+        console.log('[Settings] Initial load - selectedItem:', { modelId: selectedItem.modelId, modelName: selectedItem.modelName, providerId: selectedItem.providerId });
+
+        // Use cached API key from selectedItem
         apiKey = selectedItem.apiKey || '';
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
         isAuthenticated = !!selectedItem.apiKey;
@@ -140,17 +164,42 @@
           maxOutputTokens: selectedItem.maxOutputTokens
         };
       } else {
-        console.warn('[Settings] Selected model not found:', selectedModelId);
-        currentProvider = 'openai';
-        apiKey = '';
-        maskedApiKey = '';
-        isAuthenticated = false;
-        currentAuthMode = null;
-        configuredFeatures = {};
+        // Model from AgentConfig not found in available models - fallback to first model
+        console.warn('[Settings] Model from AgentConfig not found in available models:', selectedModelId);
+        if (modelSelectionItems.length > 0) {
+          selectedModelId = modelSelectionItems[0].modelId;
+          console.warn('[Settings] Falling back to first available model:', selectedModelId);
+          await settingsConfig.setSelectedModel(selectedModelId);
+          
+          // Load data for fallback model
+          const fallbackItem = modelSelectionItems[0];
+          currentProvider = fallbackItem.providerId;
+          currentProviderName = fallbackItem.providerName;
+          currentProviderOrganization = fallbackItem.organization;
+          apiKey = fallbackItem.apiKey || '';
+          maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
+          isAuthenticated = !!fallbackItem.apiKey;
+          currentAuthMode = isAuthenticated ? AuthMode.ApiKey : null;
+          configuredFeatures = {
+            reasoningEffort: null,
+            reasoningSummary: undefined,
+            verbosity: null,
+            contextWindow: fallbackItem.contextWindow,
+            maxOutputTokens: fallbackItem.maxOutputTokens
+          };
+        } else {
+          // No models available at all
+          console.error('[Settings] No models available for fallback');
+          currentProvider = 'openai';
+          currentProviderName = 'OpenAI';
+          currentProviderOrganization = null;
+          apiKey = '';
+          maskedApiKey = '';
+          isAuthenticated = false;
+          currentAuthMode = null;
+          configuredFeatures = {};
+        }
       }
-
-      // Load configured providers (those with API keys)
-      configuredProviders = settingsConfig.getConfiguredProviders();
 
       console.log('[Settings] Loaded settings successfully');
     } catch (error) {
@@ -216,6 +265,8 @@
     try {
       isSaving = true;
       console.log('[Settings] Saving API key for provider:', currentProvider);
+      console.log('[Settings] Currently selected model:', selectedModelId);
+      console.log('[Settings] API key starts with:', apiKey.substring(0, 10) + '...');
 
       // Validate API key format using provider-aware validation
       const { validateApiKeyFormat } = await import('../config/validators');
@@ -234,7 +285,9 @@
         providerValidationWarning = '';
       }
 
-      // Save API key to storage
+      // Save API key to provider level in storage
+      // Note: This saves to the PROVIDER, not the individual model
+      // All models under this provider will use this API key
       await settingsConfig.setProviderApiKey(currentProvider, apiKey);
 
       // Update component state
@@ -242,17 +295,15 @@
       currentAuthMode = AuthMode.ApiKey;
       maskedApiKey = maskApiKey(apiKey);
 
-      // Update the selection item with the new API key
-      const itemIndex = modelSelectionItems.findIndex(
-        item => item.modelId === selectedModelId
-      );
-      if (itemIndex !== -1) {
-        modelSelectionItems[itemIndex].apiKey = apiKey;
+      // Update cached API key in ALL model items from this provider
+      // (since API key is stored at provider level, all models under it share the same key)
+      for (let i = 0; i < modelSelectionItems.length; i++) {
+        if (modelSelectionItems[i].providerId === currentProvider) {
+          modelSelectionItems[i].apiKey = apiKey;
+        }
       }
 
-      // Refresh configured providers list
-      configuredProviders = settingsConfig.getConfiguredProviders();
-
+      console.log('[Settings] API key saved to provider:', currentProvider);
       showMessage('API key saved successfully!', 'success');
 
       console.log('[Settings] API key saved, notifying agent to re-initialize');
@@ -279,7 +330,7 @@
   }
 
   /**
-   * Test API key connection
+   * Test API key connection using provider SDKs
    */
   async function testConnection() {
     if (!apiKey.trim()) {
@@ -287,85 +338,137 @@
       return;
     }
 
-    // Validate format based on current provider
-    const isValidFormat =
-      (apiKey.startsWith('sk-') && apiKey.length >= 40) ||
-      (apiKey.startsWith('sk-ant-') && apiKey.length >= 40) ||
-      (apiKey.startsWith('xai-') && apiKey.length >= 40);
-
-    if (!isValidFormat) {
-      showMessage('Invalid API key format. Expected format: ' +
-        (currentProvider === 'openai' ? 'sk-...' :
-         currentProvider === 'xai' ? 'xai-...' :
-         currentProvider === 'anthropic' ? 'sk-ant-...' : 'provider-specific'), 'error');
-      testResult = { valid: false, error: 'Invalid format' };
-      return;
-    }
-
     try {
       isTesting = true;
       testResult = null;
 
-      // Determine provider and endpoint
-      const isAnthropic = apiKey.startsWith('sk-ant-') || currentProvider === 'anthropic';
-      const isXAI = apiKey.startsWith('xai-') || currentProvider === 'xai';
+      const selectedItem = modelSelectionItems.find(
+        item => item.modelId === selectedModelId
+      );
 
-      let baseUrl: string;
-      if (isAnthropic) {
-        baseUrl = 'https://api.anthropic.com/v1/messages';
-      } else if (isXAI) {
-        baseUrl = 'https://api.x.ai/v1/chat/completions';
-      } else {
-        baseUrl = 'https://api.openai.com/v1/chat/completions';
+      if (!selectedItem) {
+        console.error('[Settings] No matching model for selectedModelId:', selectedModelId);
+        testResult = { valid: false, error: 'Selected model configuration missing' };
+        showMessage('Connection failed: selected model configuration missing', 'error');
+        return;
       }
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
+      const providerId = selectedItem.providerId;
+      const modelKey = selectedItem.modelKey ?? selectedItem.modelId;
+      const baseUrl = selectedItem.baseUrl;
+      const organization = selectedItem.organization;
 
-      if (isAnthropic) {
-        headers['x-api-key'] = apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-      } else {
-        headers['Authorization'] = `Bearer ${apiKey}`;
+      if (!baseUrl) {
+        testResult = { valid: false, error: 'Base URL not configured for this provider' };
+        showMessage('Connection failed: Base URL not configured', 'error');
+        return;
       }
 
-      // Make a minimal test request using the currently selected model
-      const testRequest: any = isAnthropic ? {
-        model: selectedModel,
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'test' }]
-      } : {
-        model: selectedModel,
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'test' }]
-      };
+      console.log('[Settings] Testing connection for provider:', providerId);
 
-      const response = await fetch(baseUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(testRequest)
-      });
-
-      if (response.ok || response.status === 400) {
-        // 400 is OK for test - means auth worked but request was invalid
-        testResult = { valid: true };
-        showMessage('Connection test successful!', 'success');
-      } else if (response.status === 401) {
-        testResult = { valid: false, error: 'Invalid API key' };
-        showMessage('Connection test failed: Invalid API key', 'error');
+      // Use provider-specific testing method
+      if (providerId === 'anthropic') {
+        await testAnthropicConnection(baseUrl, modelKey);
       } else {
-        testResult = { valid: false, error: `API error: ${response.status}` };
-        showMessage(`Connection test failed: API error ${response.status}`, 'error');
+        // OpenAI, xAI, and other OpenAI-compatible providers
+        await testOpenAICompatibleConnection(baseUrl, modelKey, organization);
       }
 
     } catch (error) {
-      console.error('Failed to test API key:', error);
+      console.error('[Settings] Failed to test API key:', error);
       const errorMsg = error instanceof Error ? error.message : 'Network error';
       testResult = { valid: false, error: errorMsg };
       showMessage('Failed to test connection', 'error');
     } finally {
       isTesting = false;
+    }
+  }
+
+  /**
+   * Test Anthropic API connection (using fetch since no SDK installed)
+   */
+  async function testAnthropicConnection(baseUrl: string, modelKey: string) {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    };
+
+    const testRequest = {
+      model: modelKey,
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'test' }]
+    };
+
+    const response = await fetch(baseUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(testRequest)
+    });
+
+    if (response.ok || response.status === 400) {
+      // 400 is OK for test - means auth worked but request was invalid
+      testResult = { valid: true };
+      showMessage('Connection test successful!', 'success');
+    } else if (response.status === 401) {
+      testResult = { valid: false, error: 'Invalid API key' };
+      showMessage('Connection test failed: Invalid API key', 'error');
+    } else {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      testResult = { valid: false, error: `API error: ${response.status}` };
+      showMessage(`Connection test failed: API error ${response.status}`, 'error');
+      console.error('[Settings] Anthropic API error:', errorText);
+    }
+  }
+
+  /**
+   * Test OpenAI-compatible API connection (OpenAI, xAI, etc.) using OpenAI SDK
+   */
+  async function testOpenAICompatibleConnection(baseUrl: string, modelKey: string, organization: string | null) {
+    // Dynamically import OpenAI SDK
+    const { default: OpenAI } = await import('openai');
+
+    // Create OpenAI client with provider-specific configuration
+    const client = new OpenAI({
+      apiKey: apiKey,
+      baseURL: baseUrl,
+      organization: organization || undefined,
+      timeout: 30000, // 30 seconds for test
+      maxRetries: 0, // No retries for test
+      dangerouslyAllowBrowser: true // Allow in browser context
+    });
+
+    try {
+      // Make a minimal test request
+      const response = await client.chat.completions.create({
+        model: modelKey,
+        messages: [{ role: 'user', content: 'test' }],
+        max_tokens: 1,
+      });
+
+      // If we got a response, the API key is valid
+      console.log('[Settings] OpenAI-compatible API test successful:', response.id);
+      testResult = { valid: true };
+      showMessage('Connection test successful!', 'success');
+    } catch (error: any) {
+      console.error('[Settings] OpenAI-compatible API test failed:', error);
+
+      // Parse OpenAI SDK error
+      if (error?.status === 401 || error?.code === 'invalid_api_key') {
+        testResult = { valid: false, error: 'Invalid API key' };
+        showMessage('Connection test failed: Invalid API key', 'error');
+      } else if (error?.status === 400) {
+        // 400 with SDK usually means request issue but auth worked
+        testResult = { valid: true };
+        showMessage('Connection test successful! (API key is valid)', 'success');
+      } else if (error?.status) {
+        testResult = { valid: false, error: `API error: ${error.status}` };
+        showMessage(`Connection test failed: API error ${error.status}`, 'error');
+      } else {
+        const errorMsg = error?.message || 'Network error';
+        testResult = { valid: false, error: errorMsg };
+        showMessage(`Connection test failed: ${errorMsg}`, 'error');
+      }
     }
   }
 
@@ -391,7 +494,8 @@
       isClearingAuth = true;
       console.log('[Settings] Clearing API key for provider:', currentProvider);
 
-      // Delete provider-specific API key
+      // Delete provider-level API key from storage
+      // Note: This removes the key from the PROVIDER, affecting all models under this provider
       await settingsConfig.deleteProviderApiKey(currentProvider);
 
       // Reset component state
@@ -401,17 +505,14 @@
       currentAuthMode = null;
       testResult = null;
 
-      // Update the selection item to reflect removed API key
-      const itemIndex = modelSelectionItems.findIndex(
-        item => item.providerId === currentProvider
-      );
-      if (itemIndex !== -1) {
-        modelSelectionItems[itemIndex].apiKey = null;
+      // Clear cached API key in ALL model items from this provider
+      for (let i = 0; i < modelSelectionItems.length; i++) {
+        if (modelSelectionItems[i].providerId === currentProvider) {
+          modelSelectionItems[i].apiKey = null;
+        }
       }
 
-      // Update configured providers list
-      configuredProviders = settingsConfig.getConfiguredProviders();
-
+      console.log('[Settings] Cleared API key from provider:', currentProvider);
       showMessage(`${providerName} API key removed successfully`, 'info');
 
       // Send message to service worker to reload config and recreate BrowserxAgent
@@ -508,29 +609,20 @@
         throw new Error('Model not found in selection items');
       }
 
-      // Update selectedModelId IMMEDIATELY for instant UI feedback
-      // Create new reference to trigger Svelte reactivity
+      // Update ALL UI state IMMEDIATELY for instant feedback
+      // This ensures dropdown, provider section, API key field, and features all stay in sync
       selectedModelId = modelId;
-      modelSelectionItems = [...modelSelectionItems];
-
-      // Check if there's an active conversation
-      const conversationActive = await isConversationActive();
-      if (conversationActive) {
-        showMessage('Cannot change model during an active conversation. Please end the conversation first.', 'error');
-        // Revert the UI change
-        await loadSettings();
-        isModelSwitching = false;
-        return;
-      }
-
-      // 3.1: Load the related API key to the API key field
-      // (empty if not available, no error)
       currentProvider = selectedItem.providerId;
+      currentProviderName = selectedItem.providerName;
+      currentProviderOrganization = selectedItem.organization;
+      
+      // Load the API key for this provider from the cache (already fetched in loadSettings)
       apiKey = selectedItem.apiKey || '';
       maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
       isAuthenticated = !!selectedItem.apiKey;
       currentAuthMode = isAuthenticated ? AuthMode.ApiKey : null;
-
+      
+      // Update model features
       configuredFeatures = {
         reasoningEffort: null,
         reasoningSummary: undefined,
@@ -539,8 +631,27 @@
         maxOutputTokens: selectedItem.maxOutputTokens
       };
 
+      // Clear validation errors and previous test results
       modelValidationError = '';
       providerValidationWarning = '';
+      testResult = null;
+      clearMessage();
+      
+      modelSelectionItems = [...modelSelectionItems];
+
+      console.log('[Settings] Model changed - Summary:');
+      console.log('  - Selected model:', selectedModelId, selectedItem.modelName);
+      console.log('  - Provider:', currentProvider, currentProviderName);
+      console.log('  - Organization:', currentProviderOrganization);
+      console.log('  - API key from cache:', selectedItem.apiKey ? `${selectedItem.apiKey.substring(0, 10)}... (${selectedItem.apiKey.length} chars)` : 'NONE');
+      console.log('  - apiKey variable set to:', apiKey ? `${apiKey.substring(0, 10)}... (${apiKey.length} chars)` : 'EMPTY STRING');
+      console.log('  - maskedApiKey set to:', maskedApiKey);
+      console.log('  - isAuthenticated:', isAuthenticated);
+
+      // Check if there's an active conversation to show appropriate warning
+      const conversationActive = await isConversationActive();
+
+      // 3.1: All UI state already updated above for instant feedback
 
       // 3.2: Save model selection to storage WITHOUT updating API key
       // We only update selectedModelId, not the provider API keys
@@ -553,14 +664,31 @@
         console.error('[Settings] Failed to notify agent of config update:', err);
       });
 
-      const message = apiKey
-        ? `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`
-        : `Model changed to ${selectedItem.modelName}. Please configure your ${selectedItem.providerName} API key below.`;
+      // Show appropriate message based on conversation state and API key availability
+      let message: string;
+      let messageType: 'success' | 'info' | 'error';
 
-      showMessage(message, apiKey ? 'success' : 'info');
+      if (conversationActive) {
+        // Active conversation - warn about clearing
+        if (apiKey) {
+          message = `Model changed to ${selectedItem.modelName}. The current conversation will be cleared and session will be reinitialized.`;
+          messageType = 'info';
+        } else {
+          message = `Model changed to ${selectedItem.modelName}. The current conversation will be cleared. Please configure your ${selectedItem.providerName} API key below.`;
+          messageType = 'info';
+        }
+      } else {
+        // No active conversation
+        if (apiKey) {
+          message = `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`;
+          messageType = 'success';
+        } else {
+          message = `Model changed to ${selectedItem.modelName}. Please configure your ${selectedItem.providerName} API key below.`;
+          messageType = 'info';
+        }
+      }
 
-      // Update configured providers list
-      configuredProviders = settingsConfig.getConfiguredProviders();
+      showMessage(message, messageType);
     } catch (error) {
       console.error('[Settings] Failed to change model:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -624,22 +752,19 @@
           </div>
         {/if}
 
-        <!-- T044: Provider status indicators -->
-        {#if configuredProviders.length > 0}
-          <div class="provider-status-container">
-            <div class="provider-status-label">Configured Providers:</div>
-            <div class="provider-badges">
-              {#each configuredProviders as providerId}
-                <span class="provider-badge" class:active={providerId === currentProvider}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="12" cy="12" r="10"></circle>
-                  </svg>
-                  {providerId === 'openai' ? 'OpenAI' : providerId === 'xai' ? 'xAI' : providerId === 'anthropic' ? 'Anthropic' : providerId}
-                </span>
-              {/each}
-            </div>
+        <!-- Provider Information -->
+        <div class="provider-info-container">
+          <div class="provider-info-row">
+            <span class="provider-info-label">Provider:</span>
+            <span class="provider-info-value">{currentProviderName}</span>
           </div>
-        {/if}
+          {#if currentProviderOrganization}
+            <div class="provider-info-row">
+              <span class="provider-info-label">Organization:</span>
+              <span class="provider-info-value">{currentProviderOrganization}</span>
+            </div>
+          {/if}
+        </div>
       </div>
     </div>
 
@@ -1133,8 +1258,8 @@
     line-height: 1.5;
   }
 
-  /* T044: Provider status indicators */
-  .provider-status-container {
+  /* Provider Information */
+  .provider-info-container {
     margin-top: 1rem;
     padding: 0.75rem;
     background: var(--browserx-surface);
@@ -1142,44 +1267,26 @@
     border-radius: 0.5rem;
   }
 
-  .provider-status-label {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--browserx-text-secondary);
-    margin-bottom: 0.5rem;
-  }
-
-  .provider-badges {
+  .provider-info-row {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .provider-badge {
-    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.75rem;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    border-radius: 9999px;
-    font-size: 0.75rem;
+    padding: 0.375rem 0;
+  }
+
+  .provider-info-row:not(:last-child) {
+    border-bottom: 1px solid var(--browserx-border);
+  }
+
+  .provider-info-label {
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--browserx-text-secondary);
-    transition: all 0.2s;
   }
 
-  .provider-badge svg {
-    color: #10b981;
-  }
-
-  .provider-badge.active {
-    border-color: var(--browserx-primary);
-    color: var(--browserx-primary);
-    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
-  }
-
-  .provider-badge.active svg {
-    color: var(--browserx-primary);
+  .provider-info-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--browserx-text);
   }
 </style>
