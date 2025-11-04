@@ -1,658 +1,757 @@
 /**
- * Storage Tool
+ * Storage Tool - LLM Runtime Data Cache
  *
- * Provides Chrome storage API capabilities including local, session, and sync storage.
- * Handles get/set/remove operations, storage quota management, and data migration.
+ * Enables LLMs to cache intermediate results during complex multi-step operations.
+ * Provides session-scoped caching with metadata-first responses to optimize context usage.
+ *
+ * Feature: 011-storage-cache
+ * Refactored: Complete replacement of Chrome Storage API with IndexedDB-based cache
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
+import { BaseTool, type BaseToolRequest, type BaseToolOptions } from './BaseTool';
+import { SessionCacheManager } from '../storage/SessionCacheManager';
+import { IndexedDBAdapter } from '../storage/IndexedDBAdapter';
+import {
+  QuotaExceededError as SessionQuotaExceededError,
+  DataTooLargeError as SessionDataTooLargeError,
+  ItemNotFoundError as SessionItemNotFoundError,
+  CorruptedDataError as SessionCorruptedDataError,
+  CACHE_CONSTANTS
+} from '../storage/SessionCacheManager';
+
+// ============================================================================
+// Cache Tool API Types (Tool Definition Data Structures)
+// ============================================================================
 
 /**
- * Storage tool request interface
+ * Base request for all StorageTool cache operations
  */
-export interface StorageToolRequest extends BaseToolRequest {
-  action: 'get' | 'set' | 'remove' | 'clear' | 'keys' | 'getBytesInUse' | 'migrate' | 'sync';
-  storageType: 'local' | 'session' | 'sync' | 'managed';
-  key?: string;
-  keys?: string[];
-  value?: any;
-  data?: Record<string, any>;
-  options?: StorageOptions;
+export interface CacheToolRequest {
+  /** The cache operation to perform */
+  action: 'write' | 'read' | 'list' | 'delete' | 'update';
+
+  /** Session ID (auto-extracted from context if not provided) */
+  sessionId?: string;
+
+  /** Task ID (auto-generated if not provided) */
+  taskId?: string;
+
+  /** Turn ID (auto-generated if not provided) */
+  turnId?: string;
 }
 
 /**
- * Storage operation options
+ * Write operation request - store new cached item
  */
-export interface StorageOptions {
-  timeout?: number;
-  retryCount?: number;
-  compress?: boolean;
-  encrypt?: boolean;
-  ttl?: number; // Time to live in milliseconds
-  namespace?: string;
-  syncPriority?: 'low' | 'normal' | 'high';
+export interface CacheWriteRequest extends CacheToolRequest {
+  action: 'write';
+
+  /** The data to cache (any JSON-serializable value) */
+  data: any;
+
+  /** Human-readable description for LLM reasoning (max 500 chars) */
+  description: string;
+
+  /** Optional custom metadata for LLM annotations */
+  customMetadata?: Record<string, any>;
 }
 
 /**
- * Storage tool response data
+ * Read operation request - retrieve cached item by key
  */
-export interface StorageToolResponse {
-  value?: any;
-  values?: Record<string, any>;
-  keys?: string[];
-  bytesInUse?: number;
-  success?: boolean;
-  migrated?: number;
-  synced?: number;
-  quota?: StorageQuota;
+export interface CacheReadRequest extends CacheToolRequest {
+  action: 'read';
+
+  /** Storage key of item to retrieve */
+  storageKey: string;
 }
 
 /**
- * Storage quota information
+ * List operation request - get all cached items metadata for session
  */
-export interface StorageQuota {
-  available: number;
-  used: number;
-  total: number;
-  percentage: number;
+export interface CacheListRequest extends CacheToolRequest {
+  action: 'list';
+
+  /** Optional session ID filter (defaults to current session) */
+  sessionId?: string;
 }
 
 /**
- * Storage entry with metadata
+ * Delete operation request - remove cached item by key
  */
-interface StorageEntry {
-  value: any;
+export interface CacheDeleteRequest extends CacheToolRequest {
+  action: 'delete';
+
+  /** Storage key of item to delete */
+  storageKey: string;
+}
+
+/**
+ * Update operation request - modify existing cached item
+ */
+export interface CacheUpdateRequest extends CacheToolRequest {
+  action: 'update';
+
+  /** Storage key of item to update */
+  storageKey: string;
+
+  /** New data (replaces existing data) */
+  data: any;
+
+  /** New description (replaces existing description) */
+  description: string;
+
+  /** Optional custom metadata (replaces existing metadata) */
+  customMetadata?: Record<string, any>;
+}
+
+/**
+ * Lightweight metadata returned to LLM (not full data)
+ * Designed to stay under 700 bytes for context efficiency
+ */
+export interface CacheMetadata {
+  /** Composite storage key */
+  storageKey: string;
+
+  /** Human-readable description */
+  description: string;
+
+  /** Timestamp when created/updated (Unix ms) */
   timestamp: number;
-  ttl?: number;
-  namespace?: string;
-  version?: number;
+
+  /** Serialized size of data field (bytes) */
+  dataSize: number;
+
+  /** Session identifier */
+  sessionId: string;
+
+  /** Task identifier */
+  taskId: string;
+
+  /** Turn identifier */
+  turnId: string;
 }
+
+/**
+ * Full cached item (includes data payload)
+ * Only returned on explicit read operations
+ */
+export interface CachedItem extends CacheMetadata {
+  /** The actual cached data (JSON-serializable) */
+  data: any;
+
+  /** Optional custom metadata */
+  customMetadata?: Record<string, any>;
+}
+
+/**
+ * Response for write operations
+ * Returns only metadata to keep LLM context efficient
+ */
+export interface CacheWriteResponse {
+  success: true;
+  metadata: CacheMetadata;
+  message: string; // Human-readable confirmation
+}
+
+/**
+ * Response for read operations
+ * Returns full item with data payload
+ */
+export interface CacheReadResponse {
+  success: true;
+  item: CachedItem;
+}
+
+/**
+ * Response for list operations
+ * Returns array of metadata (not full data)
+ */
+export interface CacheListResponse {
+  success: true;
+  items: CacheMetadata[];
+  totalCount: number;
+  totalSize: number; // Total bytes across all items
+  sessionQuotaUsed: number; // Bytes used out of 200MB quota
+  sessionQuotaRemaining: number; // Bytes remaining
+}
+
+/**
+ * Response for delete operations
+ */
+export interface CacheDeleteResponse {
+  success: true;
+  storageKey: string;
+  message: string;
+}
+
+/**
+ * Response for update operations
+ * Returns updated metadata
+ */
+export interface CacheUpdateResponse {
+  success: true;
+  metadata: CacheMetadata;
+  message: string;
+}
+
+/**
+ * Specific error types for different failure scenarios
+ */
+export enum CacheErrorType {
+  QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
+  ITEM_NOT_FOUND = 'ITEM_NOT_FOUND',
+  STORAGE_UNAVAILABLE = 'STORAGE_UNAVAILABLE',
+  DATA_TOO_LARGE = 'DATA_TOO_LARGE',
+  CORRUPTED_DATA = 'CORRUPTED_DATA',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+}
+
+/**
+ * Base error for all cache operations
+ */
+export interface CacheError {
+  success: false;
+  error: string;
+  errorType: CacheErrorType;
+  message: string; // Actionable guidance for LLM
+  details?: any;
+}
+
+/**
+ * Quota exceeded error (session over 200MB limit)
+ */
+export interface QuotaExceededError extends CacheError {
+  errorType: CacheErrorType.QUOTA_EXCEEDED;
+  currentSize: number;
+  attemptedSize: number;
+  quotaLimit: number;
+}
+
+/**
+ * Item not found error (invalid storage key)
+ */
+export interface ItemNotFoundError extends CacheError {
+  errorType: CacheErrorType.ITEM_NOT_FOUND;
+  storageKey: string;
+}
+
+/**
+ * Storage unavailable error (IndexedDB disabled/blocked)
+ */
+export interface StorageUnavailableError extends CacheError {
+  errorType: CacheErrorType.STORAGE_UNAVAILABLE;
+  reason: string;
+}
+
+/**
+ * Data too large error (single item exceeds 5MB)
+ */
+export interface DataTooLargeError extends CacheError {
+  errorType: CacheErrorType.DATA_TOO_LARGE;
+  dataSize: number;
+  maxSize: number;
+}
+
+/**
+ * Union type for all cache errors
+ */
+export type CacheErrorResponse =
+  | QuotaExceededError
+  | ItemNotFoundError
+  | StorageUnavailableError
+  | DataTooLargeError
+  | CacheError;
+
+/**
+ * Tool definition for BaseTool integration
+ * This is the schema passed to the LLM for tool discovery
+ */
+export const CACHE_TOOL_DEFINITION = {
+  name: 'cache_storage_tool',
+  description: 'Cache intermediate results during complex multi-step operations to avoid context overflow. Store processed data with concise metadata (max 500 chars), retrieve selectively, and manage session-scoped cache lifecycle. Session quota: 200MB. Auto-evicts oldest 50% when quota reached. USAGE: For write/update - MUST provide both "data" and "description" fields. For read/delete - MUST provide "storageKey". For list - only "action" needed.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'Cache operation to perform: "write" (store new data - requires data + description), "read" (retrieve data - requires storageKey), "list" (show all cached items), "delete" (remove item - requires storageKey), "update" (modify existing - requires storageKey + data + description)',
+        enum: ['write', 'read', 'list', 'delete', 'update']
+      },
+      data: {
+        type: 'object',
+        description: '**REQUIRED for write/update operations** - The actual data to cache. Despite type="object", you can pass ANY JSON-serializable value: object {key: "value"}, array [1,2,3], string, number, or boolean. The tool accepts all types. Max 5MB. Example: {emailSummary: "Temu promo", sender: "Temu", importance: "low"}'
+      },
+      description: {
+        type: 'string',
+        description: '**REQUIRED for write/update operations** - Human-readable description (max 500 chars) explaining what this cached data contains. Focus on: what it is, why cached, approximate size. Example: "Email summary from Temu: promo for toy purchase, low importance, ~200 bytes"',
+        maxLength: 500
+      },
+      storageKey: {
+        type: 'string',
+        description: '**REQUIRED for read/delete/update operations** - The unique storage key returned from a previous write operation. Format: sessionId_taskId_turnId. Use "list" action first to see available keys.'
+      },
+      customMetadata: {
+        type: 'object',
+        description: 'Optional custom metadata for additional annotations (advanced use only)'
+      },
+      sessionId: {
+        type: 'string',
+        description: 'Session ID (auto-detected, usually do not provide)'
+      },
+      taskId: {
+        type: 'string',
+        description: 'Task ID (auto-generated, usually do not provide)'
+      },
+      turnId: {
+        type: 'string',
+        description: 'Turn ID (auto-generated, usually do not provide)'
+      }
+    },
+    required: ['action']
+  }
+} as const;
+
+/**
+ * Storage Tool Request Interface
+ * Extends BaseToolRequest with cache-specific fields
+ */
+export interface StorageToolRequest extends BaseToolRequest, CacheToolRequest {}
+
+/**
+ * Storage Tool Response
+ * Union of all possible cache responses
+ */
+export type StorageToolResponse =
+  | CacheWriteResponse
+  | CacheReadResponse
+  | CacheListResponse
+  | CacheDeleteResponse
+  | CacheUpdateResponse
+  | CacheErrorResponse;
 
 /**
  * Storage Tool Implementation
  *
- * Provides comprehensive Chrome storage management with support for
- * local, session, sync, and managed storage areas.
+ * Provides LLM-optimized caching with:
+ * - Session-scoped isolation (200MB quota per session)
+ * - Metadata-first responses (<700 bytes)
+ * - Auto-eviction (oldest 50% when quota reached)
+ * - Global 5GB quota across all sessions
  */
 export class StorageTool extends BaseTool {
-  protected toolDefinition: ToolDefinition = createToolDefinition(
-    'browser_storage',
-    'Manage Chrome storage - get, set, remove, clear data across local, session, sync, and managed storage',
-    {
-      action: {
-        type: 'string',
-        description: 'The storage action to perform',
-        enum: ['get', 'set', 'remove', 'clear', 'keys', 'getBytesInUse', 'migrate', 'sync'],
-      },
-      storageType: {
-        type: 'string',
-        description: 'Type of storage to use',
-        enum: ['local', 'session', 'sync', 'managed'],
-      },
-      key: {
-        type: 'string',
-        description: 'Storage key for single-key operations',
-      },
-      keys: {
-        type: 'array',
-        description: 'Array of storage keys for multi-key operations',
-        items: { type: 'string' },
-      },
-      value: {
-        type: 'string',
-        description: 'Value to store (will be JSON serialized)',
-      },
-      data: {
-        type: 'object',
-        description: 'Object with key-value pairs for batch operations',
-      },
-      options: {
-        type: 'object',
-        description: 'Additional options for storage operations',
-        properties: {
-          timeout: { type: 'number', description: 'Operation timeout (ms)', default: 5000 },
-          retryCount: { type: 'number', description: 'Number of retry attempts', default: 3 },
-          compress: { type: 'boolean', description: 'Compress data before storage', default: false },
-          encrypt: { type: 'boolean', description: 'Encrypt sensitive data', default: false },
-          ttl: { type: 'number', description: 'Time to live (ms)' },
-          namespace: { type: 'string', description: 'Storage namespace for key isolation' },
-          syncPriority: { type: 'string', enum: ['low', 'normal', 'high'], description: 'Sync priority for sync storage' },
-        },
-      },
-    },
-    {
-      required: ['action', 'storageType'],
-      category: 'storage',
-      version: '1.0.0',
+  private cacheManager: SessionCacheManager;
+
+  constructor(dbAdapter?: IndexedDBAdapter) {
+    super();
+    this.cacheManager = new SessionCacheManager(dbAdapter);
+  }
+
+  /**
+   * Tool definition for LLM discovery
+   * Uses the contract-defined CACHE_TOOL_DEFINITION
+   */
+  protected toolDefinition = {
+    type: 'function' as const,
+    function: {
+      name: CACHE_TOOL_DEFINITION.name,
+      description: CACHE_TOOL_DEFINITION.description,
+      strict: false,
+      parameters: CACHE_TOOL_DEFINITION.inputSchema as any
+    }
+  };
+
+  /**
+   * Override execute to inject action into metadata
+   */
+  async execute(request: BaseToolRequest, options?: BaseToolOptions): Promise<any> {
+    const typedRequest = request as StorageToolRequest;
+
+    // Inject action into metadata so it's available in the response
+    const enrichedOptions = {
+      ...options,
       metadata: {
-        capabilities: ['storage_management', 'data_persistence', 'quota_management'],
-        permissions: ['storage'],
+        ...options?.metadata,
+        action: typedRequest.action,
       },
-    }
-  );
+    };
 
-  /**
-   * Execute storage tool action
-   */
-  protected async executeImpl(request: StorageToolRequest, options?: BaseToolOptions): Promise<StorageToolResponse> {
-    // Validate Chrome context
-    this.validateChromeContext();
-
-    // Validate required permissions
-    await this.validatePermissions(['storage']);
-
-    this.log('debug', `Executing storage action: ${request.action}`, request);
-
-    const storageArea = this.getStorageArea(request.storageType);
-
-    switch (request.action) {
-      case 'get':
-        return this.getValue(storageArea, request);
-
-      case 'set':
-        return this.setValue(storageArea, request);
-
-      case 'remove':
-        return this.removeValue(storageArea, request);
-
-      case 'clear':
-        return this.clearStorage(storageArea, request);
-
-      case 'keys':
-        return this.getKeys(storageArea, request);
-
-      case 'getBytesInUse':
-        return this.getBytesInUse(storageArea, request);
-
-      case 'migrate':
-        return this.migrateData(request);
-
-      case 'sync':
-        return this.syncData(request);
-
-      default:
-        throw new Error(`Unsupported storage action: ${request.action}`);
-    }
+    return super.execute(request, enrichedOptions);
   }
 
   /**
-   * Get value(s) from storage
+   * Override parameter validation to allow any JSON-serializable data
+   * BaseTool's default validation is too strict for the 'data' field
    */
-  private async getValue(storageArea: chrome.storage.StorageArea, request: StorageToolRequest): Promise<StorageToolResponse> {
-    try {
-      let keys: string | string[] | null = null;
-
-      if (request.key) {
-        keys = this.namespaceKey(request.key, request.options?.namespace);
-      } else if (request.keys) {
-        keys = request.keys.map(k => this.namespaceKey(k, request.options?.namespace));
-      }
-
-      const result = await this.executeWithTimeout(
-        () => storageArea.get(keys),
-        request.options?.timeout || 5000
-      );
-
-      // Process results with TTL and namespace handling
-      const processedResult = this.processStorageResult(result, request.options?.namespace);
-
-      // Handle single key vs multiple keys
-      if (request.key) {
-        const value = processedResult[request.key];
-        return { value };
-      } else {
-        return { values: processedResult };
-      }
-    } catch (error) {
-      throw new Error(`Failed to get storage value: ${error}`);
+  protected validateParameters(parameters: Record<string, any>): { valid: boolean; errors: any[] } {
+    // Minimal validation - just check that action is present
+    if (!parameters.action) {
+      return {
+        valid: false,
+        errors: [{
+          parameter: 'action',
+          message: 'action parameter is required',
+          code: 'REQUIRED_PARAMETER'
+        }]
+      };
     }
+
+    return { valid: true, errors: [] };
   }
 
   /**
-   * Set value(s) in storage
+   * Initialize the cache manager
+   * Should be called once on startup
    */
-  private async setValue(storageArea: chrome.storage.StorageArea, request: StorageToolRequest): Promise<StorageToolResponse> {
-    try {
-      let dataToSet: Record<string, any> = {};
-
-      if (request.key && request.value !== undefined) {
-        const entry = this.createStorageEntry(request.value, request.options);
-        const namespacedKey = this.namespaceKey(request.key, request.options?.namespace);
-        dataToSet[namespacedKey] = entry;
-      } else if (request.data) {
-        for (const [key, value] of Object.entries(request.data)) {
-          const entry = this.createStorageEntry(value, request.options);
-          const namespacedKey = this.namespaceKey(key, request.options?.namespace);
-          dataToSet[namespacedKey] = entry;
-        }
-      } else {
-        throw new Error('Either key+value or data object is required for set action');
-      }
-
-      // Check quota before setting (for local and sync storage)
-      if (request.storageType === 'local' || request.storageType === 'sync') {
-        await this.checkQuotaBeforeSet(storageArea, dataToSet);
-      }
-
-      await this.executeWithTimeout(
-        () => storageArea.set(dataToSet),
-        request.options?.timeout || 5000
-      );
-
-      this.log('info', `Set ${Object.keys(dataToSet).length} storage item(s)`, {
-        storageType: request.storageType,
-        keys: Object.keys(dataToSet),
-      });
-
-      return { success: true };
-    } catch (error) {
-      throw new Error(`Failed to set storage value: ${error}`);
-    }
+  async initialize(): Promise<void> {
+    await this.cacheManager.initialize();
   }
 
   /**
-   * Remove value(s) from storage
+   * Close the cache manager
+   * Should be called on cleanup
    */
-  private async removeValue(storageArea: chrome.storage.StorageArea, request: StorageToolRequest): Promise<StorageToolResponse> {
-    try {
-      let keysToRemove: string | string[];
-
-      if (request.key) {
-        keysToRemove = this.namespaceKey(request.key, request.options?.namespace);
-      } else if (request.keys) {
-        keysToRemove = request.keys.map(k => this.namespaceKey(k, request.options?.namespace));
-      } else {
-        throw new Error('Either key or keys is required for remove action');
-      }
-
-      await this.executeWithTimeout(
-        () => storageArea.remove(keysToRemove),
-        request.options?.timeout || 5000
-      );
-
-      const removedCount = Array.isArray(keysToRemove) ? keysToRemove.length : 1;
-      this.log('info', `Removed ${removedCount} storage item(s)`, {
-        storageType: request.storageType,
-        keys: keysToRemove,
-      });
-
-      return { success: true };
-    } catch (error) {
-      throw new Error(`Failed to remove storage value: ${error}`);
-    }
+  async close(): Promise<void> {
+    await this.cacheManager.close();
   }
 
-  /**
-   * Clear all storage
-   */
-  private async clearStorage(storageArea: chrome.storage.StorageArea, request: StorageToolRequest): Promise<StorageToolResponse> {
-    try {
-      if (request.options?.namespace) {
-        // Clear only namespaced items
-        const allItems = await storageArea.get(null);
-        const namespacedKeys: string[] = [];
-        const prefix = `${request.options.namespace}:`;
-
-        for (const key of Object.keys(allItems)) {
-          if (key.startsWith(prefix)) {
-            namespacedKeys.push(key);
-          }
-        }
-
-        if (namespacedKeys.length > 0) {
-          await storageArea.remove(namespacedKeys);
-        }
-
-        this.log('info', `Cleared ${namespacedKeys.length} namespaced storage item(s)`, {
-          storageType: request.storageType,
-          namespace: request.options.namespace,
-        });
-      } else {
-        // Clear entire storage area
-        await this.executeWithTimeout(
-          () => storageArea.clear(),
-          request.options?.timeout || 5000
-        );
-
-        this.log('info', `Cleared all ${request.storageType} storage`, {
-          storageType: request.storageType,
-        });
-      }
-
-      return { success: true };
-    } catch (error) {
-      throw new Error(`Failed to clear storage: ${error}`);
-    }
-  }
+  // ============================================================================
+  // Cache Operation Execution
+  // ============================================================================
 
   /**
-   * Get all keys from storage
+   * Execute cache operation
+   * Routes to appropriate handler based on action
    */
-  private async getKeys(storageArea: chrome.storage.StorageArea, request: StorageToolRequest): Promise<StorageToolResponse> {
+  protected async executeImpl(
+    request: StorageToolRequest,
+    options?: BaseToolOptions
+  ): Promise<StorageToolResponse> {
     try {
-      const allItems = await this.executeWithTimeout(
-        () => storageArea.get(null),
-        request.options?.timeout || 5000
-      );
-
-      let keys = Object.keys(allItems);
-
-      // Filter by namespace if specified
-      if (request.options?.namespace) {
-        const prefix = `${request.options.namespace}:`;
-        keys = keys
-          .filter(key => key.startsWith(prefix))
-          .map(key => key.substring(prefix.length));
-      }
-
-      return { keys };
-    } catch (error) {
-      throw new Error(`Failed to get storage keys: ${error}`);
-    }
-  }
-
-  /**
-   * Get bytes in use for storage
-   */
-  private async getBytesInUse(storageArea: chrome.storage.StorageArea, request: StorageToolRequest): Promise<StorageToolResponse> {
-    try {
-      let keys: string | string[] | null = null;
-
-      if (request.key) {
-        keys = this.namespaceKey(request.key, request.options?.namespace);
-      } else if (request.keys) {
-        keys = request.keys.map(k => this.namespaceKey(k, request.options?.namespace));
-      }
-
-      const bytesInUse = await this.executeWithTimeout(
-        () => storageArea.getBytesInUse(keys),
-        request.options?.timeout || 5000
-      );
-
-      // Get quota information
-      const quota = await this.getQuotaInfo(request.storageType, bytesInUse);
-
-      return { bytesInUse, quota };
-    } catch (error) {
-      throw new Error(`Failed to get bytes in use: ${error}`);
-    }
-  }
-
-  /**
-   * Migrate data between storage types
-   */
-  private async migrateData(request: StorageToolRequest): Promise<StorageToolResponse> {
-    if (!request.data || !request.data.fromType || !request.data.toType) {
-      throw new Error('Migration requires fromType and toType in data object');
-    }
-
-    try {
-      const fromStorage = this.getStorageArea(request.data.fromType);
-      const toStorage = this.getStorageArea(request.data.toType);
-
-      // Get all data from source storage
-      const sourceData = await fromStorage.get(null);
-
-      // Filter keys if specified
-      let keysToMigrate = Object.keys(sourceData);
-      if (request.keys && request.keys.length > 0) {
-        keysToMigrate = keysToMigrate.filter(key =>
-          request.keys!.some(k => key === k || key.endsWith(`:${k}`))
+      // Extract sessionId from request or options metadata
+      const sessionId = request.sessionId || options?.metadata?.sessionId;
+      if (!sessionId) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'Session ID is required but was not provided in request or context',
+          { providedRequest: request }
         );
       }
 
-      // Prepare data for migration
-      const dataToMigrate: Record<string, any> = {};
-      for (const key of keysToMigrate) {
-        dataToMigrate[key] = sourceData[key];
+      // Inject sessionId into request if not present
+      const requestWithSession = { ...request, sessionId };
+
+      // Route to appropriate handler
+      switch (request.action) {
+        case 'write':
+          return await this.handleWrite(requestWithSession as CacheWriteRequest);
+
+        case 'read':
+          return await this.handleRead(requestWithSession as CacheReadRequest);
+
+        case 'list':
+          return await this.handleList(requestWithSession as CacheListRequest);
+
+        case 'delete':
+          return await this.handleDelete(requestWithSession as CacheDeleteRequest);
+
+        case 'update':
+          return await this.handleUpdate(requestWithSession as CacheUpdateRequest);
+
+        default:
+          return this.createErrorResponse(
+            CacheErrorType.VALIDATION_ERROR,
+            `Unsupported cache action: ${(request as any).action}`,
+            { action: (request as any).action }
+          );
       }
-
-      // Set data in destination storage
-      await toStorage.set(dataToMigrate);
-
-      // Optionally remove from source
-      if (request.data.removeFromSource) {
-        await fromStorage.remove(keysToMigrate);
-      }
-
-      this.log('info', `Migrated ${keysToMigrate.length} items from ${request.data.fromType} to ${request.data.toType}`, {
-        keys: keysToMigrate,
-        removeFromSource: request.data.removeFromSource,
-      });
-
-      return { migrated: keysToMigrate.length, success: true };
-    } catch (error) {
-      throw new Error(`Failed to migrate data: ${error}`);
+    } catch (error: any) {
+      // Convert unexpected errors to error responses
+      return this.convertErrorToResponse(error);
     }
   }
 
   /**
-   * Sync data across storage areas
+   * Handle write operation
+   * Stores data and returns metadata only
    */
-  private async syncData(request: StorageToolRequest): Promise<StorageToolResponse> {
-    if (request.storageType !== 'sync') {
-      throw new Error('Sync action is only available for sync storage type');
-    }
-
+  private async handleWrite(request: CacheWriteRequest): Promise<CacheWriteResponse | CacheErrorResponse> {
     try {
-      // This would trigger Chrome's sync mechanism
-      // In practice, sync happens automatically, but we can force a check
-      const syncStorage = chrome.storage.sync;
-
-      // Get current sync data to verify connectivity
-      await syncStorage.get(null);
-
-      this.log('info', 'Storage sync operation completed', {
-        storageType: request.storageType,
-      });
-
-      return { success: true, synced: 1 };
-    } catch (error) {
-      throw new Error(`Failed to sync storage: ${error}`);
-    }
-  }
-
-  /**
-   * Get Chrome storage area
-   */
-  private getStorageArea(storageType: string): chrome.storage.StorageArea {
-    switch (storageType) {
-      case 'local':
-        return chrome.storage.local;
-      case 'session':
-        return chrome.storage.session;
-      case 'sync':
-        return chrome.storage.sync;
-      case 'managed':
-        return chrome.storage.managed;
-      default:
-        throw new Error(`Unsupported storage type: ${storageType}`);
-    }
-  }
-
-  /**
-   * Create storage entry with metadata
-   */
-  private createStorageEntry(value: any, options?: StorageOptions): any {
-    if (!options?.ttl && !options?.namespace) {
-      return value; // Simple value without metadata
-    }
-
-    const entry: StorageEntry = {
-      value,
-      timestamp: Date.now(),
-    };
-
-    if (options?.ttl) {
-      entry.ttl = options.ttl;
-    }
-
-    if (options?.namespace) {
-      entry.namespace = options.namespace;
-    }
-
-    return entry;
-  }
-
-  /**
-   * Process storage results (handle TTL, namespaces)
-   */
-  private processStorageResult(result: Record<string, any>, namespace?: string): Record<string, any> {
-    const processed: Record<string, any> = {};
-
-    for (const [key, rawValue] of Object.entries(result)) {
-      let actualKey = key;
-      let value = rawValue;
-
-      // Handle namespaced keys
-      if (namespace) {
-        const prefix = `${namespace}:`;
-        if (key.startsWith(prefix)) {
-          actualKey = key.substring(prefix.length);
-        } else {
-          continue; // Skip non-namespaced keys when namespace is specified
-        }
+      // Validate required fields
+      if (!request.data) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'data field is required for write operation'
+        );
       }
 
-      // Handle storage entries with metadata
-      if (this.isStorageEntry(value)) {
-        // Check TTL
-        if (value.ttl && Date.now() > value.timestamp + value.ttl) {
-          continue; // Skip expired entries
-        }
-        value = value.value;
+      if (!request.description) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'description field is required for write operation (max 500 chars)'
+        );
       }
 
-      processed[actualKey] = value;
+      // Call SessionCacheManager.write()
+      const metadata = await this.cacheManager.write(
+        request.sessionId!,
+        request.data,
+        request.description,
+        request.taskId,
+        request.turnId,
+        request.customMetadata
+      );
+
+      return {
+        success: true,
+        metadata,
+        message: `Cached item stored successfully. Key: ${metadata.storageKey}. Use this key to retrieve later. Description: "${metadata.description.substring(0, 100)}${metadata.description.length > 100 ? '...' : ''}"`
+      };
+    } catch (error: any) {
+      return this.convertErrorToResponse(error);
     }
-
-    return processed;
   }
 
   /**
-   * Check if value is a storage entry with metadata
+   * Handle read operation
+   * Retrieves full item with data
    */
-  private isStorageEntry(value: any): value is StorageEntry {
-    return value &&
-           typeof value === 'object' &&
-           'value' in value &&
-           'timestamp' in value;
-  }
-
-  /**
-   * Add namespace prefix to key
-   */
-  private namespaceKey(key: string, namespace?: string): string {
-    return namespace ? `${namespace}:${key}` : key;
-  }
-
-  /**
-   * Check quota before setting data
-   */
-  private async checkQuotaBeforeSet(storageArea: chrome.storage.StorageArea, data: Record<string, any>): Promise<void> {
+  private async handleRead(request: CacheReadRequest): Promise<CacheReadResponse | CacheErrorResponse> {
     try {
-      const currentBytesInUse = await storageArea.getBytesInUse(null);
-      const dataSize = this.calculateDataSize(data);
-
-      // Get quota limits
-      let quotaLimit = 5242880; // 5MB default for local storage
-      if (storageArea === chrome.storage.sync) {
-        quotaLimit = 102400; // 100KB for sync storage
+      // Validate required fields
+      if (!request.storageKey) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'storageKey field is required for read operation'
+        );
       }
 
-      if (currentBytesInUse + dataSize > quotaLimit) {
-        throw new Error(`Storage quota exceeded: ${currentBytesInUse + dataSize} bytes > ${quotaLimit} bytes`);
-      }
-    } catch (error) {
-      this.log('warn', `Could not check storage quota: ${error}`);
+      // Call SessionCacheManager.read()
+      const item = await this.cacheManager.read(request.storageKey);
+
+      return {
+        success: true,
+        item
+      };
+    } catch (error: any) {
+      return this.convertErrorToResponse(error);
     }
   }
 
   /**
-   * Calculate approximate size of data
+   * Handle list operation
+   * Returns metadata for all items in session
    */
-  private calculateDataSize(data: Record<string, any>): number {
-    return JSON.stringify(data).length * 2; // Rough estimate (UTF-16)
+  private async handleList(request: CacheListRequest): Promise<CacheListResponse | CacheErrorResponse> {
+    try {
+      // Call SessionCacheManager.list()
+      const items = await this.cacheManager.list(request.sessionId!);
+
+      // Get session stats for quota information
+      const stats = await this.cacheManager.getStats(request.sessionId!);
+
+      return {
+        success: true,
+        items,
+        totalCount: items.length,
+        totalSize: stats.totalSize,
+        sessionQuotaUsed: stats.totalSize,
+        sessionQuotaRemaining: CACHE_CONSTANTS.MAX_SESSION_QUOTA - stats.totalSize
+      };
+    } catch (error: any) {
+      return this.convertErrorToResponse(error);
+    }
   }
 
   /**
-   * Get quota information
+   * Handle delete operation
+   * Removes item from cache
    */
-  private async getQuotaInfo(storageType: string, currentUsage: number): Promise<StorageQuota> {
-    let totalQuota = 5242880; // 5MB for local
+  private async handleDelete(request: CacheDeleteRequest): Promise<CacheDeleteResponse | CacheErrorResponse> {
+    try {
+      // Validate required fields
+      if (!request.storageKey) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'storageKey field is required for delete operation'
+        );
+      }
 
-    if (storageType === 'sync') {
-      totalQuota = 102400; // 100KB for sync
-    } else if (storageType === 'session') {
-      totalQuota = 10485760; // 10MB estimate for session
+      // Call SessionCacheManager.delete()
+      const deleted = await this.cacheManager.delete(request.storageKey);
+
+      if (!deleted) {
+        return this.createErrorResponse(
+          CacheErrorType.ITEM_NOT_FOUND,
+          `Item with key "${request.storageKey}" not found`,
+          { storageKey: request.storageKey }
+        );
+      }
+
+      return {
+        success: true,
+        storageKey: request.storageKey,
+        message: `Item "${request.storageKey}" deleted successfully`
+      };
+    } catch (error: any) {
+      return this.convertErrorToResponse(error);
+    }
+  }
+
+  /**
+   * Handle update operation
+   * Updates existing item with new data and description
+   */
+  private async handleUpdate(request: CacheUpdateRequest): Promise<CacheUpdateResponse | CacheErrorResponse> {
+    try {
+      // Validate required fields
+      if (!request.storageKey) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'storageKey field is required for update operation'
+        );
+      }
+
+      if (!request.data) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'data field is required for update operation'
+        );
+      }
+
+      if (!request.description) {
+        return this.createErrorResponse(
+          CacheErrorType.VALIDATION_ERROR,
+          'description field is required for update operation (max 500 chars)'
+        );
+      }
+
+      // Call SessionCacheManager.update()
+      const metadata = await this.cacheManager.update(
+        request.storageKey,
+        request.data,
+        request.description,
+        request.customMetadata
+      );
+
+      return {
+        success: true,
+        metadata,
+        message: `Item "${request.storageKey}" updated successfully`
+      };
+    } catch (error: any) {
+      return this.convertErrorToResponse(error);
+    }
+  }
+
+  // ============================================================================
+  // Error Handling
+  // ============================================================================
+
+  /**
+   * Convert SessionCacheManager errors to CacheErrorResponse
+   */
+  private convertErrorToResponse(error: any): CacheErrorResponse {
+    // Handle SessionCacheManager-specific errors
+    if (error instanceof SessionQuotaExceededError) {
+      const quotaError: QuotaExceededError = {
+        success: false,
+        error: error.message,
+        errorType: CacheErrorType.QUOTA_EXCEEDED,
+        message: `Session quota exceeded. Current: ${Math.round(error.currentSize / 1024 / 1024)}MB, Attempted: +${Math.round(error.attemptedSize / 1024 / 1024)}MB, Limit: ${Math.round(error.quotaLimit / 1024 / 1024)}MB. Auto-eviction triggered - oldest 50% of items removed. Please retry the operation.`,
+        currentSize: error.currentSize,
+        attemptedSize: error.attemptedSize,
+        quotaLimit: error.quotaLimit
+      };
+      return quotaError;
     }
 
+    if (error instanceof SessionDataTooLargeError) {
+      const dataError: DataTooLargeError = {
+        success: false,
+        error: error.message,
+        errorType: CacheErrorType.DATA_TOO_LARGE,
+        message: `Data too large for caching. Size: ${Math.round(error.dataSize / 1024 / 1024)}MB, Max: ${Math.round(error.maxSize / 1024 / 1024)}MB. Consider splitting into smaller chunks or summarizing the data.`,
+        dataSize: error.dataSize,
+        maxSize: error.maxSize
+      };
+      return dataError;
+    }
+
+    if (error instanceof SessionItemNotFoundError) {
+      const notFoundError: ItemNotFoundError = {
+        success: false,
+        error: error.message,
+        errorType: CacheErrorType.ITEM_NOT_FOUND,
+        message: `Item not found. Key: "${error.storageKey}". Use the list action to see available cached items.`,
+        storageKey: error.storageKey
+      };
+      return notFoundError;
+    }
+
+    if (error instanceof SessionCorruptedDataError) {
+      const corruptedError: CacheErrorResponse = {
+        success: false,
+        error: error.message,
+        errorType: CacheErrorType.CORRUPTED_DATA,
+        message: `Cache item corrupted and cannot be parsed. Key: "${error.storageKey}". Recovery: Delete this item using the delete action and recreate it with fresh data. Original error: ${error.originalError.message}`,
+        details: { storageKey: error.storageKey, originalError: error.originalError.message }
+      };
+      return corruptedError;
+    }
+
+    // Handle generic errors
+    return this.createErrorResponse(
+      CacheErrorType.UNKNOWN_ERROR,
+      error.message || 'An unexpected error occurred',
+      { errorType: error.constructor.name, stack: error.stack }
+    );
+  }
+
+  /**
+   * Create a generic error response
+   */
+  private createErrorResponse(
+    errorType: CacheErrorType,
+    message: string,
+    details?: any
+  ): CacheErrorResponse {
     return {
-      available: totalQuota - currentUsage,
-      used: currentUsage,
-      total: totalQuota,
-      percentage: (currentUsage / totalQuota) * 100,
+      success: false,
+      error: message,
+      errorType,
+      message,
+      details
     };
   }
 
+  // ============================================================================
+  // Cache Management Methods
+  // ============================================================================
+
   /**
-   * Cleanup expired entries
+   * Get cache statistics for debugging
    */
-  async cleanupExpired(storageType: 'local' | 'session' | 'sync' = 'local'): Promise<number> {
-    try {
-      const storageArea = this.getStorageArea(storageType);
-      const allItems = await storageArea.get(null);
-      const expiredKeys: string[] = [];
-
-      for (const [key, value] of Object.entries(allItems)) {
-        if (this.isStorageEntry(value) && value.ttl) {
-          if (Date.now() > value.timestamp + value.ttl) {
-            expiredKeys.push(key);
-          }
-        }
-      }
-
-      if (expiredKeys.length > 0) {
-        await storageArea.remove(expiredKeys);
-        this.log('info', `Cleaned up ${expiredKeys.length} expired entries from ${storageType} storage`);
-      }
-
-      return expiredKeys.length;
-    } catch (error) {
-      this.log('error', `Failed to cleanup expired entries: ${error}`);
-      return 0;
-    }
+  async getStats(sessionId: string) {
+    return await this.cacheManager.getStats(sessionId);
   }
 
   /**
-   * Get storage statistics
+   * Get global cache statistics
    */
-  async getStats(storageType: 'local' | 'session' | 'sync' = 'local'): Promise<{
-    totalKeys: number;
-    bytesInUse: number;
-    quota: StorageQuota;
-    namespaces: string[];
-  }> {
-    const storageArea = this.getStorageArea(storageType);
-    const allItems = await storageArea.get(null);
-    const bytesInUse = await storageArea.getBytesInUse(null);
+  async getGlobalStats() {
+    return await this.cacheManager.getGlobalStats();
+  }
 
-    const namespaces = new Set<string>();
+  /**
+   * Cleanup operations
+   */
+  async cleanupOrphans(maxAgeMs: number = CACHE_CONSTANTS.ORPHAN_CLEANUP_THRESHOLD_MS) {
+    return await this.cacheManager.cleanupOrphans(maxAgeMs);
+  }
 
-    for (const key of Object.keys(allItems)) {
-      const colonIndex = key.indexOf(':');
-      if (colonIndex > 0) {
-        namespaces.add(key.substring(0, colonIndex));
-      }
-    }
-
-    const quota = await this.getQuotaInfo(storageType, bytesInUse);
-
-    return {
-      totalKeys: Object.keys(allItems).length,
-      bytesInUse,
-      quota,
-      namespaces: Array.from(namespaces),
-    };
+  async cleanupOutdated(maxAgeDays?: number) {
+    return await this.cacheManager.cleanupOutdated(maxAgeDays);
   }
 }

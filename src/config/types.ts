@@ -3,9 +3,6 @@
  * Type definitions for the centralized config system
  */
 
-import { AuthMode } from '../models/types/Auth.js';
-import type { PlanType } from '../models/types/Auth.js';
-
 /**
  * Model registry entry for fast provider lookup
  *
@@ -287,6 +284,7 @@ export interface IToolsConfig {
   network_intercept_tool?: boolean;
   data_extraction_tool?: boolean;
   page_action_tool?: boolean;
+  page_vision_tool?: boolean;
 
   // Agent execution tool toggles
   execCommand?: boolean;

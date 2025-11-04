@@ -10,7 +10,6 @@ import { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
- * T018, Added xAI and Anthropic provider support
  */
 export type ModelProvider = 'openai' | 'xai' | 'anthropic';
 
@@ -39,6 +38,18 @@ const STORAGE_KEYS = {
   DEFAULT_PROVIDER: 'default_provider',
   OPENAI_ORGANIZATION: 'openai_organization',
 } as const;
+
+/**
+ * Model name to provider mapping
+ * Note: Only OpenAI models supported
+ */
+const MODEL_PROVIDER_MAP: Record<string, ModelProvider> = {
+  // OpenAI models
+  'gpt-5': 'openai',
+  'gpt-4': 'openai',
+  'gpt-4-turbo': 'openai',
+  'gpt-4o': 'openai',
+};
 
 const DEFAULT_MODEL = 'gpt-5';
 
@@ -438,7 +449,8 @@ export class ModelClientFactory {
       case 'openai':
       default:
         // Use the experimental OpenAI Responses API client by default
-        // Construct minimal provider and model family configs aligned with browserx-rs
+        // Construct minimal provider and model family configs
+        const baseUrl = config.options?.baseUrl;
         const organization = config.options?.organization;
 
         const provider = {

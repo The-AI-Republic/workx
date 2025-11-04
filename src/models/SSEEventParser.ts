@@ -1,9 +1,9 @@
 import type { ResponseEvent } from './types/ResponsesAPI';
 
 /**
- * SSE event structure matching Rust SseEvent
+ * SSE event structure
  * @interface SseEvent
- * @description Server-Sent Event structure that mirrors the Rust implementation
+ * @description Server-Sent Event structure
  */
 interface SseEvent {
   /** Event type identifier (e.g., "response.output_text.delta") */
@@ -94,26 +94,23 @@ const EVENT_TYPE_CACHE = new Map<string, boolean>([
 ]);
 
 /**
- * High-performance SSE Event Parser matching Rust process_sse logic
+ * High-performance SSE Event Parser
  *
  * This class parses Server-Sent Events from the OpenAI Responses API and converts
- * them to ResponseEvent objects. The implementation matches Rust's event handling
- * logic exactly, including all 11 event type mappings.
- *
- * **Rust Reference**: `browserx-rs/core/src/client.rs` Lines 624-848
+ * them to ResponseEvent objects. The implementation handles all 11 event type mappings.
  *
  * **Event Mappings** (11 total):
- * 1. `response.created` → `{ type: 'Created' }` (line 767-770)
- * 2. `response.output_item.done` → `{ type: 'OutputItemDone', item }` (line 731-742)
- * 3. `response.output_text.delta` → `{ type: 'OutputTextDelta', delta }` (line 743-749)
- * 4. `response.reasoning_summary_text.delta` → `{ type: 'ReasoningSummaryDelta', delta }` (line 751-757)
- * 5. `response.reasoning_text.delta` → `{ type: 'ReasoningContentDelta', delta }` (line 759-766)
- * 6. `response.reasoning_summary_part.added` → `{ type: 'ReasoningSummaryPartAdded' }` (line 837-842)
- * 7. `response.output_item.added` (web_search) → `{ type: 'WebSearchCallBegin', callId }` (line 819-835)
- * 8. `response.completed` → Store for yielding at stream end (line 798-811)
- * 9. `response.failed` → Throw error immediately (line 772-795)
- * 10. Ignored events → Return empty array (line 813-818, 844)
- * 11. Unknown events → Log debug, return empty array (line 845)
+ * 1. `response.created` → `{ type: 'Created' }`
+ * 2. `response.output_item.done` → `{ type: 'OutputItemDone', item }`
+ * 3. `response.output_text.delta` → `{ type: 'OutputTextDelta', delta }`
+ * 4. `response.reasoning_summary_text.delta` → `{ type: 'ReasoningSummaryDelta', delta }`
+ * 5. `response.reasoning_text.delta` → `{ type: 'ReasoningContentDelta', delta }`
+ * 6. `response.reasoning_summary_part.added` → `{ type: 'ReasoningSummaryPartAdded' }`
+ * 7. `response.output_item.added` (web_search) → `{ type: 'WebSearchCallBegin', callId }`
+ * 8. `response.completed` → Store for yielding at stream end
+ * 9. `response.failed` → Throw error immediately
+ * 10. Ignored events → Return empty array
+ * 11. Unknown events → Log debug, return empty array
  *
  * **Performance Optimization**:
  * - Memory pooling for event objects (reduces GC pressure)
@@ -123,7 +120,7 @@ const EVENT_TYPE_CACHE = new Map<string, boolean>([
  *
  * **Error Handling**:
  * - Parse errors don't fail stream (return null)
- * - `response.failed` throws Error (matches Rust behavior)
+ * - `response.failed` throws Error
  * - Invalid JSON is logged but doesn't throw
  *
  * @example
@@ -199,7 +196,6 @@ export class SSEEventParser {
 
   /**
    * Process a parsed SSE event and convert to ResponseEvent
-   * Mirrors the event handling logic from browserx-rs/core/src/client.rs:608-738
    * @param event Parsed SSE event
    * @returns ResponseEvent array (can be multiple events for some types)
    */
@@ -269,7 +265,7 @@ export class SSEEventParser {
         break;
 
       case 'response.failed':
-        // Contract: response.failed must throw error (Rust client.rs:772-795)
+        // Contract: response.failed must throw error
         if (event.response) {
           const error = event.response.error;
           let retryAfter: number | undefined;
@@ -284,7 +280,7 @@ export class SSEEventParser {
           // Release event before throwing
           this.releaseEvent(event);
 
-          // Throw error as per Rust contract
+          // Throw error
           throw new Error(message);
         }
         break;
@@ -320,7 +316,7 @@ export class SSEEventParser {
         });
         break;
 
-      // Events we currently ignore (as per Rust implementation)
+      // Events we currently ignore
       case 'response.content_part.done':
       case 'response.function_call_arguments.delta':
       case 'response.custom_tool_call_input.delta':
@@ -345,7 +341,6 @@ export class SSEEventParser {
 
   /**
    * Parse retry-after duration from error message
-   * Matches the regex pattern from browserx-rs: "Please try again in (\d+(?:\.\d+)?)(s|ms)"
    * @param error API error object
    * @returns Retry delay in milliseconds, or undefined if not found
    */

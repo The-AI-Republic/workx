@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * MessageEvent - Renders agent and user messages (T033)
+   * MessageEvent - Renders agent and user messages
    */
   import type { ProcessedEvent } from '../../../types/ui';
 

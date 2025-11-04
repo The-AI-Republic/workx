@@ -1,6 +1,5 @@
 /**
  * SessionServices - centralized service management for sessions
- * Port of Rust SessionServices struct (commit 250b244ab)
  *
  * Note: No MCP support in browser-based agent
  */

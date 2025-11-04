@@ -2,11 +2,11 @@
  * Formatter Utilities for Event Display
  *
  * These functions transform raw data into human-readable strings
- * for display in the UI. Ported from Rust browserx-rs implementation.
+ * for display in the UI.
  */
 
 /**
- * Format duration in milliseconds to human-readable string (T007)
+ * Format duration in milliseconds to human-readable string
  *
  * @param ms - Duration in milliseconds
  * @returns Formatted string (e.g., "45ms", "2.3s", "1m 30s", "1h 5m")
@@ -36,7 +36,7 @@ export function formatDuration(ms: number): string {
 }
 
 /**
- * Format number with thousands separators (T008)
+ * Format number with thousands separators
  *
  * @param num - Number to format
  * @param locale - Locale for formatting (default: 'en-US')
@@ -47,7 +47,7 @@ export function formatNumber(num: number, locale: string = 'en-US'): string {
 }
 
 /**
- * Format token count with thousands separators and optional label (T009)
+ * Format token count with thousands separators and optional label
  *
  * @param tokens - Number of tokens
  * @param label - Optional label (e.g., "input", "output")
@@ -66,7 +66,7 @@ export function formatTokens(tokens: number, label?: string): string {
 }
 
 /**
- * Format timestamp for display (T010)
+ * Format timestamp for display
  *
  * @param date - Date object
  * @param format - 'relative' | 'absolute' | 'timestamp'
@@ -87,7 +87,7 @@ export function formatTime(
   }
 
   if (format === 'timestamp') {
-    // "[YYYY-MM-DDTHH:MM:SS]" (matches Rust ts_println! macro)
+    // "[YYYY-MM-DDTHH:MM:SS]"
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -129,7 +129,7 @@ export function formatTime(
 }
 
 /**
- * Format command for display (handles escaping and truncation) (T011)
+ * Format command for display (handles escaping and truncation)
  *
  * @param command - Command string or array of args
  * @param maxLength - Maximum length before truncation (default: no limit)
@@ -166,7 +166,7 @@ export function formatCommand(
 }
 
 /**
- * Format exit code with status text (T012)
+ * Format exit code with status text
  *
  * @param exitCode - Command exit code
  * @returns Formatted string with semantic meaning
@@ -187,7 +187,7 @@ export function formatExitCode(exitCode: number): string {
 }
 
 /**
- * Truncate text to maximum number of lines (T013)
+ * Truncate text to maximum number of lines
  *
  * @param text - Text to truncate
  * @param maxLines - Maximum lines to include
@@ -212,7 +212,7 @@ export function truncateOutput(text: string, maxLines: number): string {
 }
 
 /**
- * Format file size in bytes to human-readable string (T014)
+ * Format file size in bytes to human-readable string
  *
  * @param bytes - Size in bytes
  * @returns Formatted string (e.g., "1.2 KB", "3.4 MB")
@@ -237,7 +237,7 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
- * Format percentage with specified decimals (T015)
+ * Format percentage with specified decimals
  *
  * @param value - Value between 0 and 1
  * @param decimals - Number of decimal places (default: 0)
@@ -251,7 +251,7 @@ export function formatPercent(value: number, decimals: number = 0): string {
 }
 
 /**
- * Format diff summary showing additions/deletions (T016)
+ * Format diff summary showing additions/deletions
  *
  * @param additions - Number of lines added
  * @param deletions - Number of lines deleted

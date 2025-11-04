@@ -12,19 +12,21 @@ import { DOMTool } from './DOMTool';
 import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { TabTool } from './TabTool';
-import { PageActionTool } from './PageActionTool';
+import { PageVisionTool } from './PageVisionTool';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
 export { BaseTool, createFunctionTool, createObjectSchema, createToolDefinition } from './BaseTool';
 export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat } from './BaseTool';
-
-// Tool classes are now dynamically imported in registerTools() to avoid
-// loading DOM-dependent code in service worker context at module initialization time.
-// If you need to import a specific tool, import it directly from its module:
-//   import { PageActionTool } from './tools/PageActionTool';
-//   import { DOMTool } from './tools/DOMTool';
-// etc.
+export { WebScrapingTool } from './WebScrapingTool';
+export { FormAutomationTool } from './FormAutomationTool';
+export { NetworkInterceptTool } from './NetworkInterceptTool';
+export { DataExtractionTool } from './DataExtractionTool';
+export { DOMTool } from './DOMTool';
+export { NavigationTool } from './NavigationTool';
+export { StorageTool } from './StorageTool';
+export { TabTool } from './TabTool';
+export { PageVisionTool } from './PageVisionTool';
 
 /**
  * Register browser automation tools based on configuration
@@ -58,6 +60,8 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
           return toolsConfig.storage_tool === true;
         case 'tab_tool':
           return toolsConfig.tab_tool === true;
+        case 'page_vision_tool':
+          return toolsConfig.page_vision_tool === true;
         case 'page_action':
           return toolsConfig.page_action_tool === true;
         default:
@@ -72,7 +76,8 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
         console.log(`Registering ${toolName}...`);
 
         await registry.register(definition, async (params, context) => {
-          return toolInstance.execute(params);
+          // Pass context (including sessionId) to tool's execute method via options.metadata
+          return toolInstance.execute(params, { metadata: context });
         });
       } else {
         console.log(`${toolName} already registered, skipping...`);
@@ -143,13 +148,16 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
       console.log('TabTool disabled in configuration, skipping...');
     }
 
-    // Page Action Tool
-    if (isToolEnabled('page_action')) {
-      const pageActionTool = new PageActionTool();
-      await registerTool('page_action', pageActionTool);
+    // PageVision Tool
+    if (isToolEnabled('page_vision_tool')) {
+      const pageVisionTool = new PageVisionTool();
+      await registerTool('page_vision', pageVisionTool);
     } else {
-      console.log('PageActionTool disabled in configuration, skipping...');
+      console.log('PageVisionTool disabled in configuration, skipping...');
     }
+
+    // Page Action Tool - REMOVED: Functionality merged into DOMTool v3.0
+    // Use DOMTool with action parameter instead
 
     console.log('Advanced browser tools registration completed');
   } catch (error) {

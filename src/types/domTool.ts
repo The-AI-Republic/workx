@@ -1,359 +1,409 @@
 /**
- * DOM Tool API Types
+ * DOM Tool API Types - Version 3.0.0
  *
- * This file defines the types for the refactored DOMTool v2.0.
- * These types define the public API for high-level DOM reading operations.
+ * This file defines the types for the refactored DOMTool v3.0.
+ * This is a BREAKING CHANGE from v2.0 - no backward compatibility.
  *
- * Version: 2.0.0
- * Breaking changes from 1.x: Removed atomic operations (query, click, type, etc.)
+ * @version 3.0.0
+ * @date 2025-10-24
  */
 
-// =============================================================================
-// REQUEST TYPES
-// =============================================================================
+// ============================================================================
+// Constants
+// ============================================================================
 
 /**
- * Request to capture complete DOM state from a tab
+ * Special nodeId for window-level scroll actions
+ * Use this when calling scroll() on the entire window
  */
-export interface DOMCaptureRequest {
-  /** Tab ID to capture from (undefined = active tab) */
-  tab_id?: number;
-
-  /** Include shadow DOM trees (default: true) */
-  include_shadow_dom?: boolean;
-
-  /** Include iframe content (default: true) */
-  include_iframes?: boolean;
-
-  /** Maximum iframe nesting depth (default: 3, max: 10) */
-  max_iframe_depth?: number;
-
-  /** Maximum total iframe count (default: 15, max: 50) */
-  max_iframe_count?: number;
-
-  /** Remove elements occluded by paint order (default: true) */
-  paint_order_filtering?: boolean;
-
-  /** Remove off-screen elements (default: true) */
-  bbox_filtering?: boolean;
-
-  /** Capture timeout in milliseconds (default: 5000, max: 30000) */
-  timeout_ms?: number;
-
-  /** Use cached DOM state if valid (default: true) */
-  use_cache?: boolean;
-
-  /** Include performance timing information (default: false) */
-  include_timing?: boolean;
-}
-
-// =============================================================================
-// RESPONSE TYPES
-// =============================================================================
+export const NODE_ID_WINDOW = -1;
 
 /**
- * Response from DOM capture operation
+ * Special nodeId for document-level keyboard actions
+ * Use this when calling keypress() without a specific target element
  */
-export interface DOMCaptureResponse {
-  /** Whether capture succeeded */
-  success: boolean;
-
-  /** Serialized DOM state (present on success) */
-  dom_state?: SerializedDOMState;
-
-  /** Error details (present on failure) */
-  error?: DOMCaptureError;
-
-  /** Non-fatal warnings */
-  warnings?: DOMCaptureWarning[];
-}
-
-// =============================================================================
-// CORE DATA STRUCTURES
-// =============================================================================
+export const NODE_ID_DOCUMENT = -2;
 
 /**
- * Complete serialized DOM state suitable for LLM consumption
+ * DOM Node Type Constants (from W3C DOM specification)
+ * https://developer.mozilla.org/en-US/docs/Web/API/Node/nodeType
+ *
+ * These constants represent the type of DOM node in the VirtualNode tree.
+ * Most commonly used are:
+ * - NODE_TYPE_ELEMENT (1): HTML elements like <div>, <button>, etc.
+ * - NODE_TYPE_TEXT (3): Text content within elements
+ * - NODE_TYPE_DOCUMENT_FRAGMENT (11): Shadow DOM roots
  */
-export interface SerializedDOMState {
-  /**
-   * Serialized tree as formatted string with element indices
-   * Example:
-   *   [1] <button class="primary">Submit</button>
-   *   [2] <input type="text" placeholder="Name" />
-   *   <div>
-   *     [3] <a href="/home">Home</a>
-   *   </div>
-   */
-  serialized_tree: string;
+export const NODE_TYPE_ELEMENT = 1;
+export const NODE_TYPE_ATTRIBUTE = 2;
+export const NODE_TYPE_TEXT = 3;
+export const NODE_TYPE_CDATA_SECTION = 4;
+export const NODE_TYPE_ENTITY_REFERENCE = 5; // Deprecated
+export const NODE_TYPE_ENTITY = 6; // Deprecated
+export const NODE_TYPE_PROCESSING_INSTRUCTION = 7;
+export const NODE_TYPE_COMMENT = 8;
+export const NODE_TYPE_DOCUMENT = 9;
+export const NODE_TYPE_DOCUMENT_TYPE = 10;
+export const NODE_TYPE_DOCUMENT_FRAGMENT = 11;
+export const NODE_TYPE_NOTATION = 12; // Deprecated
 
-  /**
-   * Mapping from element index to full node details
-   * Allows agent to look up details for interactive elements
-   */
-  selector_map: { [index: number]: EnhancedDOMTreeNode };
+// ============================================================================
+// Data Structures
+// ============================================================================
 
-  /** Metadata about the captured page */
-  metadata: DOMCaptureMetadata;
-
-  /** Performance timing information (if requested) */
-  timing?: DOMCaptureTiming;
-
-  /** Errors encountered during capture */
-  errors?: DOMCaptureError[];
-
-  /** Non-fatal warnings */
-  warnings?: DOMCaptureWarning[];
-}
 
 /**
- * Metadata about a captured DOM state
+ * Page context metadata
  */
-export interface DOMCaptureMetadata {
-  /** When the DOM was captured (Unix timestamp ms) */
-  capture_timestamp: number;
-
-  /** Page URL */
-  page_url: string;
-
-  /** Page title */
-  page_title: string;
-
-  /** Viewport information */
-  viewport: ViewportInfo;
-
-  /** Total number of DOM nodes captured */
-  total_nodes: number;
-
-  /** Number of interactive elements (with indices) */
-  interactive_elements: number;
-
-  /** Number of iframes included */
-  iframe_count: number;
-
-  /** Maximum tree depth encountered */
-  max_depth: number;
-}
-
-/**
- * Performance timing information
- */
-export interface DOMCaptureTiming {
-  /** Time spent traversing DOM in content script */
-  dom_traversal_ms: number;
-
-  /** Time spent serializing tree */
-  serialization_ms: number;
-
-  /** Total capture time */
-  total_ms: number;
-
-  /** Individual phase timings */
-  phases?: {
-    create_simplified_tree?: number;
-    calculate_paint_order?: number;
-    optimize_tree?: number;
-    bbox_filtering?: number;
-    assign_indices?: number;
-    serialize_tree?: number;
+export interface PageContext {
+  url: string;
+  title: string;
+  viewport: {
+    width: number;
+    height: number;
+    scrollX: number;
+    scrollY: number;
   };
 }
 
 /**
- * Rich representation of a single DOM node
+ * Snapshot statistics
  */
-export interface EnhancedDOMTreeNode {
-  // Core DOM properties
+export interface SnapshotStats {
+  totalNodes: number;
+  visibleNodes: number;
+  interactiveNodes: number;
+  iframeCount: number;
+  shadowDomCount: number;
+  captureTimeMs: number;
+}
+
+/**
+ * Flattened, token-optimized DOM representation for LLM
+ *
+ * @version 3.0.0 - Normalized field names with snake_case convention
+ */
+export interface SerializedDom {
+  page: {
+    context: {
+      url: string;
+      title: string;
+    };
+    body: SerializedNode;
+    iframes?: Array<{
+      url: string;
+      title: string;
+      body: SerializedNode;
+    }>;
+    shadowDoms?: Array<{
+      hostId: string;
+      body: SerializedNode;
+    }>;
+    /** Compaction metrics for debugging (optional) */
+    metrics?: {
+      total_nodes: number;
+      serialized_nodes: number;
+      token_reduction_rate: number;
+      compaction_score: number;
+    };
+    /** Collection-level state arrays (P3.5 MetadataBucketer) */
+    states?: {
+      disabled?: number[];
+      checked?: number[];
+      required?: number[];
+      readonly?: number[];
+      expanded?: number[];
+      selected?: number[];
+    };
+  };
+}
+
+/**
+ * Serialized node (flattened, defaults omitted)
+ *
+ * @version 3.0.0 - Normalized field names
+ * Field name mappings:
+ * - aria-label → aria_label (snake_case for token efficiency)
+ * - children → kids (shorter alias)
+ * - placeholder → hint (shorter alias)
+ * - inputType → input_type (snake_case)
+ * - boundingBox → bbox (compact array [x, y, w, h])
+ */
+export interface SerializedNode {
+  /** Sequential node ID (1, 2, 3...) mapped from backendNodeId */
   node_id: number;
-  backend_node_id: number;
-  node_type: NodeType;
-  node_name: string;
-  node_value: string;
-  attributes: Record<string, string>;
 
-  // Computed properties
-  is_visible: boolean | null;
-  is_scrollable: boolean | null;
-  absolute_position: DOMRect | null;
+  /** HTML tag name */
+  tag: string;
 
-  // Context
-  target_id: string;
-  frame_id: string | null;
-  session_id: string | null;
+  /** ARIA role */
+  role?: string;
 
-  // Tree structure
-  parent_node: EnhancedDOMTreeNode | null;
-  children_nodes: EnhancedDOMTreeNode[] | null;
-  content_document: EnhancedDOMTreeNode | null;
-  shadow_roots: EnhancedDOMTreeNode[] | null;
-  shadow_root_type: ShadowRootType | null;
+  /** ARIA label (normalized from aria-label) */
+  aria_label?: string;
 
-  // Enrichment
-  ax_node: EnhancedAXNode | null;
-  snapshot_node: EnhancedSnapshotNode | null;
+  /** Visible text content */
+  text?: string;
 
-  // Indexing
-  element_index: number | null;
+  /** Current value for form inputs */
+  value?: string;
 
-  // Internal
-  uuid: string;
+  /** Child nodes (normalized from children) */
+  kids?: SerializedNode[];
+
+  /** Link href */
+  href?: string;
+
+  /** Input type (normalized from inputType) */
+  input_type?: string;
+
+  /** Placeholder text (normalized from placeholder) */
+  hint?: string;
+
+  /** Bounding box as compact array [x, y, width, height] */
+  bbox?: number[];
+
+  /** Element states (disabled, checked, etc.) - may be moved to collection-level */
+  states?: Record<string, boolean | string>;
+
+  /** Whether element is currently visible in viewport (>50% intersection) */
+  inViewport?: boolean;
+}
+
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+/**
+ * Configuration options for DomTool behavior
+ */
+export interface DomToolConfig {
+  /** Max time to wait for snapshot creation (ms) */
+  snapshotTimeout?: number; // default: 30000
+
+  /** Max interactive elements to capture */
+  maxInteractiveElements?: number; // default: 400
+
+  /** Max tree depth to traverse */
+  maxTreeDepth?: number; // default: 50
+
+  /** Auto invalidate snapshot on mutations */
+  autoInvalidate?: boolean; // default: true
+
+  /** Mutation observer throttle (ms) */
+  mutationThrottle?: number; // default: 500
+
+  /** Include iframe content */
+  captureIframes?: boolean; // default: true
+
+  /** Include shadow DOM content */
+  captureShadowDom?: boolean; // default: true
+
+  /** iframe traversal depth */
+  iframeDepth?: number; // default: 1
+
+  /** Shadow DOM traversal depth */
+  shadowDomDepth?: number; // default: 1
 }
 
 /**
- * Accessibility information for a DOM element
+ * Options for serialization
  */
-export interface EnhancedAXNode {
-  ax_node_id: string;
-  ignored: boolean;
-  role: string | null;
-  name: string | null;
-  description: string | null;
-  properties: Array<{ name: string; value: any }> | null;
-  child_ids: string[] | null;
+export interface SerializationOptions {
+  /** Include form input values */
+  includeValues?: boolean; // default: false
+
+  /** Fine-grained metadata control */
+  metadata?: {
+    /** Include aria-label/accessibility name */
+    includeAriaLabel?: boolean; // default: false
+
+    /** Include text content */
+    includeText?: boolean; // default: false
+
+    /** Include form input values (overrides top-level includeValues) */
+    includeValue?: boolean; // default: false
+
+    /** Include input type attribute */
+    includeInputType?: boolean; // default: false
+
+    /** Include placeholder/hint text */
+    includeHint?: boolean; // default: false
+
+    /** Include bounding box coordinates */
+    includeBbox?: boolean; // default: false
+
+    /** Include element states (disabled, checked, etc.) */
+    includeStates?: boolean; // default: false
+
+    /** Include href for links */
+    includeHref?: boolean; // default: false
+  };
+
+  /** Include invisible elements */
+  includeHiddenElements?: boolean; // default: false
+
+  /** Max text content length */
+  maxTextLength?: number; // default: 500
+
+  /** Max aria-label length */
+  maxLabelLength?: number; // default: 250
+
+  /** Omit fields with default values */
+  omitDefaults?: boolean; // default: true
+}
+
+// ============================================================================
+// Action Options & Results
+// ============================================================================
+
+/**
+ * Options for click action
+ */
+export interface ClickOptions {
+  /** Click button */
+  button?: "left" | "right" | "middle"; // default: "left"
+
+  /** Click type */
+  clickType?: "single" | "double"; // default: "single"
+
+  /** Modifier keys */
+  modifiers?: {
+    ctrl?: boolean;
+    shift?: boolean;
+    alt?: boolean;
+    meta?: boolean;
+  };
+
+  /** Wait for navigation after click */
+  waitForNavigation?: boolean; // default: false
+
+  /** Scroll into view before clicking */
+  scrollIntoView?: boolean; // default: true
 }
 
 /**
- * Snapshot data captured from live DOM
+ * Options for type action
  */
-export interface EnhancedSnapshotNode {
-  bounds: DOMRect | null;
-  computed_styles: Record<string, string>;
-  text_value: string | null;
-  input_value: string | null;
-  is_clickable: boolean;
-  current_source_url: string | null;
-  scroll_offset_x: number | null;
-  scroll_offset_y: number | null;
-  layout_node_index: number | null;
-  paint_order: number | null;
+export interface TypeOptions {
+  /** Clear existing value before typing */
+  clearFirst?: boolean; // default: false
+
+  /** Typing speed (ms per character, 0 for instant) */
+  speed?: number; // default: 0
+
+  /**
+   * How to finalize the input after typing
+   * - "change": Fire change event (default, appropriate for most text boxes)
+   * - "enter": Append Enter keystroke (useful for search boxes or chat inputs)
+   */
+  commit?: "change" | "enter"; // default: "change"
+
+  /** Blur element after typing */
+  blur?: boolean; // default: false
 }
 
 /**
- * Viewport dimensions and device information
+ * Options for keypress action
  */
-export interface ViewportInfo {
-  width: number;
-  height: number;
-  device_pixel_ratio: number;
-  scroll_x: number;
-  scroll_y: number;
-  visible_width: number;
-  visible_height: number;
+export interface KeyPressOptions {
+  /** Target element by node_id (document if omitted) */
+  targetNodeId?: string;
+
+  /** Modifier keys */
+  modifiers?: {
+    ctrl?: boolean;
+    shift?: boolean;
+    alt?: boolean;
+    meta?: boolean;
+  };
+
+  /** Repeat count */
+  repeat?: number; // default: 1
 }
 
 /**
- * Bounding box coordinates
+ * Result of action execution
  */
-export interface DOMRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+export interface ActionResult {
+  /** Whether action succeeded */
+  success: boolean;
+
+  /** Error message if failed */
+  error?: string;
+
+  /** Action execution time (ms) */
+  duration: number;
+
+  /** Detected changes */
+  changes: {
+    /** Page navigation occurred */
+    navigationOccurred: boolean;
+
+    /** New URL if navigation occurred */
+    newUrl?: string;
+
+    /** Number of DOM mutations detected */
+    domMutations: number;
+
+    /** Scroll position changed */
+    scrollChanged: boolean;
+
+    /** Form value changed */
+    valueChanged: boolean;
+
+    /** New value if changed */
+    newValue?: string;
+  };
+
+  /** Node ID that was acted upon */
+  nodeId: number;
+
+  /** Action type */
+  actionType: "click" | "type" | "keypress" | "scroll";
+
+  /** ISO 8601 timestamp */
+  timestamp: string;
 }
 
-// =============================================================================
-// ERROR AND WARNING TYPES
-// =============================================================================
+
+// ============================================================================
+// Default Configuration
+// ============================================================================
 
 /**
- * Error from DOM capture operation
+ * Default configuration
  */
-export interface DOMCaptureError {
-  code: DOMErrorCode;
-  message: string;
-  element?: string;
-  details?: any;
-}
+export const DEFAULT_CONFIG: Required<DomToolConfig> = {
+  snapshotTimeout: 30000,
+  maxInteractiveElements: 400,
+  maxTreeDepth: 50,
+  autoInvalidate: true,
+  mutationThrottle: 500,
+  captureIframes: true,
+  captureShadowDom: true,
+  iframeDepth: 1,
+  shadowDomDepth: 1,
+};
 
 /**
- * Non-fatal warning from DOM capture
+ * Default serialization options
  */
-export interface DOMCaptureWarning {
-  type: DOMWarningType;
-  message: string;
-  element?: string;
-}
-
-/**
- * Error codes for DOM capture failures
- */
-export enum DOMErrorCode {
-  TIMEOUT = 'TIMEOUT',
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  TAB_NOT_FOUND = 'TAB_NOT_FOUND',
-  CONTENT_SCRIPT_NOT_LOADED = 'CONTENT_SCRIPT_NOT_LOADED',
-  CROSS_ORIGIN_FRAME = 'CROSS_ORIGIN_FRAME',
-  MESSAGE_SIZE_EXCEEDED = 'MESSAGE_SIZE_EXCEEDED',
-  INVALID_ELEMENT_INDEX = 'INVALID_ELEMENT_INDEX',
-  CACHE_MISS = 'CACHE_MISS',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
-}
-
-/**
- * Warning types for non-fatal issues
- */
-export enum DOMWarningType {
-  DEPTH_LIMIT_REACHED = 'DEPTH_LIMIT_REACHED',
-  COUNT_LIMIT_REACHED = 'COUNT_LIMIT_REACHED',
-  SIZE_LIMIT_REACHED = 'SIZE_LIMIT_REACHED',
-  CROSS_ORIGIN_IFRAME_SKIPPED = 'CROSS_ORIGIN_IFRAME_SKIPPED',
-  PARTIAL_ACCESSIBILITY_DATA = 'PARTIAL_ACCESSIBILITY_DATA'
-}
-
-// =============================================================================
-// ENUMS
-// =============================================================================
-
-/**
- * DOM node types (W3C specification)
- */
-export enum NodeType {
-  ELEMENT_NODE = 1,
-  ATTRIBUTE_NODE = 2,
-  TEXT_NODE = 3,
-  CDATA_SECTION_NODE = 4,
-  ENTITY_REFERENCE_NODE = 5,
-  ENTITY_NODE = 6,
-  PROCESSING_INSTRUCTION_NODE = 7,
-  COMMENT_NODE = 8,
-  DOCUMENT_NODE = 9,
-  DOCUMENT_TYPE_NODE = 10,
-  DOCUMENT_FRAGMENT_NODE = 11,
-  NOTATION_NODE = 12
-}
-
-/**
- * Shadow root types
- */
-export type ShadowRootType = 'open' | 'closed' | 'user-agent';
-
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-export const DOM_TOOL_CONSTANTS = {
-  /** Default configuration values */
-  DEFAULTS: {
-    MAX_IFRAME_DEPTH: 3,
-    MAX_IFRAME_COUNT: 15,
-    TIMEOUT_MS: 5000,
-    CACHE_TTL_MS: 30000,
-    CACHE_MAX_ENTRIES: 5
+export const DEFAULT_SERIALIZATION_OPTIONS: Required<SerializationOptions> = {
+  includeValues: true,
+  metadata: {
+    includeAriaLabel: true,
+    includeText: true,
+    includeValue: true,
+    includeInputType: true,
+    includeHint: true,
+    includeBbox: false,
+    includeStates: true,
+    includeHref: true,
   },
-
-  /** Limits */
-  LIMITS: {
-    MAX_SERIALIZED_SIZE_MB: 5,
-    MAX_SELECTOR_MAP_ENTRIES: 10000,
-    MAX_MESSAGE_SIZE_MB: 4,
-    MAX_STRING_POOL_SIZE: 100000
-  },
-
-  /** Performance targets */
-  PERFORMANCE_TARGETS: {
-    SIMPLE_PAGE_MS: 500,    // <1000 nodes
-    MEDIUM_PAGE_MS: 1000,   // 1000-5000 nodes
-    COMPLEX_PAGE_MS: 2000,  // 5000-20000 nodes
-    CACHE_HIT_MS: 100
-  }
+  includeHiddenElements: false,
+  maxTextLength: 500,
+  maxLabelLength: 250,
+  omitDefaults: true,
 };

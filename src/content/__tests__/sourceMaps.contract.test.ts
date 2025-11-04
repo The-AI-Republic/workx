@@ -84,11 +84,11 @@ describe('Source Map Contract', () => {
       expect(sourceMap.sources).toBeInstanceOf(Array);
       expect(sourceMap.sources.length).toBeGreaterThan(0);
 
-      // Should include domCaptureHandler.ts
-      const hasDomCapture = sourceMap.sources.some((src: string) =>
-        src.includes('domCaptureHandler.ts')
+      // Should include primary content script source
+      const hasContentScript = sourceMap.sources.some((src: string) =>
+        src.includes('content-script.ts')
       );
-      expect(hasDomCapture).toBe(true);
+      expect(hasContentScript).toBe(true);
     });
 
     it('should include source content or sourcesContent', () => {

@@ -29,27 +29,20 @@ export class ResponseStreamError extends Error {
 /**
  * Async iterable stream of ResponseEvent objects
  *
- * This class implements a producer-consumer pattern matching Rust's mpsc::channel behavior.
+ * This class implements a producer-consumer pattern using an event buffer and async iteration.
  * Events are added by the producer (API response handler) and consumed via async iteration.
  *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs` Lines 149-164
- *
  * **Pattern**:
- * - Producer: Calls `addEvent()` to send events → Rust: `tx_event.send(Ok(event))`
- * - Consumer: Uses `for await` to receive events → Rust: `rx_event.recv()`
- * - Completion: Calls `complete()` → Rust: `tx_event` is dropped
- * - Error: Calls `error()` → Rust: `tx_event.send(Err(e))`
+ * - Producer: Calls `addEvent()` to send events
+ * - Consumer: Uses `for await` to receive events
+ * - Completion: Calls `complete()` to signal end of stream
+ * - Error: Calls `error()` to signal error state
  *
  * **Features**:
  * - Buffering: Events are queued until consumed
  * - Backpressure: Optional buffer size limit throws when exceeded
  * - Timeout: Configurable idle timeout for event arrival
  * - Abort: Cancellation via AbortSignal
- *
- * **Type Mapping**:
- * - Rust `mpsc::Sender<Result<ResponseEvent>>` → TypeScript `addEvent()` / `error()` methods
- * - Rust `mpsc::Receiver<Result<ResponseEvent>>` → TypeScript async iterator
- * - Rust `tokio::spawn` → TypeScript async IIFE pattern
  *
  * @example
  * ```typescript
@@ -81,7 +74,7 @@ export class ResponseStream {
   ) {
     this.config = {
       maxBufferSize: 1000,
-      eventTimeout: 30000, // 30 seconds
+      eventTimeout: 60000, // 60 seconds
       enableBackpressure: true,
       ...config
     };

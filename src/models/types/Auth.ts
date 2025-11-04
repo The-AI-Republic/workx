@@ -1,6 +1,5 @@
 /**
  * Authentication types for browserx-chrome extension
- * Based on the Rust implementation for consistency
  */
 
 /**
@@ -23,7 +22,6 @@ export type PlanType =
 
 /**
  * Authentication information structure
- * Mirrors the Rust BrowserxAuth struct
  */
 export interface BrowserxAuth {
   mode: AuthMode;

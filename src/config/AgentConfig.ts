@@ -1,5 +1,5 @@
 /**
- * T033-T036, Main centralized agent configuration class
+ * Main centralized agent configuration class
  */
 
 import type {
