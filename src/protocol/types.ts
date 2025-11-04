@@ -345,15 +345,5 @@ export interface ReviewRequest {
   type?: 'code' | 'document' | 'general';
 }
 
-/**
- * Event Queue Entry - responses from agent
- */
-export interface Event {
-  /** Unique id for this Event */
-  id: string;
-  /** Event message */
-  msg: EventMsg;
-}
-
 // Re-export EventMsg from events.ts
 export type { EventMsg } from './events';

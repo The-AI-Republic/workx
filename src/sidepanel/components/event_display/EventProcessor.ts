@@ -269,12 +269,42 @@ export class EventProcessor {
     }
 
     if (msg.type === 'StreamError') {
+      const lines: string[] = [msg.data.error];
+
+      if (msg.data.retrying) {
+        const hasRetryMetadata =
+          typeof msg.data.attempt === 'number' ||
+          typeof msg.data.delayMs === 'number' ||
+          typeof msg.data.maxRetries === 'number';
+        const mentionsRetry = /\bretry/i.test(msg.data.error);
+
+        if (hasRetryMetadata) {
+          let retryLine = 'Retrying';
+
+          if (typeof msg.data.attempt === 'number') {
+            if (typeof msg.data.maxRetries === 'number') {
+              retryLine += ` (attempt ${msg.data.attempt}/${msg.data.maxRetries})`;
+            } else {
+              retryLine += ` (attempt ${msg.data.attempt})`;
+            }
+          }
+
+          if (typeof msg.data.delayMs === 'number') {
+            retryLine += ` in ${msg.data.delayMs}ms`;
+          }
+
+          lines.push(retryLine);
+        } else if (!mentionsRetry) {
+          lines.push('Retrying');
+        }
+      }
+
       return {
         id: event.id,
         category: 'error',
         timestamp: new Date(),
         title: 'STREAM ERROR',
-        content: `${msg.data.error}${msg.data.retrying ? ' (retrying...)' : ''}`,
+        content: lines.join('\n'),
         style: STYLE_PRESETS.error,
         status: 'error',
         collapsible: false,

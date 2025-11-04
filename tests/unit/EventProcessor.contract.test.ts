@@ -129,7 +129,7 @@ describe('EventProcessor Contract Tests', () => {
     expect(result).not.toBeNull();
     expect(result?.category).toBe('error');
     expect(result?.title).toBe('STREAM ERROR');
-    expect(result?.content).toBe('Stream connection failed (retrying...)');
+    expect(result?.content).toBe('Stream connection failed\nRetrying (attempt 2)');
     expect(result?.status).toBe('error');
   });
 

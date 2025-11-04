@@ -350,8 +350,9 @@ export class OpenAIResponsesClient extends ModelClient {
     }
 
     // Create stream and start processing asynchronously
-    // Use 5-minute event timeout for LLM reasoning (matches turn timeout)
-    const stream = new ResponseStream(undefined, { eventTimeout: 300000 });
+    // Use 30-minute event timeout for LLM reasoning (extended for reasoning models like o1)
+    // Reasoning models can take >5 minutes without sending events during complex reasoning
+    const stream = new ResponseStream(undefined, { eventTimeout: 1800000 });
 
     // Spawn async task to populate stream from SSE
     (async () => {

@@ -1,12 +1,21 @@
 import type { CacheEntry, CacheConfig } from '../types/storage';
+import { IndexedDBAdapter, STORE_NAMES } from './IndexedDBAdapter';
 
 const DEFAULT_CONFIG: CacheConfig = {
   maxSize: 50 * 1024 * 1024, // 50MB
   defaultTTL: 3600000, // 1 hour
   evictionPolicy: 'lru',
-  compressionThreshold: 1024, // Compress entries > 1KB
+  compressionThreshold: 50 * 1024, // Compress entries > 50KB
   persistToStorage: true
 };
+
+/**
+ * Storage entry for IndexedDB rollout_cache store
+ */
+interface RolloutCacheEntry {
+  key: string;
+  entry: CacheEntry;
+}
 
 export class CacheManager {
   private memoryCache: Map<string, CacheEntry> = new Map();
@@ -14,10 +23,28 @@ export class CacheManager {
   private config: CacheConfig;
   private currentSize = 0;
   private compressionWorker: Worker | null = null;
+  private dbAdapter: IndexedDBAdapter;
+  private initPromise: Promise<void> | null = null;
 
-  constructor(config?: Partial<CacheConfig>) {
+  constructor(config?: Partial<CacheConfig>, dbAdapter?: IndexedDBAdapter) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.dbAdapter = dbAdapter || new IndexedDBAdapter();
     this.initializeCompressionWorker();
+    // Initialize database in background
+    this.initPromise = this.dbAdapter.initialize().catch(err => {
+      console.error('Failed to initialize IndexedDB for CacheManager:', err);
+      // Continue without persistent storage
+      this.config.persistToStorage = false;
+    });
+  }
+
+  /**
+   * Ensure database is initialized before storage operations
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
+    }
   }
 
   private initializeCompressionWorker(): void {
@@ -101,9 +128,14 @@ export class CacheManager {
     // Check persistent storage if enabled
     if (this.config.persistToStorage) {
       try {
-        const stored = await chrome.storage.local.get(`cache.${key}`);
-        if (stored[`cache.${key}`]) {
-          const entry = stored[`cache.${key}`] as CacheEntry;
+        await this.ensureInitialized();
+        const stored = await this.dbAdapter.get<RolloutCacheEntry>(
+          STORE_NAMES.ROLLOUT_CACHE,
+          key
+        );
+
+        if (stored && stored.entry) {
+          const entry = stored.entry;
           if (!this.isExpired(entry)) {
             // Update memory cache
             this.memoryCache.set(key, entry);
@@ -113,11 +145,11 @@ export class CacheManager {
             return entry.compressed ? await this.decompress(entry.value) : entry.value;
           } else {
             // Remove expired entry from storage
-            await chrome.storage.local.remove(`cache.${key}`);
+            await this.dbAdapter.delete(STORE_NAMES.ROLLOUT_CACHE, key);
           }
         }
       } catch (error) {
-        console.error('Failed to read from storage:', error);
+        console.error('Failed to read from IndexedDB storage:', error);
       }
     }
 
@@ -169,9 +201,11 @@ export class CacheManager {
     // Store in persistent storage if enabled
     if (this.config.persistToStorage) {
       try {
-        await chrome.storage.local.set({ [`cache.${key}`]: entry });
+        await this.ensureInitialized();
+        const rolloutEntry: RolloutCacheEntry = { key, entry };
+        await this.dbAdapter.put(STORE_NAMES.ROLLOUT_CACHE, rolloutEntry);
       } catch (error) {
-        console.error('Failed to persist to storage:', error);
+        console.error('Failed to persist to IndexedDB storage:', error);
         // If storage fails, keep in memory only
       }
     }
@@ -186,9 +220,10 @@ export class CacheManager {
 
       if (this.config.persistToStorage) {
         try {
-          await chrome.storage.local.remove(`cache.${key}`);
+          await this.ensureInitialized();
+          await this.dbAdapter.delete(STORE_NAMES.ROLLOUT_CACHE, key);
         } catch (error) {
-          console.error('Failed to remove from storage:', error);
+          console.error('Failed to remove from IndexedDB storage:', error);
         }
       }
 
@@ -204,14 +239,10 @@ export class CacheManager {
 
     if (this.config.persistToStorage) {
       try {
-        // Get all cache keys
-        const items = await chrome.storage.local.get();
-        const cacheKeys = Object.keys(items).filter(k => k.startsWith('cache.'));
-        if (cacheKeys.length > 0) {
-          await chrome.storage.local.remove(cacheKeys);
-        }
+        await this.ensureInitialized();
+        await this.dbAdapter.clear(STORE_NAMES.ROLLOUT_CACHE);
       } catch (error) {
-        console.error('Failed to clear storage:', error);
+        console.error('Failed to clear IndexedDB storage:', error);
       }
     }
   }
@@ -238,11 +269,11 @@ export class CacheManager {
 
     // Clean persistent storage
     if (this.config.persistToStorage && keysToRemove.length > 0) {
-      const storageKeys = keysToRemove.map(k => `cache.${k}`);
       try {
-        await chrome.storage.local.remove(storageKeys);
+        await this.ensureInitialized();
+        await this.dbAdapter.batchDelete(STORE_NAMES.ROLLOUT_CACHE, keysToRemove);
       } catch (error) {
-        console.error('Failed to clean storage:', error);
+        console.error('Failed to clean IndexedDB storage:', error);
       }
     }
 
@@ -425,7 +456,7 @@ export class CacheManager {
     });
   }
 
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (this.compressionWorker) {
       this.compressionWorker.terminate();
       this.compressionWorker = null;
@@ -433,5 +464,8 @@ export class CacheManager {
     this.memoryCache.clear();
     this.accessOrder = [];
     this.currentSize = 0;
+
+    // Close database connection
+    await this.dbAdapter.close();
   }
 }
