@@ -26,7 +26,7 @@
  * - Compact representation for sparse boolean flags
  * - Reduces token count by 20-40% for form-heavy pages
  *
- * T026: Stage 3 Payload Optimization
+ * Stage 3 Payload Optimization
  */
 
 import type { VirtualNode } from '../../types';

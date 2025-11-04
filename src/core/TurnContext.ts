@@ -1,5 +1,5 @@
 /**
- * TurnContext implementation - ports TurnContext struct from browserx-rs
+ * TurnContext implementation
  * Manages turn state, context switching, approval policies, and sandbox settings
  */
 
@@ -43,7 +43,6 @@ export interface TurnContextConfig {
 
 /**
  * TurnContext manages the context and configuration for a single conversation turn
- * Port of TurnContext struct from browserx-rs/core/src/browserx.rs
  */
 export class TurnContext {
   private modelClient: ModelClient;
@@ -135,7 +134,6 @@ export class TurnContext {
 
   /**
    * Resolve a path relative to the current working directory
-   * Port of TurnContext::resolve_path from Rust
    */
   resolvePath(path?: string): string {
     if (!path) {

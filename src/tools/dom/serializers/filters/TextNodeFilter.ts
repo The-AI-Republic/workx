@@ -9,7 +9,7 @@
  * (e.g., whitespace between <span> elements) with no semantic value.
  * Interactive elements preserve their text content regardless of length.
  *
- * T014: Stage 1 Signal Filtering
+ * Stage 1 Signal Filtering
  */
 
 import { VirtualNode } from '../../types';

@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * TaskEvent - Renders task lifecycle events (T035)
+   * TaskEvent - Renders task lifecycle events
    */
   import type { ProcessedEvent } from '../../../types/ui';
 

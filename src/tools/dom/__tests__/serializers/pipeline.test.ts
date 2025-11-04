@@ -1,6 +1,6 @@
 /**
  * Integration test for SerializationPipeline
- * T049: Test full three-stage pipeline with baseline comparison
+ * Test full three-stage pipeline with baseline comparison
  */
 
 import { describe, it, expect } from 'vitest';

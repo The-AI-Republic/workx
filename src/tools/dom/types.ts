@@ -110,7 +110,7 @@ export interface PageContext {
   loaderId: string;
   viewport: { width: number; height: number };
   frameTree: FrameNode[];
-  frameworkDetected?: string | null; // T069: Detected framework (react, vue, angular, etc.)
+  frameworkDetected?: string | null; // Detected framework (react, vue, angular, etc.)
 }
 
 export interface FrameNode {
@@ -145,10 +145,10 @@ export interface ServiceConfig {
   maxTreeDepth: number;
   snapshotTimeout: number;
   retryAttempts: number;
-  enableMetrics?: boolean; // T092: Enable performance metrics collection
+  enableMetrics?: boolean; // Enable performance metrics collection
 }
 
-// T092: Performance metrics interface
+// Performance metrics interface
 export interface PerformanceMetrics {
   snapshotCount: number;
   snapshotCacheHits: number;

@@ -81,7 +81,7 @@ export interface SnapshotStats {
 /**
  * Flattened, token-optimized DOM representation for LLM
  *
- * @version 3.0.0 - T030: Normalized field names with snake_case convention
+ * @version 3.0.0 - Normalized field names with snake_case convention
  */
 export interface SerializedDom {
   page: {
@@ -121,7 +121,7 @@ export interface SerializedDom {
 /**
  * Serialized node (flattened, defaults omitted)
  *
- * @version 3.0.0 - T030: Normalized field names
+ * @version 3.0.0 - Normalized field names
  * Field name mappings:
  * - aria-label → aria_label (snake_case for token efficiency)
  * - children → kids (shorter alias)

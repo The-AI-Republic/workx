@@ -1,13 +1,12 @@
 /**
  * ResponseStream Contract Tests
  * Reference: contracts/ResponseStream.contract.md
- * Rust Reference: browserx-rs/core/src/client_common.rs:149-164
  *
  * These tests verify that the TypeScript ResponseStream implementation
- * matches the Rust channel-based streaming pattern.
+ * implements the channel-based streaming pattern.
  *
  * EXPECTED: Some tests may FAIL initially if ResponseStream needs refactoring
- * to fully match the Rust mpsc::channel behavior.
+ * to fully match the channel behavior.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -15,11 +14,11 @@ import { ResponseStream, ResponseStreamError } from '../ResponseStream';
 import type { ResponseEvent } from '../types/ResponseEvent';
 
 describe('ResponseStream Contract', () => {
-  describe('Producer-Consumer Pattern (Rust mpsc::channel equivalent)', () => {
-    it('matches Rust channel behavior: producer sends, consumer receives', async () => {
+  describe('Producer-Consumer Pattern', () => {
+    it('implements channel behavior: producer sends, consumer receives', async () => {
       const stream = new ResponseStream();
 
-      // Producer (async task - simulates Rust tx_event.send())
+      // Producer (async task)
       setTimeout(() => {
         stream.addEvent({ type: 'Created' });
         stream.addEvent({ type: 'OutputTextDelta', delta: 'Hello' });
@@ -27,7 +26,7 @@ describe('ResponseStream Contract', () => {
         stream.complete();
       }, 0);
 
-      // Consumer (async iteration - simulates Rust rx_event.recv())
+      // Consumer (async iteration)
       const events: ResponseEvent[] = [];
       for await (const event of stream) {
         events.push(event);
@@ -58,7 +57,7 @@ describe('ResponseStream Contract', () => {
     });
   });
 
-  describe('addEvent() - Rust tx_event.send(Ok(event))', () => {
+  describe('addEvent()', () => {
     it('adds event to stream', () => {
       const stream = new ResponseStream();
 
@@ -100,7 +99,7 @@ describe('ResponseStream Contract', () => {
     });
   });
 
-  describe('complete() - Rust tx_event drop', () => {
+  describe('complete()', () => {
     it('marks stream as completed', () => {
       const stream = new ResponseStream();
       stream.complete();
@@ -123,7 +122,7 @@ describe('ResponseStream Contract', () => {
     });
   });
 
-  describe('error() - Rust tx_event.send(Err(e))', () => {
+  describe('error()', () => {
     it('causes iteration to throw', async () => {
       const stream = new ResponseStream();
       const testError = new Error('Test error');
@@ -210,7 +209,7 @@ describe('ResponseStream Contract', () => {
     });
   });
 
-  describe('Backpressure - Rust channel capacity', () => {
+  describe('Backpressure', () => {
     it('throws when buffer full (backpressure enabled)', () => {
       const stream = new ResponseStream(undefined, {
         maxBufferSize: 2,

@@ -1,6 +1,6 @@
 /**
  * Unit tests for RectUnion
- * T046: Test contains, add, subtract, fullyCovers
+ * Test contains, add, subtract, fullyCovers
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

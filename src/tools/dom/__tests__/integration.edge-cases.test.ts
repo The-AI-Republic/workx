@@ -3,7 +3,7 @@ import { DomService } from '../DomService';
 import type { VirtualNode } from '../types';
 
 /**
- * T085: Edge Case Integration Tests
+ * Edge Case Integration Tests
  *
  * Tests for edge cases and error scenarios:
  * - X-Frame-Options DENY detection
@@ -60,7 +60,7 @@ describe('DomService Edge Cases', () => {
     }
   });
 
-  describe('T077: X-Frame-Options DENY Detection', () => {
+  describe('X-Frame-Options DENY Detection', () => {
     it('should detect and report X-Frame-Options DENY errors', async () => {
       const sendCommand = vi.fn()
         .mockResolvedValueOnce(undefined) // DOM.enable (in attach)
@@ -79,7 +79,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T078: Pathological Iframe Nesting', () => {
+  describe('Pathological Iframe Nesting', () => {
     it('should stop traversal at 100+ nested iframes', async () => {
       // Create deeply nested iframe structure (101 levels)
       const createNestedIframes = (depth: number): any => {
@@ -122,7 +122,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T079: CDP Connection Loss', () => {
+  describe('CDP Connection Loss', () => {
     it('should handle debugger detach gracefully', async () => {
       const service = await DomService.forTab(mockTabId);
 
@@ -150,7 +150,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T080: Element Visibility Verification', () => {
+  describe('Element Visibility Verification', () => {
     it('should reject clicks on zero-size elements', async () => {
       const mockSnapshot = {
         root: {
@@ -185,7 +185,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T081: Debugger Conflict Detection', () => {
+  describe('Debugger Conflict Detection', () => {
     it('should detect when DevTools is already attached', async () => {
       (global.chrome.debugger.attach as any).mockRejectedValue(
         new Error('Cannot attach to this target because it already attached')
@@ -201,7 +201,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T082: Snapshot Timeout', () => {
+  describe('Snapshot Timeout', () => {
     it('should timeout on slow DOM fetches', async () => {
       const sendCommand = vi.fn()
         .mockResolvedValueOnce(undefined) // DOM.enable
@@ -218,7 +218,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T083: SVG Click Handling', () => {
+  describe('SVG Click Handling', () => {
     it('should detect SVG elements and provide clear error', async () => {
       const mockSnapshot = {
         root: {
@@ -249,7 +249,7 @@ describe('DomService Edge Cases', () => {
     });
   });
 
-  describe('T084: Memory Pressure Detection', () => {
+  describe('Memory Pressure Detection', () => {
     it('should warn on pages with >50k nodes', async () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

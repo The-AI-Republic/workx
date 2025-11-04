@@ -109,7 +109,7 @@ export function getTextContent(node: VirtualNode): string | undefined {
 }
 
 /**
- * Detect JavaScript framework from DOM tree (T068)
+ * Detect JavaScript framework from DOM tree
  *
  * Heuristics:
  * - React: data-reactroot, data-reactid, _reactRootContainer, __reactContainer

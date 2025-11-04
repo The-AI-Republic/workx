@@ -1,6 +1,5 @@
 /**
  * SessionState - pure data container for session state
- * Port of Rust SessionState struct (commit 250b244ab)
  */
 
 import type { ResponseItem, ConversationHistory } from '../../../protocol/types';
@@ -70,7 +69,7 @@ export class SessionState {
   }
 
   /**
-   * T011: Replace entire conversation history
+   * Replace entire conversation history
    * Used for compaction - replaces all history with new items
    * @param items New history items to replace existing history
    */
@@ -79,7 +78,7 @@ export class SessionState {
   }
 
   /**
-   * T009: Compress the most recent DOM snapshot in history
+   * Compress the most recent DOM snapshot in history
    *
    * This method finds the latest DOM snapshot output in history and compresses it
    * by replacing its body with a placeholder message while preserving metadata.

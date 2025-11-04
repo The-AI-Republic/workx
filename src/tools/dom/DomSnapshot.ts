@@ -105,7 +105,7 @@ export class DomSnapshot implements IDomSnapshot {
       }
     };
 
-    // T012: Use SerializationPipeline for compaction
+    // Use SerializationPipeline for compaction
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(this.virtualDom);
 
@@ -120,7 +120,7 @@ export class DomSnapshot implements IDomSnapshot {
       interactiveNodes: result.metrics.interactiveNodes
     });
 
-    // T031: Build flattened tree structure from pipeline result with v3 schema
+    // Build flattened tree structure from pipeline result with v3 schema
     const body = this.flatternNode(result.tree, opts);
 
     // Safety check: if body is null or has no kids, log detailed diagnostics
@@ -137,7 +137,7 @@ export class DomSnapshot implements IDomSnapshot {
       });
     }
 
-    // T031: Build v3 SerializedDom with normalized field names
+    // Build v3 SerializedDom with normalized field names
     this._serialized = {
       page: {
         context: {
@@ -157,7 +157,7 @@ export class DomSnapshot implements IDomSnapshot {
   }
 
   /**
-   * T031: Flatten VirtualNode tree to v3 SerializedNode with normalized field names
+   * Flatten VirtualNode tree to v3 SerializedNode with normalized field names
    *
    * Normalized field mappings:
    * - aria-label → aria_label
@@ -225,7 +225,7 @@ export class DomSnapshot implements IDomSnapshot {
   }
 
   /**
-   * T031: Build SerializedNode with v3 schema (normalized field names)
+   * Build SerializedNode with v3 schema (normalized field names)
    */
   private buildSerializedNode(node: VirtualNode, opts: Required<SerializationOptions>): SerializedNode {
     // Get sequential ID from IdRemapper

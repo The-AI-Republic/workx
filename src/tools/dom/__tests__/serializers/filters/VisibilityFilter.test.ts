@@ -1,6 +1,6 @@
 /**
  * Unit tests for VisibilityFilter
- * T032: Test visible, hidden, aria-hidden, dialog exception
+ * Test visible, hidden, aria-hidden, dialog exception
  */
 
 import { describe, it, expect } from 'vitest';

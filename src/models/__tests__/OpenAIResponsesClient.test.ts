@@ -1,6 +1,5 @@
 /**
  * Comprehensive tests for OpenAIResponsesClient
- * Based on browserx-rs SSE parser tests and client functionality
  */
 
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
