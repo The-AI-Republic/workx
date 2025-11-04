@@ -720,13 +720,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Initialize if not already initialized
   if (!isInitialized && !initializationPromise) {
     initialize().then(() => {
-      // Don't send response here - let the MessageRouter handle it
+      // Initialization complete - MessageRouter will handle the message
     }).catch(err => {
       console.error('Failed to initialize on message:', err);
     });
   }
-  // Return true to indicate we will send response asynchronously
-  return true;
+  // Don't return true - let MessageRouter handle the response
+  return false;
 });
 
 // Initialize on script load
