@@ -11,7 +11,6 @@ import type { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
- * T018, Added xAI and Anthropic provider support
  */
 export type ModelProvider = 'openai' | 'xai' | 'anthropic';
 
@@ -43,7 +42,7 @@ const STORAGE_KEYS = {
 
 /**
  * Model name to provider mapping
- * Added support for xAI Grok models
+ * Note: Only OpenAI models supported
  */
 const MODEL_PROVIDER_MAP: Record<string, ModelProvider> = {
   // OpenAI models
@@ -413,7 +412,8 @@ export class ModelClientFactory {
       case 'openai':
       default:
         // Use the experimental OpenAI Responses API client by default
-        // Construct minimal provider and model family configs aligned with browserx-rs
+        // Construct minimal provider and model family configs
+        const baseUrl = config.options?.baseUrl;
         const organization = config.options?.organization;
 
         const provider = {

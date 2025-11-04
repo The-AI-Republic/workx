@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * SystemEvent - Renders system notifications and metadata (T040)
+   * SystemEvent - Renders system notifications and metadata
    */
   import type { ProcessedEvent } from '../../../types/ui';
 

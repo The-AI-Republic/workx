@@ -1,6 +1,6 @@
 /**
  * UserNotifier - Manages user notifications in the Chrome extension
- * Port of UserNotifier from browserx-rs adapted for browser context
+ * Adapted for browser context
  */
 
 import type { EventMsg } from '../protocol/events';
@@ -62,7 +62,7 @@ export type ActionHandler = (notificationId: string, actionId: string) => void;
 
 /**
  * UserNotifier class - manages notifications to the user
- * Adapted from browserx-rs for browser environment
+ * Designed for browser environment
  */
 export class UserNotifier {
   private notifications: Map<string, UserNotification> = new Map();
@@ -72,7 +72,7 @@ export class UserNotifier {
   private chromeNotificationSupport: boolean = false;
   private maxNotifications: number = 100;
   private notificationHistory: UserNotification[] = [];
-  private externalCommand?: string; // For compatibility with Rust's notify_command
+  private externalCommand?: string;
   private fallbackToConsole: boolean = true; // Fallback when Chrome notifications unavailable
 
   constructor(config?: {
@@ -552,7 +552,6 @@ export class UserNotifier {
 
   /**
    * Notify agent turn completion
-   * Matches the Rust implementation's AgentTurnComplete notification
    */
   async notifyAgentTurnComplete(
     turnId: string,
@@ -564,11 +563,11 @@ export class UserNotifier {
       ? `Completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}`
       : 'Agent turn completed successfully';
 
-    // Create notification with metadata matching Rust serialization format
+    // Create notification with metadata
     await this.notify('success', title, message, {
       priority: 'normal',
       metadata: {
-        type: 'agent-turn-complete', // Match Rust naming convention
+        type: 'agent-turn-complete',
         'turn-id': turnId,
         'input-messages': inputMessages,
         'last-assistant-message': lastAssistantMessage,
@@ -576,7 +575,6 @@ export class UserNotifier {
     });
 
     // If external command is configured, send notification to external process
-    // This matches Rust's invoke_notify behavior
     if (this.externalCommand) {
       await this.notifyExternal({
         type: 'agent-turn-complete',
@@ -588,7 +586,7 @@ export class UserNotifier {
   }
 
   /**
-   * Send notification to external command (matches Rust implementation)
+   * Send notification to external command
    */
   private async notifyExternal(notification: any): Promise<void> {
     if (!this.externalCommand) return;

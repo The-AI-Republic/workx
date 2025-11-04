@@ -417,7 +417,7 @@
   .welcome-ascii {
     margin: 0;
     font-family: var(--font-terminal);
-    font-size: 0.6rem;
+    font-size: 0.4rem;
     line-height: 1.0;
     white-space: pre;
   }

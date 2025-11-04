@@ -1,5 +1,5 @@
 /**
- * Event mapping logic ported from browserx-rs/core/src/event_mapping.rs
+ * Event mapping logic
  * Converts ResponseItem into EventMsg values that the UI can render
  */
 

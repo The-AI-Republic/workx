@@ -75,6 +75,7 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   network_intercept_tool: false,
   data_extraction_tool: false,
   page_action_tool: true,
+  page_vision_tool: true,
 
   // Agent execution tool toggles
   execCommand: false,
@@ -93,7 +94,8 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
     'navigation_tool',
     'tab_tool',
     'storage_tool',
-    'page_action'
+    'page_action',
+    'page_vision'
   ],
   disabled: [],
   timeout: 90000, // 90 seconds default

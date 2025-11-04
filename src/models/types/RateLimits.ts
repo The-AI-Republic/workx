@@ -1,24 +1,22 @@
 /**
  * Rate limit information from API headers
  *
- * Rust Reference: browserx-rs/protocol/src/protocol.rs RateLimitSnapshot struct
- * ✅ ALIGNED: Structure matches Rust with optional primary/secondary windows
+ * Structure with optional primary/secondary windows
  */
 export interface RateLimitSnapshot {
-  primary?: RateLimitWindow;  // Rust: primary: Option<RateLimitWindow>
-  secondary?: RateLimitWindow;  // Rust: secondary: Option<RateLimitWindow>
+  primary?: RateLimitWindow;
+  secondary?: RateLimitWindow;
 }
 
 /**
  * Individual rate limit window details
  *
- * Rust Reference: browserx-rs/protocol/src/protocol.rs RateLimitWindow struct
- * ✅ ALIGNED: All fields use snake_case matching Rust
+ * All fields use snake_case
  */
 export interface RateLimitWindow {
-  used_percent: number;  // Rust: used_percent: f64
-  window_minutes?: number;  // Rust: window_minutes: Option<i64>
-  resets_in_seconds?: number;  // Rust: resets_in_seconds: Option<i64>
+  used_percent: number;
+  window_minutes?: number;
+  resets_in_seconds?: number;
 }
 
 /**

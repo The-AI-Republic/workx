@@ -1,7 +1,6 @@
 /**
  * OpenAI Responses API client implementation for browserx-chrome
  * Uses official OpenAI SDK for API calls (supports OpenAI, xAI, and other compatible providers)
- * Based on browserx-rs/core/src/client.rs implementation
  */
 
 import OpenAI from 'openai';
@@ -219,14 +218,12 @@ export class OpenAIResponsesClient extends ModelClient {
    * objects as the model generates its response. The stream is returned immediately,
    * with events being added asynchronously as they arrive from the API.
    *
-   * **Rust Reference**: `browserx-rs/core/src/client.rs` Line 124
-   *
    * @param prompt The prompt containing input messages and tools
    * @returns Promise resolving to ResponseStream that yields ResponseEvent objects
    * @throws ModelClientError if prompt validation fails
    */
   async stream(prompt: Prompt): Promise<ResponseStream> {
-    // Validate prompt (matches Rust behavior)
+    // Validate prompt
     if (!prompt.input || prompt.input.length === 0) {
       throw new ModelClientError('Prompt input is required');
     }
@@ -248,7 +245,7 @@ export class OpenAIResponsesClient extends ModelClient {
     const payload: ResponsesApiRequest = {
       model: this.currentModel,
       instructions: fullInstructions,
-      input: get_formatted_input(prompt),
+      input: await get_formatted_input(prompt),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
@@ -317,7 +314,6 @@ export class OpenAIResponsesClient extends ModelClient {
 
   /**
    * Stream responses from the model using appropriate wire API
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 121-134
    */
   protected async *streamResponses(request: CompletionRequest): AsyncGenerator<ResponseEvent> {
     // Convert CompletionRequest to Prompt
@@ -335,7 +331,6 @@ export class OpenAIResponsesClient extends ModelClient {
 
   /**
    * Chat completions streaming (not supported by Responses API)
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 177-195
    */
   protected async *streamChat(request: CompletionRequest): AsyncGenerator<ResponseEvent> {
     throw new ModelClientError('Chat completions not supported by Responses API - use OpenAIClient instead');
@@ -360,7 +355,9 @@ export class OpenAIResponsesClient extends ModelClient {
     const sdkStream = await this.makeResponsesApiRequest(payload);
 
     // Create stream and start processing asynchronously
-    const stream = new ResponseStream();
+    // Use 30-minute event timeout for LLM reasoning (extended for reasoning models like o1)
+    // Reasoning models can take >5 minutes without sending events during complex reasoning
+    const stream = new ResponseStream(undefined, { eventTimeout: 1800000 });
 
     // Spawn async task to populate stream from SDK events
     (async () => {
@@ -387,13 +384,13 @@ export class OpenAIResponsesClient extends ModelClient {
 
     const include: string[] = reasoning ? ['reasoning.encrypted_content'] : [];
 
-    // Determine store setting (Azure workaround logic from Rust implementation)
+    // Determine store setting (Azure workaround logic)
     const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
 
     const payload: ResponsesApiRequest = {
       model: this.currentModel,
       instructions: fullInstructions,
-      input: get_formatted_input(prompt),
+      input: await get_formatted_input(prompt),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
@@ -459,10 +456,7 @@ export class OpenAIResponsesClient extends ModelClient {
    * Process Server-Sent Events stream and populate ResponseStream
    *
    * This method processes the SSE stream from the API and adds events to the
-   * provided ResponseStream. It matches the Rust implementation's event processing
-   * logic exactly.
-   *
-   * **Rust Reference**: `browserx-rs/core/src/client.rs` Lines 488-550
+   * provided ResponseStream.
    *
    * @param body ReadableStream from fetch response
    * @param headers HTTP response headers
@@ -588,7 +582,7 @@ export class OpenAIResponsesClient extends ModelClient {
     headers: Headers | undefined,
     stream: ResponseStream
   ): Promise<void> {
-    // Parse rate limit information from headers (yield first, per Rust)
+    // Parse rate limit information from headers
     const rateLimitSnapshot = this.parseRateLimitSnapshot(headers);
     if (rateLimitSnapshot) {
       stream.addEvent({ type: 'RateLimits', snapshot: rateLimitSnapshot });
@@ -644,7 +638,7 @@ export class OpenAIResponsesClient extends ModelClient {
               const responseEvents = this.sseParser.processEvent(event);
 
               for (const responseEvent of responseEvents) {
-                // Store Completed event to yield at stream end (Rust behavior)
+                // Store Completed event to yield at stream end
                 if (responseEvent.type === 'Completed' && 'responseId' in responseEvent) {
                   responseCompleted = {
                     id: responseEvent.responseId,
@@ -672,8 +666,6 @@ export class OpenAIResponsesClient extends ModelClient {
    *
    * This is kept for backward compatibility with streamResponsesInternal().
    * New code should use processSSEToStream() instead.
-   *
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 488-550
    */
   protected async *processSSE(
     stream: ReadableStream<Uint8Array>,
@@ -910,7 +902,6 @@ export class OpenAIResponsesClient extends ModelClient {
 
   /**
    * Get full instructions including base instructions and overrides
-   * Uses PromptHelpers to match Rust implementation
    */
   private getFullInstructions(prompt: Prompt): string {
     return get_full_instructions(prompt, this.modelFamily);
@@ -1029,7 +1020,6 @@ export class OpenAIResponsesClient extends ModelClient {
    */
   /**
    * Parse rate limit snapshot from HTTP headers
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 552-590
    */
   protected parseRateLimitSnapshot(headers?: Headers): RateLimitSnapshot | undefined {
     if (!headers) return undefined;

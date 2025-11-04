@@ -1,0 +1,29 @@
+{
+  "nodeId": 1,
+  "backendNodeId": 35,
+  "nodeType": 9,
+  "nodeName": "#document",
+  "localName": "",
+  "nodeValue": "",
+  "tier": "semantic",
+  "accessibility": {
+    "role": "RootWebArea",
+    "name": "",
+    "checked": false
+  },
+  "heuristics": {
+    "hasOnClick": false,
+    "hasDataTestId": false,
+    "hasCursorPointer": false,
+    "isVisuallyInteractive": false
+  },
+  "boundingBox": {
+    "x": 0,
+    "y": 0,
+    "width": 3121,
+    "height": 2041
+  },
+  "paintOrder": 0,
+  "scrollRects": {},
+  "clientRects": {}
+}

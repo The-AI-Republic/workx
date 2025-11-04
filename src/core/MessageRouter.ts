@@ -173,7 +173,7 @@ export class MessageRouter {
       const handlers = this.handlers.get(message.type);
       if (handlers && handlers.size > 0) {
         const responses: any[] = [];
-        
+
         for (const handler of handlers) {
           try {
             const result = await handler(message, sender);

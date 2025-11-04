@@ -1,10 +1,10 @@
 /**
  * SessionState - pure data container for session state
- * Port of Rust SessionState struct (commit 250b244ab)
  */
 
 import type { ResponseItem, ConversationHistory } from '../../../protocol/types';
 import type { TokenUsageInfo, RateLimitSnapshot } from './types';
+import { isDOMSnapshotOutput, compressSnapshot } from './SnapshotCompressor';
 
 /**
  * Export format for SessionState
@@ -75,6 +75,28 @@ export class SessionState {
    */
   replaceHistory(items: ResponseItem[]): void {
     this.history = [...items];
+  }
+
+  /**
+   * Compress the most recent DOM snapshot in history
+   *
+   * This method finds the latest DOM snapshot output in history and compresses it
+   * by replacing its body with a placeholder message while preserving metadata.
+   *
+   * Called when a new DOM snapshot arrives to compress the previous one, keeping
+   * only the latest snapshot fresh for LLM reasoning.
+   */
+  compressPreviousDomSnapshot(): void {
+    // Iterate backwards to find the most recent DOM snapshot
+    for (let i = this.history.length - 1; i >= 0; i--) {
+      const item = this.history[i];
+
+      if (isDOMSnapshotOutput(item)) {
+        // Found the snapshot - compress it in place
+        this.history[i] = compressSnapshot(item);
+      }
+    }
+    // No snapshot found - nothing to compress
   }
 
   // ===== Token Tracking =====

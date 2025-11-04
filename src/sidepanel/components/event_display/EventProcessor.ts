@@ -1,12 +1,10 @@
 /**
  * EventProcessor - Transforms raw protocol events into UI-ready ProcessedEvent objects
  *
- * This class implements the IEventProcessor contract and manages state for:
+ * This class manages state for:
  * - Multi-event operations (Begin → Delta → End sequences)
  * - Streaming content accumulation (message and reasoning deltas)
  * - Event categorization and styling
- *
- * Ported from browserx-rs/exec/src/event_processor_with_human_output.rs
  */
 
 import type { Event } from '../../../protocol/types';
@@ -106,7 +104,7 @@ export class EventProcessor {
   }
 
   /**
-   * Determine event category based on event type (T021)
+   * Determine event category based on event type
    */
   private getCategoryForEvent(msg: EventMsg): EventDisplayCategory {
     switch (msg.type) {
@@ -186,7 +184,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process message category events (T022)
+   * Process message category events
    */
   private processMessageEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -252,7 +250,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process error category events (T023)
+   * Process error category events
    */
   private processErrorEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -271,12 +269,42 @@ export class EventProcessor {
     }
 
     if (msg.type === 'StreamError') {
+      const lines: string[] = [msg.data.error];
+
+      if (msg.data.retrying) {
+        const hasRetryMetadata =
+          typeof msg.data.attempt === 'number' ||
+          typeof msg.data.delayMs === 'number' ||
+          typeof msg.data.maxRetries === 'number';
+        const mentionsRetry = /\bretry/i.test(msg.data.error);
+
+        if (hasRetryMetadata) {
+          let retryLine = 'Retrying';
+
+          if (typeof msg.data.attempt === 'number') {
+            if (typeof msg.data.maxRetries === 'number') {
+              retryLine += ` (attempt ${msg.data.attempt}/${msg.data.maxRetries})`;
+            } else {
+              retryLine += ` (attempt ${msg.data.attempt})`;
+            }
+          }
+
+          if (typeof msg.data.delayMs === 'number') {
+            retryLine += ` in ${msg.data.delayMs}ms`;
+          }
+
+          lines.push(retryLine);
+        } else if (!mentionsRetry) {
+          lines.push('Retrying');
+        }
+      }
+
       return {
         id: event.id,
         category: 'error',
         timestamp: new Date(),
         title: 'STREAM ERROR',
-        content: `${msg.data.error}${msg.data.retrying ? ' (retrying...)' : ''}`,
+        content: lines.join('\n'),
         style: STYLE_PRESETS.error,
         status: 'error',
         collapsible: false,
@@ -287,7 +315,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process task lifecycle events (T026)
+   * Process task lifecycle events
    */
   private processTaskEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -361,7 +389,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process tool call events (T027)
+   * Process tool call events
    */
   private processToolEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -524,7 +552,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process reasoning events (T028)
+   * Process reasoning events
    */
   private processReasoningEvent(event: Event): ProcessedEvent | null {
     if (!this.showReasoning) {
@@ -589,7 +617,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process output events (T029)
+   * Process output events
    */
   private processOutputEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -610,7 +638,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process approval events (T029)
+   * Process approval events
    */
   private processApprovalEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -670,7 +698,7 @@ export class EventProcessor {
   }
 
   /**
-   * Process system events (T029)
+   * Process system events
    */
   private processSystemEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
@@ -728,7 +756,7 @@ export class EventProcessor {
   }
 
   /**
-   * Handle unknown event types gracefully (T031)
+   * Handle unknown event types gracefully
    */
   private processUnknownEvent(event: Event): ProcessedEvent {
     console.warn(`Processing unknown event type:`, event);

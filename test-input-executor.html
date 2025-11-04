@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test InputExecutor React Compatibility</title>
+</head>
+<body>
+  <h1>Test InputExecutor React Compatibility</h1>
+
+  <div id="app">
+    <label>Test Input (simulates React controlled component):</label>
+    <input type="text" id="testInput" value="">
+    <p>Current value: <span id="displayValue"></span></p>
+    <p>Input count: <span id="inputCount">0</span></p>
+    <p>Change count: <span id="changeCount">0</span></p>
+  </div>
+
+  <script>
+    // Simulate React's _valueTracker
+    const input = document.getElementById('testInput');
+    const display = document.getElementById('displayValue');
+    const inputCountEl = document.getElementById('inputCount');
+    const changeCountEl = document.getElementById('changeCount');
+
+    let inputCount = 0;
+    let changeCount = 0;
+
+    // Simulate React's _valueTracker
+    input._valueTracker = {
+      value: '',
+      setValue(val) {
+        this.value = val;
+      }
+    };
+
+    // Track input events
+    input.addEventListener('input', (e) => {
+      inputCount++;
+      inputCountEl.textContent = inputCount;
+      display.textContent = input.value;
+      console.log('Input event fired:', e.constructor.name, 'inputType:', e.inputType);
+
+      // Simulate React's value detection
+      if (input._valueTracker) {
+        const trackerValue = input._valueTracker.value;
+        const actualValue = input.value;
+        console.log('Tracker value:', trackerValue, 'Actual value:', actualValue);
+
+        if (trackerValue !== actualValue) {
+          console.log('✅ React WOULD detect this change!');
+        } else {
+          console.log('❌ React WOULD NOT detect this change!');
+        }
+      }
+    });
+
+    // Track change events
+    input.addEventListener('change', () => {
+      changeCount++;
+      changeCountEl.textContent = changeCount;
+      console.log('Change event fired');
+    });
+
+    // Test function (simulates our new InputExecutor)
+    function testNewImplementation() {
+      console.log('\n=== Testing NEW Implementation ===');
+
+      // Reset tracker BEFORE setting value (NEW approach)
+      if (input._valueTracker) {
+        input._valueTracker.setValue('');
+      }
+
+      // Set value
+      input.value = 'test message';
+
+      // Dispatch InputEvent (not Event)
+      const inputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        inputType: 'insertText'
+      });
+      input.dispatchEvent(inputEvent);
+
+      const changeEvent = new Event('change', {
+        bubbles: true,
+        cancelable: true
+      });
+      input.dispatchEvent(changeEvent);
+    }
+
+    // Test function (simulates old broken implementation)
+    function testOldImplementation() {
+      console.log('\n=== Testing OLD (Broken) Implementation ===');
+
+      // Clear first
+      input.value = '';
+      input._valueTracker.setValue('');
+
+      // Set value
+      input.value = 'test message';
+
+      // Dispatch basic Event (OLD approach)
+      const inputEvent = new Event('input', {
+        bubbles: true,
+        cancelable: true
+      });
+      input.dispatchEvent(inputEvent);
+
+      // Try to fix React AFTER setting value (WRONG!)
+      if (input._valueTracker) {
+        input._valueTracker.setValue(input.value); // Setting to SAME value = no effect
+      }
+    }
+
+    console.log('Test page loaded. Open console and run:');
+    console.log('- testNewImplementation() to test the fixed version');
+    console.log('- testOldImplementation() to test the broken version');
+  </script>
+</body>
+</html>

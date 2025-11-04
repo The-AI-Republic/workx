@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * ToolCallEvent - Renders tool call operations with metadata (T036)
+   * ToolCallEvent - Renders tool call operations with metadata
    */
   import type { ProcessedEvent } from '../../../types/ui';
   import { formatDuration } from '../../../utils/formatters';

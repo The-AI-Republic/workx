@@ -1,12 +1,27 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // Separate build config for content script
 // Must be IIFE format with all dependencies bundled inline
 export default defineConfig({
+  plugins: [
+    svelte({
+      compilerOptions: {
+        // Dev mode for better debugging
+        dev: false,
+        // Generate smaller runtime code
+        hydratable: false,
+      },
+      // Emit CSS separately
+      emitCss: false,
+      // Hot module replacement disabled for production
+      hot: false,
+    }),
+  ],
   build: {
     lib: {
       entry: resolve(__dirname, 'src/content/content-script.ts'),

@@ -148,6 +148,38 @@ function setupMessageHandlers(): void {
     }
     return { success: false, error: 'Agent not initialized' };
   });
+
+  // Handle stop agent session (from visual effects Stop Agent button)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'STOP_AGENT_SESSION') {
+      console.log('[ServiceWorker] Stop agent session requested from visual effects');
+
+      (async () => {
+        try {
+          if (agent) {
+            const session = agent.getSession();
+
+            // Abort all running tasks
+            console.log('[ServiceWorker] Aborting all running tasks...');
+            await session.abortAllTasks('user_stop_button');
+
+            // Reset the session
+            await session.reset();
+
+            console.log('[ServiceWorker] Agent session stopped');
+            sendResponse({ success: true });
+          } else {
+            sendResponse({ success: false, error: 'Agent not initialized' });
+          }
+        } catch (error) {
+          console.error('[ServiceWorker] Failed to stop agent session:', error);
+          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+      })();
+
+      return true; // Keep channel open for async response
+    }
+  });
   
   // Handle storage operations
   router.on(MessageType.STORAGE_GET, async (message) => {
@@ -295,14 +327,6 @@ function setupChromeListeners(): void {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   }
   
-  // Handle tab updates
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete') {
-      // Inject content script if needed
-      injectContentScriptIfNeeded(tabId, tab);
-    }
-  });
-  
   // Handle commands (keyboard shortcuts)
   chrome.commands.onCommand.addListener((command) => {
     handleCommand(command);
@@ -427,39 +451,6 @@ async function handleContextMenuClick(
     
     // Open side panel to show results
     chrome.sidePanel.open({ tabId: tab.id });
-  }
-}
-
-/**
- * Inject content script if needed
- */
-async function injectContentScriptIfNeeded(
-  tabId: number,
-  tab: chrome.tabs.Tab
-): Promise<void> {
-  // Skip chrome:// and other protected URLs
-  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-    return;
-  }
-  
-  try {
-    // Check if content script is already injected
-    const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' });
-    if (response) {
-      return; // Already injected
-    }
-  } catch {
-    // Not injected, proceed with injection
-  }
-  
-  // Inject content script
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js'],
-    });
-  } catch (error) {
-    console.error('Failed to inject content script:', error);
   }
 }
 

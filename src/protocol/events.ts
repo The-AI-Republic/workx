@@ -1,6 +1,5 @@
 /**
- * Event types ported from browserx-rs/protocol/src/protocol.rs
- * Preserving exact event names and structures
+ * Event types
  */
 
 import type {
@@ -11,6 +10,16 @@ import type {
   ReasoningEffortConfig,
   ReasoningSummaryConfig,
 } from './types';
+
+/**
+ * Event Queue Entry - responses from agent
+ */
+export interface Event {
+  /** Unique id for this Event */
+  id: string;
+  /** Event message */
+  msg: EventMsg;
+}
 
 /**
  * Complete EventMsg enumeration
@@ -93,7 +102,6 @@ export interface TaskCompleteEvent {
   compaction_performed?: boolean;
   aborted?: boolean;
   abort_reason?: TurnAbortReason;
-  // Added for compatibility with Rust's AgentTurnComplete notification
   turn_id?: string;
   input_messages?: string[];
 }
@@ -229,6 +237,14 @@ export interface StreamErrorEvent {
   error: string;
   retrying: boolean;
   attempt?: number;
+  /**
+   * Delay before the next retry attempt, when applicable.
+   */
+  delayMs?: number;
+  /**
+   * Maximum number of retry attempts configured for the turn.
+   */
+  maxRetries?: number;
 }
 
 export interface PatchApplyBeginEvent {
