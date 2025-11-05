@@ -253,6 +253,16 @@ function setupMessageHandlers(): void {
       // Re-initialize browser tools with new config
       await initializeBrowserTools();
 
+      // Notify all clients (sidepanel, etc.) that agent was reinitialized
+      chrome.runtime.sendMessage({
+        type: MessageType.AGENT_REINITIALIZED,
+        payload: {
+          timestamp: Date.now()
+        }
+      }).catch(() => {
+        // Ignore errors if no listeners (e.g., sidepanel not open)
+      });
+
       return { success: true, message: 'Configuration reloaded and agent recreated' };
     } catch (error) {
       console.error('Failed to reload configuration:', error);

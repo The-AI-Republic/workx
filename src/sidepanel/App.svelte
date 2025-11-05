@@ -84,6 +84,15 @@
     router.on(MessageType.STATE_UPDATE, (message) => {
     });
 
+    // Handle agent re-initialization (e.g., when model is changed)
+    router.on(MessageType.AGENT_REINITIALIZED, (message) => {
+      // Clear all messages and events for fresh start with new agent
+      messages = [];
+      processedEvents = [];
+      isProcessing = false;
+      eventProcessor.reset();
+    });
+
     // Check connection
     checkConnection();
 

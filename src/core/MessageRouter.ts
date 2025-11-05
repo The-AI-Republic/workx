@@ -87,6 +87,7 @@ export enum MessageType {
 
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
+  AGENT_REINITIALIZED = 'AGENT_REINITIALIZED',
 }
 
 /**
