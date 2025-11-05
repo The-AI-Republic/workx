@@ -11,9 +11,6 @@ export class ConfigStorage implements IConfigStorage {
   private readonly configKey = STORAGE_KEYS.CONFIG;
   private readonly versionKey = STORAGE_KEYS.CONFIG_VERSION;
   private readonly llmCacheConfigKey = 'llm_cache_config';
-  private cache: IAgentConfig | null = null;
-  private cacheTimestamp: number = 0;
-  private readonly cacheTTL = 10 * 60 * 1000; // 10 minutes cache
 
   constructor() {
     // No initialization needed for chrome.storage.local
@@ -23,22 +20,9 @@ export class ConfigStorage implements IConfigStorage {
    * Get configuration from chrome.storage.local
    */
   async get(): Promise<IAgentConfig | null> {
-    // Check cache first
-    if (this.cache && Date.now() - this.cacheTimestamp < this.cacheTTL) {
-      return this.cache;
-    }
-
     try {
       const result = await chrome.storage.local.get(this.configKey);
-
-      const data = result[this.configKey] || null;
-
-      if (data) {
-        this.cache = data;
-        this.cacheTimestamp = Date.now();
-      }
-
-      return data;
+      return result[this.configKey] || null;
     } catch (error) {
       console.error('[ConfigStorage] Error reading from chrome.storage.local:', error);
       throw new ConfigStorageError('read', `Failed to read config from chrome.storage.local: ${error}`);
@@ -51,10 +35,6 @@ export class ConfigStorage implements IConfigStorage {
   async set(config: IAgentConfig): Promise<void> {
     try {
       await chrome.storage.local.set({ [this.configKey]: config });
-
-      // Update cache
-      this.cache = config;
-      this.cacheTimestamp = Date.now();
     } catch (error) {
       console.error('[ConfigStorage] Error saving config:', error);
       throw new ConfigStorageError('write', `Failed to save config to chrome.storage.local: ${error}`);
@@ -67,9 +47,6 @@ export class ConfigStorage implements IConfigStorage {
   async clear(): Promise<void> {
     try {
       await chrome.storage.local.remove([this.configKey, this.versionKey]);
-
-      this.cache = null;
-      this.cacheTimestamp = 0;
     } catch (error) {
       throw new ConfigStorageError('delete', `Failed to clear config from chrome.storage.local: ${error}`);
     }
