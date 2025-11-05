@@ -29,6 +29,7 @@ import type { TokenUsage } from './types/TokenUsage';
 import { SSEEventParser } from './SSEEventParser';
 import { RequestQueue } from './RequestQueue';
 import { get_full_instructions, get_formatted_input } from './PromptHelpers';
+import { GeminiLogger } from '../utils/logger';
 
 /**
  * SSE Event structure from OpenAI Responses API
@@ -121,6 +122,10 @@ export class OpenAIResponsesClient extends ModelClient {
       arguments: string;
     };
   }> = new Map();
+
+  // Text content accumulator for Chat Completions API (Gemini)
+  // Unlike Responses API which auto-accumulates, Chat Completions requires manual accumulation
+  private chatCompletionTextContent: string = '';
 
   // Pending events queue for multi-event chunks
   // Some chunks need to emit multiple events (e.g., OutputItemDone + Completed)
@@ -536,6 +541,8 @@ export class OpenAIResponsesClient extends ModelClient {
     sdkStream: AsyncIterable<any>,
     stream: ResponseStream
   ): Promise<void> {
+    let completedEmitted = false;
+
     try {
       for await (const chunk of sdkStream) {
         // The SDK returns structured event objects
@@ -544,14 +551,42 @@ export class OpenAIResponsesClient extends ModelClient {
 
         if (responseEvent) {
           stream.addEvent(responseEvent);
+
+          // Track if we've emitted Completed
+          if (responseEvent.type === 'Completed') {
+            completedEmitted = true;
+          }
         }
       }
 
       // Flush any pending events after stream ends
       // (e.g., Completed event queued after OutputItemDone for tool calls)
+      const pendingCount = this.pendingEvents.length;
+      if (pendingCount > 0) {
+        GeminiLogger.debug('Flushing pending events', { count: pendingCount });
+      }
+
       while (this.pendingEvents.length > 0) {
         const pendingEvent = this.pendingEvents.shift()!;
+        GeminiLogger.debug('Flushing event', { type: pendingEvent.type });
         stream.addEvent(pendingEvent);
+
+        // Track if we've emitted Completed
+        if (pendingEvent.type === 'Completed') {
+          completedEmitted = true;
+        }
+      }
+
+      // Safety check: ensure Completed event is always emitted
+      // This prevents "stream closed before response.completed" errors
+      if (!completedEmitted) {
+        console.warn('[OpenAIResponsesClient] Stream ended without Completed event, emitting fallback');
+        GeminiLogger.debug('Emitting fallback Completed event');
+        stream.addEvent({
+          type: 'Completed',
+          responseId: 'fallback',
+          tokenUsage: undefined,
+        });
       }
     } catch (error) {
       console.error('[OpenAIResponsesClient] SDK stream error:', error);
@@ -644,7 +679,9 @@ export class OpenAIResponsesClient extends ModelClient {
 
     // Check if we have pending events from previous chunk
     if (this.pendingEvents.length > 0) {
-      return this.pendingEvents.shift()!;
+      const pendingEvent = this.pendingEvents.shift()!;
+      GeminiLogger.debug('Returning pending event', { type: pendingEvent.type, remaining: this.pendingEvents.length });
+      return pendingEvent;
     }
 
     const choice = chatEvent.choices?.[0];
@@ -660,6 +697,13 @@ export class OpenAIResponsesClient extends ModelClient {
 
     // Handle text content deltas
     if (delta?.content) {
+      // Accumulate text content for message item creation (T014)
+      this.chatCompletionTextContent += delta.content;
+
+      // Trace logging for text accumulation (T015)
+      GeminiLogger.textAccumulated(delta.content, this.chatCompletionTextContent.length);
+      GeminiLogger.textDelta(delta.content, this.chatCompletionTextContent.length);
+
       return {
         type: 'OutputTextDelta',
         delta: delta.content,
@@ -700,8 +744,9 @@ export class OpenAIResponsesClient extends ModelClient {
         }
       }
 
-      // Don't emit event yet - wait for finish_reason
-      return null;
+      // Don't emit event yet - fall through to check finish_reason in same chunk
+      // (Gemini sends both tool_calls and finish_reason in the same chunk)
+      // If there's no finish_reason in this chunk, we'll return null at the end
     }
 
     // Handle completion with finish_reason
@@ -712,12 +757,62 @@ export class OpenAIResponsesClient extends ModelClient {
         tokenUsage: chatEvent.usage ? this.convertChatCompletionUsageToTokenUsage(chatEvent.usage) : undefined,
       };
 
+      // Trace logging for finish reason (T015, T020)
+      const hasContent = this.chatCompletionTextContent.length > 0;
+      const hasToolCalls = this.chatCompletionToolCalls.size > 0;
+      GeminiLogger.finishReason(finishReason, hasContent, hasToolCalls);
+
       // If tool_calls finish reason, emit OutputItemDone first, then Completed
       if (finishReason === 'tool_calls') {
         const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
 
         // Clear accumulated tool calls for next request
         this.chatCompletionToolCalls.clear();
+
+        // Handle mixed content case: text + tool calls
+        // When Gemini returns text followed by tool calls, the text was already emitted as deltas
+        // We need to emit it as a message item too, then emit the tool call
+        if (hasContent && toolCallsArray.length > 0) {
+          // Create message item for the accumulated text
+          const messageItem = {
+            type: 'message' as const,
+            role: 'assistant' as const,
+            content: [
+              {
+                type: 'output_text' as const,
+                text: this.chatCompletionTextContent,
+              },
+            ],
+          };
+
+          // Clear text for next request
+          this.chatCompletionTextContent = '';
+
+          GeminiLogger.messageItemEmitted(messageItem.content[0].text.length);
+
+          // Queue tool call OutputItemDone
+          const toolCall = toolCallsArray[0];
+          this.pendingEvents.push({
+            type: 'OutputItemDone',
+            item: {
+              type: 'function_call',
+              id: toolCall.id,
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            },
+          });
+          GeminiLogger.debug('Queued tool call OutputItemDone', { toolName: toolCall.function.name });
+
+          // Queue Completed event
+          this.pendingEvents.push(completedEvent);
+          GeminiLogger.debug('Queued Completed event', { pendingCount: this.pendingEvents.length });
+
+          // Return message OutputItemDone first
+          return {
+            type: 'OutputItemDone',
+            item: messageItem,
+          };
+        }
 
         // Emit OutputItemDone for the tool call, queue Completed for next iteration
         // Note: Chat Completions can have parallel_tool_calls, but BrowserX sets it to false
@@ -729,8 +824,18 @@ export class OpenAIResponsesClient extends ModelClient {
             console.warn('[OpenAIResponsesClient] Multiple tool calls detected, but only emitting first one:', toolCallsArray);
           }
 
+          // Trace logging for tool call emission
+          GeminiLogger.functionCallItemEmitted(
+            toolCallsArray.length,
+            toolCallsArray.map(tc => tc.function.name)
+          );
+
+          // Clear any accumulated text (it was just for "thinking out loud")
+          this.chatCompletionTextContent = '';
+
           // Queue the Completed event for next call
           this.pendingEvents.push(completedEvent);
+          GeminiLogger.debug('Queued Completed event (tool calls only)', { pendingCount: this.pendingEvents.length });
 
           // Return the OutputItemDone event immediately
           return {
@@ -745,13 +850,72 @@ export class OpenAIResponsesClient extends ModelClient {
         }
 
         // If no tool calls accumulated, just emit completion
+        // Clear text just in case
+        this.chatCompletionTextContent = '';
         return completedEvent;
+      }
+
+      // Handle finish_reason='stop' (T016-T020: THE CRITICAL FIX)
+      //
+      // ROOT CAUSE: Chat Completions API (used by Gemini) emits text as delta.content chunks
+      // but does NOT auto-create message items like Responses API does. Without this fix,
+      // text deltas would be displayed in UI but never stored in conversation history,
+      // causing TurnManager to receive empty processedItems[] and show "Task completed"
+      // without any visible response text.
+      //
+      // FIX: Manually accumulate text in chatCompletionTextContent during streaming,
+      // then create message item with accumulated text when finish_reason='stop'.
+      // This mirrors the tool call handling pattern (accumulate -> create item -> emit).
+      if (finishReason === 'stop' || finishReason === 'length') {
+        // Check if we have accumulated text content (T019: validation)
+        if (hasContent) {
+          // Create message item with accumulated text (T016, T017)
+          const messageItem = {
+            type: 'message' as const,
+            role: 'assistant' as const,
+            content: [
+              {
+                type: 'output_text' as const,
+                text: this.chatCompletionTextContent,
+              },
+            ],
+          };
+
+          // Clear accumulated text for next request
+          this.chatCompletionTextContent = '';
+
+          // Trace logging for message item emission (T020)
+          GeminiLogger.messageItemEmitted(messageItem.content[0].text.length);
+
+          // Queue Completed event for next call (T018 - mirror tool call pattern)
+          this.pendingEvents.push(completedEvent);
+          GeminiLogger.debug('Queued Completed event (stop)', { pendingCount: this.pendingEvents.length });
+
+          // Return OutputItemDone with message item immediately
+          return {
+            type: 'OutputItemDone',
+            item: messageItem,
+          };
+        }
+
+        // T019: Validation - empty response handling
+        // If no content and no tool calls, log warning
+        if (!hasContent && !hasToolCalls) {
+          GeminiLogger.validationWarning(
+            'Empty response detected: finish_reason=stop but no content or tool calls',
+            { finishReason, responseId: chatEvent.id }
+          );
+          console.warn('[OpenAIResponsesClient] Empty response with finish_reason=stop, skipping OutputItemDone');
+        }
       }
 
       // Clear tool calls state for next request
       this.chatCompletionToolCalls.clear();
+      // Also clear text content if not already cleared
+      this.chatCompletionTextContent = '';
 
-      // Emit completion event for "stop", "length", etc.
+      // Emit completion event for other finish reasons or fallback
+      GeminiLogger.completedEmitted(completedEvent.tokenUsage);
       return completedEvent;
     }
 
@@ -1111,6 +1275,12 @@ export class OpenAIResponsesClient extends ModelClient {
    */
   private async makeChatCompletionsRequest(payload: ResponsesApiRequest): Promise<AsyncIterable<any>> {
     try {
+      // Reset streaming state before starting new request
+      this.chatCompletionTextContent = '';
+      this.chatCompletionToolCalls.clear();
+      GeminiLogger.stateReset();
+      GeminiLogger.streamStart(payload.model, this.conversationId);
+
       // Convert Responses API payload to Chat Completions format
       const messages: any[] = [];
 
@@ -1126,26 +1296,62 @@ export class OpenAIResponsesClient extends ModelClient {
       if (payload.input && Array.isArray(payload.input)) {
         for (const item of payload.input) {
           if (item.type === 'message') {
-            // Convert content array to string or keep as is
-            let content = item.content;
+            // Convert content array to Chat Completions format
+            let content: any = item.content;
             if (Array.isArray(content)) {
-              // Extract text content from content parts
-              content = content.map((part: any) => {
-                if (part.type === 'text') {
-                  return part.text;
-                } else if (part.type === 'image') {
-                  // Keep image format for multimodal support
-                  return part;
+              // Handle all ContentItem types: 'text', 'input_text', 'output_text', 'input_image'
+              const convertedParts = content.map((part: any) => {
+                if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
+                  return { type: 'text', text: part.text };
+                } else if (part.type === 'input_image') {
+                  // Convert to Chat Completions image format
+                  return {
+                    type: 'image_url',
+                    image_url: { url: part.image_url }
+                  };
+                } else if (part.type === 'refusal') {
+                  return { type: 'text', text: part.refusal };
                 }
-                return '';
-              }).filter((c: any) => c !== '').join('\n');
+                return null;
+              }).filter((c: any) => c !== null);
+
+              // If all parts are text, join into a single string for simplicity
+              // Otherwise, keep as multimodal array
+              const allText = convertedParts.every((p: any) => p.type === 'text');
+              if (allText && convertedParts.length > 0) {
+                content = convertedParts.map((p: any) => p.text).join('\n');
+              } else {
+                content = convertedParts;
+              }
             }
 
             messages.push({
               role: item.role,
               content: content
             });
+          } else if (item.type === 'function_call') {
+            // Convert function_call to Chat Completions assistant message with tool_calls
+            messages.push({
+              role: 'assistant',
+              tool_calls: [{
+                id: item.call_id || item.id,
+                type: 'function',
+                function: {
+                  name: item.name,
+                  arguments: item.arguments
+                }
+              }]
+            });
+          } else if (item.type === 'function_call_output') {
+            // Convert function_call_output to Chat Completions tool message
+            messages.push({
+              role: 'tool',
+              tool_call_id: item.call_id,
+              content: item.output
+            });
           }
+          // Note: 'reasoning' items are not sent to Gemini (Gemini generates its own reasoning)
+          // Other item types (web_search_call, etc.) are also omitted
         }
       }
 
@@ -1194,7 +1400,7 @@ export class OpenAIResponsesClient extends ModelClient {
       }, null, 2));
 
       // Use OpenAI SDK's chat completions API with streaming
-      const stream = await this.client.chat.completions.create(requestParams);
+      const stream = await this.client.chat.completions.create(requestParams) as AsyncIterable<any>;
 
       return stream;
     } catch (error: any) {
@@ -1249,11 +1455,6 @@ export class OpenAIResponsesClient extends ModelClient {
             strict: tool.function.strict || false,
             parameters: tool.function.parameters || { type: 'object', properties: {} },
           };
-        }
-
-        // Handle local_shell tools
-        if (tool.type === 'local_shell') {
-          return { type: 'local_shell' };
         }
 
         // Handle web_search tools

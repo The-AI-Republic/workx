@@ -15,6 +15,7 @@
 ### Implementation Notes for BrowserX
 - Base URL: `https://generativelanguage.googleapis.com/v1beta/openai/` with standard `Authorization: Bearer <API_KEY>` headers. No project ID is required when using AI Studio keys.
 - **Endpoint**: Gemini's OpenAI compatibility layer supports `/chat/completions` (NOT `/responses`). BrowserX automatically uses Chat Completions API when Gemini is detected.
+- **Text Accumulation**: Chat Completions API emits text as `delta.content` chunks but does NOT auto-create message items like Responses API. BrowserX's `OpenAIResponsesClient` manually accumulates text in `chatCompletionTextContent` and creates message items at `finish_reason='stop'` to ensure responses appear in conversation history. Without this, only text deltas would be displayed (and then disappear), causing TurnManager to show "Task completed" without visible output.
 - Model ID: `gemini-2.5-pro`. Older previews (e.g., `-exp`) remain accessible but lack long-term guarantees; prefer the stable alias for production.
 - Rate limits: AI Studio keys default to 60 RPM / 6 RPS. BrowserX's queue should respect these values until elevated quotas are granted.
 - Prompting tips:
