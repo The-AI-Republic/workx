@@ -555,6 +555,32 @@
         throw new Error('Model not found in selection items');
       }
 
+      // Store previous state for reverting if user cancels
+      const previousModelId = selectedModelId;
+      const previousProvider = currentProvider;
+      const previousProviderName = currentProviderName;
+      const previousProviderOrganization = currentProviderOrganization;
+      const previousApiKey = apiKey;
+      const previousMaskedApiKey = maskedApiKey;
+      const previousIsAuthenticated = isAuthenticated;
+      const previousConfiguredFeatures = { ...configuredFeatures };
+
+      // Show confirmation dialog
+      const userConfirmed = confirm(
+        'The model switch will clear the current conversation. Do you want to continue?'
+      );
+
+      if (!userConfirmed) {
+        // User cancelled - revert dropdown selection
+        modelSelectionItems = modelSelectionItems.map(item => ({
+          ...item,
+          selected: item.modelId === previousModelId
+        }));
+        isModelSwitching = false;
+        return;
+      }
+
+      // User confirmed - proceed with model change
       // Update ALL UI state IMMEDIATELY for instant feedback
       // This ensures dropdown, provider section, API key field, and features all stay in sync
       selectedModelId = modelId;
