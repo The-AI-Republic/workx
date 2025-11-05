@@ -111,6 +111,21 @@ export class OpenAIResponsesClient extends ModelClient {
   private requestQueue: RequestQueue | null = null;
   private queueEnabled: boolean = false;
 
+  // Chat Completions streaming state (for Gemini and other providers)
+  // Tool calls arrive incrementally, so we need to accumulate them
+  private chatCompletionToolCalls: Map<number, {
+    id: string;
+    type: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }> = new Map();
+
+  // Pending events queue for multi-event chunks
+  // Some chunks need to emit multiple events (e.g., OutputItemDone + Completed)
+  private pendingEvents: ResponseEvent[] = [];
+
   constructor(config: OpenAIResponsesConfig, retryConfig?: Partial<RetryConfig>) {
     super(retryConfig);
 
@@ -129,13 +144,27 @@ export class OpenAIResponsesClient extends ModelClient {
     this.currentModel = config.modelFamily.family;
 
     // Initialize OpenAI SDK client with provider-specific baseURL
-    this.client = new OpenAI({
+    const clientOptions: ConstructorParameters<typeof OpenAI>[0] = {
       apiKey: this.apiKey || 'placeholder', // SDK requires non-empty string, we validate later
       baseURL: this.baseUrl,
       organization: this.organization,
       timeout: 360000, // 6 minutes for reasoning models
       maxRetries: 0, // We handle retries manually
-    });
+    };
+
+    // Gemini through Google AI Studio expects API key via `key` query param / X-Goog-Api-Key header.
+    if (!config.provider.requires_openai_auth && this.apiKey) {
+      clientOptions.defaultHeaders = {
+        ...(config.provider.http_headers || {}),
+        'X-Goog-Api-Key': this.apiKey,
+      };
+      clientOptions.defaultQuery = {
+        ...(config.provider.query_params || {}),
+        key: this.apiKey,
+      };
+    }
+
+    this.client = new OpenAI(clientOptions);
 
     // Initialize performance optimizations
     this.sseParser = new SSEEventParser();
@@ -483,6 +512,13 @@ export class OpenAIResponsesClient extends ModelClient {
           yield responseEvent;
         }
       }
+
+      // Flush any pending events after stream ends
+      // (e.g., Completed event queued after OutputItemDone for tool calls)
+      while (this.pendingEvents.length > 0) {
+        const pendingEvent = this.pendingEvents.shift()!;
+        yield pendingEvent;
+      }
     } catch (error) {
       console.error('[OpenAIResponsesClient] SDK stream error:', error);
       throw error;
@@ -510,6 +546,13 @@ export class OpenAIResponsesClient extends ModelClient {
           stream.addEvent(responseEvent);
         }
       }
+
+      // Flush any pending events after stream ends
+      // (e.g., Completed event queued after OutputItemDone for tool calls)
+      while (this.pendingEvents.length > 0) {
+        const pendingEvent = this.pendingEvents.shift()!;
+        stream.addEvent(pendingEvent);
+      }
     } catch (error) {
       console.error('[OpenAIResponsesClient] SDK stream error:', error);
       throw error;
@@ -519,18 +562,22 @@ export class OpenAIResponsesClient extends ModelClient {
   /**
    * Convert OpenAI SDK event to ResponseEvent format
    * Maps SDK's event structure to our internal ResponseEvent type
+   * Handles both Responses API and Chat Completions API formats
    */
   private convertSDKEventToResponseEvent(sdkEvent: any): ResponseEvent | null {
-    // The SDK event format will depend on what the actual SDK returns
-    // This is a placeholder implementation that will need to be adjusted
-    // based on the actual SDK event structure
+    // Chat Completions format (used by Gemini)
+    // Events have: { id, choices: [{ delta, finish_reason }], usage }
+    if (sdkEvent && sdkEvent.choices && Array.isArray(sdkEvent.choices)) {
+      return this.convertChatCompletionEventToResponseEvent(sdkEvent);
+    }
 
+    // Responses API format (used by OpenAI, xAI)
+    // Events have: { type, item, delta, response }
     if (!sdkEvent || !sdkEvent.type) {
       return null;
     }
 
     // Map SDK event types to ResponseEvent types
-    // SDK event types will be determined once we test with actual responses
     switch (sdkEvent.type) {
       case 'response.created':
         return { type: 'Created' };
@@ -577,6 +624,151 @@ export class OpenAIResponsesClient extends ModelClient {
         console.debug('[OpenAIResponsesClient] Unknown SDK event type:', sdkEvent.type, sdkEvent);
         return null;
     }
+  }
+
+  /**
+   * Convert Chat Completions streaming event to ResponseEvent format
+   * Used for providers like Gemini that only support Chat Completions API
+   *
+   * Chat Completions streaming format:
+   * - Text comes in delta.content chunks
+   * - Tool calls come incrementally: first chunk has id+name, subsequent chunks have argument pieces
+   * - finish_reason signals completion: "stop", "length", "tool_calls", etc.
+   * - Usage info comes in the final chunk (when finish_reason is set)
+   */
+  private convertChatCompletionEventToResponseEvent(chatEvent: any): ResponseEvent | null {
+    // Debug logging for Gemini responses
+    if (this.provider.name === 'Google AI Studio') {
+      console.log('[Gemini Debug] Raw chunk:', JSON.stringify(chatEvent, null, 2));
+    }
+
+    // Check if we have pending events from previous chunk
+    if (this.pendingEvents.length > 0) {
+      return this.pendingEvents.shift()!;
+    }
+
+    const choice = chatEvent.choices?.[0];
+    if (!choice) {
+      console.log('[Gemini Debug] No choice in chunk');
+      return null;
+    }
+
+    const delta = choice.delta;
+    const finishReason = choice.finish_reason;
+
+    console.log('[Gemini Debug] Delta:', delta, 'FinishReason:', finishReason);
+
+    // Handle text content deltas
+    if (delta?.content) {
+      return {
+        type: 'OutputTextDelta',
+        delta: delta.content,
+      };
+    }
+
+    // Handle tool call deltas (accumulate incrementally)
+    if (delta?.tool_calls && Array.isArray(delta.tool_calls)) {
+      for (const toolCallDelta of delta.tool_calls) {
+        const index = toolCallDelta.index ?? 0;
+
+        // Get or create accumulated tool call
+        let accumulated = this.chatCompletionToolCalls.get(index);
+        if (!accumulated) {
+          accumulated = {
+            id: '',
+            type: 'function',
+            function: {
+              name: '',
+              arguments: '',
+            },
+          };
+          this.chatCompletionToolCalls.set(index, accumulated);
+        }
+
+        // Accumulate fields
+        if (toolCallDelta.id) {
+          accumulated.id = toolCallDelta.id;
+        }
+        if (toolCallDelta.type) {
+          accumulated.type = toolCallDelta.type;
+        }
+        if (toolCallDelta.function?.name) {
+          accumulated.function.name = toolCallDelta.function.name;
+        }
+        if (toolCallDelta.function?.arguments) {
+          accumulated.function.arguments += toolCallDelta.function.arguments;
+        }
+      }
+
+      // Don't emit event yet - wait for finish_reason
+      return null;
+    }
+
+    // Handle completion with finish_reason
+    if (finishReason) {
+      const completedEvent: ResponseEvent = {
+        type: 'Completed',
+        responseId: chatEvent.id || '',
+        tokenUsage: chatEvent.usage ? this.convertChatCompletionUsageToTokenUsage(chatEvent.usage) : undefined,
+      };
+
+      // If tool_calls finish reason, emit OutputItemDone first, then Completed
+      if (finishReason === 'tool_calls') {
+        const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
+
+        // Clear accumulated tool calls for next request
+        this.chatCompletionToolCalls.clear();
+
+        // Emit OutputItemDone for the tool call, queue Completed for next iteration
+        // Note: Chat Completions can have parallel_tool_calls, but BrowserX sets it to false
+        // so we should only have one tool call at a time
+        if (toolCallsArray.length > 0) {
+          const toolCall = toolCallsArray[0];
+
+          if (toolCallsArray.length > 1) {
+            console.warn('[OpenAIResponsesClient] Multiple tool calls detected, but only emitting first one:', toolCallsArray);
+          }
+
+          // Queue the Completed event for next call
+          this.pendingEvents.push(completedEvent);
+
+          // Return the OutputItemDone event immediately
+          return {
+            type: 'OutputItemDone',
+            item: {
+              type: 'function_call',
+              id: toolCall.id,
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            },
+          };
+        }
+
+        // If no tool calls accumulated, just emit completion
+        return completedEvent;
+      }
+
+      // Clear tool calls state for next request
+      this.chatCompletionToolCalls.clear();
+
+      // Emit completion event for "stop", "length", etc.
+      return completedEvent;
+    }
+
+    return null;
+  }
+
+  /**
+   * Convert Chat Completions usage format to internal TokenUsage format
+   */
+  private convertChatCompletionUsageToTokenUsage(usage: any): TokenUsage {
+    return {
+      input_tokens: usage.prompt_tokens || 0,
+      cached_input_tokens: usage.prompt_tokens_details?.cached_tokens || 0,
+      output_tokens: usage.completion_tokens || 0,
+      reasoning_output_tokens: usage.completion_tokens_details?.reasoning_tokens || 0,
+      total_tokens: usage.total_tokens || 0,
+    };
   }
 
   private async processSSEToStream(
@@ -830,12 +1022,22 @@ export class OpenAIResponsesClient extends ModelClient {
    * Make streaming request to OpenAI Responses API using official SDK
    * Returns an async iterable stream of events
    * Supports OpenAI, xAI (Grok), and other OpenAI-compatible providers
+   *
+   * NOTE: Gemini doesn't support the Responses API, so it uses Chat Completions instead
    */
   private async makeResponsesApiRequest(payload: ResponsesApiRequest): Promise<AsyncIterable<any>> {
     // Validate API key before making request
     if (!this.apiKey || !this.apiKey.trim()) {
       throw new ModelClientError(`No API key configured for provider: ${this.provider.name}`);
     }
+
+    // Check if this is Gemini - it doesn't support Responses API, use Chat Completions instead
+    if (this.provider.name === 'Google AI Studio' || this.currentModel.startsWith('gemini-')) {
+      console.log('[Gemini Debug] Routing to Chat Completions API (provider:', this.provider.name, ', model:', this.currentModel, ')');
+      return this.makeChatCompletionsRequest(payload);
+    }
+
+    console.log('[Debug] Using Responses API (provider:', this.provider.name, ', model:', this.currentModel, ')');
 
     try {
       // Convert payload to SDK format
@@ -892,6 +1094,113 @@ export class OpenAIResponsesClient extends ModelClient {
       // Handle SDK errors and convert to ModelClientError
       const statusCode = error.status || error.statusCode || 500;
       const errorMessage = error.message || `${this.provider.name} Responses API error`;
+
+      throw new ModelClientError(
+        errorMessage,
+        statusCode,
+        this.provider.name,
+        this.isRetryableHttpError(statusCode)
+      );
+    }
+  }
+
+  /**
+   * Make streaming request to Chat Completions API for providers that don't support Responses API
+   * Used for Gemini which only supports the OpenAI Chat Completions endpoint
+   * Returns an async iterable stream converted to ResponseEvent format
+   */
+  private async makeChatCompletionsRequest(payload: ResponsesApiRequest): Promise<AsyncIterable<any>> {
+    try {
+      // Convert Responses API payload to Chat Completions format
+      const messages: any[] = [];
+
+      // Add system message if instructions exist
+      if (payload.instructions) {
+        messages.push({
+          role: 'system',
+          content: payload.instructions
+        });
+      }
+
+      // Convert input array to messages
+      if (payload.input && Array.isArray(payload.input)) {
+        for (const item of payload.input) {
+          if (item.type === 'message') {
+            // Convert content array to string or keep as is
+            let content = item.content;
+            if (Array.isArray(content)) {
+              // Extract text content from content parts
+              content = content.map((part: any) => {
+                if (part.type === 'text') {
+                  return part.text;
+                } else if (part.type === 'image') {
+                  // Keep image format for multimodal support
+                  return part;
+                }
+                return '';
+              }).filter((c: any) => c !== '').join('\n');
+            }
+
+            messages.push({
+              role: item.role,
+              content: content
+            });
+          }
+        }
+      }
+
+      console.log('[Gemini Debug] Converted messages:', JSON.stringify(messages, null, 2));
+
+      // Build chat completions request
+      const requestParams: any = {
+        model: payload.model,
+        messages: messages,
+        stream: true,
+      };
+
+      // Add tools if present
+      if (payload.tools && payload.tools.length > 0) {
+        // Convert Responses API tool format to Chat Completions format
+        requestParams.tools = payload.tools.map((tool: any) => {
+          if (tool.type === 'function') {
+            return {
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters,
+                strict: tool.strict || false
+              }
+            };
+          }
+          return tool;
+        });
+
+        if (payload.tool_choice) {
+          requestParams.tool_choice = payload.tool_choice;
+        }
+        if (payload.parallel_tool_calls !== undefined) {
+          requestParams.parallel_tool_calls = payload.parallel_tool_calls;
+        }
+
+        console.log('[Gemini Debug] Converted tools:', JSON.stringify(requestParams.tools, null, 2));
+      }
+
+      console.log('[Gemini Debug] Final request params:', JSON.stringify({
+        model: requestParams.model,
+        messageCount: requestParams.messages.length,
+        toolCount: requestParams.tools?.length || 0,
+        stream: requestParams.stream
+      }, null, 2));
+
+      // Use OpenAI SDK's chat completions API with streaming
+      const stream = await this.client.chat.completions.create(requestParams);
+
+      return stream;
+    } catch (error: any) {
+      // Handle SDK errors and convert to ModelClientError
+      const statusCode = error.status || error.statusCode || 500;
+      const errorMessage = error.message || `${this.provider.name} Chat Completions API error`;
 
       throw new ModelClientError(
         errorMessage,

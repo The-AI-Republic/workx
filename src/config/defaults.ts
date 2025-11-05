@@ -305,6 +305,33 @@ export function getDefaultProviders(): Record<string, any> {
           deprecated: false
         }
       ]
+    },
+    'google-ai-studio': {
+      id: 'google-ai-studio',
+      name: 'Google AI Studio',
+      apiKey: '',
+      organization: null,
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      version: null,
+      headers: {},
+      timeout: DEFAULT_TIMEOUTS.API_REQUEST,
+      retryConfig: DEFAULT_RETRY_CONFIG,
+      models: [
+        {
+          id: '', // Will be randomly generated on first init
+          name: 'Gemini 2.5 Pro',
+          modelKey: 'gemini-2.5-pro',
+          creator: 'Google DeepMind',
+          contextWindow: 2000000,
+          maxOutputTokens: 8192,
+          supportsReasoning: true,
+          reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+          supportsReasoningSummaries: true,
+          supportsVerbosity: false,
+          releaseDate: null,
+          deprecated: false
+        }
+      ]
     }
   };
 }

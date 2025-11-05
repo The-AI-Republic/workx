@@ -443,6 +443,7 @@
     const providerName = currentProvider === 'openai' ? 'OpenAI'
       : currentProvider === 'xai' ? 'xAI'
       : currentProvider === 'anthropic' ? 'Anthropic'
+      : currentProvider === 'google-ai-studio' ? 'Google AI Studio'
       : currentProvider;
 
     if (!confirm(`Are you sure you want to remove your ${providerName} API key? You will need to enter it again to use this provider.`)) {
@@ -737,6 +738,8 @@
             xAI API Key
           {:else if currentProvider === 'anthropic'}
             Anthropic API Key
+          {:else if currentProvider === 'google-ai-studio'}
+            Google AI Studio API Key
           {:else}
             OpenAI API Key
           {/if}
@@ -749,7 +752,13 @@
               bind:value={apiKey}
               on:input={handleApiKeyInput}
               on:keydown={handleKeydown}
-              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...')}
+              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai'
+                ? 'xai-...'
+                : currentProvider === 'anthropic'
+                  ? 'sk-ant-...'
+                  : currentProvider === 'google-ai-studio'
+                    ? 'AIza...'
+                    : 'sk-...')}
               class="api-key-input"
               disabled={isInitializing || isSaving}
               autocomplete="off"
@@ -762,7 +771,13 @@
               bind:value={apiKey}
               on:input={handleApiKeyInput}
               on:keydown={handleKeydown}
-              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...')}
+              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai'
+                ? 'xai-...'
+                : currentProvider === 'anthropic'
+                  ? 'sk-ant-...'
+                  : currentProvider === 'google-ai-studio'
+                    ? 'AIza...'
+                    : 'sk-...')}
               class="api-key-input"
               disabled={isInitializing || isSaving}
               autocomplete="off"
@@ -793,6 +808,8 @@
             Enter your xAI API key (starts with 'xai-')
           {:else if currentProvider === 'anthropic'}
             Enter your Anthropic API key (starts with 'sk-ant-')
+          {:else if currentProvider === 'google-ai-studio'}
+            Enter your Google AI Studio API key (typically starts with 'AIza')
           {:else}
             Enter your OpenAI API key (starts with 'sk-' or 'sk-proj-')
           {/if}

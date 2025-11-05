@@ -467,9 +467,14 @@ export function getDefaultModel(config: any): string {
  * Detect provider from API key format
  * Returns provider ID based on key pattern
  */
-export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'unknown' {
+export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'google-ai-studio' | 'unknown' {
   if (!apiKey || apiKey.trim() === '') {
     return 'unknown';
+  }
+
+  // Google AI Studio keys commonly start with 'AIza' or 'GOAI'
+  if (apiKey.startsWith('AIza') || apiKey.startsWith('GOAI')) {
+    return 'google-ai-studio';
   }
 
   // xAI keys start with 'xai-'

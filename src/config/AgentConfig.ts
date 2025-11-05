@@ -496,7 +496,7 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Set API key for a specific provider
-   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
    * @param apiKey - Unencrypted API key (will be encrypted before storage)
    * @returns Provider configuration with encrypted API key
    * @throws Error if provider is unknown
@@ -527,7 +527,7 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Get decrypted API key for a specific provider
-   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
    * @returns Decrypted API key or null if not configured
    * @remarks Includes backward compatibility fallback to auth.apiKey
    * @example
@@ -552,7 +552,7 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Delete API key for a specific provider
-   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
    * @throws Error if provider is not found
    * @example
    * await agentConfig.deleteProviderApiKey('xai');
