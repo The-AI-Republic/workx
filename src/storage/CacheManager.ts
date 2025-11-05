@@ -49,7 +49,8 @@ export class CacheManager {
 
   private initializeCompressionWorker(): void {
     // Create inline worker for compression if supported
-    if (typeof Worker !== 'undefined') {
+    // Check for window to avoid errors in service worker initialization
+    if (typeof Worker !== 'undefined' && typeof URL !== 'undefined' && typeof Blob !== 'undefined') {
       const workerCode = `
         self.onmessage = async function(e) {
           const { action, data } = e.data;
@@ -417,6 +418,11 @@ export class CacheManager {
   }
 
   private async compress(data: any): Promise<any> {
+    // Lazy initialize worker on first use
+    if (!this.compressionWorker) {
+      this.initializeCompressionWorker();
+    }
+
     if (!this.compressionWorker) {
       throw new Error('Compression worker not available');
     }
@@ -437,6 +443,11 @@ export class CacheManager {
   }
 
   private async decompress(data: any): Promise<any> {
+    // Lazy initialize worker on first use
+    if (!this.compressionWorker) {
+      this.initializeCompressionWorker();
+    }
+
     if (!this.compressionWorker) {
       throw new Error('Compression worker not available');
     }

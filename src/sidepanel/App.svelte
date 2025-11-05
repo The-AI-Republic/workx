@@ -24,6 +24,8 @@
   let showNewConvTooltip = false;
   let showWelcome = false;
   let scrollContainer: HTMLDivElement;
+  let agentReady = false;
+  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string } = { ready: false };
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -38,12 +40,39 @@
     // Initialize router
     router = new MessageRouter('sidepanel');
 
-    // Request session reset when side panel opens
-    try {
-      await router.requestSessionReset();
-      console.log('Session reset on side panel open');
-    } catch (error) {
-      console.error('Failed to reset session:', error);
+    // Wait for background service worker to be ready
+    let retries = 0;
+    const maxRetries = 5;
+    const retryDelay = 500; // ms
+
+    while (retries < maxRetries) {
+      try {
+        // Test connection with ping
+        await router.send(MessageType.PING);
+        break;
+      } catch (error) {
+        retries++;
+        if (retries >= maxRetries) {
+          console.warn('Failed to connect to background service worker after', maxRetries, 'attempts');
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    // Request session reset when side panel opens (non-critical)
+    if (retries < maxRetries) {
+      try {
+        await router.requestSessionReset();
+      } catch (error) {
+        // Non-critical error - log but don't block initialization
+        const errorMessage = error instanceof Error
+          ? error.message
+          : (error && typeof error === 'object' && 'message' in error)
+            ? error.message
+            : String(error);
+        console.warn('Session reset failed (non-critical):', errorMessage);
+      }
     }
 
     // Setup event handlers
@@ -53,7 +82,15 @@
     });
 
     router.on(MessageType.STATE_UPDATE, (message) => {
-      console.log('State update:', message.payload);
+    });
+
+    // Handle agent re-initialization (e.g., when model is changed)
+    router.on(MessageType.AGENT_REINITIALIZED, (message) => {
+      // Clear all messages and events for fresh start with new agent
+      messages = [];
+      processedEvents = [];
+      isProcessing = false;
+      eventProcessor.reset();
     });
 
     // Check connection
@@ -70,10 +107,25 @@
 
   async function checkConnection() {
     try {
-      const response = await router?.send(MessageType.PING);
-      isConnected = response?.type === MessageType.PONG;
+      const response = await router?.send(MessageType.HEALTH_CHECK);
+      isConnected = response?.type === MessageType.HEALTH_STATUS;
+
+      if (response?.type === MessageType.HEALTH_STATUS) {
+        agentReady = response.ready === true;
+        healthStatus = {
+          ready: response.ready === true,
+          message: response.message,
+          provider: response.provider,
+          model: response.model,
+        };
+      } else {
+        agentReady = false;
+        healthStatus = { ready: false, message: 'Unable to check agent status' };
+      }
     } catch {
       isConnected = false;
+      agentReady = false;
+      healthStatus = { ready: false, message: 'Connection error' };
     }
   }
 
@@ -129,7 +181,28 @@
   }
 
   async function sendMessage() {
-    if (!inputText.trim() || !isConnected) return;
+    if (!inputText.trim()) return;
+
+    // Check if connected
+    if (!isConnected) {
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Error: Not connected to agent. Please refresh the page.',
+        timestamp: Date.now(),
+      }];
+      return;
+    }
+
+    // Check if agent is ready (has API key)
+    if (!agentReady) {
+      const providerName = healthStatus.provider || 'the selected provider';
+      messages = [...messages, {
+        type: 'agent',
+        content: `Cannot send message: No API key configured for ${providerName}.\n\nPlease click the Settings button (⚙️) at the top right and configure your API key.`,
+        timestamp: Date.now(),
+      }];
+      return;
+    }
 
     const text = inputText.trim();
     inputText = '';
@@ -188,11 +261,12 @@
 
   function handleSettingsClose() {
     showSettings = false;
+    // Re-check health status in case API key was added
+    checkConnection();
   }
 
   function handleAuthUpdated(event: CustomEvent) {
     // Handle auth updates if needed
-    console.log('Auth updated:', event.detail);
   }
 
   async function startNewConversation() {
@@ -208,7 +282,6 @@
     // Request session reset from backend
     try {
       await router.requestSessionReset();
-      console.log('New conversation started - session reset');
     } catch (error) {
       console.error('Failed to reset session:', error);
       messages = [...messages, {
@@ -224,15 +297,16 @@
   <TerminalContainer>
     <!-- Status Line -->
     <div class="flex justify-between mb-2">
-      <TerminalMessage type="system" content="Browserx For Chrome v0.0.1 (By AI Republic)" />
+      <TerminalMessage type="system" content="Browserx (By AI Republic)" />
       <div class="flex items-center space-x-2">
         {#if isProcessing}
           <TerminalMessage type="warning" content="[PROCESSING]" />
         {/if}
-        <TerminalMessage
-          type={isConnected ? 'system' : 'error'}
-          content={isConnected ? '[CONNECTED]' : '[DISCONNECTED]'}
-        />
+        {#if !isConnected}
+          <TerminalMessage type="error" content="[DISCONNECTED]" />
+        {:else if !agentReady}
+          <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
+        {/if}
       </div>
     </div>
 

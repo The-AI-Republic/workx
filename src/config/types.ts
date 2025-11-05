@@ -3,42 +3,43 @@
  * Type definitions for the centralized config system
  */
 
-import { AuthMode, PlanType } from '../models/types/Auth';
-
-// Authentication configuration
-export interface IAuthConfig {
+/**
+ * Model registry entry for fast provider lookup
+ *
+ * Maps model ID to provider ID and model key for O(1) lookups.
+ */
+export interface IModelRegistryEntry {
   /**
-   * Encrypted API key
-   * Empty string indicates no API key configured
+   * ID of the provider hosting this model
+   * MUST correspond to a key in IAgentConfig.providers
    */
-  apiKey: string;
-
-  /**
-   * Authentication mode
-   */
-  authMode: AuthMode;
+  providerId: string;
 
   /**
-   * Optional account identifier
+   * Internal model identifier for API calls
+   * Corresponds to IModelConfig.modelKey in the provider's models array
    */
-  accountId?: string | null;
-
-  /**
-   * Optional plan type information
-   */
-  planType?: PlanType | null;
-
-  /**
-   * Timestamp of last configuration update in milliseconds
-   * 0 indicates never updated
-   */
-  lastUpdated?: number;
+  modelKey: string;
 }
 
 // Main centralized configuration interface for the agent
 export interface IAgentConfig {
   version: string;
-  model: IModelConfig;
+
+  /**
+   * Currently selected model ID
+   * The globally unique ID of the active model
+   * MUST exist in modelRegistry
+   */
+  selectedModelId: string;
+
+  /**
+   * Model ID to provider/model lookup table
+   * Fast O(1) lookup from model ID to provider and model key
+   * Automatically maintained when providers/models are updated
+   */
+  modelRegistry: Record<string, IModelRegistryEntry>;
+
   providers: Record<string, IProviderConfig>;
   profiles?: Record<string, IProfileConfig>;
   activeProfile?: string | null;
@@ -47,32 +48,151 @@ export interface IAgentConfig {
   extension: IExtensionSettings;
   tools?: IToolsConfig;
   storage?: IStorageConfig;
-  auth?: IAuthConfig;
 }
 
 // Model configuration
 export interface IModelConfig {
-  selected: string;
-  provider: string;
-  contextWindow?: number | null;
-  maxOutputTokens?: number | null;
-  autoCompactTokenLimit?: number | null;
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | null;
-  reasoningSummary?: 'auto' | 'concise' | 'detailed' | 'none';
-  verbosity?: 'low' | 'medium' | 'high' | null;
+  /**
+   * Globally unique model identifier
+   * Sequential 6-digit zero-padded numeric string
+   * Generated automatically when model is added to a provider
+   * MUST be unique across ALL providers
+   */
+  id: string;
+
+  /**
+   * Human-readable model name
+   * Display name shown to users in Settings UI
+   */
+  name: string;
+
+  /**
+   * Internal API identifier
+   * The exact model name/identifier used in API requests to the provider
+   */
+  modelKey: string;
+
+  /**
+   * Model creator/developer
+   * The company that developed/trained the model
+   * DISTINCT from the provider hosting the model API
+   */
+  creator: string;
+
+  /**
+   * Maximum context window in tokens
+   * Total number of tokens the model can process in a single request
+   */
+  contextWindow: number;
+
+  /**
+   * Maximum output tokens per request
+   * Maximum number of tokens the model can generate in a single response
+   */
+  maxOutputTokens: number;
+
+  /**
+   * Whether model supports reasoning features
+   * If true, the model can be configured with reasoning effort levels
+   */
+  supportsReasoning: boolean;
+
+  /**
+   * Supported reasoning effort levels (optional)
+   * Array of valid effort level strings for this model
+   */
+  reasoningEfforts?: string[];
+
+  /**
+   * Whether model supports reasoning summaries (optional)
+   * If true, the model can provide summaries of its reasoning process
+   */
+  supportsReasoningSummaries?: boolean;
+
+  /**
+   * Whether model supports verbosity control (optional)
+   * If true, the model's output verbosity can be adjusted
+   */
+  supportsVerbosity?: boolean;
+
+  /**
+   * Supported verbosity levels (optional)
+   * Array of valid verbosity level strings for this model
+   */
+  verbosityLevels?: string[];
+
+  /**
+   * Model release date (optional)
+   * ISO 8601 date string (YYYY-MM-DD) indicating when the model was released
+   */
+  releaseDate?: string | null;
+
+  /**
+   * Whether model is deprecated (optional)
+   * If true, the model should show deprecation warnings in the UI
+   */
+  deprecated?: boolean;
+
+  /**
+   * User-facing deprecation message (optional)
+   * Custom message to display when deprecated is true
+   */
+  deprecationMessage?: string | null;
 }
 
 // Provider configuration
 export interface IProviderConfig {
   id: string;
   name: string;
+
+  /**
+   * Encrypted API key
+   * Empty string indicates no API key configured
+   */
   apiKey: string;
-  baseUrl?: string | null;
+
+  /**
+   * Provider-specific organization ID (optional)
+   * Used by some providers (e.g., OpenAI) for organizational billing
+   */
   organization?: string | null;
+
+  /**
+   * API base URL override (optional)
+   * Custom base URL for API requests
+   */
+  baseUrl?: string | null;
+
+  /**
+   * API version string (optional)
+   * Provider-specific API version identifier
+   */
   version?: string | null;
+
+  /**
+   * Custom HTTP headers (optional)
+   * Additional headers to include in all API requests
+   */
   headers?: Record<string, string>;
+
+  /**
+   * Request timeout in milliseconds
+   * MUST be between 1000ms (1s) and 120000ms (2min)
+   */
   timeout: number;
+
+  /**
+   * Retry configuration (optional)
+   * Defines retry behavior for failed API requests
+   */
   retryConfig?: IRetryConfig;
+
+  /**
+   * Models hosted by this provider
+   * Array of models available through this provider's API
+   * MUST contain at least one model
+   */
+  models: IModelConfig[];
 }
 
 // Profile configuration
@@ -253,6 +373,62 @@ export interface IConfigFactory {
   createDefault(): IAgentConfig;
   createFromStorage(data: any): IAgentConfig;
   validateConfig(config: any): config is IAgentConfig;
+}
+
+// Multi-provider validation result types
+export interface IProviderValidationResult {
+  isValid: boolean;
+  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'unknown';
+  warnings: string[];
+  errors: string[];
+}
+
+export interface IProviderStatus {
+  id: string;
+  name: string;
+  configured: boolean;
+  active: boolean;
+  lastUsed?: number;
+  requestCount?: number;
+}
+
+// ============================================================================
+// Legacy ModelRegistry type replacements
+// Simplified types to replace ModelRegistry.ts imports
+// ============================================================================
+
+/**
+ * Configured features for UI validation
+ * Replaces ConfiguredFeatures from ModelRegistry.ts
+ */
+export interface ConfiguredFeatures {
+  reasoningEffort?: string | null;
+  reasoningSummary?: string;
+  verbosity?: string | null;
+  maxOutputTokens?: number | null;
+  contextWindow?: number | null;
+}
+
+/**
+ * Model metadata for UI display
+ * Simplified version replacing ModelMetadata from ModelRegistry.ts
+ */
+export interface ModelMetadata {
+  id: string;
+  name: string;
+  modelKey: string;
+  creator: string;
+  contextWindow: number;
+  maxOutputTokens: number;
+  supportsReasoning: boolean;
+  reasoningEfforts?: string[];
+  supportsReasoningSummaries?: boolean;
+  supportsVerbosity?: boolean;
+  verbosityLevels?: string[];
+  releaseDate?: string | null;
+  deprecated?: boolean;
+  deprecationMessage?: string | null;
+  provider: string; // Provider ID for UI display
 }
 
 // Error types

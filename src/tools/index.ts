@@ -3,6 +3,7 @@
  */
 
 import { ToolRegistry } from './ToolRegistry';
+import type { IToolsConfig } from '../config/types';
 import { WebScrapingTool } from './WebScrapingTool';
 import { FormAutomationTool } from './FormAutomationTool';
 import { NetworkInterceptTool } from './NetworkInterceptTool';
@@ -12,9 +13,8 @@ import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { TabTool } from './TabTool';
 import { PageVisionTool } from './PageVisionTool';
-import type { IToolsConfig } from '../config/types';
 
-// Re-export all tools
+// Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
 export { BaseTool, createFunctionTool, createObjectSchema, createToolDefinition } from './BaseTool';
 export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat } from './BaseTool';

@@ -818,6 +818,7 @@ export class Session {
 
   /**
    * Flush rollout recorder before session ends
+   * Graceful shutdown
    */
   async shutdown(): Promise<void> {
     if (this.services?.rollout) {

@@ -26,15 +26,9 @@ export { OpenAIResponsesClient, type OpenAIResponsesConfig } from './OpenAIRespo
 // Factory and utilities
 export {
   ModelClientFactory,
-  getModelClientFactory,
   type ModelProvider,
   type ModelClientConfig,
 } from './ModelClientFactory';
-
-// Authentication management
-export {
-  ChromeAuthManager,
-} from './ChromeAuthManager';
 
 // Performance optimizations
 export {
@@ -49,3 +43,5 @@ export {
   type RateLimitConfig as RequestQueueRateLimitConfig,
   type QueueMetrics,
 } from './RequestQueue';
+
+// ModelRegistry removed - model metadata now managed by AgentConfig

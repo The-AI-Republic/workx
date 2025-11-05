@@ -119,13 +119,13 @@ export function isApproachingRateLimit(
 /**
  * Formats rate limit information for display
  */
-export function formatRateLimitInfo(window: RateLimitWindow): string {
-  const percent = window.used_percent.toFixed(1);
-  const resetInfo = window.resets_in_seconds
-    ? `, resets in ${Math.ceil(window.resets_in_seconds)}s`
+export function formatRateLimitInfo(rateLimitWindow: RateLimitWindow): string {
+  const percent = rateLimitWindow.used_percent.toFixed(1);
+  const resetInfo = rateLimitWindow.resets_in_seconds
+    ? `, resets in ${Math.ceil(rateLimitWindow.resets_in_seconds)}s`
     : '';
-  const windowInfo = window.window_minutes
-    ? ` (${window.window_minutes}min window)`
+  const windowInfo = rateLimitWindow.window_minutes
+    ? ` (${rateLimitWindow.window_minutes}min window)`
     : '';
 
   return `${percent}% used${windowInfo}${resetInfo}`;

@@ -253,7 +253,7 @@ export abstract class ModelClient {
    * In the browser environment:
    * - Chrome extensions use the Chrome Storage API for API key management
    * - No OAuth flow is implemented (users provide API keys directly)
-   * - See `ChromeAuthManager.ts` for the browser-specific implementation
+   * - API keys are managed through AgentConfig
    */
   abstract getAuthManager(): any;
 
