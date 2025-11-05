@@ -557,13 +557,6 @@
 
       // Store previous state for reverting if user cancels
       const previousModelId = selectedModelId;
-      const previousProvider = currentProvider;
-      const previousProviderName = currentProviderName;
-      const previousProviderOrganization = currentProviderOrganization;
-      const previousApiKey = apiKey;
-      const previousMaskedApiKey = maskedApiKey;
-      const previousIsAuthenticated = isAuthenticated;
-      const previousConfiguredFeatures = { ...configuredFeatures };
 
       // Show confirmation dialog
       const userConfirmed = confirm(

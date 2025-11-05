@@ -9,7 +9,6 @@ import {
   ModelClientError,
   type CompletionRequest,
   type CompletionResponse,
-  type StreamChunk,
   type RetryConfig,
 } from './ModelClient';
 import { ResponseStream } from './ResponseStream';
@@ -23,14 +22,12 @@ import type {
   TextControls,
   ReasoningEffortConfig,
   ReasoningSummaryConfig,
-  OpenAiVerbosity,
-  TextFormat,
-  TextFormatType,
+  OpenAiVerbosity
 } from './types/ResponsesAPI';
 import type { RateLimitSnapshot } from './types/RateLimits';
 import type { TokenUsage } from './types/TokenUsage';
 import { SSEEventParser } from './SSEEventParser';
-import { RequestQueue, RequestPriority, type QueuedRequest } from './RequestQueue';
+import { RequestQueue } from './RequestQueue';
 import { get_full_instructions, get_formatted_input } from './PromptHelpers';
 
 /**

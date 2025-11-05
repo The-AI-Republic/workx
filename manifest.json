@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "S4_Browserx: General AI Agent for work tasks automation",
+  "name": "Browserx: General AI Agent for work tasks automation",
   "version": "0.0.1",
-  "description": "AI-powered browser automation agent preserving browserx-rs SQ/EQ architecture",
+  "description": "AI-powered AI agent with browser automation capabilities",
   "permissions": [
     "tabs",
     "tabGroups",
