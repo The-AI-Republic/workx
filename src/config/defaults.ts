@@ -2,7 +2,7 @@
  * Default centralized agent configuration values
  */
 
-import type { IAgentConfig, IModelConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IAuthConfig } from './types';
+import type { IAgentConfig, IModelConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IAuthConfig, IRateLimitPauseConfig } from './types';
 import { AuthMode } from '../models/types/Auth.js';
 
 export const DEFAULT_AUTH_CONFIG: IAuthConfig = {
@@ -191,6 +191,14 @@ export const DEFAULT_RETRY_CONFIG = {
   backoffMultiplier: 2
 };
 
+// Default rate limit pause configuration
+export const DEFAULT_RATE_LIMIT_PAUSE_CONFIG: IRateLimitPauseConfig = {
+  enabled: true,
+  defaultDuration: 60000,    // 60 seconds
+  maxDuration: 300000,       // 5 minutes
+  useRetryAfterHeader: true
+};
+
 // Default timeout settings (ms)
 export const DEFAULT_TIMEOUTS = {
   API_REQUEST: 30000,
@@ -258,7 +266,8 @@ export function getDefaultProviders(): Record<string, any> {
       apiKey: '',
       baseUrl: 'https://api.openai.com/v1',
       timeout: DEFAULT_TIMEOUTS.API_REQUEST,
-      retryConfig: DEFAULT_RETRY_CONFIG
+      retryConfig: DEFAULT_RETRY_CONFIG,
+      rateLimitPause: DEFAULT_RATE_LIMIT_PAUSE_CONFIG
     },
     anthropic: {
       id: 'anthropic',
@@ -266,7 +275,8 @@ export function getDefaultProviders(): Record<string, any> {
       apiKey: '',
       baseUrl: 'https://api.anthropic.com',
       timeout: DEFAULT_TIMEOUTS.API_REQUEST,
-      retryConfig: DEFAULT_RETRY_CONFIG
+      retryConfig: DEFAULT_RETRY_CONFIG,
+      rateLimitPause: DEFAULT_RATE_LIMIT_PAUSE_CONFIG
     }
   };
 }

@@ -2,12 +2,14 @@
  * Configuration validation functions
  */
 
+import { z } from 'zod';
 import type {
   IAgentConfig,
   IModelConfig,
   IProviderConfig,
   IProfileConfig,
-  IAuthConfig
+  IAuthConfig,
+  IRateLimitPauseConfig
 } from './types';
 import { AuthMode } from '../models/types/Auth.js';
 import {
@@ -461,4 +463,54 @@ export function validateAuthConfig(auth: any): ValidationResult {
   // accountId and planType can be any value or null, no validation needed
 
   return { valid: true };
+}
+
+/**
+ * Zod schema for rate limit pause configuration validation
+ */
+export const RateLimitPauseConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+
+  defaultDuration: z.number()
+    .int()
+    .min(1000, 'defaultDuration must be at least 1 second (1000ms)')
+    .default(60000),
+
+  maxDuration: z.number()
+    .int()
+    .min(1000, 'maxDuration must be at least 1 second (1000ms)')
+    .max(600000, 'maxDuration cannot exceed 10 minutes (600000ms)')
+    .default(300000),
+
+  useRetryAfterHeader: z.boolean().default(true),
+}).refine(
+  (data) => data.defaultDuration <= data.maxDuration,
+  {
+    message: 'defaultDuration cannot exceed maxDuration',
+    path: ['defaultDuration'],
+  }
+);
+
+/**
+ * Validate rate limit pause configuration using Zod schema
+ */
+export function validateRateLimitPauseConfig(config: any): ValidationResult {
+  try {
+    RateLimitPauseConfigSchema.parse(config);
+    return { valid: true };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const firstIssue = error.issues[0];
+      return {
+        valid: false,
+        field: `rateLimitPause.${firstIssue.path.join('.')}`,
+        value: firstIssue.path.reduce((obj: any, key) => obj?.[key], config),
+        error: firstIssue.message
+      };
+    }
+    return {
+      valid: false,
+      error: 'Invalid rate limit pause configuration'
+    };
+  }
 }

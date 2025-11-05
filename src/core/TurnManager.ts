@@ -14,9 +14,12 @@ import type { ResponseEvent } from '../models/types/ResponseEvent';
 import type { Prompt as ModelPrompt } from '../models/types/ResponsesAPI';
 import { v4 as uuidv4 } from 'uuid';
 import { ToolRegistry } from '../tools/ToolRegistry';
-import type { IToolsConfig } from '../config/types';
+import type { IToolsConfig, IRateLimitPauseConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from '../protocol/types';
+import { ErrorTypeGuards, type RateLimitError } from '../models/ModelClientError';
+import { PauseTimer } from '../utils/time';
+import type { PauseState } from './session/state/types';
 
 /**
  * Result of processing a single response item
@@ -63,6 +66,8 @@ export interface Prompt {
   baseInstructionsOverride?: string;
 }
 
+// Note: Using PauseState from session/state/types instead of duplicate interface
+
 /**
  * TurnManager handles execution of individual conversation turns
  */
@@ -72,6 +77,7 @@ export class TurnManager {
   private toolRegistry: ToolRegistry;
   private config: TurnConfig;
   private cancelled = false;
+  private pauseState: PauseState | null = null; // T022: Track pause state
 
   constructor(
     session: Session,
@@ -92,9 +98,22 @@ export class TurnManager {
 
   /**
    * Cancel the current turn
+   * T027: Extended to clear pause timers
    */
-  cancel(): void {
+  async cancel(): Promise<void> {
     this.cancelled = true;
+
+    // If turn is paused, cancel the pause and emit resume event
+    if (this.pauseState) {
+      // Cancel the timer if it exists
+      if (this.pauseState.resumeTimer) {
+        // Timer cancellation is handled by PauseTimer internally
+        // We just need to clean up our state
+      }
+
+      // Emit resume event with user_cancelled reason
+      await this.resumeFromPause('user_cancelled');
+    }
   }
 
   /**
@@ -127,6 +146,13 @@ export class TurnManager {
         // Check for non-retryable errors
         if (this.cancelled) {
           throw new Error('Turn cancelled');
+        }
+
+        // T026: Check for rate limit error and pause instead of retry
+        if (ErrorTypeGuards.isRateLimitError(error)) {
+          await this.pauseForRateLimit(error);
+          // pauseForRateLimit throws to exit the loop, but if it returns
+          // (when pause is disabled), continue with normal retry logic
         }
 
         if (this.isNonRetryableError(error)) {
@@ -1043,5 +1069,256 @@ export class TurnManager {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * T023: Calculate pause duration for rate limit errors
+   * Uses provider-specific config or falls back to global config
+   * T051-T054: Extended to support Retry-After header
+   *
+   * @param error - The rate limit error
+   * @returns Object with duration and source information
+   */
+  private calculatePauseDuration(error: RateLimitError): { duration: number; source: 'config_default' | 'retry_after_header'; retryAfterSeconds?: number } {
+    // Get provider config
+    const provider = error.provider || 'openai';
+    const providerConfig = this.session.getConfig().providers?.[provider];
+    const rateLimitConfig: IRateLimitPauseConfig | undefined = providerConfig?.rateLimitPause;
+
+    // If pause is disabled, return 0
+    if (rateLimitConfig && rateLimitConfig.enabled === false) {
+      return { duration: 0, source: 'config_default' };
+    }
+
+    // Get default duration from config
+    const defaultDuration = rateLimitConfig?.defaultDuration || 60000;
+    const maxDuration = rateLimitConfig?.maxDuration || 300000;
+    const useRetryAfterHeader = rateLimitConfig?.useRetryAfterHeader ?? true;
+
+    let duration = defaultDuration;
+    let source: 'config_default' | 'retry_after_header' = 'config_default';
+    let retryAfterSeconds: number | undefined;
+
+    // T051-T053: Check for Retry-After header if enabled
+    if (useRetryAfterHeader && error.rateLimitMetadata?.retryAfter) {
+      const retryAfterMs = error.rateLimitMetadata.retryAfter;
+      // retryAfter in RateLimitError is already in milliseconds
+      // But if it's in seconds (from header), convert it
+      const headerValue = retryAfterMs;
+
+      // Validate header value (must be positive)
+      if (headerValue > 0) {
+        // If value is very small (<1000), assume it's in seconds, otherwise milliseconds
+        const retryAfterInMs = headerValue < 1000 ? headerValue * 1000 : headerValue;
+        retryAfterSeconds = headerValue < 1000 ? headerValue : Math.round(headerValue / 1000);
+
+        duration = retryAfterInMs;
+        source = 'retry_after_header';
+      }
+    }
+
+    // T054: Cap at maxDuration
+    duration = Math.min(duration, maxDuration);
+
+    // Enforce minimum of 1 second
+    duration = Math.max(duration, 1000);
+
+    return { duration, source, retryAfterSeconds };
+  }
+
+  /**
+   * T024: Pause turn execution due to rate limit error
+   * T055: Updated to include Retry-After header metadata in events
+   * T058-T059: Added edge case handling for sequential rate limits
+   *
+   * @param error - The rate limit error that triggered the pause
+   */
+  private async pauseForRateLimit(error: RateLimitError): Promise<void> {
+    const pauseInfo = this.calculatePauseDuration(error);
+
+    // If duration is 0, pause is disabled
+    if (pauseInfo.duration === 0) {
+      return;
+    }
+
+    // T058-T059: Handle rate limit during existing pause
+    if (this.pauseState?.isPaused) {
+      // Already paused - extend the pause duration
+      const remainingDuration = (this.pauseState.pauseStartTime + this.pauseState.pauseDuration) - Date.now();
+      const newDuration = Math.max(remainingDuration, pauseInfo.duration);
+
+      console.warn(`[TurnManager] Rate limit hit during existing pause. Extending pause from ${remainingDuration}ms to ${newDuration}ms`);
+
+      // Update pause state with new duration
+      this.pauseState.pauseDuration = this.pauseState.pauseStartTime + newDuration - this.pauseState.pauseStartTime;
+
+      // No need to create new timer, existing timer will handle it
+      return;
+    }
+
+    const provider = error.provider || 'openai';
+    const pauseStartTime = Date.now();
+    const resumeTime = pauseStartTime + pauseInfo.duration;
+
+    // T060: Log pause event
+    console.log(`[TurnManager] Pausing turn for ${pauseInfo.duration}ms due to rate limit from ${provider} (source: ${pauseInfo.source})`);
+    if (pauseInfo.retryAfterSeconds) {
+      console.log(`[TurnManager] Using Retry-After header value: ${pauseInfo.retryAfterSeconds}s`);
+    }
+
+    // Set up pause state
+    this.pauseState = {
+      isPaused: true,
+      pauseReason: 'rate_limit',
+      pauseStartTime,
+      pauseDuration: pauseInfo.duration,
+      resumeTimer: null, // Will be set by PauseTimer
+      provider,
+      durationSource: pauseInfo.source
+    };
+
+    // T028: Persist pause state to SessionState for hibernation recovery
+    // Note: resumeTimer is excluded automatically via Omit in setPauseState signature
+    this.session.setPauseState({
+      isPaused: true,
+      pauseReason: 'rate_limit',
+      pauseStartTime,
+      pauseDuration: pauseInfo.duration,
+      provider,
+      durationSource: pauseInfo.source
+      // resumeTimer is intentionally NOT persisted - will be recreated on recovery
+    });
+
+    // T031, T055: Emit RateLimitPausedEvent with Retry-After metadata
+    await this.emitEvent({
+      type: 'RateLimitPaused',
+      data: {
+        pauseDuration: pauseInfo.duration,
+        resumeTime,
+        provider,
+        durationSource: pauseInfo.source,
+        statusCode: error.statusCode || 429,
+        retryAfterHeader: pauseInfo.retryAfterSeconds
+      }
+    });
+
+    // Set up resume timer
+    const timerResult = await PauseTimer.delay(pauseInfo.duration, () => {
+      this.resumeFromPause('timer_expired').catch(err => {
+        console.error('Error resuming from pause:', err);
+      });
+    });
+
+    // Store timer reference for cancellation
+    if (this.pauseState) {
+      this.pauseState.resumeTimer = timerResult.timerId;
+    }
+
+    // Wait for pause to complete (throw to exit retry loop)
+    throw new Error(`Paused for ${pauseInfo.duration}ms due to rate limit`);
+  }
+
+  /**
+   * T025: Resume turn execution after pause
+   * T060: Added logging
+   *
+   * @param resumeReason - Why the turn is resuming
+   */
+  private async resumeFromPause(resumeReason: 'timer_expired' | 'user_cancelled' | 'wake_from_hibernation'): Promise<void> {
+    if (!this.pauseState) {
+      return;
+    }
+
+    const actualPauseDuration = Date.now() - this.pauseState.pauseStartTime;
+    const provider = this.pauseState.provider;
+
+    // T060: Log resume event
+    console.log(`[TurnManager] Resuming turn after ${actualPauseDuration}ms pause (reason: ${resumeReason}, provider: ${provider})`);
+
+    // Clear pause state from memory
+    this.pauseState = null;
+
+    // T028: Clear persisted pause state
+    this.session.clearPauseState();
+
+    // T032: Emit RateLimitResumedEvent
+    await this.emitEvent({
+      type: 'RateLimitResumed',
+      data: {
+        actualPauseDuration,
+        provider,
+        resumeReason
+      }
+    });
+  }
+
+  /**
+   * T030: Resume from persisted pause state after service worker hibernation
+   * Called on service worker wake to restore any active pause
+   * T060: Added logging
+   *
+   * @public
+   */
+  async resumeFromPersistence(): Promise<void> {
+    // Load pause state from SessionState (using T029)
+    const persistedPauseState = this.session.getPauseState();
+
+    // No persisted pause, nothing to restore
+    if (!persistedPauseState || !persistedPauseState.isPaused) {
+      return;
+    }
+
+    // T060: Log hibernation recovery
+    console.log(`[TurnManager] Recovering from hibernation. Found persisted pause state for provider: ${persistedPauseState.provider}`);
+
+    const now = Date.now();
+    const elapsedTime = now - persistedPauseState.pauseStartTime;
+    const remainingDuration = persistedPauseState.pauseDuration - elapsedTime;
+
+    console.log(`[TurnManager] Pause elapsed time: ${elapsedTime}ms, remaining: ${remainingDuration}ms`);
+
+    // Pause already expired while hibernated
+    if (remainingDuration <= 0) {
+      // Reconstruct minimal pause state for cleanup
+      this.pauseState = {
+        isPaused: true,
+        pauseReason: 'rate_limit',
+        pauseStartTime: persistedPauseState.pauseStartTime,
+        pauseDuration: persistedPauseState.pauseDuration,
+        resumeTimer: null,
+        provider: persistedPauseState.provider,
+        durationSource: persistedPauseState.durationSource
+      };
+
+      // Clear persisted state
+      this.session.clearPauseState();
+
+      // Resume immediately with wake_from_hibernation reason
+      await this.resumeFromPause('wake_from_hibernation');
+      return;
+    }
+
+    // Pause still active, create new timer for remaining duration
+    this.pauseState = {
+      isPaused: true,
+      pauseReason: 'rate_limit',
+      pauseStartTime: persistedPauseState.pauseStartTime,
+      pauseDuration: persistedPauseState.pauseDuration,
+      resumeTimer: null, // Will be set by PauseTimer
+      provider: persistedPauseState.provider,
+      durationSource: persistedPauseState.durationSource
+    };
+
+    // Create new timer for remaining duration
+    const timerResult = await PauseTimer.delay(remainingDuration, () => {
+      this.resumeFromPause('wake_from_hibernation').catch(err => {
+        console.error('Error resuming from hibernation:', err);
+      });
+    });
+
+    // Store timer reference
+    if (this.pauseState) {
+      this.pauseState.resumeTimer = timerResult.timerId;
+    }
   }
 }

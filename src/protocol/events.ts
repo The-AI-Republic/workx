@@ -63,7 +63,9 @@ export type EventMsg =
   | { type: 'ExitedReviewMode'; data: ExitedReviewModeEvent }
   | { type: 'Notification'; data: NotificationEvent }
   | { type: 'Interrupted' }
-  | { type: 'TaskFailed'; data: TaskFailedEvent };
+  | { type: 'TaskFailed'; data: TaskFailedEvent }
+  | { type: 'RateLimitPaused'; data: RateLimitPausedEvent }
+  | { type: 'RateLimitResumed'; data: RateLimitResumedEvent };
 
 // Individual event payload types
 
@@ -332,4 +334,60 @@ export interface NotificationEvent {
 export interface TaskFailedEvent {
   reason: string;
   error?: string;
+}
+
+/**
+ * Event emitted when turn execution pauses due to rate limit
+ */
+export interface RateLimitPausedEvent {
+  /**
+   * Total pause duration in milliseconds
+   */
+  pauseDuration: number;
+
+  /**
+   * Unix timestamp (ms) when turn will resume
+   */
+  resumeTime: number;
+
+  /**
+   * Provider that triggered the rate limit
+   */
+  provider: string;
+
+  /**
+   * Where the pause duration came from
+   */
+  durationSource: 'config_default' | 'retry_after_header';
+
+  /**
+   * HTTP status code that triggered pause (typically 429)
+   */
+  statusCode: number;
+
+  /**
+   * Original Retry-After header value if present (seconds)
+   */
+  retryAfterHeader?: number;
+}
+
+/**
+ * Event emitted when turn execution resumes after rate limit pause
+ */
+export interface RateLimitResumedEvent {
+  /**
+   * Actual duration paused in milliseconds
+   * May differ from requested duration if cancelled early or hibernated
+   */
+  actualPauseDuration: number;
+
+  /**
+   * Provider that was rate limited
+   */
+  provider: string;
+
+  /**
+   * How the resume was triggered
+   */
+  resumeReason: 'timer_expired' | 'user_cancelled' | 'wake_from_hibernation';
 }

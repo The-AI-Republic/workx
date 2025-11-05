@@ -3,7 +3,7 @@
  */
 
 import type { ResponseItem, ConversationHistory } from '../../../protocol/types';
-import type { TokenUsageInfo, RateLimitSnapshot } from './types';
+import type { TokenUsageInfo, RateLimitSnapshot, PauseState } from './types';
 import { isDOMSnapshotOutput, compressSnapshot } from './SnapshotCompressor';
 
 /**
@@ -14,6 +14,7 @@ export interface SessionStateExport {
   approvedCommands: string[];
   tokenInfo?: TokenUsageInfo;
   latestRateLimits?: RateLimitSnapshot;
+  pauseState?: Omit<PauseState, 'resumeTimer'>; // Exclude non-serializable timer handle
 }
 
 /**
@@ -33,11 +34,15 @@ export class SessionState {
   /** Latest rate limit information */
   private latestRateLimits?: RateLimitSnapshot;
 
+  /** Pause state for hibernation recovery (T028) */
+  private pauseState?: Omit<PauseState, 'resumeTimer'>;
+
   constructor() {
     this.approvedCommands = new Set();
     this.history = [];
     this.tokenInfo = undefined;
     this.latestRateLimits = undefined;
+    this.pauseState = undefined;
   }
 
   // ===== History Management =====
@@ -140,6 +145,39 @@ export class SessionState {
     this.latestRateLimits = { ...limits };
   }
 
+  // ===== Pause State Management (T028-T029) =====
+
+  /**
+   * T028: Set pause state for persistence
+   * Note: resumeTimer field is automatically excluded during serialization
+   * @param state Pause state to persist (resumeTimer will be ignored)
+   */
+  setPauseState(state: Omit<PauseState, 'resumeTimer'> | undefined): void {
+    if (state) {
+      // Explicitly exclude resumeTimer if somehow present
+      const { resumeTimer, ...persistableState } = state as any;
+      this.pauseState = persistableState;
+    } else {
+      this.pauseState = undefined;
+    }
+  }
+
+  /**
+   * T029: Get persisted pause state
+   * Note: resumeTimer will always be undefined in returned state
+   * @returns Pause state without timer handle
+   */
+  getPauseState(): Omit<PauseState, 'resumeTimer'> | undefined {
+    return this.pauseState ? { ...this.pauseState } : undefined;
+  }
+
+  /**
+   * T028: Clear persisted pause state
+   */
+  clearPauseState(): void {
+    this.pauseState = undefined;
+  }
+
   // ===== Approved Commands =====
 
   /**
@@ -175,6 +213,7 @@ export class SessionState {
       latestRateLimits: this.latestRateLimits
         ? { ...this.latestRateLimits }
         : undefined,
+      pauseState: this.pauseState ? { ...this.pauseState } : undefined, // T028: Include pause state
     };
   }
 
@@ -204,6 +243,11 @@ export class SessionState {
     // Restore rate limits
     if (data.latestRateLimits) {
       state.latestRateLimits = { ...data.latestRateLimits };
+    }
+
+    // T029: Restore pause state
+    if (data.pauseState) {
+      state.pauseState = { ...data.pauseState };
     }
 
     return state;

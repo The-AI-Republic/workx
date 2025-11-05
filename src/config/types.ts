@@ -62,6 +62,39 @@ export interface IModelConfig {
   verbosity?: 'low' | 'medium' | 'high' | null;
 }
 
+/**
+ * Configuration for rate limit pause behavior
+ */
+export interface IRateLimitPauseConfig {
+  /**
+   * Enable/disable pause-instead-of-retry for rate limits
+   * @default true
+   */
+  enabled: boolean;
+
+  /**
+   * Default pause duration in milliseconds when no Retry-After header present
+   * @default 60000 (60 seconds)
+   * @minimum 1000 (1 second)
+   * @maximum maxDuration
+   */
+  defaultDuration: number;
+
+  /**
+   * Maximum allowed pause duration in milliseconds (safety cap)
+   * @default 300000 (5 minutes)
+   * @minimum 1000 (1 second)
+   * @maximum 600000 (10 minutes)
+   */
+  maxDuration: number;
+
+  /**
+   * Use Retry-After header from API response if present
+   * @default true
+   */
+  useRetryAfterHeader: boolean;
+}
+
 // Provider configuration
 export interface IProviderConfig {
   id: string;
@@ -73,6 +106,7 @@ export interface IProviderConfig {
   headers?: Record<string, string>;
   timeout: number;
   retryConfig?: IRetryConfig;
+  rateLimitPause?: IRateLimitPauseConfig;
 }
 
 // Profile configuration

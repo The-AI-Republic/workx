@@ -147,3 +147,52 @@ export function isResumedHistory(history: InitialHistory): history is { mode: 'r
 export function isForkedHistory(history: InitialHistory): history is { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string } {
   return history.mode === 'forked';
 }
+
+/**
+ * Pause state for rate limit handling
+ *
+ * Used both at runtime and for persistence. The `resumeTimer` field is optional
+ * and excluded during serialization since timer handles cannot be persisted.
+ */
+export interface PauseState {
+  /**
+   * Whether turn is paused
+   */
+  isPaused: boolean;
+
+  /**
+   * Reason for pause
+   */
+  pauseReason: 'rate_limit';
+
+  /**
+   * Unix timestamp (ms) when pause started
+   */
+  pauseStartTime: number;
+
+  /**
+   * Original pause duration requested (ms)
+   */
+  pauseDuration: number;
+
+  /**
+   * Provider that triggered the pause
+   */
+  provider: string;
+
+  /**
+   * Source of pause duration
+   */
+  durationSource: 'config_default' | 'retry_after_header';
+
+  /**
+   * Timer handle for resume callback (setTimeout ID or chrome.alarms name)
+   *
+   * NOTE: This field is NOT persisted during serialization. It's runtime-only
+   * and will be undefined when loaded from storage. After hibernation recovery,
+   * a new timer is created.
+   *
+   * @optional Only present during active pause in memory
+   */
+  resumeTimer?: number | string | null;
+}

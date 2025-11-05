@@ -627,6 +627,30 @@ export class Session {
   }
 
   /**
+   * Set pause state for persistence
+   * Delegates to SessionState
+   */
+  setPauseState(state: Omit<import('./session/state/types').PauseState, 'resumeTimer'> | undefined): void {
+    this.sessionState.setPauseState(state);
+  }
+
+  /**
+   * Get persisted pause state
+   * Delegates to SessionState
+   */
+  getPauseState(): Omit<import('./session/state/types').PauseState, 'resumeTimer'> | undefined {
+    return this.sessionState.getPauseState();
+  }
+
+  /**
+   * Clear persisted pause state
+   * Delegates to SessionState
+   */
+  clearPauseState(): void {
+    this.sessionState.clearPauseState();
+  }
+
+  /**
    * Check if there's an active turn
    * NEW: Uses ActiveTurn
    */
