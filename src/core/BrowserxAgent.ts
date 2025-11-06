@@ -63,7 +63,6 @@ export class BrowserxAgent {
    * Creates model client during initialization with nullable API key
    */
   async initialize(): Promise<void> {
-    await this.config.initialize();
 
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);

@@ -94,7 +94,6 @@ export class ModelClientFactory {
    */
   async createClientForCurrentModel(): Promise<ModelClient> {
     const agentConfig = AgentConfig.getInstance();
-    await agentConfig.initialize();
 
     const config = agentConfig.getConfig();
     const modelData = agentConfig.getModelById(config.selectedModelId);
@@ -301,7 +300,6 @@ export class ModelClientFactory {
 
     try {
       const agentConfig = AgentConfig.getInstance();
-      await agentConfig.initialize();
 
       // Get API key for this specific provider
       apiKey = await agentConfig.getProviderApiKey(provider);
