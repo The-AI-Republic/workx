@@ -72,6 +72,7 @@ export class DomService {
       // Enable required domains
       await this.sendCommand('DOM.enable', {});
       await this.sendCommand('Accessibility.enable', {});
+      await this.sendCommand('Page.enable', {}); // Enable Page domain for lifecycle events
 
       // Listen for invalidation events
       chrome.debugger.onEvent.addListener(this.handleCdpEvent.bind(this));
@@ -132,6 +133,50 @@ export class DomService {
   }
 
   /**
+   * Wait for page to finish loading before accessing DOM
+   * This prevents issues with DOM.getDocument being called while page is still loading
+   */
+  private async waitForPageLoad(): Promise<void> {
+    try {
+      // Check if page is already loaded
+      const readyStateResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: 'document.readyState',
+        returnByValue: true
+      });
+
+      const readyState = readyStateResult.result.value;
+
+      if (readyState === 'complete') {
+        console.log('[DomService] Page already loaded');
+        return;
+      }
+
+      console.log(`[DomService] Page loading (readyState: ${readyState}), waiting for load event...`);
+
+      // Wait for load event
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('PAGE_LOAD_TIMEOUT: Page did not finish loading within 30 seconds'));
+        }, 30000); // 30 second timeout
+
+        const eventListener = (source: chrome.debugger.Debuggee, method: string) => {
+          if (source.tabId === this.tabId && method === 'Page.loadEventFired') {
+            clearTimeout(timeout);
+            chrome.debugger.onEvent.removeListener(eventListener);
+            console.log('[DomService] Page load event fired');
+            resolve();
+          }
+        };
+
+        chrome.debugger.onEvent.addListener(eventListener);
+      });
+    } catch (error: any) {
+      console.warn(`[DomService] Could not wait for page load: ${error.message}. Continuing anyway...`);
+      // Continue even if we can't wait - some pages may have issues but DOM might still be accessible
+    }
+  }
+
+  /**
    * Build complete VirtualNode tree from CDP DOM and Accessibility APIs
    *
    * CSP COMPATIBILITY: CDP operates at browser level, bypassing Content-Security-Policy
@@ -149,6 +194,9 @@ export class DomService {
 
     const start = Date.now();
     console.log(`[DomService] Building snapshot for tab ${this.tabId}...`);
+
+    // Wait for page to finish loading before accessing DOM
+    await this.waitForPageLoad();
 
     // Add timeout protection for slow-loading iframes
     const snapshotPromise = (async () => {

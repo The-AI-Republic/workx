@@ -52,7 +52,7 @@ async function initialize(): Promise<void> {
  */
 async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
-  agentConfig = AgentConfig.getInstance();
+  agentConfig = await AgentConfig.getInstance();
 
   // Create agent instance with config (agent will initialize ModelClientFactory and ToolRegistry)
   agent = new BrowserxAgent(agentConfig!);
@@ -229,7 +229,7 @@ function setupMessageHandlers(): void {
         await agentConfig.reload();
       } else {
         // Initialize a new configuration singleton
-        agentConfig = AgentConfig.getInstance();
+        agentConfig = await AgentConfig.getInstance();
       }
 
       // Recreate BrowserxAgent with updated configuration

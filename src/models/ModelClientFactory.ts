@@ -93,7 +93,7 @@ export class ModelClientFactory {
    * @returns Promise resolving to a model client
    */
   async createClientForCurrentModel(): Promise<ModelClient> {
-    const agentConfig = AgentConfig.getInstance();
+    const agentConfig = await AgentConfig.getInstance();
 
     const config = agentConfig.getConfig();
     const modelData = agentConfig.getModelById(config.selectedModelId);
@@ -299,7 +299,7 @@ export class ModelClientFactory {
     let providerConfig: any = null;
 
     try {
-      const agentConfig = AgentConfig.getInstance();
+      const agentConfig = await AgentConfig.getInstance();
 
       // Get API key for this specific provider
       apiKey = await agentConfig.getProviderApiKey(provider);

@@ -36,9 +36,9 @@ export class BrowserxAgent {
   private modelClientFactory: ModelClientFactory;
   private userNotifier: UserNotifier;
 
-  constructor(config?: AgentConfig) {
-    // Use provided config or get singleton instance
-    this.config = config || AgentConfig.getInstance();
+  constructor(config: AgentConfig) {
+    // Config must be provided (use await AgentConfig.getInstance() if needed)
+    this.config = config;
 
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
