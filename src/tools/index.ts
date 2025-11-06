@@ -30,8 +30,15 @@ export { PageVisionTool } from './PageVisionTool';
 
 /**
  * Register browser automation tools based on configuration
+ * @param registry - Tool registry instance
+ * @param toolsConfig - Tool configuration settings
+ * @param modelConfig - Optional model configuration for feature filtering (e.g., image support)
  */
-export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsConfig): Promise<void> {
+export async function registerTools(
+  registry: ToolRegistry,
+  toolsConfig: IToolsConfig,
+  modelConfig?: { name: string; supportsImage?: boolean }
+): Promise<void> {
   try {
     console.log('Starting advanced tool registration...');
 
@@ -148,10 +155,15 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
       console.log('TabTool disabled in configuration, skipping...');
     }
 
-    // PageVision Tool
+    // PageVision Tool - Only register if model supports image input
     if (isToolEnabled('page_vision_tool')) {
-      const pageVisionTool = new PageVisionTool();
-      await registerTool('page_vision', pageVisionTool);
+      // Check if model supports image input
+      if (!modelConfig || modelConfig.supportsImage !== false) {
+        const pageVisionTool = new PageVisionTool();
+        await registerTool('page_vision', pageVisionTool);
+      } else {
+        console.log(`PageVisionTool disabled: Model "${modelConfig.name}" does not support image input`);
+      }
     } else {
       console.log('PageVisionTool disabled in configuration, skipping...');
     }
@@ -163,23 +175,6 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
   } catch (error) {
     console.error('Failed to register advanced tools:', error);
   }
-}
-
-/**
- * Initialize all tools
- */
-export async function initializeTools(toolsConfig?: IToolsConfig): Promise<ToolRegistry> {
-  const registry = new ToolRegistry();
-
-  // Only register tools if configuration is provided
-  if (toolsConfig) {
-    await registerTools(registry, toolsConfig);
-  } else {
-    console.log('No tools configuration provided, skipping advanced tools registration');
-  }
-
-  console.log(`Total tools registered: ${registry.listTools().length}`);
-  return registry;
 }
 
 /**

@@ -122,6 +122,13 @@ export interface IModelConfig {
   verbosityLevels?: string[];
 
   /**
+   * Whether model supports image input (optional)
+   * If true, the model can accept and process image inputs
+   * If false, vision-related tools will be disabled
+   */
+  supportsImage?: boolean;
+
+  /**
    * Model release date (optional)
    * ISO 8601 date string (YYYY-MM-DD) indicating when the model was released
    */

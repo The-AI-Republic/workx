@@ -5,7 +5,7 @@
 
 import type { Submission, Op, Event, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
 import type { EventMsg } from '../protocol/events';
-import type { IConfigChangeEvent } from '../config/types';
+import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
@@ -17,6 +17,7 @@ import { UserNotifier } from './UserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
+import { registerTools } from '../tools';
 
 /**
  * Main agent class managing the submission and event queues
@@ -94,6 +95,12 @@ export class BrowserxAgent {
         },
       });
     }
+
+    // Register browser automation tools (pass model data for feature filtering)
+    await registerTools(this.toolRegistry, this.config.getToolsConfig(), {
+      name: modelData.model.name,
+      supportsImage: modelData.model.supportsImage
+    });
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests

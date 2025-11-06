@@ -51,6 +51,7 @@
     contextWindow: number;
     maxOutputTokens: number;
     baseUrl: string;
+    supportsImage: boolean;  // Whether model supports image input
     selected: boolean;       // Indicates if this model is currently selected
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
@@ -122,6 +123,7 @@
             contextWindow: model.contextWindow,
             maxOutputTokens: model.maxOutputTokens,
             baseUrl: provider.baseUrl || '',
+            supportsImage: model.supportsImage !== false,  // Default to true if not specified
             selected: model.id === selectedModelId  // Mark as selected if it matches
           });
         }
@@ -575,13 +577,18 @@
       }
 
       // User confirmed - proceed with model change
+      // Check if model supports image input and show warning if not
+      if (selectedItem.supportsImage === false) {
+        alert(`Model "${selectedItem.modelName}" currently does not support image input. Some tools (PageVision) will be disabled.`);
+      }
+
       // Update ALL UI state IMMEDIATELY for instant feedback
       // This ensures dropdown, provider section, API key field, and features all stay in sync
       selectedModelId = modelId;
       currentProvider = selectedItem.providerId;
       currentProviderName = selectedItem.providerName;
       currentProviderOrganization = selectedItem.organization;
-      
+
       // Load the API key for this provider from the cache (already fetched in loadSettings)
       apiKey = selectedItem.apiKey || '';
       maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
