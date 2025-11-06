@@ -10,7 +10,7 @@ import { AgentConfig } from '../config/AgentConfig';
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq';
 
 /**
  * Configuration for model client creation
@@ -37,18 +37,6 @@ const STORAGE_KEYS = {
   DEFAULT_PROVIDER: 'default_provider',
   OPENAI_ORGANIZATION: 'openai_organization',
 } as const;
-
-/**
- * Model name to provider mapping
- * Note: Only OpenAI models supported
- */
-const MODEL_PROVIDER_MAP: Record<string, ModelProvider> = {
-  // OpenAI models
-  'gpt-5': 'openai',
-  'gpt-4': 'openai',
-  'gpt-4-turbo': 'openai',
-  'gpt-4o': 'openai',
-};
 
 const DEFAULT_MODEL = 'gpt-5';
 
@@ -121,28 +109,14 @@ export class ModelClientFactory {
     return this.createClient(provider);
   }
 
-  /**
-   * Create a model client for the specified model
-   * @param model The model name to create a client for (legacy support)
-   * @returns Promise resolving to a model client
-   */
-  async createClientForModel(model: string): Promise<ModelClient> {
-    if (model === 'default') {
-      // Use current selected model
-      return this.createClientForCurrentModel();
-    }
-
-    const provider = this.getProviderForModel(model);
-    return this.createClient(provider);
-  }
 
   /**
    * Map provider ID from config to ModelProvider type
-   * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic', 'groq')
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq') {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -191,36 +165,6 @@ export class ModelClientFactory {
     return client;
   }
 
-  /**
-   * Get the provider for a given model name
-   * Uses AgentConfig.modelRegistry as primary source
-   * @param model The model name (modelKey)
-   * @returns The provider for the model
-   * @deprecated Use createClientForCurrentModel() instead for proper registry lookup
-   */
-  getProviderForModel(model: string): ModelProvider {
-    if (model === 'default') {
-      return 'openai';
-    }
-
-    // Try to infer from model name patterns as heuristic fallback
-    // This method is deprecated and should not be used for new code
-    try {
-      if (model.startsWith('gpt-')) {
-        return 'openai';
-      }
-      if (model.startsWith('grok-')) {
-        return 'xai';
-      }
-      if (model.startsWith('claude-')) {
-        return 'anthropic';
-      }
-
-      throw new ModelClientError(`Unknown model: ${model}. Supported providers: OpenAI, xAI, Anthropic. Use createClientForCurrentModel() instead.`);
-    } catch (error) {
-      throw new ModelClientError(`Failed to determine provider for model: ${model}. ${error}`);
-    }
-  }
 
   /**
    * Get all supported models for a provider
@@ -316,8 +260,11 @@ export class ModelClientFactory {
    * @returns Promise resolving to configuration status
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const [openaiHasKey, defaultProvider] = await Promise.all([
+    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, defaultProvider] = await Promise.all([
       this.hasValidApiKey('openai'),
+      this.hasValidApiKey('xai'),
+      this.hasValidApiKey('anthropic'),
+      this.hasValidApiKey('groq'),
       this.getDefaultProvider(),
     ]);
 
@@ -325,6 +272,18 @@ export class ModelClientFactory {
       openai: {
         hasApiKey: openaiHasKey,
         isDefault: defaultProvider === 'openai',
+      },
+      xai: {
+        hasApiKey: xaiHasKey,
+        isDefault: defaultProvider === 'xai',
+      },
+      anthropic: {
+        hasApiKey: anthropicHasKey,
+        isDefault: defaultProvider === 'anthropic',
+      },
+      groq: {
+        hasApiKey: groqHasKey,
+        isDefault: defaultProvider === 'groq',
       },
     };
   }
@@ -370,12 +329,11 @@ export class ModelClientFactory {
       },
     };
 
-    // Load provider-specific base URL
-    if (this.config) {
-      const modelConfig = this.config.getModelConfig();
-      const providerConfig = this.config.getProvider(modelConfig.provider);
-      if (providerConfig?.baseUrl) {
-        config.options!.baseUrl = providerConfig.baseUrl;
+    // Load provider-specific base URL (if not already set)
+    if (this.config && !config.options?.baseUrl) {
+      const providerConfigFromAgent = this.config.getProvider(provider);
+      if (providerConfigFromAgent?.baseUrl) {
+        config.options!.baseUrl = providerConfigFromAgent.baseUrl;
       }
     }
 
@@ -413,20 +371,18 @@ export class ModelClientFactory {
    * @returns Model client instance
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
-    // Get provider name from config if available
-    let providerName = config.provider;
-    let baseUrl = config.options?.baseUrl;
+    // Get provider name from config - this is already correctly set by createClient()
+    const providerName = config.provider;
+    const baseUrl = config.options?.baseUrl;
 
-    if (this.config) {
-      const modelConfig = this.config.getModelConfig();
-      providerName = modelConfig.provider as ModelProvider;
-
-      // Base URL will be loaded from provider config instead
-      // No need to check model metadata
-    }
+    // Note: providerName comes from mapProviderIdToType() which ensures it matches
+    // the provider type ('openai' | 'xai' | 'anthropic' | 'groq')
 
     switch (providerName) {
       case 'openai':
+      case 'xai':
+      case 'anthropic':
+      case 'groq':
       default:
         // Use the experimental OpenAI Responses API client by default
         // Construct minimal provider and model family configs
@@ -442,10 +398,21 @@ export class ModelClientFactory {
 
         // Use selected model from config instead of hardcoded 'gpt-5'
         const selectedModel = this.getSelectedModel();
+
+        // Get model metadata to determine reasoning support
+        let supportsReasoningSummaries = false;
+        if (this.config) {
+          const configData = this.config.getConfig();
+          const modelData = this.config.getModelById(configData.selectedModelId);
+          if (modelData?.model) {
+            supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+          }
+        }
+
         const modelFamily = {
           family: selectedModel,
           base_instructions: 'You are a helpful coding assistant.',
-          supports_reasoning_summaries: true,
+          supports_reasoning_summaries: supportsReasoningSummaries,
           needs_special_apply_patch_instructions: false,
         };
 

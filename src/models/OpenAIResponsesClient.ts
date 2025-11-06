@@ -173,6 +173,10 @@ export class OpenAIResponsesClient extends ModelClient {
       return 200000;
     } else if (this.currentModel === 'grok-4-fast-reasoning') {
       return 131072;
+    } else if (this.currentModel === 'qwen/qwen3-32b') {
+      return 131072;
+    } else if (this.currentModel === 'moonshotai/kimi-k2-instruct-0905') {
+      return 262144;
     }
     // Default fallback
     return 128000;
@@ -238,26 +242,53 @@ export class OpenAIResponsesClient extends ModelClient {
     const reasoning = this.createReasoningParam();
     const textControls = this.createTextParam(prompt.output_schema);
 
-    const include: string[] = reasoning ? ['reasoning.encrypted_content'] : [];
+    // Provider-specific parameter handling
     const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
 
-    // Set store: false for xAI provider (required for images)
-    const storeValue = this.provider.name === 'xai' ? false : azureWorkaround;
+    // Groq: omit include parameter entirely (reasoning content access not supported)
+    // Other providers: include reasoning.encrypted_content if reasoning enabled
+    const include: string[] | undefined = this.provider.name === 'groq'
+      ? undefined
+      : (reasoning ? ['reasoning.encrypted_content'] : []);
 
-    const payload: ResponsesApiRequest = {
+    // xAI: store must be false (required for images)
+    // Groq: store must be omitted entirely (not supported)
+    // Azure: use azureWorkaround
+    // Others: use azureWorkaround
+    const storeValue = this.provider.name === 'xai' ? false
+      : this.provider.name === 'groq' ? undefined
+      : azureWorkaround;
+
+    // Build base payload
+    const payload: ResponsesApiRequest | any = {
       model: this.currentModel,
       instructions: fullInstructions,
       input: await get_formatted_input(prompt),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
-      reasoning,
-      store: storeValue,
+      ...(storeValue !== undefined && { store: storeValue }), // Conditionally include store
       stream: true,
-      include,
-      prompt_cache_key: this.conversationId,
+      ...(include !== undefined && include.length > 0 && { include }), // Conditionally include
+      ...(this.provider.name !== 'groq' && { prompt_cache_key: this.conversationId }), // Omit for Groq
       text: textControls,
     };
+
+    // Provider-specific reasoning format
+    if (this.provider.name === 'groq') {
+      // Groq uses flat reasoning_effort field instead of nested reasoning object
+      // Note: Groq supports reasoning but not reasoning summaries
+      if (this.reasoningEffort) {
+        payload.reasoning_effort = this.reasoningEffort;
+        payload.reasoning_format = 'parsed'; // Separates reasoning into dedicated field
+      }
+      // Note: Groq does NOT support reasoning.summary
+    } else {
+      // OpenAI/xAI use nested reasoning object
+      if (reasoning) {
+        payload.reasoning = reasoning;
+      }
+    }
 
     // Retry logic with exponential backoff
     const maxRetries = this.provider.request_max_retries ?? 3;
@@ -384,25 +415,50 @@ export class OpenAIResponsesClient extends ModelClient {
     const reasoning = this.createReasoningParam();
     const textControls = this.createTextParam(prompt.output_schema);
 
-    const include: string[] = reasoning ? ['reasoning.encrypted_content'] : [];
+    // Groq: omit include parameter entirely
+    // Other providers: include reasoning.encrypted_content if reasoning enabled
+    const include: string[] | undefined = this.provider.name === 'groq'
+      ? undefined
+      : (reasoning ? ['reasoning.encrypted_content'] : []);
 
     // Determine store setting (Azure workaround logic)
     const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
 
-    const payload: ResponsesApiRequest = {
+    // xAI: store must be false, Groq: omit store, Others: use azureWorkaround
+    const storeValue = this.provider.name === 'xai' ? false
+      : this.provider.name === 'groq' ? undefined
+      : azureWorkaround;
+
+    // Build base payload
+    const payload: ResponsesApiRequest | any = {
       model: this.currentModel,
       instructions: fullInstructions,
       input: await get_formatted_input(prompt),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
-      reasoning,
-      store: azureWorkaround,
+      ...(storeValue !== undefined && { store: storeValue }),
       stream: true,
-      include,
-      prompt_cache_key: this.conversationId,
+      ...(include !== undefined && include.length > 0 && { include }),
+      ...(this.provider.name !== 'groq' && { prompt_cache_key: this.conversationId }),
       text: textControls,
     };
+
+    // Provider-specific reasoning format
+    if (this.provider.name === 'groq') {
+      // Groq uses flat reasoning_effort field instead of nested reasoning object
+      // Note: Groq supports reasoning but not reasoning summaries
+      if (this.reasoningEffort) {
+        payload.reasoning_effort = this.reasoningEffort;
+        payload.reasoning_format = 'parsed'; // Separates reasoning into dedicated field
+      }
+      // Note: Groq does NOT support reasoning.summary
+    } else {
+      // OpenAI/xAI use nested reasoning object
+      if (reasoning) {
+        payload.reasoning = reasoning;
+      }
+    }
 
     // Retry logic with exponential backoff
     const maxRetries = this.provider.request_max_retries ?? 3;
