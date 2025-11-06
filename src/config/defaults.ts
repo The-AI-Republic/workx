@@ -14,14 +14,20 @@ export const DEFAULT_AUTH_CONFIG: IAuthConfig = {
 };
 
 export const DEFAULT_MODEL_CONFIG: IModelConfig = {
-  selected: 'gpt-5',
-  provider: 'openai',
+  id: '',
+  name: 'Default Model',
+  modelKey: 'gpt-4',
+  creator: 'OpenAI',
   contextWindow: 128000,
   maxOutputTokens: 16384,
-  autoCompactTokenLimit: null,
-  reasoningEffort: 'medium',
-  reasoningSummary: 'auto',
-  verbosity: 'medium'
+  supportsReasoning: true,
+  reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+  supportsReasoningSummaries: true,
+  supportsVerbosity: true,
+  verbosityLevels: ['low', 'medium', 'high'],
+  releaseDate: null,
+  deprecated: false,
+  deprecationMessage: null
 };
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
@@ -201,26 +207,12 @@ export const VALID_REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'] as c
 export const VALID_REASONING_SUMMARIES = ['auto', 'concise', 'detailed', 'none'] as const;
 export const VALID_VERBOSITIES = ['low', 'medium', 'high'] as const;
 
-// Default retry configuration
-export const DEFAULT_RETRY_CONFIG = {
-  maxRetries: 3,
-  initialDelay: 1000,
-  maxDelay: 10000,
-  backoffMultiplier: 2
-};
-
 // Default rate limit pause configuration
 export const DEFAULT_RATE_LIMIT_PAUSE_CONFIG: IRateLimitPauseConfig = {
   enabled: true,
   defaultDuration: 60000,    // 60 seconds
   maxDuration: 300000,       // 5 minutes
   useRetryAfterHeader: true
-};
-
-// Default timeout settings (ms)
-export const DEFAULT_TIMEOUTS = {
-  API_REQUEST: 30000,
-  STORAGE_OPERATION: 5000
 };
 
 /**
@@ -271,10 +263,9 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
     tools: {
       ...DEFAULT_TOOLS_CONFIG,
       ...(partial.tools || {}),
-      sandboxPolicy: {
-        ...DEFAULT_TOOLS_CONFIG.sandboxPolicy,
-        ...(partial.tools?.sandboxPolicy || {})
-      },
+      sandboxPolicy: partial.tools?.sandboxPolicy
+        ? { ...DEFAULT_TOOLS_CONFIG.sandboxPolicy, ...partial.tools.sandboxPolicy }
+        : DEFAULT_TOOLS_CONFIG.sandboxPolicy,
       perToolConfig: {
         ...DEFAULT_TOOLS_CONFIG.perToolConfig,
         ...(partial.tools?.perToolConfig || {})
