@@ -38,7 +38,7 @@ describe('Backward Compatibility', () => {
     });
 
     it('ModelClientFactory should work without initialization', async () => {
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
 
       // Should be able to create clients without initialization
       // (using default config or environment variables)

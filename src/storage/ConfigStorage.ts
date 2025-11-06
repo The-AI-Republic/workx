@@ -1,93 +1,43 @@
 /**
- * IndexedDB-based configuration storage
+ * Chrome storage-based configuration storage
  */
 
 import type { IAgentConfig, IConfigStorage, IStorageInfo } from '../config/types';
 import { ConfigStorageError } from '../config/types';
 import { STORAGE_KEYS, CONFIG_LIMITS } from '../config/defaults';
-import { IndexedDBAdapter, STORE_NAMES } from './IndexedDBAdapter';
 import type { LLMCacheConfig } from '../types/storage';
-
-/**
- * Config entry stored in IndexedDB config object store
- */
-interface ConfigEntry {
-  key: string;
-  value: any;
-}
 
 export class ConfigStorage implements IConfigStorage {
   private readonly configKey = STORAGE_KEYS.CONFIG;
   private readonly versionKey = STORAGE_KEYS.CONFIG_VERSION;
-  private cache: IAgentConfig | null = null;
-  private cacheTimestamp: number = 0;
-  private readonly cacheTTL = 10 * 60 * 1000; // 10 minutes cache
-  private dbAdapter: IndexedDBAdapter;
-  private initPromise: Promise<void> | null = null;
+  private readonly llmCacheConfigKey = 'llm_cache_config';
 
-  constructor(dbAdapter?: IndexedDBAdapter) {
-    this.dbAdapter = dbAdapter || new IndexedDBAdapter();
-    // Initialize database in background
-    this.initPromise = this.dbAdapter.initialize().catch(err => {
-      console.error('Failed to initialize IndexedDB for ConfigStorage:', err);
-    });
+  constructor() {
+    // No initialization needed for chrome.storage.local
   }
 
   /**
-   * Ensure database is initialized before storage operations
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (this.initPromise) {
-      await this.initPromise;
-    }
-  }
-
-  /**
-   * Get configuration from IndexedDB
+   * Get configuration from chrome.storage.local
    */
   async get(): Promise<IAgentConfig | null> {
-    // Check cache first
-    if (this.cache && Date.now() - this.cacheTimestamp < this.cacheTTL) {
-      return this.cache;
-    }
-
     try {
-      await this.ensureInitialized();
-      const entry = await this.dbAdapter.get<ConfigEntry>(
-        STORE_NAMES.CONFIG,
-        this.configKey
-      );
-
-      const data = entry?.value || null;
-
-      if (data) {
-        this.cache = data;
-        this.cacheTimestamp = Date.now();
-      }
-
-      return data;
+      const result = await chrome.storage.local.get(this.configKey);
+      return result[this.configKey] || null;
     } catch (error) {
-      throw new ConfigStorageError('read', `Failed to read config from IndexedDB: ${error}`);
+      console.error('[ConfigStorage] Error reading from chrome.storage.local:', error);
+      throw new ConfigStorageError('read', `Failed to read config from chrome.storage.local: ${error}`);
     }
   }
 
   /**
-   * Set configuration in IndexedDB
+   * Set configuration in chrome.storage.local
    */
   async set(config: IAgentConfig): Promise<void> {
     try {
-      await this.ensureInitialized();
-      const entry: ConfigEntry = {
-        key: this.configKey,
-        value: config
-      };
-      await this.dbAdapter.put(STORE_NAMES.CONFIG, entry);
-
-      // Update cache
-      this.cache = config;
-      this.cacheTimestamp = Date.now();
+      await chrome.storage.local.set({ [this.configKey]: config });
     } catch (error) {
-      throw new ConfigStorageError('write', `Failed to save config to IndexedDB: ${error}`);
+      console.error('[ConfigStorage] Error saving config:', error);
+      throw new ConfigStorageError('write', `Failed to save config to chrome.storage.local: ${error}`);
     }
   }
 
@@ -96,14 +46,9 @@ export class ConfigStorage implements IConfigStorage {
    */
   async clear(): Promise<void> {
     try {
-      await this.ensureInitialized();
-      await this.dbAdapter.delete(STORE_NAMES.CONFIG, this.configKey);
-      await this.dbAdapter.delete(STORE_NAMES.CONFIG, this.versionKey);
-
-      this.cache = null;
-      this.cacheTimestamp = 0;
+      await chrome.storage.local.remove([this.configKey, this.versionKey]);
     } catch (error) {
-      throw new ConfigStorageError('delete', `Failed to clear config from IndexedDB: ${error}`);
+      throw new ConfigStorageError('delete', `Failed to clear config from chrome.storage.local: ${error}`);
     }
   }
 
@@ -112,9 +57,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async getStorageInfo(): Promise<IStorageInfo> {
     try {
-      await this.ensureInitialized();
-      const config = await this.get();
-      const used = config ? this.calculateSize(config) : 0;
+      const used = await chrome.storage.local.getBytesInUse(this.configKey);
       const quota = CONFIG_LIMITS.LOCAL_QUOTA_BYTES;
 
       return {
@@ -125,13 +68,6 @@ export class ConfigStorage implements IConfigStorage {
     } catch (error) {
       throw new ConfigStorageError('read', `Failed to get storage info: ${error}`);
     }
-  }
-
-  /**
-   * Calculate size of object in bytes
-   */
-  private calculateSize(obj: any): number {
-    return new Blob([JSON.stringify(obj)]).size;
   }
 
   /**
@@ -152,14 +88,11 @@ export class ConfigStorage implements IConfigStorage {
    */
   async getLLMCacheConfig(): Promise<LLMCacheConfig> {
     try {
-      await this.ensureInitialized();
-      const entry = await this.dbAdapter.get<ConfigEntry>(
-        STORE_NAMES.CONFIG,
-        'llm_cache_config'
-      );
+      const result = await chrome.storage.local.get(this.llmCacheConfigKey);
+      const config = result[this.llmCacheConfigKey];
 
-      if (entry?.value) {
-        return entry.value as LLMCacheConfig;
+      if (config) {
+        return config as LLMCacheConfig;
       }
 
       // Return default config
@@ -177,18 +110,11 @@ export class ConfigStorage implements IConfigStorage {
    */
   async setLLMCacheConfig(config: Partial<LLMCacheConfig>): Promise<void> {
     try {
-      await this.ensureInitialized();
-
       // Get current config and merge
       const current = await this.getLLMCacheConfig();
       const updated: LLMCacheConfig = { ...current, ...config };
 
-      const entry: ConfigEntry = {
-        key: 'llm_cache_config',
-        value: updated
-      };
-
-      await this.dbAdapter.put(STORE_NAMES.CONFIG, entry);
+      await chrome.storage.local.set({ [this.llmCacheConfigKey]: updated });
     } catch (error) {
       throw new ConfigStorageError('write', `Failed to save LLM cache config: ${error}`);
     }
@@ -199,8 +125,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async clearLLMCacheConfig(): Promise<void> {
     try {
-      await this.ensureInitialized();
-      await this.dbAdapter.delete(STORE_NAMES.CONFIG, 'llm_cache_config');
+      await chrome.storage.local.remove(this.llmCacheConfigKey);
     } catch (error) {
       throw new ConfigStorageError('delete', `Failed to clear LLM cache config: ${error}`);
     }

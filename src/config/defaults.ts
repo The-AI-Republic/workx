@@ -61,6 +61,20 @@ export const DEFAULT_EXTENSION_SETTINGS: IExtensionSettings = {
   permissions: DEFAULT_PERMISSION_SETTINGS
 };
 
+// Default retry configuration
+export const DEFAULT_RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1000,
+  maxDelay: 10000,
+  backoffMultiplier: 2
+};
+
+// Default timeout settings (ms)
+export const DEFAULT_TIMEOUTS = {
+  API_REQUEST: 30000,
+  STORAGE_OPERATION: 5000
+};
+
 export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   // Browser tool toggles
   enable_all_tools: false,
@@ -145,19 +159,23 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   }
 };
 
-export const DEFAULT_AGENT_CONFIG: IAgentConfig = {
-  version: '1.0.0',
-  model: DEFAULT_MODEL_CONFIG,
-  providers: {},
-  profiles: {},
-  activeProfile: null,
-  preferences: DEFAULT_USER_PREFERENCES,
-  cache: DEFAULT_CACHE_SETTINGS,
-  extension: DEFAULT_EXTENSION_SETTINGS,
-  tools: DEFAULT_TOOLS_CONFIG,
-  storage: DEFAULT_STORAGE_CONFIG,
-  auth: DEFAULT_AUTH_CONFIG
-};
+// Helper to create default config without module-level execution
+export function getDefaultAgentConfig(): IAgentConfig {
+  return {
+    version: '2.0.0',
+    selectedModelId: '', // Will be set to first available model during initialization
+    modelRegistry: {}, // Will be populated during initialization
+    providers: getDefaultProviders(),
+    profiles: {},
+    activeProfile: null,
+    preferences: { ...DEFAULT_USER_PREFERENCES },
+    cache: { ...DEFAULT_CACHE_SETTINGS },
+    extension: { ...DEFAULT_EXTENSION_SETTINGS },
+    tools: { ...DEFAULT_TOOLS_CONFIG },
+    storage: { ...DEFAULT_STORAGE_CONFIG }
+  };
+}
+
 
 // Storage keys
 export const STORAGE_KEYS = {
@@ -209,13 +227,31 @@ export const DEFAULT_TIMEOUTS = {
  * Merge partial config with defaults
  */
 export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig {
+  // Merge providers: ensure all default providers exist, preserve existing API keys
+  const defaultProviders = getDefaultProviders();
+  const mergedProviders: Record<string, any> = { ...defaultProviders };
+
+  if (partial.providers) {
+    Object.entries(partial.providers).forEach(([id, provider]) => {
+      if (mergedProviders[id]) {
+        // Provider exists in defaults, merge with stored values (preserve API keys)
+        mergedProviders[id] = {
+          ...mergedProviders[id],
+          ...provider
+        };
+      } else {
+        // Provider doesn't exist in defaults, keep it anyway
+        mergedProviders[id] = provider;
+      }
+    });
+  }
+
+  const defaults = getDefaultAgentConfig();
+
   return {
-    ...DEFAULT_AGENT_CONFIG,
+    ...defaults,
     ...partial,
-    model: {
-      ...DEFAULT_MODEL_CONFIG,
-      ...(partial.model || {})
-    },
+    providers: mergedProviders,
     preferences: {
       ...DEFAULT_USER_PREFERENCES,
       ...(partial.preferences || {})
@@ -247,16 +283,13 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
     storage: {
       ...DEFAULT_STORAGE_CONFIG,
       ...(partial.storage || {})
-    },
-    auth: {
-      ...DEFAULT_AUTH_CONFIG,
-      ...(partial.auth || {})
     }
   };
 }
 
 /**
  * Get default provider configurations
+ * Multi-provider support with models arrays
  */
 export function getDefaultProviders(): Record<string, any> {
   return {
@@ -264,19 +297,58 @@ export function getDefaultProviders(): Record<string, any> {
       id: 'openai',
       name: 'OpenAI',
       apiKey: '',
+      organization: null,
       baseUrl: 'https://api.openai.com/v1',
+      version: null,
+      headers: {},
       timeout: DEFAULT_TIMEOUTS.API_REQUEST,
       retryConfig: DEFAULT_RETRY_CONFIG,
-      rateLimitPause: DEFAULT_RATE_LIMIT_PAUSE_CONFIG
+      rateLimitPause: DEFAULT_RATE_LIMIT_PAUSE_CONFIG,
+      models: [
+        {
+          id: '', // Will be randomly generated on first init
+          name: 'GPT-5',
+          modelKey: 'gpt-5',
+          creator: 'OpenAI',
+          contextWindow: 200000,
+          maxOutputTokens: 16384,
+          supportsReasoning: true,
+          reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+          supportsReasoningSummaries: true,
+          supportsVerbosity: true,
+          verbosityLevels: ['low', 'medium', 'high'],
+          releaseDate: '2024-12-05',
+          deprecated: false
+        }
+      ]
     },
-    anthropic: {
-      id: 'anthropic',
-      name: 'Anthropic',
+    xai: {
+      id: 'xai',
+      name: 'xAI',
       apiKey: '',
-      baseUrl: 'https://api.anthropic.com',
+      organization: null,
+      baseUrl: 'https://api.x.ai/v1',
+      version: null,
+      headers: {},
       timeout: DEFAULT_TIMEOUTS.API_REQUEST,
       retryConfig: DEFAULT_RETRY_CONFIG,
-      rateLimitPause: DEFAULT_RATE_LIMIT_PAUSE_CONFIG
+      rateLimitPause: DEFAULT_RATE_LIMIT_PAUSE_CONFIG,
+      models: [
+        {
+          id: '', // Will be randomly generated on first init
+          name: 'Grok 4 Fast Reasoning',
+          modelKey: 'grok-4-fast-reasoning',
+          creator: 'xAI',
+          contextWindow: 131072,
+          maxOutputTokens: 16384,
+          supportsReasoning: true,
+          reasoningEfforts: ['minimal', 'low', 'medium', 'high', 'ultra'],
+          supportsReasoningSummaries: false,
+          supportsVerbosity: false,
+          releaseDate: '2024-11-15',
+          deprecated: false
+        }
+      ]
     }
   };
 }

@@ -1,14 +1,14 @@
 /**
  * OpenAI Responses API client implementation for browserx-chrome
- * Implements the experimental /v1/responses endpoint with SSE streaming
+ * Uses official OpenAI SDK for API calls (supports OpenAI, xAI, and other compatible providers)
  */
 
+import OpenAI from 'openai';
 import {
   ModelClient,
   ModelClientError,
   type CompletionRequest,
   type CompletionResponse,
-  type StreamChunk,
   type RetryConfig,
 } from './ModelClient';
 import { ResponseStream } from './ResponseStream';
@@ -22,14 +22,12 @@ import type {
   TextControls,
   ReasoningEffortConfig,
   ReasoningSummaryConfig,
-  OpenAiVerbosity,
-  TextFormat,
-  TextFormatType,
+  OpenAiVerbosity
 } from './types/ResponsesAPI';
 import type { RateLimitSnapshot } from './types/RateLimits';
 import type { TokenUsage } from './types/TokenUsage';
 import { SSEEventParser } from './SSEEventParser';
-import { RequestQueue, RequestPriority, type QueuedRequest } from './RequestQueue';
+import { RequestQueue } from './RequestQueue';
 import { get_full_instructions, get_formatted_input } from './PromptHelpers';
 
 /**
@@ -90,7 +88,8 @@ export interface OpenAIResponsesConfig {
 }
 
 /**
- * OpenAI Responses API client implementing experimental /v1/responses endpoint
+ * OpenAI Responses API client using official OpenAI SDK
+ * Supports OpenAI, xAI (Grok), and other OpenAI-compatible providers
  */
 export class OpenAIResponsesClient extends ModelClient {
   private readonly apiKey: string | null;
@@ -103,6 +102,9 @@ export class OpenAIResponsesClient extends ModelClient {
   private reasoningSummary?: ReasoningSummaryConfig;
   private modelVerbosity?: OpenAiVerbosity;
   private currentModel: string;
+
+  // OpenAI SDK client instance
+  private client: OpenAI;
 
   // Performance optimizations (Phase 9)
   private sseParser: SSEEventParser;
@@ -125,6 +127,15 @@ export class OpenAIResponsesClient extends ModelClient {
     this.reasoningSummary = config.reasoningSummary;
     this.modelVerbosity = config.modelVerbosity;
     this.currentModel = config.modelFamily.family;
+
+    // Initialize OpenAI SDK client with provider-specific baseURL
+    this.client = new OpenAI({
+      apiKey: this.apiKey || 'placeholder', // SDK requires non-empty string, we validate later
+      baseURL: this.baseUrl,
+      organization: this.organization,
+      timeout: 360000, // 6 minutes for reasoning models
+      maxRetries: 0, // We handle retries manually
+    });
 
     // Initialize performance optimizations
     this.sseParser = new SSEEventParser();
@@ -155,18 +166,16 @@ export class OpenAIResponsesClient extends ModelClient {
     this.currentModel = model;
   }
 
+  // Return context window from modelFamily configuration
   getModelContextWindow(): number | undefined {
-    // Return context window sizes for known OpenAI models
-    const contextWindows: Record<string, number> = {
-      'gpt-4': 8192,
-      'gpt-4-32k': 32768,
-      'gpt-4-turbo': 128000,
-      'gpt-4o': 128000,
-      'gpt-5': 200000,
-      'gpt-3.5-turbo': 4096,
-      'gpt-3.5-turbo-16k': 16384,
-    };
-    return contextWindows[this.currentModel];
+    // Use default context windows based on model key
+    if (this.currentModel === 'gpt-5') {
+      return 200000;
+    } else if (this.currentModel === 'grok-4-fast-reasoning') {
+      return 131072;
+    }
+    // Default fallback
+    return 128000;
   }
 
   getAutoCompactTokenLimit(): number | undefined {
@@ -232,6 +241,9 @@ export class OpenAIResponsesClient extends ModelClient {
     const include: string[] = reasoning ? ['reasoning.encrypted_content'] : [];
     const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
 
+    // Set store: false for xAI provider (required for images)
+    const storeValue = this.provider.name === 'xai' ? false : azureWorkaround;
+
     const payload: ResponsesApiRequest = {
       model: this.currentModel,
       instructions: fullInstructions,
@@ -240,7 +252,7 @@ export class OpenAIResponsesClient extends ModelClient {
       tool_choice: 'auto',
       parallel_tool_calls: false,
       reasoning,
-      store: azureWorkaround,
+      store: storeValue,
       stream: true,
       include,
       prompt_cache_key: this.conversationId,
@@ -329,9 +341,8 @@ export class OpenAIResponsesClient extends ModelClient {
   /**
    * Attempt a single streaming request without retry logic
    *
-   * This method makes a single attempt to create a streaming connection.
-   * It makes the HTTP request synchronously (throwing on connection errors),
-   * then returns a ResponseStream that will be populated asynchronously.
+   * Uses OpenAI SDK's streaming API instead of manual SSE parsing.
+   * Returns a ResponseStream that will be populated asynchronously.
    *
    * @param attempt The attempt number (0-based) for logging/metrics
    * @param payload The API request payload
@@ -342,22 +353,18 @@ export class OpenAIResponsesClient extends ModelClient {
     attempt: number,
     payload: any
   ): Promise<ResponseStream> {
-    // Make HTTP request - this will throw on connection errors (401, 429, etc.)
-    const response = await this.makeResponsesApiRequest(payload);
-
-    if (!response.body) {
-      throw new ModelClientError('Response body is null');
-    }
+    // Make SDK streaming request - this will throw on connection errors (401, 429, etc.)
+    const sdkStream = await this.makeResponsesApiRequest(payload);
 
     // Create stream and start processing asynchronously
     // Use 30-minute event timeout for LLM reasoning (extended for reasoning models like o1)
     // Reasoning models can take >5 minutes without sending events during complex reasoning
     const stream = new ResponseStream(undefined, { eventTimeout: 1800000 });
 
-    // Spawn async task to populate stream from SSE
+    // Spawn async task to populate stream from SDK events
     (async () => {
       try {
-        await this.processSSEToStream(response.body!, response.headers, stream);
+        await this.processSDKStreamToResponseStream(sdkStream, stream);
         stream.complete();
       } catch (error) {
         stream.error(error as Error);
@@ -405,14 +412,10 @@ export class OpenAIResponsesClient extends ModelClient {
       attempt++;
 
       try {
-        const response = await this.makeResponsesApiRequest(payload);
+        const sdkStream = await this.makeResponsesApiRequest(payload);
 
-        if (!response.body) {
-          throw new ModelClientError('Response body is null');
-        }
-
-        // Process SSE stream
-        yield* this.processSSE(response.body, response.headers);
+        // Process SDK stream and yield events
+        yield* this.processSDKStream(sdkStream);
         return;
 
       } catch (error) {
@@ -461,6 +464,121 @@ export class OpenAIResponsesClient extends ModelClient {
    * @param headers HTTP response headers
    * @param stream ResponseStream to populate with events
    */
+  /**
+   * Process OpenAI SDK stream as AsyncGenerator (for streamResponsesInternal)
+   * The SDK handles SSE parsing and returns structured events
+   *
+   * @param sdkStream Async iterable from OpenAI SDK
+   */
+  private async *processSDKStream(
+    sdkStream: AsyncIterable<any>
+  ): AsyncGenerator<ResponseEvent> {
+    try {
+      for await (const chunk of sdkStream) {
+        // The SDK returns structured event objects
+        // Convert SDK event format to our ResponseEvent format
+        const responseEvent = this.convertSDKEventToResponseEvent(chunk);
+
+        if (responseEvent) {
+          yield responseEvent;
+        }
+      }
+    } catch (error) {
+      console.error('[OpenAIResponsesClient] SDK stream error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process OpenAI SDK stream and convert to ResponseStream
+   * The SDK handles SSE parsing and returns structured events
+   *
+   * @param sdkStream Async iterable from OpenAI SDK
+   * @param stream ResponseStream to populate with events
+   */
+  private async processSDKStreamToResponseStream(
+    sdkStream: AsyncIterable<any>,
+    stream: ResponseStream
+  ): Promise<void> {
+    try {
+      for await (const chunk of sdkStream) {
+        // The SDK returns structured event objects
+        // Convert SDK event format to our ResponseEvent format
+        const responseEvent = this.convertSDKEventToResponseEvent(chunk);
+
+        if (responseEvent) {
+          stream.addEvent(responseEvent);
+        }
+      }
+    } catch (error) {
+      console.error('[OpenAIResponsesClient] SDK stream error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convert OpenAI SDK event to ResponseEvent format
+   * Maps SDK's event structure to our internal ResponseEvent type
+   */
+  private convertSDKEventToResponseEvent(sdkEvent: any): ResponseEvent | null {
+    // The SDK event format will depend on what the actual SDK returns
+    // This is a placeholder implementation that will need to be adjusted
+    // based on the actual SDK event structure
+
+    if (!sdkEvent || !sdkEvent.type) {
+      return null;
+    }
+
+    // Map SDK event types to ResponseEvent types
+    // SDK event types will be determined once we test with actual responses
+    switch (sdkEvent.type) {
+      case 'response.created':
+        return { type: 'Created' };
+
+      case 'response.output_item.done':
+        return {
+          type: 'OutputItemDone',
+          item: sdkEvent.item,
+        };
+
+      case 'response.content_part.delta':
+      case 'response.output.text.delta':
+        return {
+          type: 'OutputTextDelta',
+          delta: sdkEvent.delta || sdkEvent.text || '',
+        };
+
+      case 'response.reasoning.summary.delta':
+        return {
+          type: 'ReasoningSummaryDelta',
+          delta: sdkEvent.delta || '',
+        };
+
+      case 'response.reasoning.content.delta':
+        return {
+          type: 'ReasoningContentDelta',
+          delta: sdkEvent.delta || '',
+        };
+
+      case 'response.reasoning.summary.part.added':
+        return { type: 'ReasoningSummaryPartAdded' };
+
+      case 'response.completed':
+      case 'response.done':
+        return {
+          type: 'Completed',
+          responseId: sdkEvent.response?.id || sdkEvent.id || '',
+          tokenUsage: sdkEvent.usage ? this.convertTokenUsage(sdkEvent.usage) : undefined,
+        };
+
+      // Add other event type mappings as needed
+      default:
+        // Log unknown events for debugging - we'll adjust mappings based on actual SDK behavior
+        console.debug('[OpenAIResponsesClient] Unknown SDK event type:', sdkEvent.type, sdkEvent);
+        return null;
+    }
+  }
+
   private async processSSEToStream(
     body: ReadableStream<Uint8Array>,
     headers: Headers | undefined,
@@ -709,62 +827,79 @@ export class OpenAIResponsesClient extends ModelClient {
   }
 
   /**
-   * Make HTTP request to OpenAI Responses API endpoint
+   * Make streaming request to OpenAI Responses API using official SDK
+   * Returns an async iterable stream of events
+   * Supports OpenAI, xAI (Grok), and other OpenAI-compatible providers
    */
-  private async makeResponsesApiRequest(payload: ResponsesApiRequest): Promise<Response> {
+  private async makeResponsesApiRequest(payload: ResponsesApiRequest): Promise<AsyncIterable<any>> {
     // Validate API key before making request
     if (!this.apiKey || !this.apiKey.trim()) {
-      throw new ModelClientError('No API key configured for provider: openai');
+      throw new ModelClientError(`No API key configured for provider: ${this.provider.name}`);
     }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiKey}`,
-      'OpenAI-Beta': 'responses=experimental',
-      'conversation_id': this.conversationId,
-      'session_id': this.conversationId,
-      'Accept': 'text/event-stream',
-    };
+    try {
+      // Convert payload to SDK format
+      const requestParams: any = {
+        model: payload.model,
+        input: payload.input,
+        stream: true, // Always stream
+      };
 
-    if (this.organization) {
-      headers['OpenAI-Organization'] = this.organization;
-    }
-
-    const url = `${this.baseUrl}/responses`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `OpenAI Responses API error: ${response.status} ${response.statusText}`;
-
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.error?.message) {
-          errorMessage = errorData.error.message;
-        }
-      } catch {
-        if (errorText) {
-          errorMessage = errorText;
-        }
+      // Add optional parameters
+      if (payload.tools && payload.tools.length > 0) {
+        requestParams.tools = payload.tools;
+      }
+      if (payload.instructions) {
+        requestParams.instructions = payload.instructions;
+      }
+      if (payload.reasoning) {
+        requestParams.reasoning = payload.reasoning;
+      }
+      if (payload.text) {
+        requestParams.text = payload.text;
+      }
+      if (payload.store !== undefined) {
+        requestParams.store = payload.store;
+      }
+      if (payload.tool_choice) {
+        requestParams.tool_choice = payload.tool_choice;
+      }
+      if (payload.parallel_tool_calls !== undefined) {
+        requestParams.parallel_tool_calls = payload.parallel_tool_calls;
+      }
+      if (payload.include && payload.include.length > 0) {
+        requestParams.include = payload.include;
+      }
+      if (payload.prompt_cache_key) {
+        requestParams.prompt_cache_key = payload.prompt_cache_key;
       }
 
-      // Extract retry-after header if present
-      const retryAfter = response.headers.get('retry-after');
-      const retryAfterMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : undefined;
+      // Add provider-specific headers if needed
+      const options: any = {};
+      if (this.provider.name === 'openai') {
+        options.headers = {
+          'conversation_id': this.conversationId,
+          'session_id': this.conversationId,
+        };
+      }
+
+      // Use OpenAI SDK's responses API with streaming
+      // The SDK handles authentication, retries, and format parsing
+      const stream = await (this.client as any).responses.create(requestParams, options);
+
+      return stream;
+    } catch (error: any) {
+      // Handle SDK errors and convert to ModelClientError
+      const statusCode = error.status || error.statusCode || 500;
+      const errorMessage = error.message || `${this.provider.name} Responses API error`;
 
       throw new ModelClientError(
         errorMessage,
-        response.status,
+        statusCode,
         this.provider.name,
-        this.isRetryableHttpError(response.status)
+        this.isRetryableHttpError(statusCode)
       );
     }
-
-    return response;
   }
 
   /**

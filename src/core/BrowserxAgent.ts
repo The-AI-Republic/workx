@@ -40,7 +40,7 @@ export class BrowserxAgent {
     this.config = config || AgentConfig.getInstance();
 
     // Initialize components with config
-    this.modelClientFactory = ModelClientFactory.getInstance();
+    this.modelClientFactory = new ModelClientFactory();
     this.toolRegistry = new ToolRegistry();
     this.approvalManager = new ApprovalManager(this.config);
     this.diffTracker = new DiffTracker();
@@ -68,10 +68,38 @@ export class BrowserxAgent {
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
 
+    // Validate API key for selected model's provider
+    const configData = this.config.getConfig();
+    const selectedModelId = configData.selectedModelId;
+    const modelData = this.config.getModelById(selectedModelId);
+
+    if (!modelData) {
+      const errorMsg = `Selected model ${selectedModelId} not found in registry`;
+      console.error('[BrowserxAgent]', errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    const providerId = modelData.provider.id;
+    const apiKey = await this.config.getProviderApiKey(providerId);
+
+    if (!apiKey || !apiKey.trim()) {
+      const warningMsg = `No API key configured for provider: ${modelData.provider.name}. Please configure API key in Settings.`;
+      console.warn('[BrowserxAgent]', warningMsg);
+
+      // Emit warning event for UI
+      this.emitEvent({
+        type: 'BackgroundEvent',
+        data: {
+          message: warningMsg,
+          level: 'warning',
+        },
+      });
+    }
+
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
-    const modelName = this.config.getModelConfig().selected || 'default';
-    const modelClient = await this.modelClientFactory.createClientForModel(modelName);
+    // Use createClientForCurrentModel() to properly use selectedModelId from config
+    const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
     // Create initial TurnContext with the model client
     const taskContext = new TurnContext(modelClient, {});
@@ -84,8 +112,6 @@ export class BrowserxAgent {
 
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
-
-    console.log('Agent initialized successfully with model client');
   }
 
   /**
@@ -96,48 +122,48 @@ export class BrowserxAgent {
     this.config.on('config-changed', (event: IConfigChangeEvent) => {
       if (event.section === 'model') {
         this.handleModelConfigChange(event);
-      } else if (event.section === 'security') {
-        this.handleSecurityConfigChange(event);
       }
     });
   }
 
   /**
    * Handle model configuration changes
+   * Reinitializes session when model changes
    */
-  private handleModelConfigChange(event: IConfigChangeEvent): void {
-    // Update model client factory with new config
-    const modelConfig = this.config.getModelConfig();
-    console.log('Model configuration changed:', modelConfig.selected);
+  private async handleModelConfigChange(event: IConfigChangeEvent): Promise<void> {
+    const oldModelId = event.oldValue;
+    const newModelId = event.newValue;
 
-    // Emit event for UI update
-    this.emitEvent({
-      type: 'ConfigUpdate',
-      data: {
-        section: 'model',
-        config: modelConfig
+    // Reinitialize session when model changes
+    if (oldModelId !== newModelId) {
+      try {
+        // Shutdown existing session
+        await this.session.shutdown();
+
+        // Clear conversation history
+        this.session.clearHistory();
+
+        // Create new model client for the selected model
+        const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+
+        // Create new TurnContext with updated model
+        const taskContext = new TurnContext(modelClient, {});
+        const userInstructions = await loadUserInstructions();
+        taskContext.setUserInstructions(userInstructions);
+        const baseInstructions = await loadPrompt();
+        taskContext.setBaseInstructions(baseInstructions);
+
+        // Update session with new turn context
+        this.session.setTurnContext(taskContext);
+
+        // Reinitialize session
+        await this.session.initializeSession('create', this.session.conversationId, this.config);
+      } catch (error) {
+        console.error('Failed to reinitialize session after model change:', error);
       }
-    });
-  }
+    }
 
-  /**
-   * Handle security configuration changes
-   */
-  private handleSecurityConfigChange(event: IConfigChangeEvent): void {
-    const config = this.config.getConfig();
-    console.log('Security configuration changed:', config.security?.approvalPolicy);
-
-    // Update approval manager policies
-    // ApprovalManager will handle its own config updates via its subscription
-
-    // Emit event for UI update
-    this.emitEvent({
-      type: 'ConfigUpdate',
-      data: {
-        section: 'security',
-        config: config.security
-      }
-    });
+    // Note: UI update is handled by Settings.svelte success message
   }
 
   /**
@@ -376,10 +402,26 @@ export class BrowserxAgent {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during task execution';
       const isApiKeyError = errorMessage.includes('No API key configured');
 
+      // Get provider name for better error message
+      let providerName = 'the selected provider';
+      try {
+        const configData = this.config.getConfig();
+        const modelData = this.config.getModelById(configData.selectedModelId);
+        if (modelData) {
+          providerName = modelData.provider.name;
+        }
+      } catch (e) {
+        // Ignore error getting provider name
+      }
+
+      const userFriendlyMessage = isApiKeyError
+        ? `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`
+        : errorMessage;
+
       this.emitEvent({
         type: 'Error',
         data: {
-          message: isApiKeyError ? `Cannot execute task: ${errorMessage}` : errorMessage,
+          message: userFriendlyMessage,
           code: isApiKeyError ? 'API_KEY_REQUIRED' : undefined,
         },
       });
@@ -631,6 +673,13 @@ export class BrowserxAgent {
 
 
   /**
+   * Get the model client factory
+   */
+  getModelClientFactory(): ModelClientFactory {
+    return this.modelClientFactory;
+  }
+
+  /**
    * Get the tool registry
    */
   getToolRegistry(): ToolRegistry {
@@ -720,6 +769,48 @@ export class BrowserxAgent {
    */
   getUserNotifier(): UserNotifier {
     return this.userNotifier;
+  }
+
+  /**
+   * Check if agent is ready to accept commands
+   * Returns true if API key is configured for the selected model's provider
+   */
+  async isReady(): Promise<{ ready: boolean; message?: string; provider?: string; model?: string }> {
+    try {
+      const configData = this.config.getConfig();
+      const selectedModelId = configData.selectedModelId;
+      const modelData = this.config.getModelById(selectedModelId);
+
+      if (!modelData) {
+        return {
+          ready: false,
+          message: `Selected model ${selectedModelId} not found in registry`,
+        };
+      }
+
+      const providerId = modelData.provider.id;
+      const apiKey = await this.config.getProviderApiKey(providerId);
+
+      if (!apiKey || !apiKey.trim()) {
+        return {
+          ready: false,
+          message: `No API key configured for ${modelData.provider.name}`,
+          provider: modelData.provider.name,
+          model: modelData.model.name,
+        };
+      }
+
+      return {
+        ready: true,
+        provider: modelData.provider.name,
+        model: modelData.model.name,
+      };
+    } catch (error) {
+      return {
+        ready: false,
+        message: error instanceof Error ? error.message : 'Unknown error checking agent status',
+      };
+    }
   }
 
   /**

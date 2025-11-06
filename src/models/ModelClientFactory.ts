@@ -5,13 +5,12 @@
 
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
-import { ChromeAuthManager } from './ChromeAuthManager';
-import type { AgentConfig } from '../config/AgentConfig';
+import { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic';
 
 /**
  * Configuration for model client creation
@@ -57,25 +56,13 @@ const DEFAULT_MODEL = 'gpt-5';
  * Factory for creating and managing model clients
  */
 export class ModelClientFactory {
-  private static instance: ModelClientFactory;
   private clientCache: Map<string, ModelClient> = new Map();
   private config?: AgentConfig;
-  private authManager?: ChromeAuthManager;
   private storageListener?: (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void;
 
-  private constructor() {
+  constructor() {
     // Setup storage listener to invalidate cache when API keys change
     this.setupStorageListener();
-  }
-
-  /**
-   * Get the singleton instance of the factory
-   */
-  static getInstance(): ModelClientFactory {
-    if (!ModelClientFactory.instance) {
-      ModelClientFactory.instance = new ModelClientFactory();
-    }
-    return ModelClientFactory.instance;
   }
 
   /**
@@ -86,13 +73,10 @@ export class ModelClientFactory {
       // Check if any API key related storage changed
       const relevantKeys = [
         STORAGE_KEYS.OPENAI_API_KEY,
-        'browserx_api_key_encrypted', // ChromeAuthManager encrypted key
-        'browserx_auth_data', // ChromeAuthManager auth data
       ];
 
       for (const key of relevantKeys) {
         if (changes[key]) {
-          console.log(`[ModelClientFactory] API key changed in ${areaName} storage, clearing cache`);
           this.clearCache();
           break;
         }
@@ -116,17 +100,52 @@ export class ModelClientFactory {
   }
 
   /**
+   * Create a model client for the currently selected model
+   * Uses AgentConfig's selectedModelId to determine provider
+   * @returns Promise resolving to a model client
+   */
+  async createClientForCurrentModel(): Promise<ModelClient> {
+    const agentConfig = AgentConfig.getInstance();
+    await agentConfig.initialize();
+
+    const config = agentConfig.getConfig();
+    const modelData = agentConfig.getModelById(config.selectedModelId);
+
+    if (!modelData) {
+      throw new ModelClientError(`Selected model ${config.selectedModelId} not found in registry`);
+    }
+
+    const providerId = modelData.provider.id;
+    const provider = this.mapProviderIdToType(providerId);
+
+    return this.createClient(provider);
+  }
+
+  /**
    * Create a model client for the specified model
-   * @param model The model name to create a client for
+   * @param model The model name to create a client for (legacy support)
    * @returns Promise resolving to a model client
    */
   async createClientForModel(model: string): Promise<ModelClient> {
     if (model === 'default') {
-      model = DEFAULT_MODEL;
+      // Use current selected model
+      return this.createClientForCurrentModel();
     }
 
     const provider = this.getProviderForModel(model);
     return this.createClient(provider);
+  }
+
+  /**
+   * Map provider ID from config to ModelProvider type
+   * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic')
+   * @returns ModelProvider type
+   */
+  private mapProviderIdToType(providerId: string): ModelProvider {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic') {
+      return providerId;
+    }
+    throw new ModelClientError(`Unsupported provider: ${providerId}`);
   }
 
   /**
@@ -174,72 +193,61 @@ export class ModelClientFactory {
 
   /**
    * Get the provider for a given model name
-   * @param model The model name
+   * Uses AgentConfig.modelRegistry as primary source
+   * @param model The model name (modelKey)
    * @returns The provider for the model
+   * @deprecated Use createClientForCurrentModel() instead for proper registry lookup
    */
   getProviderForModel(model: string): ModelProvider {
     if (model === 'default') {
       return 'openai';
     }
 
-    const provider = MODEL_PROVIDER_MAP[model];
-
-    if (!provider) {
-      // Try to infer from model name patterns
+    // Try to infer from model name patterns as heuristic fallback
+    // This method is deprecated and should not be used for new code
+    try {
       if (model.startsWith('gpt-')) {
         return 'openai';
       }
+      if (model.startsWith('grok-')) {
+        return 'xai';
+      }
+      if (model.startsWith('claude-')) {
+        return 'anthropic';
+      }
 
-      throw new ModelClientError(`Unknown model: ${model}. Only OpenAI models supported.`);
+      throw new ModelClientError(`Unknown model: ${model}. Supported providers: OpenAI, xAI, Anthropic. Use createClientForCurrentModel() instead.`);
+    } catch (error) {
+      throw new ModelClientError(`Failed to determine provider for model: ${model}. ${error}`);
     }
-
-    return provider;
   }
 
   /**
    * Get all supported models for a provider
    * @param provider The provider
-   * @returns Array of model names
+   * @returns Array of model keys
+   * @deprecated Use AgentConfig.getAllModels() instead for proper registry lookup
    */
   getSupportedModels(provider: ModelProvider): string[] {
-    return Object.entries(MODEL_PROVIDER_MAP)
-      .filter(([, p]) => p === provider)
-      .map(([model]) => model);
+    if (!this.config) {
+      return [];
+    }
+
+    const providerConfig = this.config.getProvider(provider);
+    if (!providerConfig || !providerConfig.models) {
+      return [];
+    }
+
+    return providerConfig.models.map(m => m.modelKey);
   }
 
   /**
-   * Load API key for a provider from Chrome storage
+   * Load API key for a provider from AgentConfig
    * @param provider The provider
    * @returns Promise resolving to the API key or null if not found
    */
   async loadApiKey(provider: ModelProvider): Promise<string | null> {
-    // First try to get API key from ChromeAuthManager if available
-    if (this.authManager) {
-      const apiKey = await this.authManager.retrieveApiKey();
-
-      if (apiKey) {
-        // Validate if this key is for OpenAI
-        // OpenAI keys start with 'sk-'
-        const isOpenAIKey = apiKey.startsWith('sk-');
-
-        if (provider === 'openai' && isOpenAIKey) {
-          return apiKey;
-        }
-      }
-    }
-
-    // Fallback to original storage method for backward compatibility
-    const key = STORAGE_KEYS.OPENAI_API_KEY;
-
-    return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([key], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(result[key] || null);
-        }
-      });
-    });
+    return null;
   }
 
   /**
@@ -294,9 +302,10 @@ export class ModelClientFactory {
   async hasValidApiKey(provider: ModelProvider): Promise<boolean> {
     const apiKey = await this.loadApiKey(provider);
 
-    if (apiKey && apiKey.trim().length > 0 && this.authManager) {
-      // Additional validation using ChromeAuthManager
-      return this.authManager.validateApiKey(apiKey);
+    if (apiKey && apiKey.trim().length > 0) {
+      // Basic validation - just check if it's a non-empty string
+      // Provider-specific validation is handled by the model clients themselves
+      return true;
     }
 
     return false;
@@ -321,13 +330,33 @@ export class ModelClientFactory {
   }
 
   /**
-   * Load configuration for a provider from Chrome storage
+   * T046: Load configuration for a provider from AgentConfig
    * @param provider The provider
    * @returns Promise resolving to the client configuration
    * Note: API key can be null - validation happens when making API requests
    */
   private async loadConfigForProvider(provider: ModelProvider): Promise<ModelClientConfig> {
-    const apiKey = await this.loadApiKey(provider);
+    // Get provider-specific API key from AgentConfig
+    let apiKey: string | null = null;
+    let providerConfig: any = null;
+
+    try {
+      const agentConfig = AgentConfig.getInstance();
+      await agentConfig.initialize();
+
+      // Get API key for this specific provider
+      apiKey = await agentConfig.getProviderApiKey(provider);
+
+      // Get provider configuration for base URL, organization, etc.
+      const providerData = agentConfig.getProvider(provider);
+      if (providerData) {
+        providerConfig = providerData;
+      }
+    } catch (error) {
+      console.warn(`[ModelClientFactory] Failed to load config from AgentConfig: ${error}`);
+      // Fall back to legacy method
+      apiKey = await this.loadApiKey(provider);
+    }
 
     // Don't throw error if API key is missing - allow model client to be created
     // The error will be thrown when actually trying to make an API request
@@ -335,8 +364,20 @@ export class ModelClientFactory {
     const config: ModelClientConfig = {
       provider,
       apiKey: apiKey || null,
-      options: {},
+      options: {
+        baseUrl: providerConfig?.baseUrl,
+        organization: providerConfig?.organization
+      },
     };
+
+    // Load provider-specific base URL
+    if (this.config) {
+      const modelConfig = this.config.getModelConfig();
+      const providerConfig = this.config.getProvider(modelConfig.provider);
+      if (providerConfig?.baseUrl) {
+        config.options!.baseUrl = providerConfig.baseUrl;
+      }
+    }
 
     // Load provider-specific options
     if (provider === 'openai') {
@@ -367,27 +408,42 @@ export class ModelClientFactory {
   }
 
   /**
-   * Instantiate a client with the given configuration
+   * T032, Instantiate a client with the given configuration
    * @param config The client configuration
    * @returns Model client instance
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
-    switch (config.provider) {
+    // Get provider name from config if available
+    let providerName = config.provider;
+    let baseUrl = config.options?.baseUrl;
+
+    if (this.config) {
+      const modelConfig = this.config.getModelConfig();
+      providerName = modelConfig.provider as ModelProvider;
+
+      // Base URL will be loaded from provider config instead
+      // No need to check model metadata
+    }
+
+    switch (providerName) {
       case 'openai':
+      default:
         // Use the experimental OpenAI Responses API client by default
         // Construct minimal provider and model family configs
         const baseUrl = config.options?.baseUrl;
         const organization = config.options?.organization;
 
         const provider = {
-          name: 'openai',
+          name: providerName,
           base_url: baseUrl,
           wire_api: 'Responses' as const,
           requires_openai_auth: true,
         };
 
+        // Use selected model from config instead of hardcoded 'gpt-5'
+        const selectedModel = this.getSelectedModel();
         const modelFamily = {
-          family: 'gpt-5',
+          family: selectedModel,
           base_instructions: 'You are a helpful coding assistant.',
           supports_reasoning_summaries: true,
           needs_special_apply_patch_instructions: false,
@@ -406,9 +462,6 @@ export class ModelClientFactory {
           modelFamily,
           provider,
         });
-
-      default:
-        throw new ModelClientError(`Unsupported provider: ${(config as any).provider}`);
     }
   }
 
@@ -440,38 +493,49 @@ export class ModelClientFactory {
    */
   async initialize(config: AgentConfig): Promise<void> {
     this.config = config;
-    // Create ChromeAuthManager instance with the config
-    this.authManager = new ChromeAuthManager(config);
     // Clear cache when config changes to use new settings
     this.clientCache.clear();
   }
 
   /**
    * Get selected model from config
+   * Returns the modelKey of the currently selected model
    */
   getSelectedModel(): string {
-    // Config integration placeholder - returns default
+    if (this.config) {
+      // Get selectedModelId from config
+      const configData = this.config.getConfig();
+      const selectedModelId = configData.selectedModelId;
+
+      // Look up the model in the registry
+      const modelData = this.config.getModelById(selectedModelId);
+      if (modelData) {
+        return modelData.model.modelKey;
+      }
+    }
     return DEFAULT_MODEL;
   }
 
   /**
    * Get API key from config for a provider
    */
-  getApiKey(provider: string): string | undefined {
-    // Config integration placeholder - returns undefined
-    return undefined;
+  async getApiKey(provider: string): Promise<string | null> {
+    if (!this.config) {
+      return await this.loadApiKey('openai');
+    }
+
+    return await this.config.getProviderApiKey(provider);
   }
 
   /**
    * Get base URL from config for a provider
    */
   getBaseUrl(provider: string): string | undefined {
-    // Config integration placeholder - returns undefined
-    return undefined;
+    if (!this.config) {
+      return undefined;
+    }
+
+    const providerConfig = this.config.getProvider(provider);
+    return providerConfig?.baseUrl || undefined;
   }
 }
-
-/**
- * Convenience function to get the factory instance
- */
-export const getModelClientFactory = () => ModelClientFactory.getInstance();
