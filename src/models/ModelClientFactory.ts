@@ -398,11 +398,13 @@ export class ModelClientFactory {
         const selectedModel = this.getSelectedModel();
 
         // Get model metadata to determine reasoning support
+        let supportsReasoning = false;
         let supportsReasoningSummaries = false;
         if (this.config) {
           const configData = this.config.getConfig();
           const modelData = this.config.getModelById(configData.selectedModelId);
           if (modelData?.model) {
+            supportsReasoning = modelData.model.supportsReasoning ?? false;
             supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
           }
         }
@@ -410,6 +412,7 @@ export class ModelClientFactory {
         const modelFamily = {
           family: selectedModel,
           base_instructions: 'You are a helpful coding assistant.',
+          supports_reasoning: supportsReasoning,
           supports_reasoning_summaries: supportsReasoningSummaries,
           needs_special_apply_patch_instructions: false,
         };
@@ -419,6 +422,16 @@ export class ModelClientFactory {
           ? (crypto as any).randomUUID()
           : `conv_${Math.random().toString(36).slice(2)}`;
 
+        // Get reasoning effort from model config
+        // Default to 'medium' for models that support reasoning
+        let reasoningEffort: string | undefined;
+        if (supportsReasoning) {
+          reasoningEffort = 'medium'; // Default reasoning effort
+          console.log(`[ModelClientFactory] Enabling reasoning with effort: ${reasoningEffort} for model: ${selectedModel}`);
+        } else {
+          console.log(`[ModelClientFactory] Model ${selectedModel} does not support reasoning - omitting reasoning parameter`);
+        }
+
         return new OpenAIResponsesClient({
           apiKey: config.apiKey,
           baseUrl,
@@ -426,6 +439,8 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
     }
   }

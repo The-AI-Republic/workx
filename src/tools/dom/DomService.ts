@@ -135,10 +135,13 @@ export class DomService {
   /**
    * Wait for page to finish loading before accessing DOM
    * This prevents issues with DOM.getDocument being called while page is still loading
+   *
+   * Enhanced for SPA detection: After page load, waits for meaningful content to appear
+   * to avoid capturing empty React/Vue/Angular loading screens
    */
   private async waitForPageLoad(): Promise<void> {
     try {
-      // Check if page is already loaded
+      // Step 1: Wait for document.readyState === 'complete'
       const readyStateResult = await this.sendCommand<any>('Runtime.evaluate', {
         expression: 'document.readyState',
         returnByValue: true
@@ -146,30 +149,90 @@ export class DomService {
 
       const readyState = readyStateResult.result.value;
 
-      if (readyState === 'complete') {
-        console.log('[DomService] Page already loaded');
-        return;
+      if (readyState !== 'complete') {
+        console.log(`[DomService] Page loading (readyState: ${readyState}), waiting for load event...`);
+
+        // Wait for load event
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('PAGE_LOAD_TIMEOUT: Page did not finish loading within 30 seconds'));
+          }, 30000); // 30 second timeout
+
+          const eventListener = (source: chrome.debugger.Debuggee, method: string) => {
+            if (source.tabId === this.tabId && method === 'Page.loadEventFired') {
+              clearTimeout(timeout);
+              chrome.debugger.onEvent.removeListener(eventListener);
+              console.log('[DomService] Page load event fired');
+              resolve();
+            }
+          };
+
+          chrome.debugger.onEvent.addListener(eventListener);
+        });
       }
 
-      console.log(`[DomService] Page loading (readyState: ${readyState}), waiting for load event...`);
+      // Step 2: Check for SPA loading indicators and wait for meaningful content
+      console.log('[DomService] Checking for SPA content rendering...');
 
-      // Wait for load event
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('PAGE_LOAD_TIMEOUT: Page did not finish loading within 30 seconds'));
-        }, 30000); // 30 second timeout
+      const maxWaitForContent = 10000; // 10 seconds max wait for SPA content
+      const checkInterval = 500; // Check every 500ms
+      const startTime = Date.now();
 
-        const eventListener = (source: chrome.debugger.Debuggee, method: string) => {
-          if (source.tabId === this.tabId && method === 'Page.loadEventFired') {
-            clearTimeout(timeout);
-            chrome.debugger.onEvent.removeListener(eventListener);
-            console.log('[DomService] Page load event fired');
-            resolve();
-          }
-        };
+      while (Date.now() - startTime < maxWaitForContent) {
+        // Check if page has meaningful interactive content
+        const contentCheck = await this.sendCommand<any>('Runtime.evaluate', {
+          expression: `
+            (function() {
+              // Count interactive elements (buttons, links, inputs)
+              const buttons = document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]');
+              const links = document.querySelectorAll('a[href]');
+              const inputs = document.querySelectorAll('input:not([type="hidden"]), textarea, select');
 
-        chrome.debugger.onEvent.addListener(eventListener);
-      });
+              // Count text content (excluding script/style tags)
+              const body = document.body;
+              const textContent = body ? body.innerText.trim() : '';
+
+              // Check for common loading indicators
+              const loadingIndicators = document.querySelectorAll('[class*="loading"], [class*="spinner"], [class*="progress"], [aria-busy="true"], [role="progressbar"]');
+
+              // Detect if page is still showing only loading screen
+              const hasLoadingIndicator = loadingIndicators.length > 0;
+              const hasMinimalContent = textContent.length < 100 && buttons.length < 3 && links.length < 3 && inputs.length < 2;
+
+              return {
+                interactiveCount: buttons.length + links.length + inputs.length,
+                textLength: textContent.length,
+                hasLoadingIndicator: hasLoadingIndicator,
+                isStillLoading: hasLoadingIndicator && hasMinimalContent,
+                timestamp: Date.now()
+              };
+            })()
+          `,
+          returnByValue: true
+        });
+
+        const contentStats = contentCheck.result.value;
+        console.log(`[DomService] Content check: ${contentStats.interactiveCount} interactive elements, ${contentStats.textLength} chars, loading: ${contentStats.isStillLoading}`);
+
+        // If page has meaningful content and no loading indicators, proceed
+        if (!contentStats.isStillLoading && (contentStats.interactiveCount > 5 || contentStats.textLength > 200)) {
+          console.log('[DomService] Meaningful content detected, proceeding with snapshot');
+          return;
+        }
+
+        // If page is clearly stuck on loading screen, wait a bit more
+        if (contentStats.isStillLoading) {
+          await new Promise(resolve => setTimeout(resolve, checkInterval));
+        } else {
+          // No loading indicator but minimal content - might be legitimate minimal page
+          console.log('[DomService] No loading indicator, proceeding with snapshot');
+          return;
+        }
+      }
+
+      // Timeout reached - proceed anyway
+      console.warn('[DomService] SPA content wait timeout - proceeding with snapshot (page may still be rendering)');
+
     } catch (error: any) {
       console.warn(`[DomService] Could not wait for page load: ${error.message}. Continuing anyway...`);
       // Continue even if we can't wait - some pages may have issues but DOM might still be accessible

@@ -157,8 +157,13 @@
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
         isAuthenticated = !!selectedItem.apiKey;
 
+        // Set default reasoning effort for models that support reasoning
+        const defaultReasoningEffort = selectedItem.supportsReasoning && selectedItem.reasoningEfforts?.length > 0
+          ? 'medium'  // Default to medium effort for reasoning-capable models
+          : null;
+
         configuredFeatures = {
-          reasoningEffort: null,
+          reasoningEffort: defaultReasoningEffort,
           reasoningSummary: undefined,
           verbosity: null,
           contextWindow: selectedItem.contextWindow,
@@ -178,8 +183,14 @@
           apiKey = fallbackItem.apiKey || '';
           maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
           isAuthenticated = !!fallbackItem.apiKey;
+
+          // Set default reasoning effort for models that support reasoning
+          const fallbackReasoningEffort = fallbackItem.supportsReasoning && fallbackItem.reasoningEfforts?.length > 0
+            ? 'medium'  // Default to medium effort for reasoning-capable models
+            : null;
+
           configuredFeatures = {
-            reasoningEffort: null,
+            reasoningEffort: fallbackReasoningEffort,
             reasoningSummary: undefined,
             verbosity: null,
             contextWindow: fallbackItem.contextWindow,

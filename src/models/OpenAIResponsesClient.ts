@@ -275,19 +275,26 @@ export class OpenAIResponsesClient extends ModelClient {
     };
 
     // Provider-specific reasoning format
-    if (this.provider.name === 'groq') {
-      // Groq uses flat reasoning_effort field instead of nested reasoning object
-      // Note: Groq supports reasoning but not reasoning summaries
-      if (this.reasoningEffort) {
-        payload.reasoning_effort = this.reasoningEffort;
-        payload.reasoning_format = 'parsed'; // Separates reasoning into dedicated field
+    // CRITICAL: Only add reasoning parameter if model actually supports it
+    if (this.modelFamily.supports_reasoning) {
+      if (this.provider.name === 'groq') {
+        // Groq uses nested reasoning object with effort field (like OpenAI)
+        // But does NOT support reasoning.summary parameter
+        if (this.reasoningEffort) {
+          payload.reasoning = {
+            effort: this.reasoningEffort
+          };
+          console.log('[OpenAIResponsesClient] Groq reasoning request:', JSON.stringify(payload.reasoning));
+        }
+        // Note: Groq does NOT support reasoning.summary
+      } else {
+        // OpenAI/xAI use nested reasoning object with both effort and summary
+        if (reasoning) {
+          payload.reasoning = reasoning;
+        }
       }
-      // Note: Groq does NOT support reasoning.summary
     } else {
-      // OpenAI/xAI use nested reasoning object
-      if (reasoning) {
-        payload.reasoning = reasoning;
-      }
+      console.log(`[OpenAIResponsesClient] Model ${this.currentModel} does not support reasoning - omitting reasoning parameter`);
     }
 
     // Retry logic with exponential backoff
@@ -445,19 +452,26 @@ export class OpenAIResponsesClient extends ModelClient {
     };
 
     // Provider-specific reasoning format
-    if (this.provider.name === 'groq') {
-      // Groq uses flat reasoning_effort field instead of nested reasoning object
-      // Note: Groq supports reasoning but not reasoning summaries
-      if (this.reasoningEffort) {
-        payload.reasoning_effort = this.reasoningEffort;
-        payload.reasoning_format = 'parsed'; // Separates reasoning into dedicated field
+    // CRITICAL: Only add reasoning parameter if model actually supports it
+    if (this.modelFamily.supports_reasoning) {
+      if (this.provider.name === 'groq') {
+        // Groq uses nested reasoning object with effort field (like OpenAI)
+        // But does NOT support reasoning.summary parameter
+        if (this.reasoningEffort) {
+          payload.reasoning = {
+            effort: this.reasoningEffort
+          };
+          console.log('[OpenAIResponsesClient] Groq reasoning request:', JSON.stringify(payload.reasoning));
+        }
+        // Note: Groq does NOT support reasoning.summary
+      } else {
+        // OpenAI/xAI use nested reasoning object with both effort and summary
+        if (reasoning) {
+          payload.reasoning = reasoning;
+        }
       }
-      // Note: Groq does NOT support reasoning.summary
     } else {
-      // OpenAI/xAI use nested reasoning object
-      if (reasoning) {
-        payload.reasoning = reasoning;
-      }
+      console.log(`[OpenAIResponsesClient] Model ${this.currentModel} does not support reasoning - omitting reasoning parameter`);
     }
 
     // Retry logic with exponential backoff
@@ -635,9 +649,25 @@ export class OpenAIResponsesClient extends ModelClient {
         // Extract output items from response (for Groq and other providers that include output array)
         // Some providers (like Groq) include reasoning items in response.output array
         if (sdkEvent.response?.output && Array.isArray(sdkEvent.response.output)) {
+          console.log('[OpenAIResponsesClient] DEBUG: Groq response.output:', JSON.stringify(sdkEvent.response.output, null, 2));
           for (const outputItem of sdkEvent.response.output) {
             // Emit OutputItemDone events for each item in the output array
             if (outputItem && outputItem.type) {
+              // For Groq reasoning items, extract content from the correct field
+              // Groq uses 'reasoning_content' field instead of 'content' for reasoning text
+              if (outputItem.type === 'reasoning' && this.provider.name === 'groq') {
+                console.log('[OpenAIResponsesClient] DEBUG: Groq reasoning item:', JSON.stringify(outputItem, null, 2));
+
+                // Transform Groq reasoning format to standard format
+                // Groq sends reasoning_content as a string, we need to convert to content array
+                if (outputItem.reasoning_content && typeof outputItem.reasoning_content === 'string') {
+                  outputItem.content = [
+                    { type: 'reasoning_text', text: outputItem.reasoning_content }
+                  ];
+                  console.log('[OpenAIResponsesClient] Transformed Groq reasoning content to standard format');
+                }
+              }
+
               events.push({
                 type: 'OutputItemDone',
                 item: outputItem

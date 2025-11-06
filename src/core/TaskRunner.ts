@@ -94,7 +94,7 @@ export class TaskRunner {
   private cancelPromise: Promise<void> | null = null;
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
-  private static readonly MAX_TURNS = 50;
+  private static readonly MAX_TURNS = 200;
   private static readonly COMPACTION_THRESHOLD = 0.75;
 
   constructor(
