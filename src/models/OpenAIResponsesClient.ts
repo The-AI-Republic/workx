@@ -533,10 +533,11 @@ export class OpenAIResponsesClient extends ModelClient {
       for await (const chunk of sdkStream) {
         // The SDK returns structured event objects
         // Convert SDK event format to our ResponseEvent format
-        const responseEvent = this.convertSDKEventToResponseEvent(chunk);
+        const responseEvents = this.convertSDKEventToResponseEvent(chunk);
 
-        if (responseEvent) {
-          yield responseEvent;
+        // Yield each event (may be multiple events per chunk, e.g., output items + completion)
+        for (const event of responseEvents) {
+          yield event;
         }
       }
     } catch (error) {
@@ -560,10 +561,11 @@ export class OpenAIResponsesClient extends ModelClient {
       for await (const chunk of sdkStream) {
         // The SDK returns structured event objects
         // Convert SDK event format to our ResponseEvent format
-        const responseEvent = this.convertSDKEventToResponseEvent(chunk);
+        const responseEvents = this.convertSDKEventToResponseEvent(chunk);
 
-        if (responseEvent) {
-          stream.addEvent(responseEvent);
+        // Add each event (may be multiple events per chunk, e.g., output items + completion)
+        for (const event of responseEvents) {
+          stream.addEvent(event);
         }
       }
     } catch (error) {
@@ -575,64 +577,91 @@ export class OpenAIResponsesClient extends ModelClient {
   /**
    * Convert OpenAI SDK event to ResponseEvent format
    * Maps SDK's event structure to our internal ResponseEvent type
+   * Returns an array to support extracting multiple items from a single event
    */
-  private convertSDKEventToResponseEvent(sdkEvent: any): ResponseEvent | null {
+  private convertSDKEventToResponseEvent(sdkEvent: any): ResponseEvent[] {
     // The SDK event format will depend on what the actual SDK returns
     // This is a placeholder implementation that will need to be adjusted
     // based on the actual SDK event structure
 
     if (!sdkEvent || !sdkEvent.type) {
-      return null;
+      return [];
     }
+
+    const events: ResponseEvent[] = [];
 
     // Map SDK event types to ResponseEvent types
     // SDK event types will be determined once we test with actual responses
     switch (sdkEvent.type) {
       case 'response.created':
-        return { type: 'Created' };
+        events.push({ type: 'Created' });
+        break;
 
       case 'response.output_item.done':
-        return {
+        events.push({
           type: 'OutputItemDone',
           item: sdkEvent.item,
-        };
+        });
+        break;
 
       case 'response.content_part.delta':
       case 'response.output.text.delta':
-        return {
+        events.push({
           type: 'OutputTextDelta',
           delta: sdkEvent.delta || sdkEvent.text || '',
-        };
+        });
+        break;
 
       case 'response.reasoning.summary.delta':
-        return {
+        events.push({
           type: 'ReasoningSummaryDelta',
           delta: sdkEvent.delta || '',
-        };
+        });
+        break;
 
       case 'response.reasoning.content.delta':
-        return {
+        events.push({
           type: 'ReasoningContentDelta',
           delta: sdkEvent.delta || '',
-        };
+        });
+        break;
 
       case 'response.reasoning.summary.part.added':
-        return { type: 'ReasoningSummaryPartAdded' };
+        events.push({ type: 'ReasoningSummaryPartAdded' });
+        break;
 
       case 'response.completed':
       case 'response.done':
-        return {
+        // Extract output items from response (for Groq and other providers that include output array)
+        // Some providers (like Groq) include reasoning items in response.output array
+        if (sdkEvent.response?.output && Array.isArray(sdkEvent.response.output)) {
+          for (const outputItem of sdkEvent.response.output) {
+            // Emit OutputItemDone events for each item in the output array
+            if (outputItem && outputItem.type) {
+              events.push({
+                type: 'OutputItemDone',
+                item: outputItem
+              });
+            }
+          }
+        }
+
+        // Emit the Completed event
+        events.push({
           type: 'Completed',
           responseId: sdkEvent.response?.id || sdkEvent.id || '',
           tokenUsage: sdkEvent.usage ? this.convertTokenUsage(sdkEvent.usage) : undefined,
-        };
+        });
+        break;
 
       // Add other event type mappings as needed
       default:
         // Log unknown events for debugging - we'll adjust mappings based on actual SDK behavior
         console.debug('[OpenAIResponsesClient] Unknown SDK event type:', sdkEvent.type, sdkEvent);
-        return null;
+        break;
     }
+
+    return events;
   }
 
   private async processSSEToStream(

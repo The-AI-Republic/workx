@@ -84,8 +84,10 @@ const EVENT_TYPE_CACHE = new Map<string, boolean>([
   ['response.reasoning_summary_part.added', true],
   ['response.failed', true],
   // Ignored events
+  ['response.content_part.added', false],
   ['response.content_part.done', false],
   ['response.function_call_arguments.delta', false],
+  ['response.function_call_arguments.done', false],
   ['response.custom_tool_call_input.delta', false],
   ['response.custom_tool_call_input.done', false],
   ['response.in_progress', false],
@@ -287,6 +289,21 @@ export class SSEEventParser {
 
       case 'response.completed':
         if (event.response) {
+          // Extract output items from response (for Groq and other providers that include output array)
+          // Some providers (like Groq) include reasoning items in response.output array
+          if (event.response.output && Array.isArray(event.response.output)) {
+            for (const outputItem of event.response.output) {
+              // Emit OutputItemDone events for each item in the output array
+              if (outputItem && outputItem.type) {
+                events.push({
+                  type: 'OutputItemDone',
+                  item: outputItem
+                });
+              }
+            }
+          }
+
+          // Emit the Completed event
           events.push({
             type: 'Completed',
             responseId: event.response.id || '',
@@ -317,8 +334,10 @@ export class SSEEventParser {
         break;
 
       // Events we currently ignore
+      case 'response.content_part.added':
       case 'response.content_part.done':
       case 'response.function_call_arguments.delta':
+      case 'response.function_call_arguments.done':
       case 'response.custom_tool_call_input.delta':
       case 'response.custom_tool_call_input.done':
       case 'response.in_progress':
