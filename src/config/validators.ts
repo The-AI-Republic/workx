@@ -467,9 +467,14 @@ export function getDefaultModel(config: any): string {
  * Detect provider from API key format
  * Returns provider ID based on key pattern
  */
-export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'unknown' {
+export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'groq' | 'unknown' {
   if (!apiKey || apiKey.trim() === '') {
     return 'unknown';
+  }
+
+  // Groq keys: gsk_ prefix + 48 alphanumeric chars (52 total)
+  if (/^gsk_[A-Za-z0-9]{48}$/.test(apiKey)) {
+    return 'groq';
   }
 
   // xAI keys start with 'xai-'

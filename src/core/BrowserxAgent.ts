@@ -357,21 +357,9 @@ export class BrowserxAgent {
 
       // If context overrides are provided, update the turn context
       if (contextOverrides) {
-        // If model changed, create new model client and context
-        if (contextOverrides.model && contextOverrides.model !== taskContext?.getModel()) {
-          const modelClient = await this.modelClientFactory.createClientForModel(contextOverrides.model);
-          taskContext = new TurnContext(modelClient, contextOverrides);
-
-          // Load and set instructions
-          const userInstructions = await loadUserInstructions();
-          taskContext.setUserInstructions(userInstructions);
-          const baseInstructions = await loadPrompt();
-          taskContext.setBaseInstructions(baseInstructions);
-
-          // Set the new turn context on the session
-          this.session.setTurnContext(taskContext);
-        } else if (taskContext) {
+        if (taskContext) {
           // Update existing context with overrides
+          // Note: model override is no longer supported - use AgentConfig.selectModel() instead
           this.session.updateTurnContext(contextOverrides);
         }
       }

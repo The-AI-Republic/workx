@@ -378,7 +378,7 @@ export interface IConfigFactory {
 // Multi-provider validation result types
 export interface IProviderValidationResult {
   isValid: boolean;
-  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'unknown';
+  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'groq' | 'unknown';
   warnings: string[];
   errors: string[];
 }

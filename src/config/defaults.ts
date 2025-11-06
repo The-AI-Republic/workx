@@ -142,7 +142,7 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
 // Helper to create default config without module-level execution
 export function getDefaultAgentConfig(): IAgentConfig {
   return {
-    version: '2.0.0',
+    version: '2.1.0',
     selectedModelId: '', // Will be set to first available model during initialization
     modelRegistry: {}, // Will be populated during initialization
     providers: getDefaultProviders(),
@@ -302,6 +302,47 @@ export function getDefaultProviders(): Record<string, any> {
           supportsReasoningSummaries: false,
           supportsVerbosity: false,
           releaseDate: '2024-11-15',
+          deprecated: false
+        }
+      ]
+    },
+    groq: {
+      id: 'groq',
+      name: 'Groq',
+      apiKey: '',
+      organization: null,
+      baseUrl: 'https://api.groq.com/openai/v1',
+      version: null,
+      headers: {},
+      timeout: DEFAULT_TIMEOUTS.API_REQUEST,
+      retryConfig: DEFAULT_RETRY_CONFIG,
+      models: [
+        {
+          id: '', // Will be randomly generated on first init
+          name: 'Qwen 3 32B',
+          modelKey: 'qwen/qwen3-32b',
+          creator: 'Alibaba Cloud',
+          contextWindow: 131072,
+          maxOutputTokens: 40960,
+          supportsReasoning: true,
+          reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+          supportsReasoningSummaries: false,
+          supportsVerbosity: false,
+          releaseDate: '2024-12-01',
+          deprecated: false
+        },
+        {
+          id: '', // Will be randomly generated on first init
+          name: 'Kimi K2 Instruct',
+          modelKey: 'moonshotai/kimi-k2-instruct-0905',
+          creator: 'Moonshot AI',
+          contextWindow: 262144,
+          maxOutputTokens: 16384,
+          supportsReasoning: true,
+          reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+          supportsReasoningSummaries: false,
+          supportsVerbosity: false,
+          releaseDate: '2024-09-05',
           deprecated: false
         }
       ]

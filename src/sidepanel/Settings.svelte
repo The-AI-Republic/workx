@@ -443,6 +443,7 @@
     const providerName = currentProvider === 'openai' ? 'OpenAI'
       : currentProvider === 'xai' ? 'xAI'
       : currentProvider === 'anthropic' ? 'Anthropic'
+      : currentProvider === 'groq' ? 'Groq'
       : currentProvider;
 
     if (!confirm(`Are you sure you want to remove your ${providerName} API key? You will need to enter it again to use this provider.`)) {
@@ -737,6 +738,8 @@
             xAI API Key
           {:else if currentProvider === 'anthropic'}
             Anthropic API Key
+          {:else if currentProvider === 'groq'}
+            Groq API Key
           {:else}
             OpenAI API Key
           {/if}
@@ -749,7 +752,7 @@
               bind:value={apiKey}
               on:input={handleApiKeyInput}
               on:keydown={handleKeydown}
-              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...')}
+              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : currentProvider === 'groq' ? 'gsk_...' : 'sk-...')}
               class="api-key-input"
               disabled={isInitializing || isSaving}
               autocomplete="off"
@@ -762,7 +765,7 @@
               bind:value={apiKey}
               on:input={handleApiKeyInput}
               on:keydown={handleKeydown}
-              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...')}
+              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : currentProvider === 'groq' ? 'gsk_...' : 'sk-...')}
               class="api-key-input"
               disabled={isInitializing || isSaving}
               autocomplete="off"
