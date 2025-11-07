@@ -88,7 +88,7 @@ describe('DomSnapshot', () => {
     const buttonNode = allNodes.find(n => n.tag === 'button');
 
     expect(buttonNode).toBeDefined();
-    expect(buttonNode?.backend_node_id).toBe(101); // Backend ID used directly (no remapping)
+    expect(buttonNode?.node_id).toBe(101); // Uses backendNodeId directly (no remapping)
     expect(buttonNode?.role).toBe('button');
     expect(buttonNode?.aria_label).toBe('Submit');
   });

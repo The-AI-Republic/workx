@@ -172,7 +172,7 @@ export class DomSnapshot implements IDomSnapshot {
       // If multiple children, return minimal structural node to maintain grouping
       if (flattenedChildren.length > 1) {
         return {
-          backend_node_id: node.backendNodeId,
+          node_id: node.backendNodeId,
           tag: node.localName || node.nodeName.toLowerCase(),
           kids: flattenedChildren
         };
@@ -186,7 +186,7 @@ export class DomSnapshot implements IDomSnapshot {
         if (tag === 'html' || tag === 'body' || tag === '#document' || tag === 'main') {
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
           return {
-            backend_node_id: node.backendNodeId,
+            node_id: node.backendNodeId,
             tag,
             kids: [] // Empty kids array to indicate no interactive elements found
           };
@@ -214,7 +214,7 @@ export class DomSnapshot implements IDomSnapshot {
 
     // Build base node with v3 field names
     const serializedNode: SerializedNode = {
-      backend_node_id: node.backendNodeId,
+      node_id: node.backendNodeId,
       tag: node.localName || node.nodeName.toLowerCase()
     };
 
