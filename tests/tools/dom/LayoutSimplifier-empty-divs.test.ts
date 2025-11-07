@@ -139,8 +139,8 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
     });
   });
 
-  describe('Container-Only Div Removal', () => {
-    it('should remove divs containing only other containers', () => {
+  describe('Container Hoisting (Without Aggressive Removal)', () => {
+    it('should hoist through nested containers without removing semantic elements', () => {
       const tree: VirtualNode = {
         nodeId: 1,
         backendNodeId: 1,
@@ -164,7 +164,7 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
                 nodeName: 'DIV',
                 localName: 'div',
                 tier: 'structural',
-                // Empty structural container
+                // Empty structural container - will be removed
               },
               {
                 nodeId: 4,
@@ -173,7 +173,7 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
                 nodeName: 'SPAN',
                 localName: 'span',
                 tier: 'structural',
-                // Another structural container
+                // Empty structural container - will be kept (not a div)
               }
             ]
           }
@@ -182,9 +182,9 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
 
       const result = simplifier.simplify(tree);
 
-      // Container with only containers processing:
+      // Hoisting process:
       // 1. Empty DIV child (node 3) is filtered out as empty leaf
-      // 2. Empty SPAN child (node 4) remains (not a DIV, so not caught by isEmptyDivLeaf)
+      // 2. SPAN child (node 4) remains (not a DIV)
       // 3. Middle DIV (node 2) now has single child (SPAN) → gets hoisted
       // 4. Parent DIV (node 1) now has single child (SPAN) → gets hoisted
       // Result is the SPAN element
@@ -270,7 +270,7 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
       expect(result.nodeValue).toBe('Text content');
     });
 
-    it('should remove nested chains of empty containers', () => {
+    it('should remove empty div leaves in nested chains without cascade', () => {
       const tree: VirtualNode = {
         nodeId: 1,
         backendNodeId: 1,
@@ -302,7 +302,7 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
                     nodeName: 'DIV',
                     localName: 'div',
                     tier: 'structural',
-                    // Empty leaf
+                    // Empty leaf - will be removed
                   }
                 ]
               }
@@ -313,13 +313,19 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
 
       const result = simplifier.simplify(tree);
 
-      // All nested empty containers should be removed
-      expect(result.children).toHaveLength(0);
+      // Process from bottom up:
+      // 1. Node 4 (innermost): empty, returned as-is (no children to filter)
+      // 2. Node 3: child=node4, filtered (empty leaf removed), becomes empty
+      // 3. Node 2: child=node3 (empty), filtered (empty leaf removed), becomes empty
+      // 4. Node 1: child=node2 (empty), filtered (empty leaf removed), becomes empty
+      // Result is top-level div with no children (cascade stops here)
+      expect(result.nodeName).toBe('DIV');
+      expect(result.children?.length || 0).toBe(0);
     });
   });
 
-  describe('Combined Removal Logic', () => {
-    it('should remove multiple empty leaves and container-only divs', () => {
+  describe('Combined Removal and Hoisting', () => {
+    it('should remove empty leaves and hoist through wrappers', () => {
       const tree: VirtualNode = {
         nodeId: 1,
         backendNodeId: 1,
@@ -344,7 +350,7 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
             nodeName: 'DIV',
             localName: 'div',
             tier: 'structural',
-            // Empty leaf - remove
+            // Empty leaf - will be removed
           },
           {
             nodeId: 4,
@@ -361,7 +367,7 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
                 nodeName: 'DIV',
                 localName: 'div',
                 tier: 'structural',
-                // Nested empty - remove parent
+                // Nested empty - will be removed, making parent empty too
               }
             ]
           },
@@ -379,7 +385,13 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
 
       const result = simplifier.simplify(tree);
 
-      // Only button and span with content should remain
+      // Processing:
+      // 1. Node 5 (nested empty): returned as-is
+      // 2. Node 4 (parent): child filtered (empty), becomes empty, returned as-is
+      // 3. Node 1: filters children - node 3 removed (empty), node 4 removed (empty)
+      // 4. Three children remain: button, span with content
+      // 5. Parent has multiple children, no hoisting
+      // Result: div with button and span
       expect(result.children).toHaveLength(2);
       expect(result.children?.[0].nodeName).toBe('BUTTON');
       expect(result.children?.[1].nodeName).toBe('SPAN');

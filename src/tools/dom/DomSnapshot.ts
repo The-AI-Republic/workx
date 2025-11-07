@@ -103,7 +103,7 @@ export class DomSnapshot implements IDomSnapshot {
     // Extract body node from document tree
     const bodyBeforeFilter = this.extractBodyNode(documentNode);
     // test>>
-    console.log('$$$ the body before filter is:', JSON.stringify(bodyBeforeFilter, null, 2));
+    console.log('$$$ the body before in view port filter is:', JSON.stringify(bodyBeforeFilter, null, 2));
     // test<<
 
     // Apply viewport filtering to only include visible nodes

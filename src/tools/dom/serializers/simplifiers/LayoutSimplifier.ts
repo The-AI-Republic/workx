@@ -25,12 +25,7 @@
  *   <div><button>Click</button><div></div></div>
  * After:
  *   <div><button>Click</button></div>
- *
- * Container-only div removal:
- * Before:
- *   <div><div><div></div></div></div>
- * After:
- *   (removed entirely - no meaningful content)
+ *   (Empty div leaf removed, button preserved)
  *
  * Rules:
  * - Only collapses structural (non-interactive) wrappers
@@ -38,8 +33,8 @@
  * - Hoists chains of meaningless containers (div with role="generic" or no role)
  * - Hoists important attributes (id, class, data-*) to child
  * - Removes empty div leaves (no children, no content, no meaningful role)
- * - Removes divs containing only other containers (no meaningful nodes)
  * - Does not collapse if wrapper has meaningful styles/layout
+ * - Container hoisting handles nested divs without aggressive removal to avoid cascade effects
  *
  * Stage 2 Structure Simplification
  */
@@ -80,14 +75,12 @@ export class LayoutSimplifier {
     if (tree.children && tree.children.length > 0) {
       const simplifiedChildren = tree.children.map(child => this.simplify(child));
 
-      // Step 2: Filter out empty div leaves and containers with only container children
+      // Step 2: Filter out empty div leaves only
+      // Note: We don't filter "container-only" divs here to avoid cascade removal
+      // The hoisting logic below already handles meaningless nested containers
       const filteredChildren = simplifiedChildren.filter(child => {
         // Remove empty div leaves
         if (this.isEmptyDivLeaf(child)) {
-          return false;
-        }
-        // Remove containers with only container children
-        if (this.hasOnlyContainerChildren(child)) {
           return false;
         }
         return true;
