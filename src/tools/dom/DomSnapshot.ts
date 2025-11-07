@@ -104,6 +104,9 @@ export class DomSnapshot implements IDomSnapshot {
         ...options?.metadata
       }
     };
+    // test>>
+    console.log('$$$ the virtual dom is:', JSON.stringify(this.virtualDom, null, 2));
+    // test<<
 
     // Use SerializationPipeline for compaction
     const pipeline = new SerializationPipeline();
@@ -309,6 +312,13 @@ export class DomSnapshot implements IDomSnapshot {
       if (node.boundingBox) {
         serializedNode.inViewport = this.calculateInViewport(node.boundingBox);
       }
+      // test>>
+      if (node.nodeValue?.includes('Upgrade to Premium')) {
+        console.log("$$$ calcudate Upgrade to premium to see the inViewport value");
+        const result = this.calculateInViewport(node.boundingBox, true);
+        console.log("$$$ the result of the inViewport calculation is:", result, null, 2);
+      }
+      // test<<
 
       // Build states object from accessibility info
       if (opts.metadata.includeStates) {
@@ -341,8 +351,14 @@ export class DomSnapshot implements IDomSnapshot {
   /**
    * Calculate if element is in viewport (>50% visibility threshold)
    */
-  private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }): boolean {
+  private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }, print: boolean = false): boolean {
+    if (print) {
+      console.log("$$$ calculateInViewport is called, the boundingBox is:", JSON.stringify(boundingBox, null, 2));
+    }
     const viewport = this.pageContext.viewport;
+    if (print) {
+      console.log("$$$ the viewport is:", JSON.stringify(viewport, null, 2));
+    }
 
     // Handle zero-size elements
     if (boundingBox.width === 0 || boundingBox.height === 0) {
@@ -357,11 +373,25 @@ export class DomSnapshot implements IDomSnapshot {
     const elemRight = elemLeft + boundingBox.width;
     const elemBottom = elemTop + boundingBox.height;
 
+    if (print) {
+      console.log("$$$ the elemLeft is:", elemLeft);
+      console.log("$$$ the elemTop is:", elemTop);
+      console.log("$$$ the elemRight is:", elemRight);
+      console.log("$$$ the elemBottom is:", elemBottom);
+    }
+
     // Calculate intersection with viewport bounds
     const intersectLeft = Math.max(elemLeft, 0);
     const intersectTop = Math.max(elemTop, 0);
     const intersectRight = Math.min(elemRight, viewport.width);
     const intersectBottom = Math.min(elemBottom, viewport.height);
+
+    if (print) {
+      console.log("$$$ the intersectLeft is:", intersectLeft);
+      console.log("$$$ the intersectTop is:", intersectTop);
+      console.log("$$$ the intersectRight is:", intersectRight);
+      console.log("$$$ the intersectBottom is:", intersectBottom);
+    }
 
     // Check if there's any intersection
     const hasIntersection = intersectRight > intersectLeft && intersectBottom > intersectTop;
@@ -373,6 +403,10 @@ export class DomSnapshot implements IDomSnapshot {
     const intersectArea = (intersectRight - intersectLeft) * (intersectBottom - intersectTop);
     const elementArea = boundingBox.width * boundingBox.height;
     const visibilityPercent = (intersectArea / elementArea) * 100;
+
+    if (print) {
+      console.log("$$$ the visibilityPercent is:", visibilityPercent);
+    }
 
     // Return true if >50% visible
     return visibilityPercent > 50;
