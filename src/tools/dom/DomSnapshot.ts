@@ -7,7 +7,7 @@ import type {
   PageContext
 } from './types';
 import type { SerializationOptions } from '../../types/domTool';
-import { getTextContent } from './utils';
+import { getTextContent, serializedNodeToHtml } from './utils';
 import { SerializationPipeline } from './serializers/SerializationPipeline';
 import { DEFAULT_SERIALIZATION_OPTIONS } from '../../types/domTool';
 import type { ViewportBounds } from '../screenshot/ViewportDetector';
@@ -111,6 +111,13 @@ export class DomSnapshot implements IDomSnapshot {
     // test>>
     console.log('$$$ the final serlized dom body is:', JSON.stringify(body, null, 2));
     // test<<
+
+    // Convert SerializedNode back to HTML
+    const htmlString = serializedNodeToHtml(body);
+    // test>>
+    console.log('$$$ the HTML representation is:\n', htmlString);
+    // test<<
+
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
       console.warn('the body is null or has no kids');
