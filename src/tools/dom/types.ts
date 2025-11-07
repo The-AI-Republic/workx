@@ -247,7 +247,7 @@ export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
   enablePropagatingBounds: true,
 
   // Stage 3: Payload Optimization
-  enableIdRemapping: true,
+  enableIdRemapping: false, // Disabled: use backendNodeId directly
   enableAttributePruning: true,
   enableFieldNormalization: true,
   enableNumericCompaction: true,

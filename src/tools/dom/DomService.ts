@@ -663,17 +663,13 @@ export class DomService {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // Translate sequential ID (from LLM) to backendNodeId (for CDP)
-      // The LLM sees sequential IDs (1, 2, 3...) but CDP requires backendNodeIds
-      const backendNodeId = this.currentSnapshot.translateSequentialIdToBackendId(nodeId);
-      if (backendNodeId === null) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in ID mapping`);
-      }
+      // nodeId is now the backendNodeId directly (no translation needed)
+      const backendNodeId = nodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
       if (!node) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found in snapshot`);
+        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in snapshot`);
       }
 
       // Get box model for coordinates
@@ -814,16 +810,13 @@ export class DomService {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // Translate sequential ID (from LLM) to backendNodeId (for CDP)
-      const backendNodeId = this.currentSnapshot.translateSequentialIdToBackendId(nodeId);
-      if (backendNodeId === null) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in ID mapping`);
-      }
+      // nodeId is now the backendNodeId directly (no translation needed)
+      const backendNodeId = nodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
       if (!node) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found`);
+        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
       }
 
       // Focus element
@@ -918,16 +911,13 @@ export class DomService {
           throw new Error('NODE_NOT_FOUND: No snapshot available');
         }
 
-        // Translate sequential ID (from LLM) to backendNodeId (for CDP)
-        const backendNodeId = this.currentSnapshot.translateSequentialIdToBackendId(nodeId);
-        if (backendNodeId === null) {
-          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in ID mapping`);
-        }
+        // nodeId is now the backendNodeId directly (no translation needed)
+        const backendNodeId = nodeId;
 
         // Verify node exists in snapshot
         const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
         if (!node) {
-          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found`);
+          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
         }
 
         // Use CDP DOM.resolveNode to get a RemoteObject reference to the element
@@ -936,7 +926,7 @@ export class DomService {
         });
 
         if (!resolveResult?.object?.objectId) {
-          throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId} (backend: ${backendNodeId})`);
+          throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId}`);
         }
 
         // Use Runtime.callFunctionOn to execute scrollTo with smooth animation

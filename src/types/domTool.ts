@@ -136,8 +136,8 @@ export interface SerializedDom {
  * - boundingBox → bbox (compact array [x, y, w, h])
  */
 export interface SerializedNode {
-  /** Sequential node ID (1, 2, 3...) mapped from backendNodeId */
-  node_id: number;
+  /** Backend node ID from CDP (stable identifier for actions) */
+  backend_node_id: number;
 
   /** HTML tag name */
   tag: string;

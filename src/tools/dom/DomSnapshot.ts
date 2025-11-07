@@ -4,8 +4,7 @@ import type {
   SerializedDom,
   SerializedNode,
   SnapshotStats,
-  PageContext,
-  IIdRemapper
+  PageContext
 } from './types';
 import type { SerializationOptions } from '../../types/domTool';
 import { getTextContent } from './utils';
@@ -20,7 +19,6 @@ export class DomSnapshot implements IDomSnapshot {
   readonly stats: SnapshotStats;
 
   private _backendNodeMap?: Map<number, VirtualNode>;
-  private _idRemapper?: IIdRemapper;
   private _serialized?: SerializedDom;
 
   constructor(
@@ -59,25 +57,6 @@ export class DomSnapshot implements IDomSnapshot {
     return this.buildBackendNodeMap().get(backendNodeId) ?? null;
   }
 
-  /**
-   * Translate sequential ID (from LLM) to backendNodeId (for CDP operations)
-   * This is critical for action execution: LLM sees sequential IDs (1, 2, 3...)
-   * but CDP requires backendNodeIds.
-   */
-  translateSequentialIdToBackendId(sequentialId: number): number | null {
-    if (!this._idRemapper) {
-      // If no remapper, assume sequential ID is the backend ID (backward compatibility)
-      return sequentialId;
-    }
-    return this._idRemapper.toBackendId(sequentialId);
-  }
-
-  /**
-   * Get IdRemapper for direct access (if needed)
-   */
-  getIdRemapper(): IIdRemapper | undefined {
-    return this._idRemapper;
-  }
 
   isStale(maxAgeMs: number = 30000): boolean {
     return Date.now() - this.timestamp.getTime() > maxAgeMs;
@@ -114,8 +93,6 @@ export class DomSnapshot implements IDomSnapshot {
     // test>>
     console.log('$$$ the result of the serialization pipeline is:', JSON.stringify(result, null, 2));
     // test<<
-    // Store IdRemapper for later use
-    this._idRemapper = result.idRemapper;
 
     // Build flattened tree structure from pipeline result with v3 schema
     const bodyBeforeFilter = this.flatternNode(result.tree, opts);
@@ -125,7 +102,7 @@ export class DomSnapshot implements IDomSnapshot {
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
     // test>>
-    console.log('$$$ the body is:', JSON.stringify(body, null, 2));
+    console.log('$$$ the final serlized dom body is:', JSON.stringify(body, null, 2));
     // test<<
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
@@ -194,9 +171,8 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If multiple children, return minimal structural node to maintain grouping
       if (flattenedChildren.length > 1) {
-        const sequentialId = this._idRemapper?.toSequentialId(node.backendNodeId) ?? node.backendNodeId;
         return {
-          node_id: sequentialId,
+          backend_node_id: node.backendNodeId,
           tag: node.localName || node.nodeName.toLowerCase(),
           kids: flattenedChildren
         };
@@ -208,10 +184,9 @@ export class DomSnapshot implements IDomSnapshot {
         const tag = node.localName || node.nodeName.toLowerCase();
         // Only preserve critical structural nodes when empty (html, body, main)
         if (tag === 'html' || tag === 'body' || tag === '#document' || tag === 'main') {
-          const sequentialId = this._idRemapper?.toSequentialId(node.backendNodeId) ?? node.backendNodeId;
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
           return {
-            node_id: sequentialId,
+            backend_node_id: node.backendNodeId,
             tag,
             kids: [] // Empty kids array to indicate no interactive elements found
           };
@@ -229,9 +204,6 @@ export class DomSnapshot implements IDomSnapshot {
    * Build SerializedNode with v3 schema (normalized field names)
    */
   private buildSerializedNode(node: VirtualNode, opts: Required<SerializationOptions>): SerializedNode {
-    // Get sequential ID from IdRemapper
-    const sequentialId = this._idRemapper?.toSequentialId(node.backendNodeId) ?? node.backendNodeId;
-
     // Get attributes for metadata extraction
     const attrMap = new Map<string, string>();
     if (node.attributes) {
@@ -242,7 +214,7 @@ export class DomSnapshot implements IDomSnapshot {
 
     // Build base node with v3 field names
     const serializedNode: SerializedNode = {
-      node_id: sequentialId,
+      backend_node_id: node.backendNodeId,
       tag: node.localName || node.nodeName.toLowerCase()
     };
 
