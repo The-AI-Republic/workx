@@ -83,29 +83,14 @@ export function determineInteractionType(
 
 /**
  * Extract text content from node
+ * Only returns text for actual text nodes, not aggregated from children
  */
 export function getTextContent(node: VirtualNode): string | undefined {
   if (node.nodeType === NODE_TYPE_TEXT && node.nodeValue) {
     return node.nodeValue.trim();
   }
 
-  // Aggregate text from children (up to 100 chars)
-  let text = '';
-  if (node.children) {
-    for (const child of node.children) {
-      const childText = getTextContent(child);
-      if (childText) {
-        text += childText + ' ';
-        if (text.length > 100) {
-          // Truncate at 100 chars
-          text = text.substring(0, 100);
-          break;
-        }
-      }
-    }
-  }
-
-  return text.trim() || undefined;
+  return undefined;
 }
 
 /**
