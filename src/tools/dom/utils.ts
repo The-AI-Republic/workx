@@ -162,6 +162,11 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
   const indentStr = '  '.repeat(indent);
   const tag = node.tag;
 
+  // Handle text nodes specially - render inline without wrapper tags
+  if (tag === '#text') {
+    return node.text ? escapeHtml(node.text) : '';
+  }
+
   // Self-closing tags
   const selfClosingTags = ['input', 'img', 'br', 'hr', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr'];
   const isSelfClosing = selfClosingTags.includes(tag);
@@ -200,6 +205,11 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
   // Add value for form inputs
   if (node.value !== undefined) {
     attributes.push(`value="${escapeHtml(node.value)}"`);
+  }
+
+  // Add data-testid from testid field
+  if (node.testid) {
+    attributes.push(`data-testid="${escapeHtml(node.testid)}"`);
   }
 
   // Add states as attributes

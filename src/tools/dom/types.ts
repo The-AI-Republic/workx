@@ -210,9 +210,11 @@ export interface PipelineConfig {
 
   // Stage 2: Structure Simplification
   enableTextCollapsing: boolean;          // S2.1: Merge consecutive text
-  enableLayoutSimplification: boolean;    // S2.2: Collapse wrappers
-  enableAttributeDeduplication: boolean;  // S2.3: Remove redundant attributes
-  enablePropagatingBounds: boolean;       // S2.4: Remove nested clickables
+  enableLayoutSimplification: boolean;    // S2.2: Collapse wrappers & hoist containers
+  enableClickableTextAggregation: boolean; // S2.3: Aggregate nested text in clickables
+  enableAriaLabelCleaning: boolean;       // S2.4: Remove aria-labels from text nodes
+  enableAttributeDeduplication: boolean;  // S2.5: Remove redundant attributes
+  enablePropagatingBounds: boolean;       // S2.6: Remove nested clickables
 
   // Stage 3: Payload Optimization
   enableIdRemapping: boolean;             // P3.1: Sequential IDs
@@ -243,6 +245,8 @@ export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
   // Stage 2: Structure Simplification
   enableTextCollapsing: true,
   enableLayoutSimplification: true,
+  enableClickableTextAggregation: true,
+  enableAriaLabelCleaning: true,
   enableAttributeDeduplication: true,
   enablePropagatingBounds: true,
 

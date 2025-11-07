@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clickable Nested Text Test Fixture - X.com Pattern</title>
+</head>
+<body>
+  <!-- Test Case 1: Link with 4 nested spans (typical X.com pattern) -->
+  <div id="test-case-1">
+    <a href="/home" role="tab" aria-label="For you">
+      <span>
+        <span>
+          <span>
+            <span>For you</span>
+          </span>
+        </span>
+      </span>
+    </a>
+  </div>
+
+  <!-- Test Case 2: Button with nested spans and mixed content -->
+  <div id="test-case-2">
+    <button role="button" aria-label="Post">
+      <span>
+        <span>Post</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Test Case 3: Link with nested divs and spans -->
+  <div id="test-case-3">
+    <a href="/profile/user123" role="link">
+      <div>
+        <span>
+          <div>
+            <span>View Profile</span>
+          </div>
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <!-- Test Case 4: Clickable div with onclick and nested text -->
+  <div id="test-case-4">
+    <div onclick="handleClick()" style="cursor: pointer" role="button">
+      <span>
+        <span>
+          <span>Click Here</span>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Test Case 5: Button with multiple text nodes in nested structure -->
+  <div id="test-case-5">
+    <button role="button">
+      <span>
+        <span>Save </span>
+        <span>Changes</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Test Case 6: Link with invisible nested spans (should skip) -->
+  <div id="test-case-6">
+    <a href="/hidden" role="link">
+      <span>Visible Text</span>
+      <span style="display: none">Hidden Text</span>
+      <span style="visibility: hidden">Also Hidden</span>
+    </a>
+  </div>
+
+  <!-- Test Case 7: Clickable element with no text (should preserve structure) -->
+  <div id="test-case-7">
+    <button role="button" aria-label="Menu">
+      <img src="menu-icon.svg" alt="Menu" />
+    </button>
+  </div>
+
+  <!-- Test Case 8: Menuitem with deeply nested text (6 levels) -->
+  <div id="test-case-8">
+    <div role="menuitem" tabindex="0">
+      <span>
+        <span>
+          <span>
+            <span>
+              <span>
+                <span>Settings</span>
+              </span>
+            </span>
+          </span>
+        </span>
+      </span>
+    </div>
+  </div>
+</body>
+</html>

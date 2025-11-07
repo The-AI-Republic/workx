@@ -166,6 +166,9 @@ export interface SerializedNode {
   /** Placeholder text (normalized from placeholder) */
   hint?: string;
 
+  /** Test automation ID from data-testid HTML attribute */
+  testid?: string;
+
   /** Bounding box as compact array [x, y, width, height] */
   bbox?: number[];
 

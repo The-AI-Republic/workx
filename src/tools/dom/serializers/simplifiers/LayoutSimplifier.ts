@@ -1,8 +1,9 @@
 /**
- * LayoutSimplifier (S2.2): Collapse single-child wrapper elements
+ * LayoutSimplifier (S2.2): Collapse single-child wrapper elements & hoist nested containers
  *
  * Removes unnecessary wrapper elements that contain only a single child.
  * Hoists the child to replace the wrapper, preserving important attributes.
+ * Enhanced to recursively hoist chains of meaningless nested divs and remove empty containers.
  *
  * Example transformation:
  * Before:
@@ -13,16 +14,37 @@
  * After:
  *   <button id="submit" class="wrapper">Click me</button>
  *
+ * Enhanced hoisting (chains of meaningless divs):
+ * Before:
+ *   <div><div><div><div><button>Click</button></div></div></div></div>
+ * After:
+ *   <div><button>Click</button></div>
+ *
+ * Empty div leaf removal:
+ * Before:
+ *   <div><button>Click</button><div></div></div>
+ * After:
+ *   <div><button>Click</button></div>
+ *
+ * Container-only div removal:
+ * Before:
+ *   <div><div><div></div></div></div>
+ * After:
+ *   (removed entirely - no meaningful content)
+ *
  * Rules:
  * - Only collapses structural (non-interactive) wrappers
- * - Preserves semantic containers (form, table, dialog, etc.)
+ * - Preserves semantic containers (form, table, dialog, navigation, main, region, article, section)
+ * - Hoists chains of meaningless containers (div with role="generic" or no role)
  * - Hoists important attributes (id, class, data-*) to child
+ * - Removes empty div leaves (no children, no content, no meaningful role)
+ * - Removes divs containing only other containers (no meaningful nodes)
  * - Does not collapse if wrapper has meaningful styles/layout
  *
  * Stage 2 Structure Simplification
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 
 export class LayoutSimplifier {
   private semanticContainers: Set<string>;
@@ -48,25 +70,42 @@ export class LayoutSimplifier {
   }
 
   /**
-   * Simplify layout by collapsing single-child wrappers
+   * Simplify layout by collapsing single-child wrappers and hoisting nested containers
+   * Enhanced to remove empty div leaves and containers with only container children
    * @param tree - VirtualNode tree to simplify
-   * @returns Simplified tree with collapsed wrappers
+   * @returns Simplified tree with collapsed wrappers and hoisted meaningless containers
    */
   simplify(tree: VirtualNode): VirtualNode {
-    // Recursively simplify children first
+    // Step 1: Recursively simplify children first
     if (tree.children && tree.children.length > 0) {
       const simplifiedChildren = tree.children.map(child => this.simplify(child));
 
-      // Check if this node is a collapsible wrapper
-      if (simplifiedChildren.length === 1 && this.isCollapsibleWrapper(tree)) {
+      // Step 2: Filter out empty div leaves and containers with only container children
+      const filteredChildren = simplifiedChildren.filter(child => {
+        // Remove empty div leaves
+        if (this.isEmptyDivLeaf(child)) {
+          return false;
+        }
+        // Remove containers with only container children
+        if (this.hasOnlyContainerChildren(child)) {
+          return false;
+        }
+        return true;
+      });
+
+      // Step 3: Check if this node is a collapsible wrapper (existing logic)
+      if (filteredChildren.length === 1 && this.isCollapsibleWrapper(tree)) {
         // Collapse: hoist child with merged attributes
-        const child = simplifiedChildren[0];
+        const child = filteredChildren[0];
         return this.hoistChild(tree, child);
       }
 
+      // Step 4: Apply recursive container hoisting (new logic)
+      const hoistedChildren = filteredChildren.map(child => this.hoistChildren(child));
+
       return {
         ...tree,
-        children: simplifiedChildren
+        children: hoistedChildren
       };
     }
 
@@ -95,6 +134,216 @@ export class LayoutSimplifier {
     }
 
     return true;
+  }
+
+  /**
+   * Check if node is a meaningless container that can be hoisted
+   * Meaningless containers are divs with no semantic value (generic role or no role)
+   */
+  private isMeaninglessContainer(node: VirtualNode): boolean {
+    const tagName = (node.localName || node.nodeName || '').toLowerCase();
+
+    // Must be a div
+    if (tagName !== 'div') {
+      return false;
+    }
+
+    // Interactive elements are never meaningless
+    if (node.tier === 'semantic' || node.tier === 'non-semantic') {
+      return false;
+    }
+
+    // Check accessibility role
+    const role = node.accessibility?.role;
+
+    // Only generic or no role qualifies as meaningless
+    if (role && role !== 'generic') {
+      return false;
+    }
+
+    // Semantic containers are never meaningless
+    if (this.semanticContainers.has(tagName)) {
+      return false;
+    }
+
+    // Check for semantic attributes that make container meaningful
+    if (node.attributes) {
+      const attrMap = new Map<string, string>();
+      for (let i = 0; i < node.attributes.length; i += 2) {
+        attrMap.set(node.attributes[i], node.attributes[i + 1]);
+      }
+
+      // These attributes indicate semantic meaning
+      const semanticAttrs = [
+        'aria-label',
+        'aria-describedby',
+        'aria-labelledby',
+        'data-testid',
+        'id' // id might be referenced by other elements
+      ];
+
+      for (const attr of semanticAttrs) {
+        if (attrMap.has(attr)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if node is a semantic container that should be preserved
+   * Semantic containers include form, table, navigation, article, section, etc.
+   */
+  private isSemanticContainer(node: VirtualNode): boolean {
+    const tagName = (node.localName || node.nodeName || '').toLowerCase();
+
+    // Check if tag is in semantic containers set
+    if (this.semanticContainers.has(tagName)) {
+      return true;
+    }
+
+    // Check for semantic ARIA roles
+    const role = node.accessibility?.role;
+    if (role) {
+      const semanticRoles = new Set([
+        'form',
+        'navigation',
+        'main',
+        'region',
+        'article',
+        'section',
+        'complementary',
+        'contentinfo',
+        'banner',
+        'search'
+      ]);
+
+      if (semanticRoles.has(role)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if node is an empty div leaf that should be removed
+   * Empty div leaves are divs with:
+   * - No children (leaf node)
+   * - No content value (nodeValue)
+   * - Not in semantic or non-semantic tier
+   * - No meaningful role (only generic or no role)
+   */
+  private isEmptyDivLeaf(node: VirtualNode): boolean {
+    const tagName = (node.localName || node.nodeName || '').toLowerCase();
+
+    // Must be a div
+    if (tagName !== 'div') {
+      return false;
+    }
+
+    // Must have no children (leaf node)
+    if (node.children && node.children.length > 0) {
+      return false;
+    }
+
+    // Must have no content value
+    if (node.nodeValue && node.nodeValue.trim()) {
+      return false;
+    }
+
+    // Must not be in semantic or non-semantic tier
+    if (node.tier === 'semantic' || node.tier === 'non-semantic') {
+      return false;
+    }
+
+    // Check accessibility role - only generic or no role
+    const role = node.accessibility?.role;
+    if (role && role !== 'generic') {
+      return false;
+    }
+
+    // This is an empty div leaf - should be removed
+    return true;
+  }
+
+  /**
+   * Check if node is a container with only container children
+   * These are divs whose children are all other containers (no meaningful nodes)
+   * Meaningful nodes are those in semantic or non-semantic tier
+   */
+  private hasOnlyContainerChildren(node: VirtualNode): boolean {
+    const tagName = (node.localName || node.nodeName || '').toLowerCase();
+
+    // Must be a div
+    if (tagName !== 'div') {
+      return false;
+    }
+
+    // Must have children
+    if (!node.children || node.children.length === 0) {
+      return false;
+    }
+
+    // Check if all children are containers (structural tier)
+    const allChildrenAreContainers = node.children.every(child => {
+      // If child is semantic or non-semantic, it's meaningful
+      if (child.tier === 'semantic' || child.tier === 'non-semantic') {
+        return false;
+      }
+
+      // If child has meaningful role, it's not just a container
+      const role = child.accessibility?.role;
+      if (role && role !== 'generic') {
+        return false;
+      }
+
+      // If child has content, it's meaningful
+      if (child.nodeValue && child.nodeValue.trim()) {
+        return false;
+      }
+
+      // This child is just a container
+      return true;
+    });
+
+    // If all children are containers, this node should be removed
+    return allChildrenAreContainers;
+  }
+
+  /**
+   * Recursively hoist children through chains of meaningless containers
+   * Returns the hoisted child (or original if no hoisting needed)
+   */
+  private hoistChildren(node: VirtualNode): VirtualNode {
+    // Base case: if node has no children, return as-is
+    if (!node.children || node.children.length === 0) {
+      return node;
+    }
+
+    // If this is a meaningless container with a single child
+    if (this.isMeaninglessContainer(node) && node.children.length === 1) {
+      const child = node.children[0];
+
+      // Recursively hoist the child first
+      const hoistedChild = this.hoistChildren(child);
+
+      // If the child is also meaningless, continue hoisting
+      if (this.isMeaninglessContainer(hoistedChild)) {
+        return this.hoistChildren(hoistedChild);
+      }
+
+      // If child is semantic or has meaning, hoist it and stop
+      return hoistedChild;
+    }
+
+    // Not a meaningless single-child container, recursively process children
+    return {
+      ...node,
+      children: node.children.map(child => this.hoistChildren(child))
+    };
   }
 
   /**

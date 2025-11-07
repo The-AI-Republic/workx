@@ -285,6 +285,11 @@ export class DomSnapshot implements IDomSnapshot {
         serializedNode.hint = attrMap.get('placeholder');
       }
 
+      // testid (extracted from data-testid attribute)
+      if (attrMap.has('data-testid')) {
+        serializedNode.testid = attrMap.get('data-testid');
+      }
+
       // bbox (compact array format [x, y, w, h])
       if (opts.metadata.includeBbox && node.boundingBox) {
         serializedNode.bbox = [
