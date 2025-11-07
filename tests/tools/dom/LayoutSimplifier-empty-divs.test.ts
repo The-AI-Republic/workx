@@ -324,6 +324,117 @@ describe('LayoutSimplifier - Empty Div Removal', () => {
     });
   });
 
+  describe('Flattening Meaningless Containers', () => {
+    it('should flatten meaningless containers with multiple children', () => {
+      const tree: VirtualNode = {
+        nodeId: 1,
+        backendNodeId: 1,
+        nodeType: 1,
+        nodeName: 'DIV',
+        localName: 'div',
+        tier: 'structural',
+        accessibility: {
+          role: 'main'
+        },
+        children: [
+          {
+            nodeId: 2,
+            backendNodeId: 2,
+            nodeType: 1,
+            nodeName: 'DIV',
+            localName: 'div',
+            tier: 'structural',
+            // Meaningless container with multiple children - should be flattened
+            children: [
+              {
+                nodeId: 3,
+                backendNodeId: 3,
+                nodeType: 1,
+                nodeName: 'BUTTON',
+                localName: 'button',
+                tier: 'semantic',
+                nodeValue: 'Button A'
+              },
+              {
+                nodeId: 4,
+                backendNodeId: 4,
+                nodeType: 1,
+                nodeName: 'BUTTON',
+                localName: 'button',
+                tier: 'semantic',
+                nodeValue: 'Button B'
+              }
+            ]
+          }
+        ]
+      };
+
+      const result = simplifier.simplify(tree);
+
+      // The meaningless div (node 2) should be flattened
+      // Its children (buttons A and B) should be promoted to the parent
+      expect(result.children).toHaveLength(2);
+      expect(result.children?.[0].nodeName).toBe('BUTTON');
+      expect(result.children?.[0].nodeValue).toBe('Button A');
+      expect(result.children?.[1].nodeName).toBe('BUTTON');
+      expect(result.children?.[1].nodeValue).toBe('Button B');
+    });
+
+    it('should NOT flatten containers with meaningful attributes', () => {
+      const tree: VirtualNode = {
+        nodeId: 1,
+        backendNodeId: 1,
+        nodeType: 1,
+        nodeName: 'DIV',
+        localName: 'div',
+        tier: 'structural',
+        accessibility: {
+          role: 'main' // Make parent meaningful so it doesn't get hoisted away
+        },
+        children: [
+          {
+            nodeId: 2,
+            backendNodeId: 2,
+            nodeType: 1,
+            nodeName: 'DIV',
+            localName: 'div',
+            tier: 'structural',
+            attributes: ['data-testid', 'container'], // Meaningful attribute
+            children: [
+              {
+                nodeId: 3,
+                backendNodeId: 3,
+                nodeType: 1,
+                nodeName: 'BUTTON',
+                localName: 'button',
+                tier: 'semantic',
+                nodeValue: 'Button A'
+              },
+              {
+                nodeId: 4,
+                backendNodeId: 4,
+                nodeType: 1,
+                nodeName: 'BUTTON',
+                localName: 'button',
+                tier: 'semantic',
+                nodeValue: 'Button B'
+              }
+            ]
+          }
+        ]
+      };
+
+      const result = simplifier.simplify(tree);
+
+      // The div (node 2) has data-testid, so it's meaningful and should NOT be flattened
+      // Parent (with role=main) should have 1 child (the div container with data-testid)
+      expect(result.children).toHaveLength(1);
+      expect(result.children?.[0].nodeName).toBe('DIV');
+      expect(result.children?.[0].attributes).toEqual(['data-testid', 'container']);
+      expect(result.children?.[0].children).toHaveLength(2);
+    });
+  });
+
   describe('Combined Removal and Hoisting', () => {
     it('should remove empty leaves and hoist through wrappers', () => {
       const tree: VirtualNode = {

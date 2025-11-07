@@ -1,11 +1,11 @@
 /**
- * LayoutSimplifier (S2.2): Collapse single-child wrapper elements & hoist nested containers
+ * LayoutSimplifier (S2.2): Collapse wrappers, flatten containers, and remove empty divs
  *
- * Removes unnecessary wrapper elements that contain only a single child.
- * Hoists the child to replace the wrapper, preserving important attributes.
- * Enhanced to recursively hoist chains of meaningless nested divs and remove empty containers.
+ * Removes unnecessary wrapper elements and flattens meaningless container hierarchies.
+ * Hoists children to replace wrappers, preserving important attributes.
+ * Enhanced to recursively flatten chains of meaningless nested divs and remove empty containers.
  *
- * Example transformation:
+ * Example transformation (single-child wrapper):
  * Before:
  *   <div class="wrapper">
  *     <button id="submit">Click me</button>
@@ -13,6 +13,21 @@
  *
  * After:
  *   <button id="submit" class="wrapper">Click me</button>
+ *
+ * Flattening meaningless containers (multi-child):
+ * Before:
+ *   <div id="parent">
+ *     <div>  <!-- meaningless -->
+ *       <button>A</button>
+ *       <button>B</button>
+ *     </div>
+ *   </div>
+ *
+ * After:
+ *   <div id="parent">
+ *     <button>A</button>
+ *     <button>B</button>
+ *   </div>
  *
  * Enhanced hoisting (chains of meaningless divs):
  * Before:
@@ -25,16 +40,15 @@
  *   <div><button>Click</button><div></div></div>
  * After:
  *   <div><button>Click</button></div>
- *   (Empty div leaf removed, button preserved)
  *
  * Rules:
- * - Only collapses structural (non-interactive) wrappers
+ * - Collapses structural (non-interactive) single-child wrappers
+ * - Flattens meaningless containers regardless of child count
  * - Preserves semantic containers (form, table, dialog, navigation, main, region, article, section)
- * - Hoists chains of meaningless containers (div with role="generic" or no role)
- * - Hoists important attributes (id, class, data-*) to child
+ * - Preserves containers with meaningful attributes (data-testid, aria-label, id)
+ * - Hoists important attributes (id, class, data-*) to child when collapsing
  * - Removes empty div leaves (no children, no content, no meaningful role)
- * - Does not collapse if wrapper has meaningful styles/layout
- * - Container hoisting handles nested divs without aggressive removal to avoid cascade effects
+ * - Processes recursively from bottom-up to handle deeply nested structures
  *
  * Stage 2 Structure Simplification
  */
@@ -65,10 +79,10 @@ export class LayoutSimplifier {
   }
 
   /**
-   * Simplify layout by collapsing single-child wrappers and hoisting nested containers
-   * Enhanced to remove empty div leaves and containers with only container children
+   * Simplify layout by collapsing wrappers, flattening containers, and removing empty divs
+   * Enhanced to flatten meaningless containers (regardless of child count) and remove empty leaves
    * @param tree - VirtualNode tree to simplify
-   * @returns Simplified tree with collapsed wrappers and hoisted meaningless containers
+   * @returns Simplified tree with collapsed wrappers, flattened containers, and removed empty divs
    */
   simplify(tree: VirtualNode): VirtualNode {
     // Step 1: Recursively simplify children first
@@ -86,15 +100,25 @@ export class LayoutSimplifier {
         return true;
       });
 
-      // Step 3: Check if this node is a collapsible wrapper (existing logic)
-      if (filteredChildren.length === 1 && this.isCollapsibleWrapper(tree)) {
+      // Step 3: Flatten meaningless containers (unwrap and promote their children)
+      // This handles multi-child meaningless containers that should be unwrapped
+      const flattenedChildren = filteredChildren.flatMap(child => {
+        if (this.isMeaninglessContainer(child) && child.children && child.children.length > 0) {
+          // Flatten: replace this meaningless container with its children
+          return child.children;
+        }
+        return [child];
+      });
+
+      // Step 4: Check if this node is a collapsible wrapper (existing logic)
+      if (flattenedChildren.length === 1 && this.isCollapsibleWrapper(tree)) {
         // Collapse: hoist child with merged attributes
-        const child = filteredChildren[0];
+        const child = flattenedChildren[0];
         return this.hoistChild(tree, child);
       }
 
-      // Step 4: Apply recursive container hoisting (new logic)
-      const hoistedChildren = filteredChildren.map(child => this.hoistChildren(child));
+      // Step 5: Apply recursive container hoisting (new logic)
+      const hoistedChildren = flattenedChildren.map(child => this.hoistChildren(child));
 
       return {
         ...tree,
