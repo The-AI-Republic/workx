@@ -95,10 +95,17 @@ export class DomSnapshot implements IDomSnapshot {
     // test<<
 
     // Build flattened tree structure from pipeline result with v3 schema
-    const bodyBeforeFilter = this.flatternNode(result.tree, opts);
+    const documentNode = this.flatternNode(result.tree, opts);
+    // test>>
+    console.log('$$$ the document node is:', JSON.stringify(documentNode, null, 2));
+    // test<<
+
+    // Extract body node from document tree
+    const bodyBeforeFilter = this.extractBodyNode(documentNode);
     // test>>
     console.log('$$$ the body before filter is:', JSON.stringify(bodyBeforeFilter, null, 2));
     // test<<
+
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
     // test>>
@@ -182,8 +189,9 @@ export class DomSnapshot implements IDomSnapshot {
       // preserve structural root/body nodes as placeholders to prevent tree collapse
       if (flattenedChildren.length === 0) {
         const tag = node.localName || node.nodeName.toLowerCase();
-        // Only preserve critical structural nodes when empty (html, body, main)
-        if (tag === 'html' || tag === 'body' || tag === '#document' || tag === 'main') {
+        // Only preserve critical structural nodes when empty (body, main)
+        // Note: html and #document are excluded since we extract body directly
+        if (tag === 'body' || tag === 'main') {
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
           return {
             node_id: node.backendNodeId,
@@ -435,6 +443,34 @@ export class DomSnapshot implements IDomSnapshot {
   }
 
   /**
+   * Extract body node from document tree
+   * Traverses the tree to find the body element and returns it directly
+   *
+   * Expected structure: #document > html > body
+   */
+  private extractBodyNode(node: SerializedNode | null): SerializedNode | null {
+    if (!node) return null;
+
+    // If this is the body node, return it
+    if (node.tag === 'body') {
+      return node;
+    }
+
+    // If this node has children, search recursively
+    if (node.kids && node.kids.length > 0) {
+      for (const child of node.kids) {
+        const bodyNode = this.extractBodyNode(child);
+        if (bodyNode) {
+          return bodyNode;
+        }
+      }
+    }
+
+    // Body not found
+    return null;
+  }
+
+  /**
    * Filter SerializedNode tree to only include nodes visible in viewport
    *
    * Strategy:
@@ -442,14 +478,14 @@ export class DomSnapshot implements IDomSnapshot {
    * 2. If node has inViewport === false/undefined, recursively filter children:
    *    - If any children are visible, keep this node as a container
    *    - If no children are visible, remove this node
-   * 3. Structural nodes (html, body) are always kept to preserve tree structure
+   * 3. Structural nodes (body, main) are always kept to preserve tree structure
    * 4. After filtering, remove the inViewport field from all nodes
    */
   private filterByViewport(node: SerializedNode | null): SerializedNode | null {
     if (!node) return null;
 
-    // Always preserve critical structural nodes
-    const structuralTags = ['html', 'body', '#document', 'main'];
+    // Always preserve critical structural nodes (starting from body level)
+    const structuralTags = ['body', 'main'];
     const isStructural = structuralTags.includes(node.tag);
 
     // If node is explicitly in viewport, keep it and all children
