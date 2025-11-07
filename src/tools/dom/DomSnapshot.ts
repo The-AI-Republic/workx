@@ -313,7 +313,7 @@ export class DomSnapshot implements IDomSnapshot {
         serializedNode.inViewport = this.calculateInViewport(node.boundingBox);
       }
       // test>>
-      if (node.nodeValue?.includes('Upgrade to Premium')) {
+      if (node.nodeValue?.includes('Upgrade to Premium') && node.boundingBox) {
         console.log("$$$ calcudate Upgrade to premium to see the inViewport value");
         const result = this.calculateInViewport(node.boundingBox, true);
         console.log("$$$ the result of the inViewport calculation is:", result, null, 2);
@@ -350,6 +350,17 @@ export class DomSnapshot implements IDomSnapshot {
 
   /**
    * Calculate if element is in viewport (>50% visibility threshold)
+   *
+   * NOTE: All coordinates use CSS pixels (web standard).
+   * - boundingBox: Normalized from CDP device pixels to CSS pixels in DomService
+   * - viewport dimensions: CSS pixels from window.innerWidth/innerHeight
+   *
+   * Edge cases:
+   * - Elements exactly 50% visible return false (strict > 50% threshold)
+   * - Large elements (e.g., backgrounds) extending beyond viewport may return false
+   *   if less than 50% is visible, even if they cover the entire viewport
+   * - Zero-size elements always return false
+   * - Elements completely outside viewport return false
    */
   private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }, print: boolean = false): boolean {
     if (print) {
@@ -360,42 +371,62 @@ export class DomSnapshot implements IDomSnapshot {
       console.log("$$$ the viewport is:", JSON.stringify(viewport, null, 2));
     }
 
+    // Validate inputs
+    if (!boundingBox || boundingBox.width == null || boundingBox.height == null) {
+      console.warn('[DomSnapshot] Invalid boundingBox passed to calculateInViewport');
+      return false;
+    }
+
     // Handle zero-size elements
     if (boundingBox.width === 0 || boundingBox.height === 0) {
       return false;
     }
 
-    // Convert element coordinates to viewport coordinates
+    // All values are in CSS pixels (standard web measurements)
     const scrollX = viewport.scrollX ?? 0;
     const scrollY = viewport.scrollY ?? 0;
+
+    if (print) {
+      console.log("$$$ All coordinates in CSS pixels (web standard)");
+      console.log("$$$ Viewport:", { width: viewport.width, height: viewport.height });
+      console.log("$$$ Scroll:", { scrollX, scrollY });
+      console.log("$$$ Bounding box (CSS pixels):", boundingBox);
+    }
+
+    // Convert element coordinates to viewport coordinates (both in CSS pixels)
     const elemLeft = boundingBox.x - scrollX;
     const elemTop = boundingBox.y - scrollY;
     const elemRight = elemLeft + boundingBox.width;
     const elemBottom = elemTop + boundingBox.height;
 
     if (print) {
-      console.log("$$$ the elemLeft is:", elemLeft);
-      console.log("$$$ the elemTop is:", elemTop);
-      console.log("$$$ the elemRight is:", elemRight);
-      console.log("$$$ the elemBottom is:", elemBottom);
+      console.log("$$$ Element relative to viewport:");
+      console.log("  - elemLeft:", elemLeft);
+      console.log("  - elemTop:", elemTop);
+      console.log("  - elemRight:", elemRight);
+      console.log("  - elemBottom:", elemBottom);
     }
 
-    // Calculate intersection with viewport bounds
+    // Calculate intersection with viewport bounds (in CSS pixels)
     const intersectLeft = Math.max(elemLeft, 0);
     const intersectTop = Math.max(elemTop, 0);
     const intersectRight = Math.min(elemRight, viewport.width);
     const intersectBottom = Math.min(elemBottom, viewport.height);
 
     if (print) {
-      console.log("$$$ the intersectLeft is:", intersectLeft);
-      console.log("$$$ the intersectTop is:", intersectTop);
-      console.log("$$$ the intersectRight is:", intersectRight);
-      console.log("$$$ the intersectBottom is:", intersectBottom);
+      console.log("$$$ Intersection with viewport:");
+      console.log("  - intersectLeft:", intersectLeft);
+      console.log("  - intersectTop:", intersectTop);
+      console.log("  - intersectRight:", intersectRight);
+      console.log("  - intersectBottom:", intersectBottom);
     }
 
     // Check if there's any intersection
     const hasIntersection = intersectRight > intersectLeft && intersectBottom > intersectTop;
     if (!hasIntersection) {
+      if (print) {
+        console.log("$$$ No intersection - element is outside viewport");
+      }
       return false;
     }
 
@@ -405,7 +436,10 @@ export class DomSnapshot implements IDomSnapshot {
     const visibilityPercent = (intersectArea / elementArea) * 100;
 
     if (print) {
-      console.log("$$$ the visibilityPercent is:", visibilityPercent);
+      console.log("$$$ Visibility calculation:");
+      console.log("  - intersectArea:", intersectArea);
+      console.log("  - elementArea:", elementArea);
+      console.log("  - visibilityPercent:", visibilityPercent.toFixed(2) + "%");
     }
 
     // Return true if >50% visible

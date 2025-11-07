@@ -194,8 +194,23 @@ export class DomService {
       }
     }
 
+    // Fetch device pixel ratio early to normalize CDP coordinates to CSS pixels
+    let devicePixelRatio = 1;
+    try {
+      const dprResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: 'window.devicePixelRatio',
+        returnByValue: true
+      });
+      if (dprResult?.result?.value) {
+        devicePixelRatio = dprResult.result.value;
+      }
+    } catch (error) {
+      console.warn('[DomService] Could not get devicePixelRatio, using default 1');
+    }
+
     // Build layout map: backendNodeId → LayoutData from DOMSnapshot
-    const layoutMap = this.buildLayoutMap(domSnapshot);
+    // Convert device pixels to CSS pixels for web standard compatibility
+    const layoutMap = this.buildLayoutMap(domSnapshot, devicePixelRatio);
 
     // Build VirtualNode tree
     let nodeCounter = 0;
@@ -301,15 +316,23 @@ export class DomService {
     const tab = await chrome.tabs.get(this.tabId);
 
     // Fetch viewport dimensions and scroll position from the page
-    let viewportData = { width: tab.width || 0, height: tab.height || 0, scrollX: 0, scrollY: 0 };
+    let viewportData = { width: tab.width || 0, height: tab.height || 0, scrollX: 0, scrollY: 0, devicePixelRatio: 1 };
     try {
       const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
-        expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY })',
+        expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY, devicePixelRatio: window.devicePixelRatio, visualViewportScale: window.visualViewport?.scale || 1 })',
         returnByValue: true
       });
       if (viewportResult?.result?.value) {
         viewportData = viewportResult.result.value;
       }
+
+      // Diagnostic logging - all coordinates normalized to CSS pixels
+      console.log('[DomService] Viewport captured (CSS pixels - web standard):', {
+        viewport: { width: viewportData.width, height: viewportData.height },
+        scroll: { scrollX: viewportData.scrollX, scrollY: viewportData.scrollY },
+        devicePixelRatio: viewportData.devicePixelRatio,
+        note: 'Bounding boxes will be converted from device pixels to CSS pixels'
+      });
     } catch (error) {
       // Fallback to tab dimensions if Runtime.evaluate fails
       console.warn('[DomService] Could not get viewport scroll position, using defaults');
@@ -385,8 +408,12 @@ export class DomService {
    * Build layout map from DOMSnapshot data
    * Extracts layout information (bounding boxes, paint order, styles, etc.) and maps
    * them to backendNodeIds for efficient lookup during tree construction
+   *
+   * @param domSnapshot - CDP DOMSnapshot data
+   * @param devicePixelRatio - Device pixel ratio for converting coordinates
+   * NOTE: CDP returns coordinates in device pixels, we convert to CSS pixels (web standard)
    */
-  private buildLayoutMap(domSnapshot: any): Map<number, any> {
+  private buildLayoutMap(domSnapshot: any, devicePixelRatio: number = 1): Map<number, any> {
     const layoutMap = new Map<number, any>();
 
     if (!domSnapshot?.documents?.[0]) {
@@ -416,14 +443,33 @@ export class DomService {
       const layoutData: any = {};
 
       // Bounding box (bounds are stored as [x, y, width, height] arrays)
+      // CDP returns device pixels, convert to CSS pixels (web standard)
       if (layout.bounds && layout.bounds[i]) {
         const bounds = layout.bounds[i];
-        layoutData.boundingBox = {
+        const devicePixels = {
           x: bounds[0],
           y: bounds[1],
           width: bounds[2],
           height: bounds[3]
         };
+
+        // Convert from device pixels to CSS pixels
+        layoutData.boundingBox = {
+          x: devicePixels.x / devicePixelRatio,
+          y: devicePixels.y / devicePixelRatio,
+          width: devicePixels.width / devicePixelRatio,
+          height: devicePixels.height / devicePixelRatio
+        };
+
+        // Diagnostic: Log first few elements to verify conversion
+        if (i < 3) {
+          console.log(`[DomService] Coordinate conversion [${i}]:`, {
+            devicePixels,
+            dpr: devicePixelRatio,
+            cssPixels: layoutData.boundingBox,
+            backendNodeId
+          });
+        }
       }
 
       // Paint order

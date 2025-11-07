@@ -60,6 +60,7 @@ export interface VirtualNode {
     isVisuallyInteractive: boolean;
   };
 
+  // Bounding box in CSS pixels (normalized from CDP device pixels in DomService)
   boundingBox?: {
     x: number;
     y: number;
@@ -108,7 +109,9 @@ export interface PageContext {
   title: string;
   frameId: string;
   loaderId: string;
-  viewport: { width: number; height: number; scrollX?: number; scrollY?: number };
+  // Viewport dimensions in CSS pixels (web standard)
+  // devicePixelRatio is captured for diagnostics but coordinates are pre-normalized to CSS pixels
+  viewport: { width: number; height: number; scrollX?: number; scrollY?: number; devicePixelRatio?: number };
   frameTree: FrameNode[];
   frameworkDetected?: string | null; // Detected framework (react, vue, angular, etc.)
 }
@@ -297,9 +300,12 @@ export interface Rect {
 /**
  * Layout data extracted from DOMSnapshot.captureSnapshot()
  * Contains positional and visual information for DOM nodes
+ *
+ * NOTE: CDP returns coordinates in device pixels, but we normalize to CSS pixels
+ * for consistency with standard web APIs (getBoundingClientRect, window.innerWidth, etc.)
  */
 export interface LayoutData {
-  // Bounding box coordinates and dimensions
+  // Bounding box in CSS pixels (normalized from CDP device pixels)
   boundingBox?: {
     x: number;
     y: number;
