@@ -108,33 +108,25 @@ export class DomSnapshot implements IDomSnapshot {
     // Use SerializationPipeline for compaction
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(this.virtualDom);
-
+    // test>>
+    console.log('$$$ the result of the serialization pipeline is:', JSON.stringify(result, null, 2));
+    // test<<
     // Store IdRemapper for later use
     this._idRemapper = result.idRemapper;
 
-    // Diagnostic logging for debugging empty snapshots
-    console.log(`[DomSnapshot] Pipeline metrics:`, {
-      totalNodes: result.metrics.totalNodes,
-      serializedNodes: result.metrics.serializedNodes,
-      filteredNodes: result.metrics.filteredNodes,
-      interactiveNodes: result.metrics.interactiveNodes
-    });
-
     // Build flattened tree structure from pipeline result with v3 schema
-    const body = this.flatternNode(result.tree, opts);
-
+    const bodyBeforeFilter = this.flatternNode(result.tree, opts);
+    // test>>
+    console.log('$$$ the body before filter is:', JSON.stringify(bodyBeforeFilter, null, 2));
+    // test<<
+    // Apply viewport filtering to only include visible nodes
+    const body = this.filterByViewport(bodyBeforeFilter);
+    // test>>
+    console.log('$$$ the body is:', JSON.stringify(body, null, 2));
+    // test<<
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
-      console.warn(`[DomSnapshot] WARNING: Serialization produced empty/minimal body!`, {
-        bodyIsNull: !body,
-        bodyTag: body?.tag,
-        kidsLength: body?.kids?.length || 0,
-        url: this.pageContext.url,
-        totalNodesBeforeFiltering: result.metrics.totalNodes,
-        serializedNodesAfterFiltering: result.metrics.serializedNodes,
-        interactiveNodes: result.metrics.interactiveNodes,
-        suggestion: 'Page may be loading asynchronously, or all elements were filtered as non-interactive. Consider waiting for page load or checking element classification.'
-      });
+      console.warn('the body is null or has no kids');
     }
 
     // Build v3 SerializedDom with normalized field names
@@ -142,9 +134,15 @@ export class DomSnapshot implements IDomSnapshot {
       page: {
         context: {
           url: this.pageContext.url,
-          title: this.pageContext.title
+          title: this.pageContext.title,
+          viewport: {
+            width: this.pageContext.viewport.width,
+            height: this.pageContext.viewport.height,
+            scrollX: this.pageContext.viewport.scrollX ?? 0,
+            scrollY: this.pageContext.viewport.scrollY ?? 0
+          }
         },
-        body
+        body: body!
         // Note: Collection-level states from MetadataBucketer would go here
         // This is deferred to future optimization as it requires refactoring
         // the serialization to separate node data from state data
@@ -352,8 +350,10 @@ export class DomSnapshot implements IDomSnapshot {
     }
 
     // Convert element coordinates to viewport coordinates
-    const elemLeft = boundingBox.x - viewport.scrollX;
-    const elemTop = boundingBox.y - viewport.scrollY;
+    const scrollX = viewport.scrollX ?? 0;
+    const scrollY = viewport.scrollY ?? 0;
+    const elemLeft = boundingBox.x - scrollX;
+    const elemTop = boundingBox.y - scrollY;
     const elemRight = elemLeft + boundingBox.width;
     const elemBottom = elemTop + boundingBox.height;
 
@@ -392,5 +392,46 @@ export class DomSnapshot implements IDomSnapshot {
     const role = node.accessibility?.role || '';
     const containerRoles = ['form', 'table', 'dialog', 'navigation', 'main', 'region', 'article', 'section'];
     return containerRoles.includes(role);
+  }
+
+  /**
+   * Filter SerializedNode tree to only include nodes visible in viewport
+   *
+   * Strategy:
+   * 1. If node has inViewport === true, keep it (and all its children)
+   * 2. If node has inViewport === false/undefined, recursively filter children:
+   *    - If any children are visible, keep this node as a container
+   *    - If no children are visible, remove this node
+   * 3. Structural nodes (html, body) are always kept to preserve tree structure
+   */
+  private filterByViewport(node: SerializedNode | null): SerializedNode | null {
+    if (!node) return null;
+
+    // Always preserve critical structural nodes
+    const structuralTags = ['html', 'body', '#document', 'main'];
+    const isStructural = structuralTags.includes(node.tag);
+
+    // If node is explicitly in viewport, keep it and all children
+    if (node.inViewport === true) {
+      return node;
+    }
+
+    // If node has children, recursively filter them
+    if (node.kids && node.kids.length > 0) {
+      const filteredKids = node.kids
+        .map(child => this.filterByViewport(child))
+        .filter((child): child is SerializedNode => child !== null);
+
+      // If node has visible children OR is structural, keep it with filtered children
+      if (filteredKids.length > 0 || isStructural) {
+        return {
+          ...node,
+          kids: filteredKids.length > 0 ? filteredKids : undefined
+        };
+      }
+    }
+
+    // Node is not in viewport and has no visible children - remove it
+    return null;
   }
 }

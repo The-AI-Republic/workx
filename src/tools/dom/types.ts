@@ -108,7 +108,7 @@ export interface PageContext {
   title: string;
   frameId: string;
   loaderId: string;
-  viewport: { width: number; height: number };
+  viewport: { width: number; height: number; scrollX?: number; scrollY?: number };
   frameTree: FrameNode[];
   frameworkDetected?: string | null; // Detected framework (react, vue, angular, etc.)
 }

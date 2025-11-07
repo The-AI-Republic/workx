@@ -88,6 +88,12 @@ export interface SerializedDom {
     context: {
       url: string;
       title: string;
+      viewport: {
+        width: number;
+        height: number;
+        scrollX: number;
+        scrollY: number;
+      };
     };
     body: SerializedNode;
     iframes?: Array<{

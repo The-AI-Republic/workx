@@ -264,6 +264,9 @@ export class DomService {
     };
 
     const virtualDom = buildVirtualTree(domTree.root);
+    // test>>
+    console.log('$$$ the virtual dom is:', JSON.stringify(virtualDom, null, 2));
+    // test<<
 
     if (!virtualDom) {
       throw new Error('SNAPSHOT_FAILED: Could not build tree');
@@ -294,14 +297,30 @@ export class DomService {
       console.log(`[DomService] Detected framework: ${framework}`);
     }
 
-    // Get page context
+    // Get page context with viewport scroll position
     const tab = await chrome.tabs.get(this.tabId);
+
+    // Fetch viewport dimensions and scroll position from the page
+    let viewportData = { width: tab.width || 0, height: tab.height || 0, scrollX: 0, scrollY: 0 };
+    try {
+      const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY })',
+        returnByValue: true
+      });
+      if (viewportResult?.result?.value) {
+        viewportData = viewportResult.result.value;
+      }
+    } catch (error) {
+      // Fallback to tab dimensions if Runtime.evaluate fails
+      console.warn('[DomService] Could not get viewport scroll position, using defaults');
+    }
+
     const pageContext: PageContext = {
       url: tab.url || '',
       title: tab.title || '',
       frameId: 'main',
       loaderId: '',
-      viewport: { width: tab.width || 0, height: tab.height || 0 },
+      viewport: viewportData,
       frameTree: [],
       frameworkDetected: framework
     };
@@ -368,6 +387,9 @@ export class DomService {
    * them to backendNodeIds for efficient lookup during tree construction
    */
   private buildLayoutMap(domSnapshot: any): Map<number, any> {
+    // test>>
+    console.log('$$$ the dom snapshot is:', JSON.stringify(domSnapshot, null, 2));
+    // test<<
     const layoutMap = new Map<number, any>();
 
     if (!domSnapshot?.documents?.[0]) {
@@ -490,47 +512,51 @@ export class DomService {
   private visualEffectsInitialized: boolean = false;
 
   private async ensureVisualEffectsInitialized(): Promise<void> {
+    this.visualEffectsInitialized = true;
+    // test>>
+    console.log('$$$ the visual effects are commented out for testing purposes');
+    // test<<
     // Already checked and initialized in this DomService instance
-    if (this.visualEffectsInitialized) return;
+    // if (this.visualEffectsInitialized) return;
 
-    try {
-      // Check if visual effects are initialized in the page
-      const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
-        expression: '!!window.__browserx_visual_effects_initialized__',
-        returnByValue: true
-      });
+    // try {
+    //   // Check if visual effects are initialized in the page
+    //   const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
+    //     expression: '!!window.__browserx_visual_effects_initialized__',
+    //     returnByValue: true
+    //   });
 
-      const isInitialized = checkResult?.result?.value === true;
+    //   const isInitialized = checkResult?.result?.value === true;
 
-      if (!isInitialized) {
-        console.log(`[DomService] Initializing visual effects on tab ${this.tabId}...`);
+    //   if (!isInitialized) {
+    //     console.log(`[DomService] Initializing visual effects on tab ${this.tabId}...`);
 
-        // Dispatch init event to trigger lazy initialization
-        await this.sendCommand('Runtime.evaluate', {
-          expression: `
-            (function() {
-              const event = new CustomEvent('browserx:init-visual-effects', {
-                bubbles: false,
-                cancelable: false
-              });
-              document.dispatchEvent(event);
-            })()
-          `,
-          returnByValue: false,
-          awaitPromise: false
-        });
+    //     // Dispatch init event to trigger lazy initialization
+    //     await this.sendCommand('Runtime.evaluate', {
+    //       expression: `
+    //         (function() {
+    //           const event = new CustomEvent('browserx:init-visual-effects', {
+    //             bubbles: false,
+    //             cancelable: false
+    //           });
+    //           document.dispatchEvent(event);
+    //         })()
+    //       `,
+    //       returnByValue: false,
+    //       awaitPromise: false
+    //     });
 
-        // Wait briefly for initialization to complete (~100ms for Svelte mount + WebGL setup)
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
+    //     // Wait briefly for initialization to complete (~100ms for Svelte mount + WebGL setup)
+    //     await new Promise(resolve => setTimeout(resolve, 150));
+    //   }
 
-      // Cache result to avoid repeated checks
-      this.visualEffectsInitialized = true;
-    } catch (error: any) {
-      // Graceful degradation - visual effects unavailable but actions continue
-      console.debug(`[DomService] Could not initialize visual effects on tab ${this.tabId}: ${error.message || 'Unknown error'}`);
-      this.visualEffectsInitialized = true; // Don't retry on every action
-    }
+    //   // Cache result to avoid repeated checks
+    //   this.visualEffectsInitialized = true;
+    // } catch (error: any) {
+    //   // Graceful degradation - visual effects unavailable but actions continue
+    //   console.debug(`[DomService] Could not initialize visual effects on tab ${this.tabId}: ${error.message || 'Unknown error'}`);
+    //   this.visualEffectsInitialized = true; // Don't retry on every action
+    // }
   }
 
   /**
@@ -827,23 +853,25 @@ export class DomService {
     }
   }
 
-  async scroll(nodeId: number | 'window', direction: 'up' | 'down'): Promise<ActionResult> {
+  /**
+   * Scroll by relative offset (delta)
+   * @param nodeId - Target node ID (use NODE_ID_WINDOW for window scroll)
+   * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left)
+   * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up)
+   */
+  async scroll(nodeId: number, scrollX: number, scrollY: number): Promise<ActionResult> {
     const start = Date.now();
 
     try {
-      const deltaY = direction === 'down' ? 500 : -500;
-
-      if (nodeId === 'window') {
-        // Scroll page
-        await this.sendCommand('Input.dispatchMouseEvent', {
-          type: 'mouseWheel',
-          x: 0,
-          y: 0,
-          deltaX: 0,
-          deltaY
+      if (nodeId === NODE_ID_WINDOW) {
+        // Scroll window by relative offset
+        // Get current scroll position, add offset, then scroll to new position
+        await this.sendCommand('Runtime.evaluate', {
+          expression: `window.scrollTo(window.scrollX + ${scrollX}, window.scrollY + ${scrollY})`,
+          returnByValue: false
         });
       } else {
-        // Scroll element
+        // Scroll element by relative offset
         if (!this.currentSnapshot) {
           throw new Error('NODE_NOT_FOUND: No snapshot available');
         }
@@ -860,18 +888,26 @@ export class DomService {
           throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found`);
         }
 
-        const boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
-        const { content } = boxModel.model;
-        const centerX = (content[0] + content[2]) / 2;
-        const centerY = (content[1] + content[5]) / 2;
-
-        await this.sendCommand('Input.dispatchMouseEvent', {
-          type: 'mouseWheel',
-          x: centerX,
-          y: centerY,
-          deltaX: 0,
-          deltaY
+        // Use CDP DOM.resolveNode to get a RemoteObject reference to the element
+        const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
+          backendNodeId
         });
+
+        if (!resolveResult?.object?.objectId) {
+          throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId} (backend: ${backendNodeId})`);
+        }
+
+        // Use Runtime.callFunctionOn to execute scrollTo with relative offset
+        await this.sendCommand('Runtime.callFunctionOn', {
+          objectId: resolveResult.object.objectId,
+          functionDeclaration: `function() { this.scrollTo(this.scrollLeft + ${scrollX}, this.scrollTop + ${scrollY}); }`,
+          returnByValue: false
+        });
+
+        // Release the object reference to prevent memory leaks
+        await this.sendCommand('Runtime.releaseObject', {
+          objectId: resolveResult.object.objectId
+        }).catch(() => {}); // Ignore errors on cleanup
       }
 
       this.invalidateSnapshot();
@@ -888,7 +924,7 @@ export class DomService {
           scrollChanged: true,
           valueChanged: false
         },
-        nodeId: nodeId === 'window' ? NODE_ID_WINDOW : nodeId, // Return the original sequential ID
+        nodeId: nodeId,
         actionType: 'scroll',
         timestamp: new Date().toISOString()
       };
@@ -908,7 +944,7 @@ export class DomService {
           scrollChanged: false,
           valueChanged: false
         },
-        nodeId: nodeId === 'window' ? NODE_ID_WINDOW : nodeId, // Return the original sequential ID
+        nodeId: nodeId,
         actionType: 'scroll',
         timestamp: new Date().toISOString()
       };

@@ -80,7 +80,7 @@ export class DOMTool extends BaseTool {
     {
       action: {
         type: 'string',
-        description: 'Action type: snapshot (capture DOM), click (click element), type (input text), keypress (keyboard input), scroll (scroll element into view)',
+        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - use node_id=-1 for page scroll, or element node_id for scrollable containers)',
         enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
       },
       tab_id: {
@@ -89,7 +89,7 @@ export class DOMTool extends BaseTool {
       },
       node_id: {
         type: 'number',
-        description: 'Target element node ID from snapshot (required for click and type actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window-level scroll, -2 for document-level keypress.',
+        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window/page scroll (default for main content), -2 for document-level keypress. For scroll action: use -1 to scroll the main page, or use a specific element node_id to scroll a container (chat window, sidebar, infinite-scroll list, etc.).',
       },
       text: {
         type: 'string',
@@ -101,7 +101,7 @@ export class DOMTool extends BaseTool {
       },
       options: {
         type: 'object',
-        description: 'Action-specific options. For type action: { clearFirst?: boolean, speed?: number, commit?: "change"|"enter", blur?: boolean }. commit controls input finalization: "change" (default, fires change event) or "enter" (appends Enter keystroke). For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
+        description: 'Action-specific options. For scroll: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas, not absolute positions). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px, {scrollY: -300} scrolls up 300px. For type: { clearFirst?: boolean, speed?: number, commit?: "change"|"enter", blur?: boolean }. For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
       },
     },
     {
@@ -209,7 +209,11 @@ export class DOMTool extends BaseTool {
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
-    return await domService.getSerializedDom();
+    const serializedDom = await domService.getSerializedDom();
+    // test>>
+    console.log('$$$ the serialized dom is:', JSON.stringify(serializedDom, null, 2));
+    // test<<
+    return serializedDom;
   }
 
   /**
@@ -270,13 +274,18 @@ export class DOMTool extends BaseTool {
   private async executeScroll(
     tabId: number,
     nodeId: number,
-    options?: { block?: 'start' | 'center' | 'end' | 'nearest'; inline?: 'start' | 'center' | 'end' | 'nearest' }
+    options?: { scrollX?: number; scrollY?: number }
   ): Promise<ActionResult> {
     this.log('debug', 'Executing scroll', { tabId, nodeId, options });
 
     // Always use CDP-based implementation
     const domService = await DomService.forTab(tabId);
-    return await domService.scrollIntoView(nodeId, options);
+
+    // Extract scroll coordinates (default to 0 if not provided)
+    const scrollX = options?.scrollX ?? 0;
+    const scrollY = options?.scrollY ?? 0;
+
+    return await domService.scroll(nodeId, scrollX, scrollY);
   }
 
   // ============================================================================
