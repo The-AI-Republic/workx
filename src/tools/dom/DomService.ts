@@ -387,9 +387,6 @@ export class DomService {
    * them to backendNodeIds for efficient lookup during tree construction
    */
   private buildLayoutMap(domSnapshot: any): Map<number, any> {
-    // test>>
-    console.log('$$$ the dom snapshot is:', JSON.stringify(domSnapshot, null, 2));
-    // test<<
     const layoutMap = new Map<number, any>();
 
     if (!domSnapshot?.documents?.[0]) {
@@ -864,10 +861,9 @@ export class DomService {
 
     try {
       if (nodeId === NODE_ID_WINDOW) {
-        // Scroll window by relative offset
-        // Get current scroll position, add offset, then scroll to new position
+        // Scroll window by relative offset with smooth animation
         await this.sendCommand('Runtime.evaluate', {
-          expression: `window.scrollTo(window.scrollX + ${scrollX}, window.scrollY + ${scrollY})`,
+          expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${scrollY}, behavior: 'smooth' })`,
           returnByValue: false
         });
       } else {
@@ -897,10 +893,10 @@ export class DomService {
           throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId} (backend: ${backendNodeId})`);
         }
 
-        // Use Runtime.callFunctionOn to execute scrollTo with relative offset
+        // Use Runtime.callFunctionOn to execute scrollTo with smooth animation
         await this.sendCommand('Runtime.callFunctionOn', {
           objectId: resolveResult.object.objectId,
-          functionDeclaration: `function() { this.scrollTo(this.scrollLeft + ${scrollX}, this.scrollTop + ${scrollY}); }`,
+          functionDeclaration: `function() { this.scrollTo({ left: this.scrollLeft + ${scrollX}, top: this.scrollTop + ${scrollY}, behavior: 'smooth' }); }`,
           returnByValue: false
         });
 
@@ -909,6 +905,9 @@ export class DomService {
           objectId: resolveResult.object.objectId
         }).catch(() => {}); // Ignore errors on cleanup
       }
+
+      // Wait for smooth scroll animation to complete (typically 300-500ms)
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       this.invalidateSnapshot();
 
