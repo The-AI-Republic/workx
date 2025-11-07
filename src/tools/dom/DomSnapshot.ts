@@ -443,6 +443,7 @@ export class DomSnapshot implements IDomSnapshot {
    *    - If any children are visible, keep this node as a container
    *    - If no children are visible, remove this node
    * 3. Structural nodes (html, body) are always kept to preserve tree structure
+   * 4. After filtering, remove the inViewport field from all nodes
    */
   private filterByViewport(node: SerializedNode | null): SerializedNode | null {
     if (!node) return null;
@@ -453,7 +454,8 @@ export class DomSnapshot implements IDomSnapshot {
 
     // If node is explicitly in viewport, keep it and all children
     if (node.inViewport === true) {
-      return node;
+      const { inViewport, ...nodeWithoutInViewport } = node;
+      return nodeWithoutInViewport;
     }
 
     // If node has children, recursively filter them
@@ -464,8 +466,9 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If node has visible children OR is structural, keep it with filtered children
       if (filteredKids.length > 0 || isStructural) {
+        const { inViewport, ...nodeWithoutInViewport } = node;
         return {
-          ...node,
+          ...nodeWithoutInViewport,
           kids: filteredKids.length > 0 ? filteredKids : undefined
         };
       }
