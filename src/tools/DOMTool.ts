@@ -210,9 +210,6 @@ export class DOMTool extends BaseTool {
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
     const serializedDom = await domService.getSerializedDom();
-    // test>>
-    console.log('$$$ the serialized dom is:', JSON.stringify(serializedDom, null, 2));
-    // test<<
     return serializedDom;
   }
 

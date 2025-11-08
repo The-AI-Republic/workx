@@ -254,18 +254,11 @@ After each action, the next observation will show the resulting page state. Use 
 
 When you capture a DOM snapshot, you ONLY receive elements that are currently visible in the browser viewport (inViewport: true). Elements outside the viewport are automatically filtered out to reduce token consumption.
 
-The snapshot includes viewport metadata in `page.context.viewport`:
-- `width`: Viewport width in pixels
-- `height`: Viewport height in pixels (useful for scrolling by "one page" = scrollY: height)
-- `scrollX`: Current horizontal scroll position
-- `scrollY`: Current vertical scroll position
-
 **Key Principles:**
 
 1. **Limited Visibility**: The DOM snapshot shows ONLY what's visible on screen right now, not the entire page
    - If you don't see expected elements, they may be below/above the current scroll position
    - The page may contain much more content than what you currently see
-   - Use viewport.height to scroll by one page at a time (e.g., scrollY: viewport.height)
 
 2. **Scroll to Discover More**: When you need to find elements or content not in the current view:
    - Scroll down to reveal content below the fold
