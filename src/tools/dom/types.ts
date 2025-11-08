@@ -111,7 +111,15 @@ export interface PageContext {
   loaderId: string;
   // Viewport dimensions in CSS pixels (web standard)
   // devicePixelRatio is captured for diagnostics but coordinates are pre-normalized to CSS pixels
-  viewport: { width: number; height: number; scrollX?: number; scrollY?: number; devicePixelRatio?: number };
+  viewport: {
+    width: number;
+    height: number;
+    scrollX?: number;
+    scrollY?: number;
+    pageWidth?: number;
+    pageHeight?: number;
+    devicePixelRatio?: number;
+  };
   frameTree: FrameNode[];
   frameworkDetected?: string | null; // Detected framework (react, vue, angular, etc.)
 }

@@ -315,11 +315,20 @@ export class DomService {
     // Get page context with viewport scroll position
     const tab = await chrome.tabs.get(this.tabId);
 
-    // Fetch viewport dimensions and scroll position from the page
-    let viewportData = { width: tab.width || 0, height: tab.height || 0, scrollX: 0, scrollY: 0, devicePixelRatio: 1 };
+    // Fetch viewport dimensions, scroll position, and page dimensions from the page
+    // Fallback values assume viewport = page (no overflow) if Runtime.evaluate fails
+    let viewportData = {
+      width: tab.width || 0,
+      height: tab.height || 0,
+      scrollX: 0,
+      scrollY: 0,
+      pageWidth: tab.width || 0,  // Fallback: assume page width = viewport width (no horizontal overflow)
+      pageHeight: tab.height || 0, // Fallback: assume page height = viewport height (no vertical overflow)
+      devicePixelRatio: 1
+    };
     try {
       const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
-        expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY, devicePixelRatio: window.devicePixelRatio, visualViewportScale: window.visualViewport?.scale || 1 })',
+        expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY, pageWidth: document.documentElement.scrollWidth, pageHeight: document.documentElement.scrollHeight, devicePixelRatio: window.devicePixelRatio, visualViewportScale: window.visualViewport?.scale || 1 })',
         returnByValue: true
       });
       if (viewportResult?.result?.value) {
@@ -330,12 +339,19 @@ export class DomService {
       console.log('[DomService] Viewport captured (CSS pixels - web standard):', {
         viewport: { width: viewportData.width, height: viewportData.height },
         scroll: { scrollX: viewportData.scrollX, scrollY: viewportData.scrollY },
+        pageDimensions: { width: viewportData.pageWidth, height: viewportData.pageHeight },
+        overflow: {
+          top: viewportData.scrollY,
+          bottom: Math.max(0, viewportData.pageHeight - viewportData.height - viewportData.scrollY),
+          left: viewportData.scrollX,
+          right: Math.max(0, viewportData.pageWidth - viewportData.width - viewportData.scrollX)
+        },
         devicePixelRatio: viewportData.devicePixelRatio,
         note: 'Bounding boxes will be converted from device pixels to CSS pixels'
       });
     } catch (error) {
       // Fallback to tab dimensions if Runtime.evaluate fails
-      console.warn('[DomService] Could not get viewport scroll position, using defaults');
+      console.warn('[DomService] Could not get viewport and page dimensions, using fallback (assumes no overflow)');
     }
 
     const pageContext: PageContext = {

@@ -91,8 +91,10 @@ export interface SerializedDom {
       viewport: {
         width: number;
         height: number;
-        scrollX: number;
-        scrollY: number;
+        overflowTop: number;    // pixels above viewport (scrollY)
+        overflowBottom: number; // pixels below viewport
+        overflowLeft: number;   // pixels to left of viewport (scrollX)
+        overflowRight: number;  // pixels to right of viewport
       };
     };
     body: SerializedNode;

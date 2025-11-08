@@ -123,6 +123,18 @@ export class DomSnapshot implements IDomSnapshot {
       console.warn('the body is null or has no kids');
     }
 
+    // Calculate viewport overflow (pixels outside viewport in each direction)
+    const viewport = this.pageContext.viewport;
+    const scrollX = viewport.scrollX ?? 0;
+    const scrollY = viewport.scrollY ?? 0;
+    const pageWidth = viewport.pageWidth ?? viewport.width;
+    const pageHeight = viewport.pageHeight ?? viewport.height;
+
+    const overflowTop = scrollY;
+    const overflowBottom = Math.max(0, pageHeight - viewport.height - scrollY);
+    const overflowLeft = scrollX;
+    const overflowRight = Math.max(0, pageWidth - viewport.width - scrollX);
+
     // Build v3 SerializedDom with normalized field names
     this._serialized = {
       page: {
@@ -130,10 +142,12 @@ export class DomSnapshot implements IDomSnapshot {
           url: this.pageContext.url,
           title: this.pageContext.title,
           viewport: {
-            width: this.pageContext.viewport.width,
-            height: this.pageContext.viewport.height,
-            scrollX: this.pageContext.viewport.scrollX ?? 0,
-            scrollY: this.pageContext.viewport.scrollY ?? 0
+            width: viewport.width,
+            height: viewport.height,
+            overflowTop,
+            overflowBottom,
+            overflowLeft,
+            overflowRight
           }
         },
         body: body!
