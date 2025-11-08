@@ -82,36 +82,6 @@
       "backoffMultiplier": 2
     },
     "models": [
-      {
-        "id": "",
-        "name": "Qwen 3 32B",
-        "modelKey": "qwen/qwen3-32b",
-        "creator": "Alibaba Cloud",
-        "contextWindow": 131072,
-        "maxOutputTokens": 40960,
-        "supportsReasoning": true,
-        "reasoningEfforts": ["minimal", "low", "medium", "high"],
-        "supportsReasoningSummaries": false,
-        "supportsVerbosity": false,
-        "supportsImage": true,
-        "releaseDate": "2024-12-01",
-        "deprecated": false
-      },
-      {
-        "id": "",
-        "name": "Kimi K2 Instruct",
-        "modelKey": "moonshotai/kimi-k2-instruct-0905",
-        "creator": "Moonshot AI",
-        "contextWindow": 262144,
-        "maxOutputTokens": 16384,
-        "supportsReasoning": false,
-        "reasoningEfforts": [],
-        "supportsReasoningSummaries": false,
-        "supportsVerbosity": false,
-        "supportsImage": false,
-        "releaseDate": "2024-09-05",
-        "deprecated": false
-      }
     ]
   }
 }

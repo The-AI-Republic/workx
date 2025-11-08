@@ -127,8 +127,13 @@ export class ModelClientFactory {
    * @returns Promise resolving to a model client
    */
   async createClient(provider: ModelProvider): Promise<ModelClient> {
+    // Include model ID in cache key to prevent reusing clients with wrong config
+    // (e.g., switching from Qwen with reasoning to Kimi K2 without reasoning)
+    const selectedModelId = this.config?.getConfig().selectedModelId || 'unknown';
+    const cacheKey = `${provider}-${selectedModelId}`;
+
     // Check cache first
-    const cached = this.clientCache.get(provider);
+    const cached = this.clientCache.get(cacheKey);
     if (cached) {
       return cached;
     }
@@ -137,7 +142,7 @@ export class ModelClientFactory {
     const client = this.instantiateClient(config);
 
     // Cache the client instance
-    this.clientCache.set(provider, client);
+    this.clientCache.set(cacheKey, client);
 
     return client;
   }
@@ -231,7 +236,14 @@ export class ModelClientFactory {
    */
   clearCache(provider?: ModelProvider): void {
     if (provider) {
-      this.clientCache.delete(provider);
+      // Clear all cache entries for this provider (cache keys are now provider-modelId)
+      const keysToDelete: string[] = [];
+      for (const key of this.clientCache.keys()) {
+        if (key.startsWith(`${provider}-`)) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(key => this.clientCache.delete(key));
     } else {
       this.clientCache.clear();
     }
