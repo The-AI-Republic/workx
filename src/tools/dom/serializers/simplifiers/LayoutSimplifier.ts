@@ -156,6 +156,7 @@ export class LayoutSimplifier {
   /**
    * Check if node is a meaningless container that can be hoisted
    * Meaningless containers are divs with no semantic value (generic role or no role)
+   * or divs with zero bounding box (layout wrappers for CSS positioning)
    */
   private isMeaninglessContainer(node: VirtualNode): boolean {
     const tagName = (node.localName || node.nodeName || '').toLowerCase();
@@ -203,6 +204,15 @@ export class LayoutSimplifier {
         if (attrMap.has(attr)) {
           return false;
         }
+      }
+    }
+
+    // Zero bounding box containers are meaningless (CSS layout wrappers)
+    // These are wrappers used for absolute/fixed positioning with no visual presence
+    if (node.boundingBox) {
+      const { width, height } = node.boundingBox;
+      if (width === 0 || height === 0) {
+        return true;
       }
     }
 

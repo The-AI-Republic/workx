@@ -178,6 +178,78 @@ describe('VisibilityFilter', () => {
       const result = filter.filter(overlay);
       expect(result).not.toBeNull();
     });
+
+    it('should preserve dialog elements even with zero height', () => {
+      const dialog = createNode({
+        boundingBox: { x: 0, y: 0, width: 100, height: 0 },
+        accessibility: { role: 'dialog' }
+      });
+
+      const result = filter.filter(dialog);
+      expect(result).not.toBeNull();
+    });
+
+    it('should preserve alertdialog elements even with zero width', () => {
+      const alertDialog = createNode({
+        boundingBox: { x: 0, y: 0, width: 0, height: 100 },
+        accessibility: { role: 'alertdialog' }
+      });
+
+      const result = filter.filter(alertDialog);
+      expect(result).not.toBeNull();
+    });
+
+    it('should preserve elements with modal class even with zero dimensions', () => {
+      const modal = createNode({
+        boundingBox: { x: 0, y: 0, width: 0, height: 0 },
+        attributes: ['class', 'modal-container']
+      });
+
+      const result = filter.filter(modal);
+      expect(result).not.toBeNull();
+    });
+
+    it('should preserve elements with dialog class even with zero dimensions', () => {
+      const dialogClass = createNode({
+        boundingBox: { x: 0, y: 0, width: 100, height: 0 },
+        attributes: ['class', 'dialog-wrapper']
+      });
+
+      const result = filter.filter(dialogClass);
+      expect(result).not.toBeNull();
+    });
+
+    it('should preserve elements with overlay class even with zero dimensions', () => {
+      const overlay = createNode({
+        boundingBox: { x: 0, y: 0, width: 0, height: 0 },
+        attributes: ['class', 'overlay-backdrop']
+      });
+
+      const result = filter.filter(overlay);
+      expect(result).not.toBeNull();
+    });
+
+    it('should preserve nested dialogs with zero-dimension container (X.com scenario)', () => {
+      // Outer dialog container with zero height (like Node 3532)
+      const outerDialog = createNode({
+        boundingBox: { x: 0, y: 780, width: 1497.5, height: 0 },
+        accessibility: { role: 'dialog' },
+        children: [
+          // Inner dialog with proper dimensions (like Node 3538)
+          createNode({
+            backendNodeId: 2,
+            boundingBox: { x: 448.75, y: 812.5, width: 600, height: 366 },
+            accessibility: { role: 'dialog' },
+            attributes: ['aria-modal', 'true']
+          })
+        ]
+      });
+
+      const result = filter.filter(outerDialog);
+      expect(result).not.toBeNull();
+      expect(result?.children).toHaveLength(1);
+      expect(result?.children?.[0].backendNodeId).toBe(2);
+    });
   });
 
   describe('recursive filtering', () => {
