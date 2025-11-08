@@ -69,17 +69,26 @@ export class SerializationPipeline {
     if (this.hasFiltersEnabled()) {
       tree = this.applyFilters(tree);
     }
+    // test>>
+    console.log('$$$ the tree after the signal filters is step1:', JSON.stringify(tree, null, 2));
+    // test<<
 
     // Stage 2: Structure Simplification
     if (this.hasSimplifiersEnabled()) {
       tree = this.applySimplifiers(tree);
     }
+    // test>>
+    console.log('$$$ the tree after the structure simplifiers is step2:', JSON.stringify(tree, null, 2));
+    // test<<
 
     // Stage 3: Payload Optimization
     if (this.hasOptimizersEnabled()) {
       tree = this.applyOptimizers(tree);
     }
-
+    // test>>
+    console.log('$$$ the tree after the payload optimizers is step3:', JSON.stringify(tree, null, 2));
+    // test<<
+    
     // Collect final metrics
     this.collectFinalMetrics(tree);
     this.metrics.serializationTimeMs = Date.now() - startTime;
@@ -117,27 +126,42 @@ export class SerializationPipeline {
     if (this.config.enableVisibilityFilter) {
       filtered = this.applyVisibilityFilter(filtered);
     }
+    // test>>
+    console.log('$$$ the tree after the visibility filter is F1:', JSON.stringify(filtered, null, 2));
+    // test<<
 
     // F2: TextNodeFilter - Remove tiny text nodes
     if (this.config.enableTextNodeFilter) {
       filtered = this.applyTextNodeFilter(filtered);
     }
+    // test>>
+    console.log('$$$ the tree after the text node filter is F2:', JSON.stringify(filtered, null, 2));
+    // test<< 
 
     // F3: NoiseFilter - Remove script/style/meta
     if (this.config.enableNoiseFilter) {
       filtered = this.applyNoiseFilter(filtered);
     }
-
+    // test>>
+    console.log('$$$ the tree after the noise filter is F3:', JSON.stringify(filtered, null, 2));
+    // test<<
+    
     // F4: SemanticContainerFilter - Require interactive descendants
     if (this.config.enableSemanticContainerFilter) {
       filtered = this.applySemanticContainerFilter(filtered);
     }
-
+    // test>>
+    console.log('$$$ the tree after the semantic container filter is F4:', JSON.stringify(filtered, null, 2));
+    // test<<
+    
     // F5: PaintOrderFilter - Remove obscured elements
     if (this.config.enablePaintOrderFilter) {
       filtered = this.applyPaintOrderFilter(filtered);
-    }
-
+    }    
+    // test>>
+    console.log('$$$ the tree after the paint order filter is F5:', JSON.stringify(filtered, null, 2));
+    // test<<
+    
     this.metrics.stage1TimeMs = Date.now() - stageStart;
     return filtered;
   }

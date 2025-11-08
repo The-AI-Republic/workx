@@ -97,7 +97,7 @@ export class DomSnapshot implements IDomSnapshot {
     // Build flattened tree structure from pipeline result with v3 schema
     const documentNode = this.flatternNode(result.tree, opts);
     // test>>
-    console.log('$$$ the document node is:', JSON.stringify(documentNode, null, 2));
+    console.log('$$$ the document node after flatternNodeis:', JSON.stringify(documentNode, null, 2));
     // test<<
 
     // Extract body node from document tree
