@@ -4,6 +4,51 @@ import type { SerializedDom, SerializedNode, ActionResult } from '../../types/do
 // Re-export types for external consumers
 export type { SerializedDom, SerializedNode, ActionResult };
 
+/**
+ * Raw serialized DOM structure (before stringification)
+ * Internal type used by DomSnapshot.serialize() before transformation
+ */
+export interface RawSerializedDom {
+  page: {
+    context: {
+      url: string;
+      title: string;
+      viewport: {
+        width: number;
+        height: number;
+        overflowTop: number;
+        overflowBottom: number;
+        overflowLeft: number;
+        overflowRight: number;
+      };
+    };
+    body: SerializedNode;
+    iframes?: Array<{
+      url: string;
+      title: string;
+      body: SerializedNode;
+    }>;
+    shadowDoms?: Array<{
+      hostId: string;
+      body: SerializedNode;
+    }>;
+    metrics?: {
+      total_nodes: number;
+      serialized_nodes: number;
+      token_reduction_rate: number;
+      compaction_score: number;
+    };
+    states?: {
+      disabled?: number[];
+      checked?: number[];
+      required?: number[];
+      readonly?: number[];
+      expanded?: number[];
+      selected?: number[];
+    };
+  };
+}
+
 // Special nodeId constants for non-element targets
 export const NODE_ID_WINDOW = -1;
 export const NODE_ID_DOCUMENT = -2;

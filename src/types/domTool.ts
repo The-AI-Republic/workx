@@ -89,15 +89,15 @@ export interface SerializedDom {
       url: string;
       title: string;
       viewport: {
-        width: number;
-        height: number;
-        overflowTop: number;    // pixels above viewport (scrollY)
-        overflowBottom: number; // pixels below viewport
-        overflowLeft: number;   // pixels to left of viewport (scrollX)
-        overflowRight: number;  // pixels to right of viewport
+        width: string;          // e.g., "1920px"
+        height: string;         // e.g., "1080px"
+        overflowTop: string;    // e.g., "0px" - pixels above viewport
+        overflowBottom: string; // e.g., "500px" - pixels below viewport
+        overflowLeft: string;   // e.g., "0px" - pixels to left of viewport
+        overflowRight: string;  // e.g., "0px" - pixels to right of viewport
       };
     };
-    body: SerializedNode;
+    body: string; // HTML string representation of the body
     iframes?: Array<{
       url: string;
       title: string;

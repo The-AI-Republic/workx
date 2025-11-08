@@ -3,13 +3,14 @@ import type {
   VirtualNode,
   ActionResult,
   SerializedDom,
+  RawSerializedDom,
   PageContext,
   SnapshotStats,
   ServiceConfig,
   PerformanceMetrics
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
-import { computeHeuristics, classifyNode, determineInteractionType, detectFramework } from './utils';
+import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml } from './utils';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -128,7 +129,31 @@ export class DomService {
     // CDP MIGRATION: Trigger undulate visual effect (via Runtime.evaluate, not message passing)
     await this.triggerVisualEffect('undulate');
 
-    return this.currentSnapshot!.serialize();
+    // Get raw serialized DOM (numbers and SerializedNode)
+    const rawDom = this.currentSnapshot!.serialize();
+
+    // Transform to stringified format for LLM consumption:
+    // 1. Viewport dimensions: Add "px" suffix to all numeric values
+    // 2. Body: Convert SerializedNode tree to HTML string representation
+    const serializedDom = {
+      page: {
+        context: {
+          url: rawDom.page.context.url,
+          title: rawDom.page.context.title,
+          viewport: {
+            width: `${rawDom.page.context.viewport.width}px`,
+            height: `${rawDom.page.context.viewport.height}px`,
+            overflowTop: `${rawDom.page.context.viewport.overflowTop}px`,
+            overflowBottom: `${rawDom.page.context.viewport.overflowBottom}px`,
+            overflowLeft: `${rawDom.page.context.viewport.overflowLeft}px`,
+            overflowRight: `${rawDom.page.context.viewport.overflowRight}px`
+          }
+        },
+        body: serializedNodeToHtml(rawDom.page.body),
+      }
+    };
+
+    return serializedDom;
   }
 
   /**

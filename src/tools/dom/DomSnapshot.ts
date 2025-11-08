@@ -1,7 +1,7 @@
 import type {
   DomSnapshot as IDomSnapshot,
   VirtualNode,
-  SerializedDom,
+  RawSerializedDom,
   SerializedNode,
   SnapshotStats,
   PageContext
@@ -19,7 +19,7 @@ export class DomSnapshot implements IDomSnapshot {
   readonly stats: SnapshotStats;
 
   private _backendNodeMap?: Map<number, VirtualNode>;
-  private _serialized?: SerializedDom;
+  private _serialized?: RawSerializedDom;
 
   constructor(
     virtualDom: VirtualNode,
@@ -66,7 +66,7 @@ export class DomSnapshot implements IDomSnapshot {
     return { ...this.stats };
   }
 
-  serialize(options?: SerializationOptions): SerializedDom {
+  serialize(options?: SerializationOptions): RawSerializedDom {
     if (this._serialized) {
       return this._serialized;
     }
@@ -135,7 +135,7 @@ export class DomSnapshot implements IDomSnapshot {
     const overflowLeft = scrollX;
     const overflowRight = Math.max(0, pageWidth - viewport.width - scrollX);
 
-    // Build v3 SerializedDom with normalized field names
+    // Build v3 RawSerializedDom with normalized field names (will be stringified in DomService)
     this._serialized = {
       page: {
         context: {
