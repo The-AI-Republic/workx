@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nested Aria-Labels Test Fixture - Scope Validation</title>
+</head>
+<body>
+  <!-- Test Case 1: Parent and child both have aria-labels (scope test) -->
+  <div id="test-case-1">
+    <div aria-label="Parent container">
+      <button aria-label="Child button">Click me</button>
+    </div>
+  </div>
+
+  <!-- Test Case 2: Nested buttons with different aria-labels -->
+  <div id="test-case-2">
+    <div aria-label="Outer action group" role="group">
+      <button aria-label="Primary action">Primary</button>
+      <button aria-label="Secondary action">Secondary</button>
+    </div>
+  </div>
+
+  <!-- Test Case 3: Deeply nested aria-labels (3 levels) -->
+  <div id="test-case-3">
+    <nav aria-label="Main navigation">
+      <div aria-label="Navigation menu">
+        <a href="/home" aria-label="Home link">Home</a>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Test Case 4: Parent with aria-label, child with aria-labelledby -->
+  <div id="test-case-4">
+    <div aria-label="Form section">
+      <label id="email-label">Email</label>
+      <input type="text" aria-labelledby="email-label" />
+    </div>
+  </div>
+
+  <!-- Test Case 5: Nested interactive elements with aria-labels -->
+  <div id="test-case-5">
+    <div aria-label="Post actions">
+      <button aria-label="Like post">♥</button>
+      <button aria-label="Share post">↗</button>
+      <button aria-label="Save post">☆</button>
+    </div>
+  </div>
+
+  <!-- Test Case 6: Parent with aria-label containing text nodes -->
+  <div id="test-case-6">
+    <div aria-label="Article content">
+      This is the article text.
+      <button aria-label="Read more">Read more</button>
+    </div>
+  </div>
+
+  <!-- Test Case 7: List with aria-labels at multiple levels -->
+  <div id="test-case-7">
+    <ul aria-label="Menu options">
+      <li aria-label="File menu item">
+        <button aria-label="Open file">Open</button>
+      </li>
+      <li aria-label="Edit menu item">
+        <button aria-label="Copy text">Copy</button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Test Case 8: Form with nested aria-labels -->
+  <div id="test-case-8">
+    <form aria-label="Login form">
+      <div aria-label="Username field group">
+        <label aria-label="Username label">Username</label>
+        <input type="text" aria-label="Username input" />
+      </div>
+      <div aria-label="Password field group">
+        <label aria-label="Password label">Password</label>
+        <input type="password" aria-label="Password input" />
+      </div>
+    </form>
+  </div>
+
+  <!-- Test Case 9: Parent aria-label should NOT aggregate child aria-labels -->
+  <div id="test-case-9">
+    <div aria-label="Toolbar">
+      <button aria-label="Bold">B</button>
+      <button aria-label="Italic">I</button>
+      <button aria-label="Underline">U</button>
+    </div>
+  </div>
+
+  <!-- Test Case 10: Nested regions with distinct aria-labels -->
+  <div id="test-case-10">
+    <div role="region" aria-label="Main content">
+      <div role="region" aria-label="Sidebar">
+        <div role="region" aria-label="Advertisements">
+          <a href="/ad" aria-label="Advertisement link">Ad</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -30,7 +30,8 @@ describe('DomSnapshot', () => {
         localName: 'button',
         tier: 'semantic',
         interactionType: 'click',
-        accessibility: { role: 'button', name: 'Submit' }
+        accessibility: { role: 'button', name: 'Submit' },
+        boundingBox: { x: 100, y: 100, width: 100, height: 40 }
       }
     ]
   };
@@ -87,13 +88,9 @@ describe('DomSnapshot', () => {
     const buttonNode = allNodes.find(n => n.tag === 'button');
 
     expect(buttonNode).toBeDefined();
-    expect(buttonNode?.node_id).toBe(1); // Sequential ID (remapped from backendNodeId 101)
+    expect(buttonNode?.node_id).toBe(101); // Uses backendNodeId directly (no remapping)
     expect(buttonNode?.role).toBe('button');
     expect(buttonNode?.aria_label).toBe('Submit');
-
-    // Verify we can translate back to backend ID
-    const backendId = snapshot.translateSequentialIdToBackendId(buttonNode?.node_id!);
-    expect(backendId).toBe(101); // Should map back to original backendNodeId
   });
 
   it('should detect stale snapshots', async () => {
@@ -132,10 +129,6 @@ describe('DomSnapshot', () => {
     );
 
     expect(snapshot.getNodeByBackendId(999)).toBeNull(); // Non-existent backendNodeId
-
-    // After serialization, test ID translation for non-existent sequential IDs
-    snapshot.serialize();
-    expect(snapshot.translateSequentialIdToBackendId(999)).toBeNull();
   });
 
   it('should return stats copy', () => {

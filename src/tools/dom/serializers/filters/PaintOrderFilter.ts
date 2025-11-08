@@ -34,7 +34,6 @@ export class PaintOrderFilter {
   filter(tree: VirtualNode): VirtualNode | null {
     // Check if paint order data is available
     if (!this.hasPaintOrderData(tree)) {
-      console.log('[PaintOrderFilter] No paint order data available - skipping filter');
       return tree;
     }
 

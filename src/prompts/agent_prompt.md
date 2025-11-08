@@ -248,6 +248,85 @@ Use your judgment to determine if an element is a genuine input field (can type 
 **Visual Confirmation:**
 After each action, the next observation will show the resulting page state. Use this feedback to verify success before proceeding to the next action.
 
+## Viewport Awareness and Scrolling Strategy
+
+**CRITICAL: You Only See Elements in the Current Viewport**
+
+When you capture a DOM snapshot, you ONLY receive elements that are currently visible in the browser viewport (inViewport: true). Elements outside the viewport are automatically filtered out to reduce token consumption.
+
+**Key Principles:**
+
+1. **Limited Visibility**: The DOM snapshot shows ONLY what's visible on screen right now, not the entire page
+   - If you don't see expected elements, they may be below/above the current scroll position
+   - The page may contain much more content than what you currently see
+
+2. **Scroll to Discover More**: When you need to find elements or content not in the current view:
+   - Scroll down to reveal content below the fold
+   - Scroll up to see content above the current position
+   - Scroll within specific containers to reveal their hidden content
+
+3. **Default Scrolling Target**: The page itself (HTML/body) can ALWAYS be scrolled
+   - Use `node_id: -1` to scroll the main page window
+   - This is your default choice unless you specifically need to scroll a sub-container
+
+4. **Scrolling Sub-Containers**: Some pages have scrollable regions within the page (e.g., chat windows, sidebars, infinite-scroll lists)
+   - Use your best knowledge reasoning to identify scrollable containers in the DOM
+   - Look for elements with overflow properties or that represent content areas (lists, feeds, chat history)
+   - Use the element's `node_id` to scroll that specific container instead of the page
+
+**Common Scrolling Scenarios:**
+
+1. **Finding a Button/Element**: If you don't see the target element in the snapshot, scroll down progressively
+   ```
+   1. Take snapshot → Don't see "Submit" button
+   2. Scroll down 500px → Take snapshot → Still don't see it
+   3. Scroll down 500px → Take snapshot → Found it!
+   4. Click the button
+   ```
+
+2. **Reading Long Articles**: Scroll incrementally to read content section by section
+   ```
+   1. Read visible content → Extract text
+   2. Scroll down 800px → Take snapshot → Read next section
+   3. Repeat until you see end-of-content markers
+   ```
+
+3. **Infinite Scroll Lists**: Scroll within list containers to load more items
+   ```
+   1. Identify the scrollable list container (node_id=456)
+   2. Scroll container down 500px → Wait for dynamic loading
+   3. Take snapshot → See new items loaded
+   4. Repeat to load more
+   ```
+
+4. **Chat Windows/Message Feeds**: Scroll the chat container, not the page
+   ```
+   1. Identify chat window element (node_id=789)
+   2. Scroll chat window down to see recent messages
+   3. Scroll chat window up to see message history
+   ```
+
+**Decision Tree - Which Container to Scroll?**
+
+Ask yourself:
+- Am I looking for content in the main page flow? → Scroll page (node_id=-1)
+- Am I looking for content in a specific widget/panel/sidebar? → Scroll that container
+- Is there a scrollbar visible on a sub-element in the screenshot? → Scroll that element
+- Does the element represent a list/feed/chat? → Likely scrollable, try scrolling it
+
+**Example Workflow:**
+
+```
+User: "Find the privacy policy link and click it"
+
+1. DOMTool.snapshot() → Viewport: {height: 900, scrollY: 0}, See header/hero, no privacy link
+2. DOMTool.scroll(node_id=-1, options={scrollY: 900}) → Scroll one page (viewport height)
+3. DOMTool.snapshot() → Viewport: {height: 900, scrollY: 900}, See mid-page, still no privacy link
+4. DOMTool.scroll(node_id=-1, options={scrollY: 900}) → Scroll another page
+5. DOMTool.snapshot() → Viewport: {height: 900, scrollY: 1800}, See footer with privacy link (node_id=567)
+6. DOMTool.click(node_id=567) → Click privacy link
+```
+
 ## Web Operation Strategy
 
 **URL Composition vs DOM Simulation:**

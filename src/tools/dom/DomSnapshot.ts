@@ -1,14 +1,13 @@
 import type {
   DomSnapshot as IDomSnapshot,
   VirtualNode,
-  SerializedDom,
+  RawSerializedDom,
   SerializedNode,
   SnapshotStats,
-  PageContext,
-  IIdRemapper
+  PageContext
 } from './types';
 import type { SerializationOptions } from '../../types/domTool';
-import { getTextContent } from './utils';
+import { getTextContent, serializedNodeToHtml } from './utils';
 import { SerializationPipeline } from './serializers/SerializationPipeline';
 import { DEFAULT_SERIALIZATION_OPTIONS } from '../../types/domTool';
 import type { ViewportBounds } from '../screenshot/ViewportDetector';
@@ -20,8 +19,7 @@ export class DomSnapshot implements IDomSnapshot {
   readonly stats: SnapshotStats;
 
   private _backendNodeMap?: Map<number, VirtualNode>;
-  private _idRemapper?: IIdRemapper;
-  private _serialized?: SerializedDom;
+  private _serialized?: RawSerializedDom;
 
   constructor(
     virtualDom: VirtualNode,
@@ -59,25 +57,6 @@ export class DomSnapshot implements IDomSnapshot {
     return this.buildBackendNodeMap().get(backendNodeId) ?? null;
   }
 
-  /**
-   * Translate sequential ID (from LLM) to backendNodeId (for CDP operations)
-   * This is critical for action execution: LLM sees sequential IDs (1, 2, 3...)
-   * but CDP requires backendNodeIds.
-   */
-  translateSequentialIdToBackendId(sequentialId: number): number | null {
-    if (!this._idRemapper) {
-      // If no remapper, assume sequential ID is the backend ID (backward compatibility)
-      return sequentialId;
-    }
-    return this._idRemapper.toBackendId(sequentialId);
-  }
-
-  /**
-   * Get IdRemapper for direct access (if needed)
-   */
-  getIdRemapper(): IIdRemapper | undefined {
-    return this._idRemapper;
-  }
 
   isStale(maxAgeMs: number = 30000): boolean {
     return Date.now() - this.timestamp.getTime() > maxAgeMs;
@@ -87,7 +66,7 @@ export class DomSnapshot implements IDomSnapshot {
     return { ...this.stats };
   }
 
-  serialize(options?: SerializationOptions): SerializedDom {
+  serialize(options?: SerializationOptions): RawSerializedDom {
     if (this._serialized) {
       return this._serialized;
     }
@@ -105,46 +84,56 @@ export class DomSnapshot implements IDomSnapshot {
       }
     };
 
-    // Use SerializationPipeline for compaction
+    // Extract body node from virtualDom before processing
+    // If no body tag found, returns the root node as fallback
+    const bodyVirtualNode = this.findBodyNode(this.virtualDom);
+
+    // Use SerializationPipeline for compaction on body node only
     const pipeline = new SerializationPipeline();
-    const result = pipeline.execute(this.virtualDom);
-
-    // Store IdRemapper for later use
-    this._idRemapper = result.idRemapper;
-
-    // Diagnostic logging for debugging empty snapshots
-    console.log(`[DomSnapshot] Pipeline metrics:`, {
-      totalNodes: result.metrics.totalNodes,
-      serializedNodes: result.metrics.serializedNodes,
-      filteredNodes: result.metrics.filteredNodes,
-      interactiveNodes: result.metrics.interactiveNodes
-    });
+    const result = pipeline.execute(bodyVirtualNode);
 
     // Build flattened tree structure from pipeline result with v3 schema
-    const body = this.flatternNode(result.tree, opts);
+    const bodyBeforeFilter = this.flatternNode(result.tree, opts);
+
+    // Apply viewport filtering to only include visible nodes
+    const body = this.filterByViewport(bodyBeforeFilter);
+
+    // Convert SerializedNode back to HTML
+    const htmlString = serializedNodeToHtml(body);
 
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
-      console.warn(`[DomSnapshot] WARNING: Serialization produced empty/minimal body!`, {
-        bodyIsNull: !body,
-        bodyTag: body?.tag,
-        kidsLength: body?.kids?.length || 0,
-        url: this.pageContext.url,
-        totalNodesBeforeFiltering: result.metrics.totalNodes,
-        serializedNodesAfterFiltering: result.metrics.serializedNodes,
-        interactiveNodes: result.metrics.interactiveNodes,
-        suggestion: 'Page may be loading asynchronously, or all elements were filtered as non-interactive. Consider waiting for page load or checking element classification.'
-      });
+      console.warn('the body is null or has no kids');
     }
 
-    // Build v3 SerializedDom with normalized field names
+    // Calculate viewport overflow (pixels outside viewport in each direction)
+    const viewport = this.pageContext.viewport;
+    const scrollX = viewport.scrollX ?? 0;
+    const scrollY = viewport.scrollY ?? 0;
+    const pageWidth = viewport.pageWidth ?? viewport.width;
+    const pageHeight = viewport.pageHeight ?? viewport.height;
+
+    const overflowTop = scrollY;
+    const overflowBottom = Math.max(0, pageHeight - viewport.height - scrollY);
+    const overflowLeft = scrollX;
+    const overflowRight = Math.max(0, pageWidth - viewport.width - scrollX);
+
+    // Build v3 RawSerializedDom with normalized field names (will be stringified in DomService)
     this._serialized = {
       page: {
         context: {
           url: this.pageContext.url,
-          title: this.pageContext.title
+          title: this.pageContext.title,
+          viewport: {
+            width: viewport.width,
+            height: viewport.height,
+            overflowTop,
+            overflowBottom,
+            overflowLeft,
+            overflowRight
+          }
         },
-        body
+        body: body!
         // Note: Collection-level states from MetadataBucketer would go here
         // This is deferred to future optimization as it requires refactoring
         // the serialization to separate node data from state data
@@ -193,9 +182,8 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If multiple children, return minimal structural node to maintain grouping
       if (flattenedChildren.length > 1) {
-        const sequentialId = this._idRemapper?.toSequentialId(node.backendNodeId) ?? node.backendNodeId;
         return {
-          node_id: sequentialId,
+          node_id: node.backendNodeId,
           tag: node.localName || node.nodeName.toLowerCase(),
           kids: flattenedChildren
         };
@@ -205,12 +193,12 @@ export class DomSnapshot implements IDomSnapshot {
       // preserve structural root/body nodes as placeholders to prevent tree collapse
       if (flattenedChildren.length === 0) {
         const tag = node.localName || node.nodeName.toLowerCase();
-        // Only preserve critical structural nodes when empty (html, body, main)
-        if (tag === 'html' || tag === 'body' || tag === '#document' || tag === 'main') {
-          const sequentialId = this._idRemapper?.toSequentialId(node.backendNodeId) ?? node.backendNodeId;
+        // Only preserve critical structural nodes when empty (body, main)
+        // Note: html and #document are excluded since we extract body directly
+        if (tag === 'body' || tag === 'main') {
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
           return {
-            node_id: sequentialId,
+            node_id: node.backendNodeId,
             tag,
             kids: [] // Empty kids array to indicate no interactive elements found
           };
@@ -228,9 +216,6 @@ export class DomSnapshot implements IDomSnapshot {
    * Build SerializedNode with v3 schema (normalized field names)
    */
   private buildSerializedNode(node: VirtualNode, opts: Required<SerializationOptions>): SerializedNode {
-    // Get sequential ID from IdRemapper
-    const sequentialId = this._idRemapper?.toSequentialId(node.backendNodeId) ?? node.backendNodeId;
-
     // Get attributes for metadata extraction
     const attrMap = new Map<string, string>();
     if (node.attributes) {
@@ -241,7 +226,7 @@ export class DomSnapshot implements IDomSnapshot {
 
     // Build base node with v3 field names
     const serializedNode: SerializedNode = {
-      node_id: sequentialId,
+      node_id: node.backendNodeId,
       tag: node.localName || node.nodeName.toLowerCase()
     };
 
@@ -297,6 +282,11 @@ export class DomSnapshot implements IDomSnapshot {
         serializedNode.hint = attrMap.get('placeholder');
       }
 
+      // testid (extracted from data-testid attribute)
+      if (attrMap.has('data-testid')) {
+        serializedNode.testid = attrMap.get('data-testid');
+      }
+
       // bbox (compact array format [x, y, w, h])
       if (opts.metadata.includeBbox && node.boundingBox) {
         serializedNode.bbox = [
@@ -342,22 +332,43 @@ export class DomSnapshot implements IDomSnapshot {
 
   /**
    * Calculate if element is in viewport (>50% visibility threshold)
+   *
+   * NOTE: All coordinates use CSS pixels (web standard).
+   * - boundingBox: Normalized from CDP device pixels to CSS pixels in DomService
+   * - viewport dimensions: CSS pixels from window.innerWidth/innerHeight
+   *
+   * Edge cases:
+   * - Elements exactly 50% visible return false (strict > 50% threshold)
+   * - Large elements (e.g., backgrounds) extending beyond viewport may return false
+   *   if less than 50% is visible, even if they cover the entire viewport
+   * - Zero-size elements always return false
+   * - Elements completely outside viewport return false
    */
   private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }): boolean {
     const viewport = this.pageContext.viewport;
+
+    // Validate inputs
+    if (!boundingBox || boundingBox.width == null || boundingBox.height == null) {
+      console.warn('[DomSnapshot] Invalid boundingBox passed to calculateInViewport');
+      return false;
+    }
 
     // Handle zero-size elements
     if (boundingBox.width === 0 || boundingBox.height === 0) {
       return false;
     }
 
-    // Convert element coordinates to viewport coordinates
-    const elemLeft = boundingBox.x - viewport.scrollX;
-    const elemTop = boundingBox.y - viewport.scrollY;
+    // All values are in CSS pixels (standard web measurements)
+    const scrollX = viewport.scrollX ?? 0;
+    const scrollY = viewport.scrollY ?? 0;
+
+    // Convert element coordinates to viewport coordinates (both in CSS pixels)
+    const elemLeft = boundingBox.x - scrollX;
+    const elemTop = boundingBox.y - scrollY;
     const elemRight = elemLeft + boundingBox.width;
     const elemBottom = elemTop + boundingBox.height;
 
-    // Calculate intersection with viewport bounds
+    // Calculate intersection with viewport bounds (in CSS pixels)
     const intersectLeft = Math.max(elemLeft, 0);
     const intersectTop = Math.max(elemTop, 0);
     const intersectRight = Math.min(elemRight, viewport.width);
@@ -392,5 +403,80 @@ export class DomSnapshot implements IDomSnapshot {
     const role = node.accessibility?.role || '';
     const containerRoles = ['form', 'table', 'dialog', 'navigation', 'main', 'region', 'article', 'section'];
     return containerRoles.includes(role);
+  }
+
+  /**
+   * Find body node from VirtualNode tree
+   * Traverses the tree to find the body element and returns it directly
+   *
+   * Expected structure: #document > html > body
+   * If no body tag is found, returns the input node as fallback
+   */
+  private findBodyNode(node: VirtualNode): VirtualNode {
+
+    // If this is the body node, return it
+    const nodeName = node.localName || node.nodeName.toLowerCase();
+    if (nodeName === 'body') {
+      return node;
+    }
+
+    // If this node has children, search recursively
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        const bodyNode = this.findBodyNode(child);
+        // Only return if we actually found a body node (not the fallback)
+        const childNodeName = bodyNode?.localName || bodyNode?.nodeName.toLowerCase();
+        if (bodyNode && childNodeName === 'body') {
+          return bodyNode;
+        }
+      }
+    }
+
+    // Body not found - return input node as fallback
+    return node;
+  }
+
+  /**
+   * Filter SerializedNode tree to only include nodes visible in viewport
+   *
+   * Strategy:
+   * 1. If node has inViewport === true, keep it (and all its children)
+   * 2. If node has inViewport === false/undefined, recursively filter children:
+   *    - If any children are visible, keep this node as a container
+   *    - If no children are visible, remove this node
+   * 3. Structural nodes (body, main) are always kept to preserve tree structure
+   * 4. After filtering, remove the inViewport field from all nodes
+   */
+  private filterByViewport(node: SerializedNode | null): SerializedNode | null {
+    if (!node) return null;
+
+    // Always preserve critical structural nodes (starting from body level)
+    const structuralTags = ['body', 'main'];
+    const isStructural = structuralTags.includes(node.tag);
+
+    // If node is explicitly in viewport, keep it and all children
+    if (node.inViewport === true) {
+      const { inViewport, ...nodeWithoutInViewport } = node;
+      return nodeWithoutInViewport;
+    }
+
+    // If node has children, recursively filter them
+    if (node.kids && node.kids.length > 0) {
+      const filteredKids = node.kids
+        .map(child => this.filterByViewport(child))
+        .filter((child): child is SerializedNode => child !== null);
+
+      // If node has visible children OR is structural, keep it with filtered children
+      if (filteredKids.length > 0 || isStructural) {
+        const { inViewport, ...nodeWithoutInViewport } = node;
+        return {
+          ...nodeWithoutInViewport,
+          kids: filteredKids.length > 0 ? filteredKids : undefined
+        };
+      }
+    }
+
+    // Node is not in viewport and has no visible children - remove it
+    return null;
   }
 }

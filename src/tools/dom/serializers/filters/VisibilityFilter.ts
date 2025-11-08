@@ -78,7 +78,47 @@ export class VisibilityFilter {
     }
 
     const { width, height } = node.boundingBox;
-    return width === 0 || height === 0;
+    const hasZeroDimensions = width === 0 || height === 0;
+
+    if (!hasZeroDimensions) {
+      return false;
+    }
+
+    // Exception: Preserve zero-dimension containers if they have visible descendants
+    // Common CSS pattern: wrapper elements with zero bounding box that contain
+    // absolutely/fixed-positioned children with proper dimensions
+    // Examples: dialogs, modals, tooltips, popovers, dropdowns
+    if (this.hasVisibleDescendant(node)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if node has any descendant with non-zero dimensions
+   */
+  private hasVisibleDescendant(node: VirtualNode): boolean {
+    if (!node.children || node.children.length === 0) {
+      return false;
+    }
+
+    for (const child of node.children) {
+      // Check if this child has non-zero dimensions
+      if (child.boundingBox) {
+        const { width, height } = child.boundingBox;
+        if (width > 0 && height > 0) {
+          return true;
+        }
+      }
+
+      // Recursively check this child's descendants
+      if (this.hasVisibleDescendant(child)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

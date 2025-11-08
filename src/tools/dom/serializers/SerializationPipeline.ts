@@ -29,6 +29,8 @@ import { PaintOrderFilter } from './filters/PaintOrderFilter';
 // Import simplifiers
 import { TextCollapser } from './simplifiers/TextCollapser';
 import { LayoutSimplifier } from './simplifiers/LayoutSimplifier';
+import { ClickableTextAggregator } from './simplifiers/ClickableTextAggregator';
+import { AriaLabelCleaner } from './simplifiers/AriaLabelCleaner';
 import { AttributeDeduplicator } from './simplifiers/AttributeDeduplicator';
 import { PropagatingBoundsFilter } from './simplifiers/PropagatingBoundsFilter';
 
@@ -152,17 +154,27 @@ export class SerializationPipeline {
       simplified = this.applyTextCollapser(simplified);
     }
 
-    // S2.2: LayoutSimplifier - Collapse single-child wrappers
+    // S2.2: LayoutSimplifier - Collapse single-child wrappers & hoist containers
     if (this.config.enableLayoutSimplification) {
       simplified = this.applyLayoutSimplifier(simplified);
     }
 
-    // S2.3: AttributeDeduplicator - Remove redundant attributes
+    // S2.3: ClickableTextAggregator - Aggregate nested text in clickable elements
+    if (this.config.enableClickableTextAggregation) {
+      simplified = this.applyClickableTextAggregator(simplified);
+    }
+
+    // S2.4: AriaLabelCleaner - Remove aria-labels from text nodes
+    if (this.config.enableAriaLabelCleaning) {
+      simplified = this.applyAriaLabelCleaner(simplified);
+    }
+
+    // S2.5: AttributeDeduplicator - Remove redundant attributes
     if (this.config.enableAttributeDeduplication) {
       simplified = this.applyAttributeDeduplicator(simplified);
     }
 
-    // S2.4: PropagatingBoundsFilter - Remove nested clickables
+    // S2.5: PropagatingBoundsFilter - Remove nested clickables
     if (this.config.enablePropagatingBounds) {
       simplified = this.applyPropagatingBoundsFilter(simplified);
     }
@@ -249,6 +261,16 @@ export class SerializationPipeline {
   private applyLayoutSimplifier(tree: VirtualNode): VirtualNode {
     const simplifier = new LayoutSimplifier();
     return simplifier.simplify(tree);
+  }
+
+  private applyClickableTextAggregator(tree: VirtualNode): VirtualNode {
+    const aggregator = new ClickableTextAggregator();
+    return aggregator.simplify(tree);
+  }
+
+  private applyAriaLabelCleaner(tree: VirtualNode): VirtualNode {
+    const cleaner = new AriaLabelCleaner();
+    return cleaner.simplify(tree);
   }
 
   private applyAttributeDeduplicator(tree: VirtualNode): VirtualNode {

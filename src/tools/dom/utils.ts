@@ -1,4 +1,4 @@
-import type { VirtualNode } from './types';
+import type { VirtualNode, SerializedNode } from './types';
 import { NODE_TYPE_TEXT } from './types';
 
 /**
@@ -83,29 +83,14 @@ export function determineInteractionType(
 
 /**
  * Extract text content from node
+ * Only returns text for actual text nodes, not aggregated from children
  */
 export function getTextContent(node: VirtualNode): string | undefined {
   if (node.nodeType === NODE_TYPE_TEXT && node.nodeValue) {
     return node.nodeValue.trim();
   }
 
-  // Aggregate text from children (up to 100 chars)
-  let text = '';
-  if (node.children) {
-    for (const child of node.children) {
-      const childText = getTextContent(child);
-      if (childText) {
-        text += childText + ' ';
-        if (text.length > 100) {
-          // Truncate at 100 chars
-          text = text.substring(0, 100);
-          break;
-        }
-      }
-    }
-  }
-
-  return text.trim() || undefined;
+  return undefined;
 }
 
 /**
@@ -159,4 +144,147 @@ export function detectFramework(root: VirtualNode): string | null {
   };
 
   return search(root);
+}
+
+/**
+ * Convert SerializedNode tree back to HTML string
+ *
+ * This function reconstructs HTML from the serialized DOM representation,
+ * including attributes derived from the SerializedNode fields.
+ *
+ * @param node - The serialized node to convert
+ * @param indent - Current indentation level (for pretty printing)
+ * @returns HTML string representation
+ */
+export function serializedNodeToHtml(node: SerializedNode | null, indent: number = 0): string {
+  if (!node) return '';
+
+  const indentStr = '  '.repeat(indent);
+  const tag = node.tag;
+
+  // Handle text nodes specially - render inline without wrapper tags
+  if (tag === '#text') {
+    return node.text ? escapeHtml(node.text) : '';
+  }
+
+  // Self-closing tags
+  const selfClosingTags = ['input', 'img', 'br', 'hr', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr'];
+  const isSelfClosing = selfClosingTags.includes(tag);
+
+  // Build attributes from SerializedNode fields
+  const attributes: string[] = [];
+
+  // Add node_id as id attribute for reference
+  attributes.push(`id="${node.node_id}"`);
+
+  // Add role if present
+  if (node.role) {
+    attributes.push(`role="${escapeHtml(node.role)}"`);
+  }
+
+  // Add aria-label if present
+  if (node.aria_label) {
+    attributes.push(`aria-label="${escapeHtml(node.aria_label)}"`);
+  }
+
+  // Add href for links
+  if (node.href) {
+    attributes.push(`href="${escapeHtml(node.href)}"`);
+  }
+
+  // Add input type
+  if (node.input_type) {
+    attributes.push(`type="${escapeHtml(node.input_type)}"`);
+  }
+
+  // Add placeholder/hint
+  if (node.hint) {
+    attributes.push(`placeholder="${escapeHtml(node.hint)}"`);
+  }
+
+  // Add value for form inputs
+  if (node.value !== undefined) {
+    attributes.push(`value="${escapeHtml(node.value)}"`);
+  }
+
+  // Add data-testid from testid field
+  if (node.testid) {
+    attributes.push(`data-testid="${escapeHtml(node.testid)}"`);
+  }
+
+  // Add states as attributes
+  if (node.states) {
+    for (const [key, value] of Object.entries(node.states)) {
+      if (typeof value === 'boolean') {
+        if (value) {
+          attributes.push(key); // Boolean attributes (e.g., disabled, checked)
+        }
+      } else {
+        attributes.push(`${key}="${escapeHtml(String(value))}"`);
+      }
+    }
+  }
+
+  // Add bounding box as data attribute (for debugging/reference)
+  if (node.bbox) {
+    attributes.push(`data-bbox="${node.bbox.join(',')}"`);
+  }
+
+  // Build opening tag
+  const attrStr = attributes.length > 0 ? ' ' + attributes.join(' ') : '';
+  let html = `${indentStr}<${tag}${attrStr}`;
+
+  if (isSelfClosing) {
+    html += ' />\n';
+    return html;
+  }
+
+  html += '>';
+
+  // Add text content if present (inline, no newline)
+  if (node.text) {
+    html += escapeHtml(node.text);
+  }
+
+  // Process children
+  if (node.kids && node.kids.length > 0) {
+    // If we have text content, don't add newlines (keep inline)
+    if (!node.text) {
+      html += '\n';
+    }
+
+    for (const child of node.kids) {
+      const childHtml = serializedNodeToHtml(child, node.text ? 0 : indent + 1);
+      html += childHtml;
+    }
+
+    // Closing tag indentation
+    if (!node.text) {
+      html += indentStr;
+    }
+  } else if (node.text) {
+    // Text content already added, no indentation needed
+  } else {
+    // Empty element, no newline before closing tag
+  }
+
+  // not include closing tag for token efficiency
+  // html += `</${tag}>\n`;
+
+  return html;
+}
+
+/**
+ * Escape HTML special characters
+ */
+function escapeHtml(text: string): string {
+  const htmlEscapeMap: { [key: string]: string } = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+
+  return text.replace(/[&<>"']/g, (char) => htmlEscapeMap[char]);
 }
