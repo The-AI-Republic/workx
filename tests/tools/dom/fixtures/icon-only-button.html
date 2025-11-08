@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon-Only Button Test Fixture - Edge Cases</title>
+</head>
+<body>
+  <!-- Test Case 1: Button with only image (no text) -->
+  <div id="test-case-1">
+    <button role="button" aria-label="Share">
+      <img src="share-icon.svg" alt="Share" />
+    </button>
+  </div>
+
+  <!-- Test Case 2: Button with SVG icon (no text) -->
+  <div id="test-case-2">
+    <button role="button" aria-label="Like">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <path d="M10 3.5l2.5 5 5.5.5-4 4 1 5.5-5-3-5 3 1-5.5-4-4 5.5-.5z" fill="currentColor"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Test Case 3: Link with only icon class (Font Awesome style) -->
+  <div id="test-case-3">
+    <a href="/settings" role="link" aria-label="Settings">
+      <i class="fa fa-cog"></i>
+    </a>
+  </div>
+
+  <!-- Test Case 4: Button with icon and whitespace only -->
+  <div id="test-case-4">
+    <button role="button" aria-label="Delete">
+      <span>
+        <img src="trash-icon.svg" alt="Delete" />
+      </span>
+    </button>
+  </div>
+
+  <!-- Test Case 5: Clickable div with only SVG (no text, no aria-label) -->
+  <div id="test-case-5">
+    <div onclick="toggleMenu()" style="cursor: pointer" role="button">
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Test Case 6: Button with nested empty spans and icon -->
+  <div id="test-case-6">
+    <button role="button" aria-label="More options">
+      <span>
+        <span>
+          <svg width="20" height="20">
+            <circle cx="10" cy="10" r="2" fill="currentColor"/>
+            <circle cx="10" cy="5" r="2" fill="currentColor"/>
+            <circle cx="10" cy="15" r="2" fill="currentColor"/>
+          </svg>
+        </span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Test Case 7: Button with only Unicode icon character -->
+  <div id="test-case-7">
+    <button role="button" aria-label="Close">
+      <span>✕</span>
+    </button>
+  </div>
+
+  <!-- Test Case 8: Link with image and empty alt text -->
+  <div id="test-case-8">
+    <a href="/home" role="link" aria-label="Home">
+      <img src="home-icon.png" alt="" />
+    </a>
+  </div>
+</body>
+</html>
