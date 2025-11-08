@@ -87,21 +87,19 @@ export class DomSnapshot implements IDomSnapshot {
     console.log('$$$ the virtual dom is:', JSON.stringify(this.virtualDom, null, 2));
     // test<<
 
-    // Use SerializationPipeline for compaction
+    // Extract body node from virtualDom before processing
+    // If no body tag found, returns the root node as fallback
+    const bodyVirtualNode = this.findBodyNode(this.virtualDom);
+
+    // Use SerializationPipeline for compaction on body node only
     const pipeline = new SerializationPipeline();
-    const result = pipeline.execute(this.virtualDom);
+    const result = pipeline.execute(bodyVirtualNode);
     // test>>
     console.log('$$$ the result of the serialization pipeline is:', JSON.stringify(result, null, 2));
     // test<<
 
     // Build flattened tree structure from pipeline result with v3 schema
-    const documentNode = this.flatternNode(result.tree, opts);
-    // test>>
-    console.log('$$$ the document node after flatternNodeis:', JSON.stringify(documentNode, null, 2));
-    // test<<
-
-    // Extract body node from document tree
-    const bodyBeforeFilter = this.extractBodyNode(documentNode);
+    const bodyBeforeFilter = this.flatternNode(result.tree, opts);
     // test>>
     console.log('$$$ the body before in view port filter is:', JSON.stringify(bodyBeforeFilter, null, 2));
     // test<<
@@ -469,31 +467,34 @@ export class DomSnapshot implements IDomSnapshot {
   }
 
   /**
-   * Extract body node from document tree
+   * Find body node from VirtualNode tree
    * Traverses the tree to find the body element and returns it directly
    *
    * Expected structure: #document > html > body
+   * If no body tag is found, returns the input node as fallback
    */
-  private extractBodyNode(node: SerializedNode | null): SerializedNode | null {
-    if (!node) return null;
+  private findBodyNode(node: VirtualNode): VirtualNode {
 
     // If this is the body node, return it
-    if (node.tag === 'body') {
+    const nodeName = node.localName || node.nodeName.toLowerCase();
+    if (nodeName === 'body') {
       return node;
     }
 
     // If this node has children, search recursively
-    if (node.kids && node.kids.length > 0) {
-      for (const child of node.kids) {
-        const bodyNode = this.extractBodyNode(child);
-        if (bodyNode) {
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        const bodyNode = this.findBodyNode(child);
+        // Only return if we actually found a body node (not the fallback)
+        const childNodeName = bodyNode?.localName || bodyNode?.nodeName.toLowerCase();
+        if (bodyNode && childNodeName === 'body') {
           return bodyNode;
         }
       }
     }
 
-    // Body not found
-    return null;
+    // Body not found - return input node as fallback
+    return node;
   }
 
   /**

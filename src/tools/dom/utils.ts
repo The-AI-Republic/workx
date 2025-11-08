@@ -268,7 +268,8 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
     // Empty element, no newline before closing tag
   }
 
-  html += `</${tag}>\n`;
+  // not include closing tag for token efficiency
+  // html += `</${tag}>\n`;
 
   return html;
 }

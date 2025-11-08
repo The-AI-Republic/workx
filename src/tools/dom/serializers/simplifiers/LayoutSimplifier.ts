@@ -166,8 +166,20 @@ export class LayoutSimplifier {
       return false;
     }
 
+    // Zero bounding box containers are meaningless (CSS layout wrappers)
+    // These are wrappers used for absolute/fixed positioning with no visual presence
+    if (node.boundingBox) {
+      const { width, height } = node.boundingBox;
+      if (width === 0 || height === 0) {
+        return true;
+      }
+    }
+
     // Interactive elements are never meaningless
-    if (node.tier === 'semantic' || node.tier === 'non-semantic') {
+    if (node.tier === 'semantic') {
+      //test>>
+      console.log("$$$ node: " + node.backendNodeId + " is semantic or non-semantic, not meaningless");
+      //test<<
       return false;
     }
 
@@ -176,11 +188,17 @@ export class LayoutSimplifier {
 
     // Only generic or no role qualifies as meaningless
     if (role && role !== 'generic') {
+      //test>>
+      console.log("$$$ node: " + node.backendNodeId + " has a role `" + role + "`, not meaningless");
+      //test<<
       return false;
     }
 
     // Semantic containers are never meaningless
     if (this.semanticContainers.has(tagName)) {
+      //test>>
+      console.log("$$$ node: " + node.backendNodeId + " is a semantic container, not meaningless");
+      //test<<
       return false;
     }
 
@@ -196,23 +214,16 @@ export class LayoutSimplifier {
         'aria-label',
         'aria-describedby',
         'aria-labelledby',
-        'data-testid',
-        'id' // id might be referenced by other elements
+        'data-testid'
       ];
 
       for (const attr of semanticAttrs) {
         if (attrMap.has(attr)) {
+          //test>>
+          console.log("$$$ node: " + node.backendNodeId + " has a semantic attribute `" + attr + "`, not meaningless");
+          //test<<
           return false;
         }
-      }
-    }
-
-    // Zero bounding box containers are meaningless (CSS layout wrappers)
-    // These are wrappers used for absolute/fixed positioning with no visual presence
-    if (node.boundingBox) {
-      const { width, height } = node.boundingBox;
-      if (width === 0 || height === 0) {
-        return true;
       }
     }
 
