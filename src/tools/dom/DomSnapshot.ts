@@ -83,9 +83,6 @@ export class DomSnapshot implements IDomSnapshot {
         ...options?.metadata
       }
     };
-    // test>>
-    console.log('$$$ the virtual dom is:', JSON.stringify(this.virtualDom, null, 2));
-    // test<<
 
     // Extract body node from virtualDom before processing
     // If no body tag found, returns the root node as fallback
@@ -94,27 +91,15 @@ export class DomSnapshot implements IDomSnapshot {
     // Use SerializationPipeline for compaction on body node only
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(bodyVirtualNode);
-    // test>>
-    console.log('$$$ the result of the serialization pipeline is:', JSON.stringify(result, null, 2));
-    // test<<
 
     // Build flattened tree structure from pipeline result with v3 schema
     const bodyBeforeFilter = this.flatternNode(result.tree, opts);
-    // test>>
-    console.log('$$$ the body before in view port filter is:', JSON.stringify(bodyBeforeFilter, null, 2));
-    // test<<
 
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
-    // test>>
-    console.log('$$$ the final serlized dom body is:', JSON.stringify(body, null, 2));
-    // test<<
 
     // Convert SerializedNode back to HTML
     const htmlString = serializedNodeToHtml(body);
-    // test>>
-    console.log('$$$ the HTML representation is:\n', htmlString);
-    // test<<
 
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
@@ -316,13 +301,6 @@ export class DomSnapshot implements IDomSnapshot {
       if (node.boundingBox) {
         serializedNode.inViewport = this.calculateInViewport(node.boundingBox);
       }
-      // test>>
-      if (node.nodeValue?.includes('Upgrade to Premium') && node.boundingBox) {
-        console.log("$$$ calcudate Upgrade to premium to see the inViewport value");
-        const result = this.calculateInViewport(node.boundingBox, true);
-        console.log("$$$ the result of the inViewport calculation is:", result, null, 2);
-      }
-      // test<<
 
       // Build states object from accessibility info
       if (opts.metadata.includeStates) {
@@ -366,14 +344,8 @@ export class DomSnapshot implements IDomSnapshot {
    * - Zero-size elements always return false
    * - Elements completely outside viewport return false
    */
-  private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }, print: boolean = false): boolean {
-    if (print) {
-      console.log("$$$ calculateInViewport is called, the boundingBox is:", JSON.stringify(boundingBox, null, 2));
-    }
+  private calculateInViewport(boundingBox: { x: number; y: number; width: number; height: number }): boolean {
     const viewport = this.pageContext.viewport;
-    if (print) {
-      console.log("$$$ the viewport is:", JSON.stringify(viewport, null, 2));
-    }
 
     // Validate inputs
     if (!boundingBox || boundingBox.width == null || boundingBox.height == null) {
@@ -390,26 +362,11 @@ export class DomSnapshot implements IDomSnapshot {
     const scrollX = viewport.scrollX ?? 0;
     const scrollY = viewport.scrollY ?? 0;
 
-    if (print) {
-      console.log("$$$ All coordinates in CSS pixels (web standard)");
-      console.log("$$$ Viewport:", { width: viewport.width, height: viewport.height });
-      console.log("$$$ Scroll:", { scrollX, scrollY });
-      console.log("$$$ Bounding box (CSS pixels):", boundingBox);
-    }
-
     // Convert element coordinates to viewport coordinates (both in CSS pixels)
     const elemLeft = boundingBox.x - scrollX;
     const elemTop = boundingBox.y - scrollY;
     const elemRight = elemLeft + boundingBox.width;
     const elemBottom = elemTop + boundingBox.height;
-
-    if (print) {
-      console.log("$$$ Element relative to viewport:");
-      console.log("  - elemLeft:", elemLeft);
-      console.log("  - elemTop:", elemTop);
-      console.log("  - elemRight:", elemRight);
-      console.log("  - elemBottom:", elemBottom);
-    }
 
     // Calculate intersection with viewport bounds (in CSS pixels)
     const intersectLeft = Math.max(elemLeft, 0);
@@ -417,20 +374,9 @@ export class DomSnapshot implements IDomSnapshot {
     const intersectRight = Math.min(elemRight, viewport.width);
     const intersectBottom = Math.min(elemBottom, viewport.height);
 
-    if (print) {
-      console.log("$$$ Intersection with viewport:");
-      console.log("  - intersectLeft:", intersectLeft);
-      console.log("  - intersectTop:", intersectTop);
-      console.log("  - intersectRight:", intersectRight);
-      console.log("  - intersectBottom:", intersectBottom);
-    }
-
     // Check if there's any intersection
     const hasIntersection = intersectRight > intersectLeft && intersectBottom > intersectTop;
     if (!hasIntersection) {
-      if (print) {
-        console.log("$$$ No intersection - element is outside viewport");
-      }
       return false;
     }
 
@@ -438,13 +384,6 @@ export class DomSnapshot implements IDomSnapshot {
     const intersectArea = (intersectRight - intersectLeft) * (intersectBottom - intersectTop);
     const elementArea = boundingBox.width * boundingBox.height;
     const visibilityPercent = (intersectArea / elementArea) * 100;
-
-    if (print) {
-      console.log("$$$ Visibility calculation:");
-      console.log("  - intersectArea:", intersectArea);
-      console.log("  - elementArea:", elementArea);
-      console.log("  - visibilityPercent:", visibilityPercent.toFixed(2) + "%");
-    }
 
     // Return true if >50% visible
     return visibilityPercent > 50;

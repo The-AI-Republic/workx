@@ -79,8 +79,6 @@ export class DomService {
 
       // Listen for debugger detach (connection loss)
       chrome.debugger.onDetach.addListener(this.handleDebuggerDetach.bind(this));
-
-      console.log(`[DomService] Attached to tab ${this.tabId}`);
     } catch (error: any) {
       if (error.message?.includes('already attached')) {
         throw new Error('ALREADY_ATTACHED: DevTools is open on this tab. Please close DevTools.');
@@ -97,8 +95,6 @@ export class DomService {
       this.isAttached = false;
       this.currentSnapshot = null;
       DomService.instances.delete(this.tabId);
-
-      console.log(`[DomService] Detached from tab ${this.tabId}`);
     } catch (error: any) {
       console.warn(`[DomService] Detach error: ${error.message}`);
     }
@@ -106,7 +102,6 @@ export class DomService {
 
   invalidateSnapshot(): void {
     this.currentSnapshot = null;
-    console.log('[DomService] Snapshot invalidated');
   }
 
   getCurrentSnapshot(): DomSnapshot | null {
@@ -173,7 +168,6 @@ export class DomService {
     }
 
     const start = Date.now();
-    console.log(`[DomService] Building snapshot for tab ${this.tabId}...`);
 
     // Add timeout protection for slow-loading iframes
     const snapshotPromise = (async () => {
@@ -304,9 +298,6 @@ export class DomService {
     };
 
     const virtualDom = buildVirtualTree(domTree.root);
-    // test>>
-    console.log('$$$ the virtual dom is:', JSON.stringify(virtualDom, null, 2));
-    // test<<
 
     if (!virtualDom) {
       throw new Error('SNAPSHOT_FAILED: Could not build tree');
@@ -333,9 +324,6 @@ export class DomService {
 
     // Detect framework
     const framework = detectFramework(virtualDom);
-    if (framework) {
-      console.log(`[DomService] Detected framework: ${framework}`);
-    }
 
     // Get page context with viewport scroll position
     const tab = await chrome.tabs.get(this.tabId);
@@ -359,21 +347,6 @@ export class DomService {
       if (viewportResult?.result?.value) {
         viewportData = viewportResult.result.value;
       }
-
-      // Diagnostic logging - all coordinates normalized to CSS pixels
-      console.log('[DomService] Viewport captured (CSS pixels - web standard):', {
-        viewport: { width: viewportData.width, height: viewportData.height },
-        scroll: { scrollX: viewportData.scrollX, scrollY: viewportData.scrollY },
-        pageDimensions: { width: viewportData.pageWidth, height: viewportData.pageHeight },
-        overflow: {
-          top: viewportData.scrollY,
-          bottom: Math.max(0, viewportData.pageHeight - viewportData.height - viewportData.scrollY),
-          left: viewportData.scrollX,
-          right: Math.max(0, viewportData.pageWidth - viewportData.width - viewportData.scrollX)
-        },
-        devicePixelRatio: viewportData.devicePixelRatio,
-        note: 'Bounding boxes will be converted from device pixels to CSS pixels'
-      });
     } catch (error) {
       // Fallback to tab dimensions if Runtime.evaluate fails
       console.warn('[DomService] Could not get viewport and page dimensions, using fallback (assumes no overflow)');
@@ -398,10 +371,6 @@ export class DomService {
       this.metrics.averageSnapshotDuration = this.metrics.totalSnapshotDuration / this.metrics.snapshotCount;
     }
 
-    console.log(
-      `[DomService] Snapshot built in ${stats.snapshotDuration}ms (${stats.totalNodes} nodes, ${stats.interactiveNodes} interactive)`
-    );
-
     return this.currentSnapshot;
   }
 
@@ -425,7 +394,6 @@ export class DomService {
     if (source.tabId !== this.tabId) return;
 
     if (method === 'DOM.documentUpdated') {
-      console.log('[DomService] DOM updated, invalidating snapshot');
       this.invalidateSnapshot();
     }
   }
@@ -458,7 +426,6 @@ export class DomService {
     const layoutMap = new Map<number, any>();
 
     if (!domSnapshot?.documents?.[0]) {
-      console.log('[DomService] No layout data available - running in basic mode');
       return layoutMap;
     }
 
@@ -467,7 +434,6 @@ export class DomService {
     const strings = domSnapshot.strings || [];
 
     if (!layout || !layout.nodeIndex) {
-      console.log('[DomService] No layout data available - running in basic mode');
       return layoutMap;
     }
 
@@ -501,16 +467,6 @@ export class DomService {
           width: devicePixels.width / devicePixelRatio,
           height: devicePixels.height / devicePixelRatio
         };
-
-        // Diagnostic: Log first few elements to verify conversion
-        if (i < 3) {
-          console.log(`[DomService] Coordinate conversion [${i}]:`, {
-            devicePixels,
-            dpr: devicePixelRatio,
-            cssPixels: layoutData.boundingBox,
-            backendNodeId
-          });
-        }
       }
 
       // Paint order
@@ -563,8 +519,6 @@ export class DomService {
       layoutMap.set(backendNodeId, layoutData);
     }
 
-    console.log(`[DomService] Layout data enriched for ${layoutMap.size} nodes (paint order: ${layout.paintOrders ? 'yes' : 'no'}, bounds: ${layout.bounds ? 'yes' : 'no'})`);
-
     return layoutMap;
   }
 
@@ -597,9 +551,6 @@ export class DomService {
 
   private async ensureVisualEffectsInitialized(): Promise<void> {
     this.visualEffectsInitialized = true;
-    // test>>
-    console.log('$$$ the visual effects are commented out for testing purposes');
-    // test<<
     // Already checked and initialized in this DomService instance
     // if (this.visualEffectsInitialized) return;
 
@@ -760,8 +711,6 @@ export class DomService {
           centerY <= viewport.scrollY + viewport.height;
 
         if (!isInViewport) {
-          console.log(`[DomService] Element at (${centerX}, ${centerY}) is off-screen (viewport: ${viewport.scrollX}-${viewport.scrollX + viewport.width}, ${viewport.scrollY}-${viewport.scrollY + viewport.height}). Scrolling into view...`);
-
           // Scroll element into view
           await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
 
@@ -775,8 +724,6 @@ export class DomService {
           // Recalculate center coordinates with new position
           centerX = (content[0] + content[2]) / 2;
           centerY = (content[1] + content[5]) / 2;
-
-          console.log(`[DomService] After scroll, element is now at (${centerX}, ${centerY})`);
         }
       } else {
         // Visual effects disabled - still scroll into view if needed, but don't wait
@@ -1217,7 +1164,6 @@ export class DomService {
       errorsByType: {},
       lastReset: new Date()
     };
-    console.log('[DomService] Performance metrics reset');
   }
 
   // Get metrics summary for logging
