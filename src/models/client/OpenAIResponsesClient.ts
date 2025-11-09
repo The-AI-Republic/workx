@@ -612,20 +612,8 @@ export class OpenAIResponsesClient extends ModelClient {
 
       case 'response.completed':
       case 'response.done':
-        // Extract output items from response (for providers that include output array)
-        if (sdkEvent.response?.output && Array.isArray(sdkEvent.response.output)) {
-          for (const outputItem of sdkEvent.response.output) {
-            // Emit OutputItemDone events for each item in the output array
-            if (outputItem && outputItem.type) {
-              events.push({
-                type: 'OutputItemDone',
-                item: outputItem
-              });
-            }
-          }
-        }
-
         // Emit the Completed event
+        // Note: Items are already emitted via 'response.output_item.done' events during the stream
         events.push({
           type: 'Completed',
           responseId: sdkEvent.response?.id || sdkEvent.id || '',
