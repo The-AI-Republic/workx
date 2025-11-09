@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data-TestId Elements Test Fixture</title>
+</head>
+<body>
+  <!-- Test Case 1: Button with data-testid -->
+  <div id="test-case-1">
+    <button data-testid="submit-button" role="button">Submit</button>
+  </div>
+
+  <!-- Test Case 2: Link with data-testid -->
+  <div id="test-case-2">
+    <a href="/profile" data-testid="profile-link">View Profile</a>
+  </div>
+
+  <!-- Test Case 3: Input with data-testid -->
+  <div id="test-case-3">
+    <input type="text" data-testid="email-input" placeholder="Email" />
+  </div>
+
+  <!-- Test Case 4: Form with data-testid on multiple elements -->
+  <div id="test-case-4">
+    <form data-testid="login-form">
+      <input type="text" data-testid="username-field" placeholder="Username" />
+      <input type="password" data-testid="password-field" placeholder="Password" />
+      <button type="submit" data-testid="login-submit">Login</button>
+    </form>
+  </div>
+
+  <!-- Test Case 5: Nested elements with data-testid -->
+  <div id="test-case-5">
+    <div data-testid="card-container">
+      <h2 data-testid="card-title">Card Title</h2>
+      <p data-testid="card-description">Card description text</p>
+      <button data-testid="card-action">Action</button>
+    </div>
+  </div>
+
+  <!-- Test Case 6: Element with special characters in data-testid -->
+  <div id="test-case-6">
+    <button data-testid="action-button-primary-2024">Primary Action</button>
+    <button data-testid="action_button_secondary_v2">Secondary Action</button>
+  </div>
+
+  <!-- Test Case 7: Elements with data-testid and aria-labels -->
+  <div id="test-case-7">
+    <button data-testid="menu-button" aria-label="Open menu" role="button">☰</button>
+    <nav data-testid="main-navigation" aria-label="Main navigation">
+      <a href="/home" data-testid="nav-home">Home</a>
+      <a href="/about" data-testid="nav-about">About</a>
+    </nav>
+  </div>
+
+  <!-- Test Case 8: Table with data-testid on rows and cells -->
+  <div id="test-case-8">
+    <table data-testid="users-table">
+      <thead>
+        <tr data-testid="table-header">
+          <th data-testid="header-name">Name</th>
+          <th data-testid="header-email">Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-testid="user-row-1">
+          <td data-testid="user-1-name">John Doe</td>
+          <td data-testid="user-1-email">john@example.com</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Test Case 9: Modal with data-testid -->
+  <div id="test-case-9">
+    <div data-testid="modal-overlay" role="dialog">
+      <div data-testid="modal-content">
+        <h2 data-testid="modal-title">Confirmation</h2>
+        <p data-testid="modal-message">Are you sure?</p>
+        <button data-testid="modal-confirm">Confirm</button>
+        <button data-testid="modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Case 10: List with data-testid on items -->
+  <div id="test-case-10">
+    <ul data-testid="todo-list">
+      <li data-testid="todo-item-1">
+        <input type="checkbox" data-testid="todo-checkbox-1" />
+        <span data-testid="todo-text-1">Buy groceries</span>
+      </li>
+      <li data-testid="todo-item-2">
+        <input type="checkbox" data-testid="todo-checkbox-2" />
+        <span data-testid="todo-text-2">Walk the dog</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Test Case 11: Elements without data-testid (should not have testid field) -->
+  <div id="test-case-11">
+    <button>No Test ID</button>
+    <input type="text" placeholder="No Test ID" />
+  </div>
+
+  <!-- Test Case 12: Empty data-testid attribute -->
+  <div id="test-case-12">
+    <button data-testid="">Empty Test ID</button>
+  </div>
+</body>
+</html>

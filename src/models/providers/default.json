@@ -1,0 +1,87 @@
+{
+  "openai": {
+    "id": "openai",
+    "name": "OpenAI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.openai.com/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "GPT-5",
+        "modelKey": "gpt-5",
+        "creator": "OpenAI",
+        "contextWindow": 200000,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["minimal", "low", "medium", "high"],
+        "supportsReasoningSummaries": true,
+        "supportsVerbosity": true,
+        "verbosityLevels": ["low", "medium", "high"],
+        "supportsImage": true,
+        "releaseDate": "2024-12-05",
+        "deprecated": false
+      }
+    ]
+  },
+  "xai": {
+    "id": "xai",
+    "name": "xAI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.x.ai/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Grok 4 Fast Reasoning",
+        "modelKey": "grok-4-fast-reasoning",
+        "creator": "xAI",
+        "contextWindow": 131072,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["minimal", "low", "medium", "high", "ultra"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2024-11-15",
+        "deprecated": false
+      }
+    ]
+  },
+  "groq": {
+    "id": "groq",
+    "name": "Groq",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+    ]
+  }
+}

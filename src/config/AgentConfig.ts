@@ -38,12 +38,12 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Get the singleton instance of AgentConfig
-   * @returns The singleton AgentConfig instance
+   * @returns Promise resolving to the singleton AgentConfig instance
    */
-  public static getInstance(): AgentConfig {
+  public static async getInstance(): Promise<AgentConfig> {
     if (!AgentConfig.instance) {
       const instance = new AgentConfig();
-      instance.initialize();
+      await instance.initialize();
       AgentConfig.instance = instance;
     }
     return AgentConfig.instance;

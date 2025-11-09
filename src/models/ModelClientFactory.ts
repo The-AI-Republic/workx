@@ -10,7 +10,7 @@ import { AgentConfig } from '../config/AgentConfig';
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'google-ai-studio';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio';;
 
 /**
  * Configuration for model client creation
@@ -37,20 +37,6 @@ const STORAGE_KEYS = {
   DEFAULT_PROVIDER: 'default_provider',
   OPENAI_ORGANIZATION: 'openai_organization',
 } as const;
-
-/**
- * Model name to provider mapping
- * Note: Only OpenAI models supported
- */
-const MODEL_PROVIDER_MAP: Record<string, ModelProvider> = {
-  // OpenAI models
-  'gpt-5': 'openai',
-  'gpt-4': 'openai',
-  'gpt-4-turbo': 'openai',
-  'gpt-4o': 'openai',
-  // Google AI Studio models
-  'gemini-2.5-pro': 'google-ai-studio',
-};
 
 const DEFAULT_MODEL = 'gpt-5';
 
@@ -107,8 +93,7 @@ export class ModelClientFactory {
    * @returns Promise resolving to a model client
    */
   async createClientForCurrentModel(): Promise<ModelClient> {
-    const agentConfig = AgentConfig.getInstance();
-    await agentConfig.initialize();
+    const agentConfig = await AgentConfig.getInstance();
 
     const config = agentConfig.getConfig();
     const modelData = agentConfig.getModelById(config.selectedModelId);
@@ -123,28 +108,14 @@ export class ModelClientFactory {
     return this.createClient(provider);
   }
 
-  /**
-   * Create a model client for the specified model
-   * @param model The model name to create a client for (legacy support)
-   * @returns Promise resolving to a model client
-   */
-  async createClientForModel(model: string): Promise<ModelClient> {
-    if (model === 'default') {
-      // Use current selected model
-      return this.createClientForCurrentModel();
-    }
-
-    const provider = this.getProviderForModel(model);
-    return this.createClient(provider);
-  }
 
   /**
    * Map provider ID from config to ModelProvider type
-   * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId Provider ID from config (e.g., 'openai', 'xai', 'anthropic', 'groq')
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'google-ai-studio') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio') {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -156,8 +127,13 @@ export class ModelClientFactory {
    * @returns Promise resolving to a model client
    */
   async createClient(provider: ModelProvider): Promise<ModelClient> {
+    // Include model ID in cache key to prevent reusing clients with wrong config
+    // (e.g., switching from Qwen with reasoning to Kimi K2 without reasoning)
+    const selectedModelId = this.config?.getConfig().selectedModelId || 'unknown';
+    const cacheKey = `${provider}-${selectedModelId}`;
+
     // Check cache first
-    const cached = this.clientCache.get(provider);
+    const cached = this.clientCache.get(cacheKey);
     if (cached) {
       return cached;
     }
@@ -166,7 +142,7 @@ export class ModelClientFactory {
     const client = this.instantiateClient(config);
 
     // Cache the client instance
-    this.clientCache.set(provider, client);
+    this.clientCache.set(cacheKey, client);
 
     return client;
   }
@@ -193,43 +169,6 @@ export class ModelClientFactory {
     return client;
   }
 
-  /**
-   * Get the provider for a given model name
-   * Uses AgentConfig.modelRegistry as primary source
-   * @param model The model name (modelKey)
-   * @returns The provider for the model
-   * @deprecated Use createClientForCurrentModel() instead for proper registry lookup
-   */
-  getProviderForModel(model: string): ModelProvider {
-    if (model === 'default') {
-      return 'openai';
-    }
-
-    // Try to infer from model name patterns as heuristic fallback
-    // This method is deprecated and should not be used for new code
-    try {
-      if (MODEL_PROVIDER_MAP[model]) {
-        return MODEL_PROVIDER_MAP[model];
-      }
-
-      if (model.startsWith('gpt-')) {
-        return 'openai';
-      }
-      if (model.startsWith('grok-')) {
-        return 'xai';
-      }
-      if (model.startsWith('claude-')) {
-        return 'anthropic';
-      }
-      if (model.startsWith('gemini-')) {
-        return 'google-ai-studio';
-      }
-
-      throw new ModelClientError(`Unknown model: ${model}. Supported providers: OpenAI, xAI, Anthropic, Google AI Studio. Use createClientForCurrentModel() instead.`);
-    } catch (error) {
-      throw new ModelClientError(`Failed to determine provider for model: ${model}. ${error}`);
-    }
-  }
 
   /**
    * Get all supported models for a provider
@@ -308,7 +247,14 @@ export class ModelClientFactory {
    */
   clearCache(provider?: ModelProvider): void {
     if (provider) {
-      this.clientCache.delete(provider);
+      // Clear all cache entries for this provider (cache keys are now provider-modelId)
+      const keysToDelete: string[] = [];
+      for (const key of this.clientCache.keys()) {
+        if (key.startsWith(`${provider}-`)) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(key => this.clientCache.delete(key));
     } else {
       this.clientCache.clear();
     }
@@ -336,23 +282,37 @@ export class ModelClientFactory {
    * @returns Promise resolving to configuration status
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const defaultProvider = await this.getDefaultProvider();
-    const providers: ModelProvider[] = ['openai', 'xai', 'anthropic', 'google-ai-studio'];
-    const statusEntries = await Promise.all(
-      providers.map(async provider => ({
-        provider,
-        hasApiKey: await this.hasValidApiKey(provider),
-      }))
-    );
+    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, defaultProvider] = await Promise.all([
+      this.hasValidApiKey('openai'),
+      this.hasValidApiKey('xai'),
+      this.hasValidApiKey('anthropic'),
+      this.hasValidApiKey('groq'),
+      this.hasValidApiKey('google-ai-studio'),  
+      this.getDefaultProvider(),
+    ]);
 
-    const statusRecord = {} as Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>;
-    for (const { provider, hasApiKey } of statusEntries) {
-      statusRecord[provider] = {
-        hasApiKey,
-        isDefault: defaultProvider === provider,
-      };
-    }
-    return statusRecord;
+    return {
+      openai: {
+        hasApiKey: openaiHasKey,
+        isDefault: defaultProvider === 'openai',
+      },
+      xai: {
+        hasApiKey: xaiHasKey,
+        isDefault: defaultProvider === 'xai',
+      },
+      anthropic: {
+        hasApiKey: anthropicHasKey,
+        isDefault: defaultProvider === 'anthropic',
+      },
+      groq: {
+        hasApiKey: groqHasKey,
+        isDefault: defaultProvider === 'groq',
+      },
+      google-ai-studio: {
+        hasApiKey: googleAiStudioHasKey,
+        isDefault: defaultProvider === 'google-ai-studio',
+      },
+    };
   }
 
   /**
@@ -367,8 +327,7 @@ export class ModelClientFactory {
     let providerConfig: any = null;
 
     try {
-      const agentConfig = AgentConfig.getInstance();
-      await agentConfig.initialize();
+      const agentConfig = await AgentConfig.getInstance();
 
       // Get API key for this specific provider
       apiKey = await agentConfig.getProviderApiKey(provider);
@@ -396,12 +355,11 @@ export class ModelClientFactory {
       },
     };
 
-    // Load provider-specific base URL
-    if (this.config) {
-      const modelConfig = this.config.getModelConfig();
-      const providerConfig = this.config.getProvider(modelConfig.provider);
-      if (providerConfig?.baseUrl) {
-        config.options!.baseUrl = providerConfig.baseUrl;
+    // Load provider-specific base URL (if not already set)
+    if (this.config && !config.options?.baseUrl) {
+      const providerConfigFromAgent = this.config.getProvider(provider);
+      if (providerConfigFromAgent?.baseUrl) {
+        config.options!.baseUrl = providerConfigFromAgent.baseUrl;
       }
     }
 
@@ -439,18 +397,12 @@ export class ModelClientFactory {
    * @returns Model client instance
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
-    // Get provider name from config if available
-    let providerName = config.provider;
-    let baseUrl = config.options?.baseUrl;
+    // Get provider name from config - this is already correctly set by createClient()
+    const providerName = config.provider;
+    const baseUrl = config.options?.baseUrl;
 
-    if (this.config) {
-      const configData = this.config.getConfig();
-      const selectedModelData = this.config.getModelById(configData.selectedModelId);
-      if (selectedModelData) {
-        providerName = this.mapProviderIdToType(selectedModelData.provider.id);
-        baseUrl = selectedModelData.provider.baseUrl || baseUrl;
-      }
-    }
+    // Note: providerName comes from mapProviderIdToType() which ensures it matches
+    // the provider type ('openai' | 'xai' | 'anthropic' | 'groq')
 
     switch (providerName) {
       case 'google-ai-studio': {
@@ -480,6 +432,9 @@ export class ModelClientFactory {
         });
       }
       case 'openai':
+      case 'xai':
+      case 'anthropic':
+      case 'groq':
       default:
         // Use the experimental OpenAI Responses API client by default
         // Construct minimal provider and model family configs
@@ -494,16 +449,40 @@ export class ModelClientFactory {
         };
 
         // Use selected model from config instead of hardcoded 'gpt-5'
-        const selectedModel = this.getModelKeyForProvider(providerName, this.getDefaultModelForProvider(providerName));
+        const selectedModel = this.getSelectedModel();
+
+        // Get model metadata to determine reasoning support
+        let supportsReasoning = false;
+        let supportsReasoningSummaries = false;
+        if (this.config) {
+          const configData = this.config.getConfig();
+          const modelData = this.config.getModelById(configData.selectedModelId);
+          if (modelData?.model) {
+            supportsReasoning = modelData.model.supportsReasoning ?? false;
+            supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+          }
+        }
+
         const modelFamily = {
           family: selectedModel,
           base_instructions: 'You are a helpful coding assistant.',
-          supports_reasoning_summaries: true,
+          supports_reasoning: supportsReasoning,
+          supports_reasoning_summaries: supportsReasoningSummaries,
           needs_special_apply_patch_instructions: false,
         };
 
         // Generate a conversation ID for prompt_cache_key usage
         const conversationId = this.generateConversationId();
+
+        // Get reasoning effort from model config
+        // Default to 'medium' for models that support reasoning
+        let reasoningEffort: string | undefined;
+        if (supportsReasoning) {
+          reasoningEffort = 'medium'; // Default reasoning effort
+          console.log(`[ModelClientFactory] Enabling reasoning with effort: ${reasoningEffort} for model: ${selectedModel}`);
+        } else {
+          console.log(`[ModelClientFactory] Model ${selectedModel} does not support reasoning - omitting reasoning parameter`);
+        }
 
         return new OpenAIResponsesClient({
           apiKey: config.apiKey,
@@ -512,6 +491,8 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
     }
   }

@@ -3,13 +3,14 @@ import type {
   VirtualNode,
   ActionResult,
   SerializedDom,
+  RawSerializedDom,
   PageContext,
   SnapshotStats,
   ServiceConfig,
   PerformanceMetrics
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
-import { computeHeuristics, classifyNode, determineInteractionType, detectFramework } from './utils';
+import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml } from './utils';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -72,14 +73,13 @@ export class DomService {
       // Enable required domains
       await this.sendCommand('DOM.enable', {});
       await this.sendCommand('Accessibility.enable', {});
+      await this.sendCommand('Page.enable', {}); // Enable Page domain for lifecycle events
 
       // Listen for invalidation events
       chrome.debugger.onEvent.addListener(this.handleCdpEvent.bind(this));
 
       // Listen for debugger detach (connection loss)
       chrome.debugger.onDetach.addListener(this.handleDebuggerDetach.bind(this));
-
-      console.log(`[DomService] Attached to tab ${this.tabId}`);
     } catch (error: any) {
       if (error.message?.includes('already attached')) {
         throw new Error('ALREADY_ATTACHED: DevTools is open on this tab. Please close DevTools.');
@@ -96,8 +96,6 @@ export class DomService {
       this.isAttached = false;
       this.currentSnapshot = null;
       DomService.instances.delete(this.tabId);
-
-      console.log(`[DomService] Detached from tab ${this.tabId}`);
     } catch (error: any) {
       console.warn(`[DomService] Detach error: ${error.message}`);
     }
@@ -105,7 +103,6 @@ export class DomService {
 
   invalidateSnapshot(): void {
     this.currentSnapshot = null;
-    console.log('[DomService] Snapshot invalidated');
   }
 
   getCurrentSnapshot(): DomSnapshot | null {
@@ -128,7 +125,138 @@ export class DomService {
     // CDP MIGRATION: Trigger undulate visual effect (via Runtime.evaluate, not message passing)
     await this.triggerVisualEffect('undulate');
 
-    return this.currentSnapshot!.serialize();
+    // Get raw serialized DOM (numbers and SerializedNode)
+    const rawDom = this.currentSnapshot!.serialize();
+
+    // Transform to stringified format for LLM consumption:
+    // 1. Viewport dimensions: Add "px" suffix to all numeric values
+    // 2. Body: Convert SerializedNode tree to HTML string representation
+    const serializedDom = {
+      page: {
+        context: {
+          url: rawDom.page.context.url,
+          title: rawDom.page.context.title,
+          viewport: {
+            width: `${rawDom.page.context.viewport.width}px`,
+            height: `${rawDom.page.context.viewport.height}px`,
+            overflowTop: `${rawDom.page.context.viewport.overflowTop}px`,
+            overflowBottom: `${rawDom.page.context.viewport.overflowBottom}px`,
+            overflowLeft: `${rawDom.page.context.viewport.overflowLeft}px`,
+            overflowRight: `${rawDom.page.context.viewport.overflowRight}px`
+          }
+        },
+        body: serializedNodeToHtml(rawDom.page.body),
+      }
+    };
+
+    return serializedDom;
+  }
+
+  /**
+   * Wait for page to finish loading before accessing DOM
+   * This prevents issues with DOM.getDocument being called while page is still loading
+   *
+   * Enhanced for SPA detection: After page load, waits for meaningful content to appear
+   * to avoid capturing empty React/Vue/Angular loading screens
+   */
+  private async waitForPageLoad(): Promise<void> {
+    try {
+      // Step 1: Wait for document.readyState === 'complete'
+      const readyStateResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: 'document.readyState',
+        returnByValue: true
+      });
+
+      const readyState = readyStateResult.result.value;
+
+      if (readyState !== 'complete') {
+        console.log(`[DomService] Page loading (readyState: ${readyState}), waiting for load event...`);
+
+        // Wait for load event
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('PAGE_LOAD_TIMEOUT: Page did not finish loading within 30 seconds'));
+          }, 30000); // 30 second timeout
+
+          const eventListener = (source: chrome.debugger.Debuggee, method: string) => {
+            if (source.tabId === this.tabId && method === 'Page.loadEventFired') {
+              clearTimeout(timeout);
+              chrome.debugger.onEvent.removeListener(eventListener);
+              console.log('[DomService] Page load event fired');
+              resolve();
+            }
+          };
+
+          chrome.debugger.onEvent.addListener(eventListener);
+        });
+      }
+
+      // Step 2: Check for SPA loading indicators and wait for meaningful content
+      console.log('[DomService] Checking for SPA content rendering...');
+
+      const maxWaitForContent = 10000; // 10 seconds max wait for SPA content
+      const checkInterval = 500; // Check every 500ms
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < maxWaitForContent) {
+        // Check if page has meaningful interactive content
+        const contentCheck = await this.sendCommand<any>('Runtime.evaluate', {
+          expression: `
+            (function() {
+              // Count interactive elements (buttons, links, inputs)
+              const buttons = document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]');
+              const links = document.querySelectorAll('a[href]');
+              const inputs = document.querySelectorAll('input:not([type="hidden"]), textarea, select');
+
+              // Count text content (excluding script/style tags)
+              const body = document.body;
+              const textContent = body ? body.innerText.trim() : '';
+
+              // Check for common loading indicators
+              const loadingIndicators = document.querySelectorAll('[class*="loading"], [class*="spinner"], [class*="progress"], [aria-busy="true"], [role="progressbar"]');
+
+              // Detect if page is still showing only loading screen
+              const hasLoadingIndicator = loadingIndicators.length > 0;
+              const hasMinimalContent = textContent.length < 100 && buttons.length < 3 && links.length < 3 && inputs.length < 2;
+
+              return {
+                interactiveCount: buttons.length + links.length + inputs.length,
+                textLength: textContent.length,
+                hasLoadingIndicator: hasLoadingIndicator,
+                isStillLoading: hasLoadingIndicator && hasMinimalContent,
+                timestamp: Date.now()
+              };
+            })()
+          `,
+          returnByValue: true
+        });
+
+        const contentStats = contentCheck.result.value;
+        console.log(`[DomService] Content check: ${contentStats.interactiveCount} interactive elements, ${contentStats.textLength} chars, loading: ${contentStats.isStillLoading}`);
+
+        // If page has meaningful content and no loading indicators, proceed
+        if (!contentStats.isStillLoading && (contentStats.interactiveCount > 5 || contentStats.textLength > 200)) {
+          console.log('[DomService] Meaningful content detected, proceeding with snapshot');
+          return;
+        }
+
+        // If page is clearly stuck on loading screen, wait a bit more
+        if (contentStats.isStillLoading) {
+          await new Promise(resolve => setTimeout(resolve, checkInterval));
+        } else {
+          // No loading indicator but minimal content - might be legitimate minimal page
+          console.log('[DomService] No loading indicator, proceeding with snapshot');
+          return;
+        }
+      }
+
+      // Timeout reached - proceed anyway
+      console.warn('[DomService] SPA content wait timeout - proceeding with snapshot (page may still be rendering)');
+
+    } catch (error: any) {
+      console.warn(`[DomService] Could not wait for page load: ${error.message}. Continuing anyway...`);
+      // Continue even if we can't wait - some pages may have issues but DOM might still be accessible
+    }
   }
 
   /**
@@ -148,7 +276,9 @@ export class DomService {
     }
 
     const start = Date.now();
-    console.log(`[DomService] Building snapshot for tab ${this.tabId}...`);
+
+    // Wait for page to finish loading before accessing DOM
+    await this.waitForPageLoad();
 
     // Add timeout protection for slow-loading iframes
     const snapshotPromise = (async () => {
@@ -194,8 +324,23 @@ export class DomService {
       }
     }
 
+    // Fetch device pixel ratio early to normalize CDP coordinates to CSS pixels
+    let devicePixelRatio = 1;
+    try {
+      const dprResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: 'window.devicePixelRatio',
+        returnByValue: true
+      });
+      if (dprResult?.result?.value) {
+        devicePixelRatio = dprResult.result.value;
+      }
+    } catch (error) {
+      console.warn('[DomService] Could not get devicePixelRatio, using default 1');
+    }
+
     // Build layout map: backendNodeId → LayoutData from DOMSnapshot
-    const layoutMap = this.buildLayoutMap(domSnapshot);
+    // Convert device pixels to CSS pixels for web standard compatibility
+    const layoutMap = this.buildLayoutMap(domSnapshot, devicePixelRatio);
 
     // Build VirtualNode tree
     let nodeCounter = 0;
@@ -290,18 +435,40 @@ export class DomService {
 
     // Detect framework
     const framework = detectFramework(virtualDom);
-    if (framework) {
-      console.log(`[DomService] Detected framework: ${framework}`);
+
+    // Get page context with viewport scroll position
+    const tab = await chrome.tabs.get(this.tabId);
+
+    // Fetch viewport dimensions, scroll position, and page dimensions from the page
+    // Fallback values assume viewport = page (no overflow) if Runtime.evaluate fails
+    let viewportData = {
+      width: tab.width || 0,
+      height: tab.height || 0,
+      scrollX: 0,
+      scrollY: 0,
+      pageWidth: tab.width || 0,  // Fallback: assume page width = viewport width (no horizontal overflow)
+      pageHeight: tab.height || 0, // Fallback: assume page height = viewport height (no vertical overflow)
+      devicePixelRatio: 1
+    };
+    try {
+      const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: '({ width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX, scrollY: window.scrollY, pageWidth: document.documentElement.scrollWidth, pageHeight: document.documentElement.scrollHeight, devicePixelRatio: window.devicePixelRatio, visualViewportScale: window.visualViewport?.scale || 1 })',
+        returnByValue: true
+      });
+      if (viewportResult?.result?.value) {
+        viewportData = viewportResult.result.value;
+      }
+    } catch (error) {
+      // Fallback to tab dimensions if Runtime.evaluate fails
+      console.warn('[DomService] Could not get viewport and page dimensions, using fallback (assumes no overflow)');
     }
 
-    // Get page context
-    const tab = await chrome.tabs.get(this.tabId);
     const pageContext: PageContext = {
       url: tab.url || '',
       title: tab.title || '',
       frameId: 'main',
       loaderId: '',
-      viewport: { width: tab.width || 0, height: tab.height || 0 },
+      viewport: viewportData,
       frameTree: [],
       frameworkDetected: framework
     };
@@ -314,10 +481,6 @@ export class DomService {
       this.metrics.totalSnapshotDuration += stats.snapshotDuration;
       this.metrics.averageSnapshotDuration = this.metrics.totalSnapshotDuration / this.metrics.snapshotCount;
     }
-
-    console.log(
-      `[DomService] Snapshot built in ${stats.snapshotDuration}ms (${stats.totalNodes} nodes, ${stats.interactiveNodes} interactive)`
-    );
 
     return this.currentSnapshot;
   }
@@ -342,7 +505,6 @@ export class DomService {
     if (source.tabId !== this.tabId) return;
 
     if (method === 'DOM.documentUpdated') {
-      console.log('[DomService] DOM updated, invalidating snapshot');
       this.invalidateSnapshot();
     }
   }
@@ -366,12 +528,15 @@ export class DomService {
    * Build layout map from DOMSnapshot data
    * Extracts layout information (bounding boxes, paint order, styles, etc.) and maps
    * them to backendNodeIds for efficient lookup during tree construction
+   *
+   * @param domSnapshot - CDP DOMSnapshot data
+   * @param devicePixelRatio - Device pixel ratio for converting coordinates
+   * NOTE: CDP returns coordinates in device pixels, we convert to CSS pixels (web standard)
    */
-  private buildLayoutMap(domSnapshot: any): Map<number, any> {
+  private buildLayoutMap(domSnapshot: any, devicePixelRatio: number = 1): Map<number, any> {
     const layoutMap = new Map<number, any>();
 
     if (!domSnapshot?.documents?.[0]) {
-      console.log('[DomService] No layout data available - running in basic mode');
       return layoutMap;
     }
 
@@ -380,7 +545,6 @@ export class DomService {
     const strings = domSnapshot.strings || [];
 
     if (!layout || !layout.nodeIndex) {
-      console.log('[DomService] No layout data available - running in basic mode');
       return layoutMap;
     }
 
@@ -397,13 +561,22 @@ export class DomService {
       const layoutData: any = {};
 
       // Bounding box (bounds are stored as [x, y, width, height] arrays)
+      // CDP returns device pixels, convert to CSS pixels (web standard)
       if (layout.bounds && layout.bounds[i]) {
         const bounds = layout.bounds[i];
-        layoutData.boundingBox = {
+        const devicePixels = {
           x: bounds[0],
           y: bounds[1],
           width: bounds[2],
           height: bounds[3]
+        };
+
+        // Convert from device pixels to CSS pixels
+        layoutData.boundingBox = {
+          x: devicePixels.x / devicePixelRatio,
+          y: devicePixels.y / devicePixelRatio,
+          width: devicePixels.width / devicePixelRatio,
+          height: devicePixels.height / devicePixelRatio
         };
       }
 
@@ -457,8 +630,6 @@ export class DomService {
       layoutMap.set(backendNodeId, layoutData);
     }
 
-    console.log(`[DomService] Layout data enriched for ${layoutMap.size} nodes (paint order: ${layout.paintOrders ? 'yes' : 'no'}, bounds: ${layout.bounds ? 'yes' : 'no'})`);
-
     return layoutMap;
   }
 
@@ -490,47 +661,48 @@ export class DomService {
   private visualEffectsInitialized: boolean = false;
 
   private async ensureVisualEffectsInitialized(): Promise<void> {
+    this.visualEffectsInitialized = true;
     // Already checked and initialized in this DomService instance
-    if (this.visualEffectsInitialized) return;
+    // if (this.visualEffectsInitialized) return;
 
-    try {
-      // Check if visual effects are initialized in the page
-      const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
-        expression: '!!window.__browserx_visual_effects_initialized__',
-        returnByValue: true
-      });
+    // try {
+    //   // Check if visual effects are initialized in the page
+    //   const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
+    //     expression: '!!window.__browserx_visual_effects_initialized__',
+    //     returnByValue: true
+    //   });
 
-      const isInitialized = checkResult?.result?.value === true;
+    //   const isInitialized = checkResult?.result?.value === true;
 
-      if (!isInitialized) {
-        console.log(`[DomService] Initializing visual effects on tab ${this.tabId}...`);
+    //   if (!isInitialized) {
+    //     console.log(`[DomService] Initializing visual effects on tab ${this.tabId}...`);
 
-        // Dispatch init event to trigger lazy initialization
-        await this.sendCommand('Runtime.evaluate', {
-          expression: `
-            (function() {
-              const event = new CustomEvent('browserx:init-visual-effects', {
-                bubbles: false,
-                cancelable: false
-              });
-              document.dispatchEvent(event);
-            })()
-          `,
-          returnByValue: false,
-          awaitPromise: false
-        });
+    //     // Dispatch init event to trigger lazy initialization
+    //     await this.sendCommand('Runtime.evaluate', {
+    //       expression: `
+    //         (function() {
+    //           const event = new CustomEvent('browserx:init-visual-effects', {
+    //             bubbles: false,
+    //             cancelable: false
+    //           });
+    //           document.dispatchEvent(event);
+    //         })()
+    //       `,
+    //       returnByValue: false,
+    //       awaitPromise: false
+    //     });
 
-        // Wait briefly for initialization to complete (~100ms for Svelte mount + WebGL setup)
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
+    //     // Wait briefly for initialization to complete (~100ms for Svelte mount + WebGL setup)
+    //     await new Promise(resolve => setTimeout(resolve, 150));
+    //   }
 
-      // Cache result to avoid repeated checks
-      this.visualEffectsInitialized = true;
-    } catch (error: any) {
-      // Graceful degradation - visual effects unavailable but actions continue
-      console.debug(`[DomService] Could not initialize visual effects on tab ${this.tabId}: ${error.message || 'Unknown error'}`);
-      this.visualEffectsInitialized = true; // Don't retry on every action
-    }
+    //   // Cache result to avoid repeated checks
+    //   this.visualEffectsInitialized = true;
+    // } catch (error: any) {
+    //   // Graceful degradation - visual effects unavailable but actions continue
+    //   console.debug(`[DomService] Could not initialize visual effects on tab ${this.tabId}: ${error.message || 'Unknown error'}`);
+    //   this.visualEffectsInitialized = true; // Don't retry on every action
+    // }
   }
 
   /**
@@ -594,17 +766,13 @@ export class DomService {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // Translate sequential ID (from LLM) to backendNodeId (for CDP)
-      // The LLM sees sequential IDs (1, 2, 3...) but CDP requires backendNodeIds
-      const backendNodeId = this.currentSnapshot.translateSequentialIdToBackendId(nodeId);
-      if (backendNodeId === null) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in ID mapping`);
-      }
+      // nodeId is now the backendNodeId directly (no translation needed)
+      const backendNodeId = nodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
       if (!node) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found in snapshot`);
+        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in snapshot`);
       }
 
       // Get box model for coordinates
@@ -654,8 +822,6 @@ export class DomService {
           centerY <= viewport.scrollY + viewport.height;
 
         if (!isInViewport) {
-          console.log(`[DomService] Element at (${centerX}, ${centerY}) is off-screen (viewport: ${viewport.scrollX}-${viewport.scrollX + viewport.width}, ${viewport.scrollY}-${viewport.scrollY + viewport.height}). Scrolling into view...`);
-
           // Scroll element into view
           await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
 
@@ -669,8 +835,6 @@ export class DomService {
           // Recalculate center coordinates with new position
           centerX = (content[0] + content[2]) / 2;
           centerY = (content[1] + content[5]) / 2;
-
-          console.log(`[DomService] After scroll, element is now at (${centerX}, ${centerY})`);
         }
       } else {
         // Visual effects disabled - still scroll into view if needed, but don't wait
@@ -745,16 +909,13 @@ export class DomService {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // Translate sequential ID (from LLM) to backendNodeId (for CDP)
-      const backendNodeId = this.currentSnapshot.translateSequentialIdToBackendId(nodeId);
-      if (backendNodeId === null) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in ID mapping`);
-      }
+      // nodeId is now the backendNodeId directly (no translation needed)
+      const backendNodeId = nodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
       if (!node) {
-        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found`);
+        throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
       }
 
       // Focus element
@@ -827,52 +988,61 @@ export class DomService {
     }
   }
 
-  async scroll(nodeId: number | 'window', direction: 'up' | 'down'): Promise<ActionResult> {
+  /**
+   * Scroll by relative offset (delta)
+   * @param nodeId - Target node ID (use NODE_ID_WINDOW for window scroll)
+   * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left)
+   * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up)
+   */
+  async scroll(nodeId: number, scrollX: number, scrollY: number): Promise<ActionResult> {
     const start = Date.now();
 
     try {
-      const deltaY = direction === 'down' ? 500 : -500;
-
-      if (nodeId === 'window') {
-        // Scroll page
-        await this.sendCommand('Input.dispatchMouseEvent', {
-          type: 'mouseWheel',
-          x: 0,
-          y: 0,
-          deltaX: 0,
-          deltaY
+      if (nodeId === NODE_ID_WINDOW) {
+        // Scroll window by relative offset with smooth animation
+        await this.sendCommand('Runtime.evaluate', {
+          expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${scrollY}, behavior: 'smooth' })`,
+          returnByValue: false
         });
       } else {
-        // Scroll element
+        // Scroll element by relative offset
         if (!this.currentSnapshot) {
           throw new Error('NODE_NOT_FOUND: No snapshot available');
         }
 
-        // Translate sequential ID (from LLM) to backendNodeId (for CDP)
-        const backendNodeId = this.currentSnapshot.translateSequentialIdToBackendId(nodeId);
-        if (backendNodeId === null) {
-          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in ID mapping`);
-        }
+        // nodeId is now the backendNodeId directly (no translation needed)
+        const backendNodeId = nodeId;
 
         // Verify node exists in snapshot
         const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
         if (!node) {
-          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} (backend: ${backendNodeId}) not found`);
+          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
         }
 
-        const boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
-        const { content } = boxModel.model;
-        const centerX = (content[0] + content[2]) / 2;
-        const centerY = (content[1] + content[5]) / 2;
-
-        await this.sendCommand('Input.dispatchMouseEvent', {
-          type: 'mouseWheel',
-          x: centerX,
-          y: centerY,
-          deltaX: 0,
-          deltaY
+        // Use CDP DOM.resolveNode to get a RemoteObject reference to the element
+        const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
+          backendNodeId
         });
+
+        if (!resolveResult?.object?.objectId) {
+          throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId}`);
+        }
+
+        // Use Runtime.callFunctionOn to execute scrollTo with smooth animation
+        await this.sendCommand('Runtime.callFunctionOn', {
+          objectId: resolveResult.object.objectId,
+          functionDeclaration: `function() { this.scrollTo({ left: this.scrollLeft + ${scrollX}, top: this.scrollTop + ${scrollY}, behavior: 'smooth' }); }`,
+          returnByValue: false
+        });
+
+        // Release the object reference to prevent memory leaks
+        await this.sendCommand('Runtime.releaseObject', {
+          objectId: resolveResult.object.objectId
+        }).catch(() => {}); // Ignore errors on cleanup
       }
+
+      // Wait for smooth scroll animation to complete (typically 300-500ms)
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       this.invalidateSnapshot();
 
@@ -888,7 +1058,7 @@ export class DomService {
           scrollChanged: true,
           valueChanged: false
         },
-        nodeId: nodeId === 'window' ? NODE_ID_WINDOW : nodeId, // Return the original sequential ID
+        nodeId: nodeId,
         actionType: 'scroll',
         timestamp: new Date().toISOString()
       };
@@ -908,7 +1078,7 @@ export class DomService {
           scrollChanged: false,
           valueChanged: false
         },
-        nodeId: nodeId === 'window' ? NODE_ID_WINDOW : nodeId, // Return the original sequential ID
+        nodeId: nodeId,
         actionType: 'scroll',
         timestamp: new Date().toISOString()
       };
@@ -1105,7 +1275,6 @@ export class DomService {
       errorsByType: {},
       lastReset: new Date()
     };
-    console.log('[DomService] Performance metrics reset');
   }
 
   // Get metrics summary for logging

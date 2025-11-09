@@ -45,7 +45,6 @@ export class PropagatingBoundsFilter {
   filter(tree: VirtualNode): VirtualNode {
     // Check if bounding box data is available
     if (!this.hasBoundingBoxData(tree)) {
-      console.log('[PropagatingBoundsFilter] No bounding box data available - skipping filter');
       return tree;
     }
 

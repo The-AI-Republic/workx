@@ -467,7 +467,7 @@ export function getDefaultModel(config: any): string {
  * Detect provider from API key format
  * Returns provider ID based on key pattern
  */
-export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'google-ai-studio' | 'unknown' {
+export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'unknown' {
   if (!apiKey || apiKey.trim() === '') {
     return 'unknown';
   }
@@ -475,6 +475,11 @@ export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthr
   // Google AI Studio keys commonly start with 'AIza' or 'GOAI'
   if (apiKey.startsWith('AIza') || apiKey.startsWith('GOAI')) {
     return 'google-ai-studio';
+  }
+  
+  // Groq keys: gsk_ prefix + 48 alphanumeric chars (52 total)
+  if (/^gsk_[A-Za-z0-9]{48}$/.test(apiKey)) {
+    return 'groq';
   }
 
   // xAI keys start with 'xai-'

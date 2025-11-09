@@ -11,7 +11,6 @@ import { ModelClientFactory } from '../models/ModelClientFactory';
 import { CacheManager } from '../storage/CacheManager';
 import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
-import { registerTools } from '../tools';
 import { AgentConfig } from '../config/AgentConfig';
 
 // Global instances
@@ -53,8 +52,7 @@ async function initialize(): Promise<void> {
  */
 async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
-  agentConfig = AgentConfig.getInstance();
-  await agentConfig.initialize();
+  agentConfig = await AgentConfig.getInstance();
 
   // Create agent instance with config (agent will initialize ModelClientFactory and ToolRegistry)
   agent = new BrowserxAgent(agentConfig!);
@@ -71,9 +69,6 @@ async function doInitialize(): Promise<void> {
 
   // Setup periodic tasks
   setupPeriodicTasks();
-
-  // Initialize browser-specific tools
-  await initializeBrowserTools();
 
   // Initialize storage layer
   await initializeStorage();
@@ -234,8 +229,7 @@ function setupMessageHandlers(): void {
         await agentConfig.reload();
       } else {
         // Initialize a new configuration singleton
-        agentConfig = AgentConfig.getInstance();
-        await agentConfig.initialize();
+        agentConfig = await AgentConfig.getInstance();
       }
 
       // Recreate BrowserxAgent with updated configuration
@@ -249,9 +243,6 @@ function setupMessageHandlers(): void {
       // Create new agent with updated config
       agent = new BrowserxAgent(agentConfig);
       await agent.initialize();
-
-      // Re-initialize browser tools with new config
-      await initializeBrowserTools();
 
       // Notify all clients (sidepanel, etc.) that agent was reinitialized
       chrome.runtime.sendMessage({
@@ -493,17 +484,6 @@ async function executeTabCommand(
     default:
       throw new Error(`Unknown tab command: ${command}`);
   }
-}
-
-/**
- * Initialize browser-specific tools
- */
-async function initializeBrowserTools(): Promise<void> {
-  if (!agent) return;
-
-  const toolRegistry = agent.getToolRegistry();
-  // Register all tools (await them to ensure they're registered before listTools is called)
-  await registerTools(toolRegistry, agentConfig!.getToolsConfig());
 }
 
 /**

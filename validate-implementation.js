@@ -208,10 +208,6 @@ validate(
 
 // Check deprecation warnings
 console.log('\n⚠️  Deprecation Warnings:');
-validate(
-  'MODEL_PROVIDER_MAP marked as deprecated',
-  factoryContent.includes('DEPRECATED') || factoryContent.includes('@deprecated')
-);
 
 // Summary
 console.log('\n' + '='.repeat(60));

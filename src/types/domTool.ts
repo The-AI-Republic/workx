@@ -88,8 +88,16 @@ export interface SerializedDom {
     context: {
       url: string;
       title: string;
+      viewport: {
+        width: string;          // e.g., "1920px"
+        height: string;         // e.g., "1080px"
+        overflowTop: string;    // e.g., "0px" - pixels above viewport
+        overflowBottom: string; // e.g., "500px" - pixels below viewport
+        overflowLeft: string;   // e.g., "0px" - pixels to left of viewport
+        overflowRight: string;  // e.g., "0px" - pixels to right of viewport
+      };
     };
-    body: SerializedNode;
+    body: string; // HTML string representation of the body
     iframes?: Array<{
       url: string;
       title: string;
@@ -130,7 +138,7 @@ export interface SerializedDom {
  * - boundingBox → bbox (compact array [x, y, w, h])
  */
 export interface SerializedNode {
-  /** Sequential node ID (1, 2, 3...) mapped from backendNodeId */
+  /** Node ID (uses CDP backendNodeId directly, no remapping) */
   node_id: number;
 
   /** HTML tag name */
@@ -159,6 +167,9 @@ export interface SerializedNode {
 
   /** Placeholder text (normalized from placeholder) */
   hint?: string;
+
+  /** Test automation ID from data-testid HTML attribute */
+  testid?: string;
 
   /** Bounding box as compact array [x, y, width, height] */
   bbox?: number[];
