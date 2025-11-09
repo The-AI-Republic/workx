@@ -1,10 +1,10 @@
 /**
- * Unit tests for OpenAIResponsesClient - Gemini streaming event conversion
+ * Unit tests for OpenAIChatCompletionClient - Chat Completions streaming event conversion
  * Focus: Text accumulation, message item creation, state management
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIResponsesClient } from '../../../src/models/OpenAIResponsesClient';
+import { OpenAIChatCompletionClient } from '../../../src/models/OpenAIChatCompletionClient';
 
 // Mock OpenAI client to avoid browser safety check in tests
 vi.mock('openai', () => {
@@ -29,12 +29,12 @@ vi.mock('openai', () => {
   };
 });
 
-describe('OpenAIResponsesClient - Gemini Text Accumulation', () => {
+describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
   let client: any;
 
   beforeEach(() => {
     // Create client instance with test configuration
-    client = new OpenAIResponsesClient({
+    client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       conversationId: 'test-conversation',
@@ -195,11 +195,11 @@ describe('OpenAIResponsesClient - Gemini Text Accumulation', () => {
   });
 });
 
-describe('OpenAIResponsesClient - Event Conversion Integration', () => {
+describe('OpenAIChatCompletionClient - Event Conversion Integration', () => {
   let client: any;
 
   beforeEach(() => {
-    client = new OpenAIResponsesClient({
+    client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       conversationId: 'test-conversation',
@@ -239,11 +239,11 @@ describe('OpenAIResponsesClient - Event Conversion Integration', () => {
   });
 });
 
-describe('OpenAIResponsesClient - Tool Call Handling (User Story 2)', () => {
+describe('OpenAIChatCompletionClient - Tool Call Handling (User Story 2)', () => {
   let client: any;
 
   beforeEach(() => {
-    client = new OpenAIResponsesClient({
+    client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       conversationId: 'test-conversation',
@@ -383,11 +383,11 @@ describe('OpenAIResponsesClient - Tool Call Handling (User Story 2)', () => {
   });
 });
 
-describe('OpenAIResponsesClient - Multi-Turn Mixed Content (User Story 3)', () => {
+describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content (User Story 3)', () => {
   let client: any;
 
   beforeEach(() => {
-    client = new OpenAIResponsesClient({
+    client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       conversationId: 'test-conversation',
@@ -472,11 +472,11 @@ describe('OpenAIResponsesClient - Multi-Turn Mixed Content (User Story 3)', () =
   });
 });
 
-describe('OpenAIResponsesClient - Payload Conversion Bug Fix', () => {
+describe('OpenAIChatCompletionClient - Payload Conversion Bug Fix', () => {
   let client: any;
 
   beforeEach(() => {
-    client = new OpenAIResponsesClient({
+    client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       conversationId: 'test-conversation',

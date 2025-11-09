@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RateLimitManager } from '../RateLimitManager.js';
 import { TokenUsageTracker, createDefaultTokenUsageConfig } from '../TokenUsageTracker.js';
-import { OpenAIResponsesClient } from '../OpenAIResponsesClient.js';
+import { OpenAIChatCompletionClient } from '../OpenAIChatCompletionClient.js';
 import { createEmptyTokenUsage } from '../types/TokenUsage.js';
 import { createRateLimitWindow } from '../types/RateLimits.js';
 import type { TokenUsage } from '../types/TokenUsage.js';
@@ -9,7 +9,7 @@ import type { TokenUsage } from '../types/TokenUsage.js';
 describe('Integration Tests - Rate Limiting & Token Tracking', () => {
   let rateLimitManager: RateLimitManager;
   let tokenUsageTracker: TokenUsageTracker;
-  let responsesClient: OpenAIResponsesClient;
+  let responsesClient: OpenAIChatCompletionClient;
 
   beforeEach(() => {
     rateLimitManager = new RateLimitManager({
@@ -24,7 +24,7 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
     });
     tokenUsageTracker = new TokenUsageTracker(config);
 
-    responsesClient = new OpenAIResponsesClient({
+    responsesClient = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com',
       conversationId: 'test-conversation-id',
@@ -482,15 +482,15 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
  * Rate Limit Parsing Integration Tests
  *
  * These tests verify parseRateLimitSnapshot() method specifically for
- * OpenAIResponsesClient.
+ * OpenAIChatCompletionClient.
  */
-describe('Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
+describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   let client: any;
 
   beforeEach(async () => {
-    const { OpenAIResponsesClient } = await import('../OpenAIResponsesClient');
+    const { OpenAIChatCompletionClient } = await import('../OpenAIChatCompletionClient');
 
-    client = new OpenAIResponsesClient(
+    client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
         conversationId: 'ratelimit-test',

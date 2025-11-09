@@ -21,7 +21,7 @@ export {
 export type { ToolDefinition } from '../tools/BaseTool';
 
 // Provider implementations
-export { OpenAIResponsesClient, type OpenAIResponsesConfig } from './OpenAIResponsesClient';
+export { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from './OpenAIChatCompletionClient';
 
 // Factory and utilities
 export {

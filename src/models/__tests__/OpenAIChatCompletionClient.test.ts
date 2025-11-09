@@ -1,9 +1,9 @@
 /**
- * Comprehensive tests for OpenAIResponsesClient
+ * Comprehensive tests for OpenAIChatCompletionClient
  */
 
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
-import { OpenAIResponsesClient, type OpenAIResponsesConfig } from '../OpenAIResponsesClient';
+import { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from '../OpenAIChatCompletionClient';
 import { ModelClientError } from '../ModelClient';
 import type {
   Prompt,
@@ -17,9 +17,9 @@ import type { ResponseItem } from '../../protocol/types';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-describe('OpenAIResponsesClient', () => {
-  let client: OpenAIResponsesClient;
-  let config: OpenAIResponsesConfig;
+describe('OpenAIChatCompletionClient', () => {
+  let client: OpenAIChatCompletionClient;
+  let config: OpenAIChatCompletionConfig;
 
   const mockModelFamily: ModelFamily = {
     family: 'gpt-4o',
@@ -45,7 +45,7 @@ describe('OpenAIResponsesClient', () => {
       modelFamily: mockModelFamily,
       provider: mockProvider,
     };
-    client = new OpenAIResponsesClient(config);
+    client = new OpenAIChatCompletionClient(config);
     vi.clearAllMocks();
   });
 
@@ -60,19 +60,19 @@ describe('OpenAIResponsesClient', () => {
     });
 
     it('should throw error with empty API key', () => {
-      expect(() => new OpenAIResponsesClient({ ...config, apiKey: '' })).toThrow(
+      expect(() => new OpenAIChatCompletionClient({ ...config, apiKey: '' })).toThrow(
         'OpenAI API key is required'
       );
     });
 
     it('should use default base URL when not provided', () => {
-      const clientWithDefaults = new OpenAIResponsesClient(config);
+      const clientWithDefaults = new OpenAIChatCompletionClient(config);
       expect(clientWithDefaults.getProvider()).toBe('openai');
     });
 
     it('should accept custom base URL', () => {
       const customConfig = { ...config, baseUrl: 'https://custom.api.com/v1' };
-      const customClient = new OpenAIResponsesClient(customConfig);
+      const customClient = new OpenAIChatCompletionClient(customConfig);
       expect(customClient.getProvider()).toBe('openai');
     });
   });
@@ -240,7 +240,7 @@ describe('OpenAIResponsesClient', () => {
     });
 
     it('should include reasoning when supported', async () => {
-      const reasoningClient = new OpenAIResponsesClient({
+      const reasoningClient = new OpenAIChatCompletionClient({
         ...config,
         reasoningEffort: 'high',
         reasoningSummary: true,
@@ -271,7 +271,7 @@ describe('OpenAIResponsesClient', () => {
     });
 
     it('should include text controls for GPT-5', async () => {
-      const gpt5Client = new OpenAIResponsesClient({
+      const gpt5Client = new OpenAIChatCompletionClient({
         ...config,
         modelFamily: { ...mockModelFamily, family: 'gpt-5' },
         modelVerbosity: 'high',
@@ -726,7 +726,7 @@ describe('OpenAIResponsesClient', () => {
 
   describe('Header Handling', () => {
     it('should include organization header when provided', async () => {
-      const clientWithOrg = new OpenAIResponsesClient({
+      const clientWithOrg = new OpenAIChatCompletionClient({
         ...config,
         organization: 'org-123',
       });
