@@ -5,10 +5,8 @@
 
 import OpenAI from 'openai';
 import {
-  ModelClient,
   ModelClientError,
   type CompletionRequest,
-  type CompletionResponse,
   type RetryConfig,
 } from './ModelClient';
 import { ResponseStream } from './ResponseStream';
@@ -21,6 +19,7 @@ import type {
 import type { TokenUsage } from './types/TokenUsage';
 import { get_full_instructions, get_formatted_input } from './PromptHelpers';
 import { GeminiLogger } from '../utils/logger';
+import { OpenAIResponsesClient } from './OpenAIResponsesClient';
 
 /**
  * Authentication configuration for OpenAI Chat Completion API
@@ -43,18 +42,9 @@ export interface OpenAIChatCompletionConfig {
 /**
  * OpenAI Chat Completion API client using official OpenAI SDK
  * Supports OpenAI and OpenAI-compatible providers (e.g., Google AI Studio for Gemini)
+ * Extends OpenAIResponsesClient to reuse common functionality
  */
-export class OpenAIChatCompletionClient extends ModelClient {
-  private readonly apiKey: string | null;
-  private readonly baseUrl: string;
-  private readonly organization?: string;
-  private readonly conversationId: string;
-  private readonly modelFamily: ModelFamily;
-  private readonly provider: ModelProviderInfo;
-  private currentModel: string;
-
-  // OpenAI SDK client instance
-  private client: OpenAI;
+export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
 
   // Chat Completions streaming state
   // Tool calls arrive incrementally, so we need to accumulate them
@@ -76,92 +66,40 @@ export class OpenAIChatCompletionClient extends ModelClient {
   private pendingEvents: ResponseEvent[] = [];
 
   constructor(config: OpenAIChatCompletionConfig, retryConfig?: Partial<RetryConfig>) {
-    super(retryConfig);
-
-    // Don't validate API key in constructor - validation happens when making requests
-    // This allows the model client to be created before API key is configured
-
-    this.apiKey = config.apiKey;
-    this.baseUrl = config.baseUrl || 'https://api.openai.com/v1';
-    this.organization = config.organization;
-    this.conversationId = config.conversationId;
-    this.modelFamily = config.modelFamily;
-    this.provider = config.provider;
-    this.currentModel = config.modelFamily.family;
-
-    // Initialize OpenAI SDK client with provider-specific baseURL
-    const clientOptions: ConstructorParameters<typeof OpenAI>[0] = {
-      apiKey: this.apiKey || 'placeholder', // SDK requires non-empty string, we validate later
-      baseURL: this.baseUrl,
-      organization: this.organization,
-      timeout: 360000, // 6 minutes for reasoning models
-      maxRetries: 0, // We handle retries manually
-    };
+    // Convert OpenAIChatCompletionConfig to OpenAIResponsesConfig for parent constructor
+    super({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
+      organization: config.organization,
+      conversationId: config.conversationId,
+      modelFamily: config.modelFamily,
+      provider: config.provider,
+    }, retryConfig);
 
     // Gemini through Google AI Studio expects API key via `key` query param / X-Goog-Api-Key header.
-    if (!config.provider.requires_openai_auth && this.apiKey) {
-      clientOptions.defaultHeaders = {
-        ...(config.provider.http_headers || {}),
-        'X-Goog-Api-Key': this.apiKey,
-      };
-      clientOptions.defaultQuery = {
-        ...(config.provider.query_params || {}),
-        key: this.apiKey,
-      };
+    // Re-initialize client with custom headers if needed
+    if (!config.provider.requires_openai_auth && config.apiKey) {
+      this.client = new OpenAI({
+        apiKey: config.apiKey || 'placeholder',
+        baseURL: this.baseUrl,
+        organization: this.organization,
+        timeout: 360000,
+        maxRetries: 0,
+        defaultHeaders: {
+          ...(config.provider.http_headers || {}),
+          'X-Goog-Api-Key': config.apiKey,
+        },
+        defaultQuery: {
+          ...(config.provider.query_params || {}),
+          key: config.apiKey,
+        },
+      });
     }
-
-    this.client = new OpenAI(clientOptions);
-  }
-
-  getProvider(): ModelProviderInfo {
-    return this.provider;
-  }
-
-  getModel(): string {
-    return this.currentModel;
-  }
-
-  setModel(model: string): void {
-    this.currentModel = model;
-  }
-
-  // Return context window from modelFamily configuration
-  getModelContextWindow(): number | undefined {
-    // Use default context windows based on model key
-    if (this.currentModel === 'gpt-5') {
-      return 200000;
-    } else if (this.currentModel === 'grok-4-fast-reasoning') {
-      return 131072;
-    }
-    // Default fallback
-    return 128000;
-  }
-
-  getAutoCompactTokenLimit(): number | undefined {
-    const contextWindow = this.getModelContextWindow();
-    return contextWindow ? Math.floor(contextWindow * 0.8) : undefined;
-  }
-
-  getModelFamily(): ModelFamily {
-    return this.modelFamily;
-  }
-
-  getAuthManager(): any {
-    // Chrome extension doesn't use auth manager - returns undefined
-    return undefined;
-  }
-
-  // Basic ModelClient interface methods (delegated to streamResponses)
-  async complete(request: CompletionRequest): Promise<CompletionResponse> {
-    throw new ModelClientError('Direct completion not supported - use stream instead');
   }
 
   /**
    * Stream a model response using the Chat Completions API
-   *
-   * This method creates and returns a ResponseStream that will emit ResponseEvent
-   * objects as the model generates its response. The stream is returned immediately,
-   * with events being added asynchronously as they arrive from the API.
+   * Overrides parent's Responses API implementation
    *
    * @param prompt The prompt containing input messages and tools
    * @returns Promise resolving to ResponseStream that yields ResponseEvent objects
@@ -216,18 +154,6 @@ export class OpenAIChatCompletionClient extends ModelClient {
     throw lastError;
   }
 
-  async *streamCompletion(request: CompletionRequest): AsyncGenerator<ResponseEvent> {
-    yield* this.streamResponses(request);
-  }
-
-  countTokens(text: string, model: string): number {
-    // Simple approximation - in production would use tiktoken
-    const multiplier = 1.3; // Average token multiplier for OpenAI models
-    const words = text.split(/\s+/).length;
-    const punctuation = (text.match(/[.!?;:,]/g) || []).length;
-    return Math.ceil((words + punctuation * 0.5) * multiplier);
-  }
-
   /**
    * Stream responses from the model using Chat Completions API
    */
@@ -270,7 +196,7 @@ export class OpenAIChatCompletionClient extends ModelClient {
     // Spawn async task to populate stream from SDK events
     (async () => {
       try {
-        await this.processSDKStreamToResponseStream(sdkStream, stream);
+        await this.processChatCompletionSDKStreamToResponseStream(sdkStream, stream);
         stream.complete();
       } catch (error) {
         stream.error(error as Error);
@@ -295,7 +221,7 @@ export class OpenAIChatCompletionClient extends ModelClient {
         const sdkStream = await this.makeChatCompletionsRequest(prompt);
 
         // Process SDK stream and yield events
-        yield* this.processSDKStream(sdkStream);
+        yield* this.processChatCompletionSDKStream(sdkStream);
         return;
 
       } catch (error) {
@@ -335,12 +261,12 @@ export class OpenAIChatCompletionClient extends ModelClient {
   }
 
   /**
-   * Process OpenAI SDK stream as AsyncGenerator (for streamChatInternal)
+   * Process Chat Completions SDK stream as AsyncGenerator (for streamChatInternal)
    * The SDK handles SSE parsing and returns structured events
    *
    * @param sdkStream Async iterable from OpenAI SDK
    */
-  private async *processSDKStream(
+  private async *processChatCompletionSDKStream(
     sdkStream: AsyncIterable<any>
   ): AsyncGenerator<ResponseEvent> {
     try {
@@ -367,13 +293,13 @@ export class OpenAIChatCompletionClient extends ModelClient {
   }
 
   /**
-   * Process OpenAI SDK stream and convert to ResponseStream
+   * Process Chat Completions SDK stream and convert to ResponseStream
    * The SDK handles SSE parsing and returns structured events
    *
    * @param sdkStream Async iterable from OpenAI SDK
    * @param stream ResponseStream to populate with events
    */
-  private async processSDKStreamToResponseStream(
+  private async processChatCompletionSDKStreamToResponseStream(
     sdkStream: AsyncIterable<any>,
     stream: ResponseStream
   ): Promise<void> {
@@ -564,7 +490,7 @@ export class OpenAIChatCompletionClient extends ModelClient {
             type: 'OutputItemDone',
             item: {
               type: 'function_call',
-              id: toolCall.id,
+              call_id: toolCall.id,
               name: toolCall.function.name,
               arguments: toolCall.function.arguments,
             },
@@ -610,7 +536,7 @@ export class OpenAIChatCompletionClient extends ModelClient {
             type: 'OutputItemDone',
             item: {
               type: 'function_call',
-              id: toolCall.id,
+              call_id: toolCall.id,
               name: toolCall.function.name,
               arguments: toolCall.function.arguments,
             },
@@ -840,9 +766,10 @@ export class OpenAIChatCompletionClient extends ModelClient {
       }, null, 2));
 
       // Use OpenAI SDK's chat completions API with streaming
-      const stream = await this.client.chat.completions.create(requestParams) as AsyncIterable<any>;
+      const stream = await this.client.chat.completions.create(requestParams);
 
-      return stream;
+      // The SDK returns a Stream object which is AsyncIterable
+      return stream as any as AsyncIterable<any>;
     } catch (error: any) {
       // Handle SDK errors and convert to ModelClientError
       const statusCode = error.status || error.statusCode || 500;

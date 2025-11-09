@@ -308,7 +308,7 @@ export class ModelClientFactory {
         hasApiKey: groqHasKey,
         isDefault: defaultProvider === 'groq',
       },
-      google-ai-studio: {
+      'google-ai-studio': {
         hasApiKey: googleAiStudioHasKey,
         isDefault: defaultProvider === 'google-ai-studio',
       },
