@@ -10,8 +10,8 @@ import {
   type CompletionRequest,
   type CompletionResponse,
   type RetryConfig,
-} from './ModelClient';
-import { ResponseStream } from './ResponseStream';
+} from '../ModelClient';
+import { ResponseStream } from '../ResponseStream';
 import type {
   ResponseEvent,
   ResponsesApiRequest,
@@ -23,12 +23,12 @@ import type {
   ReasoningEffortConfig,
   ReasoningSummaryConfig,
   OpenAiVerbosity
-} from './types/ResponsesAPI';
-import type { RateLimitSnapshot } from './types/RateLimits';
-import type { TokenUsage } from './types/TokenUsage';
-import { SSEEventParser } from './SSEEventParser';
-import { RequestQueue } from './RequestQueue';
-import { get_full_instructions, get_formatted_input } from './PromptHelpers';
+} from '../types/ResponsesAPI';
+import type { RateLimitSnapshot } from '../types/RateLimits';
+import type { TokenUsage } from '../types/TokenUsage';
+import { SSEEventParser } from '../SSEEventParser';
+import { RequestQueue } from '../RequestQueue';
+import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 
 /**
  * SSE Event structure from OpenAI Responses API
@@ -234,68 +234,8 @@ export class OpenAIResponsesClient extends ModelClient {
       throw new ModelClientError('Prompt input is required');
     }
 
-    // Build request payload
-    const fullInstructions = this.getFullInstructions(prompt);
-
-    const toolsJson = this.createToolsJsonForResponsesApi(prompt.tools);
-
-    const reasoning = this.createReasoningParam();
-    const textControls = this.createTextParam(prompt.output_schema);
-
-    // Provider-specific parameter handling
-    const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
-
-    // Groq: omit include parameter entirely (reasoning content access not supported)
-    // Other providers: include reasoning.encrypted_content if reasoning enabled
-    const include: string[] | undefined = this.provider.name === 'groq'
-      ? undefined
-      : (reasoning ? ['reasoning.encrypted_content'] : []);
-
-    // xAI: store must be false (required for images)
-    // Groq: store must be omitted entirely (not supported)
-    // Azure: use azureWorkaround
-    // Others: use azureWorkaround
-    const storeValue = this.provider.name === 'xai' ? false
-      : this.provider.name === 'groq' ? undefined
-      : azureWorkaround;
-
-    // Build base payload
-    const payload: ResponsesApiRequest | any = {
-      model: this.currentModel,
-      instructions: fullInstructions,
-      input: await get_formatted_input(prompt),
-      tools: toolsJson,
-      tool_choice: 'auto',
-      parallel_tool_calls: false,
-      ...(storeValue !== undefined && { store: storeValue }), // Conditionally include store
-      stream: true,
-      ...(include !== undefined && include.length > 0 && { include }), // Conditionally include
-      ...(this.provider.name !== 'groq' && { prompt_cache_key: this.conversationId }), // Omit for Groq
-      text: textControls,
-    };
-
-    // Provider-specific reasoning format
-    // CRITICAL: Only add reasoning parameter if model actually supports it
-    if (this.modelFamily.supports_reasoning) {
-      if (this.provider.name === 'groq') {
-        // Groq uses nested reasoning object with effort field (like OpenAI)
-        // But does NOT support reasoning.summary parameter
-        if (this.reasoningEffort) {
-          payload.reasoning = {
-            effort: this.reasoningEffort
-          };
-          console.log('[OpenAIResponsesClient] Groq reasoning request:', JSON.stringify(payload.reasoning));
-        }
-        // Note: Groq does NOT support reasoning.summary
-      } else {
-        // OpenAI/xAI use nested reasoning object with both effort and summary
-        if (reasoning) {
-          payload.reasoning = reasoning;
-        }
-      }
-    } else {
-      console.log(`[OpenAIResponsesClient] Model ${this.currentModel} does not support reasoning - omitting reasoning parameter`);
-    }
+    // Build request payload (can be overridden by subclasses like GroqClient)
+    const payload = await this.buildRequestPayload(prompt);
 
     // Retry logic with exponential backoff
     const maxRetries = this.provider.request_max_retries ?? 3;
@@ -338,6 +278,85 @@ export class OpenAIResponsesClient extends ModelClient {
     }
 
     throw lastError;
+  }
+
+  /**
+   * Build request payload for OpenAI/xAI providers
+   * Can be overridden by subclasses (e.g., GroqClient) for provider-specific behavior
+   */
+  protected async buildRequestPayload(prompt: Prompt): Promise<ResponsesApiRequest> {
+    const fullInstructions = this.getFullInstructions(prompt);
+    const toolsJson = this.createToolsJsonForResponsesApi(prompt.tools);
+    const reasoning = this.buildReasoningParam();
+    const textControls = this.createTextParam(prompt.output_schema);
+
+    // Provider-specific parameter handling
+    const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
+
+    // Include reasoning.encrypted_content if reasoning enabled
+    const include: string[] | undefined = reasoning ? ['reasoning.encrypted_content'] : [];
+
+    // xAI: store must be false (required for images)
+    // Azure: use azureWorkaround
+    // Others: use azureWorkaround
+    const storeValue = this.provider.name === 'xai' ? false : azureWorkaround;
+
+    // Build base payload
+    const payload: ResponsesApiRequest | any = {
+      model: this.currentModel,
+      instructions: fullInstructions,
+      input: await get_formatted_input(prompt),
+      tools: toolsJson,
+      tool_choice: 'auto',
+      parallel_tool_calls: false,
+      ...(storeValue !== undefined && { store: storeValue }), // Conditionally include store
+      stream: true,
+      ...(include !== undefined && include.length > 0 && { include }), // Conditionally include
+      prompt_cache_key: this.conversationId,
+      text: textControls,
+    };
+
+    // Add reasoning parameter if model supports it
+    if (this.modelFamily.supports_reasoning && reasoning) {
+      payload.reasoning = reasoning;
+      console.log('[OpenAIResponsesClient] Reasoning request:', JSON.stringify(payload.reasoning));
+    } else if (this.modelFamily.supports_reasoning) {
+      console.log(`[OpenAIResponsesClient] Model ${this.currentModel} supports reasoning but no reasoning config provided`);
+    }
+
+    return payload;
+  }
+
+  /**
+   * Build reasoning parameter for OpenAI/xAI
+   * Can be overridden by subclasses for provider-specific formats
+   */
+  protected buildReasoningParam(): Reasoning | undefined {
+    if (!this.modelFamily.supports_reasoning_summaries) {
+      return undefined;
+    }
+
+    // Convert reasoningSummary to OpenAI's expected format
+    // OpenAI expects: 'auto' | 'concise' | 'detailed'
+    // We receive: boolean | { enabled: boolean }
+    let summaryValue: string | undefined;
+    if (this.reasoningSummary) {
+      if (typeof this.reasoningSummary === 'boolean') {
+        summaryValue = this.reasoningSummary ? 'auto' : undefined;
+      } else if (typeof this.reasoningSummary === 'object' && this.reasoningSummary.enabled) {
+        summaryValue = 'auto'; // Default to 'auto' when enabled
+      }
+    }
+
+    const reasoning: any = {};
+    if (this.reasoningEffort) {
+      reasoning.effort = this.reasoningEffort;
+    }
+    if (summaryValue) {
+      reasoning.summary = summaryValue;
+    }
+
+    return Object.keys(reasoning).length > 0 ? reasoning : undefined;
   }
 
   async *streamCompletion(request: CompletionRequest): AsyncGenerator<ResponseEvent> {
@@ -417,62 +436,8 @@ export class OpenAIResponsesClient extends ModelClient {
    * Main method implementing the experimental /v1/responses endpoint
    */
   private async *streamResponsesInternal(prompt: Prompt): AsyncGenerator<ResponseEvent> {
-    const fullInstructions = this.getFullInstructions(prompt);
-    const toolsJson = this.createToolsJsonForResponsesApi(prompt.tools);
-    const reasoning = this.createReasoningParam();
-    const textControls = this.createTextParam(prompt.output_schema);
-
-    // Groq: omit include parameter entirely
-    // Other providers: include reasoning.encrypted_content if reasoning enabled
-    const include: string[] | undefined = this.provider.name === 'groq'
-      ? undefined
-      : (reasoning ? ['reasoning.encrypted_content'] : []);
-
-    // Determine store setting (Azure workaround logic)
-    const azureWorkaround = (this.provider.base_url && this.provider.base_url.indexOf('azure') !== -1) || false;
-
-    // xAI: store must be false, Groq: omit store, Others: use azureWorkaround
-    const storeValue = this.provider.name === 'xai' ? false
-      : this.provider.name === 'groq' ? undefined
-      : azureWorkaround;
-
-    // Build base payload
-    const payload: ResponsesApiRequest | any = {
-      model: this.currentModel,
-      instructions: fullInstructions,
-      input: await get_formatted_input(prompt),
-      tools: toolsJson,
-      tool_choice: 'auto',
-      parallel_tool_calls: false,
-      ...(storeValue !== undefined && { store: storeValue }),
-      stream: true,
-      ...(include !== undefined && include.length > 0 && { include }),
-      ...(this.provider.name !== 'groq' && { prompt_cache_key: this.conversationId }),
-      text: textControls,
-    };
-
-    // Provider-specific reasoning format
-    // CRITICAL: Only add reasoning parameter if model actually supports it
-    if (this.modelFamily.supports_reasoning) {
-      if (this.provider.name === 'groq') {
-        // Groq uses nested reasoning object with effort field (like OpenAI)
-        // But does NOT support reasoning.summary parameter
-        if (this.reasoningEffort) {
-          payload.reasoning = {
-            effort: this.reasoningEffort
-          };
-          console.log('[OpenAIResponsesClient] Groq reasoning request:', JSON.stringify(payload.reasoning));
-        }
-        // Note: Groq does NOT support reasoning.summary
-      } else {
-        // OpenAI/xAI use nested reasoning object with both effort and summary
-        if (reasoning) {
-          payload.reasoning = reasoning;
-        }
-      }
-    } else {
-      console.log(`[OpenAIResponsesClient] Model ${this.currentModel} does not support reasoning - omitting reasoning parameter`);
-    }
+    // Build request payload (can be overridden by subclasses)
+    const payload = await this.buildRequestPayload(prompt);
 
     // Retry logic with exponential backoff
     const maxRetries = this.provider.request_max_retries ?? 3;
@@ -592,8 +557,9 @@ export class OpenAIResponsesClient extends ModelClient {
    * Convert OpenAI SDK event to ResponseEvent format
    * Maps SDK's event structure to our internal ResponseEvent type
    * Returns an array to support extracting multiple items from a single event
+   * Can be overridden by subclasses for provider-specific event handling
    */
-  private convertSDKEventToResponseEvent(sdkEvent: any): ResponseEvent[] {
+  protected convertSDKEventToResponseEvent(sdkEvent: any): ResponseEvent[] {
     // The SDK event format will depend on what the actual SDK returns
     // This is a placeholder implementation that will need to be adjusted
     // based on the actual SDK event structure
@@ -646,28 +612,11 @@ export class OpenAIResponsesClient extends ModelClient {
 
       case 'response.completed':
       case 'response.done':
-        // Extract output items from response (for Groq and other providers that include output array)
-        // Some providers (like Groq) include reasoning items in response.output array
+        // Extract output items from response (for providers that include output array)
         if (sdkEvent.response?.output && Array.isArray(sdkEvent.response.output)) {
-          console.log('[OpenAIResponsesClient] DEBUG: Groq response.output:', JSON.stringify(sdkEvent.response.output, null, 2));
           for (const outputItem of sdkEvent.response.output) {
             // Emit OutputItemDone events for each item in the output array
             if (outputItem && outputItem.type) {
-              // For Groq reasoning items, extract content from the correct field
-              // Groq uses 'reasoning_content' field instead of 'content' for reasoning text
-              if (outputItem.type === 'reasoning' && this.provider.name === 'groq') {
-                console.log('[OpenAIResponsesClient] DEBUG: Groq reasoning item:', JSON.stringify(outputItem, null, 2));
-
-                // Transform Groq reasoning format to standard format
-                // Groq sends reasoning_content as a string, we need to convert to content array
-                if (outputItem.reasoning_content && typeof outputItem.reasoning_content === 'string') {
-                  outputItem.content = [
-                    { type: 'reasoning_text', text: outputItem.reasoning_content }
-                  ];
-                  console.log('[OpenAIResponsesClient] Transformed Groq reasoning content to standard format');
-                }
-              }
-
               events.push({
                 type: 'OutputItemDone',
                 item: outputItem
@@ -1020,7 +969,7 @@ export class OpenAIResponsesClient extends ModelClient {
   /**
    * Get full instructions including base instructions and overrides
    */
-  private getFullInstructions(prompt: Prompt): string {
+  protected getFullInstructions(prompt: Prompt): string {
     return get_full_instructions(prompt, this.modelFamily);
   }
 
@@ -1029,7 +978,7 @@ export class OpenAIResponsesClient extends ModelClient {
    * Converts ToolSpec format to Responses API format
    * Handles: function, local_shell, web_search, custom tool types
    */
-  private createToolsJsonForResponsesApi(tools: any[]): any[] {
+  protected createToolsJsonForResponsesApi(tools: any[]): any[] {
     if (!tools || !Array.isArray(tools)) {
       return [];
     }
@@ -1093,23 +1042,9 @@ export class OpenAIResponsesClient extends ModelClient {
   }
 
   /**
-   * Create reasoning parameter for request
-   */
-  private createReasoningParam(): Reasoning | undefined {
-    if (!this.modelFamily.supports_reasoning_summaries) {
-      return undefined;
-    }
-
-    return {
-      effort: this.reasoningEffort,
-      summary: this.reasoningSummary,
-    };
-  }
-
-  /**
    * Create text controls parameter for GPT-5 models
    */
-  private createTextParam(outputSchema?: any): TextControls | undefined {
+  protected createTextParam(outputSchema?: any): TextControls | undefined {
     if (!this.modelVerbosity && !outputSchema) {
       return undefined;
     }
@@ -1169,7 +1104,7 @@ export class OpenAIResponsesClient extends ModelClient {
     usedPercentHeader: string,
     windowMinutesHeader: string,
     resetsHeader: string
-  ): import('./types/RateLimits').RateLimitWindow | undefined {
+  ): import('../types/RateLimits').RateLimitWindow | undefined {
     const usedPercent = this.parseHeaderFloat(headers, usedPercentHeader);
     if (usedPercent === null) {
       return undefined;
@@ -1199,7 +1134,7 @@ export class OpenAIResponsesClient extends ModelClient {
   /**
    * Convert API usage format to internal TokenUsage
    */
-  private convertTokenUsage(usage: ResponseCompletedUsage): TokenUsage {
+  protected convertTokenUsage(usage: ResponseCompletedUsage): TokenUsage {
     return {
       input_tokens: usage.input_tokens,
       cached_input_tokens: usage.input_tokens_details?.cached_tokens || 0,

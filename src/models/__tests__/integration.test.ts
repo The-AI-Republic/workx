@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RateLimitManager } from '../RateLimitManager.js';
 import { TokenUsageTracker, createDefaultTokenUsageConfig } from '../TokenUsageTracker.js';
-import { OpenAIChatCompletionClient } from '../OpenAIChatCompletionClient.js';
+import { OpenAIChatCompletionClient } from '../client/OpenAIChatCompletionClient.js';
 import { createEmptyTokenUsage } from '../types/TokenUsage.js';
 import { createRateLimitWindow } from '../types/RateLimits.js';
 import type { TokenUsage } from '../types/TokenUsage.js';
@@ -488,7 +488,7 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   let client: any;
 
   beforeEach(async () => {
-    const { OpenAIChatCompletionClient } = await import('../OpenAIChatCompletionClient');
+    const { OpenAIChatCompletionClient } = await import('../client/OpenAIChatCompletionClient');
 
     client = new OpenAIChatCompletionClient(
       {

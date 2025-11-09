@@ -4,8 +4,9 @@
  */
 
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
-import { OpenAIResponsesClient } from './OpenAIResponsesClient';
-import { OpenAIChatCompletionClient } from './OpenAIChatCompletionClient';
+import { OpenAIResponsesClient } from './client/OpenAIResponsesClient';
+import { OpenAIChatCompletionClient } from './client/OpenAIChatCompletionClient';
+import { GroqClient } from './client/GroqClient';
 import { AgentConfig } from '../config/AgentConfig';
 
 /**
@@ -447,17 +448,32 @@ export class ModelClientFactory {
         provider,
       });
     } else {
-      console.log(`[ModelClientFactory] Instantiating OpenAIResponsesClient for provider: ${providerName} (wire_api: ${wireApi})`);
-      return new OpenAIResponsesClient({
-        apiKey: config.apiKey,
-        baseUrl: resolvedBaseUrl,
-        organization,
-        conversationId,
-        modelFamily,
-        provider,
-        reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
-        reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
-      });
+      // Use GroqClient for Groq provider, OpenAIResponsesClient for others
+      if (providerName === 'groq') {
+        console.log(`[ModelClientFactory] Instantiating GroqClient for provider: ${providerName} (wire_api: ${wireApi})`);
+        return new GroqClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+        });
+      } else {
+        console.log(`[ModelClientFactory] Instantiating OpenAIResponsesClient for provider: ${providerName} (wire_api: ${wireApi})`);
+        return new OpenAIResponsesClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+        });
+      }
     }
   }
 

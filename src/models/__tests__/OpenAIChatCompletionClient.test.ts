@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
-import { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from '../OpenAIChatCompletionClient';
+import { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from '../client/OpenAIChatCompletionClient';
 import { ModelClientError } from '../ModelClient';
 import type {
   Prompt,

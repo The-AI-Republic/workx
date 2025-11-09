@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIChatCompletionClient } from '../OpenAIChatCompletionClient';
+import { OpenAIChatCompletionClient } from '../client/OpenAIChatCompletionClient';
 import { ResponseStream } from '../ResponseStream';
 import { ModelClientError } from '../ModelClientError';
 import type { Prompt, ModelFamily, ModelProviderInfo } from '../types/ResponsesAPI';

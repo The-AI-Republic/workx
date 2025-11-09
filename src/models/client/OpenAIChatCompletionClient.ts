@@ -8,17 +8,17 @@ import {
   ModelClientError,
   type CompletionRequest,
   type RetryConfig,
-} from './ModelClient';
-import { ResponseStream } from './ResponseStream';
+} from '../ModelClient';
+import { ResponseStream } from '../ResponseStream';
 import type {
   ResponseEvent,
   Prompt,
   ModelFamily,
   ModelProviderInfo,
-} from './types/ResponsesAPI';
-import type { TokenUsage } from './types/TokenUsage';
-import { get_full_instructions, get_formatted_input } from './PromptHelpers';
-import { GeminiLogger } from '../utils/logger';
+} from '../types/ResponsesAPI';
+import type { TokenUsage } from '../types/TokenUsage';
+import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
+import { GeminiLogger } from '../../utils/logger';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
 
 /**

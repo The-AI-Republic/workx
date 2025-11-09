@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIResponsesClient } from '../../../src/models/OpenAIResponsesClient';
+import { OpenAIResponsesClient } from '../../../src/models/client/OpenAIResponsesClient';
 import { ModelClientError } from '../../../src/models/ModelClient';
 import type { Prompt, ModelFamily, ModelProviderInfo } from '../../../src/models/types';
 
