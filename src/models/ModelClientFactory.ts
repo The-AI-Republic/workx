@@ -5,6 +5,7 @@
 
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
+import { OpenAIChatCompletionClient } from './OpenAIChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
 
 /**
@@ -44,47 +45,11 @@ const DEFAULT_MODEL = 'gpt-5';
  * Factory for creating and managing model clients
  */
 export class ModelClientFactory {
-  private clientCache: Map<string, ModelClient> = new Map();
+  private clientCache: Map<string, ModelClient>;
   private config?: AgentConfig;
-  private storageListener?: (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => void;
 
   constructor() {
-    // Setup storage listener to invalidate cache when API keys change
-    this.setupStorageListener();
-  }
-
-  /**
-   * Setup storage listener to invalidate cache when API keys change
-   */
-  private setupStorageListener(): void {
-    this.storageListener = (changes, areaName) => {
-      // Check if any API key related storage changed
-      const relevantKeys = [
-        STORAGE_KEYS.OPENAI_API_KEY,
-      ];
-
-      for (const key of relevantKeys) {
-        if (changes[key]) {
-          this.clearCache();
-          break;
-        }
-      }
-    };
-
-    // Listen to both sync and local storage changes
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.onChanged.addListener(this.storageListener);
-    }
-  }
-
-  /**
-   * Cleanup storage listener
-   */
-  destroy(): void {
-    if (this.storageListener && typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.onChanged.removeListener(this.storageListener);
-    }
-    this.clearCache();
+    this.clientCache = new Map();
   }
 
   /**
@@ -401,99 +366,98 @@ export class ModelClientFactory {
     const providerName = config.provider;
     const baseUrl = config.options?.baseUrl;
 
+    // Get wire API type from provider configuration
+    let wireApi: 'Responses' | 'Chat' | 'ChatCompletions' = 'Responses';
+    if (this.config) {
+      const providerConfig = this.config.getProvider(providerName);
+      // Check for wireApi field (camelCase in JSON) which maps to wire_api (snake_case in interface)
+      wireApi = (providerConfig as any)?.wireApi || 'Responses';
+    }
+
     // Note: providerName comes from mapProviderIdToType() which ensures it matches
-    // the provider type ('openai' | 'xai' | 'anthropic' | 'groq')
+    // the provider type ('openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio')
 
-    switch (providerName) {
-      case 'google-ai-studio': {
-        const resolvedBaseUrl = baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai/';
-        const selectedModel = this.getModelKeyForProvider('google-ai-studio', this.getDefaultModelForProvider('google-ai-studio'));
-        const conversationId = this.generateConversationId();
+    // Special case: Google AI Studio always uses Chat Completions API
+    if (providerName === 'google-ai-studio') {
+      wireApi = 'ChatCompletions';
+    }
 
-        return new OpenAIResponsesClient({
-          apiKey: config.apiKey,
-          baseUrl: resolvedBaseUrl,
-          organization: config.options?.organization,
-          conversationId,
-          modelFamily: {
-            family: selectedModel,
-            base_instructions: 'You are Gemini 2.5 Pro integrated with the BrowserX agent. Provide accurate answers and suggest tool usage when relevant.',
-            supports_reasoning_summaries: true,
-            needs_special_apply_patch_instructions: false,
-          },
-          provider: {
-            name: 'Google AI Studio',
-            base_url: resolvedBaseUrl,
-            wire_api: 'ChatCompletions', // Gemini uses Chat Completions, not Responses API
-            requires_openai_auth: true, // Use standard Authorization: Bearer header
-            env_key: 'GOOGLE_AI_STUDIO_API_KEY',
-            env_key_instructions: 'Set a Google AI Studio key in Settings to enable Gemini.',
-          },
-        });
+    // Determine base URL
+    const resolvedBaseUrl = baseUrl || config.options?.baseUrl;
+    const organization = config.options?.organization;
+
+    // Get selected model and metadata
+    const selectedModel = this.getSelectedModel();
+    let supportsReasoning = false;
+    let supportsReasoningSummaries = false;
+    if (this.config) {
+      const configData = this.config.getConfig();
+      const modelData = this.config.getModelById(configData.selectedModelId);
+      if (modelData?.model) {
+        supportsReasoning = modelData.model.supportsReasoning ?? false;
+        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
       }
-      case 'openai':
-      case 'xai':
-      case 'anthropic':
-      case 'groq':
-      default:
-        // Use the experimental OpenAI Responses API client by default
-        // Construct minimal provider and model family configs
-        const resolvedBaseUrl = baseUrl || config.options?.baseUrl;
-        const organization = config.options?.organization;
+    }
 
-        const provider = {
-          name: providerName,
-          base_url: resolvedBaseUrl,
-          wire_api: 'Responses' as const,
-          requires_openai_auth: true,
-        };
+    // Build model family configuration
+    const modelFamily = {
+      family: selectedModel,
+      base_instructions: providerName === 'google-ai-studio'
+        ? 'You are Gemini 2.5 Pro integrated with the BrowserX agent. Provide accurate answers and suggest tool usage when relevant.'
+        : 'You are a helpful coding assistant.',
+      supports_reasoning: supportsReasoning,
+      supports_reasoning_summaries: supportsReasoningSummaries,
+      needs_special_apply_patch_instructions: false,
+    };
 
-        // Use selected model from config instead of hardcoded 'gpt-5'
-        const selectedModel = this.getSelectedModel();
+    // Build provider configuration
+    const provider = {
+      name: providerName === 'google-ai-studio' ? 'Google AI Studio' : providerName,
+      base_url: resolvedBaseUrl,
+      wire_api: wireApi as 'Responses' | 'Chat',
+      requires_openai_auth: true,
+      ...(providerName === 'google-ai-studio' && {
+        env_key: 'GOOGLE_AI_STUDIO_API_KEY',
+        env_key_instructions: 'Set a Google AI Studio key in Settings to enable Gemini.',
+      }),
+    };
 
-        // Get model metadata to determine reasoning support
-        let supportsReasoning = false;
-        let supportsReasoningSummaries = false;
-        if (this.config) {
-          const configData = this.config.getConfig();
-          const modelData = this.config.getModelById(configData.selectedModelId);
-          if (modelData?.model) {
-            supportsReasoning = modelData.model.supportsReasoning ?? false;
-            supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
-          }
-        }
+    // Generate a conversation ID for prompt_cache_key usage
+    const conversationId = this.generateConversationId();
 
-        const modelFamily = {
-          family: selectedModel,
-          base_instructions: 'You are a helpful coding assistant.',
-          supports_reasoning: supportsReasoning,
-          supports_reasoning_summaries: supportsReasoningSummaries,
-          needs_special_apply_patch_instructions: false,
-        };
+    // Get reasoning effort from model config
+    // Default to 'medium' for models that support reasoning
+    let reasoningEffort: string | undefined;
+    if (supportsReasoning) {
+      reasoningEffort = 'medium'; // Default reasoning effort
+      console.log(`[ModelClientFactory] Enabling reasoning with effort: ${reasoningEffort} for model: ${selectedModel}`);
+    } else {
+      console.log(`[ModelClientFactory] Model ${selectedModel} does not support reasoning - omitting reasoning parameter`);
+    }
 
-        // Generate a conversation ID for prompt_cache_key usage
-        const conversationId = this.generateConversationId();
-
-        // Get reasoning effort from model config
-        // Default to 'medium' for models that support reasoning
-        let reasoningEffort: string | undefined;
-        if (supportsReasoning) {
-          reasoningEffort = 'medium'; // Default reasoning effort
-          console.log(`[ModelClientFactory] Enabling reasoning with effort: ${reasoningEffort} for model: ${selectedModel}`);
-        } else {
-          console.log(`[ModelClientFactory] Model ${selectedModel} does not support reasoning - omitting reasoning parameter`);
-        }
-
-        return new OpenAIResponsesClient({
-          apiKey: config.apiKey,
-          baseUrl: resolvedBaseUrl,
-          organization,
-          conversationId,
-          modelFamily,
-          provider,
-          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
-          reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
-        });
+    // Instantiate the appropriate client based on wire API type
+    if (wireApi === 'Chat' || wireApi === 'ChatCompletions') {
+      console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for provider: ${providerName} (wire_api: ${wireApi})`);
+      return new OpenAIChatCompletionClient({
+        apiKey: config.apiKey,
+        baseUrl: resolvedBaseUrl,
+        organization,
+        conversationId,
+        modelFamily,
+        provider,
+      });
+    } else {
+      console.log(`[ModelClientFactory] Instantiating OpenAIResponsesClient for provider: ${providerName} (wire_api: ${wireApi})`);
+      return new OpenAIResponsesClient({
+        apiKey: config.apiKey,
+        baseUrl: resolvedBaseUrl,
+        organization,
+        conversationId,
+        modelFamily,
+        provider,
+        reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+        reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+      });
     }
   }
 
@@ -546,45 +510,6 @@ export class ModelClientFactory {
       }
     }
     return DEFAULT_MODEL;
-  }
-
-  /**
-   * Get the first available model key for a provider, prioritizing the selected model if it matches.
-   */
-  private getModelKeyForProvider(provider: ModelProvider, fallback: string): string {
-    if (this.config) {
-      const configData = this.config.getConfig();
-      const selectedModelData = this.config.getModelById(configData.selectedModelId);
-      if (selectedModelData) {
-        const selectedProviderId = selectedModelData.provider.id;
-        if (this.mapProviderIdToType(selectedProviderId) === provider) {
-          return selectedModelData.model.modelKey;
-        }
-      }
-
-      const providerConfig = this.config.getProvider(provider);
-      if (providerConfig?.models?.length) {
-        return providerConfig.models[0].modelKey;
-      }
-    }
-    return fallback;
-  }
-
-  /**
-   * Default model key per provider when no configuration is available.
-   */
-  private getDefaultModelForProvider(provider: ModelProvider): string {
-    switch (provider) {
-      case 'xai':
-        return 'grok-4-fast-reasoning';
-      case 'google-ai-studio':
-        return 'gemini-2.5-pro';
-      case 'anthropic':
-        return 'claude-3.5-sonnet';
-      case 'openai':
-      default:
-        return DEFAULT_MODEL;
-    }
   }
 
   /**
