@@ -221,7 +221,6 @@ export class DOMTool extends BaseTool {
     nodeId: number,
     options?: ClickOptions
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing click', { tabId, nodeId, options });
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
@@ -237,7 +236,6 @@ export class DOMTool extends BaseTool {
     text: string,
     options?: TypeOptions
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing type', { tabId, nodeId, text, options });
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
@@ -252,7 +250,6 @@ export class DOMTool extends BaseTool {
     key: string,
     options?: KeyPressOptions
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing keypress', { tabId, key, options });
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
@@ -273,7 +270,6 @@ export class DOMTool extends BaseTool {
     nodeId: number,
     options?: { scrollX?: number; scrollY?: number }
   ): Promise<ActionResult> {
-    console.log('[DOMTool] executing scroll: nodeId=', nodeId, 'options=', options);
 
     // Always use CDP-based implementation
     const domService = await DomService.forTab(tabId);

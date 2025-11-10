@@ -896,9 +896,6 @@ export class DomService {
         });
         const windowHeight = viewportResult?.result?.value || 600; // Fallback to 600px
         actualScrollY = Math.floor(windowHeight * 0.8);
-        //test>>
-        console.log('[DomService] scrollY is not provided, using default value actualScrollY=', actualScrollY);
-        //test<<
       }
 
       if (nodeId === NODE_ID_WINDOW) {
