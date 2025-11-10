@@ -511,6 +511,28 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
 
         GeminiLogger.debug('Emitting reasoning item at finish', { contentLength: reasoningItem.content[0].text.length });
 
+        // CRITICAL: Check if we also have tool calls to emit (Kimi K2, o1, o3 pattern)
+        // Thinking models emit: reasoning_content -> tool_calls -> finish_reason
+        // We must emit: reasoning item -> tool call item -> Completed
+        const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
+        if (toolCallsArray.length > 0) {
+          // Queue tool call OutputItemDone
+          const toolCall = toolCallsArray[0];
+          this.pendingEvents.push({
+            type: 'OutputItemDone',
+            item: {
+              type: 'function_call',
+              call_id: toolCall.id,
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            },
+          });
+          GeminiLogger.debug('Queued tool call after reasoning', { toolName: toolCall.function.name });
+
+          // Clear tool calls for next request
+          this.chatCompletionToolCalls.clear();
+        }
+
         // Queue the Completed event for later
         const completedEvent: ResponseEvent = {
           type: 'Completed',
