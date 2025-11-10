@@ -61,6 +61,10 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
   // Unlike Responses API which auto-accumulates, Chat Completions requires manual accumulation
   private chatCompletionTextContent: string = '';
 
+  // Reasoning content accumulator for thinking models (Kimi K2, o1, o3)
+  // Accumulates delta.reasoning_content chunks before emitting as complete reasoning item
+  private chatCompletionReasoningContent: string = '';
+
   // Pending events queue for multi-event chunks
   // Some chunks need to emit multiple events (e.g., OutputItemDone + Completed)
   private pendingEvents: ResponseEvent[] = [];
@@ -380,8 +384,51 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     const delta = choice.delta;
     const finishReason = choice.finish_reason;
 
+    // Handle reasoning content deltas (for thinking models like Kimi K2)
+    // Reasoning content comes before regular content and represents the model's thinking process
+    if (delta?.reasoning_content) {
+      // Accumulate reasoning content - will be emitted as complete reasoning item later
+      this.chatCompletionReasoningContent += delta.reasoning_content;
+
+      // Don't emit event yet - wait until reasoning phase completes
+      // (when we get regular content or finish_reason)
+      return null;
+    }
+
     // Handle text content deltas
     if (delta?.content) {
+      // If we have accumulated reasoning content, emit it as a complete reasoning item first
+      // This happens when transitioning from reasoning phase to content phase
+      if (this.chatCompletionReasoningContent.length > 0) {
+        const reasoningItem = {
+          type: 'reasoning' as const,
+          summary: [],
+          content: [
+            {
+              type: 'reasoning_text' as const,
+              text: this.chatCompletionReasoningContent,
+            },
+          ],
+        };
+
+        // Clear reasoning content for next request
+        this.chatCompletionReasoningContent = '';
+
+        GeminiLogger.debug('Emitting reasoning item', { contentLength: reasoningItem.content[0].text.length });
+
+        // Queue the first content delta for next call
+        this.pendingEvents.push({
+          type: 'OutputTextDelta',
+          delta: delta.content,
+        });
+
+        // Return reasoning item first
+        return {
+          type: 'OutputItemDone',
+          item: reasoningItem,
+        };
+      }
+
       // Accumulate text content for message item creation
       this.chatCompletionTextContent += delta.content;
 
@@ -445,6 +492,40 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
 
     // Handle completion with finish_reason
     if (finishReason) {
+      // If we have accumulated reasoning content that hasn't been emitted yet, emit it now
+      // This handles cases where reasoning completes without any regular content following
+      if (this.chatCompletionReasoningContent.length > 0) {
+        const reasoningItem = {
+          type: 'reasoning' as const,
+          summary: [],
+          content: [
+            {
+              type: 'reasoning_text' as const,
+              text: this.chatCompletionReasoningContent,
+            },
+          ],
+        };
+
+        // Clear reasoning content for next request
+        this.chatCompletionReasoningContent = '';
+
+        GeminiLogger.debug('Emitting reasoning item at finish', { contentLength: reasoningItem.content[0].text.length });
+
+        // Queue the Completed event for later
+        const completedEvent: ResponseEvent = {
+          type: 'Completed',
+          responseId: chatEvent.id || '',
+          tokenUsage: chatEvent.usage ? this.convertChatCompletionUsageToTokenUsage(chatEvent.usage) : undefined,
+        };
+        this.pendingEvents.push(completedEvent);
+
+        // Return reasoning item first
+        return {
+          type: 'OutputItemDone',
+          item: reasoningItem,
+        };
+      }
+
       const completedEvent: ResponseEvent = {
         type: 'Completed',
         responseId: chatEvent.id || '',
@@ -718,6 +799,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     try {
       // Reset streaming state before starting new request
       this.chatCompletionTextContent = '';
+      this.chatCompletionReasoningContent = '';
       this.chatCompletionToolCalls.clear();
       GeminiLogger.stateReset();
       GeminiLogger.streamStart(this.currentModel, this.conversationId);
@@ -854,6 +936,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
   public async cleanup(): Promise<void> {
     // Reset streaming state
     this.chatCompletionTextContent = '';
+    this.chatCompletionReasoningContent = '';
     this.chatCompletionToolCalls.clear();
     this.pendingEvents = [];
   }
