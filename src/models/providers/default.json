@@ -26,7 +26,7 @@
         "reasoningEfforts": ["low", "medium", "high"],
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
-        "supportsImage": true,
+        "supportsImage": false,
         "releaseDate": "2025-01-09",
         "deprecated": false
       }
@@ -59,7 +59,7 @@
         "reasoningEfforts": ["low", "medium", "high"],
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
-        "supportsImage": true,
+        "supportsImage": false,
         "releaseDate": "2025-01-09",
         "deprecated": false
       }
