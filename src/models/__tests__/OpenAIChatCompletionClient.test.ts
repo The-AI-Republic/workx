@@ -13,6 +13,22 @@ import type {
 } from '../types/ResponsesAPI';
 import type { ResponseItem } from '../../protocol/types';
 
+// Mock OpenAI client to avoid browser safety check in tests
+vi.mock('openai', () => {
+  const mockOpenAI = vi.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: vi.fn(),
+      },
+    },
+  }));
+
+  return {
+    default: mockOpenAI,
+    OpenAI: mockOpenAI,
+  };
+});
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

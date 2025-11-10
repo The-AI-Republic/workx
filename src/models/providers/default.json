@@ -86,5 +86,39 @@
     },
     "models": [
     ]
+  },
+  "google-ai-studio": {
+    "id": "google-ai-studio",
+    "name": "Google AI Studio",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "wireApi": "ChatCompletions",
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Gemini 2.5 Pro",
+        "modelKey": "gemini-2.5-pro",
+        "creator": "Google",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 8192,
+        "supportsReasoning": false,
+        "reasoningEfforts": [],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2025-01-09",
+        "deprecated": false
+      }
+    ]
   }
 }

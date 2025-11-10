@@ -342,7 +342,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       // Safety check: ensure Completed event is always emitted
       // This prevents "stream closed before response.completed" errors
       if (!completedEmitted) {
-        console.warn('[OpenAIChatCompletionClient] Stream ended without Completed event, emitting fallback');
         GeminiLogger.debug('Emitting fallback Completed event');
         stream.addEvent({
           type: 'Completed',
@@ -366,11 +365,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
    * - Usage info comes in the final chunk (when finish_reason is set)
    */
   private convertChatCompletionEventToResponseEvent(chatEvent: any): ResponseEvent | null {
-    // Debug logging for Gemini responses
-    if (this.provider.name === 'Google AI Studio') {
-      console.log('[Gemini Debug] Raw chunk:', JSON.stringify(chatEvent, null, 2));
-    }
-
     // Check if we have pending events from previous chunk
     if (this.pendingEvents.length > 0) {
       const pendingEvent = this.pendingEvents.shift()!;
@@ -380,14 +374,11 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
 
     const choice = chatEvent.choices?.[0];
     if (!choice) {
-      console.log('[Gemini Debug] No choice in chunk');
       return null;
     }
 
     const delta = choice.delta;
     const finishReason = choice.finish_reason;
-
-    console.log('[Gemini Debug] Delta:', delta, 'FinishReason:', finishReason);
 
     // Handle text content deltas
     if (delta?.content) {
@@ -398,10 +389,19 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       GeminiLogger.textAccumulated(delta.content, this.chatCompletionTextContent.length);
       GeminiLogger.textDelta(delta.content, this.chatCompletionTextContent.length);
 
-      return {
-        type: 'OutputTextDelta',
-        delta: delta.content,
-      };
+      // CRITICAL FIX: Only return OutputTextDelta if there's NO finish_reason in this chunk
+      // If finish_reason is present, we need to fall through to handle it below
+      // This fixes the bug where content + finish_reason in same chunk causes early return
+      if (!finishReason) {
+        return {
+          type: 'OutputTextDelta',
+          delta: delta.content,
+        };
+      }
+
+      // If we reach here, both content AND finish_reason are in the same chunk
+      // Don't return OutputTextDelta - fall through to finish_reason handling
+      // The accumulated text will be emitted as part of the OutputItemDone message
     }
 
     // Handle tool call deltas (accumulate incrementally)
@@ -454,6 +454,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       // Trace logging for finish reason
       const hasContent = this.chatCompletionTextContent.length > 0;
       const hasToolCalls = this.chatCompletionToolCalls.size > 0;
+
       GeminiLogger.finishReason(finishReason, hasContent, hasToolCalls);
 
       // If tool_calls finish reason, emit OutputItemDone first, then Completed
@@ -560,9 +561,84 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       // FIX: Manually accumulate text in chatCompletionTextContent during streaming,
       // then create message item with accumulated text when finish_reason='stop'.
       // This mirrors the tool call handling pattern (accumulate -> create item -> emit).
+      //
+      // GEMINI BUG FIX: Gemini sometimes sends finish_reason="stop" even when tool_calls
+      // are present (should be "tool_calls"). We must check for accumulated tool calls
+      // and handle them even when finish_reason="stop".
       if (finishReason === 'stop' || finishReason === 'length') {
-        // Check if we have accumulated text content
-        if (hasContent) {
+        const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
+
+        // CASE 1: Has both text content AND tool calls (Gemini bug - should be finish_reason="tool_calls")
+        if (hasContent && hasToolCalls) {
+          // Create message item for the accumulated text
+          const messageItem = {
+            type: 'message' as const,
+            role: 'assistant' as const,
+            content: [
+              {
+                type: 'output_text' as const,
+                text: this.chatCompletionTextContent,
+              },
+            ],
+          };
+
+          // Clear text and tool calls for next request
+          this.chatCompletionTextContent = '';
+          this.chatCompletionToolCalls.clear();
+
+          GeminiLogger.messageItemEmitted(messageItem.content[0].text.length);
+
+          // Queue tool call OutputItemDone
+          const toolCall = toolCallsArray[0];
+          this.pendingEvents.push({
+            type: 'OutputItemDone',
+            item: {
+              type: 'function_call',
+              call_id: toolCall.id,
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            },
+          });
+
+          // Queue Completed event
+          this.pendingEvents.push(completedEvent);
+
+          // Return message OutputItemDone first
+          return {
+            type: 'OutputItemDone',
+            item: messageItem,
+          };
+        }
+
+        // CASE 2: Has ONLY tool calls, no text (Gemini bug - should be finish_reason="tool_calls")
+        if (!hasContent && hasToolCalls) {
+          const toolCall = toolCallsArray[0];
+
+          // Clear tool calls for next request
+          this.chatCompletionToolCalls.clear();
+
+          GeminiLogger.functionCallItemEmitted(
+            toolCallsArray.length,
+            toolCallsArray.map(tc => tc.function.name)
+          );
+
+          // Queue Completed event for next call
+          this.pendingEvents.push(completedEvent);
+
+          // Return the OutputItemDone event immediately
+          return {
+            type: 'OutputItemDone',
+            item: {
+              type: 'function_call',
+              call_id: toolCall.id,
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments,
+            },
+          };
+        }
+
+        // CASE 3: Has ONLY text content, no tool calls (normal case)
+        if (hasContent && !hasToolCalls) {
           // Create message item with accumulated text
           const messageItem = {
             type: 'message' as const,
@@ -599,7 +675,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
             'Empty response detected: finish_reason=stop but no content or tool calls',
             { finishReason, responseId: chatEvent.id }
           );
-          console.warn('[OpenAIChatCompletionClient] Empty response with finish_reason=stop, skipping OutputItemDone');
         }
       }
 
@@ -725,8 +800,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         }
       }
 
-      console.log('[Debug] Converted messages:', JSON.stringify(messages, null, 2));
-
       // Build chat completions request
       const requestParams: any = {
         model: this.currentModel,
@@ -754,16 +827,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
 
         requestParams.tool_choice = 'auto';
         requestParams.parallel_tool_calls = false;
-
-        console.log('[Debug] Converted tools:', JSON.stringify(requestParams.tools, null, 2));
       }
-
-      console.log('[Debug] Final request params:', JSON.stringify({
-        model: requestParams.model,
-        messageCount: requestParams.messages.length,
-        toolCount: requestParams.tools?.length || 0,
-        stream: requestParams.stream
-      }, null, 2));
 
       // Use OpenAI SDK's chat completions API with streaming
       const stream = await this.client.chat.completions.create(requestParams);
