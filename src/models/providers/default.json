@@ -1,4 +1,37 @@
 {
+  "moonshot": {
+    "id": "moonshot",
+    "name": "Moonshot AI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Kimi K2 Thinking",
+        "modelKey": "kimi-k2-thinking",
+        "creator": "Moonshot AI",
+        "contextWindow": 262144,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["low", "medium", "high"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2025-01-09",
+        "deprecated": false
+      }
+    ]
+  },
   "fireworks": {
     "id": "fireworks",
     "name": "Fireworks AI",

@@ -467,7 +467,7 @@ export function getDefaultModel(config: any): string {
  * Detect provider from API key format
  * Returns provider ID based on key pattern
  */
-export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'unknown' {
+export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot' | 'unknown' {
   if (!apiKey || apiKey.trim() === '') {
     return 'unknown';
   }
@@ -503,6 +503,8 @@ export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthr
   }
 
   // Default to OpenAI for keys starting with 'sk-' (backward compatibility)
+  // Note: Moonshot AI keys may also start with 'sk-' but cannot be auto-detected
+  // Users should manually select the moonshot provider when entering their API key
   if (apiKey.startsWith('sk-')) {
     return 'openai';
   }

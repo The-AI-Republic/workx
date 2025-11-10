@@ -13,7 +13,7 @@ import { AgentConfig } from '../config/AgentConfig';
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot';
 
 /**
  * Configuration for model client creation
@@ -82,7 +82,7 @@ export class ModelClientFactory {
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot') {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -249,18 +249,24 @@ export class ModelClientFactory {
    * @returns Promise resolving to configuration status
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, defaultProvider] = await Promise.all([
+    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, defaultProvider] = await Promise.all([
       this.hasValidApiKey('openai'),
       this.hasValidApiKey('xai'),
       this.hasValidApiKey('anthropic'),
       this.hasValidApiKey('groq'),
-      this.hasValidApiKey('google-ai-studio'),  
+      this.hasValidApiKey('google-ai-studio'),
+      this.hasValidApiKey('fireworks'),
+      this.hasValidApiKey('moonshot'),
       this.getDefaultProvider(),
     ]);
 
     return {
+      moonshot: {
+        hasApiKey: moonshotHasKey,
+        isDefault: defaultProvider === 'moonshot',
+      },
       fireworks: {
-        hasApiKey: false, // Will be set when user adds key
+        hasApiKey: fireworksHasKey,
         isDefault: defaultProvider === 'fireworks',
       },
       openai: {
@@ -437,6 +443,17 @@ export class ModelClientFactory {
     // Direct provider-to-client mapping
     // This is the single source of truth for which client each provider uses
     switch (providerName) {
+      case 'moonshot':
+        console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Moonshot AI`);
+        return new OpenAIChatCompletionClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+        });
+
       case 'fireworks':
         console.log(`[ModelClientFactory] Instantiating FireworksChatCompletionClient for Fireworks`);
         return new FireworksChatCompletionClient({
