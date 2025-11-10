@@ -1,4 +1,37 @@
 {
+  "fireworks": {
+    "id": "fireworks",
+    "name": "Fireworks AI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.fireworks.ai/inference/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Kimi K2 Thinking",
+        "modelKey": "accounts/fireworks/models/kimi-k2-thinking",
+        "creator": "Moonshot AI",
+        "contextWindow": 262144,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["low", "medium", "high"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2025-01-09",
+        "deprecated": false
+      }
+    ]
+  },
   "openai": {
     "id": "openai",
     "name": "OpenAI",
@@ -8,7 +41,6 @@
     "version": null,
     "headers": {},
     "timeout": 30000,
-    "wireApi": "Responses",
     "retryConfig": {
       "maxRetries": 3,
       "initialDelay": 1000,
@@ -43,7 +75,6 @@
     "version": null,
     "headers": {},
     "timeout": 30000,
-    "wireApi": "Responses",
     "retryConfig": {
       "maxRetries": 3,
       "initialDelay": 1000,
@@ -77,7 +108,6 @@
     "version": null,
     "headers": {},
     "timeout": 30000,
-    "wireApi": "Responses",
     "retryConfig": {
       "maxRetries": 3,
       "initialDelay": 1000,
@@ -96,7 +126,6 @@
     "version": null,
     "headers": {},
     "timeout": 30000,
-    "wireApi": "ChatCompletions",
     "retryConfig": {
       "maxRetries": 3,
       "initialDelay": 1000,

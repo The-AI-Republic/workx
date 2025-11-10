@@ -7,12 +7,13 @@ import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './client/OpenAIResponsesClient';
 import { OpenAIChatCompletionClient } from './client/OpenAIChatCompletionClient';
 import { GroqClient } from './client/GroqClient';
+import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio';;
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks';
 
 /**
  * Configuration for model client creation
@@ -81,7 +82,7 @@ export class ModelClientFactory {
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks') {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -258,6 +259,10 @@ export class ModelClientFactory {
     ]);
 
     return {
+      fireworks: {
+        hasApiKey: false, // Will be set when user adds key
+        isDefault: defaultProvider === 'fireworks',
+      },
       openai: {
         hasApiKey: openaiHasKey,
         isDefault: defaultProvider === 'openai',
@@ -359,29 +364,14 @@ export class ModelClientFactory {
 
   /**
    * T032, Instantiate a client with the given configuration
+   * Direct provider-to-client mapping for simplicity
    * @param config The client configuration
    * @returns Model client instance
    */
   private instantiateClient(config: ModelClientConfig): ModelClient {
-    // Get provider name from config - this is already correctly set by createClient()
+    // Get provider name from config
     const providerName = config.provider;
     const baseUrl = config.options?.baseUrl;
-
-    // Get wire API type from provider configuration
-    let wireApi: 'Responses' | 'Chat' | 'ChatCompletions' = 'Responses';
-    if (this.config) {
-      const providerConfig = this.config.getProvider(providerName);
-      // Check for wireApi field (camelCase in JSON) which maps to wire_api (snake_case in interface)
-      wireApi = (providerConfig as any)?.wireApi || 'Responses';
-    }
-
-    // Note: providerName comes from mapProviderIdToType() which ensures it matches
-    // the provider type ('openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio')
-
-    // Special case: Google AI Studio always uses Chat Completions API
-    if (providerName === 'google-ai-studio') {
-      wireApi = 'ChatCompletions';
-    }
 
     // Determine base URL
     const resolvedBaseUrl = baseUrl || config.options?.baseUrl;
@@ -412,10 +402,18 @@ export class ModelClientFactory {
     };
 
     // Build provider configuration
+    // Map internal provider IDs to display names
+    let displayName = providerName;
+    if (providerName === 'google-ai-studio') {
+      displayName = 'Google AI Studio';
+    } else if (providerName === 'fireworks') {
+      displayName = 'Fireworks AI';
+    }
+
     const provider = {
-      name: providerName === 'google-ai-studio' ? 'Google AI Studio' : providerName,
+      name: displayName,
       base_url: resolvedBaseUrl,
-      wire_api: wireApi as 'Responses' | 'Chat',
+      wire_api: 'Responses' as 'Responses' | 'Chat', // Kept for backward compatibility
       requires_openai_auth: true,
       ...(providerName === 'google-ai-studio' && {
         env_key: 'GOOGLE_AI_STUDIO_API_KEY',
@@ -436,21 +434,33 @@ export class ModelClientFactory {
       console.log(`[ModelClientFactory] Model ${selectedModel} does not support reasoning - omitting reasoning parameter`);
     }
 
-    // Instantiate the appropriate client based on wire API type
-    if (wireApi === 'Chat' || wireApi === 'ChatCompletions') {
-      console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for provider: ${providerName} (wire_api: ${wireApi})`);
-      return new OpenAIChatCompletionClient({
-        apiKey: config.apiKey,
-        baseUrl: resolvedBaseUrl,
-        organization,
-        conversationId,
-        modelFamily,
-        provider,
-      });
-    } else {
-      // Use GroqClient for Groq provider, OpenAIResponsesClient for others
-      if (providerName === 'groq') {
-        console.log(`[ModelClientFactory] Instantiating GroqClient for provider: ${providerName} (wire_api: ${wireApi})`);
+    // Direct provider-to-client mapping
+    // This is the single source of truth for which client each provider uses
+    switch (providerName) {
+      case 'fireworks':
+        console.log(`[ModelClientFactory] Instantiating FireworksChatCompletionClient for Fireworks`);
+        return new FireworksChatCompletionClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+        });
+
+      case 'google-ai-studio':
+        console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Google AI Studio`);
+        return new OpenAIChatCompletionClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+        });
+
+      case 'groq':
+        console.log(`[ModelClientFactory] Instantiating GroqClient for Groq`);
         return new GroqClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -458,11 +468,15 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
-          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+          reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
-      } else {
-        console.log(`[ModelClientFactory] Instantiating OpenAIResponsesClient for provider: ${providerName} (wire_api: ${wireApi})`);
+
+      case 'openai':
+      case 'xai':
+      case 'anthropic':
+      default:
+        console.log(`[ModelClientFactory] Instantiating OpenAIResponsesClient for ${providerName}`);
         return new OpenAIResponsesClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -470,10 +484,9 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
-          reasoningEffort: reasoningEffort as any, // Cast to ReasoningEffortConfig type
+          reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
-      }
     }
   }
 
