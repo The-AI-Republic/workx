@@ -76,7 +76,7 @@ export enum DOMToolErrorCode {
 export class DOMTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
     'browser_dom',
-    'Unified DOM inspection and action tool. Capture page DOM snapshots with token-optimized serialization, and execute actions (click, type, keypress) on elements using persistent node IDs. Combines DOM capture with page interaction in a single tool.',
+    'Unified DOM inspection and action tool. Capture page DOM snapshots with token-optimized serialization, and execute actions (click, type, keypress, scroll) on elements using persistent node IDs. Combines DOM capture with page interaction in a single tool.',
     {
       action: {
         type: 'string',
@@ -221,7 +221,6 @@ export class DOMTool extends BaseTool {
     nodeId: number,
     options?: ClickOptions
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing click', { tabId, nodeId, options });
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
@@ -237,7 +236,6 @@ export class DOMTool extends BaseTool {
     text: string,
     options?: TypeOptions
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing type', { tabId, nodeId, text, options });
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
@@ -252,7 +250,6 @@ export class DOMTool extends BaseTool {
     key: string,
     options?: KeyPressOptions
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing keypress', { tabId, key, options });
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
@@ -273,14 +270,14 @@ export class DOMTool extends BaseTool {
     nodeId: number,
     options?: { scrollX?: number; scrollY?: number }
   ): Promise<ActionResult> {
-    this.log('debug', 'Executing scroll', { tabId, nodeId, options });
 
     // Always use CDP-based implementation
     const domService = await DomService.forTab(tabId);
 
-    // Extract scroll coordinates (default to 0 if not provided)
+    // Extract scroll coordinates
+    // scrollX defaults to 0, scrollY defaults to undefined (which triggers 80% of window height in DomService)
     const scrollX = options?.scrollX ?? 0;
-    const scrollY = options?.scrollY ?? 0;
+    const scrollY = options?.scrollY;
 
     return await domService.scroll(nodeId, scrollX, scrollY);
   }
