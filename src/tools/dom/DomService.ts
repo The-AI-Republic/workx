@@ -991,17 +991,28 @@ export class DomService {
   /**
    * Scroll by relative offset (delta)
    * @param nodeId - Target node ID (use NODE_ID_WINDOW for window scroll)
-   * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left)
-   * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up)
+   * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left), defaults to 0
+   * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up), defaults to 80% of window height
    */
-  async scroll(nodeId: number, scrollX: number, scrollY: number): Promise<ActionResult> {
+  async scroll(nodeId: number, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
     const start = Date.now();
 
     try {
+      // Get default scrollY if not provided or 0 (80% of current window height)
+      let actualScrollY = scrollY;
+      if (!actualScrollY) {
+        const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
+          expression: 'window.innerHeight',
+          returnByValue: true
+        });
+        const windowHeight = viewportResult?.result?.value || 600; // Fallback to 600px
+        actualScrollY = Math.floor(windowHeight * 0.8);
+      }
+
       if (nodeId === NODE_ID_WINDOW) {
         // Scroll window by relative offset with smooth animation
         await this.sendCommand('Runtime.evaluate', {
-          expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${scrollY}, behavior: 'smooth' })`,
+          expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
           returnByValue: false
         });
       } else {
@@ -1031,7 +1042,7 @@ export class DomService {
         // Use Runtime.callFunctionOn to execute scrollTo with smooth animation
         await this.sendCommand('Runtime.callFunctionOn', {
           objectId: resolveResult.object.objectId,
-          functionDeclaration: `function() { this.scrollTo({ left: this.scrollLeft + ${scrollX}, top: this.scrollTop + ${scrollY}, behavior: 'smooth' }); }`,
+          functionDeclaration: `function() { this.scrollTo({ left: this.scrollLeft + ${scrollX}, top: this.scrollTop + ${actualScrollY}, behavior: 'smooth' }); }`,
           returnByValue: false
         });
 

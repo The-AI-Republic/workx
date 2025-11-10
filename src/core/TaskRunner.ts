@@ -9,7 +9,6 @@ import { TurnManager } from './TurnManager';
 import { TurnContext } from './TurnContext';
 import type { ProcessedResponseItem, TurnRunResult } from './TurnManager';
 import type { InputItem, Event, ResponseItem } from '../protocol/types';
-import { getResponseItemRole } from '../protocol/types';
 import type {
   EventMsg,
   TaskCompleteEvent,
@@ -94,7 +93,7 @@ export class TaskRunner {
   private cancelPromise: Promise<void> | null = null;
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
-  private static readonly MAX_TURNS = 200;
+  private static readonly MAX_TURNS = 500;
   private static readonly COMPACTION_THRESHOLD = 0.75;
 
   constructor(
