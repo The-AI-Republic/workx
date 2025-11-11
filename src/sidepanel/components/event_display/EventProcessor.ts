@@ -599,7 +599,7 @@ export class EventProcessor {
         style: STYLE_PRESETS.reasoning,
         streaming: false,
         collapsible: true,
-        collapsed: true, // Collapsed by default
+        collapsed: false, // Expanded by default to show reasoning
       };
     }
 

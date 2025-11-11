@@ -81,7 +81,7 @@ export const STYLE_PRESETS: Record<string, EventStyle> = {
     textStyle: 'italic',
   },
   reasoning: {
-    textColor: 'text-purple-400',
+    textColor: 'text-green-400',
     textStyle: 'italic',
     icon: 'thinking',
   },
