@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { marked } from 'marked';
   import type { UIUpdate } from '../../core/StreamProcessor';
 
   export let message: {
@@ -88,36 +89,15 @@
     });
   }
 
-  // Parse content for code blocks and markdown
+  // Parse content for code blocks and markdown using marked
   function parseContent(text: string): string {
-    // Simple markdown parsing - in production, use a proper markdown parser
-    let parsed = text;
-
-    // Code blocks
-    parsed = parsed.replace(
-      /```(\w+)?\n([\s\S]*?)```/g,
-      '<pre><code class="language-$1">$2</code></pre>'
-    );
-
-    // Inline code
-    parsed = parsed.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Bold
-    parsed = parsed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-    // Italic
-    parsed = parsed.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
-    // Links
-    parsed = parsed.replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener">$1</a>'
-    );
-
-    // Line breaks
-    parsed = parsed.replace(/\n/g, '<br>');
-
-    return parsed;
+    // Use marked for proper markdown parsing
+    return marked.parse(text, {
+      breaks: true, // Convert \n to <br>
+      gfm: true, // GitHub Flavored Markdown
+      headerIds: false, // Don't generate header IDs
+      mangle: false, // Don't escape email addresses
+    }) as string;
   }
 </script>
 
@@ -228,44 +208,125 @@
     overflow-wrap: break-word;
   }
 
-  .content-text code {
+  /* Markdown styling */
+  .content-text :global(h1),
+  .content-text :global(h2),
+  .content-text :global(h3),
+  .content-text :global(h4),
+  .content-text :global(h5),
+  .content-text :global(h6) {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .content-text :global(h1) {
+    font-size: 1.5em;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.3em;
+  }
+
+  .content-text :global(h2) {
+    font-size: 1.3em;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.3em;
+  }
+
+  .content-text :global(h3) {
+    font-size: 1.15em;
+  }
+
+  .content-text :global(p) {
+    margin: 0.5em 0;
+    line-height: 1.6;
+  }
+
+  .content-text :global(ul),
+  .content-text :global(ol) {
+    margin: 0.5em 0;
+    padding-left: 2em;
+  }
+
+  .content-text :global(li) {
+    margin: 0.25em 0;
+  }
+
+  .content-text :global(code) {
     background: rgba(0, 0, 0, 0.05);
-    padding: 2px 4px;
+    padding: 0.2em 0.4em;
     border-radius: 3px;
-    font-family: 'Monaco', 'Menlo', monospace;
+    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
     font-size: 0.9em;
   }
 
-  .content-text pre {
+  .content-text :global(pre) {
     background: #282c34;
     color: #abb2bf;
-    padding: 12px;
+    padding: 1em;
     border-radius: 4px;
     overflow-x: auto;
-    margin: 8px 0;
+    margin: 0.5em 0;
   }
 
-  .content-text pre code {
+  .content-text :global(pre code) {
     background: transparent;
     padding: 0;
     color: inherit;
+    font-size: 0.9em;
   }
 
-  .content-text strong {
+  .content-text :global(blockquote) {
+    border-left: 4px solid #ddd;
+    padding-left: 1em;
+    margin: 0.5em 0;
+    color: #666;
+  }
+
+  .content-text :global(strong) {
     font-weight: 600;
   }
 
-  .content-text em {
+  .content-text :global(em) {
     font-style: italic;
   }
 
-  .content-text a {
+  .content-text :global(a) {
     color: #2196f3;
     text-decoration: none;
   }
 
-  .content-text a:hover {
+  .content-text :global(a:hover) {
     text-decoration: underline;
+  }
+
+  .content-text :global(hr) {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 1em 0;
+  }
+
+  .content-text :global(table) {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5em 0;
+  }
+
+  .content-text :global(th),
+  .content-text :global(td) {
+    border: 1px solid #ddd;
+    padding: 0.5em;
+    text-align: left;
+  }
+
+  .content-text :global(th) {
+    background: #f5f5f5;
+    font-weight: 600;
+  }
+
+  .content-text :global(img) {
+    max-width: 100%;
+    height: auto;
   }
 
   .cursor-blink {
@@ -333,8 +394,31 @@
       color: #ffccbc;
     }
 
-    .content-text code {
+    .content-text :global(h1),
+    .content-text :global(h2) {
+      border-bottom-color: #444;
+    }
+
+    .content-text :global(code) {
       background: rgba(255, 255, 255, 0.1);
+    }
+
+    .content-text :global(blockquote) {
+      border-left-color: #555;
+      color: #aaa;
+    }
+
+    .content-text :global(th) {
+      background: #333;
+    }
+
+    .content-text :global(th),
+    .content-text :global(td) {
+      border-color: #555;
+    }
+
+    .content-text :global(hr) {
+      border-top-color: #444;
     }
 
     .role {

@@ -158,9 +158,8 @@
     // Update processing state
     if (msg.type === 'TaskStarted') {
       isProcessing = true;
-      // Clear history on new task
-      processedEvents = [];
-      eventProcessor.reset();
+      // Note: We don't clear history here - user wants to see full conversation
+      // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
     }
@@ -207,12 +206,18 @@
     const text = inputText.trim();
     inputText = '';
 
-    // Add user message
-    messages = [...messages, {
-      type: 'user',
+    // Add user message to processedEvents for chronological ordering
+    const userEvent: ProcessedEvent = {
+      id: `user_${Date.now()}`,
+      category: 'message',
+      timestamp: new Date(),
+      title: 'user',
       content: text,
-      timestamp: Date.now(),
-    }];
+      style: { textColor: 'text-cyan-400' },
+      streaming: false,
+      collapsible: false,
+    };
+    processedEvents = [...processedEvents, userEvent];
 
     // Send to agent
     try {
