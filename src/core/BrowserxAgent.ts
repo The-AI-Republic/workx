@@ -5,7 +5,7 @@
 
 import type { Submission, Op, Event, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
 import type { EventMsg } from '../protocol/events';
-import type { IConfigChangeEvent } from '../config/types';
+import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
@@ -17,6 +17,7 @@ import { UserNotifier } from './UserNotifier';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
+import { registerTools } from '../tools';
 
 /**
  * Main agent class managing the submission and event queues
@@ -35,9 +36,9 @@ export class BrowserxAgent {
   private modelClientFactory: ModelClientFactory;
   private userNotifier: UserNotifier;
 
-  constructor(config?: AgentConfig) {
-    // Use provided config or get singleton instance
-    this.config = config || AgentConfig.getInstance();
+  constructor(config: AgentConfig) {
+    // Config must be provided (use await AgentConfig.getInstance() if needed)
+    this.config = config;
 
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
@@ -63,7 +64,6 @@ export class BrowserxAgent {
    * Creates model client during initialization with nullable API key
    */
   async initialize(): Promise<void> {
-    await this.config.initialize();
 
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
@@ -95,6 +95,12 @@ export class BrowserxAgent {
         },
       });
     }
+
+    // Register browser automation tools (pass model data for feature filtering)
+    await registerTools(this.toolRegistry, this.config.getToolsConfig(), {
+      name: modelData.model.name,
+      supportsImage: modelData.model.supportsImage
+    });
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -357,21 +363,9 @@ export class BrowserxAgent {
 
       // If context overrides are provided, update the turn context
       if (contextOverrides) {
-        // If model changed, create new model client and context
-        if (contextOverrides.model && contextOverrides.model !== taskContext?.getModel()) {
-          const modelClient = await this.modelClientFactory.createClientForModel(contextOverrides.model);
-          taskContext = new TurnContext(modelClient, contextOverrides);
-
-          // Load and set instructions
-          const userInstructions = await loadUserInstructions();
-          taskContext.setUserInstructions(userInstructions);
-          const baseInstructions = await loadPrompt();
-          taskContext.setBaseInstructions(baseInstructions);
-
-          // Set the new turn context on the session
-          this.session.setTurnContext(taskContext);
-        } else if (taskContext) {
+        if (taskContext) {
           // Update existing context with overrides
+          // Note: model override is no longer supported - use AgentConfig.selectModel() instead
           this.session.updateTurnContext(contextOverrides);
         }
       }

@@ -107,6 +107,7 @@ export type ReasoningSummaryConfig = boolean | { enabled: boolean };
 export interface ModelFamily {
   family: string;
   base_instructions: string;
+  supports_reasoning: boolean;
   supports_reasoning_summaries: boolean;
   needs_special_apply_patch_instructions: boolean;
 }

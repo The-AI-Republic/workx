@@ -467,9 +467,24 @@ export function getDefaultModel(config: any): string {
  * Detect provider from API key format
  * Returns provider ID based on key pattern
  */
-export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'unknown' {
+export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot' | 'unknown' {
   if (!apiKey || apiKey.trim() === '') {
     return 'unknown';
+  }
+
+  // Fireworks AI keys start with 'fw-' or 'fw_'
+  if (apiKey.startsWith('fw-') || apiKey.startsWith('fw_')) {
+    return 'fireworks';
+  }
+
+  // Google AI Studio keys commonly start with 'AIza' or 'GOAI'
+  if (apiKey.startsWith('AIza') || apiKey.startsWith('GOAI')) {
+    return 'google-ai-studio';
+  }
+
+  // Groq keys: gsk_ prefix + 48 alphanumeric chars (52 total)
+  if (/^gsk_[A-Za-z0-9]{48}$/.test(apiKey)) {
+    return 'groq';
   }
 
   // xAI keys start with 'xai-'
@@ -488,6 +503,8 @@ export function detectProviderFromKey(apiKey: string): 'openai' | 'xai' | 'anthr
   }
 
   // Default to OpenAI for keys starting with 'sk-' (backward compatibility)
+  // Note: Moonshot AI keys may also start with 'sk-' but cannot be auto-detected
+  // Users should manually select the moonshot provider when entering their API key
   if (apiKey.startsWith('sk-')) {
     return 'openai';
   }

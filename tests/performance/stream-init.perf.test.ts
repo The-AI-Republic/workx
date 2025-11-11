@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { OpenAIResponsesClient } from '@/models/OpenAIResponsesClient';
+import { OpenAIResponsesClient } from '@/models/client/OpenAIResponsesClient';
 import type { ModelFamily, ModelProviderInfo, Prompt } from '@/models/types/ResponsesAPI';
 
 describe('Stream Initialization Performance', () => {

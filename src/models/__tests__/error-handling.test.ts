@@ -771,7 +771,7 @@ describe('Error Handling and Retries Integration', () => {
 
   beforeEach(async () => {
     // Dynamically import to avoid module resolution issues during testing
-    const { OpenAIResponsesClient } = await import('../OpenAIResponsesClient');
+    const { OpenAIChatCompletionClient } = await import('../client/OpenAIChatCompletionClient');
 
     mockModelFamily = {
       family: 'gpt-4',
@@ -788,7 +788,7 @@ describe('Error Handling and Retries Integration', () => {
       streamIdleTimeoutMs: 60000,
     };
 
-    client = new OpenAIResponsesClient(
+    client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
         conversationId: 'error-test',

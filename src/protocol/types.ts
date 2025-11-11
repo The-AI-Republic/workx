@@ -185,6 +185,17 @@ export type ResponseItem =
       id?: string;
       role: string;
       content: ContentItem[];
+      /** Reasoning/thinking content from models like Kimi K2, o1, o3 */
+      reasoning_content?: string;
+      /** Tool calls for this assistant message (Chat Completions API format) */
+      tool_calls?: Array<{
+        id: string;
+        type: string;
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
     }
   | {
       type: 'reasoning';

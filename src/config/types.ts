@@ -122,6 +122,13 @@ export interface IModelConfig {
   verbosityLevels?: string[];
 
   /**
+   * Whether model supports image input (optional)
+   * If true, the model can accept and process image inputs
+   * If false, vision-related tools will be disabled
+   */
+  supportsImage?: boolean;
+
+  /**
    * Model release date (optional)
    * ISO 8601 date string (YYYY-MM-DD) indicating when the model was released
    */
@@ -378,7 +385,7 @@ export interface IConfigFactory {
 // Multi-provider validation result types
 export interface IProviderValidationResult {
   isValid: boolean;
-  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'unknown';
+  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'unknown';
   warnings: string[];
   errors: string[];
 }
