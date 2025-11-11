@@ -158,9 +158,8 @@
     // Update processing state
     if (msg.type === 'TaskStarted') {
       isProcessing = true;
-      // Clear history on new task
-      processedEvents = [];
-      eventProcessor.reset();
+      // Note: We don't clear history here - user wants to see full conversation
+      // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
     }
