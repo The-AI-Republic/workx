@@ -1,10 +1,10 @@
 {
-  "moonshot": {
-    "id": "moonshot",
-    "name": "Moonshot AI",
+  "xai": {
+    "id": "xai",
+    "name": "xAI",
     "apiKey": "",
     "organization": null,
-    "baseUrl": "https://api.moonshot.ai/v1",
+    "baseUrl": "https://api.x.ai/v1",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -17,60 +17,22 @@
     "models": [
       {
         "id": "",
-        "name": "Kimi K2 Thinking",
-        "modelKey": "kimi-k2-thinking",
-        "creator": "Moonshot AI",
-        "contextWindow": 262144,
+        "name": "Grok 4 Fast Reasoning",
+        "modelKey": "grok-4-fast-reasoning",
+        "creator": "xAI",
+        "contextWindow": 131072,
         "maxOutputTokens": 16384,
         "supportsReasoning": true,
-        "reasoningEfforts": ["low", "medium", "high"],
+        "reasoningEfforts": ["minimal", "low", "medium", "high", "ultra"],
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
-        "supportsImage": false,
-        "releaseDate": "2025-01-09",
+        "supportsImage": true,
+        "releaseDate": "2024-11-15",
         "deprecated": false,
         "pricing": {
-          "inputToken": "Cache Hit: $0.15 / 1M tokens, Cache Miss: $0.60 / 1M tokens",
-          "outputToken": "$2.50 / 1M tokens",
-          "link": "https://platform.moonshot.ai/docs/pricing/chat"
-        }
-      }
-    ]
-  },
-  "fireworks": {
-    "id": "fireworks",
-    "name": "Fireworks AI",
-    "apiKey": "",
-    "organization": null,
-    "baseUrl": "https://api.fireworks.ai/inference/v1",
-    "version": null,
-    "headers": {},
-    "timeout": 30000,
-    "retryConfig": {
-      "maxRetries": 3,
-      "initialDelay": 1000,
-      "maxDelay": 10000,
-      "backoffMultiplier": 2
-    },
-    "models": [
-      {
-        "id": "",
-        "name": "Kimi K2 Thinking",
-        "modelKey": "accounts/fireworks/models/kimi-k2-thinking",
-        "creator": "Moonshot AI",
-        "contextWindow": 262144,
-        "maxOutputTokens": 16384,
-        "supportsReasoning": true,
-        "reasoningEfforts": ["low", "medium", "high"],
-        "supportsReasoningSummaries": false,
-        "supportsVerbosity": false,
-        "supportsImage": false,
-        "releaseDate": "2025-01-09",
-        "deprecated": false,
-        "pricing": {
-          "inputToken": "$1.20 / 1M tokens",
-          "outputToken": "$1.20 / 1M tokens",
-          "link": "https://fireworks.ai/models"
+          "inputToken": "$0.20 / 1M tokens",
+          "outputToken": "$0.50 / 1M tokens",
+          "link": "https://docs.x.ai/docs/models"
         }
       }
     ]
@@ -114,62 +76,6 @@
       }
     ]
   },
-  "xai": {
-    "id": "xai",
-    "name": "xAI",
-    "apiKey": "",
-    "organization": null,
-    "baseUrl": "https://api.x.ai/v1",
-    "version": null,
-    "headers": {},
-    "timeout": 30000,
-    "retryConfig": {
-      "maxRetries": 3,
-      "initialDelay": 1000,
-      "maxDelay": 10000,
-      "backoffMultiplier": 2
-    },
-    "models": [
-      {
-        "id": "",
-        "name": "Grok 4 Fast Reasoning",
-        "modelKey": "grok-4-fast-reasoning",
-        "creator": "xAI",
-        "contextWindow": 131072,
-        "maxOutputTokens": 16384,
-        "supportsReasoning": true,
-        "reasoningEfforts": ["minimal", "low", "medium", "high", "ultra"],
-        "supportsReasoningSummaries": false,
-        "supportsVerbosity": false,
-        "supportsImage": true,
-        "releaseDate": "2024-11-15",
-        "deprecated": false,
-        "pricing": {
-          "inputToken": "$0.20 / 1M tokens",
-          "outputToken": "$0.50 / 1M tokens",
-          "link": "https://docs.x.ai/docs/models"
-        }
-      }
-    ]
-  },
-  "groq": {
-    "id": "groq",
-    "name": "Groq",
-    "apiKey": "",
-    "organization": null,
-    "baseUrl": "https://api.groq.com/openai/v1",
-    "version": null,
-    "headers": {},
-    "timeout": 30000,
-    "retryConfig": {
-      "maxRetries": 3,
-      "initialDelay": 1000,
-      "maxDelay": 10000,
-      "backoffMultiplier": 2
-    },
-    "models": [
-    ]
-  },
   "google-ai-studio": {
     "id": "google-ai-studio",
     "name": "Google AI Studio",
@@ -204,6 +110,100 @@
           "inputToken": "≤200K tokens: $1.25 / 1M, >200K tokens: $2.50 / 1M",
           "outputToken": "≤200K tokens: $10.00 / 1M, >200K tokens: $15.00 / 1M",
           "link": "https://ai.google.dev/gemini-api/docs/pricing"
+        }
+      }
+    ]
+  },
+  "moonshot": {
+    "id": "moonshot",
+    "name": "Moonshot AI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Kimi K2 Thinking",
+        "modelKey": "kimi-k2-thinking",
+        "creator": "Moonshot AI",
+        "contextWindow": 262144,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["low", "medium", "high"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": false,
+        "releaseDate": "2025-01-09",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "Cache Hit: $0.15 / 1M tokens, Cache Miss: $0.60 / 1M tokens",
+          "outputToken": "$2.50 / 1M tokens",
+          "link": "https://platform.moonshot.ai/docs/pricing/chat"
+        }
+      }
+    ]
+  },
+  "groq": {
+    "id": "groq",
+    "name": "Groq",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+    ]
+  },
+  "fireworks": {
+    "id": "fireworks",
+    "name": "Fireworks AI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.fireworks.ai/inference/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Kimi K2 Thinking",
+        "modelKey": "accounts/fireworks/models/kimi-k2-thinking",
+        "creator": "Moonshot AI",
+        "contextWindow": 262144,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["low", "medium", "high"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": false,
+        "releaseDate": "2025-01-09",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$1.20 / 1M tokens",
+          "outputToken": "$1.20 / 1M tokens",
+          "link": "https://fireworks.ai/models/fireworks/kimi-k2-thinking"
         }
       }
     ]
