@@ -65,7 +65,7 @@ export interface EventStyle {
  */
 export const STYLE_PRESETS: Record<string, EventStyle> = {
   task_started: {
-    textColor: 'text-cyan-400',
+    textColor: 'text-green-400',
     icon: 'info',
   },
   task_complete: {
