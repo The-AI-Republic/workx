@@ -149,6 +149,26 @@
           "outputToken": "$2.50 / 1M tokens",
           "link": "https://platform.moonshot.ai/docs/pricing/chat"
         }
+      },
+      {
+        "id": "",
+        "name": "Kimi K2 Thinking Turbo (Fast)",
+        "modelKey": "kimi-k2-thinking-turbo",
+        "creator": "Moonshot AI",
+        "contextWindow": 262144,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["low", "medium", "high"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": false,
+        "releaseDate": "2025-01-09",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "Cache Hit: $0.15 / 1M tokens, Cache Miss: $1.15 / 1M tokens",
+          "outputToken": "$8.00 / 1M tokens",
+          "link": "https://platform.moonshot.ai/docs/pricing/chat"
+        }
       }
     ]
   },
