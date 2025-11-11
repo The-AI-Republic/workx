@@ -284,6 +284,7 @@
 
   .message-bubble-container.user-message .message-container {
     max-width: 70%;
+    text-align: right;
   }
 
   .message-header {
@@ -292,6 +293,10 @@
     align-items: center;
     margin-bottom: 0.25rem;
     font-size: 0.75rem;
+  }
+
+  .message-bubble-container.user-message .message-header {
+    flex-direction: row-reverse;
   }
 
   .message-sender {
@@ -313,6 +318,10 @@
 
   .message-content {
     /* No border or background - clean layout */
+  }
+
+  .message-bubble-container.user-message .message-content {
+    text-align: right;
   }
 
   .animate-pulse-subtle {
