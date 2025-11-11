@@ -61,6 +61,24 @@
 
   // Apply styling classes from event.style
   function getContainerClasses(): string {
+    // For chat messages, use different layout
+    if (event.category === 'message') {
+      const classes = ['event-display', 'message-bubble-container', 'mb-3'];
+
+      if (event.title === 'user') {
+        classes.push('user-message');
+      } else {
+        classes.push('agent-message');
+      }
+
+      if (event.streaming) {
+        classes.push('animate-pulse-subtle');
+      }
+
+      return classes.join(' ');
+    }
+
+    // For non-message events, keep original styling
     const classes = [
       'event-display',
       'border-l-2',
@@ -111,117 +129,205 @@
   }
 </script>
 
-<article
-  class={getContainerClasses()}
-  tabindex="0"
-  role="article"
-  aria-label={`${event.category} event: ${event.title}`}
-  aria-expanded={event.collapsible ? !collapsed : undefined}
-  on:click={handleClick}
-  on:keydown={handleKeyDown}
->
-  <!-- Event Header -->
-  <div class="flex items-center justify-between mb-1">
-    <div class="flex items-center gap-2">
-      <!-- Collapse indicator -->
-      {#if event.collapsible}
-        <button
-          class="text-gray-400 hover:text-gray-200 transition-colors"
-          on:click|stopPropagation={handleToggle}
-          aria-label={collapsed ? 'Expand' : 'Collapse'}
-        >
-          {#if collapsed}
-            <span>▶</span>
-          {:else}
-            <span>▼</span>
-          {/if}
-        </button>
-      {/if}
-
-      <!-- Icon -->
-      {#if event.style.icon}
-        <span class={`icon-${event.style.icon} ${event.style.iconColor || event.style.textColor}`}>
-          {#if event.style.icon === 'error'}
-            ⚠
-          {:else if event.style.icon === 'success'}
-            ✓
-          {:else if event.style.icon === 'info'}
-            ℹ
-          {:else if event.style.icon === 'warning'}
-            ⚠
-          {:else if event.style.icon === 'tool'}
-            🔧
-          {:else if event.style.icon === 'thinking'}
-            💭
-          {/if}
-        </span>
-      {/if}
-
-      <!-- Timestamp -->
-      <span class="text-gray-500 text-xs" title={formatTime(event.timestamp, 'absolute')}>
-        {formatTime(event.timestamp, 'relative')}
-      </span>
-
-      <!-- Title -->
-      <span class={getTitleClasses()}>
-        {event.title}
-      </span>
-
-      <!-- Status indicator -->
-      {#if event.status}
-        <span
-          class="text-xs px-1.5 py-0.5 rounded {event.status === 'running'
-            ? 'bg-cyan-500/20 text-cyan-400'
-            : event.status === 'success'
-              ? 'bg-green-500/20 text-green-400'
-              : 'bg-red-500/20 text-red-400'}"
-        >
-          {event.status}
-        </span>
-      {/if}
-
-      <!-- Streaming indicator -->
-      {#if event.streaming}
-        <span class="text-cyan-400 text-xs animate-pulse" role="status" aria-live="polite">
-          streaming...
-        </span>
-      {/if}
+{#if event.category === 'message'}
+  <!-- Chat-style message bubble layout -->
+  <div class={getContainerClasses()}>
+    <div class="message-bubble">
+      <div class="message-header">
+        <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}</span>
+        <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
+      </div>
+      <div class="message-content-wrapper">
+        <MessageEvent {event} />
+        {#if event.streaming}
+          <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
+            streaming...
+          </span>
+        {/if}
+      </div>
     </div>
   </div>
+{:else}
+  <!-- Original event display layout for non-message events -->
+  <article
+    class={getContainerClasses()}
+    tabindex="0"
+    role="article"
+    aria-label={`${event.category} event: ${event.title}`}
+    aria-expanded={event.collapsible ? !collapsed : undefined}
+    on:click={handleClick}
+    on:keydown={handleKeyDown}
+  >
+    <!-- Event Header -->
+    <div class="flex items-center justify-between mb-1">
+      <div class="flex items-center gap-2">
+        <!-- Collapse indicator -->
+        {#if event.collapsible}
+          <button
+            class="text-gray-400 hover:text-gray-200 transition-colors"
+            on:click|stopPropagation={handleToggle}
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {#if collapsed}
+              <span>▶</span>
+            {:else}
+              <span>▼</span>
+            {/if}
+          </button>
+        {/if}
 
-  <!-- Event Content -->
-  {#if !collapsed || !event.collapsible}
-    <div class="event-content ml-6 mt-2">
-      {#if event.category === 'message'}
-        <MessageEvent {event} />
-      {:else if event.category === 'error'}
-        <ErrorEvent {event} />
-      {:else if event.category === 'task'}
-        <TaskEvent {event} />
-      {:else if event.category === 'tool'}
-        <ToolCallEvent {event} />
-      {:else if event.category === 'reasoning'}
-        <ReasoningEvent {event} />
-      {:else if event.category === 'output'}
-        <OutputEvent {event} />
-      {:else if event.category === 'approval'}
-        <ApprovalEvent {event} />
-      {:else if event.category === 'system'}
-        <SystemEvent {event} />
-      {:else}
-        <!-- Fallback for unknown categories -->
-        <div class="text-gray-400 text-sm">
-          {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
-        </div>
-      {/if}
+        <!-- Icon -->
+        {#if event.style.icon}
+          <span class={`icon-${event.style.icon} ${event.style.iconColor || event.style.textColor}`}>
+            {#if event.style.icon === 'error'}
+              ⚠
+            {:else if event.style.icon === 'success'}
+              ✓
+            {:else if event.style.icon === 'info'}
+              ℹ
+            {:else if event.style.icon === 'warning'}
+              ⚠
+            {:else if event.style.icon === 'tool'}
+              🔧
+            {:else if event.style.icon === 'thinking'}
+              💭
+            {/if}
+          </span>
+        {/if}
+
+        <!-- Timestamp -->
+        <span class="text-gray-500 text-xs" title={formatTime(event.timestamp, 'absolute')}>
+          {formatTime(event.timestamp, 'relative')}
+        </span>
+
+        <!-- Title -->
+        <span class={getTitleClasses()}>
+          {event.title}
+        </span>
+
+        <!-- Status indicator -->
+        {#if event.status}
+          <span
+            class="text-xs px-1.5 py-0.5 rounded {event.status === 'running'
+              ? 'bg-cyan-500/20 text-cyan-400'
+              : event.status === 'success'
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-red-500/20 text-red-400'}"
+          >
+            {event.status}
+          </span>
+        {/if}
+
+        <!-- Streaming indicator -->
+        {#if event.streaming}
+          <span class="text-cyan-400 text-xs animate-pulse" role="status" aria-live="polite">
+            streaming...
+          </span>
+        {/if}
+      </div>
     </div>
-  {/if}
-</article>
+
+    <!-- Event Content -->
+    {#if !collapsed || !event.collapsible}
+      <div class="event-content ml-6 mt-2">
+        {#if event.category === 'error'}
+          <ErrorEvent {event} />
+        {:else if event.category === 'task'}
+          <TaskEvent {event} />
+        {:else if event.category === 'tool'}
+          <ToolCallEvent {event} />
+        {:else if event.category === 'reasoning'}
+          <ReasoningEvent {event} />
+        {:else if event.category === 'output'}
+          <OutputEvent {event} />
+        {:else if event.category === 'approval'}
+          <ApprovalEvent {event} />
+        {:else if event.category === 'system'}
+          <SystemEvent {event} />
+        {:else}
+          <!-- Fallback for unknown categories -->
+          <div class="text-gray-400 text-sm">
+            {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </article>
+{/if}
 
 <style>
   .event-display {
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New',
       monospace;
+  }
+
+  /* Chat-style message bubbles */
+  .message-bubble-container {
+    display: flex;
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    animation: slideIn 0.2s ease-out;
+  }
+
+  .message-bubble-container.agent-message {
+    justify-content: flex-start;
+  }
+
+  .message-bubble-container.user-message {
+    justify-content: flex-end;
+  }
+
+  .message-bubble {
+    max-width: 80%;
+    min-width: 200px;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    position: relative;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .agent-message .message-bubble {
+    background: rgba(139, 92, 246, 0.15); /* Purple tint for agent */
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-bottom-left-radius: 4px;
+  }
+
+  .user-message .message-bubble {
+    background: rgba(6, 182, 212, 0.15); /* Cyan tint for user */
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-bottom-right-radius: 4px;
+  }
+
+  .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  .message-sender {
+    font-weight: 600;
+  }
+
+  .agent-message .message-sender {
+    color: #a78bfa; /* Purple for agent name */
+  }
+
+  .user-message .message-sender {
+    color: #22d3ee; /* Cyan for user name */
+  }
+
+  .message-time {
+    color: #9ca3af;
+  }
+
+  .message-content-wrapper {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .animate-pulse-subtle {
@@ -238,6 +344,17 @@
     }
   }
 
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .event-content {
     animation: slideDown 0.2s ease-out;
   }
@@ -250,6 +367,19 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  /* Dark mode adjustments */
+  @media (prefers-color-scheme: dark) {
+    .agent-message .message-bubble {
+      background: rgba(139, 92, 246, 0.12);
+      border-color: rgba(139, 92, 246, 0.25);
+    }
+
+    .user-message .message-bubble {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: rgba(6, 182, 212, 0.25);
     }
   }
 </style>

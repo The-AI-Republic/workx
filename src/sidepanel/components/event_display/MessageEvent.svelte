@@ -23,7 +23,7 @@
 </script>
 
 <div class="message-event">
-  <div class={`text-sm markdown-content ${event.style.textColor}`}>
+  <div class="text-sm markdown-content">
     {@html contentHtml}
   </div>
 
@@ -33,6 +33,15 @@
 </div>
 
 <style>
+  .message-event {
+    width: 100%;
+  }
+
+  .markdown-content {
+    color: #e5e7eb; /* Light gray text for readability */
+    line-height: 1.6;
+  }
+
   .markdown-content :global(h1),
   .markdown-content :global(h2),
   .markdown-content :global(h3),
