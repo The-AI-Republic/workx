@@ -278,13 +278,13 @@
     justify-content: flex-end;
   }
 
-  .message-container {
+  .message-bubble-container.agent-message .message-container {
     width: 100%;
   }
 
   .message-bubble-container.user-message .message-container {
-    max-width: 70%;
-    /* Text left-aligned, but container pushed to right edge */
+    width: fit-content;
+    max-width: 80%;
   }
 
   .message-header {

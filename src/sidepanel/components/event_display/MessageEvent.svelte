@@ -23,7 +23,7 @@
 </script>
 
 <div class="message-event">
-  <div class={`text-sm markdown-content ${event.style.textColor}`}>
+  <div class={`text-base markdown-content ${event.style.textColor}`}>
     {@html contentHtml}
   </div>
 
