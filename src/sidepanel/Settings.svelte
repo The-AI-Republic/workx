@@ -53,6 +53,11 @@
     baseUrl: string;
     supportsImage: boolean;  // Whether model supports image input
     selected: boolean;       // Indicates if this model is currently selected
+    pricing?: {              // Model pricing information
+      inputToken: string;
+      outputToken: string;
+      link: string;
+    };
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
 
@@ -124,7 +129,8 @@
             maxOutputTokens: model.maxOutputTokens,
             baseUrl: provider.baseUrl || '',
             supportsImage: model.supportsImage !== false,  // Default to true if not specified
-            selected: model.id === selectedModelId  // Mark as selected if it matches
+            selected: model.id === selectedModelId,  // Mark as selected if it matches
+            pricing: model.pricing  // Include pricing information if available
           });
         }
       }

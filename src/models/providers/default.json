@@ -28,7 +28,12 @@
         "supportsVerbosity": false,
         "supportsImage": false,
         "releaseDate": "2025-01-09",
-        "deprecated": false
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "Cache Hit: $0.15 / 1M tokens, Cache Miss: $0.60 / 1M tokens",
+          "outputToken": "$2.50 / 1M tokens",
+          "link": "https://platform.moonshot.ai/docs/pricing/chat"
+        }
       }
     ]
   },
@@ -61,7 +66,12 @@
         "supportsVerbosity": false,
         "supportsImage": false,
         "releaseDate": "2025-01-09",
-        "deprecated": false
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$1.20 / 1M tokens",
+          "outputToken": "$1.20 / 1M tokens",
+          "link": "https://fireworks.ai/models"
+        }
       }
     ]
   },
@@ -95,7 +105,12 @@
         "verbosityLevels": ["low", "medium", "high"],
         "supportsImage": true,
         "releaseDate": "2024-12-05",
-        "deprecated": false
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "Input: $1.25 / 1M tokens, Cached: $0.125 / 1M tokens",
+          "outputToken": "$10.00 / 1M tokens",
+          "link": "https://openai.com/api/pricing/"
+        }
       }
     ]
   },
@@ -128,7 +143,12 @@
         "supportsVerbosity": false,
         "supportsImage": true,
         "releaseDate": "2024-11-15",
-        "deprecated": false
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$0.20 / 1M tokens",
+          "outputToken": "$0.50 / 1M tokens",
+          "link": "https://docs.x.ai/docs/models"
+        }
       }
     ]
   },
@@ -179,7 +199,12 @@
         "supportsVerbosity": false,
         "supportsImage": true,
         "releaseDate": "2025-01-09",
-        "deprecated": false
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "≤200K tokens: $1.25 / 1M, >200K tokens: $2.50 / 1M",
+          "outputToken": "≤200K tokens: $10.00 / 1M, >200K tokens: $15.00 / 1M",
+          "link": "https://ai.google.dev/gemini-api/docs/pricing"
+        }
       }
     ]
   }

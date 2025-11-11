@@ -50,6 +50,27 @@ export interface IAgentConfig {
   storage?: IStorageConfig;
 }
 
+// Model pricing information
+export interface IModelPrice {
+  /**
+   * Input token pricing
+   * String format to support complex pricing (e.g., "$1 / 1M tokens < 200K, $2 / 1M tokens > 200K")
+   */
+  inputToken: string;
+
+  /**
+   * Output token pricing
+   * String format to support complex pricing
+   */
+  outputToken: string;
+
+  /**
+   * Official pricing page URL
+   * Link to the provider's official pricing documentation
+   */
+  link: string;
+}
+
 // Model configuration
 export interface IModelConfig {
   /**
@@ -90,6 +111,12 @@ export interface IModelConfig {
    * Maximum number of tokens the model can generate in a single response
    */
   maxOutputTokens: number;
+
+  /**
+   * Pricing information (optional)
+   * Contains input/output token pricing and link to official pricing page
+   */
+  pricing?: IModelPrice;
 
   /**
    * Whether model supports reasoning features
