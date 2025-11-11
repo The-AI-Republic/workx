@@ -517,7 +517,7 @@ export class TurnManager {
   private async handleResponseItem(item: any): Promise<any | undefined> {
     // Check item type and handle accordingly
     if (item.type === 'function_call') {
-      // Function call - execute and return response
+      // Legacy function_call item - execute and return response
       const { name, arguments: args, call_id } = item;
 
       try {
@@ -540,6 +540,27 @@ export class TurnManager {
           await this.emitEvent(msg);
         } else {
           console.warn('Skipping malformed event from mapResponseItemToEventMessages:', msg);
+        }
+      }
+
+      // Handle tool_calls embedded in message items (unified format)
+      // NEW: Assistant messages can now contain tool_calls directly
+      if (item.type === 'message' && item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
+        // Execute the first tool call (parallel_tool_calls is false)
+        const toolCall = item.tool_calls[0];
+        try {
+          const result = await this.executeToolCall(
+            toolCall.function.name,
+            toolCall.function.arguments,
+            toolCall.id
+          );
+          return result;
+        } catch (error) {
+          return {
+            type: 'function_call_output',
+            call_id: toolCall.id,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          };
         }
       }
 

@@ -387,48 +387,19 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     // Handle reasoning content deltas (for thinking models like Kimi K2)
     // Reasoning content comes before regular content and represents the model's thinking process
     if (delta?.reasoning_content) {
-      // Accumulate reasoning content - will be emitted as complete reasoning item later
+      // Accumulate reasoning content for final message item
+      // NOTE: We do NOT emit ReasoningContentDelta events here because:
+      // 1. ReasoningContentDelta is a Responses API event type
+      // 2. Chat Completions API should accumulate silently and include in final message item
+      // 3. The reasoning_content will be stored in the message item and sent back to API
       this.chatCompletionReasoningContent += delta.reasoning_content;
 
-      // Don't emit event yet - wait until reasoning phase completes
-      // (when we get regular content or finish_reason)
+      // Return null to continue processing without emitting an event
       return null;
     }
 
     // Handle text content deltas
     if (delta?.content) {
-      // If we have accumulated reasoning content, emit it as a complete reasoning item first
-      // This happens when transitioning from reasoning phase to content phase
-      if (this.chatCompletionReasoningContent.length > 0) {
-        const reasoningItem = {
-          type: 'reasoning' as const,
-          summary: [],
-          content: [
-            {
-              type: 'reasoning_text' as const,
-              text: this.chatCompletionReasoningContent,
-            },
-          ],
-        };
-
-        // Clear reasoning content for next request
-        this.chatCompletionReasoningContent = '';
-
-        GeminiLogger.debug('Emitting reasoning item', { contentLength: reasoningItem.content[0].text.length });
-
-        // Queue the first content delta for next call
-        this.pendingEvents.push({
-          type: 'OutputTextDelta',
-          delta: delta.content,
-        });
-
-        // Return reasoning item first
-        return {
-          type: 'OutputItemDone',
-          item: reasoningItem,
-        };
-      }
-
       // Accumulate text content for message item creation
       this.chatCompletionTextContent += delta.content;
 
@@ -491,302 +462,101 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     }
 
     // Handle completion with finish_reason
+    // NEW APPROACH: Create ONE unified message item with all accumulated parts
+    // (reasoning_content, content, tool_calls) instead of separate items
     if (finishReason) {
-      // If we have accumulated reasoning content that hasn't been emitted yet, emit it now
-      // This handles cases where reasoning completes without any regular content following
-      if (this.chatCompletionReasoningContent.length > 0) {
-        const reasoningItem = {
-          type: 'reasoning' as const,
-          summary: [],
-          content: [
-            {
-              type: 'reasoning_text' as const,
-              text: this.chatCompletionReasoningContent,
-            },
-          ],
-        };
-
-        // Clear reasoning content for next request
-        this.chatCompletionReasoningContent = '';
-
-        GeminiLogger.debug('Emitting reasoning item at finish', { contentLength: reasoningItem.content[0].text.length });
-
-        // CRITICAL: Check if we also have tool calls to emit (Kimi K2, o1, o3 pattern)
-        // Thinking models emit: reasoning_content -> tool_calls -> finish_reason
-        // We must emit: reasoning item -> tool call item -> Completed
-        const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
-        if (toolCallsArray.length > 0) {
-          // Queue tool call OutputItemDone
-          const toolCall = toolCallsArray[0];
-          this.pendingEvents.push({
-            type: 'OutputItemDone',
-            item: {
-              type: 'function_call',
-              call_id: toolCall.id,
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments,
-            },
-          });
-          GeminiLogger.debug('Queued tool call after reasoning', { toolName: toolCall.function.name });
-
-          // Clear tool calls for next request
-          this.chatCompletionToolCalls.clear();
-        }
-
-        // Queue the Completed event for later
-        const completedEvent: ResponseEvent = {
-          type: 'Completed',
-          responseId: chatEvent.id || '',
-          tokenUsage: chatEvent.usage ? this.convertChatCompletionUsageToTokenUsage(chatEvent.usage) : undefined,
-        };
-        this.pendingEvents.push(completedEvent);
-
-        // Return reasoning item first
-        return {
-          type: 'OutputItemDone',
-          item: reasoningItem,
-        };
-      }
-
       const completedEvent: ResponseEvent = {
         type: 'Completed',
         responseId: chatEvent.id || '',
         tokenUsage: chatEvent.usage ? this.convertChatCompletionUsageToTokenUsage(chatEvent.usage) : undefined,
       };
 
-      // Trace logging for finish reason
+      // Check what we have accumulated
+      const hasReasoning = this.chatCompletionReasoningContent.length > 0;
       const hasContent = this.chatCompletionTextContent.length > 0;
       const hasToolCalls = this.chatCompletionToolCalls.size > 0;
 
       GeminiLogger.finishReason(finishReason, hasContent, hasToolCalls);
 
-      // If tool_calls finish reason, emit OutputItemDone first, then Completed
-      if (finishReason === 'tool_calls') {
-        const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
-
-        // Clear accumulated tool calls for next request
-        this.chatCompletionToolCalls.clear();
-
-        // Handle mixed content case: text + tool calls
-        // When Gemini returns text followed by tool calls, the text was already emitted as deltas
-        // We need to emit it as a message item too, then emit the tool call
-        if (hasContent && toolCallsArray.length > 0) {
-          // Create message item for the accumulated text
-          const messageItem = {
-            type: 'message' as const,
-            role: 'assistant' as const,
-            content: [
-              {
-                type: 'output_text' as const,
-                text: this.chatCompletionTextContent,
-              },
-            ],
-          };
-
-          // Clear text for next request
-          this.chatCompletionTextContent = '';
-
-          GeminiLogger.messageItemEmitted(messageItem.content[0].text.length);
-
-          // Queue tool call OutputItemDone
-          const toolCall = toolCallsArray[0];
-          this.pendingEvents.push({
-            type: 'OutputItemDone',
-            item: {
-              type: 'function_call',
-              call_id: toolCall.id,
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments,
-            },
+      // If we have any content (reasoning, text, or tool calls), create a unified message item
+      if (hasReasoning || hasContent || hasToolCalls) {
+        // Build content array (may be empty if only tool calls)
+        const contentArray: any[] = [];
+        if (hasContent) {
+          contentArray.push({
+            type: 'output_text' as const,
+            text: this.chatCompletionTextContent,
           });
-          GeminiLogger.debug('Queued tool call OutputItemDone', { toolName: toolCall.function.name });
-
-          // Queue Completed event
-          this.pendingEvents.push(completedEvent);
-          GeminiLogger.debug('Queued Completed event', { pendingCount: this.pendingEvents.length });
-
-          // Return message OutputItemDone first
-          return {
-            type: 'OutputItemDone',
-            item: messageItem,
-          };
         }
 
-        // Emit OutputItemDone for the tool call, queue Completed for next iteration
-        // Note: Chat Completions can have parallel_tool_calls, but BrowserX sets it to false
-        // so we should only have one tool call at a time
-        if (toolCallsArray.length > 0) {
-          const toolCall = toolCallsArray[0];
+        // Build tool_calls array (may be undefined if no tool calls)
+        let toolCallsArray: any[] | undefined;
+        if (hasToolCalls) {
+          toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
 
           if (toolCallsArray.length > 1) {
-            console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but only emitting first one:', toolCallsArray);
+            console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but BrowserX uses parallel_tool_calls=false:', toolCallsArray);
           }
 
-          // Trace logging for tool call emission
           GeminiLogger.functionCallItemEmitted(
             toolCallsArray.length,
             toolCallsArray.map(tc => tc.function.name)
           );
-
-          // Clear any accumulated text (it was just for "thinking out loud")
-          this.chatCompletionTextContent = '';
-
-          // Queue the Completed event for next call
-          this.pendingEvents.push(completedEvent);
-          GeminiLogger.debug('Queued Completed event (tool calls only)', { pendingCount: this.pendingEvents.length });
-
-          // Return the OutputItemDone event immediately
-          return {
-            type: 'OutputItemDone',
-            item: {
-              type: 'function_call',
-              call_id: toolCall.id,
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments,
-            },
-          };
         }
 
-        // If no tool calls accumulated, just emit completion
-        // Clear text just in case
-        this.chatCompletionTextContent = '';
-        return completedEvent;
-      }
+        // Create unified message item with all parts
+        const messageItem: any = {
+          type: 'message' as const,
+          role: 'assistant' as const,
+          content: contentArray,
+        };
 
-      // Handle finish_reason='stop'
-      //
-      // ROOT CAUSE: Chat Completions API emits text as delta.content chunks
-      // but does NOT auto-create message items like Responses API does. Without this fix,
-      // text deltas would be displayed in UI but never stored in conversation history,
-      // causing TurnManager to receive empty processedItems[] and show "Task completed"
-      // without any visible response text.
-      //
-      // FIX: Manually accumulate text in chatCompletionTextContent during streaming,
-      // then create message item with accumulated text when finish_reason='stop'.
-      // This mirrors the tool call handling pattern (accumulate -> create item -> emit).
-      //
-      // GEMINI BUG FIX: Gemini sometimes sends finish_reason="stop" even when tool_calls
-      // are present (should be "tool_calls"). We must check for accumulated tool calls
-      // and handle them even when finish_reason="stop".
-      if (finishReason === 'stop' || finishReason === 'length') {
-        const toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
-
-        // CASE 1: Has both text content AND tool calls (Gemini bug - should be finish_reason="tool_calls")
-        if (hasContent && hasToolCalls) {
-          // Create message item for the accumulated text
-          const messageItem = {
-            type: 'message' as const,
-            role: 'assistant' as const,
-            content: [
-              {
-                type: 'output_text' as const,
-                text: this.chatCompletionTextContent,
-              },
-            ],
-          };
-
-          // Clear text and tool calls for next request
-          this.chatCompletionTextContent = '';
-          this.chatCompletionToolCalls.clear();
-
-          GeminiLogger.messageItemEmitted(messageItem.content[0].text.length);
-
-          // Queue tool call OutputItemDone
-          const toolCall = toolCallsArray[0];
-          this.pendingEvents.push({
-            type: 'OutputItemDone',
-            item: {
-              type: 'function_call',
-              call_id: toolCall.id,
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments,
-            },
+        // Add reasoning_content if present (for Kimi K2, o1, o3)
+        if (hasReasoning) {
+          messageItem.reasoning_content = this.chatCompletionReasoningContent;
+          GeminiLogger.debug('Including reasoning_content in message item', {
+            reasoningLength: this.chatCompletionReasoningContent.length
           });
-
-          // Queue Completed event
-          this.pendingEvents.push(completedEvent);
-
-          // Return message OutputItemDone first
-          return {
-            type: 'OutputItemDone',
-            item: messageItem,
-          };
         }
 
-        // CASE 2: Has ONLY tool calls, no text (Gemini bug - should be finish_reason="tool_calls")
-        if (!hasContent && hasToolCalls) {
-          const toolCall = toolCallsArray[0];
-
-          // Clear tool calls for next request
-          this.chatCompletionToolCalls.clear();
-
-          GeminiLogger.functionCallItemEmitted(
-            toolCallsArray.length,
-            toolCallsArray.map(tc => tc.function.name)
-          );
-
-          // Queue Completed event for next call
-          this.pendingEvents.push(completedEvent);
-
-          // Return the OutputItemDone event immediately
-          return {
-            type: 'OutputItemDone',
-            item: {
-              type: 'function_call',
-              call_id: toolCall.id,
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments,
-            },
-          };
+        // Add tool_calls if present
+        if (toolCallsArray && toolCallsArray.length > 0) {
+          messageItem.tool_calls = toolCallsArray;
         }
 
-        // CASE 3: Has ONLY text content, no tool calls (normal case)
-        if (hasContent && !hasToolCalls) {
-          // Create message item with accumulated text
-          const messageItem = {
-            type: 'message' as const,
-            role: 'assistant' as const,
-            content: [
-              {
-                type: 'output_text' as const,
-                text: this.chatCompletionTextContent,
-              },
-            ],
-          };
+        // Clear all accumulated state for next request
+        this.chatCompletionTextContent = '';
+        this.chatCompletionReasoningContent = '';
+        this.chatCompletionToolCalls.clear();
 
-          // Clear accumulated text for next request
-          this.chatCompletionTextContent = '';
-
-          // Trace logging for message item emission
-          GeminiLogger.messageItemEmitted(messageItem.content[0].text.length);
-
-          // Queue Completed event for next call
-          this.pendingEvents.push(completedEvent);
-          GeminiLogger.debug('Queued Completed event (stop)', { pendingCount: this.pendingEvents.length });
-
-          // Return OutputItemDone with message item immediately
-          return {
-            type: 'OutputItemDone',
-            item: messageItem,
-          };
+        // Trace logging
+        if (hasContent) {
+          GeminiLogger.messageItemEmitted(this.chatCompletionTextContent.length);
         }
 
-        // Validation - empty response handling
-        // If no content and no tool calls, log warning
-        if (!hasContent && !hasToolCalls) {
-          GeminiLogger.validationWarning(
-            'Empty response detected: finish_reason=stop but no content or tool calls',
-            { finishReason, responseId: chatEvent.id }
-          );
-        }
+        // Queue Completed event
+        this.pendingEvents.push(completedEvent);
+        GeminiLogger.debug('Queued Completed event', { pendingCount: this.pendingEvents.length });
+
+        // Return unified message item
+        return {
+          type: 'OutputItemDone',
+          item: messageItem,
+        };
       }
 
-      // Clear tool calls state for next request
-      this.chatCompletionToolCalls.clear();
-      // Also clear text content if not already cleared
-      this.chatCompletionTextContent = '';
+      // Empty response - no reasoning, content, or tool calls
+      GeminiLogger.validationWarning(
+        'Empty response detected at finish_reason',
+        { finishReason, responseId: chatEvent.id }
+      );
 
-      // Emit completion event for other finish reasons or fallback
+      // Clear state just in case
+      this.chatCompletionTextContent = '';
+      this.chatCompletionReasoningContent = '';
+      this.chatCompletionToolCalls.clear();
+
+      // Emit completion event
       GeminiLogger.completedEmitted(completedEvent.tokenUsage);
       return completedEvent;
     }
@@ -874,12 +644,28 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
               }
             }
 
-            messages.push({
+            // Build message object
+            const message: any = {
               role: item.role,
               content: content
-            });
+            };
+
+            // Add reasoning_content if present (for Kimi K2, o1, o3, etc.)
+            // This preserves the thinking/reasoning context for multi-turn conversations
+            if (item.reasoning_content) {
+              message.reasoning_content = item.reasoning_content;
+            }
+
+            // Add tool_calls if present (unified format)
+            // Tool calls are now part of message items, not separate items
+            if (item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
+              message.tool_calls = item.tool_calls;
+            }
+
+            messages.push(message);
           } else if (item.type === 'function_call') {
-            // Convert function_call to Chat Completions assistant message with tool_calls
+            // Legacy support: Convert old function_call items to Chat Completions format
+            // NOTE: New responses use message items with tool_calls field instead
             messages.push({
               role: 'assistant',
               tool_calls: [{
@@ -898,9 +684,12 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
               tool_call_id: item.call_id,
               content: item.output
             });
+          } else if (item.type === 'reasoning') {
+            // Legacy reasoning items are skipped
+            // New format includes reasoning_content directly in message items
+            // Keep reasoning items in history for backward compatibility but don't send to API
           }
-          // Note: 'reasoning' items are not sent (provider generates its own reasoning)
-          // Other item types (web_search_call, etc.) are also omitted
+          // Note: Other item types (web_search_call, etc.) are omitted
         }
       }
 
