@@ -338,33 +338,34 @@ export class TurnManager {
       });
     }
 
-    // Add update_plan tool (always enabled for task management)
-    tools.push({
-      type: 'function',
-      function: {
-        name: 'update_plan',
-        description: 'Update the current task plan',
-        strict: false,
-        parameters: {
-          type: 'object',
-          properties: {
-            tasks: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  description: { type: 'string' },
-                  status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
-                },
-                required: ['id', 'description', 'status'],
-              },
-            },
-          },
-          required: ['tasks'],
-        },
-      },
-    });
+    // Add update_plan tool (DISABLED - not working as expected)
+    // TODO: Re-enable after fixing update_plan functionality
+    // tools.push({
+    //   type: 'function',
+    //   function: {
+    //     name: 'update_plan',
+    //     description: 'Update the current task plan',
+    //     strict: false,
+    //     parameters: {
+    //       type: 'object',
+    //       properties: {
+    //         tasks: {
+    //           type: 'array',
+    //           items: {
+    //             type: 'object',
+    //             properties: {
+    //               id: { type: 'string' },
+    //               description: { type: 'string' },
+    //               status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
+    //             },
+    //             required: ['id', 'description', 'status'],
+    //           },
+    //         },
+    //       },
+    //       required: ['tasks'],
+    //     },
+    //   },
+    // });
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -592,9 +593,10 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
-        case 'update_plan':
-          result = await this.updatePlan(parsedParams.tasks);
-          break;
+        // DISABLED: update_plan tool not working as expected
+        // case 'update_plan':
+        //   result = await this.updatePlan(parsedParams.tasks);
+        //   break;
 
         default:
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
