@@ -130,14 +130,22 @@
 </script>
 
 {#if event.category === 'message'}
-  <!-- Simple left/right aligned messages -->
+  <!-- Simple left/right aligned messages with sender labels -->
   <div class={getContainerClasses()}>
-    <MessageEvent {event} />
-    {#if event.streaming}
-      <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
-        streaming...
-      </span>
-    {/if}
+    <div class="message-container">
+      <div class="message-header">
+        <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}:</span>
+        <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
+      </div>
+      <div class="message-content">
+        <MessageEvent {event} />
+        {#if event.streaming}
+          <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
+            streaming...
+          </span>
+        {/if}
+      </div>
+    </div>
   </div>
 {:else}
   <!-- Original event display layout for non-message events -->
@@ -257,7 +265,7 @@
   .message-bubble-container {
     display: flex;
     width: 100%;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
   .message-bubble-container.agent-message {
@@ -270,8 +278,41 @@
     justify-content: flex-end;
   }
 
-  .message-bubble-container.user-message > :global(*) {
+  .message-container {
+    width: 100%;
+  }
+
+  .message-bubble-container.user-message .message-container {
     max-width: 70%;
+  }
+
+  .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .message-sender {
+    font-weight: 600;
+  }
+
+  .agent-message .message-sender {
+    color: #a78bfa; /* Purple for agent name */
+  }
+
+  .user-message .message-sender {
+    color: #22d3ee; /* Cyan for user name */
+  }
+
+  .message-time {
+    color: #9ca3af;
+    font-size: 0.7rem;
+  }
+
+  .message-content {
+    /* No border or background - clean layout */
   }
 
   .animate-pulse-subtle {
