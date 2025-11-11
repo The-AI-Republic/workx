@@ -130,22 +130,14 @@
 </script>
 
 {#if event.category === 'message'}
-  <!-- Chat-style message bubble layout -->
+  <!-- Simple left/right aligned messages -->
   <div class={getContainerClasses()}>
-    <div class="message-bubble">
-      <div class="message-header">
-        <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}</span>
-        <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
-      </div>
-      <div class="message-content-wrapper">
-        <MessageEvent {event} />
-        {#if event.streaming}
-          <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
-            streaming...
-          </span>
-        {/if}
-      </div>
-    </div>
+    <MessageEvent {event} />
+    {#if event.streaming}
+      <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
+        streaming...
+      </span>
+    {/if}
   </div>
 {:else}
   <!-- Original event display layout for non-message events -->
@@ -261,73 +253,25 @@
       monospace;
   }
 
-  /* Chat-style message bubbles */
+  /* Simple left/right message alignment */
   .message-bubble-container {
     display: flex;
     width: 100%;
-    padding: 0.25rem 0.5rem;
-    animation: slideIn 0.2s ease-out;
+    margin-bottom: 0.5rem;
   }
 
   .message-bubble-container.agent-message {
+    /* Agent messages: full width, left-aligned */
     justify-content: flex-start;
   }
 
   .message-bubble-container.user-message {
+    /* User messages: 70% width, right-aligned */
     justify-content: flex-end;
   }
 
-  .message-bubble {
-    max-width: 80%;
-    min-width: 200px;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    position: relative;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  .agent-message .message-bubble {
-    background: rgba(139, 92, 246, 0.15); /* Purple tint for agent */
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    border-bottom-left-radius: 4px;
-  }
-
-  .user-message .message-bubble {
-    background: rgba(6, 182, 212, 0.15); /* Cyan tint for user */
-    border: 1px solid rgba(6, 182, 212, 0.3);
-    border-bottom-right-radius: 4px;
-  }
-
-  .message-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-
-  .message-sender {
-    font-weight: 600;
-  }
-
-  .agent-message .message-sender {
-    color: #a78bfa; /* Purple for agent name */
-  }
-
-  .user-message .message-sender {
-    color: #22d3ee; /* Cyan for user name */
-  }
-
-  .message-time {
-    color: #9ca3af;
-  }
-
-  .message-content-wrapper {
-    display: flex;
-    align-items: flex-start;
-    flex-direction: column;
+  .message-bubble-container.user-message > :global(*) {
+    max-width: 70%;
   }
 
   .animate-pulse-subtle {
@@ -367,19 +311,6 @@
     to {
       opacity: 1;
       transform: translateY(0);
-    }
-  }
-
-  /* Dark mode adjustments */
-  @media (prefers-color-scheme: dark) {
-    .agent-message .message-bubble {
-      background: rgba(139, 92, 246, 0.12);
-      border-color: rgba(139, 92, 246, 0.25);
-    }
-
-    .user-message .message-bubble {
-      background: rgba(6, 182, 212, 0.12);
-      border-color: rgba(6, 182, 212, 0.25);
     }
   }
 </style>
