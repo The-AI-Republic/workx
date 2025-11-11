@@ -661,48 +661,47 @@ export class DomService {
   private visualEffectsInitialized: boolean = false;
 
   private async ensureVisualEffectsInitialized(): Promise<void> {
-    this.visualEffectsInitialized = true;
     // Already checked and initialized in this DomService instance
-    // if (this.visualEffectsInitialized) return;
+    if (this.visualEffectsInitialized) return;
 
-    // try {
-    //   // Check if visual effects are initialized in the page
-    //   const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
-    //     expression: '!!window.__browserx_visual_effects_initialized__',
-    //     returnByValue: true
-    //   });
+    try {
+      // Check if visual effects are initialized in the page
+      const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: '!!window.__browserx_visual_effects_initialized__',
+        returnByValue: true
+      });
 
-    //   const isInitialized = checkResult?.result?.value === true;
+      const isInitialized = checkResult?.result?.value === true;
 
-    //   if (!isInitialized) {
-    //     console.log(`[DomService] Initializing visual effects on tab ${this.tabId}...`);
+      if (!isInitialized) {
+        console.log(`[DomService] Initializing visual effects on tab ${this.tabId}...`);
 
-    //     // Dispatch init event to trigger lazy initialization
-    //     await this.sendCommand('Runtime.evaluate', {
-    //       expression: `
-    //         (function() {
-    //           const event = new CustomEvent('browserx:init-visual-effects', {
-    //             bubbles: false,
-    //             cancelable: false
-    //           });
-    //           document.dispatchEvent(event);
-    //         })()
-    //       `,
-    //       returnByValue: false,
-    //       awaitPromise: false
-    //     });
+        // Dispatch init event to trigger lazy initialization
+        await this.sendCommand('Runtime.evaluate', {
+          expression: `
+            (function() {
+              const event = new CustomEvent('browserx:init-visual-effects', {
+                bubbles: false,
+                cancelable: false
+              });
+              document.dispatchEvent(event);
+            })()
+          `,
+          returnByValue: false,
+          awaitPromise: false
+        });
 
-    //     // Wait briefly for initialization to complete (~100ms for Svelte mount + WebGL setup)
-    //     await new Promise(resolve => setTimeout(resolve, 150));
-    //   }
+        // Wait briefly for initialization to complete (~100ms for Svelte mount + WebGL setup)
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
 
-    //   // Cache result to avoid repeated checks
-    //   this.visualEffectsInitialized = true;
-    // } catch (error: any) {
-    //   // Graceful degradation - visual effects unavailable but actions continue
-    //   console.debug(`[DomService] Could not initialize visual effects on tab ${this.tabId}: ${error.message || 'Unknown error'}`);
-    //   this.visualEffectsInitialized = true; // Don't retry on every action
-    // }
+      // Cache result to avoid repeated checks
+      this.visualEffectsInitialized = true;
+    } catch (error: any) {
+      // Graceful degradation - visual effects unavailable but actions continue
+      console.debug(`[DomService] Could not initialize visual effects on tab ${this.tabId}: ${error.message || 'Unknown error'}`);
+      this.visualEffectsInitialized = true; // Don't retry on every action
+    }
   }
 
   /**
