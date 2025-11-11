@@ -206,12 +206,18 @@
     const text = inputText.trim();
     inputText = '';
 
-    // Add user message
-    messages = [...messages, {
-      type: 'user',
+    // Add user message to processedEvents for chronological ordering
+    const userEvent: ProcessedEvent = {
+      id: `user_${Date.now()}`,
+      category: 'message',
+      timestamp: new Date(),
+      title: 'user',
       content: text,
-      timestamp: Date.now(),
-    }];
+      style: { textColor: 'text-cyan-400' },
+      streaming: false,
+      collapsible: false,
+    };
+    processedEvents = [...processedEvents, userEvent];
 
     // Send to agent
     try {
