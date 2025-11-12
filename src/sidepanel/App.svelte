@@ -302,7 +302,7 @@
   <TerminalContainer>
     <!-- Status Line -->
     <div class="flex justify-between mb-2">
-      <TerminalMessage type="system" content="Browserx (By AI Republic)" />
+      <TerminalMessage type="system" content="Browserx (Alpha)" />
       <div class="flex items-center space-x-2">
         {#if isProcessing}
           <TerminalMessage type="warning" content="[PROCESSING]" />
