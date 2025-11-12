@@ -118,7 +118,10 @@ function setupMessageHandlers(): void {
   
   // Handle ping/pong for connection testing
   router.on(MessageType.PING, async (message, sender) => {
-    console.log('[ServiceWorker] $$$ Received PING from tab:', sender.tab?.id);
+    const senderInfo = sender.tab?.id
+      ? `tab ${sender.tab.id}`
+      : `${message.source || 'unknown'} (url: ${sender.url || 'no url'})`;
+    console.log('[ServiceWorker] $$$ Received PING from:', senderInfo);
 
     // When content script pings, try to send a test message back via tabs API
     if (sender.tab?.id && router) {
@@ -156,6 +159,41 @@ function setupMessageHandlers(): void {
       ...status,
       timestamp: Date.now(),
     };
+  });
+
+  // Test handler to verify content script communication
+  router.on(MessageType.TEST_CONTENT_SCRIPT, async () => {
+    console.log('[ServiceWorker] $$$ TEST_CONTENT_SCRIPT requested - broadcasting to all tabs');
+
+    try {
+      const tabs = await chrome.tabs.query({});
+      const results = [];
+
+      for (const tab of tabs) {
+        if (tab.id) {
+          console.log('[ServiceWorker] $$$ Sending TEST_CONTENT_SCRIPT to tab', tab.id);
+          try {
+            const response = await chrome.tabs.sendMessage(tab.id, {
+              type: 'TEST_CONTENT_SCRIPT'
+            });
+            console.log('[ServiceWorker] $$$ Tab', tab.id, 'responded:', response);
+            results.push({ tabId: tab.id, success: true, response });
+          } catch (error) {
+            console.log('[ServiceWorker] $$$ Tab', tab.id, 'failed:', error.message);
+            results.push({ tabId: tab.id, success: false, error: error.message });
+          }
+        }
+      }
+
+      return {
+        success: true,
+        message: `Tested ${results.length} tabs`,
+        results
+      };
+    } catch (error) {
+      console.error('[ServiceWorker] $$$ TEST_CONTENT_SCRIPT failed:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // Handle session reset

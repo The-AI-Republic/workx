@@ -22,6 +22,13 @@ console.log(`[Browserx] Content script loading - Instance ID: ${INSTANCE_ID}, Fr
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	console.log('[ContentScript] $$$ Message received:', message.type);
 
+	// Test message to verify content script is receiving messages
+	if (message.type === 'TEST_CONTENT_SCRIPT') {
+		console.log('[ContentScript] $$$ TEST_CONTENT_SCRIPT received! Content script is working!');
+		sendResponse({ success: true, message: 'Content script is alive!' });
+		return true;
+	}
+
 	// Validate EVENT message structure (T009)
 	if (message.type === 'EVENT' && message.payload?.msg) {
 		const eventMsg = message.payload.msg;

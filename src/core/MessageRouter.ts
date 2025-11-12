@@ -22,6 +22,7 @@ export enum MessageType {
   PONG = 'PONG',
   HEALTH_CHECK = 'HEALTH_CHECK',
   HEALTH_STATUS = 'HEALTH_STATUS',
+  TEST_CONTENT_SCRIPT = 'TEST_CONTENT_SCRIPT',
 
   // State queries
   GET_STATE = 'GET_STATE',
