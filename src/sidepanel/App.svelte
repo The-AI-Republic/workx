@@ -160,7 +160,7 @@
       isProcessing = true;
       // Note: We don't clear history here - user wants to see full conversation
       // History is only cleared when user explicitly clicks "New Conversation"
-    } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
+    } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed' || msg.type === 'TurnAborted') {
       isProcessing = false;
     }
 
@@ -274,6 +274,36 @@
     // Handle auth updates if needed
   }
 
+  async function stopRunningTask() {
+    // Stop the current running task without clearing history
+    try {
+      // Send request to abort all running tasks (without resetting session)
+      await router.requestAbortTask();
+
+      // Update UI state
+      isProcessing = false;
+
+      // Add system message to indicate task was stopped
+      processedEvents = [...processedEvents, {
+        id: `system_${Date.now()}`,
+        category: 'system',
+        timestamp: new Date(),
+        title: 'Task Stopped',
+        content: 'Task execution stopped by user',
+        style: { textColor: 'text-term-yellow' },
+        streaming: false,
+        collapsible: false,
+      }];
+    } catch (error) {
+      console.error('Failed to stop task:', error);
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Failed to stop task. Please try again.',
+        timestamp: Date.now(),
+      }];
+    }
+  }
+
   async function startNewConversation() {
     // Clear UI state
     messages = [];
@@ -353,11 +383,27 @@
     <!-- Input area -->
     <div class="input-area">
       <div class="terminal-prompt flex items-center">
-        <span class="text-term-dim-green mr-2">&gt;</span>
+        {#if isProcessing}
+          <!-- Stop button when agent is running -->
+          <button
+            class="stop-button flex items-center justify-center mr-2 p-1 rounded hover:bg-term-bg-hover transition-colors"
+            on:click={stopRunningTask}
+            aria-label="Stop running task"
+            title="Stop running task"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-term-red" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="6" width="12" height="12" />
+            </svg>
+          </button>
+        {:else}
+          <!-- Normal prompt when not processing -->
+          <span class="text-term-dim-green mr-2">&gt;&gt;</span>
+        {/if}
         <TerminalInput
           bind:value={inputText}
           onSubmit={sendMessage}
-          placeholder="Enter command..."
+          placeholder={isProcessing ? "Processing..." : "Enter command..."}
+          disabled={isProcessing}
         />
       </div>
     </div>
@@ -446,6 +492,23 @@
     background: var(--color-term-bg);
     position: relative;
     z-index: 10;
+  }
+
+  .stop-button {
+    cursor: pointer;
+    border: 1px solid var(--color-term-red, #ef4444);
+    background: transparent;
+    transition: all 0.2s ease;
+  }
+
+  .stop-button:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--color-term-red, #ef4444);
+  }
+
+  .stop-button:active {
+    transform: scale(0.95);
+    background: rgba(239, 68, 68, 0.2);
   }
 
   .function-menu {

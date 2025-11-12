@@ -153,6 +153,20 @@ function setupMessageHandlers(): void {
     throw new Error('Agent not initialized');
   });
 
+  // Handle abort task (stop running tasks without resetting session)
+  router.on(MessageType.ABORT_TASK, async () => {
+    if (agent) {
+      // Get the current session
+      const session = agent.getSession();
+
+      // Abort all running tasks (but don't reset session/history)
+      await session.abortAllTasks('UserInterrupt');
+
+      return { type: MessageType.ABORT_TASK_COMPLETE, timestamp: Date.now() };
+    }
+    throw new Error('Agent not initialized');
+  });
+
   // Handle stop agent session (from visual effects Stop Agent button)
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'STOP_AGENT_SESSION') {
@@ -542,17 +556,20 @@ async function executeQuickAction(tabId: number): Promise<void> {
  * Setup periodic tasks
  */
 function setupPeriodicTasks(): void {
-  // Process event queue periodically
-  setInterval(async () => {
-    if (!agent || !router) return;
+  // Listen for events from BrowserxAgent and broadcast to content scripts
+  // Note: BrowserxAgent.emitEvent uses chrome.runtime.sendMessage which reaches
+  // the service worker but NOT content scripts. We need to relay to tabs.
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'EVENT' && message.payload && router) {
+      const eventType = message.payload.msg?.type;
+      console.log('[ServiceWorker] Relaying event to content scripts:', eventType);
 
-    // Get next event from agent
-    const event = await agent.getNextEvent();
-    if (event) {
-      // Broadcast event to all connected clients
-      await router.broadcast(MessageType.EVENT, event);
+      // Broadcast event to all content scripts via tabs API
+      router.broadcast(MessageType.EVENT, message.payload).catch((error) => {
+        console.error('[ServiceWorker] Failed to broadcast event to tabs:', error);
+      });
     }
-  }, 100); // Check every 100ms
+  });
 
   // Cleanup old data and manage storage periodically
   // Wrap in try-catch to handle any chrome API issues

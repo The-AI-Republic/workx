@@ -84,6 +84,8 @@ export enum MessageType {
   // Session management
   SESSION_RESET = 'SESSION_RESET',
   SESSION_RESET_COMPLETE = 'SESSION_RESET_COMPLETE',
+  ABORT_TASK = 'ABORT_TASK',
+  ABORT_TASK_COMPLETE = 'ABORT_TASK_COMPLETE',
 
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
@@ -580,6 +582,13 @@ export class MessageRouter {
    */
   async requestSessionReset(): Promise<void> {
     return this.send(MessageType.SESSION_RESET);
+  }
+
+  /**
+   * Request abort of running tasks (without resetting session)
+   */
+  async requestAbortTask(): Promise<void> {
+    return this.send(MessageType.ABORT_TASK);
   }
 
   /**

@@ -291,12 +291,38 @@
 
     document.addEventListener('browserx:stop-agent', stopAgentHandler);
 
+    // Listen for task lifecycle events from background service worker
+    const taskLifecycleHandler = (message: any, sender: any, sendResponse: any) => {
+      console.log('[VisualEffectController] Message received:', message.type, message.payload?.msg?.type);
+
+      // Check if this is an EVENT message containing task lifecycle events
+      if (message.type === 'EVENT' && message.payload?.msg) {
+        const eventMsg = message.payload.msg;
+
+        // Clear visual effects when task ends
+        if (eventMsg.type === 'TaskComplete' ||
+            eventMsg.type === 'TaskFailed' ||
+            eventMsg.type === 'TurnAborted') {
+          console.log('[VisualEffectController] Task ended, calling handleAgentStop:', eventMsg.type);
+          handleAgentStop();
+        }
+        // Show visual effects when task starts
+        else if (eventMsg.type === 'TaskStarted') {
+          console.log('[VisualEffectController] Task started, calling handleAgentStart');
+          handleAgentStart();
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(taskLifecycleHandler);
+
     // Cleanup function
     eventListenerCleanup = () => {
       document.removeEventListener(VISUAL_EFFECT_EVENT_NAME, visualEffectHandler);
       document.removeEventListener('browserx:show-visual-effect', directVisualEffectHandler);
       document.removeEventListener('browserx:trigger-ripple', rippleHandler);
       document.removeEventListener('browserx:stop-agent', stopAgentHandler);
+      chrome.runtime.onMessage.removeListener(taskLifecycleHandler);
     };
   }
 
@@ -475,13 +501,18 @@
   /**
    * Stop agent session (internal handler)
    *
-   * Sends message to service worker to terminate agent.
+   * Sends message to service worker to abort running tasks (without clearing history).
    */
   function handleStopAgentButton() {
     try {
-      chrome.runtime.sendMessage({ type: 'STOP_AGENT_SESSION' });
+      // Use ABORT_TASK instead of STOP_AGENT_SESSION to preserve conversation history
+      chrome.runtime.sendMessage({
+        type: 'ABORT_TASK',
+        source: 'content',
+        timestamp: Date.now()
+      });
     } catch (error) {
-      handleError('Stop agent session error', error);
+      handleError('Stop agent task error', error);
     }
 
     handleAgentStop();
