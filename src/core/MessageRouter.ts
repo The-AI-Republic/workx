@@ -160,6 +160,12 @@ export class MessageRouter {
     sendResponse: (response: MessageResponse) => void
   ): Promise<void> {
     try {
+      // Debug logging for EVENT messages
+      if (message.type === 'EVENT') {
+        console.log('[MessageRouter] $$$ handleMessage received EVENT message:', message);
+        console.log('[MessageRouter] $$$ All registered handlers:', Array.from(this.handlers.keys()));
+      }
+
       // Add sender info to message
       message.tabId = sender.tab?.id;
       message.timestamp = Date.now();
@@ -175,12 +181,25 @@ export class MessageRouter {
 
       // Process message through handlers
       const handlers = this.handlers.get(message.type);
+      if (message.type === 'EVENT') {
+        console.log('[MessageRouter] $$$ Found handlers for EVENT:', handlers?.size || 0);
+      }
       if (handlers && handlers.size > 0) {
         const responses: any[] = [];
 
+        if (message.type === 'EVENT') {
+          console.log('[MessageRouter] $$$ About to iterate handlers, count:', handlers.size);
+        }
+
         for (const handler of handlers) {
+          if (message.type === 'EVENT') {
+            console.log('[MessageRouter] $$$ Calling handler...');
+          }
           try {
             const result = await handler(message, sender);
+            if (message.type === 'EVENT') {
+              console.log('[MessageRouter] $$$ Handler returned:', result);
+            }
             if (result !== undefined) {
               responses.push(result);
             }
@@ -264,8 +283,13 @@ export class MessageRouter {
     if (!this.handlers.has(type)) {
       this.handlers.set(type, new Set());
     }
-    
+
     this.handlers.get(type)!.add(handler);
+
+    // Debug logging for EVENT handler registration
+    if (type === 'EVENT') {
+      console.log('[MessageRouter] $$$ Registered EVENT handler, total EVENT handlers:', this.handlers.get(type)!.size);
+    }
 
     // Return unsubscribe function
     return () => {
@@ -309,14 +333,18 @@ export class MessageRouter {
       // Send message
       if (tabId) {
         // Send to specific tab
+        console.log('[MessageRouter] $$$ Sending to tab', tabId, ':', message.type);
+        console.log('[MessageRouter] $$$ Full message being sent:', message);
         chrome.tabs.sendMessage(tabId, message, (response) => {
           if (chrome.runtime.lastError) {
+            console.error('[MessageRouter] $$$ Error sending to tab', tabId, ':', chrome.runtime.lastError);
             this.pendingRequests.delete(messageId);
             reject(chrome.runtime.lastError);
           } else if (response?.success === false) {
             this.pendingRequests.delete(messageId);
             reject(new Error(response.error || 'Message failed'));
           } else {
+            console.log('[MessageRouter] $$$ Message sent successfully to tab', tabId);
             this.pendingRequests.delete(messageId);
             resolve(response?.data);
           }
@@ -347,15 +375,21 @@ export class MessageRouter {
     payload?: any
   ): Promise<void> {
     const tabs = await chrome.tabs.query({});
+    console.log('[MessageRouter] $$$ broadcast() called for type:', type);
+    console.log('[MessageRouter] $$$ Found tabs:', tabs.length, tabs.map(t => ({ id: t.id, url: t.url })));
+
     const promises = tabs.map(tab => {
       if (tab.id) {
-        return this.send(type, payload, tab.id).catch(() => {
-          // Ignore errors for individual tabs
+        console.log('[MessageRouter] $$$ Sending to tab', tab.id, ':', type);
+        return this.send(type, payload, tab.id).catch((error) => {
+          // Log errors but don't fail the broadcast
+          console.error('[MessageRouter] $$$ Failed to send to tab', tab.id, ':', error);
         });
       }
     });
-    
+
     await Promise.all(promises);
+    console.log('[MessageRouter] $$$ broadcast() complete for type:', type);
   }
 
   /**

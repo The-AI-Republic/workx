@@ -79,6 +79,7 @@
     router.on(MessageType.EVENT, (message) => {
       const event = message.payload as Event;
       handleEvent(event);
+      return { success: true }; // Return response so background handler can also execute
     });
 
     router.on(MessageType.STATE_UPDATE, (message) => {

@@ -16,6 +16,41 @@ import VisualEffectController from './ui_effect/VisualEffectController.svelte';
 const INSTANCE_ID = Math.random().toString(36).substring(7);
 console.log(`[Browserx] Content script loading - Instance ID: ${INSTANCE_ID}, Frame: ${window.self === window.top ? 'MAIN' : 'IFRAME'}, URL: ${window.location.href}`);
 
+// TOP-LEVEL MESSAGE LISTENER (T008-T011: User Story 1 - Fix race condition)
+// CRITICAL: Register listener at top-level to avoid race condition
+// Previous bug: Listener was registered inside Svelte onMount(), causing messages to be lost
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+	console.log('[ContentScript] $$$ Message received:', message.type);
+
+	// Validate EVENT message structure (T009)
+	if (message.type === 'EVENT' && message.payload?.msg) {
+		const eventMsg = message.payload.msg;
+		console.log('[ContentScript] $$$ Event type:', eventMsg.type);
+
+		// Dispatch DOM custom event for VisualEffectController (T010)
+		if (eventMsg.type === 'TaskComplete' ||
+		    eventMsg.type === 'TaskFailed' ||
+		    eventMsg.type === 'TurnAborted' ||
+		    eventMsg.type === 'TaskStarted') {
+
+			console.log('[ContentScript] $$$ Dispatching DOM event: browserx:task-lifecycle');
+			document.dispatchEvent(new CustomEvent('browserx:task-lifecycle', {
+				detail: {
+					eventType: eventMsg.type,
+					timestamp: Date.now()
+				}
+			}));
+
+			sendResponse({ success: true });
+			return true; // Keep channel open for async response
+		}
+	}
+
+	return false; // Don't keep channel open for other messages
+});
+
+console.log('[ContentScript] $$$ Message listener registered'); // T011
+
 let visualEffectController: any = null;
 let visualEffectShadowHost: HTMLElement | null = null;
 

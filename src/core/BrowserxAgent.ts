@@ -649,12 +649,13 @@ export class BrowserxAgent {
 
     // Notify listeners via Chrome runtime if available
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      console.log('[BrowserxAgent] Sending event to service worker:', msg.type);
+      console.log('[BrowserxAgent] $$$ Sending event to service worker:', msg.type);
+      console.log('[BrowserxAgent] $$$ Message payload:', { type: 'EVENT', payload: event });
       chrome.runtime.sendMessage({
         type: 'EVENT',
         payload: event,
       }).catch((error) => {
-        console.error('[BrowserxAgent] Failed to send event:', error);
+        console.error('[BrowserxAgent] $$$ Failed to send event:', error);
       });
     }
   }

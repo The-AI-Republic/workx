@@ -78,7 +78,11 @@ async function doInitialize(): Promise<void> {
  * Setup message handlers
  */
 function setupMessageHandlers(): void {
-  if (!router || !agent) return;
+  console.log('[ServiceWorker] $$$ setupMessageHandlers() called');
+  if (!router || !agent) {
+    console.log('[ServiceWorker] $$$ setupMessageHandlers() aborted - router or agent not ready');
+    return;
+  }
   
   // Handle submissions from UI
   router.on(MessageType.SUBMISSION, async (message) => {
@@ -113,7 +117,25 @@ function setupMessageHandlers(): void {
   });
   
   // Handle ping/pong for connection testing
-  router.on(MessageType.PING, async () => {
+  router.on(MessageType.PING, async (message, sender) => {
+    console.log('[ServiceWorker] $$$ Received PING from tab:', sender.tab?.id);
+
+    // When content script pings, try to send a test message back via tabs API
+    if (sender.tab?.id && router) {
+      setTimeout(async () => {
+        console.log('[ServiceWorker] $$$ Attempting test broadcast to tab', sender.tab!.id);
+        try {
+          await chrome.tabs.sendMessage(sender.tab!.id, {
+            type: 'TEST_BROADCAST',
+            payload: { test: 'direct message from background' }
+          });
+          console.log('[ServiceWorker] $$$ Test broadcast successful');
+        } catch (error) {
+          console.error('[ServiceWorker] $$$ Test broadcast failed:', error);
+        }
+      }, 1000);
+    }
+
     return { type: MessageType.PONG, timestamp: Date.now() };
   });
 
@@ -167,34 +189,77 @@ function setupMessageHandlers(): void {
     throw new Error('Agent not initialized');
   });
 
-  // Handle stop agent session (from visual effects Stop Agent button)
+  // Handle events from BrowserxAgent and broadcast to all content scripts
+  // T032-T033: Helper function to check if content scripts can be injected on a tab
+  function isInjectableTab(tab: chrome.tabs.Tab): boolean {
+    if (!tab.url) return false;
+
+    // Filter out restricted URLs where content scripts cannot be injected
+    return !tab.url.startsWith('chrome://') &&
+           !tab.url.startsWith('chrome-extension://') &&
+           !tab.url.startsWith('edge://') &&
+           !tab.url.startsWith('about:');
+  }
+
+  // BYPASS MessageRouter and listen directly via chrome.runtime.onMessage
+  // This ensures we catch ALL EVENT messages regardless of MessageRouter routing
+  console.log('[ServiceWorker] Setting up DIRECT chrome.runtime.onMessage listener for EVENT broadcasting');
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'STOP_AGENT_SESSION') {
+    // Only handle EVENT type messages
+    if (message.type === 'EVENT') {
+      // T021: Enhanced logging with $$$ marker
+      console.log('[ServiceWorker] $$$ DIRECT listener caught EVENT:', message.payload?.msg?.type);
+
+      // Broadcast to all tabs asynchronously
       (async () => {
         try {
-          if (agent) {
-            const session = agent.getSession();
+          const tabs = await chrome.tabs.query({});
 
-            // Abort all running tasks
-            await session.abortAllTasks('UserInterrupt');
+          // T034: Apply tab filtering to skip restricted pages
+          const injectableTabs = tabs.filter(isInjectableTab);
+          const restrictedCount = tabs.length - injectableTabs.length;
 
-            // Reset the session
-            await session.reset();
+          // T035: Filtered tab count logging
+          console.log(`[ServiceWorker] $$$ Broadcasting EVENT to ${injectableTabs.length} tabs (filtered ${restrictedCount} restricted)`);
 
-            sendResponse({ success: true });
-          } else {
-            sendResponse({ success: false, error: 'Agent not initialized' });
+          for (const tab of injectableTabs) {
+            if (tab.id) {
+              // T023: Per-tab logging
+              console.log('[ServiceWorker] $$$ Attempting broadcast to tab', tab.id);
+
+              chrome.tabs.sendMessage(tab.id, {
+                type: 'EVENT',
+                payload: message.payload
+              }).catch((error) => {
+                // T024: Enhanced error logging with tab ID
+                console.log('[ServiceWorker] $$$ Tab', tab.id, 'not ready:', error.message);
+              });
+            }
           }
+
+          // T036: Log skipped restricted tabs
+          const restrictedTabs = tabs.filter(tab => !isInjectableTab(tab));
+          for (const tab of restrictedTabs) {
+            if (tab.id) {
+              console.log(`[ServiceWorker] $$$ Skipping tab ${tab.id} - restricted URL: ${tab.url?.substring(0, 50)}...`);
+            }
+          }
+
+          console.log('[ServiceWorker] $$$ Broadcast complete');
         } catch (error) {
-          console.error('[ServiceWorker] Failed to stop agent session:', error);
-          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+          console.error('[ServiceWorker] $$$ Broadcast failed:', error);
         }
       })();
 
-      return true; // Keep channel open for async response
+      // Don't return anything to avoid interfering with other listeners
+      return false;
     }
+
+    // Let other messages pass through to MessageRouter
+    return false;
   });
-  
+
   // Handle storage operations
   router.on(MessageType.STORAGE_GET, async (message) => {
     const { key } = message.payload;
@@ -556,20 +621,7 @@ async function executeQuickAction(tabId: number): Promise<void> {
  * Setup periodic tasks
  */
 function setupPeriodicTasks(): void {
-  // Listen for events from BrowserxAgent and broadcast to content scripts
-  // Note: BrowserxAgent.emitEvent uses chrome.runtime.sendMessage which reaches
-  // the service worker but NOT content scripts. We need to relay to tabs.
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'EVENT' && message.payload && router) {
-      const eventType = message.payload.msg?.type;
-      console.log('[ServiceWorker] Relaying event to content scripts:', eventType);
-
-      // Broadcast event to all content scripts via tabs API
-      router.broadcast(MessageType.EVENT, message.payload).catch((error) => {
-        console.error('[ServiceWorker] Failed to broadcast event to tabs:', error);
-      });
-    }
-  });
+  console.log('[ServiceWorker] setupPeriodicTasks() called');
 
   // Cleanup old data and manage storage periodically
   // Wrap in try-catch to handle any chrome API issues
@@ -721,22 +773,9 @@ chrome.runtime.onSuspend.addListener(async () => {
   initializationPromise = null;
 });
 
-// Ensure initialization happens when messages arrive
-// This handles cases where the service worker wakes up from sleep
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Initialize if not already initialized
-  if (!isInitialized && !initializationPromise) {
-    initialize().then(() => {
-      // Initialization complete - MessageRouter will handle the message
-    }).catch(err => {
-      console.error('Failed to initialize on message:', err);
-    });
-  }
-  // Don't return true - let MessageRouter handle the response
-  return false;
-});
-
 // Initialize on script load
+// Note: MessageRouter's listener (in MessageRouter.ts) is the ONLY chrome.runtime.onMessage listener
+// All message handling goes through MessageRouter's handler system (router.on)
 initialize();
 
 // Export for testing

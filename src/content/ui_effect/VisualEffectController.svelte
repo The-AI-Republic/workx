@@ -162,6 +162,8 @@
    * Setup event listeners for DomTool events
    */
   function setupEventListeners() {
+    console.log('[VisualEffectController] $$$ Setting up event listeners...');
+
     // Listen for visual effect events from DomTool
     const visualEffectHandler = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -291,30 +293,30 @@
 
     document.addEventListener('browserx:stop-agent', stopAgentHandler);
 
-    // Listen for task lifecycle events from background service worker
-    const taskLifecycleHandler = (message: any, sender: any, sendResponse: any) => {
-      console.log('[VisualEffectController] Message received:', message.type, message.payload?.msg?.type);
+    // T012-T014: Listen for task lifecycle events via DOM custom events
+    // UPDATED: Now uses DOM custom events dispatched by content-script.ts (fixes race condition)
+    const taskLifecycleHandler = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { eventType } = customEvent.detail;
 
-      // Check if this is an EVENT message containing task lifecycle events
-      if (message.type === 'EVENT' && message.payload?.msg) {
-        const eventMsg = message.payload.msg;
+      console.log('[VisualEffectController] $$$ Task lifecycle event:', eventType);
 
-        // Clear visual effects when task ends
-        if (eventMsg.type === 'TaskComplete' ||
-            eventMsg.type === 'TaskFailed' ||
-            eventMsg.type === 'TurnAborted') {
-          console.log('[VisualEffectController] Task ended, calling handleAgentStop:', eventMsg.type);
-          handleAgentStop();
-        }
-        // Show visual effects when task starts
-        else if (eventMsg.type === 'TaskStarted') {
-          console.log('[VisualEffectController] Task started, calling handleAgentStart');
-          handleAgentStart();
-        }
+      // Clear visual effects when task ends
+      if (eventType === 'TaskComplete' ||
+          eventType === 'TaskFailed' ||
+          eventType === 'TurnAborted') {
+        console.log('[VisualEffectController] $$$ Task ended, calling handleAgentStop:', eventType);
+        handleAgentStop();
+      }
+      // Show visual effects when task starts
+      else if (eventType === 'TaskStarted') {
+        console.log('[VisualEffectController] $$$ Task started, calling handleAgentStart');
+        handleAgentStart();
       }
     };
 
-    chrome.runtime.onMessage.addListener(taskLifecycleHandler);
+    document.addEventListener('browserx:task-lifecycle', taskLifecycleHandler);
+    console.log('[VisualEffectController] $$$ DOM event listener registered for task lifecycle');
 
     // Cleanup function
     eventListenerCleanup = () => {
@@ -322,8 +324,10 @@
       document.removeEventListener('browserx:show-visual-effect', directVisualEffectHandler);
       document.removeEventListener('browserx:trigger-ripple', rippleHandler);
       document.removeEventListener('browserx:stop-agent', stopAgentHandler);
-      chrome.runtime.onMessage.removeListener(taskLifecycleHandler);
+      document.removeEventListener('browserx:task-lifecycle', taskLifecycleHandler);
     };
+
+    console.log('[VisualEffectController] $$$ Event listeners setup complete');
   }
 
   /**
@@ -390,6 +394,9 @@
    * Hides overlay and resets state.
    */
   function handleAgentStop() {
+    // T028: Add cleanup logging
+    console.log('[VisualEffectController] $$$ Clearing visual effects');
+
     overlayState.update(state => ({
       ...state,
       visible: false,
