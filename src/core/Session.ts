@@ -1038,6 +1038,14 @@ export class Session {
     // Abort the task via AbortController
     task.abortController.abort();
 
+    // Call the task's abort method to properly clean up (e.g., cancel AgentTask)
+    try {
+      await task.task.abort(this, subId);
+    } catch (error) {
+      console.error('[Session] Error during task abort:', error);
+      // Continue with abort even if cleanup fails
+    }
+
     // Emit TurnAborted event
     const event: Event = {
       id: subId,
@@ -1137,6 +1145,7 @@ export class Session {
     // Create RunningTask entry
     const runningTask: RunningTask = {
       kind: task.kind(),
+      task,
       abortController,
       promise,
       startTime: Date.now()
@@ -1156,7 +1165,7 @@ export class Session {
    * Used when user explicitly interrupts execution.
    */
   async interruptTask(): Promise<void> {
-    await this.abortAllTasks('user_interrupt');
+    await this.abortAllTasks('UserInterrupt');
   }
 
   // ========================================================================
@@ -1516,7 +1525,7 @@ export class Session {
     }
 
     // Determine abort reason from error
-    const reason: TurnAbortReason = error?.name === 'AbortError' ? 'user_interrupt' : 'error';
+    const reason: TurnAbortReason = error?.name === 'AbortError' ? 'UserInterrupt' : 'Error';
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {

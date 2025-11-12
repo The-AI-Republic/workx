@@ -143,7 +143,7 @@ function setupMessageHandlers(): void {
       const session = agent.getSession();
 
       // Abort all running tasks before resetting
-      await session.abortAllTasks('user_interrupt');
+      await session.abortAllTasks('UserInterrupt');
 
       // Reset the session
       await session.reset();
@@ -162,7 +162,7 @@ function setupMessageHandlers(): void {
             const session = agent.getSession();
 
             // Abort all running tasks
-            await session.abortAllTasks('user_stop_button');
+            await session.abortAllTasks('UserInterrupt');
 
             // Reset the session
             await session.reset();

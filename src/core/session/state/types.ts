@@ -3,6 +3,7 @@
  */
 
 import type { ReviewDecision } from '../../../protocol/types';
+import type { SessionTask } from '../../tasks/SessionTask';
 
 /**
  * Kind of task running in an active turn
@@ -22,6 +23,9 @@ export enum TaskKind {
 export interface RunningTask {
   /** Kind of task (Regular or Compact) */
   kind: TaskKind;
+
+  /** Reference to the task instance (for calling abort()) */
+  task: SessionTask;
 
   /** AbortController for cancelling task execution */
   abortController: AbortController;
