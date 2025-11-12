@@ -5,7 +5,7 @@ import { AgentConfig } from '../../src/config/AgentConfig';
 describe('ModelClientFactory - AgentConfig Integration', () => {
   describe('Initialize Method', () => {
     it('should have an initialize method that accepts AgentConfig', () => {
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
 
       // Method should exist
       expect(factory.initialize).toBeDefined();
@@ -16,7 +16,7 @@ describe('ModelClientFactory - AgentConfig Integration', () => {
       const config = AgentConfig.getInstance();
       await config.initialize();
 
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
 
       // Should return a Promise
       const result = factory.initialize(config);
@@ -30,7 +30,7 @@ describe('ModelClientFactory - AgentConfig Integration', () => {
       const config = AgentConfig.getInstance();
       await config.initialize();
 
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
 
       // Should not throw when called multiple times
       await expect(factory.initialize(config)).resolves.not.toThrow();
@@ -43,7 +43,7 @@ describe('ModelClientFactory - AgentConfig Integration', () => {
       const config = AgentConfig.getInstance();
       await config.initialize();
 
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
       await factory.initialize(config);
 
       // These methods should exist after implementation
@@ -55,7 +55,7 @@ describe('ModelClientFactory - AgentConfig Integration', () => {
       const config = AgentConfig.getInstance();
       await config.initialize();
 
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
       await factory.initialize(config);
 
       // These methods should exist after implementation
@@ -68,7 +68,7 @@ describe('ModelClientFactory - AgentConfig Integration', () => {
       const config = AgentConfig.getInstance();
       await config.initialize();
 
-      const factory = ModelClientFactory.getInstance();
+      const factory = new ModelClientFactory();
       await factory.initialize(config);
 
       // These methods should exist after implementation

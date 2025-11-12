@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RateLimitManager } from '../RateLimitManager.js';
 import { TokenUsageTracker, createDefaultTokenUsageConfig } from '../TokenUsageTracker.js';
-import { OpenAIResponsesClient } from '../OpenAIResponsesClient.js';
+import { OpenAIChatCompletionClient } from '../client/OpenAIChatCompletionClient.js';
 import { createEmptyTokenUsage } from '../types/TokenUsage.js';
 import { createRateLimitWindow } from '../types/RateLimits.js';
 import type { TokenUsage } from '../types/TokenUsage.js';
@@ -9,7 +9,7 @@ import type { TokenUsage } from '../types/TokenUsage.js';
 describe('Integration Tests - Rate Limiting & Token Tracking', () => {
   let rateLimitManager: RateLimitManager;
   let tokenUsageTracker: TokenUsageTracker;
-  let responsesClient: OpenAIResponsesClient;
+  let responsesClient: OpenAIChatCompletionClient;
 
   beforeEach(() => {
     rateLimitManager = new RateLimitManager({
@@ -24,7 +24,7 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
     });
     tokenUsageTracker = new TokenUsageTracker(config);
 
-    responsesClient = new OpenAIResponsesClient({
+    responsesClient = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
       baseUrl: 'https://api.openai.com',
       conversationId: 'test-conversation-id',
@@ -479,20 +479,18 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 });
 
 /**
- * T009: Rate Limit Parsing Integration Tests
- * Reference: tasks.md T009
- * Rust Reference: browserx-rs/core/src/client.rs:453-495
+ * Rate Limit Parsing Integration Tests
  *
  * These tests verify parseRateLimitSnapshot() method specifically for
- * OpenAIResponsesClient matching Rust behavior exactly.
+ * OpenAIChatCompletionClient.
  */
-describe('T009: Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
+describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   let client: any;
 
   beforeEach(async () => {
-    const { OpenAIResponsesClient } = await import('../OpenAIResponsesClient');
+    const { OpenAIChatCompletionClient } = await import('../client/OpenAIChatCompletionClient');
 
-    client = new OpenAIResponsesClient(
+    client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
         conversationId: 'ratelimit-test',
@@ -555,7 +553,6 @@ describe('T009: Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
       // Should have RateLimits event
       const rateLimitEvent = events.find((e) => e.type === 'RateLimits');
 
-      // Contract: Matches Rust client.rs:453-495
       if (rateLimitEvent) {
         expect(rateLimitEvent.snapshot.primary).toEqual({
           used_percent: 75.5,
@@ -615,7 +612,7 @@ describe('T009: Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
           resets_in_seconds: 2400,
         });
 
-        // Contract: secondary should be undefined when headers missing (Rust Option<T>)
+        // Contract: secondary should be undefined when headers missing
         expect(rateLimitEvent.snapshot.secondary).toBeUndefined();
       }
     });
@@ -742,14 +739,14 @@ describe('T009: Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
         events.push(event);
       }
 
-      // Contract: No RateLimits event when headers missing (Rust returns None)
+      // Contract: No RateLimits event when headers missing
       const rateLimitEvent = events.find((e) => e.type === 'RateLimits');
       expect(rateLimitEvent).toBeUndefined();
     });
   });
 
   describe('parseRateLimitSnapshot() - Field Name Preservation', () => {
-    it('preserves snake_case field names from Rust', async () => {
+    it('preserves snake_case field names', async () => {
       const headers = new Headers({
         'x-browserx-primary-used-percent': '70.0',
         'x-browserx-primary-window-minutes': '60',
@@ -786,7 +783,7 @@ describe('T009: Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
       if (rateLimitEvent && rateLimitEvent.snapshot.primary) {
         const window = rateLimitEvent.snapshot.primary;
 
-        // Contract: Must use snake_case (Rust field names preserved)
+        // Contract: Must use snake_case
         expect(window.used_percent).toBeDefined();
         expect(window.window_minutes).toBeDefined();
         expect(window.resets_in_seconds).toBeDefined();
@@ -932,7 +929,7 @@ describe('T009: Rate Limit Parsing Integration - OpenAIResponsesClient', () => {
         eventTypes.push(event.type);
       }
 
-      // Contract: RateLimits event should be first (Rust yields it immediately after parsing headers)
+      // Contract: RateLimits event should be first
       const rateLimitIndex = eventTypes.indexOf('RateLimits');
       const createdIndex = eventTypes.indexOf('Created');
 

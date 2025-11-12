@@ -1,5 +1,5 @@
 /**
- * Event mapping logic ported from browserx-rs/core/src/event_mapping.rs
+ * Event mapping logic
  * Converts ResponseItem into EventMsg values that the UI can render
  */
 
@@ -28,6 +28,12 @@ export function mapResponseItemToEventMessages(
       const messageParts: string[] = [];
       const images: string[] = [];
       let kind: 'plain' | 'user_instructions' | 'environment_context' | null = null;
+
+      // Handle reasoning_content field (for thinking models like Kimi K2, o1, o3)
+      // Note: reasoning_content is already emitted as ReasoningContentDelta events during streaming
+      // We don't emit it again here to avoid duplication
+      // The reasoning_content is stored in the message item for conversation history
+      // and will be sent back to the API in multi-turn conversations
 
       for (const contentItem of content) {
         switch (contentItem.type) {

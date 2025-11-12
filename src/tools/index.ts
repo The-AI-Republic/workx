@@ -3,6 +3,7 @@
  */
 
 import { ToolRegistry } from './ToolRegistry';
+import type { IToolsConfig } from '../config/types';
 import { WebScrapingTool } from './WebScrapingTool';
 import { FormAutomationTool } from './FormAutomationTool';
 import { NetworkInterceptTool } from './NetworkInterceptTool';
@@ -11,10 +12,9 @@ import { DOMTool } from './DOMTool';
 import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { TabTool } from './TabTool';
-import { PageActionTool } from './PageActionTool';
-import type { IToolsConfig } from '../config/types';
+import { PageVisionTool } from './PageVisionTool';
 
-// Re-export all tools
+// Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
 export { BaseTool, createFunctionTool, createObjectSchema, createToolDefinition } from './BaseTool';
 export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat } from './BaseTool';
@@ -26,12 +26,19 @@ export { DOMTool } from './DOMTool';
 export { NavigationTool } from './NavigationTool';
 export { StorageTool } from './StorageTool';
 export { TabTool } from './TabTool';
-export { PageActionTool } from './PageActionTool';
+export { PageVisionTool } from './PageVisionTool';
 
 /**
  * Register browser automation tools based on configuration
+ * @param registry - Tool registry instance
+ * @param toolsConfig - Tool configuration settings
+ * @param modelConfig - Optional model configuration for feature filtering (e.g., image support)
  */
-export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsConfig): Promise<void> {
+export async function registerTools(
+  registry: ToolRegistry,
+  toolsConfig: IToolsConfig,
+  modelConfig?: { name: string; supportsImage?: boolean }
+): Promise<void> {
   try {
     console.log('Starting advanced tool registration...');
 
@@ -60,6 +67,8 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
           return toolsConfig.storage_tool === true;
         case 'tab_tool':
           return toolsConfig.tab_tool === true;
+        case 'page_vision_tool':
+          return toolsConfig.page_vision_tool === true;
         case 'page_action':
           return toolsConfig.page_action_tool === true;
         default:
@@ -74,7 +83,8 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
         console.log(`Registering ${toolName}...`);
 
         await registry.register(definition, async (params, context) => {
-          return toolInstance.execute(params);
+          // Pass context (including sessionId) to tool's execute method via options.metadata
+          return toolInstance.execute(params, { metadata: context });
         });
       } else {
         console.log(`${toolName} already registered, skipping...`);
@@ -145,35 +155,26 @@ export async function registerTools(registry: ToolRegistry, toolsConfig: IToolsC
       console.log('TabTool disabled in configuration, skipping...');
     }
 
-    // Page Action Tool
-    if (isToolEnabled('page_action')) {
-      const pageActionTool = new PageActionTool();
-      await registerTool('page_action', pageActionTool);
+    // PageVision Tool - Only register if model supports image input
+    if (isToolEnabled('page_vision_tool')) {
+      // Check if model supports image input
+      if (!modelConfig || modelConfig.supportsImage !== false) {
+        const pageVisionTool = new PageVisionTool();
+        await registerTool('page_vision', pageVisionTool);
+      } else {
+        console.log(`PageVisionTool disabled: Model "${modelConfig.name}" does not support image input`);
+      }
     } else {
-      console.log('PageActionTool disabled in configuration, skipping...');
+      console.log('PageVisionTool disabled in configuration, skipping...');
     }
+
+    // Page Action Tool - REMOVED: Functionality merged into DOMTool v3.0
+    // Use DOMTool with action parameter instead
 
     console.log('Advanced browser tools registration completed');
   } catch (error) {
     console.error('Failed to register advanced tools:', error);
   }
-}
-
-/**
- * Initialize all tools
- */
-export async function initializeTools(toolsConfig?: IToolsConfig): Promise<ToolRegistry> {
-  const registry = new ToolRegistry();
-
-  // Only register tools if configuration is provided
-  if (toolsConfig) {
-    await registerTools(registry, toolsConfig);
-  } else {
-    console.log('No tools configuration provided, skipping advanced tools registration');
-  }
-
-  console.log(`Total tools registered: ${registry.listTools().length}`);
-  return registry;
 }
 
 /**

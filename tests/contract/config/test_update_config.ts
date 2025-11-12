@@ -60,8 +60,8 @@ describe('PUT /config - Contract Test', () => {
 
     // Verify storage was updated
     const storageData = getChromeStorageData('sync');
-    expect(storageData.codex_config_v1).toBeDefined();
-    expect(storageData.codex_config_v1.preferences.theme).toBe('dark');
+    expect(storageData.browserx_config_v1).toBeDefined();
+    expect(storageData.browserx_config_v1.preferences.theme).toBe('dark');
   });
 
   it('should handle storage quota exceeded errors', async () => {

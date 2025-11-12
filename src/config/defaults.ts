@@ -1,28 +1,9 @@
 /**
- * T037: Default centralized agent configuration values
+ * Default centralized agent configuration values
  */
 
-import type { IAgentConfig, IModelConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IAuthConfig } from './types';
-import { AuthMode } from '../models/types/Auth.js';
-
-export const DEFAULT_AUTH_CONFIG: IAuthConfig = {
-  apiKey: '',
-  authMode: AuthMode.ApiKey,
-  accountId: null,
-  planType: null,
-  lastUpdated: 0
-};
-
-export const DEFAULT_MODEL_CONFIG: IModelConfig = {
-  selected: 'gpt-5',
-  provider: 'openai',
-  contextWindow: 128000,
-  maxOutputTokens: 16384,
-  autoCompactTokenLimit: null,
-  reasoningEffort: 'medium',
-  reasoningSummary: 'auto',
-  verbosity: 'medium'
-};
+import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig } from './types';
+import defaultProviders from '../models/providers/default.json';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
@@ -61,6 +42,20 @@ export const DEFAULT_EXTENSION_SETTINGS: IExtensionSettings = {
   permissions: DEFAULT_PERMISSION_SETTINGS
 };
 
+// Default retry configuration
+export const DEFAULT_RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1000,
+  maxDelay: 10000,
+  backoffMultiplier: 2
+};
+
+// Default timeout settings (ms)
+export const DEFAULT_TIMEOUTS = {
+  API_REQUEST: 30000,
+  STORAGE_OPERATION: 5000
+};
+
 export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   // Browser tool toggles
   enable_all_tools: false,
@@ -73,6 +68,7 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   network_intercept_tool: false,
   data_extraction_tool: false,
   page_action_tool: true,
+  page_vision_tool: true,
 
   // Agent execution tool toggles
   execCommand: false,
@@ -91,7 +87,8 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
     'navigation_tool',
     'tab_tool',
     'storage_tool',
-    'page_action'
+    'page_action',
+    'page_vision'
   ],
   disabled: [],
   timeout: 90000, // 90 seconds default
@@ -143,19 +140,23 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   }
 };
 
-export const DEFAULT_AGENT_CONFIG: IAgentConfig = {
-  version: '1.0.0',
-  model: DEFAULT_MODEL_CONFIG,
-  providers: {},
-  profiles: {},
-  activeProfile: null,
-  preferences: DEFAULT_USER_PREFERENCES,
-  cache: DEFAULT_CACHE_SETTINGS,
-  extension: DEFAULT_EXTENSION_SETTINGS,
-  tools: DEFAULT_TOOLS_CONFIG,
-  storage: DEFAULT_STORAGE_CONFIG,
-  auth: DEFAULT_AUTH_CONFIG
-};
+// Helper to create default config without module-level execution
+export function getDefaultAgentConfig(): IAgentConfig {
+  return {
+    version: '2.1.0',
+    selectedModelId: '', // Will be set to first available model during initialization
+    modelRegistry: {}, // Will be populated during initialization
+    providers: getDefaultProviders(),
+    profiles: {},
+    activeProfile: null,
+    preferences: { ...DEFAULT_USER_PREFERENCES },
+    cache: { ...DEFAULT_CACHE_SETTINGS },
+    extension: { ...DEFAULT_EXTENSION_SETTINGS },
+    tools: { ...DEFAULT_TOOLS_CONFIG },
+    storage: { ...DEFAULT_STORAGE_CONFIG }
+  };
+}
+
 
 // Storage keys
 export const STORAGE_KEYS = {
@@ -181,31 +182,35 @@ export const VALID_REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'] as c
 export const VALID_REASONING_SUMMARIES = ['auto', 'concise', 'detailed', 'none'] as const;
 export const VALID_VERBOSITIES = ['low', 'medium', 'high'] as const;
 
-// Default retry configuration
-export const DEFAULT_RETRY_CONFIG = {
-  maxRetries: 3,
-  initialDelay: 1000,
-  maxDelay: 10000,
-  backoffMultiplier: 2
-};
-
-// Default timeout settings (ms)
-export const DEFAULT_TIMEOUTS = {
-  API_REQUEST: 30000,
-  STORAGE_OPERATION: 5000
-};
-
 /**
  * Merge partial config with defaults
  */
 export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig {
+  // Merge providers: ensure all default providers exist, preserve existing API keys
+  const defaultProviders = getDefaultProviders();
+  const mergedProviders: Record<string, any> = { ...defaultProviders };
+
+  if (partial.providers) {
+    Object.entries(partial.providers).forEach(([id, provider]) => {
+      if (mergedProviders[id]) {
+        // Provider exists in defaults, merge with stored values (preserve API keys)
+        mergedProviders[id] = {
+          ...mergedProviders[id],
+          ...provider
+        };
+      } else {
+        // Provider doesn't exist in defaults, keep it anyway
+        mergedProviders[id] = provider;
+      }
+    });
+  }
+
+  const defaults = getDefaultAgentConfig();
+
   return {
-    ...DEFAULT_AGENT_CONFIG,
+    ...defaults,
     ...partial,
-    model: {
-      ...DEFAULT_MODEL_CONFIG,
-      ...(partial.model || {})
-    },
+    providers: mergedProviders,
     preferences: {
       ...DEFAULT_USER_PREFERENCES,
       ...(partial.preferences || {})
@@ -237,34 +242,16 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
     storage: {
       ...DEFAULT_STORAGE_CONFIG,
       ...(partial.storage || {})
-    },
-    auth: {
-      ...DEFAULT_AUTH_CONFIG,
-      ...(partial.auth || {})
     }
   };
 }
 
 /**
  * Get default provider configurations
+ * Multi-provider support with models arrays
+ * Loaded from JSON configuration file
  */
 export function getDefaultProviders(): Record<string, any> {
-  return {
-    openai: {
-      id: 'openai',
-      name: 'OpenAI',
-      apiKey: '',
-      baseUrl: 'https://api.openai.com/v1',
-      timeout: DEFAULT_TIMEOUTS.API_REQUEST,
-      retryConfig: DEFAULT_RETRY_CONFIG
-    },
-    anthropic: {
-      id: 'anthropic',
-      name: 'Anthropic',
-      apiKey: '',
-      baseUrl: 'https://api.anthropic.com',
-      timeout: DEFAULT_TIMEOUTS.API_REQUEST,
-      retryConfig: DEFAULT_RETRY_CONFIG
-    }
-  };
+  // Return a deep copy to avoid mutation of the imported JSON
+  return JSON.parse(JSON.stringify(defaultProviders));
 }

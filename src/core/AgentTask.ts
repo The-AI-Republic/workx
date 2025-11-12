@@ -29,7 +29,6 @@ export interface TokenBudget {
 
 /**
  * AgentTask coordinates task execution by creating and managing its own TaskRunner
- * Implements the critical missing coordinator from browserx-rs
  */
 export class AgentTask {
   private taskRunner: TaskRunner;

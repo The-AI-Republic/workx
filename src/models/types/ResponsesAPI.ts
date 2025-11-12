@@ -7,9 +7,6 @@ export type { ResponseEvent } from './ResponseEvent';
 
 /**
  * API request payload for Responses API
- * Based on Rust's ResponsesApiRequest struct
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:141-161`
  */
 export interface ResponsesApiRequest {
   model: string;
@@ -32,22 +29,7 @@ export interface ResponsesApiRequest {
 /**
  * Prompt structure for model requests
  *
- * This interface matches Rust's Prompt struct exactly, containing the input
- * messages, tool definitions, and optional configuration overrides.
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs` Lines 24-69
- *
- * **Type Mapping**:
- * - Rust `Vec<ResponseItem>` → TypeScript `ResponseItem[]`
- * - Rust `Vec<OpenAiTool>` → TypeScript `any[]` (tool definitions)
- * - Rust `Option<String>` → TypeScript `string | undefined`
- * - Rust `Option<serde_json::Value>` → TypeScript `any | undefined`
- *
- * **Field Name Convention**:
- * - input: Matches Rust exactly
- * - tools: Matches Rust exactly
- * - base_instructions_override: snake_case (Rust: base_instructions_override)
- * - output_schema: snake_case (Rust: output_schema)
+ * Contains input messages, tool definitions, and optional configuration overrides.
  *
  * @example
  * ```typescript
@@ -60,20 +42,19 @@ export interface ResponsesApiRequest {
  */
 export interface Prompt {
   /** Conversation context input items */
-  input: ResponseItem[];  // Rust: input: Vec<ResponseItem>
+  input: ResponseItem[];
   /** Tools available to the model */
-  tools: ToolSpec[];  // Rust: tools: Vec<OpenAiTool>
+  tools: ToolSpec[];
   /** Optional override for base instructions */
-  base_instructions_override?: string;  // Rust: base_instructions_override: Option<String>
+  base_instructions_override?: string;
   /** Optional user instructions (development guidelines) */
   user_instructions?: string;
   /** Optional output schema for the model's response */
-  output_schema?: any;  // Rust: output_schema: Option<serde_json::Value>
+  output_schema?: any;
 }
 
 /**
  * Reasoning configuration
- * Based on Rust's Reasoning struct
  */
 export interface Reasoning {
   effort?: ReasoningEffortConfig;
@@ -82,7 +63,6 @@ export interface Reasoning {
 
 /**
  * Text controls for GPT-5 family models
- * Based on Rust's TextControls struct
  */
 export interface TextControls {
   verbosity?: OpenAiVerbosity;
@@ -91,7 +71,6 @@ export interface TextControls {
 
 /**
  * Text format configuration
- * Based on Rust's TextFormat struct
  */
 export interface TextFormat {
   type: TextFormatType;
@@ -102,13 +81,11 @@ export interface TextFormat {
 
 /**
  * Text format types
- * Based on Rust's TextFormatType enum
  */
 export type TextFormatType = 'json_schema';
 
 /**
  * OpenAI verbosity levels
- * Based on Rust's OpenAiVerbosity enum
  */
 export type OpenAiVerbosity = 'low' | 'medium' | 'high';
 
@@ -126,18 +103,17 @@ export type ReasoningSummaryConfig = boolean | { enabled: boolean };
 
 /**
  * Model family information
- * Based on browserx-rs ModelFamily
  */
 export interface ModelFamily {
   family: string;
   base_instructions: string;
+  supports_reasoning: boolean;
   supports_reasoning_summaries: boolean;
   needs_special_apply_patch_instructions: boolean;
 }
 
 /**
  * Model provider information
- * Based on browserx-rs ModelProviderInfo
  */
 export interface ModelProviderInfo {
   name: string;
@@ -156,15 +132,11 @@ export interface ModelProviderInfo {
 
 /**
  * Wire API types
- * Based on Rust's WireApi enum
  */
 export type WireApi = 'Responses' | 'Chat';
 
 /**
  * Tool specification discriminated union
- * Matches Rust's ToolSpec enum from client_common.rs
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:163-209`
  */
 export type ToolSpec =
   | { type: 'function'; function: ResponsesApiTool }
@@ -174,7 +146,6 @@ export type ToolSpec =
 
 /**
  * Function tool definition for Responses API
- * Based on Rust's ResponsesApiTool struct
  */
 export interface ResponsesApiTool {
   name: string;
@@ -185,7 +156,6 @@ export interface ResponsesApiTool {
 
 /**
  * Freeform tool definition for custom tools
- * Based on Rust's FreeformTool struct
  */
 export interface FreeformTool {
   name: string;
@@ -195,7 +165,6 @@ export interface FreeformTool {
 
 /**
  * Format specification for freeform tools
- * Based on Rust's FreeformToolFormat struct
  */
 export interface FreeformToolFormat {
   type: string;

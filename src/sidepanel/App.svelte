@@ -26,6 +26,8 @@
   let showWelcome = false;
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = -1; // Track current session's bound tab
+  let agentReady = false;
+  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string } = { ready: false };
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -49,6 +51,40 @@
     } catch (error) {
       console.error('Failed to reset session:', error);
     }
+    // Wait for background service worker to be ready
+    let retries = 0;
+    const maxRetries = 5;
+    const retryDelay = 500; // ms
+
+    while (retries < maxRetries) {
+      try {
+        // Test connection with ping
+        await router.send(MessageType.PING);
+        break;
+      } catch (error) {
+        retries++;
+        if (retries >= maxRetries) {
+          console.warn('Failed to connect to background service worker after', maxRetries, 'attempts');
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    // Request session reset when side panel opens (non-critical)
+    if (retries < maxRetries) {
+      try {
+        await router.requestSessionReset();
+      } catch (error) {
+        // Non-critical error - log but don't block initialization
+        const errorMessage = error instanceof Error
+          ? error.message
+          : (error && typeof error === 'object' && 'message' in error)
+            ? error.message
+            : String(error);
+        console.warn('Session reset failed (non-critical):', errorMessage);
+      }
+    }
 
     // Setup event handlers
     router.on(MessageType.EVENT, (message) => {
@@ -62,6 +98,15 @@
       if (message.payload && 'tabId' in message.payload) {
         currentTabId = message.payload.tabId;
       }
+    });
+
+    // Handle agent re-initialization (e.g., when model is changed)
+    router.on(MessageType.AGENT_REINITIALIZED, (message) => {
+      // Clear all messages and events for fresh start with new agent
+      messages = [];
+      processedEvents = [];
+      isProcessing = false;
+      eventProcessor.reset();
     });
 
     // Check connection
@@ -117,10 +162,25 @@
 
   async function checkConnection() {
     try {
-      const response = await router?.send(MessageType.PING);
-      isConnected = response?.type === MessageType.PONG;
+      const response = await router?.send(MessageType.HEALTH_CHECK);
+      isConnected = response?.type === MessageType.HEALTH_STATUS;
+
+      if (response?.type === MessageType.HEALTH_STATUS) {
+        agentReady = response.ready === true;
+        healthStatus = {
+          ready: response.ready === true,
+          message: response.message,
+          provider: response.provider,
+          model: response.model,
+        };
+      } else {
+        agentReady = false;
+        healthStatus = { ready: false, message: 'Unable to check agent status' };
+      }
     } catch {
       isConnected = false;
+      agentReady = false;
+      healthStatus = { ready: false, message: 'Connection error' };
     }
   }
 
@@ -153,9 +213,8 @@
     // Update processing state
     if (msg.type === 'TaskStarted') {
       isProcessing = true;
-      // Clear history on new task
-      processedEvents = [];
-      eventProcessor.reset();
+      // Note: We don't clear history here - user wants to see full conversation
+      // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
     }
@@ -176,17 +235,44 @@
   }
 
   async function sendMessage() {
-    if (!inputText.trim() || !isConnected) return;
+    if (!inputText.trim()) return;
+
+    // Check if connected
+    if (!isConnected) {
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Error: Not connected to agent. Please refresh the page.',
+        timestamp: Date.now(),
+      }];
+      return;
+    }
+
+    // Check if agent is ready (has API key)
+    if (!agentReady) {
+      const providerName = healthStatus.provider || 'the selected provider';
+      messages = [...messages, {
+        type: 'agent',
+        content: `Cannot send message: No API key configured for ${providerName}.\n\nPlease click the Settings button (⚙️) at the top right and configure your API key.`,
+        timestamp: Date.now(),
+      }];
+      return;
+    }
 
     const text = inputText.trim();
     inputText = '';
 
-    // Add user message
-    messages = [...messages, {
-      type: 'user',
+    // Add user message to processedEvents for chronological ordering
+    const userEvent: ProcessedEvent = {
+      id: `user_${Date.now()}`,
+      category: 'message',
+      timestamp: new Date(),
+      title: 'user',
       content: text,
-      timestamp: Date.now(),
-    }];
+      style: { textColor: 'text-cyan-400' },
+      streaming: false,
+      collapsible: false,
+    };
+    processedEvents = [...processedEvents, userEvent];
 
     // Send to agent
     try {
@@ -235,11 +321,12 @@
 
   function handleSettingsClose() {
     showSettings = false;
+    // Re-check health status in case API key was added
+    checkConnection();
   }
 
   function handleAuthUpdated(event: CustomEvent) {
     // Handle auth updates if needed
-    console.log('Auth updated:', event.detail);
   }
 
   async function startNewConversation() {
@@ -258,7 +345,6 @@
     // Request session reset from backend
     try {
       await router.requestSessionReset();
-      console.log('New conversation started - session reset');
     } catch (error) {
       console.error('Failed to reset session:', error);
       messages = [...messages, {
@@ -274,15 +360,16 @@
   <TerminalContainer>
     <!-- Status Line -->
     <div class="flex justify-between mb-2">
-      <TerminalMessage type="system" content="Browserx For Chrome v0.0.1 (By AI Republic)" />
+      <TerminalMessage type="system" content="Browserx (Alpha)" />
       <div class="flex items-center space-x-2">
         {#if isProcessing}
           <TerminalMessage type="warning" content="[PROCESSING]" />
         {/if}
-        <TerminalMessage
-          type={isConnected ? 'system' : 'error'}
-          content={isConnected ? '[CONNECTED]' : '[DISCONNECTED]'}
-        />
+        {#if !isConnected}
+          <TerminalMessage type="error" content="[DISCONNECTED]" />
+        {:else if !agentReady}
+          <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
+        {/if}
       </div>
     </div>
 
@@ -479,7 +566,7 @@
   .welcome-ascii {
     margin: 0;
     font-family: var(--font-terminal);
-    font-size: 0.6rem;
+    font-size: 0.4rem;
     line-height: 1.0;
     white-space: pre;
   }

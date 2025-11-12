@@ -1,24 +1,23 @@
 /**
  * ModelClient Contract Tests
  * Reference: contracts/ModelClient.contract.md
- * Rust Reference: browserx-rs/core/src/client.rs:85-445
  *
  * These tests verify that the TypeScript ModelClient implementation
- * matches the Rust ModelClient signatures and behavior.
+ * matches the expected signatures and behavior.
  *
  * EXPECTED: These tests should FAIL initially (TDD red phase)
  * until the implementation is updated to match the contract.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIResponsesClient } from '../OpenAIResponsesClient';
+import { OpenAIChatCompletionClient } from '../client/OpenAIChatCompletionClient';
 import { ResponseStream } from '../ResponseStream';
 import { ModelClientError } from '../ModelClientError';
 import type { Prompt, ModelFamily, ModelProviderInfo } from '../types/ResponsesAPI';
 import type { ResponseEvent } from '../types/ResponseEvent';
 
 describe('ModelClient Contract', () => {
-  let client: OpenAIResponsesClient;
+  let client: OpenAIChatCompletionClient;
   let mockModelFamily: ModelFamily;
   let mockProvider: ModelProviderInfo;
 
@@ -39,7 +38,7 @@ describe('ModelClient Contract', () => {
       requires_openai_auth: true,
     };
 
-    client = new OpenAIResponsesClient(
+    client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
         conversationId: 'test-conversation-id',
@@ -50,8 +49,8 @@ describe('ModelClient Contract', () => {
     );
   });
 
-  describe('stream() method - Rust client.rs:124', () => {
-    it('returns Promise<ResponseStream> matching Rust Result<ResponseStream>', async () => {
+  describe('stream() method', () => {
+    it('returns Promise<ResponseStream>', async () => {
       // This test will FAIL if stream() returns AsyncGenerator instead of ResponseStream
       const prompt: Prompt = {
         input: [
@@ -102,8 +101,8 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('getModel() method - Rust client.rs:423', () => {
-    it('returns string matching Rust signature', () => {
+  describe('getModel() method', () => {
+    it('returns string', () => {
       const model = client.getModel();
 
       // Contract: Must return string
@@ -112,8 +111,8 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('getModelFamily() method - Rust client.rs:428', () => {
-    it('returns ModelFamily matching Rust signature', () => {
+  describe('getModelFamily() method', () => {
+    it('returns ModelFamily', () => {
       const family = client.getModelFamily();
 
       // Contract: Must return ModelFamily object
@@ -124,11 +123,11 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('getModelContextWindow() method - Rust client.rs:109', () => {
-    it('returns number | undefined matching Rust Option<u64>', () => {
+  describe('getModelContextWindow() method', () => {
+    it('returns number | undefined', () => {
       const contextWindow = client.getModelContextWindow();
 
-      // Contract: Must return number or undefined (Option<u64>)
+      // Contract: Must return number or undefined
       expect(contextWindow === undefined || typeof contextWindow === 'number').toBe(true);
 
       // For gpt-4, should return known context window
@@ -138,11 +137,11 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('getAutoCompactTokenLimit() method - Rust client.rs:115', () => {
-    it('returns number | undefined matching Rust Option<i64>', () => {
+  describe('getAutoCompactTokenLimit() method', () => {
+    it('returns number | undefined', () => {
       const autoCompact = client.getAutoCompactTokenLimit();
 
-      // Contract: Must return number or undefined (Option<i64>)
+      // Contract: Must return number or undefined
       expect(autoCompact === undefined || typeof autoCompact === 'number').toBe(true);
 
       // Should be ~80% of context window
@@ -154,8 +153,8 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('getProvider() method - Rust client.rs:414', () => {
-    it('returns ModelProviderInfo matching Rust signature', () => {
+  describe('getProvider() method', () => {
+    it('returns ModelProviderInfo', () => {
       const provider = client.getProvider();
 
       // Contract: Must return ModelProviderInfo
@@ -166,25 +165,25 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('getReasoningEffort() method - Rust client.rs:433', () => {
-    it('returns ReasoningEffortConfig | undefined matching Rust Option', () => {
+  describe('getReasoningEffort() method', () => {
+    it('returns ReasoningEffortConfig | undefined', () => {
       const effort = client.getReasoningEffort();
 
-      // Contract: Must return string or undefined (Option<ReasoningEffortConfig>)
+      // Contract: Must return string or undefined
       expect(effort === undefined || typeof effort === 'string').toBe(true);
     });
   });
 
-  describe('getReasoningSummary() method - Rust client.rs:437', () => {
-    it('returns ReasoningSummaryConfig matching Rust signature', () => {
+  describe('getReasoningSummary() method', () => {
+    it('returns ReasoningSummaryConfig', () => {
       const summary = client.getReasoningSummary();
 
-      // Contract: Must return ReasoningSummaryConfig (not optional in Rust)
+      // Contract: Must return ReasoningSummaryConfig (not optional)
       expect(summary).toBeDefined();
     });
   });
 
-  describe('getAuthManager() method - Rust client.rs:442', () => {
+  describe('getAuthManager() method', () => {
     it('returns undefined in browser environment', () => {
       const authManager = client.getAuthManager();
 
@@ -194,7 +193,7 @@ describe('ModelClient Contract', () => {
   });
 
   describe('Type compatibility with ResponseEvent', () => {
-    it('ResponseStream yields ResponseEvent types matching Rust enum', async () => {
+    it('ResponseStream yields ResponseEvent types', async () => {
       // Mock SSE stream with multiple event types
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -252,7 +251,7 @@ describe('ModelClient Contract', () => {
     });
   });
 
-  describe('Error handling matches Rust behavior', () => {
+  describe('Error handling', () => {
     it('throws on 401 authentication error', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Browserx For Chrome: General AI Agent for work tasks automation",
-  "version": "0.0.1",
-  "description": "AI-powered browser automation agent preserving browserx-rs SQ/EQ architecture",
+  "name": "Browserx: General AI Agent For Work Tasks Automation",
+  "version": "0.0.4",
+  "description": "Privacy Preserving And Open Source AI agent With Browser Automation Capabilities",
   "permissions": [
     "tabs",
     "tabGroups",
@@ -13,7 +13,9 @@
     "webNavigation",
     "sidePanel",
     "contextMenus",
-    "alarms"
+    "alarms",
+    "debugger",
+    "downloads"
   ],
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [{
@@ -38,7 +40,7 @@
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "js": ["content.js"],
-    "all_frames": true,
+    "all_frames": false,
     "run_at": "document_idle"
   }],
   "icons": {

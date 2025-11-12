@@ -1,13 +1,11 @@
 /**
  * Shared types for state management
- * Port of Rust state refactoring (commit 250b244ab)
  */
 
 import type { ReviewDecision } from '../../../protocol/types';
 
 /**
  * Kind of task running in an active turn
- * Maps to Rust TaskKind enum
  */
 export enum TaskKind {
   /** Regular task execution */
@@ -20,8 +18,6 @@ export enum TaskKind {
 
 /**
  * A running task in an active turn
- * Maps to Rust RunningTask struct
- * Updated for Feature 012: Session task management
  */
 export interface RunningTask {
   /** Kind of task (Regular or Compact) */
@@ -39,7 +35,6 @@ export interface RunningTask {
 
 /**
  * Callback to resolve a pending approval
- * Maps to Rust ApprovalResolver type
  */
 export type ApprovalResolver = (decision: ReviewDecision) => void;
 
@@ -99,15 +94,12 @@ export interface SessionExport {
 
 /**
  * Reason for aborting a turn
- * Maps to protocol TurnAbortReason type and Rust TurnAbortReason enum
- * Updated for Feature 012: Aligned with Rust naming (PascalCase)
  */
 export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout';
 
 /**
  * Configuration for initializing a new Session
  * Browser-compatible subset (excludes shell discovery)
- * Maps to Rust ConfigureSession struct
  */
 export interface ConfigureSession {
   /** Conversation ID for this session */
@@ -135,7 +127,6 @@ export interface ConfigureSession {
 
 /**
  * Initial history mode for session creation
- * Maps to Rust InitialHistory enum
  */
 export type InitialHistory =
   | { mode: 'new' }

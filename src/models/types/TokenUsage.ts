@@ -1,15 +1,12 @@
 /**
- * Token usage statistics matching Rust's TokenUsage struct
- *
- * Rust Reference: browserx-rs/protocol/src/protocol.rs TokenUsage struct
- * ✅ ALIGNED: All field names use snake_case matching Rust exactly
+ * Token usage statistics
  */
 export interface TokenUsage {
-  input_tokens: number;  // Rust: input_tokens: u64
-  cached_input_tokens: number;  // Rust: cached_input_tokens: u64
-  output_tokens: number;  // Rust: output_tokens: u64
-  reasoning_output_tokens: number;  // Rust: reasoning_output_tokens: u64
-  total_tokens: number;  // Rust: total_tokens: u64
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+  reasoning_output_tokens: number;
+  total_tokens: number;
 }
 
 /**

@@ -4,7 +4,7 @@
 
 Browserx for Chrome is a privacy-preserving, general-purpose AI agent implemented as a Chrome extension. The agent operates entirely within the user's local browser environment, interpreting natural language commands and autonomously interacting with web pages to fulfill user requests. All large language model inference occurs client-side, ensuring that sensitive data never leaves the user's machine and eliminating the need for backend infrastructure.
 
-![Browserx UI Screenshot](/src/static/codex_UI.png)
+![Browserx UI Screenshot](/src/static/browserx_UI.png)
 
 ---
 
@@ -16,7 +16,7 @@ Browserx for Chrome is a privacy-preserving, general-purpose AI agent implemente
 
 ## Project Origin and Acknowledgments
 
-This project is derived from OpenAI's open-source Browserx reference implementation, available at [github.com/openai/codex](https://github.com/openai/codex). We express our profound gratitude to the OpenAI team ([@openai](https://github.com/openai)) for releasing browserx under an open-source license, which has enabled our development of this privacy-focused, browser-native AI agent implementations.
+This project is derived from OpenAI's open-source Browserx reference implementation, available at [github.com/openai/browserx](https://github.com/openai/browserx). We express our profound gratitude to the OpenAI team ([@openai](https://github.com/openai)) for releasing browserx under an open-source license, which has enabled our development of this privacy-focused, browser-native AI agent implementations.
 
 ---
 
@@ -36,7 +36,7 @@ This project is now released under the **Apache License 2.0**—maintaining cons
 
 **Trademark Considerations:**
 
-To avoid potential trademark considerations regarding the "Codex" name with OpenAI, the project has been rebranded to **BrowserX** (or **browserx**). This naming convention better reflects the project's browser-centric architecture and cross-platform agent capabilities while avoiding potential trademark conflicts. The name emphasizes the extension's role as a powerful, extensible ("X") browser automation framework.
+To avoid potential trademark considerations regarding the "Browserx" name with OpenAI, the project has been rebranded to **BrowserX** (or **browserx**). This naming convention better reflects the project's browser-centric architecture and cross-platform agent capabilities while avoiding potential trademark conflicts. The name emphasizes the extension's role as a powerful, extensible ("X") browser automation framework.
 
 ---
 

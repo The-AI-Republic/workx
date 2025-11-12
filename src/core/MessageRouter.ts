@@ -20,6 +20,8 @@ export enum MessageType {
   DISCONNECT = 'DISCONNECT',
   PING = 'PING',
   PONG = 'PONG',
+  HEALTH_CHECK = 'HEALTH_CHECK',
+  HEALTH_STATUS = 'HEALTH_STATUS',
 
   // State queries
   GET_STATE = 'GET_STATE',
@@ -35,7 +37,6 @@ export enum MessageType {
   STORAGE_RESULT = 'STORAGE_RESULT',
 
   // Model client messages
-  MODEL_REQUEST = 'MODEL_REQUEST',
   MODEL_RESPONSE = 'MODEL_RESPONSE',
   MODEL_ERROR = 'MODEL_ERROR',
 
@@ -86,6 +87,7 @@ export enum MessageType {
 
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
+  AGENT_REINITIALIZED = 'AGENT_REINITIALIZED',
 }
 
 /**
@@ -173,7 +175,7 @@ export class MessageRouter {
       const handlers = this.handlers.get(message.type);
       if (handlers && handlers.size > 0) {
         const responses: any[] = [];
-        
+
         for (const handler of handlers) {
           try {
             const result = await handler(message, sender);
@@ -406,13 +408,6 @@ export class MessageRouter {
 
   async storageSet(key: string, value: any): Promise<void> {
     await this.send(MessageType.STORAGE_SET, { key, value });
-  }
-
-  /**
-   * Model client operations
-   */
-  async sendModelRequest(config: any, prompt: string): Promise<any> {
-    return this.send(MessageType.MODEL_REQUEST, { config, prompt });
   }
 
   async sendModelResponse(response: any): Promise<void> {

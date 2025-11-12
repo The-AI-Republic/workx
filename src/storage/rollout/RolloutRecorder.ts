@@ -1,6 +1,5 @@
 /**
  * RolloutRecorder - Main class for recording agent conversation rollouts
- * TypeScript implementation matching Rust browserx-rs/core/src/rollout/recorder.rs
  *
  * Stores conversation history in IndexedDB with TTL support and pagination.
  */
@@ -60,7 +59,7 @@ export class RolloutRecorder {
   }
 
   // ==========================================================================
-  // Constructor (Create Mode) - T028
+  // Constructor (Create Mode)
   // ==========================================================================
 
   /**
@@ -284,7 +283,7 @@ export class RolloutRecorder {
   }
 
   // ==========================================================================
-  // Instance Methods - T029
+  // Instance Methods
   // ==========================================================================
 
   /**
@@ -342,7 +341,7 @@ export class RolloutRecorder {
   }
 
   // ==========================================================================
-  // Static Methods - T030
+  // Static Methods
   // ==========================================================================
 
   /**

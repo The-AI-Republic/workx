@@ -66,7 +66,7 @@ try {
 // Test 4: ModelClientFactory has initialize method
 console.log('\n✅ Test 4: ModelClientFactory');
 try {
-  const factory = ModelClientFactory.getInstance();
+  const factory = new ModelClientFactory();
 
   // Check if methods exist
   if (typeof factory.initialize === 'function' &&

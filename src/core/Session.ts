@@ -1,5 +1,5 @@
 /**
- * Session management class - port of Session struct from browserx.rs
+ * Session management class
  * Manages conversation state, turn context, and history
  *
  * REFACTORED: Now uses SessionState, SessionServices, and ActiveTurn for better organization
@@ -21,6 +21,7 @@ import { SessionState, type SessionStateExport } from './session/state/SessionSt
 import { type SessionServices, createSessionServices } from './session/state/SessionServices';
 import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
+import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 
 /**
  * Execution state of the session
@@ -43,7 +44,6 @@ export class Session {
   private services: SessionServices | null = null; // Service collection
   private activeTurn: ActiveTurn | null = null; // Active turn management
   private turnContext: TurnContext;
-  private messageCount: number = 0;
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
   private toolRegistry: ToolRegistry | null = null; // Tool registry from BrowserxAgent
@@ -204,9 +204,7 @@ export class Session {
    * Add a message to history using RolloutRecorder
    */
   async addToHistory(entry: { timestamp: number; text: string; type: 'user' | 'agent' | 'system' }): Promise<void> {
-    this.messageCount++;
-
-    // Record in SessionState
+    // Convert to ResponseItem
     const responseItem: ResponseItem = {
       type: 'message',
       role: entry.type === 'user' ? 'user' : entry.type === 'system' ? 'system' : 'assistant',
@@ -215,21 +213,9 @@ export class Session {
         text: entry.text
       }],
     };
-    this.sessionState.recordItems([responseItem]);
 
-    // Persist to RolloutRecorder if available
-    if (this.services?.rollout) {
-      const rolloutItems: RolloutItem[] = [{
-        type: 'response_item',
-        payload: responseItem
-      }];
-
-      try {
-        await this.services.rollout.recordItems(rolloutItems);
-      } catch (error) {
-        console.error('Failed to persist message to rollout:', error);
-      }
-    }
+    // Use recordConversationItemsDual for dual persistence
+    await this.recordConversationItemsDual([responseItem]);
   }
 
   /**
@@ -256,14 +242,13 @@ export class Session {
    */
   clearHistory(): void {
     this.sessionState = new SessionState();
-    this.messageCount = 0;
   }
 
   /**
-   * Get current message count
+   * Get current message count (derived from session state)
    */
   getMessageCount(): number {
-    return this.messageCount;
+    return this.sessionState.historySnapshot().length;
   }
 
 
@@ -278,7 +263,7 @@ export class Session {
   } {
     return {
       conversationId: this.conversationId,
-      messageCount: this.messageCount,
+      messageCount: this.getMessageCount(),
       startTime: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
       currentModel: this.turnContext?.getModel?.() || 'gpt-5',
     };
@@ -294,7 +279,6 @@ export class Session {
     metadata: {
       created: number;
       lastAccessed: number;
-      messageCount: number;
     };
   } {
     return {
@@ -303,7 +287,6 @@ export class Session {
       metadata: {
         created: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
         lastAccessed: Date.now(),
-        messageCount: this.messageCount,
       },
     };
   }
@@ -318,7 +301,7 @@ export class Session {
     metadata: {
       created: number;
       lastAccessed: number;
-      messageCount: number;
+      messageCount?: number; // Optional for backward compatibility
     };
   }, services?: SessionServices, toolRegistry?: ToolRegistry): Promise<Session> {
     // Create session with resumed history mode (no rollout items since we're importing directly)
@@ -345,7 +328,6 @@ export class Session {
     // Set metadata
     Object.assign(session, {
       conversationId: data.id,
-      messageCount: data.metadata.messageCount || 0,
     });
 
     return session;
@@ -431,44 +413,6 @@ export class Session {
         type: 'user',
       });
     }
-  }
-
-  /**
-   * Record conversation items (messages, tool calls, etc.)
-   */
-  async recordConversationItems(items: any[]): Promise<void> {
-    const timestamp = Date.now();
-
-    for (const item of items) {
-      if (item.role === 'assistant' || item.role === 'user' || item.role === 'system') {
-        const text = this.extractTextFromItem(item);
-        if (text) {
-          await this.addToHistory({
-            timestamp,
-            text,
-            type: item.role === 'assistant' ? 'agent' : item.role === 'system' ? 'system' : 'user',
-          });
-        }
-      }
-    }
-  }
-
-  /**
-   * Extract text content from conversation items
-   */
-  private extractTextFromItem(item: any): string {
-    if (typeof item.content === 'string') {
-      return item.content;
-    }
-
-    if (Array.isArray(item.content)) {
-      return item.content
-        .filter((c: any) => c.type === 'text' || c.type === 'input_text' || c.type === 'output_text')
-        .map((c: any) => c.text)
-        .join(' ');
-    }
-
-    return '';
   }
 
   /**
@@ -559,7 +503,6 @@ export class Session {
       const kept = items.slice(-keepCount);
       this.sessionState = new SessionState();
       this.sessionState.recordItems(kept);
-      this.messageCount = kept.length;
     }
   }
 
@@ -607,7 +550,7 @@ export class Session {
       // For now, we'll return basic info
       rolloutStats = {
         conversationId: this.conversationId,
-        messageCount: this.messageCount,
+        messageCount: this.getMessageCount(),
         hasRollout: true
       };
     } catch (error) {
@@ -666,7 +609,7 @@ export class Session {
         const closeEvent: EventMsg = {
           type: 'BackgroundEvent',
           data: {
-            message: `Session closed: ${this.conversationId} (${this.messageCount} messages)`
+            message: `Session closed: ${this.conversationId} (${this.getMessageCount()} messages)`
           }
         };
 
@@ -836,7 +779,6 @@ export class Session {
 
   /**
    * Initialize session with RolloutRecorder (replaces ConversationStore)
-   * T023: Follows browserx-rs pattern from research.md
    */
   async initializeSession(
     mode: 'create' | 'resume',
@@ -893,7 +835,6 @@ export class Session {
 
   /**
    * Persist rollout items (replaces ConversationStore.addMessage)
-   * T024: Record items to RolloutRecorder
    */
   async persistRolloutItems(items: RolloutItem[]): Promise<void> {
     if (this.services?.rollout) {
@@ -909,7 +850,7 @@ export class Session {
 
   /**
    * Flush rollout recorder before session ends
-   * T025: Graceful shutdown
+   * Graceful shutdown
    */
   async shutdown(): Promise<void> {
     if (this.services?.rollout) {
@@ -922,11 +863,11 @@ export class Session {
   }
 
   // ========================================================================
-  // NEW METHODS: Browser-Compatible Session Methods from browserx-rs
+  // Browser-Compatible Session Methods
   // ========================================================================
 
   /**
-   * T010: Generate internal submission ID
+   * Generate internal submission ID
    *
    * Generates unique internal submission IDs for auto-generated operations
    * (e.g., auto-compact). Uses simple counter since JavaScript is single-threaded.
@@ -941,7 +882,7 @@ export class Session {
   }
 
   /**
-   * T012: Utility getters
+   * Utility getters
    */
 
   /**
@@ -961,7 +902,7 @@ export class Session {
   }
 
   /**
-   * T013: Enhanced send_event with rollout persistence
+   * Enhanced send_event with rollout persistence
    *
    * Persists event to rollout and emits via event emitter.
    * Replaces/enhances existing emitEvent() method.
@@ -991,7 +932,7 @@ export class Session {
   }
 
   /**
-   * T014: Notify background event
+   * Notify background event
    *
    * Helper to create and send BackgroundEvent.
    *
@@ -1012,7 +953,7 @@ export class Session {
   }
 
   /**
-   * T015: Notify stream error
+   * Notify stream error
    *
    * Helper to create and send StreamErrorEvent.
    *
@@ -1034,7 +975,7 @@ export class Session {
   }
 
   /**
-   * T016: Send token count event
+   * Send token count event
    *
    * Retrieves token info and rate limits from SessionState and emits TokenCountEvent.
    *
@@ -1059,7 +1000,7 @@ export class Session {
   }
 
   /**
-   * T018: Notify approval
+   * Notify approval
    *
    * Resolves a pending approval request with the user's decision.
    * Locates the pending approval in ActiveTurn, removes it, and calls the resolver.
@@ -1087,34 +1028,24 @@ export class Session {
 
 
   /**
-   * T021: Take all running tasks
-   *
-   * Extracts all running tasks from ActiveTurn, drains pending approvals/input,
-   * and clears the ActiveTurn.
-   *
-   * @returns Map of all running tasks (submission ID -> RunningTask)
-   * @private
-   */
-  /**
    * Take all running tasks and clear the active turn
-   * Port of Rust's take_all_running_tasks (browserx-rs/core/src/tasks/mod.rs:128-138)
    *
    * @returns Map of all running tasks (submission ID -> RunningTask)
    * @private
    */
   private takeAllRunningTasks(): Map<string, RunningTask> {
-    // If no active turn, return empty map (matches Rust line 136)
+    // If no active turn, return empty map
     if (!this.activeTurn) {
       return new Map();
     }
 
-    // Clear pending approvals and input before draining (matches Rust line 132)
+    // Clear pending approvals and input before draining
     this.activeTurn.clearPending();
 
-    // Drain all tasks from the turn (matches Rust line 133)
+    // Drain all tasks from the turn
     const tasks = this.activeTurn.drain();
 
-    // Clear the active turn since all tasks are removed (matches Rust line 130: active.take())
+    // Clear the active turn since all tasks are removed
     this.activeTurn = null;
 
     return tasks;
@@ -1122,7 +1053,6 @@ export class Session {
 
   /**
    * Handle individual task abortion
-   * Port of Rust's handle_task_abort (browserx-rs/core/src/tasks/mod.rs:140-162)
    *
    * @param subId Submission ID of the task to abort
    * @param task RunningTask to abort
@@ -1134,18 +1064,13 @@ export class Session {
     task: RunningTask,
     reason: TurnAbortReason
   ): Promise<void> {
-    // Check if task already finished (matches Rust lines 146-148)
-    // In JavaScript, we check if the promise is already settled by checking if abort has effect
+    // Check if task already finished
     // The AbortController will have no effect if the task already completed
 
-    // Abort the task via AbortController (matches Rust line 153)
+    // Abort the task via AbortController
     task.abortController.abort();
 
-    // Note: Rust calls task.abort() on the SessionTask trait (line 155)
-    // In TypeScript, we handle cleanup in the task's promise catch block
-    // so we don't need an explicit abort() call here
-
-    // Emit TurnAborted event (matches Rust lines 157-161)
+    // Emit TurnAborted event
     const event: Event = {
       id: subId,
       msg: {
@@ -1165,17 +1090,16 @@ export class Session {
 
   /**
    * Abort all running tasks
-   * Port of Rust's abort_all_tasks (browserx-rs/core/src/tasks/mod.rs:96-100)
    *
    * Takes all running tasks and aborts each one with the specified reason.
    *
    * @param reason Reason for aborting all tasks
    */
   async abortAllTasks(reason: TurnAbortReason): Promise<void> {
-    // Take all running tasks (matches Rust line 97)
+    // Take all running tasks
     const tasks = this.takeAllRunningTasks();
 
-    // Abort each task (matches Rust lines 97-99)
+    // Abort each task
     const abortPromises: Promise<void>[] = [];
     for (const [subId, task] of tasks) {
       abortPromises.push(this.handleTaskAbort(subId, task, reason));
@@ -1186,17 +1110,10 @@ export class Session {
   }
 
   /**
-   * T024: On task finished (UPDATED for Feature 012)
+   * Handle task completion
    *
    * Called when a task completes successfully.
    * Removes the task from ActiveTurn and emits TaskComplete event.
-   *
-   * @param subId Submission ID of the completed task
-   * @param result Final assistant message (or null)
-   */
-  /**
-   * Handle task completion
-   * Port of Rust's on_task_finished (browserx-rs/core/src/tasks/mod.rs:102-119)
    *
    * @param subId Submission ID of the completed task
    * @param lastAgentMessage Final assistant message (or null)
@@ -1204,7 +1121,6 @@ export class Session {
    */
   private async onTaskFinished(subId: string, lastAgentMessage: string | null): Promise<void> {
     // Remove task from ActiveTurn, and clear ActiveTurn if it's now empty
-    // Matches Rust lines 107-112
     if (this.activeTurn) {
       const isEmpty = this.activeTurn.removeTask(subId);
       if (isEmpty) {
@@ -1214,10 +1130,9 @@ export class Session {
   }
 
   /**
-   * T025: Spawn task (UPDATED for Feature 012: Session task management)
+   * Spawn task
    *
    * Spawns a SessionTask and manages its lifecycle.
-   * Matches Rust Session::spawn_task() pattern.
    *
    * @param task - The SessionTask to execute (RegularTask or CompactTask)
    * @param context - Turn context for execution
@@ -1225,12 +1140,12 @@ export class Session {
    * @param input - Input items for the task
    */
   async spawnTask(
-    task: SessionTask, // SessionTask type
+    task: SessionTask,
     context: TurnContext,
     subId: string,
     input: InputItem[]
   ): Promise<void> {
-    // Abort all existing tasks before spawning new one (Rust pattern)
+    // Abort all existing tasks before spawning new one
     await this.abortAllTasks('UserInterrupt');
 
     // Create AbortController for cancellation
@@ -1260,7 +1175,6 @@ export class Session {
     };
 
     // Register as new active task (creates new ActiveTurn and adds task)
-    // Matches Rust pattern: browserx-rs/core/src/tasks/mod.rs:93
     this.registerNewActiveTask(subId, runningTask);
 
     // Execute asynchronously (fire-and-forget, don't await)
@@ -1268,7 +1182,7 @@ export class Session {
   }
 
   /**
-   * T026: Interrupt task
+   * Interrupt task
    *
    * Wrapper around abortAllTasks with Interrupted reason.
    * Used when user explicitly interrupts execution.
@@ -1282,10 +1196,13 @@ export class Session {
   // ========================================================================
 
   /**
-   * T027: Persist rollout response items
+   * Persist rollout response items
    *
    * Converts ResponseItems to RolloutItems and persists them via RolloutRecorder.
    * This is used to save conversation history to persistent storage.
+   *
+   * Enhanced to compress DOM snapshots immediately before persistence.
+   * Rollout storage never needs uncompressed snapshots (not directly read by LLM)
    *
    * @param items Response items to persist
    * @private
@@ -1295,8 +1212,12 @@ export class Session {
       return;
     }
 
+    // Compress DOM snapshots immediately before persistence
+    // Rollout is never directly read by LLM, so we compress all snapshots
+    const compressedItems = items.map((item) => compressSnapshot(item));
+
     // Convert ResponseItems to RolloutItems
-    const rolloutItems: RolloutItem[] = items.map((item) => ({
+    const rolloutItems: RolloutItem[] = compressedItems.map((item) => ({
       type: 'response_item',
       payload: item,
     }));
@@ -1310,14 +1231,24 @@ export class Session {
   }
 
   /**
-   * T028: Record conversation items with dual persistence
+   * Record conversation items with dual persistence
    *
    * Records ResponseItems to both SessionState (in-memory history) and
    * RolloutRecorder (persistent storage).
    *
+   * Enhanced with inline compression logic for DOM snapshots
+   *
    * @param items Response items to record
    */
   async recordConversationItemsDual(items: ResponseItem[]): Promise<void> {
+    // SessionState (in-memory)
+    // If incoming items contain any DOM snapshot output, compress previous snapshot in history
+    // This keeps the latest snapshot fresh for LLM reasoning
+    if (items.some(item => isDOMSnapshotOutput(item))) {
+      // Compress the previous DOM snapshot before recording the new one
+      this.sessionState.compressPreviousDomSnapshot();
+    }
+
     // Record to SessionState (in-memory history)
     this.sessionState.recordItems(items);
 
@@ -1326,7 +1257,7 @@ export class Session {
   }
 
   /**
-   * T029: Record input and rollout user message
+   * Record input and rollout user message
    *
    * Converts InputItems to ResponseItem, records to history, derives UserMessage event,
    * and persists only the UserMessage to rollout (not the full ResponseItem).
@@ -1353,7 +1284,7 @@ export class Session {
     // Record to SessionState history
     this.recordConversationItemsDual(responseItems);
 
-    // Derive user message events using event mapping (matches Rust logic in browserx.rs line 794-805)
+    // Derive user message events using event mapping
     // This ensures proper handling of user_instructions and environment_context tags
     if (this.services?.rollout && responseItems.length > 0) {
       const showRawReasoning = false; // User messages don't have reasoning
@@ -1378,7 +1309,7 @@ export class Session {
   }
 
   /**
-   * T030: Enhance reconstruct history from rollout
+   * Reconstruct history from rollout
    *
    * Reconstructs conversation history from rollout storage, handling both
    * regular ResponseItems and compacted history with summaries.
@@ -1420,7 +1351,7 @@ export class Session {
   // ========================================================================
 
   /**
-   * T031: Update token usage info
+   * Update token usage info
    *
    * Updates SessionState with token usage information and sends token count event.
    *
@@ -1453,7 +1384,7 @@ export class Session {
   }
 
   /**
-   * T032: Update rate limits
+   * Update rate limits
    *
    * Updates SessionState with rate limit information and sends token count event.
    *
@@ -1477,7 +1408,7 @@ export class Session {
   // ========================================================================
 
   /**
-   * T033: Inject input
+   * Inject input
    *
    * Attempts to inject input into the active turn. If there's an active turn,
    * the input is queued for processing. If there's no active turn, the input
@@ -1506,7 +1437,7 @@ export class Session {
   }
 
   /**
-   * T034: Turn input with history
+   * Turn input with history
    *
    * Combines session history with extra turn items to create full turn input.
    * This is used when preparing input for a new turn.
@@ -1523,7 +1454,7 @@ export class Session {
   }
 
   /**
-   * T036: Record initial history
+   * Record initial history
    *
    * Records initial conversation history based on session mode.
    * - New sessions: Records initial context
@@ -1581,7 +1512,6 @@ export class Session {
 
   /**
    * Register a new active task
-   * Port of Rust's register_new_active_task (browserx-rs/core/src/tasks/mod.rs:121-126)
    *
    * Creates a new ActiveTurn, adds the task to it, and replaces the current active turn.
    * This effectively ensures only one turn can be active at a time.

@@ -1,24 +1,22 @@
 /**
  * Rate limit information from API headers
  *
- * Rust Reference: browserx-rs/protocol/src/protocol.rs RateLimitSnapshot struct
- * ✅ ALIGNED: Structure matches Rust with optional primary/secondary windows
+ * Structure with optional primary/secondary windows
  */
 export interface RateLimitSnapshot {
-  primary?: RateLimitWindow;  // Rust: primary: Option<RateLimitWindow>
-  secondary?: RateLimitWindow;  // Rust: secondary: Option<RateLimitWindow>
+  primary?: RateLimitWindow;
+  secondary?: RateLimitWindow;
 }
 
 /**
  * Individual rate limit window details
  *
- * Rust Reference: browserx-rs/protocol/src/protocol.rs RateLimitWindow struct
- * ✅ ALIGNED: All fields use snake_case matching Rust
+ * All fields use snake_case
  */
 export interface RateLimitWindow {
-  used_percent: number;  // Rust: used_percent: f64
-  window_minutes?: number;  // Rust: window_minutes: Option<i64>
-  resets_in_seconds?: number;  // Rust: resets_in_seconds: Option<i64>
+  used_percent: number;
+  window_minutes?: number;
+  resets_in_seconds?: number;
 }
 
 /**
@@ -121,13 +119,13 @@ export function isApproachingRateLimit(
 /**
  * Formats rate limit information for display
  */
-export function formatRateLimitInfo(window: RateLimitWindow): string {
-  const percent = window.used_percent.toFixed(1);
-  const resetInfo = window.resets_in_seconds
-    ? `, resets in ${Math.ceil(window.resets_in_seconds)}s`
+export function formatRateLimitInfo(rateLimitWindow: RateLimitWindow): string {
+  const percent = rateLimitWindow.used_percent.toFixed(1);
+  const resetInfo = rateLimitWindow.resets_in_seconds
+    ? `, resets in ${Math.ceil(rateLimitWindow.resets_in_seconds)}s`
     : '';
-  const windowInfo = window.window_minutes
-    ? ` (${window.window_minutes}min window)`
+  const windowInfo = rateLimitWindow.window_minutes
+    ? ` (${rateLimitWindow.window_minutes}min window)`
     : '';
 
   return `${percent}% used${windowInfo}${resetInfo}`;

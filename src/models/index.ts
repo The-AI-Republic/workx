@@ -21,34 +21,23 @@ export {
 export type { ToolDefinition } from '../tools/BaseTool';
 
 // Provider implementations
-// Note: AnthropicClient removed - not supported in Rust browserx-rs implementation
-// Note: OpenAIClient removed - replaced by OpenAIResponsesClient (Responses API)
-export { OpenAIResponsesClient, type OpenAIResponsesConfig } from './OpenAIResponsesClient';
+export { OpenAIResponsesClient, type OpenAIResponsesConfig } from './client/OpenAIResponsesClient';
+export { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from './client/OpenAIChatCompletionClient';
+export { GroqClient } from './client/GroqClient';
 
 // Factory and utilities
 export {
   ModelClientFactory,
-  getModelClientFactory,
   type ModelProvider,
   type ModelClientConfig,
 } from './ModelClientFactory';
 
-// Legacy files removed - not in Rust browserx-rs implementation
-// RateLimitManager - rate limiting handled inline in ModelClient
-// TokenUsageTracker - token tracking not in Rust client.rs
-
-// Authentication management
-export {
-  ChromeAuthManager,
-} from './ChromeAuthManager';
-
-// Performance optimizations (Phase 9)
+// Performance optimizations
 export {
   SSEEventParser,
 } from './SSEEventParser';
 
-// Note: RequestQueue kept for performance optimizations (Phase 9)
-// Not in Rust, but used for browser-specific rate limiting
+// Browser-specific request queue for rate limiting
 export {
   RequestQueue,
   RequestPriority,
@@ -56,3 +45,5 @@ export {
   type RateLimitConfig as RequestQueueRateLimitConfig,
   type QueueMetrics,
 } from './RequestQueue';
+
+// ModelRegistry removed - model metadata now managed by AgentConfig

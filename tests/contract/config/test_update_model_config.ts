@@ -72,7 +72,7 @@ describe('PATCH /config/model - Contract Test', () => {
     });
 
     const storageData = getChromeStorageData('sync');
-    expect(storageData.codex_config_v1.model).toMatchObject({
+    expect(storageData.browserx_config_v1.model).toMatchObject({
       selected: 'claude-3-opus-20240229',
       provider: 'anthropic',
       verbosity: 'high'

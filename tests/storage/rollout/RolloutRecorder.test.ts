@@ -51,7 +51,7 @@ describe('RolloutRecorder', () => {
       expect(recorder.getRolloutId()).toBe(conversationId);
     });
 
-    it('should create IndexedDB database "CodexRollouts"', async () => {
+    it('should create IndexedDB database "BrowserxRollouts"', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
         conversationId,

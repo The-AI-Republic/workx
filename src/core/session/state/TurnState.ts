@@ -1,6 +1,5 @@
 /**
  * TurnState - manages pending approvals and input for a turn
- * Port of Rust turn state management (commit 250b244ab)
  */
 
 import type { ApprovalResolver } from './types';
@@ -8,7 +7,6 @@ import type { InputItem } from '../../../protocol/types';
 
 /**
  * Manages pending approvals and input during an active turn
- * Corresponds to pending_approval_senders and pending_input in Rust Session
  */
 export class TurnState {
   /** Map of execution ID to approval resolver callback */

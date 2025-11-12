@@ -177,12 +177,12 @@ describe('Browser Adaptations Contract Compliance', () => {
     });
 
     it('should store auth token structure matching Rust', async () => {
-      interface CodexAuth {
+      interface BrowserxAuth {
         accessToken: string;
         expiresAt?: number;
       }
 
-      const auth: CodexAuth = {
+      const auth: BrowserxAuth = {
         accessToken: 'token_123',
         expiresAt: Date.now() + 3600000,
       };

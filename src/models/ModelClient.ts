@@ -1,6 +1,5 @@
 /**
  * Model Client base interface and types for browserx-chrome
- * Based on contract tests and browserx-rs model client implementation
  */
 
 import type { ToolDefinition } from '../tools/BaseTool';
@@ -175,17 +174,11 @@ export abstract class ModelClient {
    * objects as the model generates its response. The stream is returned immediately,
    * with events being added asynchronously as they arrive from the API.
    *
-   * **Rust Reference**: `browserx-rs/core/src/client.rs` Line 124
-   *
-   * **Type Mapping**:
-   * - Rust `Result<ResponseStream>` → TypeScript `Promise<ResponseStream>`
-   * - Errors are thrown rather than returned in a Result type
-   *
    * **Behavior**:
    * 1. Validates the prompt (empty input throws error)
    * 2. Creates a ResponseStream instance
    * 3. Spawns async task to populate stream via network call
-   * 4. Returns stream immediately (channel pattern from Rust)
+   * 4. Returns stream immediately
    *
    * @param prompt The prompt containing input messages and tools
    * @returns Promise resolving to ResponseStream that yields ResponseEvent objects
@@ -217,7 +210,6 @@ export abstract class ModelClient {
 
   /**
    * Get the provider information for this client
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 435-437
    */
   abstract getProvider(): ModelProviderInfo;
 
@@ -239,35 +231,29 @@ export abstract class ModelClient {
   abstract setModel(model: string): void;
 
   /**
-   * Get model context window size (Rust-aligned name)
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 109-113
+   * Get model context window size
    */
   abstract getModelContextWindow(): number | undefined;
 
   /**
    * Get auto-compact token limit for this model
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 115-119
    */
   abstract getAutoCompactTokenLimit(): number | undefined;
 
   /**
    * Get model family configuration
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 428-430
    */
   abstract getModelFamily(): any;
 
   /**
    * Get auth manager instance
    *
-   * **Browser Environment Deviation**: Always returns `undefined` in Chrome extension.
+   * **Browser Environment Note**: Always returns `undefined` in Chrome extension.
    *
-   * In the Rust implementation, this returns an `AuthManager` that handles OAuth flows
-   * and token refresh. However, in the browser environment:
+   * In the browser environment:
    * - Chrome extensions use the Chrome Storage API for API key management
    * - No OAuth flow is implemented (users provide API keys directly)
-   * - See `ChromeAuthManager.ts` for the browser-specific implementation
-   *
-   * **Rust Reference**: browserx-rs/core/src/client.rs Lines 443-445
+   * - API keys are managed through AgentConfig
    */
   abstract getAuthManager(): any;
 
@@ -293,14 +279,12 @@ export abstract class ModelClient {
 
   /**
    * Stream responses from the model using appropriate wire API
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 121-134
    * Dispatches to either Responses API or Chat Completions based on provider
    */
   protected abstract streamResponses(request: CompletionRequest): AsyncGenerator<ResponseEvent>;
 
   /**
    * Stream chat completions (Chat API variant)
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 177-195
    */
   protected abstract streamChat(request: CompletionRequest): AsyncGenerator<ResponseEvent>;
 
@@ -310,8 +294,6 @@ export abstract class ModelClient {
    * This method makes a single attempt to create a streaming connection,
    * without retry logic. Returns a ResponseStream that will be populated
    * with events from the API response.
-   *
-   * **Rust Reference**: `browserx-rs/core/src/client.rs` Line 269
    *
    * @param attempt The attempt number (0-based) for logging/metrics
    * @param payload The API request payload
@@ -325,7 +307,6 @@ export abstract class ModelClient {
 
   /**
    * Process Server-Sent Events (SSE) stream into ResponseEvents
-   * Rust Reference: browserx-rs/core/src/client.rs Lines 488-550
    * @param stream ReadableStream from fetch response
    * @returns AsyncGenerator yielding parsed ResponseEvents
    */
@@ -337,14 +318,9 @@ export abstract class ModelClient {
    * Extracts rate limit information from HTTP response headers, if present.
    * Supports both primary and secondary rate limit windows.
    *
-   * **Rust Reference**: `browserx-rs/core/src/client.rs` Lines 453-495
-   *
    * **Header Format**:
    * - Primary: `x-browserx-primary-used-percent`, `x-browserx-primary-window-minutes`, `x-browserx-primary-resets-in-seconds`
    * - Secondary: `x-browserx-secondary-used-percent`, `x-browserx-secondary-window-minutes`, `x-browserx-secondary-resets-in-seconds`
-   *
-   * **Type Mapping**:
-   * - Rust `Option<RateLimitSnapshot>` → TypeScript `RateLimitSnapshot | undefined`
    *
    * @param headers HTTP response headers from fetch()
    * @returns RateLimitSnapshot if rate limit headers present, undefined otherwise

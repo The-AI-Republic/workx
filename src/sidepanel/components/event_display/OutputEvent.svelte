@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * OutputEvent - Renders terminal-style command output (T038)
+   * OutputEvent - Renders terminal-style command output
    */
   import type { ProcessedEvent } from '../../../types/ui';
   import { truncateOutput } from '../../../utils/formatters';

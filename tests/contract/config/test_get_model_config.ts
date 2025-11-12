@@ -19,7 +19,7 @@ describe('GET /config/model - Contract Test', () => {
   it('should return the current model configuration', async () => {
     // Set initial data
     setChromeStorageData('sync', {
-      codex_config_v1: {
+      browserx_config_v1: {
         version: '1.0.0',
         model: {
           selected: 'gpt-4',
@@ -83,7 +83,7 @@ describe('GET /config/model - Contract Test', () => {
   it('should handle profile-based model config', async () => {
     // Set config with active profile
     setChromeStorageData('sync', {
-      codex_config_v1: {
+      browserx_config_v1: {
         version: '1.0.0',
         model: {
           selected: 'gpt-3.5-turbo',

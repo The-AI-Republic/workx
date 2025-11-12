@@ -6,34 +6,22 @@ import type { ResponseItem } from '../../protocol/types';
 /**
  * Response events emitted during model streaming
  *
- * This is a discriminated union matching Rust's ResponseEvent enum exactly.
- * Each variant preserves the PascalCase naming from Rust.
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs` Lines 71-87
- *
- * **Type Mapping**:
- * - Rust `enum ResponseEvent` → TypeScript discriminated union with `type` field
- * - Rust tuple variants (e.g., `OutputTextDelta(String)`) → object with `delta` field
- * - Rust struct variants → object with named fields
- *
- * **Field Name Convention**:
- * - Event type names: PascalCase (matches Rust)
- * - Field names: camelCase for identifiers (e.g., `responseId`, `callId`)
- * - Field names: snake_case for data structures (e.g., `tokenUsage` contains snake_case fields)
+ * This is a discriminated union representing different event types.
+ * Event type names use PascalCase, field names use camelCase for identifiers.
  *
  * @see TokenUsage for token usage field structure
  * @see RateLimitSnapshot for rate limit structure
  */
 export type ResponseEvent =
-  | { type: 'Created' }  // Rust: Created
-  | { type: 'OutputItemDone'; item: ResponseItem }  // Rust: OutputItemDone(ResponseItem)
-  | { type: 'Completed'; responseId: string; tokenUsage?: TokenUsage }  // Rust: Completed { response_id: String, usage: Option<TokenUsage> }
-  | { type: 'OutputTextDelta'; delta: string }  // Rust: OutputTextDelta(String)
-  | { type: 'ReasoningSummaryDelta'; delta: string }  // Rust: ReasoningSummaryDelta(String)
-  | { type: 'ReasoningContentDelta'; delta: string }  // Rust: ReasoningContentDelta(String)
-  | { type: 'ReasoningSummaryPartAdded' }  // Rust: ReasoningSummaryPartAdded
-  | { type: 'WebSearchCallBegin'; callId: string }  // Rust: WebSearchCallBegin(String)
-  | { type: 'RateLimits'; snapshot: RateLimitSnapshot };  // Rust: RateLimits(RateLimitSnapshot)
+  | { type: 'Created' }
+  | { type: 'OutputItemDone'; item: ResponseItem }
+  | { type: 'Completed'; responseId: string; tokenUsage?: TokenUsage }
+  | { type: 'OutputTextDelta'; delta: string }
+  | { type: 'ReasoningSummaryDelta'; delta: string }
+  | { type: 'ReasoningContentDelta'; delta: string }
+  | { type: 'ReasoningSummaryPartAdded' }
+  | { type: 'WebSearchCallBegin'; callId: string }
+  | { type: 'RateLimits'; snapshot: RateLimitSnapshot };
 
 
 // Type guards for ResponseEvent variants

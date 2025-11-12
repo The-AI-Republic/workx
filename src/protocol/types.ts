@@ -1,6 +1,5 @@
 /**
- * Core protocol types ported from browserx-rs/protocol/src/protocol.rs
- * Preserving exact type names and structure from Rust
+ * Core protocol types
  */
 
 // Constants from protocol
@@ -101,10 +100,10 @@ export type Op =
  * running the command proposed by Browserx.
  */
 export type AskForApproval =
-  | 'untrusted'    // UnlessTrusted in Rust
-  | 'on-failure'   // OnFailure
-  | 'on-request'   // OnRequest (default)
-  | 'never';       // Never
+  | 'untrusted'
+  | 'on-failure'
+  | 'on-request'
+  | 'never';
 
 /**
  * Determines execution restrictions for model shell commands.
@@ -124,8 +123,7 @@ export type SandboxPolicy =
     };
 
 /**
- * Protocol model types ported from browserx-rs/protocol/src/models.rs
- * These types represent the structured data from API responses
+ * Protocol model types for structured data from API responses
  */
 
 /**
@@ -179,7 +177,7 @@ export type LocalShellAction = {
 };
 
 /**
- * Response item types from protocol - discriminated union matching Rust enum
+ * Response item types from protocol
  */
 export type ResponseItem =
   | {
@@ -187,6 +185,17 @@ export type ResponseItem =
       id?: string;
       role: string;
       content: ContentItem[];
+      /** Reasoning/thinking content from models like Kimi K2, o1, o3 */
+      reasoning_content?: string;
+      /** Tool calls for this assistant message (Chat Completions API format) */
+      tool_calls?: Array<{
+        id: string;
+        type: string;
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
     }
   | {
       type: 'reasoning';
@@ -345,16 +354,6 @@ export interface ReviewRequest {
   id: string;
   content: string;
   type?: 'code' | 'document' | 'general';
-}
-
-/**
- * Event Queue Entry - responses from agent
- */
-export interface Event {
-  /** Unique id for this Event */
-  id: string;
-  /** Event message */
-  msg: EventMsg;
 }
 
 // Re-export EventMsg from events.ts

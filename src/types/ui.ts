@@ -8,7 +8,7 @@
 import type { Event } from '../protocol/types';
 
 // ============================================================================
-// Core Event Display Types (T002)
+// Core Event Display Types
 // ============================================================================
 
 /**
@@ -39,7 +39,7 @@ export type FontStyle = 'italic' | 'normal';
 export type IconType = 'info' | 'success' | 'error' | 'warning' | 'tool' | 'thinking';
 
 // ============================================================================
-// EventStyle Interface (T003)
+// EventStyle Interface
 // ============================================================================
 
 /**
@@ -62,11 +62,10 @@ export interface EventStyle {
 
 /**
  * Style Presets - Predefined styles for common event types
- * Based on Rust terminal color mapping
  */
 export const STYLE_PRESETS: Record<string, EventStyle> = {
   task_started: {
-    textColor: 'text-cyan-400',
+    textColor: 'text-green-400',
     icon: 'info',
   },
   task_complete: {
@@ -82,7 +81,7 @@ export const STYLE_PRESETS: Record<string, EventStyle> = {
     textStyle: 'italic',
   },
   reasoning: {
-    textColor: 'text-purple-400',
+    textColor: 'text-green-400',
     textStyle: 'italic',
     icon: 'thinking',
   },
@@ -106,7 +105,7 @@ export const STYLE_PRESETS: Record<string, EventStyle> = {
 };
 
 // ============================================================================
-// EventMetadata Interface (T004)
+// EventMetadata Interface
 // ============================================================================
 
 /**
@@ -151,7 +150,7 @@ export interface EventMetadata {
 }
 
 // ============================================================================
-// OperationState and StreamingState Interfaces (T005)
+// OperationState and StreamingState Interfaces
 // ============================================================================
 
 /**
@@ -193,7 +192,7 @@ export interface StreamingState {
 }
 
 // ============================================================================
-// ApprovalRequest and ContentBlock Types (T006)
+// ApprovalRequest and ContentBlock Types
 // ============================================================================
 
 /**
@@ -229,7 +228,7 @@ export type ContentBlock =
   | { type: 'table'; headers: string[]; rows: string[][] };
 
 // ============================================================================
-// ProcessedEvent - Main UI Event Type (T002)
+// ProcessedEvent - Main UI Event Type
 // ============================================================================
 
 /**

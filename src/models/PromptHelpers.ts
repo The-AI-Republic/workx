@@ -1,19 +1,16 @@
 /**
  * Prompt Helper Functions
  *
- * Utility functions for working with Prompt structures, aligned with Rust implementation.
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:42-68`
+ * Utility functions for working with Prompt structures.
  */
 
 import type { Prompt, ModelFamily, ResponseItem } from './types/ResponsesAPI';
+import type { ContentItem } from '../protocol/types';
+import { ScreenshotFileManager } from '../tools/screenshot/ScreenshotFileManager';
+import { SCREENSHOT_CACHE_KEY } from '@/tools/screenshot/types';
 
 /**
  * Get full instructions by combining base instructions with user instructions.
- *
- * Matches Rust's `impl Prompt::get_full_instructions(&self, model: &ModelFamily)`
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:42-64`
  *
  * @param prompt - The prompt containing optional instruction overrides
  * @param model - The model family configuration with base instructions
@@ -51,7 +48,6 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
   }
 
   // TODO: Add apply_patch tool instructions if needed (future enhancement)
-  // This matches Rust's logic at client_common.rs:47-60
   // if (!prompt.base_instructions_override && model.needs_special_apply_patch_instructions) {
   //   const hasApplyPatchTool = prompt.tools.some(tool =>
   //     tool.type === 'function' && tool.function.name === 'apply_patch'
@@ -68,10 +64,6 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
  * Get formatted input for API request.
  *
  * Returns a cloned copy of the input array to prevent mutations.
- *
- * Matches Rust's `impl Prompt::get_formatted_input(&self)`
- *
- * **Rust Reference**: `browserx-rs/core/src/client_common.rs:66-68`
  *
  * @param prompt - The prompt containing input items
  * @returns Cloned array of ResponseItem
@@ -92,8 +84,45 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
  * console.log(formattedInput.length); // 2
  * ```
  */
-export function get_formatted_input(prompt: Prompt): ResponseItem[] {
+export async function get_formatted_input(prompt: Prompt): Promise<ResponseItem[]> {
   // Clone the input array to prevent mutations
-  // In Rust, this is `self.input.clone()`
-  return [...prompt.input];
+  const items = [...prompt.input];
+
+  // Iterate backwards to find the last screenshot function call output
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    
+    if (item?.type === 'function_call_output') {
+      try {
+        const output = JSON.parse(item.output);
+        
+        // If it's a screenshot action, get the image and insert it after this item
+        if (output?.metadata?.toolName === 'page_vision' && output?.metadata?.action === 'screenshot') {
+          const screenshotData = await ScreenshotFileManager.getScreenshot();
+
+          if (screenshotData) {
+            // Convert screenshot data to data URL
+            const dataUrl = `data:image/png;base64,${screenshotData}`;
+
+            // Insert image message right after the function call output
+            items.splice(i + 1, 0, {
+              type: 'message' as const,
+              role: 'user',
+              content: [
+                { type: 'input_text' as const, text: `Current Screenshot captured by page_vision tool: ${output.data.width}x${output.data.height}` },
+                { type: 'input_image' as const, image_url: dataUrl }
+              ]
+            } as ResponseItem);
+          }
+
+          // Only process the last screenshot in the list
+          break;
+        }
+      } catch (error) {
+        console.debug('[PromptHelpers] Failed to parse function call output:', error);
+      }
+    }
+  }
+
+  return items;
 }

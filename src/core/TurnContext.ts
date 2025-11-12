@@ -1,5 +1,5 @@
 /**
- * TurnContext implementation - ports TurnContext struct from browserx-rs
+ * TurnContext implementation
  * Manages turn state, context switching, approval policies, and sandbox settings
  *
  * BREAKING CHANGE: Replaced cwd (current working directory) with tabId (current working tab)
@@ -50,7 +50,6 @@ export interface TurnContextConfig {
 
 /**
  * TurnContext manages the context and configuration for a single conversation turn
- * Port of TurnContext struct from browserx-rs/core/src/browserx.rs
  */
 export class TurnContext {
   private modelClient: ModelClient;
@@ -149,7 +148,7 @@ export class TurnContext {
   }
 
   /**
-   * T033: Get parent session ID
+   * Resolve a path relative to the current working directory
    */
   getSessionId(): string {
     return this.sessionId;

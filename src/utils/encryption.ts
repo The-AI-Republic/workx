@@ -1,6 +1,6 @@
 /**
  * Encryption utilities for API keys
- * Extracted from ChromeAuthManager for reusability
+ * Used by AgentConfig and Settings for secure storage
  */
 
 /**

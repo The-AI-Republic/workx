@@ -68,7 +68,7 @@ describe('Legacy Migration Integration Test', () => {
     expect(storageData['default_provider']).toBeUndefined();
 
     // Check new config exists
-    expect(storageData['codex_config_v1']).toBeDefined();
+    expect(storageData['browserx_config_v1']).toBeDefined();
   });
 
   it('should handle partial migration when some keys are missing', async () => {
@@ -90,11 +90,11 @@ describe('Legacy Migration Integration Test', () => {
   it('should not migrate if already migrated', async () => {
     // Already has new format
     setChromeStorageData('sync', {
-      'codex_config_v1': {
+      'browserx_config_v1': {
         version: '1.0.0',
         model: { selected: 'gpt-4', provider: 'openai' }
       },
-      'codex_config_version': '1.0.0'
+      'browserx_config_version': '1.0.0'
     });
 
     const result = await configService.migrateFromLegacy();
@@ -112,8 +112,8 @@ describe('Legacy Migration Integration Test', () => {
     await configService.migrateFromLegacy();
 
     const storageData = getChromeStorageData('sync');
-    expect(storageData['codex_config_backup']).toBeDefined();
-    expect(storageData['codex_config_backup']).toMatchObject({
+    expect(storageData['browserx_config_backup']).toBeDefined();
+    expect(storageData['browserx_config_backup']).toMatchObject({
       'openai_api_key': 'sk-backup-test',
       'default_provider': 'openai'
     });

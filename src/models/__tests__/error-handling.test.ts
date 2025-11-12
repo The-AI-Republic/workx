@@ -760,21 +760,18 @@ describe('Integration with ModelClient Base Class', () => {
 });
 
 /**
- * T008: Error Handling and Retries Integration Tests
- * Reference: tasks.md T008
- * Rust Reference: browserx-rs/core/src/client.rs:549-622
+ * Error Handling and Retries Integration Tests
  *
- * These tests verify error handling and retry logic for the Responses API
- * matching Rust behavior exactly.
+ * These tests verify error handling and retry logic for the Responses API.
  */
-describe('T008: Error Handling and Retries Integration', () => {
+describe('Error Handling and Retries Integration', () => {
   let client: any;
   let mockModelFamily: any;
   let mockProvider: any;
 
   beforeEach(async () => {
     // Dynamically import to avoid module resolution issues during testing
-    const { OpenAIResponsesClient } = await import('../OpenAIResponsesClient');
+    const { OpenAIChatCompletionClient } = await import('../client/OpenAIChatCompletionClient');
 
     mockModelFamily = {
       family: 'gpt-4',
@@ -791,7 +788,7 @@ describe('T008: Error Handling and Retries Integration', () => {
       streamIdleTimeoutMs: 60000,
     };
 
-    client = new OpenAIResponsesClient(
+    client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
         conversationId: 'error-test',
@@ -829,7 +826,7 @@ describe('T008: Error Handling and Retries Integration', () => {
         tools: [],
       };
 
-      // Contract: 401 errors should NOT retry (Rust client.rs:573-577)
+      // Contract: 401 errors should NOT retry
       await expect(client.stream(prompt)).rejects.toThrow(/invalid api key|unauthorized/i);
 
       // Should only be called once (no retries)
@@ -844,7 +841,7 @@ describe('T008: Error Handling and Retries Integration', () => {
         tools: [],
       };
 
-      // Contract: Must validate before making API call (Rust client.rs:258-261)
+      // Contract: Must validate before making API call
       await expect(client.stream(prompt)).rejects.toThrow();
 
       // Should not make any API calls
@@ -904,7 +901,7 @@ describe('T008: Error Handling and Retries Integration', () => {
         tools: [],
       };
 
-      // Contract: Should retry 429 errors (Rust client.rs:581-594)
+      // Contract: Should retry 429 errors
       const streamPromise = client.stream(prompt);
 
       // Advance through retry delays
@@ -1013,7 +1010,7 @@ describe('T008: Error Handling and Retries Integration', () => {
 
       await streamPromise;
 
-      // Contract: 5xx errors should retry (Rust client.rs:595-607)
+      // Contract: 5xx errors should retry
       expect(callCount).toBe(2);
     });
 
@@ -1088,7 +1085,7 @@ describe('T008: Error Handling and Retries Integration', () => {
         await vi.advanceTimersToNextTimerAsync();
       }
 
-      // Contract: Should throw after all retries exhausted (Rust client.rs:608-622)
+      // Contract: Should throw after all retries exhausted
       await expect(streamPromise).rejects.toThrow(/service unavailable|server error/i);
 
       // Should have tried initial + 3 retries = 4 total
@@ -1151,7 +1148,7 @@ describe('T008: Error Handling and Retries Integration', () => {
       await streamPromise;
 
       // Contract: Each delay should be larger than previous (exponential)
-      // Formula: baseDelay * 2^attempt with jitter (Rust client.rs:549-564)
+      // Formula: baseDelay * 2^attempt with jitter
       expect(delays.length).toBeGreaterThan(0);
 
       // First delay should be around baseDelayMs (100ms)

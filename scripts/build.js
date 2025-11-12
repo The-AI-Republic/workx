@@ -23,7 +23,7 @@ function log(message, color = colors.reset) {
 
 function build() {
   try {
-    log('\n🔨 Building Codex Chrome Extension...', colors.yellow);
+    log('\n🔨 Building Browserx Chrome Extension...', colors.yellow);
     
     // Clean dist directory
     const distPath = path.join(__dirname, '..', 'dist');

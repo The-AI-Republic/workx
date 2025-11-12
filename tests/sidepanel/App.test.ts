@@ -86,14 +86,14 @@ describe('App.svelte - User Message Display', () => {
 });
 
 describe('App.svelte - Branding Label', () => {
-  it('should display "Browserx For Chrome v0.0.1 (By AI Republic)"', () => {
+  it('should display "Browserx: in-browser AI Agent (By AI Republic)"', () => {
     const appSource = require('fs').readFileSync(
       require('path').join(__dirname, '../../src/sidepanel/App.svelte'),
       'utf-8'
     );
 
     // Check for updated branding string
-    expect(appSource).toContain('Browserx For Chrome v0.0.1 (By AI Republic)');
+    expect(appSource).toContain('Browserx: in-browser AI Agent (By AI Republic)');
   });
 
   it('should NOT display "Browserx Terminal v0.0.1"', () => {

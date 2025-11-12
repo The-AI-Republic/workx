@@ -1,5 +1,5 @@
 /**
- * TurnManager implementation - ports run_turn functionality from browserx-rs
+ * TurnManager implementation
  * Manages individual conversation turns, handles model streaming, and coordinates tool calls
  */
 
@@ -65,7 +65,6 @@ export interface Prompt {
 
 /**
  * TurnManager handles execution of individual conversation turns
- * Port of run_turn and try_run_turn functions from browserx-rs/core/src/browserx.rs
  */
 export class TurnManager {
   private session: Session;
@@ -139,11 +138,15 @@ export class TurnManager {
           retries++;
           const delay = this.calculateRetryDelay(retries, error);
 
+          const summary = this.extractStreamErrorSummary(error);
+
           // Notify about retry attempt
           await this.emitStreamError(
-            `Stream error: ${error instanceof Error ? error.message : String(error)}; retrying ${retries}/${this.config.maxRetries} in ${delay}ms`,
+            `Stream error: ${summary}`,
             true,
-            retries
+            retries,
+            delay,
+            this.config.maxRetries
           );
 
           await this.sleep(delay);
@@ -213,8 +216,6 @@ export class TurnManager {
             break;
 
           case 'RateLimits':
-            // Update rate limits (deferred until token usage available)
-            // In the Rust version, this is handled by sess.update_rate_limits
             break;
 
           case 'Completed': {
@@ -337,33 +338,34 @@ export class TurnManager {
       });
     }
 
-    // Add update_plan tool (always enabled for task management)
-    tools.push({
-      type: 'function',
-      function: {
-        name: 'update_plan',
-        description: 'Update the current task plan',
-        strict: false,
-        parameters: {
-          type: 'object',
-          properties: {
-            tasks: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  description: { type: 'string' },
-                  status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
-                },
-                required: ['id', 'description', 'status'],
-              },
-            },
-          },
-          required: ['tasks'],
-        },
-      },
-    });
+    // Add update_plan tool (DISABLED - not working as expected)
+    // TODO: Re-enable after fixing update_plan functionality
+    // tools.push({
+    //   type: 'function',
+    //   function: {
+    //     name: 'update_plan',
+    //     description: 'Update the current task plan',
+    //     strict: false,
+    //     parameters: {
+    //       type: 'object',
+    //       properties: {
+    //         tasks: {
+    //           type: 'array',
+    //           items: {
+    //             type: 'object',
+    //             properties: {
+    //               id: { type: 'string' },
+    //               description: { type: 'string' },
+    //               status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
+    //             },
+    //             required: ['id', 'description', 'status'],
+    //           },
+    //         },
+    //       },
+    //       required: ['tasks'],
+    //     },
+    //   },
+    // });
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -511,12 +513,11 @@ export class TurnManager {
 
   /**
    * Handle a complete response item from the model
-   * Port of handle_response_item from browserx-rs
    */
   private async handleResponseItem(item: any): Promise<any | undefined> {
     // Check item type and handle accordingly
     if (item.type === 'function_call') {
-      // Function call - execute and return response
+      // Legacy function_call item - execute and return response
       const { name, arguments: args, call_id } = item;
 
       try {
@@ -530,8 +531,6 @@ export class TurnManager {
         };
       }
     } else if (item.type === 'message' || item.type === 'reasoning' || item.type === 'web_search_call') {
-      // Use event mapping to convert ResponseItem to EventMsg(s)
-      // This matches the Rust logic in browserx.rs line 2219-2235
       const showRawReasoning = this.session.showRawAgentReasoning() ?? false;
       const eventMsgs = mapResponseItemToEventMessages(item as ResponseItem, showRawReasoning);
 
@@ -541,6 +540,27 @@ export class TurnManager {
           await this.emitEvent(msg);
         } else {
           console.warn('Skipping malformed event from mapResponseItemToEventMessages:', msg);
+        }
+      }
+
+      // Handle tool_calls embedded in message items (unified format)
+      // NEW: Assistant messages can now contain tool_calls directly
+      if (item.type === 'message' && item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
+        // Execute the first tool call (parallel_tool_calls is false)
+        const toolCall = item.tool_calls[0];
+        try {
+          const result = await this.executeToolCall(
+            toolCall.function.name,
+            toolCall.function.arguments,
+            toolCall.id
+          );
+          return result;
+        } catch (error) {
+          return {
+            type: 'function_call_output',
+            call_id: toolCall.id,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          };
         }
       }
 
@@ -594,9 +614,10 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
-        case 'update_plan':
-          result = await this.updatePlan(parsedParams.tasks);
-          break;
+        // DISABLED: update_plan tool not working as expected
+        // case 'update_plan':
+        //   result = await this.updatePlan(parsedParams.tasks);
+        //   break;
 
         default:
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
@@ -942,15 +963,103 @@ export class TurnManager {
   /**
    * Emit stream error event
    */
-  private async emitStreamError(error: string, retrying: boolean, attempt?: number): Promise<void> {
+  private async emitStreamError(
+    error: string,
+    retrying: boolean,
+    attempt?: number,
+    delayMs?: number,
+    maxRetries?: number
+  ): Promise<void> {
+    const data: StreamErrorEvent = {
+      error,
+      retrying,
+    };
+
+    if (typeof attempt === 'number') {
+      data.attempt = attempt;
+    }
+    if (typeof delayMs === 'number') {
+      data.delayMs = delayMs;
+    }
+    if (typeof maxRetries === 'number') {
+      data.maxRetries = maxRetries;
+    }
+
     await this.emitEvent({
       type: 'StreamError',
-      data: {
-        error,
-        retrying,
-        attempt,
-      },
+      data,
     });
+  }
+
+  /**
+   * Extract a concise summary for the current stream error.
+   */
+  private extractStreamErrorSummary(error: unknown): string {
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    if (!error) {
+      return 'Unknown stream error';
+    }
+
+    const visited = new Set<unknown>();
+    let current: unknown = error;
+    let description = '';
+
+    while (current && !visited.has(current)) {
+      visited.add(current);
+      description = this.describeError(current);
+
+      const next = this.getErrorCause(current);
+      if (!next) {
+        break;
+      }
+
+      current = next;
+    }
+
+    return description || 'Unknown stream error';
+  }
+
+  /**
+   * Describe an error-like value as a readable string.
+   */
+  private describeError(value: unknown): string {
+    if (value instanceof Error) {
+      const name = value.name && value.name !== 'Error' ? `${value.name}: ` : '';
+      const message = value.message || '(no message)';
+      return `${name}${message}`;
+    }
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value && typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '[object Object]';
+      }
+    }
+
+    return 'Unknown stream error';
+  }
+
+  /**
+   * Retrieve the `cause` field from an error-like value when available.
+   */
+  private getErrorCause(value: unknown): unknown | undefined {
+    if (value instanceof Error && 'cause' in value) {
+      return (value as Error & { cause?: unknown }).cause;
+    }
+
+    if (value && typeof value === 'object' && 'cause' in (value as any)) {
+      return (value as { cause?: unknown }).cause;
+    }
+
+    return undefined;
   }
 
   /**
