@@ -8,8 +8,21 @@
   import { AgentConfig } from '../config/AgentConfig.js';
   import { encryptApiKey, decryptApiKey } from '../utils/encryption.js';
   import { AuthMode } from '../models/types/index.js';
-  import ModelSelector from './settings/ModelSelector.svelte';
+  import ModelSelector from './settings/components/ModelSelector.svelte';
+  import SettingsMenu from './settings/components/SettingsMenu.svelte';
+  import UnsavedChangesDialog from './settings/components/UnsavedChangesDialog.svelte';
+  import GeneralSettings from './settings/GeneralSettings.svelte';
+  import StorageSettings from './settings/StorageSettings.svelte';
+  import ToolsSettings from './settings/ToolsSettings.svelte';
+  import ExtensionSettings from './settings/ExtensionSettings.svelte';
   import type { ConfiguredFeatures } from '../config/types.js';
+
+  // Navigation state
+  type NavigationView = 'menu' | 'model-config' | 'general' | 'storage' | 'tools' | 'extension';
+  let currentView: NavigationView = 'menu';
+  let hasUnsavedChanges = false;
+  let showUnsavedDialog = false;
+  let pendingNavigation: NavigationView | null = null;
 
   // Component state
   let apiKey = '';
@@ -649,6 +662,45 @@
     modelValidationError = errors.join('. ');
     showMessage(`Cannot select model: ${modelValidationError}`, 'error');
   }
+
+  /**
+   * Navigation functions
+   */
+  function navigateTo(view: NavigationView) {
+    if (hasUnsavedChanges && view === 'menu') {
+      // Show unsaved changes dialog
+      pendingNavigation = view;
+      showUnsavedDialog = true;
+    } else {
+      // Navigate immediately
+      currentView = view;
+      hasUnsavedChanges = false;
+    }
+  }
+
+  function handleCategorySelected(event: CustomEvent<{ categoryId: string }>) {
+    navigateTo(event.detail.categoryId as NavigationView);
+  }
+
+  function handleBack() {
+    navigateTo('menu');
+  }
+
+  function handleDialogConfirm() {
+    // User confirmed discard changes
+    showUnsavedDialog = false;
+    if (pendingNavigation) {
+      currentView = pendingNavigation;
+      hasUnsavedChanges = false;
+      pendingNavigation = null;
+    }
+  }
+
+  function handleDialogCancel() {
+    // User cancelled, stay in current view
+    showUnsavedDialog = false;
+    pendingNavigation = null;
+  }
 </script>
 
 <div class="settings-container">
@@ -663,8 +715,12 @@
   </div>
 
   <div class="settings-content">
-    <!-- T021: Model Selection moved above API Key Section -->
-    <div class="settings-section">
+    {#if currentView === 'menu'}
+      <SettingsMenu on:categorySelected={handleCategorySelected} />
+    {:else if currentView === 'model-config'}
+      <!-- Model configuration - existing content -->
+      <button class="back-button" on:click={handleBack}>← Back</button>
+      <div class="settings-section">
       <h3 class="section-title">Model Selection</h3>
       <div class="form-group">
         <label class="form-label">
@@ -913,7 +969,43 @@
         </div>
       </div>
     </div>
+    {:else if currentView === 'general'}
+      <GeneralSettings
+        {settingsConfig}
+        on:back={handleBack}
+        on:saved={() => {}}
+        bind:isDirty={hasUnsavedChanges}
+      />
+    {:else if currentView === 'storage'}
+      <StorageSettings
+        {settingsConfig}
+        on:back={handleBack}
+        on:saved={() => {}}
+        bind:isDirty={hasUnsavedChanges}
+      />
+    {:else if currentView === 'tools'}
+      <ToolsSettings
+        {settingsConfig}
+        on:back={handleBack}
+        on:saved={() => {}}
+        bind:isDirty={hasUnsavedChanges}
+      />
+    {:else if currentView === 'extension'}
+      <ExtensionSettings
+        {settingsConfig}
+        on:back={handleBack}
+        on:saved={() => {}}
+        bind:isDirty={hasUnsavedChanges}
+      />
+    {/if}
   </div>
+
+  <!-- Unsaved Changes Dialog -->
+  <UnsavedChangesDialog
+    isOpen={showUnsavedDialog}
+    on:confirm={handleDialogConfirm}
+    on:cancel={handleDialogCancel}
+  />
 </div>
 
 <style>
@@ -1217,5 +1309,29 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--browserx-text);
+  }
+
+  /* Placeholder view and back button */
+  .placeholder-view {
+    padding: 1.5rem;
+  }
+
+  .back-button {
+    background: none;
+    border: none;
+    color: var(--browserx-primary);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: opacity 0.2s;
+  }
+
+  .back-button:hover {
+    opacity: 0.8;
   }
 </style>
