@@ -5,12 +5,10 @@
  * - Track bidirectional mappings between sessions and tabs
  * - Enforce one-tab-per-session constraint
  * - Handle tab lifecycle events (closure, crashes)
- * - Persist bindings to chrome.storage.local
  * - Validate tab existence before operations
  */
 
-import { TabBindingState, TabValidationState, TabInvalidReason, TabInfo } from '../types/session';
-import { TabInvalidError } from '../types/errors';
+import type { TabBindingState, TabValidationState, TabInvalidReason, TabInfo } from '../types/session';
 
 /**
  * Callback type for tab closure events
@@ -32,9 +30,6 @@ export class TabBindingManager {
   private tabClosedCallbacks: TabClosedCallback[] = [];
   private initialized: boolean = false;
 
-  // Storage key for persistence
-  private static readonly STORAGE_KEY = 'tabBindings';
-
   private constructor() {
     // Private constructor for singleton pattern
   }
@@ -44,22 +39,21 @@ export class TabBindingManager {
    */
   static getInstance(): TabBindingManager {
     if (!TabBindingManager.instance) {
-      TabBindingManager.instance = new TabBindingManager();
+      const newInstance = new TabBindingManager();
+      newInstance.initialize();
+      TabBindingManager.instance = newInstance;
     }
     return TabBindingManager.instance;
   }
 
   /**
    * T015: Initialize binding manager
-   * Loads bindings from storage and sets up event listeners
+   * Sets up event listeners for tab lifecycle
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
       return;
     }
-
-    // Load bindings from storage
-    await this.loadFromStorage();
 
     // T016: Register chrome.tabs.onRemoved event listener
     chrome.tabs.onRemoved.addListener(this.handleTabRemoved.bind(this));
@@ -105,34 +99,29 @@ export class TabBindingManager {
     this.tabToSession.set(tabId, sessionId);
     this.sessionToTab.set(sessionId, tabId);
     this.bindings.set(tabId, binding);
-
-    // T014: Persist to storage
-    await this.persistBindings();
   }
 
   /**
    * T008: Unbind a tab from its session
    */
-  async unbindTab(tabId: number): Promise<void> {
+  unbindTab(tabId: number): void {
     const sessionId = this.tabToSession.get(tabId);
     if (sessionId) {
       this.tabToSession.delete(tabId);
       this.sessionToTab.delete(sessionId);
       this.bindings.delete(tabId);
-      await this.persistBindings();
     }
   }
 
   /**
    * T009: Unbind a session from its tab
    */
-  async unbindSession(sessionId: string): Promise<void> {
+  unbindSession(sessionId: string): void {
     const tabId = this.sessionToTab.get(sessionId);
     if (tabId !== undefined) {
       this.tabToSession.delete(tabId);
       this.sessionToTab.delete(sessionId);
       this.bindings.delete(tabId);
-      await this.persistBindings();
     }
   }
 
@@ -199,48 +188,6 @@ export class TabBindingManager {
   }
 
   /**
-   * T014: Persist bindings to chrome.storage.local
-   */
-  private async persistBindings(): Promise<void> {
-    const bindingsObject: Record<string, TabBindingState> = {};
-    for (const [tabId, binding] of this.bindings.entries()) {
-      bindingsObject[tabId.toString()] = binding;
-    }
-
-    await chrome.storage.local.set({
-      [TabBindingManager.STORAGE_KEY]: bindingsObject,
-    });
-  }
-
-  /**
-   * Load bindings from chrome.storage.local
-   */
-  private async loadFromStorage(): Promise<void> {
-    const result = await chrome.storage.local.get(TabBindingManager.STORAGE_KEY);
-    const bindingsObject = result[TabBindingManager.STORAGE_KEY] as Record<string, TabBindingState> | undefined;
-
-    if (bindingsObject) {
-      // Rebuild in-memory maps from stored bindings
-      for (const [tabIdStr, binding] of Object.entries(bindingsObject)) {
-        const tabId = parseInt(tabIdStr, 10);
-
-        // Validate that tab still exists
-        const validation = await this.validateTab(tabId);
-        if (validation.status === 'valid') {
-          this.tabToSession.set(tabId, binding.sessionId);
-          this.sessionToTab.set(binding.sessionId, tabId);
-          this.bindings.set(tabId, binding);
-        } else {
-          console.log(`[TabBindingManager] Removed stale binding for tab ${tabId} (${validation.reason})`);
-        }
-      }
-
-      // Persist cleaned bindings
-      await this.persistBindings();
-    }
-  }
-
-  /**
    * T016: Handle tab removed event
    */
   private handleTabRemoved(tabId: number, removeInfo: chrome.tabs.TabRemoveInfo): void {
@@ -252,11 +199,6 @@ export class TabBindingManager {
       this.tabToSession.delete(tabId);
       this.sessionToTab.delete(sessionId);
       this.bindings.delete(tabId);
-
-      // Persist asynchronously
-      this.persistBindings().catch(error => {
-        console.error('[TabBindingManager] Failed to persist after tab removal:', error);
-      });
 
       // Notify listeners
       this.notifyTabClosed(sessionId, tabId);
@@ -281,11 +223,6 @@ export class TabBindingManager {
         this.tabToSession.delete(tabId);
         this.sessionToTab.delete(sessionId);
         this.bindings.delete(tabId);
-
-        // Persist asynchronously
-        this.persistBindings().catch(error => {
-          console.error('[TabBindingManager] Failed to persist after tab crash:', error);
-        });
 
         // Notify listeners
         this.notifyTabClosed(sessionId, tabId);
