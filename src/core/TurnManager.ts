@@ -763,6 +763,11 @@ export class TurnManager {
       // Get tabId from Session to pass to tool execution
       const tabId = this.session.getTabId();
 
+      console.log(`[$$$][TurnManager] ========== EXECUTING TOOL ==========`);
+      console.log(`[$$$][TurnManager] Tool name: ${toolName}`);
+      console.log(`[$$$][TurnManager] Session tabId: ${tabId}`);
+      console.log(`[$$$][TurnManager] Session ID: ${this.session.getSessionId()}`);
+
       const request = {
         toolName,
         parameters,
@@ -771,7 +776,9 @@ export class TurnManager {
         tabId, // Pass tabId in request for tools that need it
       };
 
+      console.log(`[$$$][TurnManager] Executing tool with tabId: ${tabId}`);
       const response = await this.toolRegistry.execute(request);
+      console.log(`[$$$][TurnManager] Tool execution completed`);
 
       if (!response.success) {
         throw new Error(response.error?.message || 'Tool execution failed');

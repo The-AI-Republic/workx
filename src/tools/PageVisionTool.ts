@@ -121,45 +121,72 @@ export class PageVisionTool extends BaseTool {
     request: BaseToolRequest,
     options?: BaseToolOptions
   ): Promise<ResponseData> {
+    console.log(`[$$$][PageVisionTool] ========== EXECUTE PAGE VISION TOOL ==========`);
+    console.log(`[$$$][PageVisionTool] Request:`, request);
+    console.log(`[$$$][PageVisionTool] Options:`, options);
+    console.log(`[$$$][PageVisionTool] Options.metadata:`, options?.metadata);
+    console.log(`[$$$][PageVisionTool] Options.metadata.tabId:`, options?.metadata?.tabId);
+
     const typedRequest = request as ScreenshotToolRequest;
+    console.log(`[$$$][PageVisionTool] Action: ${typedRequest.action}`);
 
     // Validate Chrome context
     this.validateChromeContext();
 
     // Get tabId from metadata (passed internally, not from LLM)
     const tabId = options?.metadata?.tabId;
+    console.log(`[$$$][PageVisionTool] Extracted tabId from metadata: ${tabId}`);
 
     // Check if tabId is valid
     if (tabId === undefined || tabId === null) {
+      console.error(`[$$$][PageVisionTool] *** ERROR: Target tab ID not provided in execution context ***`);
+      console.error(`[$$$][PageVisionTool] options?.metadata?.tabId is ${tabId}`);
       throw new Error('Target tab ID not provided in execution context');
     }
 
     if (tabId === -1) {
+      console.error(`[$$$][PageVisionTool] *** ERROR: Target tab ID is -1 (no tab bound) ***`);
       throw new Error('Target tab cannot be found. Please ensure a tab is bound to the current session.');
     }
 
+    console.log(`[$$$][PageVisionTool] *** USING TAB ID: ${tabId} ***`);
+
     // Validate tab exists
     try {
-      await chrome.tabs.get(tabId);
+      const tab = await chrome.tabs.get(tabId);
+      console.log(`[$$$][PageVisionTool] Tab validated: id=${tab.id}, title="${tab.title}", url="${tab.url}"`);
     } catch (error) {
+      console.error(`[$$$][PageVisionTool] *** ERROR: Tab ${tabId} not found or inaccessible ***`, error);
       throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }
 
+    console.log(`[$$$][PageVisionTool] Executing action "${typedRequest.action}" on tab ${tabId}`);
+
     // Route by action type - return raw data, BaseTool.execute() will wrap it
+    let result: ResponseData;
     switch (typedRequest.action) {
       case 'screenshot':
-        return await this.executeScreenshot(tabId, typedRequest);
+        result = await this.executeScreenshot(tabId, typedRequest);
+        break;
       case 'click':
-        return await this.executeClick(tabId, typedRequest);
+        result = await this.executeClick(tabId, typedRequest);
+        break;
       case 'type':
-        return await this.executeType(tabId, typedRequest);
+        result = await this.executeType(tabId, typedRequest);
+        break;
       case 'scroll':
-        return await this.executeScrollAction(tabId, typedRequest);
+        result = await this.executeScrollAction(tabId, typedRequest);
+        break;
       case 'keypress':
-        return await this.executeKeypress(tabId, typedRequest);
+        result = await this.executeKeypress(tabId, typedRequest);
+        break;
       default:
         throw new Error(`Unknown action: ${typedRequest.action}`);
     }
+
+    console.log(`[$$$][PageVisionTool] *** ACTION "${typedRequest.action}" COMPLETED SUCCESSFULLY ON TAB ${tabId} ***`);
+    console.log(`[$$$][PageVisionTool] ========== PAGE VISION TOOL EXECUTION COMPLETE ==========`);
+    return result;
   }
 
   /**

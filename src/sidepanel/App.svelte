@@ -162,9 +162,18 @@
         const fetchedTabId = response.tabId;
         console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
 
-        // If no tab is bound (tabId === -1), automatically bind to current active tab
+        // If no tab is bound (tabId === -1), get the current active tab ID
+        // but don't bind yet - just prepare to send it as context with the first message
         if (fetchedTabId === -1) {
-          await bindToActiveTab();
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          const activeTab = tabs[0];
+          if (activeTab?.id) {
+            console.log(`[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`);
+            currentTabId = activeTab.id;
+          } else {
+            console.warn('[App] No active tab found');
+            currentTabId = -1;
+          }
         } else {
           currentTabId = fetchedTabId;
         }
@@ -180,12 +189,18 @@
         console.error('[App] Failed to fetch current tabId from session:', error);
       }
 
-      // Fallback: try to bind to active tab
+      // Fallback: get current active tab to send as suggestion
       try {
-        await bindToActiveTab();
-      } catch (bindError) {
-        console.warn('[App] Failed to bind to active tab:', bindError);
-        // Set to -1 if all attempts fail
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+        if (activeTab?.id) {
+          console.log(`[App] Using active tab ${activeTab.id} as fallback`);
+          currentTabId = activeTab.id;
+        } else {
+          currentTabId = -1;
+        }
+      } catch (tabError) {
+        console.warn('[App] Failed to get active tab:', tabError);
         currentTabId = -1;
       }
     }
@@ -362,6 +377,11 @@
 
     // Send to agent with tab context
     try {
+      console.log(`[$$$][App] ========== SENDING USER INPUT ==========`);
+      console.log(`[$$$][App] currentTabId: ${currentTabId}`);
+      console.log(`[$$$][App] submission context.tabId: ${currentTabId}`);
+      console.log(`[$$$][App] User text: ${text.substring(0, 50)}...`);
+
       await router.sendSubmission({
         id: `user_${Date.now()}`,
         op: {
@@ -372,6 +392,8 @@
           tabId: currentTabId, // Include current tab selection in context
         },
       });
+
+      console.log(`[$$$][App] ========== SUBMISSION SENT ==========`);
     } catch (error) {
       console.error('Failed to send message:', error);
 

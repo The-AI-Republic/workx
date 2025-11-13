@@ -90,66 +90,33 @@ function setupMessageHandlers(): void {
   router.on(MessageType.SUBMISSION, async (message) => {
     const submission = message.payload as Submission;
 
+    console.log(`[$$$][ServiceWorker] ========== RECEIVED SUBMISSION ==========`);
+    console.log(`[$$$][ServiceWorker] Submission ID: ${submission.id}`);
+    console.log(`[$$$][ServiceWorker] Operation type: ${submission.op.type}`);
+    console.log(`[$$$][ServiceWorker] Context:`, submission.context);
+    console.log(`[$$$][ServiceWorker] Context tabId: ${submission.context?.tabId}`);
+
     if (!validateSubmission(submission)) {
-      console.error('Invalid submission:', submission);
+      console.error('[$$$][ServiceWorker] Invalid submission:', submission);
       return;
     }
 
+    const session = agent!.getSession();
+    const currentSessionTabId = session.getTabId();
+    console.log(`[$$$][ServiceWorker] Current session tabId BEFORE submitOperation: ${currentSessionTabId}`);
+
     try {
-      // Check if context contains a tabId that differs from current session tabId
-      if (submission.context?.tabId !== undefined) {
-        const session = agent!.getSession();
-        const sessionId = session.getId();
-        const currentTabId = session.getTabId();
-        const contextTabId = submission.context.tabId;
+      // Pass the submission context to the agent
+      // The agent will handle tab binding/creation based on context.tabId
+      const id = await agent!.submitOperation(submission.op, submission.context);
 
-        // If tab ID changed, rebind the session to the new tab
-        if (contextTabId !== currentTabId) {
-          console.log(`[ServiceWorker] Context tabId (${contextTabId}) differs from session tabId (${currentTabId}), rebinding...`);
+      const sessionTabIdAfter = session.getTabId();
+      console.log(`[$$$][ServiceWorker] Current session tabId AFTER submitOperation: ${sessionTabIdAfter}`);
+      console.log(`[$$$][ServiceWorker] ========== SUBMISSION HANDLED ==========`);
 
-          const tabManager = TabManager.getInstance();
-
-          // Handle unbinding case (tabId = -1)
-          if (contextTabId === -1) {
-            await tabManager.unbindSession(sessionId);
-            session.setTabId(-1);
-            console.log(`[ServiceWorker] Session ${sessionId} tab unbound (context tabId: -1)`);
-          } else {
-            // Get tab info for binding
-            const tab = await chrome.tabs.get(contextTabId);
-
-            // Bind tab to session with silent=true (no task abortion, no unbind notifications)
-            const result = await tabManager.bindTabToSession(
-              sessionId,
-              contextTabId,
-              {
-                title: tab.title || 'Untitled',
-                url: tab.url || '',
-              },
-              { silent: true } // Silent mode - no notifications or task stops
-            );
-
-            // Update session state
-            session.setTabId(contextTabId);
-
-            // Show notification about tab switch (but don't abort tasks)
-            if (result.switchedFromTab) {
-              const notifier = agent!.getUserNotifier();
-              await notifier.notifyInfo(
-                'Tab Context Changed',
-                `Now working in tab: ${tab.title || 'Untitled'}`
-              );
-            }
-
-            console.log(`[ServiceWorker] Session ${sessionId} rebound to tab ${contextTabId}`);
-          }
-        }
-      }
-
-      const id = await agent!.submitOperation(submission.op);
       return { submissionId: id };
     } catch (error) {
-      console.error('Failed to submit operation:', error);
+      console.error('[$$$][ServiceWorker] Failed to submit operation:', error);
       throw error;
     }
   });
