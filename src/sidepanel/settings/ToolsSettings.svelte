@@ -321,29 +321,31 @@
           </div>
 
           <div class="form-group">
-            <label class="checkbox-label">
+            <label class="checkbox-label disabled-option">
               <input
                 type="checkbox"
                 bind:checked={currentTools.fileOperations}
                 on:input={handleInput}
+                disabled
                 class="form-checkbox"
               />
-              <span>File Operations</span>
+              <span>File Operations (Not Available)</span>
             </label>
-            <div class="help-text">Allow agent to read, write, and manage files</div>
+            <div class="help-text">Allow agent to read, write, and manage files (Coming in future update)</div>
           </div>
 
           <div class="form-group">
-            <label class="checkbox-label">
+            <label class="checkbox-label disabled-option">
               <input
                 type="checkbox"
                 bind:checked={currentTools.mcpTools}
                 on:input={handleInput}
+                disabled
                 class="form-checkbox"
               />
-              <span>MCP Tools</span>
+              <span>MCP Tools (Not Available)</span>
             </label>
-            <div class="help-text">Enable Model Context Protocol tools integration</div>
+            <div class="help-text">Enable Model Context Protocol tools integration (Coming in future update)</div>
           </div>
         </div>
       {/if}
@@ -530,6 +532,16 @@
   .checkbox-label.master-toggle {
     font-weight: 600;
     font-size: 1rem;
+  }
+
+  .checkbox-label.disabled-option {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .checkbox-label.disabled-option span {
+    color: var(--browserx-text-secondary);
+    font-style: italic;
   }
 
   .form-checkbox {

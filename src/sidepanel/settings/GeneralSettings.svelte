@@ -101,8 +101,8 @@
       <div class="help-text">Choose your preferred color theme</div>
     </div> -->
 
-    <!-- Telemetry Toggle -->
-    <div class="form-group">
+    <!-- Telemetry Toggle - DISABLED (not currently supported) -->
+    <!-- <div class="form-group">
       <label class="checkbox-label">
         <input
           type="checkbox"
@@ -113,10 +113,10 @@
         <span>Enable Telemetry</span>
       </label>
       <div class="help-text">Help improve the extension by sending anonymous usage data</div>
-    </div>
+    </div> -->
 
-    <!-- Auto-sync Toggle -->
-    <div class="form-group">
+    <!-- Auto-sync Toggle - DISABLED (not currently supported) -->
+    <!-- <div class="form-group">
       <label class="checkbox-label">
         <input
           type="checkbox"
@@ -127,10 +127,16 @@
         <span>Auto-sync Settings</span>
       </label>
       <div class="help-text">Automatically sync settings across devices (when available)</div>
+    </div> -->
+
+    <!-- No settings currently available - placeholder message -->
+    <div class="placeholder-message">
+      <p>General preferences will be available in a future update.</p>
+      <p class="placeholder-note">This section is reserved for user preferences such as theme, telemetry, and cross-device sync.</p>
     </div>
 
-    <!-- Save Button -->
-    <div class="button-group">
+    <!-- Save Button - HIDDEN (no settings to save) -->
+    <!-- <div class="button-group">
       <button
         class="btn btn-primary"
         on:click={handleSave}
@@ -138,10 +144,10 @@
       >
         {isSaving ? 'Saving...' : 'Save Settings'}
       </button>
-    </div>
+    </div> -->
 
-    <!-- Save Message -->
-    {#if saveMessage}
+    <!-- Save Message - HIDDEN (no settings to save) -->
+    <!-- {#if saveMessage}
       <div class="message {saveMessageType}">
         {#if saveMessageType === 'success'}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -156,7 +162,7 @@
         {/if}
         {saveMessage}
       </div>
-    {/if}
+    {/if} -->
   </div>
 </div>
 
@@ -293,5 +299,25 @@
   .message.error {
     color: var(--browserx-error);
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+  }
+
+  .placeholder-message {
+    padding: 2rem;
+    text-align: center;
+    background: var(--browserx-surface);
+    border: 1px dashed var(--browserx-border);
+    border-radius: 0.5rem;
+    margin: 2rem 0;
+  }
+
+  .placeholder-message p {
+    margin: 0 0 0.75rem 0;
+    color: var(--browserx-text);
+    font-size: 0.9375rem;
+  }
+
+  .placeholder-note {
+    color: var(--browserx-text-secondary);
+    font-size: 0.8125rem;
   }
 </style>
