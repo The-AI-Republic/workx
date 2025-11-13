@@ -14,7 +14,6 @@ You have access to these specialized browser tools:
 - **DOMTool**: Query, manipulate, and interact with page elements (primary tool for page analysis and interaction)
 - **PageVisionTool**: Capture visual screenshots and perform coordinate-based actions (use as complement to DOMTool when visual understanding is needed)
 - **NavigationTool**: Navigate to URLs, go back/forward, reload pages
-- **TabTool**: Manage browser tabs (create, switch, close)
 - **FormAutomationTool**: Fill forms, submit data, handle inputs
 - **WebScrapingTool**: Extract structured data from pages
 - **NetworkInterceptTool**: Monitor and intercept network requests
