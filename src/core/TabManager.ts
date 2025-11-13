@@ -82,8 +82,16 @@ export class TabManager {
   /**
    * T007: Bind a tab to a session (last-write-wins logic)
    * T085: Notify previous session when it loses tab binding
+   * @param options.silent - If true, suppress unbind notifications (used for context-based tab switching)
    */
-  async bindTabToSession(sessionId: string, tabId: number, tabInfo: Pick<TabInfo, 'title' | 'url'>): Promise<void> {
+  async bindTabToSession(
+    sessionId: string,
+    tabId: number,
+    tabInfo: Pick<TabInfo, 'title' | 'url'>,
+    options?: { silent?: boolean }
+  ): Promise<{ previousTabId?: number; switchedFromTab: boolean }> {
+    const silent = options?.silent ?? false;
+
     // Check if tab already bound to a different session
     const existingSessionId = this.tabToSession.get(tabId);
     if (existingSessionId && existingSessionId !== sessionId) {
@@ -92,17 +100,25 @@ export class TabManager {
       console.log(`[TabManager] Tab ${tabId} rebound from session ${existingSessionId} to ${sessionId}`);
 
       // T085: Notify the previous session that it lost its tab binding (tab is still open, just reassigned)
-      this.notifyTabUnbound(existingSessionId, tabId, 'rebind');
+      // Only notify if not silent
+      if (!silent) {
+        this.notifyTabUnbound(existingSessionId, tabId, 'rebind');
+      }
     }
 
     // Unbind session's previous tab if any
     const existingTabId = this.sessionToTab.get(sessionId);
-    if (existingTabId && existingTabId !== tabId) {
+    const switchedFromTab = existingTabId !== undefined && existingTabId !== tabId;
+
+    if (switchedFromTab) {
       this.tabToSession.delete(existingTabId);
       this.bindings.delete(existingTabId);
 
       // Notify that the session is switching to a different tab
-      this.notifyTabUnbound(sessionId, existingTabId, 'manual');
+      // Only notify if not silent
+      if (!silent) {
+        this.notifyTabUnbound(sessionId, existingTabId, 'manual');
+      }
     }
 
     // Establish new binding
@@ -120,6 +136,12 @@ export class TabManager {
 
     // T021: Add tab to BrowserX group after binding
     await this.addTabToGroup(tabId);
+
+    // Return information about whether this was a tab switch
+    return {
+      previousTabId: switchedFromTab ? existingTabId : undefined,
+      switchedFromTab,
+    };
   }
 
   /**

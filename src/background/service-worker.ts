@@ -89,13 +89,63 @@ function setupMessageHandlers(): void {
   // Handle submissions from UI
   router.on(MessageType.SUBMISSION, async (message) => {
     const submission = message.payload as Submission;
-    
+
     if (!validateSubmission(submission)) {
       console.error('Invalid submission:', submission);
       return;
     }
-    
+
     try {
+      // Check if context contains a tabId that differs from current session tabId
+      if (submission.context?.tabId !== undefined) {
+        const session = agent!.getSession();
+        const sessionId = session.getId();
+        const currentTabId = session.getTabId();
+        const contextTabId = submission.context.tabId;
+
+        // If tab ID changed, rebind the session to the new tab
+        if (contextTabId !== currentTabId) {
+          console.log(`[ServiceWorker] Context tabId (${contextTabId}) differs from session tabId (${currentTabId}), rebinding...`);
+
+          const tabManager = TabManager.getInstance();
+
+          // Handle unbinding case (tabId = -1)
+          if (contextTabId === -1) {
+            await tabManager.unbindSession(sessionId);
+            session.setTabId(-1);
+            console.log(`[ServiceWorker] Session ${sessionId} tab unbound (context tabId: -1)`);
+          } else {
+            // Get tab info for binding
+            const tab = await chrome.tabs.get(contextTabId);
+
+            // Bind tab to session with silent=true (no task abortion, no unbind notifications)
+            const result = await tabManager.bindTabToSession(
+              sessionId,
+              contextTabId,
+              {
+                title: tab.title || 'Untitled',
+                url: tab.url || '',
+              },
+              { silent: true } // Silent mode - no notifications or task stops
+            );
+
+            // Update session state
+            session.setTabId(contextTabId);
+
+            // Show notification about tab switch (but don't abort tasks)
+            if (result.switchedFromTab) {
+              const notifier = agent!.getUserNotifier();
+              await notifier.notifyInfo(
+                'Tab Context Changed',
+                `Now working in tab: ${tab.title || 'Untitled'}`
+              );
+            }
+
+            console.log(`[ServiceWorker] Session ${sessionId} rebound to tab ${contextTabId}`);
+          }
+        }
+      }
+
       const id = await agent!.submitOperation(submission.op);
       return { submissionId: id };
     } catch (error) {

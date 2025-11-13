@@ -83,8 +83,15 @@ export async function registerTools(
         console.log(`Registering ${toolName}...`);
 
         await registry.register(definition, async (params, context) => {
-          // Pass context (including sessionId) to tool's execute method via options.metadata
-          return toolInstance.execute(params, { metadata: context });
+          // Flatten context: pass metadata directly, with sessionId/turnId/toolName alongside
+          return toolInstance.execute(params, {
+            metadata: {
+              ...context.metadata,  // tabId and other metadata fields
+              sessionId: context.sessionId,
+              turnId: context.turnId,
+              toolName: context.toolName,
+            }
+          });
         });
       } else {
         console.log(`${toolName} already registered, skipping...`);

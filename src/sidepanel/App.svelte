@@ -202,23 +202,18 @@
 
   /**
    * Handle manual tab selection from TabContext dropdown
-   * Updates the session's tab binding to the selected tab
+   * Updates local state only - actual binding happens when user sends a message
    */
   async function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
     const newTabId = event.detail.tabId;
-    console.log(`[App] Tab selected: ${newTabId}`);
+    console.log(`[App] Tab selected: ${newTabId} (will bind on next message)`);
 
     // Update local state immediately for responsiveness
     currentTabId = newTabId;
 
-    try {
-      // Notify backend to update session's tab binding
-      await router?.send(MessageType.UPDATE_SESSION_TAB, { tabId: newTabId });
-      console.log(`[App] Session tab updated to: ${newTabId}`);
-    } catch (error) {
-      console.error('[App] Failed to update session tab:', error);
-      // Optionally show error message to user
-    }
+    // Note: We don't immediately bind the tab to the session here.
+    // Instead, the tab binding will happen when the user sends their next message,
+    // and the service-worker will detect the context.tabId change and rebind then.
   }
 
   function handleEvent(event: Event) {
@@ -311,13 +306,16 @@
     };
     processedEvents = [...processedEvents, userEvent];
 
-    // Send to agent
+    // Send to agent with tab context
     try {
       await router.sendSubmission({
         id: `user_${Date.now()}`,
         op: {
           type: 'UserInput',
           items: [{ type: 'text', text }],
+        },
+        context: {
+          tabId: currentTabId, // Include current tab selection in context
         },
       });
     } catch (error) {

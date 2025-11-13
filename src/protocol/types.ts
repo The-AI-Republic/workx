@@ -17,6 +17,11 @@ export interface Submission {
   id: string;
   /** Payload */
   op: Op;
+  /** Context information (optional) */
+  context?: {
+    /** Tab ID to execute this submission in */
+    tabId?: number;
+  };
 }
 
 /**
