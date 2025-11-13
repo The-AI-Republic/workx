@@ -130,20 +130,9 @@
       const response = await router?.send(MessageType.GET_STATE);
       console.log('[App] Fetched session state:', response);
 
-      if (response && response.payload) {
-        // Extract tabId from session state
-        let fetchedTabId = -1;
-        if ('tabId' in response.payload && typeof response.payload.tabId === 'number') {
-          fetchedTabId = response.payload.tabId;
-          console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
-        } else if ('session' in response.payload && response.payload.session) {
-          // Check if tabId is nested in session object
-          const session = response.payload.session;
-          if (typeof session === 'object' && 'tabId' in session) {
-            fetchedTabId = (session as any).tabId;
-            console.log(`[App] Fetched session tabId from nested session: ${fetchedTabId}`);
-          }
-        }
+      if (response && typeof response.tabId === 'number') {
+        const fetchedTabId = response.tabId;
+        console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
 
         // If no tab is bound (tabId === -1), automatically bind to current active tab
         if (fetchedTabId === -1) {

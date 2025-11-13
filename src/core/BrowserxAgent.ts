@@ -133,17 +133,15 @@ export class BrowserxAgent {
   private setupTabClosureHandler(): void {
     const tabBindingManager = TabManager.getInstance();
 
+    // Handle actual tab closure (tab is closed in browser)
     tabBindingManager.onTabClosed(async (sessionId: string, tabId: number) => {
       console.log(`[BrowserxAgent] Tab ${tabId} closed for session ${sessionId}`);
 
       // Reset session's tabId to -1
       if (this.session && this.session.getId() === sessionId) {
-        // Access sessionState to reset tabId
-        const sessionState = (this.session as any).sessionState;
-        if (sessionState && typeof sessionState.setTabId === 'function') {
-          sessionState.setTabId(-1);
-          console.log(`[BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
-        }
+        // Reset tabId using public Session API
+        this.session.setTabId(-1);
+        console.log(`[BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
 
         // Abort all running tasks
         await this.session.abortAllTasks('TabClosed');
@@ -151,10 +149,39 @@ export class BrowserxAgent {
         // Show notification to user
         await this.userNotifier.notifyWarning(
           'Tab Closed',
-          'The tab has been closed'
+          'The tab was closed. All tasks have been stopped.'
         );
 
         console.log(`[BrowserxAgent] Stopped tasks and notified user for session ${sessionId}`);
+      }
+    });
+
+    // Handle tab unbinding (session loses tab, but tab is still open)
+    tabBindingManager.onTabUnbound(async (sessionId: string, tabId: number, reason: 'rebind' | 'manual') => {
+      console.log(`[BrowserxAgent] Tab ${tabId} unbound from session ${sessionId} (reason: ${reason})`);
+
+      if (this.session && this.session.getId() === sessionId) {
+        // Reset tabId using public Session API
+        this.session.setTabId(-1);
+        console.log(`[BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
+
+        // Abort all running tasks (tab is no longer accessible to this session)
+        await this.session.abortAllTasks('TabClosed');
+
+        // Show different notification based on reason
+        if (reason === 'rebind') {
+          await this.userNotifier.notifyInfo(
+            'Tab Reassigned',
+            'The tab was reassigned to another session. Tasks have been stopped.'
+          );
+        } else {
+          await this.userNotifier.notifyInfo(
+            'Tab Changed',
+            'The session is no longer bound to a tab. Tasks have been stopped.'
+          );
+        }
+
+        console.log(`[BrowserxAgent] Stopped tasks and notified user for session ${sessionId} (tab unbound)`);
       }
     });
   }

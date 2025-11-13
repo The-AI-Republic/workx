@@ -10,8 +10,6 @@ import { ModelClient } from '../models/ModelClient';
 import { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig } from '../protocol/types';
 import type { IToolsConfig } from '../config/types';
 import { DEFAULT_TOOLS_CONFIG } from '../config/defaults';
-import { TabManager } from './TabManager';
-import { TabValidationState } from '../types/session';
 
 /**
  * browser environment policy for task execution
@@ -22,9 +20,7 @@ export type BrowserEnvironmentPolicy = 'preserve' | 'clean' | 'restricted';
  * Turn configuration that can be updated during execution
  */
 export interface TurnContextConfig {
-  /** T025: Current working tab ID (replaces cwd) */
-  tabId?: number;
-  /** T025: Parent session identifier */
+  /** Parent session identifier */
   sessionId?: string;
   /** Base instructions override */
   baseInstructions?: string;
@@ -53,8 +49,7 @@ export interface TurnContextConfig {
  */
 export class TurnContext {
   private modelClient: ModelClient;
-  private tabId: number; // T024: Replace cwd with tabId
-  private sessionId: string; // T025: Add sessionId field
+  private sessionId: string;
   private baseInstructions?: string;
   private userInstructions?: string;
   private approvalPolicy: AskForApproval;
@@ -69,8 +64,7 @@ export class TurnContext {
   ) {
     this.modelClient = modelClient;
 
-    // T026: Initialize with defaults or provided config
-    this.tabId = config.tabId !== undefined ? config.tabId : -1; // Default to -1 (no tab attached)
+    // Initialize with defaults or provided config
     this.sessionId = config.sessionId || ''; // Default to empty string
     this.baseInstructions = config.baseInstructions;
     this.userInstructions = config.userInstructions;
@@ -90,9 +84,6 @@ export class TurnContext {
    * Update turn context configuration
    */
   update(config: TurnContextConfig): void {
-    if (config.tabId !== undefined) {
-      this.tabId = config.tabId;
-    }
     if (config.sessionId !== undefined) {
       this.sessionId = config.sessionId;
     }
@@ -130,43 +121,11 @@ export class TurnContext {
     }
   }
 
-  // T027-T030: Removed getCwd, setCwd, resolvePath, isPathWritable methods
-  // These have been replaced with tab-based methods below
-
   /**
-   * T031: Get current working tab ID
-   */
-  getTabId(): number {
-    return this.tabId;
-  }
-
-  /**
-   * T032: Set current working tab ID
-   */
-  setTabId(tabId: number): void {
-    this.tabId = tabId;
-  }
-
-  /**
-   * Resolve a path relative to the current working directory
+   * Get session identifier
    */
   getSessionId(): string {
     return this.sessionId;
-  }
-
-  /**
-   * T034: Validate current tab exists and is accessible
-   */
-  async validateCurrentTab(): Promise<TabValidationState> {
-    const bindingManager = TabManager.getInstance();
-    return await bindingManager.validateTab(this.tabId);
-  }
-
-  /**
-   * T035: Check if tab is currently attached
-   */
-  hasTabAttached(): boolean {
-    return this.tabId !== -1;
   }
 
   /**
@@ -359,7 +318,6 @@ export class TurnContext {
    */
   clone(): TurnContext {
     const cloned = new TurnContext(this.modelClient, {
-      tabId: this.tabId,
       sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
       userInstructions: this.userInstructions,
@@ -374,10 +332,9 @@ export class TurnContext {
   }
 
   /**
-   * T036: Export turn context for serialization
+   * Export turn context for serialization
    */
   export(): {
-    tabId: number;
     sessionId: string;
     baseInstructions?: string;
     userInstructions?: string;
@@ -391,7 +348,6 @@ export class TurnContext {
     reviewMode: boolean;
   } {
     return {
-      tabId: this.tabId,
       sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
       userInstructions: this.userInstructions,
@@ -407,12 +363,11 @@ export class TurnContext {
   }
 
   /**
-   * T037: Import turn context from serialized data
+   * Import turn context from serialized data
    */
   static import(
     modelClient: ModelClient,
     data: {
-      tabId: number;
       sessionId: string;
       baseInstructions?: string;
       userInstructions?: string;
@@ -434,7 +389,6 @@ export class TurnContext {
     modelClient.setReasoningSummary(data.summary);
 
     return new TurnContext(modelClient, {
-      tabId: data.tabId,
       sessionId: data.sessionId,
       baseInstructions: data.baseInstructions,
       userInstructions: data.userInstructions,
@@ -465,11 +419,6 @@ export class TurnContext {
    */
   validate(): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-
-    // Validate tabId
-    if (this.tabId !== -1 && (this.tabId < 0 || !Number.isInteger(this.tabId))) {
-      errors.push('Tab ID must be -1 (unbound) or a positive integer');
-    }
 
     // Validate sessionId
     if (!this.sessionId) {
@@ -510,9 +459,7 @@ export class TurnContext {
    */
   getDebugInfo(): Record<string, any> {
     return {
-      tabId: this.tabId,
       sessionId: this.sessionId,
-      hasTabAttached: this.hasTabAttached(),
       model: this.getModel(),
       approvalPolicy: this.approvalPolicy,
       sandboxPolicy: this.sandboxPolicy,

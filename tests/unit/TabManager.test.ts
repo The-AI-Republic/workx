@@ -26,12 +26,27 @@ describe('TabManager Event Handlers Unit Tests', () => {
     chromeMock = {
       tabs: {
         get: vi.fn(),
+        group: vi.fn(),
+        ungroup: vi.fn(),
+        move: vi.fn(),
+        create: vi.fn(),
         onRemoved: {
           addListener: vi.fn(),
         },
         onUpdated: {
           addListener: vi.fn(),
         },
+      },
+      tabGroups: {
+        TAB_GROUP_ID_NONE: -1,
+        query: vi.fn().mockResolvedValue([]),
+        get: vi.fn(),
+        update: vi.fn(),
+      },
+      windows: {
+        get: vi.fn(),
+        getAll: vi.fn(),
+        create: vi.fn(),
       },
       storage: {
         local: {
@@ -40,7 +55,7 @@ describe('TabManager Event Handlers Unit Tests', () => {
         },
       },
     };
-    global.chrome = chromeMock as any;
+    (globalThis as any).chrome = chromeMock as any;
 
     manager = TabManager.getInstance();
     await manager.initialize();
@@ -487,6 +502,227 @@ describe('TabManager Event Handlers Unit Tests', () => {
       // Should still unbind and notify
       expect(callback).toHaveBeenCalledWith(sessionId, tabId);
       expect(manager.getTabForSession(sessionId)).toBe(-1);
+    });
+  });
+
+  describe('Tab Group Management on Unbind', () => {
+    it('should remove tab from group when unbindSession is called', async () => {
+      const sessionId = 'session-1';
+      const tabId = 123;
+      const groupId = 1;
+
+      const mockTab = {
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example',
+        active: true,
+        pinned: false,
+        windowId: 1,
+        status: 'complete',
+        index: 0,
+        groupId: groupId, // Tab is in a group
+      };
+
+      const mockWindow = {
+        id: 1,
+        type: 'normal',
+        focused: true,
+        alwaysOnTop: false,
+        incognito: false,
+      };
+
+      chromeMock.tabs.get.mockResolvedValue(mockTab);
+      chromeMock.windows.get.mockResolvedValue(mockWindow);
+      chromeMock.windows.getAll.mockResolvedValue([mockWindow]);
+      chromeMock.tabGroups.query.mockResolvedValue([]);
+      chromeMock.tabs.group.mockResolvedValue(groupId);
+
+      // Bind tab to session
+      await manager.bindTabToSession(sessionId, tabId, mockTab as any);
+
+      // Reset mocks to track the unbind behavior
+      chromeMock.tabs.ungroup.mockClear();
+      chromeMock.tabs.get.mockResolvedValue({ ...mockTab, groupId: groupId });
+
+      // Unbind session
+      await manager.unbindSession(sessionId);
+
+      // Verify tab was ungrouped
+      expect(chromeMock.tabs.ungroup).toHaveBeenCalledWith(tabId);
+      expect(chromeMock.tabs.ungroup).toHaveBeenCalledTimes(1);
+    });
+
+    it('should remove tab from group when unbindTab is called', async () => {
+      const sessionId = 'session-1';
+      const tabId = 123;
+      const groupId = 1;
+
+      const mockTab = {
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example',
+        active: true,
+        pinned: false,
+        windowId: 1,
+        status: 'complete',
+        index: 0,
+        groupId: groupId,
+      };
+
+      const mockWindow = {
+        id: 1,
+        type: 'normal',
+        focused: true,
+        alwaysOnTop: false,
+        incognito: false,
+      };
+
+      chromeMock.tabs.get.mockResolvedValue(mockTab);
+      chromeMock.windows.get.mockResolvedValue(mockWindow);
+      chromeMock.windows.getAll.mockResolvedValue([mockWindow]);
+      chromeMock.tabGroups.query.mockResolvedValue([]);
+      chromeMock.tabs.group.mockResolvedValue(groupId);
+
+      await manager.bindTabToSession(sessionId, tabId, mockTab as any);
+
+      chromeMock.tabs.ungroup.mockClear();
+      chromeMock.tabs.get.mockResolvedValue({ ...mockTab, groupId: groupId });
+
+      await manager.unbindTab(tabId);
+
+      expect(chromeMock.tabs.ungroup).toHaveBeenCalledWith(tabId);
+      expect(chromeMock.tabs.ungroup).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not ungroup tab if it is not in a group', async () => {
+      const sessionId = 'session-1';
+      const tabId = 123;
+
+      const mockTab = {
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example',
+        active: true,
+        pinned: false,
+        windowId: 1,
+        status: 'complete',
+        index: 0,
+        groupId: -1, // Not in a group
+      };
+
+      const mockWindow = {
+        id: 1,
+        type: 'normal',
+        focused: true,
+        alwaysOnTop: false,
+        incognito: false,
+      };
+
+      chromeMock.tabs.get.mockResolvedValue(mockTab);
+      chromeMock.windows.get.mockResolvedValue(mockWindow);
+      chromeMock.windows.getAll.mockResolvedValue([mockWindow]);
+      chromeMock.tabGroups.query.mockResolvedValue([]);
+
+      await manager.bindTabToSession(sessionId, tabId, mockTab as any);
+
+      chromeMock.tabs.ungroup.mockClear();
+
+      await manager.unbindSession(sessionId);
+
+      // Should not attempt to ungroup
+      expect(chromeMock.tabs.ungroup).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors during tab ungrouping gracefully', async () => {
+      const sessionId = 'session-1';
+      const tabId = 123;
+      const groupId = 1;
+
+      const mockTab = {
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example',
+        active: true,
+        pinned: false,
+        windowId: 1,
+        status: 'complete',
+        index: 0,
+        groupId: groupId,
+      };
+
+      const mockWindow = {
+        id: 1,
+        type: 'normal',
+        focused: true,
+        alwaysOnTop: false,
+        incognito: false,
+      };
+
+      chromeMock.tabs.get.mockResolvedValue(mockTab);
+      chromeMock.windows.get.mockResolvedValue(mockWindow);
+      chromeMock.windows.getAll.mockResolvedValue([mockWindow]);
+      chromeMock.tabGroups.query.mockResolvedValue([]);
+      chromeMock.tabs.group.mockResolvedValue(groupId);
+
+      await manager.bindTabToSession(sessionId, tabId, mockTab as any);
+
+      // Make ungroup throw an error
+      chromeMock.tabs.ungroup.mockRejectedValue(new Error('Tab already ungrouped'));
+      chromeMock.tabs.get.mockResolvedValue({ ...mockTab, groupId: groupId });
+
+      // Should not throw
+      await expect(manager.unbindSession(sessionId)).resolves.not.toThrow();
+
+      // Verify ungroup was attempted
+      expect(chromeMock.tabs.ungroup).toHaveBeenCalledWith(tabId);
+    });
+
+    it('should maintain tab group consistency when tab is removed', async () => {
+      const sessionId = 'session-1';
+      const tabId = 123;
+      const groupId = 1;
+
+      const mockTab = {
+        id: tabId,
+        url: 'https://example.com',
+        title: 'Example',
+        active: true,
+        pinned: false,
+        windowId: 1,
+        status: 'complete',
+        index: 0,
+        groupId: groupId,
+      };
+
+      const mockWindow = {
+        id: 1,
+        type: 'normal',
+        focused: true,
+        alwaysOnTop: false,
+        incognito: false,
+      };
+
+      chromeMock.tabs.get.mockResolvedValue(mockTab);
+      chromeMock.windows.get.mockResolvedValue(mockWindow);
+      chromeMock.windows.getAll.mockResolvedValue([mockWindow]);
+      chromeMock.tabGroups.query.mockResolvedValue([]);
+      chromeMock.tabs.group.mockResolvedValue(groupId);
+
+      await manager.bindTabToSession(sessionId, tabId, mockTab as any);
+
+      chromeMock.tabs.ungroup.mockClear();
+      chromeMock.tabs.get.mockResolvedValue({ ...mockTab, groupId: groupId });
+
+      // Trigger tab removal event
+      const onRemovedHandler = chromeMock.tabs.onRemoved.addListener.mock.calls[0][0];
+      onRemovedHandler(tabId, {});
+
+      // Tab should be unbound
+      expect(manager.getTabForSession(sessionId)).toBe(-1);
+      expect(manager.getSessionForTab(tabId)).toBeUndefined();
+
+      // Note: Tab removal by Chrome automatically removes it from the group,
+      // so we don't explicitly ungroup on tab removal events
     });
   });
 });

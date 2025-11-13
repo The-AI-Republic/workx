@@ -239,23 +239,6 @@ export class Session {
 
 
   /**
-   * Get session metadata
-   */
-  getMetadata(): {
-    conversationId: string;
-    messageCount: number;
-    startTime: number;
-    currentModel: string;
-  } {
-    return {
-      conversationId: this.conversationId,
-      messageCount: this.getMessageCount(),
-      startTime: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
-      currentModel: this.turnContext?.getModel?.() || 'gpt-5',
-    };
-  }
-
-  /**
    * Export session for persistence
    * Uses SessionState export structure
    */

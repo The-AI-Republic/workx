@@ -760,8 +760,8 @@ export class TurnManager {
 
     try {
       // Execute tool via ToolRegistry
-      // Get tabId from TurnContext to pass to tool execution
-      const tabId = this.turnContext.getTabId();
+      // Get tabId from Session to pass to tool execution
+      const tabId = this.session.getTabId();
 
       const request = {
         toolName,
@@ -821,8 +821,8 @@ export class TurnManager {
    */
   private async recordTurnContext(): Promise<void> {
     const turnContextItem = {
-      tabId: this.turnContext.getTabId(), // T093: Replaced cwd with tabId
-      sessionId: this.turnContext.getSessionId(), // T093: Added sessionId
+      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
+      sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       model: this.turnContext.getModel(),

@@ -117,9 +117,6 @@ function setupMessageHandlers(): void {
 
     return {
       sessionId: session.conversationId,
-      messageCount: session.getMessageCount(),
-      turnContext: session.getTurnContext(),
-      metadata: session.getMetadata(),
       isActiveTurn: session.isActiveTurn(), // Include active turn status
       tabId: tabId, // US3: Include current tab binding
     };
@@ -161,7 +158,7 @@ function setupMessageHandlers(): void {
 
       // Unbind session from TabManager before reset
       const tabManager = TabManager.getInstance();
-      tabManager.unbindSession(sessionId);
+      await tabManager.unbindSession(sessionId);
 
       // Reset the session (this will also reset tabId to -1 in session and turnContext)
       await session.reset();
@@ -179,13 +176,13 @@ function setupMessageHandlers(): void {
 
     const tabId = message.payload?.tabId;
     if (tabId === undefined || tabId === null) {
-      throw new Error('Tab ID is required');
+      console.error('Tab ID is required in UPDATE_SESSION_TAB message');
+      return;
     }
 
     // Get current session
     const session = agent.getSession();
     const sessionId = session.getId();
-    const turnContext = session.getTurnContext();
 
     // Get TabManager instance
     const tabManager = TabManager.getInstance();
@@ -196,24 +193,12 @@ function setupMessageHandlers(): void {
         // Unbind session from TabManager
         tabManager.unbindSession(sessionId);
 
-        // Update session state
+        // Update session state (tabId is now only in SessionState, not TurnContext)
         session.setTabId(-1);
-
-        // Update turn context
-        if (turnContext && typeof turnContext.setTabId === 'function') {
-          turnContext.setTabId(-1);
-        }
 
         console.log(`[ServiceWorker] Session ${sessionId} tab unbound (tabId set to -1)`);
 
-        return {
-          type: MessageType.STATE_UPDATE,
-          payload: {
-            tabId: -1,
-            sessionId,
-            timestamp: Date.now(),
-          },
-        };
+        return;
       }
 
       // Handle binding case (tabId >= 0)
@@ -226,13 +211,8 @@ function setupMessageHandlers(): void {
         url: tab.url || '',
       });
 
-      // Update session state
+      // Update session state (tabId is now only in SessionState, not TurnContext)
       session.setTabId(tabId);
-
-      // Update turn context
-      if (turnContext && typeof turnContext.setTabId === 'function') {
-        turnContext.setTabId(tabId);
-      }
 
       console.log(`[ServiceWorker] Session ${sessionId} tab updated to ${tabId}`);
 

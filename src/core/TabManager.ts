@@ -12,9 +12,14 @@ import type { TabBindingState, TabValidationState, TabInfo } from '../types/sess
 import { TabInvalidReason } from '../types/session';
 
 /**
- * Callback type for tab closure events
+ * Callback type for tab closure events (when tab is actually closed)
  */
 export type TabClosedCallback = (sessionId: string, tabId: number) => void;
+
+/**
+ * Callback type for tab unbinding events (when session loses tab, but tab is still open)
+ */
+export type TabUnboundCallback = (sessionId: string, oldTabId: number, reason: 'rebind' | 'manual') => void;
 
 /**
  * TabManager singleton class
@@ -34,6 +39,7 @@ export class TabManager {
 
   // Event listeners
   private tabClosedCallbacks: TabClosedCallback[] = [];
+  private tabUnboundCallbacks: TabUnboundCallback[] = [];
   private initialized: boolean = false;
 
   private constructor() {
@@ -85,8 +91,8 @@ export class TabManager {
       this.sessionToTab.delete(existingSessionId);
       console.log(`[TabManager] Tab ${tabId} rebound from session ${existingSessionId} to ${sessionId}`);
 
-      // T085: Notify the previous session that it lost its tab binding
-      this.notifyTabClosed(existingSessionId, tabId);
+      // T085: Notify the previous session that it lost its tab binding (tab is still open, just reassigned)
+      this.notifyTabUnbound(existingSessionId, tabId, 'rebind');
     }
 
     // Unbind session's previous tab if any
@@ -94,6 +100,9 @@ export class TabManager {
     if (existingTabId && existingTabId !== tabId) {
       this.tabToSession.delete(existingTabId);
       this.bindings.delete(existingTabId);
+
+      // Notify that the session is switching to a different tab
+      this.notifyTabUnbound(sessionId, existingTabId, 'manual');
     }
 
     // Establish new binding
@@ -116,24 +125,30 @@ export class TabManager {
   /**
    * T008: Unbind a tab from its session
    */
-  unbindTab(tabId: number): void {
+  async unbindTab(tabId: number): Promise<void> {
     const sessionId = this.tabToSession.get(tabId);
     if (sessionId) {
       this.tabToSession.delete(tabId);
       this.sessionToTab.delete(sessionId);
       this.bindings.delete(tabId);
+
+      // Remove tab from BrowserX group to maintain consistency with bound tabs
+      await this.removeTabFromGroup(tabId);
     }
   }
 
   /**
    * T009: Unbind a session from its tab
    */
-  unbindSession(sessionId: string): void {
+  async unbindSession(sessionId: string): Promise<void> {
     const tabId = this.sessionToTab.get(sessionId);
     if (tabId !== undefined) {
       this.tabToSession.delete(tabId);
       this.sessionToTab.delete(sessionId);
       this.bindings.delete(tabId);
+
+      // Remove tab from BrowserX group to maintain consistency with bound tabs
+      await this.removeTabFromGroup(tabId);
     }
   }
 
@@ -193,10 +208,17 @@ export class TabManager {
   }
 
   /**
-   * T018: Register a callback for tab closure events
+   * T018: Register a callback for tab closure events (when tab is actually closed)
    */
   onTabClosed(callback: TabClosedCallback): void {
     this.tabClosedCallbacks.push(callback);
+  }
+
+  /**
+   * Register a callback for tab unbinding events (when session loses tab, but tab is still open)
+   */
+  onTabUnbound(callback: TabUnboundCallback): void {
+    this.tabUnboundCallbacks.push(callback);
   }
 
   /**
@@ -251,6 +273,19 @@ export class TabManager {
         callback(sessionId, tabId);
       } catch (error) {
         console.error('[TabManager] Error in tab closed callback:', error);
+      }
+    }
+  }
+
+  /**
+   * Notify all registered callbacks of tab unbinding (tab lost but still open)
+   */
+  private notifyTabUnbound(sessionId: string, tabId: number, reason: 'rebind' | 'manual'): void {
+    for (const callback of this.tabUnboundCallbacks) {
+      try {
+        callback(sessionId, tabId, reason);
+      } catch (error) {
+        console.error('[TabManager] Error in tab unbound callback:', error);
       }
     }
   }
@@ -533,6 +568,43 @@ export class TabManager {
     } catch (error) {
       console.error(`[TabManager] Failed to add tab ${tabId} to group:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Remove tab from BrowserX group when unbound from session
+   * T112: Gracefully degrades if tab groups API is unavailable
+   */
+  private async removeTabFromGroup(tabId: number): Promise<void> {
+    // T112: Skip ungrouping if API is unavailable
+    if (typeof chrome === 'undefined' || !chrome.tabGroups) {
+      console.log('[TabManager] Tab Groups API not available, skipping ungrouping');
+      return;
+    }
+
+    try {
+      // Validate tab exists
+      const tab = await chrome.tabs.get(tabId);
+      if (!tab) {
+        console.error(`[TabManager] Tab ${tabId} not found`);
+        return;
+      }
+
+      // Check if tab is in a group
+      if (tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE || tab.groupId === -1) {
+        console.log(`[TabManager] Tab ${tabId} is not in a group, skipping ungrouping`);
+        return;
+      }
+
+      // Only remove from our BrowserX group
+      if (this.groupId !== null && tab.groupId === this.groupId) {
+        await chrome.tabs.ungroup(tabId);
+        console.log(`[TabManager] Removed tab ${tabId} from BrowserX group ${this.groupId}`);
+      } else {
+        console.log(`[TabManager] Tab ${tabId} is in a different group (${tab.groupId}), not removing`);
+      }
+    } catch (error) {
+      console.error(`[TabManager] Failed to remove tab ${tabId} from group:`, error);
     }
   }
 
