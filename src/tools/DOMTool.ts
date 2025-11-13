@@ -152,11 +152,6 @@ export class DOMTool extends BaseTool {
     request: BaseToolRequest,
     options?: BaseToolOptions
   ): Promise<SerializedDom | ActionResult> {
-    console.log(`[$$$][DOMTool] ========== EXECUTE DOM TOOL ==========`);
-    console.log(`[$$$][DOMTool] Request:`, request);
-    console.log(`[$$$][DOMTool] Options:`, options);
-    console.log(`[$$$][DOMTool] Options.metadata:`, options?.metadata);
-    console.log(`[$$$][DOMTool] Options.metadata.tabId:`, options?.metadata?.tabId);
 
     // Validate Chrome context
     this.validateChromeContext();
@@ -167,41 +162,31 @@ export class DOMTool extends BaseTool {
     // Validate request
     const validationError = this.validateRequest(request);
     if (validationError) {
-      console.error(`[$$$][DOMTool] *** VALIDATION ERROR: ${validationError} ***`);
       throw new Error(validationError);
     }
 
     const typedRequest = request as DOMToolRequest;
-    console.log(`[$$$][DOMTool] Action: ${typedRequest.action}`);
 
     // Get tabId from metadata (passed internally, not from LLM)
     const tabId = options?.metadata?.tabId;
-    console.log(`[$$$][DOMTool] Extracted tabId from metadata: ${tabId}`);
 
     // Check if tabId is valid
     if (tabId === undefined || tabId === null) {
-      console.error(`[$$$][DOMTool] *** ERROR: Target tab ID not provided in execution context ***`);
-      console.error(`[$$$][DOMTool] options?.metadata?.tabId is ${tabId}`);
       throw new Error('Target tab ID not provided in execution context');
     }
 
     if (tabId === -1) {
-      console.error(`[$$$][DOMTool] *** ERROR: Target tab ID is -1 (no tab bound) ***`);
       throw new Error('Target tab cannot be found. Please ensure a tab is bound to the current session.');
     }
 
-    console.log(`[$$$][DOMTool] *** USING TAB ID: ${tabId} ***`);
 
     // Validate tab exists
     try {
       const tab = await chrome.tabs.get(tabId);
-      console.log(`[$$$][DOMTool] Tab validated: id=${tab.id}, title="${tab.title}", url="${tab.url}"`);
     } catch (error) {
-      console.error(`[$$$][DOMTool] *** ERROR: Tab ${tabId} not found or inaccessible ***`, error);
       throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }
 
-    console.log(`[$$$][DOMTool] Executing action "${typedRequest.action}" on tab ${tabId}`);
 
     // Route by action type - return raw data, BaseTool.execute() will wrap it
     let result: SerializedDom | ActionResult;
@@ -225,8 +210,6 @@ export class DOMTool extends BaseTool {
         throw new Error(`Unknown action: ${typedRequest.action}`);
     }
 
-    console.log(`[$$$][DOMTool] *** ACTION "${typedRequest.action}" COMPLETED SUCCESSFULLY ON TAB ${tabId} ***`);
-    console.log(`[$$$][DOMTool] ========== DOM TOOL EXECUTION COMPLETE ==========`);
     return result;
   }
 

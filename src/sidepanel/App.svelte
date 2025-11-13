@@ -120,10 +120,10 @@
     });
 
     router.on(MessageType.STATE_UPDATE, (message) => {
-      console.log('State update:', message.payload);
       // Update tabId if available in state update
       if (message.payload && 'tabId' in message.payload) {
-        currentTabId = message.payload.tabId;
+        const newTabId = message.payload.tabId;
+        currentTabId = newTabId;
       }
     });
 
@@ -218,10 +218,6 @@
 
       if (activeTab?.id) {
         console.log(`[App] Auto-binding to active tab: ${activeTab.id}`);
-
-        // Send UPDATE_SESSION_TAB message to bind the active tab
-        await router?.send(MessageType.UPDATE_SESSION_TAB, { tabId: activeTab.id });
-
         // Update local state
         currentTabId = activeTab.id;
       } else {
@@ -377,10 +373,6 @@
 
     // Send to agent with tab context
     try {
-      console.log(`[$$$][App] ========== SENDING USER INPUT ==========`);
-      console.log(`[$$$][App] currentTabId: ${currentTabId}`);
-      console.log(`[$$$][App] submission context.tabId: ${currentTabId}`);
-      console.log(`[$$$][App] User text: ${text.substring(0, 50)}...`);
 
       await router.sendSubmission({
         id: `user_${Date.now()}`,
@@ -393,7 +385,6 @@
         },
       });
 
-      console.log(`[$$$][App] ========== SUBMISSION SENT ==========`);
     } catch (error) {
       console.error('Failed to send message:', error);
 

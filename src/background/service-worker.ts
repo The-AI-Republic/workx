@@ -90,20 +90,13 @@ function setupMessageHandlers(): void {
   router.on(MessageType.SUBMISSION, async (message) => {
     const submission = message.payload as Submission;
 
-    console.log(`[$$$][ServiceWorker] ========== RECEIVED SUBMISSION ==========`);
-    console.log(`[$$$][ServiceWorker] Submission ID: ${submission.id}`);
-    console.log(`[$$$][ServiceWorker] Operation type: ${submission.op.type}`);
-    console.log(`[$$$][ServiceWorker] Context:`, submission.context);
-    console.log(`[$$$][ServiceWorker] Context tabId: ${submission.context?.tabId}`);
 
     if (!validateSubmission(submission)) {
-      console.error('[$$$][ServiceWorker] Invalid submission:', submission);
       return;
     }
 
     const session = agent!.getSession();
     const currentSessionTabId = session.getTabId();
-    console.log(`[$$$][ServiceWorker] Current session tabId BEFORE submitOperation: ${currentSessionTabId}`);
 
     try {
       // Pass the submission context to the agent
@@ -111,12 +104,10 @@ function setupMessageHandlers(): void {
       const id = await agent!.submitOperation(submission.op, submission.context);
 
       const sessionTabIdAfter = session.getTabId();
-      console.log(`[$$$][ServiceWorker] Current session tabId AFTER submitOperation: ${sessionTabIdAfter}`);
-      console.log(`[$$$][ServiceWorker] ========== SUBMISSION HANDLED ==========`);
+
 
       return { submissionId: id };
     } catch (error) {
-      console.error('[$$$][ServiceWorker] Failed to submit operation:', error);
       throw error;
     }
   });

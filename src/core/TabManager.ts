@@ -96,14 +96,9 @@ export class TabManager {
     const existingSessionId = this.tabToSession.get(tabId);
     if (existingSessionId && existingSessionId !== sessionId) {
       // Last-write-wins: unbind previous session's tab
-      await this.unbindTab(tabId);
-      console.log(`[TabManager] Tab ${tabId} rebound from session ${existingSessionId} to ${sessionId}`);
-
       // T085: Notify the previous session that it lost its tab binding (tab is still open, just reassigned)
-      // Only notify if not silent
-      if (!silent) {
-        this.notifyTabUnbind(existingSessionId, tabId, 'rebind');
-      }
+      await this.unbindTab(tabId, 'rebind', silent);
+      console.log(`[TabManager] Tab ${tabId} rebound from session ${existingSessionId} to ${sessionId}`);
     }
 
     // Unbind session's previous tab if any
@@ -112,13 +107,8 @@ export class TabManager {
 
     if (switchedFromTab) {
       // Reuse unbindTab to clean up the old tab binding
-      await this.unbindTab(existingTabId);
-
       // Notify that the session is switching to a different tab
-      // Only notify if not silent
-      if (!silent) {
-        this.notifyTabUnbind(sessionId, existingTabId, 'manual');
-      }
+      await this.unbindTab(existingTabId, 'manual', silent);
     }
 
     // Establish new binding
@@ -146,8 +136,10 @@ export class TabManager {
 
   /**
    * T008: Unbind a tab from its session
+   * @param reason - Reason for unbinding (used for notification callbacks)
+   * @param silent - If true, suppress unbind notifications
    */
-  async unbindTab(tabId: number): Promise<void> {
+  async unbindTab(tabId: number, reason?: 'rebind' | 'manual', silent: boolean = false): Promise<void> {
     const sessionId = this.tabToSession.get(tabId);
     if (sessionId) {
       this.tabToSession.delete(tabId);
@@ -156,13 +148,20 @@ export class TabManager {
 
       // Remove tab from BrowserX group to maintain consistency with bound tabs
       await this.removeTabFromGroup(tabId);
+
+      // Notify listeners if reason provided and not silent
+      if (reason && !silent) {
+        this.notifyTabUnbind(sessionId, tabId, reason);
+      }
     }
   }
 
   /**
    * T009: Unbind a session from its tab
+   * @param reason - Reason for unbinding (used for notification callbacks)
+   * @param silent - If true, suppress unbind notifications
    */
-  async unbindSession(sessionId: string): Promise<void> {
+  async unbindSession(sessionId: string, reason?: 'rebind' | 'manual', silent: boolean = false): Promise<void> {
     const tabId = this.sessionToTab.get(sessionId);
     if (tabId !== undefined) {
       this.tabToSession.delete(tabId);
@@ -171,6 +170,11 @@ export class TabManager {
 
       // Remove tab from BrowserX group to maintain consistency with bound tabs
       await this.removeTabFromGroup(tabId);
+
+      // Notify listeners if reason provided and not silent
+      if (reason && !silent) {
+        this.notifyTabUnbind(sessionId, tabId, reason);
+      }
     }
   }
 

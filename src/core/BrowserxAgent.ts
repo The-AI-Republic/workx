@@ -121,7 +121,7 @@ export class BrowserxAgent {
     this.session.setTurnContext(taskContext);
 
     // Setup tab closure detection (User Story 2)
-    this.setupTabClosureHandler();
+    this.setupTabChangeHandler();
 
     console.log('Agent initialized successfully with model client');
   }
@@ -130,18 +130,15 @@ export class BrowserxAgent {
    * Setup tab closure event handler
    * User Story 2: Detect tab closure and stop execution
    */
-  private setupTabClosureHandler(): void {
+  private setupTabChangeHandler(): void {
     const tabBindingManager = TabManager.getInstance();
 
     // Handle actual tab closure (tab is closed in browser)
+    // Note: TabManager already unbound the tab before this callback
     tabBindingManager.onTabClosed(async (sessionId: string, tabId: number) => {
-      console.log(`[$$$][BrowserxAgent] Tab ${tabId} closed for session ${sessionId}`);
 
-      // Reset session's tabId to -1
       if (this.session && this.session.getId() === sessionId) {
-        // Reset tabId using public Session API
-        this.session.setTabId(-1);
-        console.log(`[$$$][BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
+        this.session.setTabId(-1); // Clear session's tabId
 
         // Abort all running tasks
         await this.session.abortAllTasks('TabClosed');
@@ -152,22 +149,15 @@ export class BrowserxAgent {
           'The tab was closed. All tasks have been stopped.'
         );
 
-        console.log(`[$$$][BrowserxAgent] Stopped tasks and notified user for session ${sessionId}`);
       }
     });
 
     // Handle tab unbinding (session loses tab, but tab is still open)
+    // Note: TabManager already called unbindTab/unbindSession before this callback
     tabBindingManager.onTabUnbound(async (sessionId: string, tabId: number, reason: 'rebind' | 'manual') => {
-      console.log(`[$$$][BrowserxAgent] Tab ${tabId} unbound from session ${sessionId} (reason: ${reason})`);
 
       if (this.session && this.session.getId() === sessionId) {
-        // Reset tabId using public Session API
-        this.session.setTabId(-1);
-        console.log(`[$$$][BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
-
-        // Abort all running tasks (tab is no longer accessible to this session)
-        await this.session.abortAllTasks('TabClosed');
-
+        this.session.setTabId(-1); // Clear session's tabId
         // Show different notification based on reason
         if (reason === 'rebind') {
           await this.userNotifier.notifyInfo(
@@ -180,8 +170,6 @@ export class BrowserxAgent {
             'The session is no longer bound to a tab. Tasks have been stopped.'
           );
         }
-
-        console.log(`[$$$][BrowserxAgent] Stopped tasks and notified user for session ${sessionId} (tab unbound)`);
       }
     });
   }
@@ -243,11 +231,6 @@ export class BrowserxAgent {
    * Returns the submission ID
    */
   async submitOperation(op: Op, context?: { tabId?: number }): Promise<string> {
-    console.log(`[$$$][BrowserxAgent] ========== SUBMIT OPERATION ==========`);
-    console.log(`[$$$][BrowserxAgent] Operation type: ${op.type}`);
-    console.log(`[$$$][BrowserxAgent] Context:`, context);
-    console.log(`[$$$][BrowserxAgent] Context tabId: ${context?.tabId}`);
-    console.log(`[$$$][BrowserxAgent] Current session tabId: ${this.session.getTabId()}`);
 
     const id = `sub_${this.nextId++}`;
     const submission: Submission = { id, op, context };
@@ -406,6 +389,144 @@ export class BrowserxAgent {
   }
 
   /**
+   * Handle tab binding/creation/switching based on session state and context
+   * @param submissionContext - Context containing optional tabId
+   */
+  private async handleTabBinding(submissionContext?: { tabId?: number }): Promise<void> {
+    const currentTabId = this.session.getTabId();
+    const newTabId = submissionContext?.tabId ?? -1; // Default to -1 if not provided
+
+    const tabManager = TabManager.getInstance();
+
+    // ================================================================
+    // CASE 1: newTabId is -1 → Create a new tab
+    // ================================================================
+    if (newTabId === -1) {
+      try {
+        const createdTabId = await tabManager.createAndBindTab(this.session.getId(), {
+          url: 'about:blank',
+          active: false,
+        });
+
+        if (createdTabId) {
+          this.session.setTabId(createdTabId);
+        } else {
+          const errorMsg = 'Failed to create tab for session: tab creation returned null';
+
+          // Emit error to chat UI
+          this.emitEvent({
+            type: 'Error',
+            data: {
+              message: 'Failed to create a new tab. Please try again.',
+            },
+          });
+
+          throw new Error(errorMsg);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
+
+        // Emit error to chat UI
+        this.emitEvent({
+          type: 'Error',
+          data: {
+            message: `Failed to create browser tab: ${errorMsg}`,
+          },
+        });
+
+        throw error;
+      }
+    }
+    // ================================================================
+    // CASE 2: newTabId === currentTabId → Check health, don't rebind
+    // ================================================================
+    else if (newTabId === currentTabId) {
+
+      const validation = await tabManager.validateTab(currentTabId);
+
+      if (validation.status === 'invalid') {
+        const errorMsg = `Current tab ${currentTabId} is not healthy. Reason: ${validation.reason}`;
+
+        // Emit error to chat UI
+        this.emitEvent({
+          type: 'Error',
+          data: {
+            message: `The current tab is not valid (${validation.reason}). Please select a valid tab.`,
+          },
+        });
+
+        throw new Error(errorMsg);
+      }
+
+    }
+    // ================================================================
+    // CASE 3: newTabId !== currentTabId → Rebind to new tab
+    // ================================================================
+    else {
+
+      // Validate the new tab first
+      const validation = await tabManager.validateTab(newTabId);
+
+      if (validation.status !== 'valid') {
+        const errorMsg = validation.status === 'invalid'
+          ? `Tab ${newTabId} is not valid. Reason: ${validation.reason}`
+          : `Tab ${newTabId} validation is still in progress`;
+
+        // Emit error to chat UI
+        this.emitEvent({
+          type: 'Error',
+          data: {
+            message: validation.status === 'invalid'
+              ? `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`
+              : `Unable to validate tab ${newTabId}. Please try again.`,
+          },
+        });
+
+        throw new Error(errorMsg);
+      }
+
+      // Tab is valid, proceed with rebinding
+      const tab = validation.tab;
+
+      try {
+        await tabManager.bindTabToSession(
+          this.session.getId(),
+          newTabId,
+          {
+            title: tab.title || 'Untitled',
+            url: tab.url || '',
+          }
+        );
+
+        // Update session's tabId
+        this.session.setTabId(newTabId);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab rebinding';
+
+        // Emit error to chat UI
+        this.emitEvent({
+          type: 'Error',
+          data: {
+            message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
+          },
+        });
+
+        throw error;
+      }
+    }
+
+
+    // Emit state update event to notify UI of tab binding change
+    this.emitEvent({
+      type: 'BackgroundEvent',
+      data: {
+        message: `Tab binding updated: session ${this.session.getId()} now bound to tab ${this.session.getTabId()}`,
+        level: 'info',
+      },
+    });
+  }
+
+  /**
    * Process user input with SessionTask
    * Common method for handling both handleUserInput and handleUserTurn
    * Updated (Feature 012): Use RegularTask and delegate to Session.spawnTask()
@@ -425,154 +546,9 @@ export class BrowserxAgent {
     submissionContext?: { tabId?: number }
   ): Promise<void> {
     try {
-      console.log(`[$$$][BrowserxAgent] ========== PROCESS USER INPUT WITH TASK ==========`);
-      console.log(`[$$$][BrowserxAgent] submissionContext:`, submissionContext);
-      console.log(`[$$$][BrowserxAgent] submissionContext.tabId: ${submissionContext?.tabId}`);
 
-      // Handle tab binding/creation/switching based on session state and context
-      const currentTabId = this.session.getTabId();
-      const newTabId = submissionContext?.tabId ?? -1; // Default to -1 if not provided
-      console.log(`[$$$][BrowserxAgent] Current session tabId (currentTabId): ${currentTabId}`);
-      console.log(`[$$$][BrowserxAgent] New tabId from user input (newTabId): ${newTabId}`);
-
-      const tabManager = TabManager.getInstance();
-
-      // ================================================================
-      // CASE 1: newTabId is -1 → Create a new tab
-      // ================================================================
-      if (newTabId === -1) {
-        console.log(`[$$$][BrowserxAgent] *** CASE 1: newTabId is -1, creating new tab ***`);
-        try {
-          console.log(`[$$$][BrowserxAgent] Calling createAndBindTab(sessionId=${this.session.getId()}, url=about:blank)`);
-          const createdTabId = await tabManager.createAndBindTab(this.session.getId(), {
-            url: 'about:blank',
-            active: false,
-          });
-          console.log(`[$$$][BrowserxAgent] createAndBindTab returned: ${createdTabId}`);
-
-          if (createdTabId) {
-            this.session.setTabId(createdTabId);
-            console.log(`[$$$][BrowserxAgent] *** SUCCESSFULLY CREATED NEW TAB ${createdTabId} ***`);
-            console.log(`[$$$][BrowserxAgent] Session tabId is now: ${this.session.getTabId()}`);
-          } else {
-            const errorMsg = 'Failed to create tab for session: tab creation returned null';
-            console.error(`[$$$][BrowserxAgent] *** ERROR: ${errorMsg} ***`);
-
-            // Emit error to chat UI
-            this.emitEvent({
-              type: 'Error',
-              data: {
-                message: 'Failed to create a new tab. Please try again.',
-              },
-            });
-
-            throw new Error(errorMsg);
-          }
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
-          console.error(`[$$$][BrowserxAgent] Error creating tab:`, errorMsg);
-
-          // Emit error to chat UI
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: `Failed to create browser tab: ${errorMsg}`,
-            },
-          });
-
-          throw error;
-        }
-      }
-      // ================================================================
-      // CASE 2: newTabId === currentTabId → Check health, don't rebind
-      // ================================================================
-      else if (newTabId === currentTabId) {
-        console.log(`[$$$][BrowserxAgent] *** CASE 2: newTabId (${newTabId}) === currentTabId (${currentTabId}), checking tab health ***`);
-
-        const validation = await tabManager.validateTab(currentTabId);
-        console.log(`[$$$][BrowserxAgent] Tab validation result:`, validation);
-
-        if (validation.status === 'invalid') {
-          const errorMsg = `Current tab ${currentTabId} is not healthy. Reason: ${validation.reason}`;
-          console.error(`[$$$][BrowserxAgent] *** ERROR: ${errorMsg} ***`);
-
-          // Emit error to chat UI
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: `The current tab is not valid (${validation.reason}). Please select a valid tab.`,
-            },
-          });
-
-          throw new Error(errorMsg);
-        }
-
-        console.log(`[$$$][BrowserxAgent] Tab ${currentTabId} is healthy, continuing with current tab`);
-      }
-      // ================================================================
-      // CASE 3: newTabId !== currentTabId → Rebind to new tab
-      // ================================================================
-      else {
-        console.log(`[$$$][BrowserxAgent] *** CASE 3: newTabId (${newTabId}) !== currentTabId (${currentTabId}), rebinding to new tab ***`);
-
-        // Validate the new tab first
-        console.log(`[$$$][BrowserxAgent] Validating new tab ${newTabId}...`);
-        const validation = await tabManager.validateTab(newTabId);
-        console.log(`[$$$][BrowserxAgent] Tab validation result:`, validation);
-
-        if (validation.status === 'invalid') {
-          const errorMsg = `Tab ${newTabId} is not valid. Reason: ${validation.reason}`;
-          console.error(`[$$$][BrowserxAgent] *** ERROR: ${errorMsg} ***`);
-
-          // Emit error to chat UI
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`,
-            },
-          });
-
-          throw new Error(errorMsg);
-        }
-
-        // Tab is valid, proceed with rebinding
-        const tab = validation.tab;
-        console.log(`[$$$][BrowserxAgent] New tab is valid: id=${tab.id}, title="${tab.title}", url="${tab.url}"`);
-
-        try {
-          console.log(`[$$$][BrowserxAgent] Calling bindTabToSession(sessionId=${this.session.getId()}, tabId=${newTabId})`);
-          await tabManager.bindTabToSession(
-            this.session.getId(),
-            newTabId,
-            {
-              title: tab.title || 'Untitled',
-              url: tab.url || '',
-            }
-          );
-          console.log(`[$$$][BrowserxAgent] bindTabToSession completed`);
-
-          // Update session's tabId
-          console.log(`[$$$][BrowserxAgent] Calling session.setTabId(${newTabId})`);
-          this.session.setTabId(newTabId);
-          console.log(`[$$$][BrowserxAgent] *** SUCCESSFULLY REBOUND TO TAB ${newTabId} ***`);
-          console.log(`[$$$][BrowserxAgent] Session tabId is now: ${this.session.getTabId()}`);
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab rebinding';
-          console.error(`[$$$][BrowserxAgent] Error rebinding to tab ${newTabId}:`, errorMsg);
-
-          // Emit error to chat UI
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
-            },
-          });
-
-          throw error;
-        }
-      }
-
-      console.log(`[$$$][BrowserxAgent] Final session tabId before spawning task: ${this.session.getTabId()}`);
+      // Handle tab binding/creation/switching
+      await this.handleTabBinding(submissionContext);
 
       // Convert input items to InputItem format for SessionTask
       const inputItems: InputItem[] = items.map(item => ({
@@ -603,14 +579,11 @@ export class BrowserxAgent {
       // Generate submission ID
       const submissionId = uuidv4();
 
-      console.log(`[$$$][BrowserxAgent] About to spawn task with submissionId: ${submissionId}`);
-      console.log(`[$$$][BrowserxAgent] Session tabId at task spawn: ${this.session.getTabId()}`);
 
       // Delegate to Session.spawnTask() (Feature 012: Session task management)
       // Session will manage task lifecycle, emit events, and handle abortion
       await this.session.spawnTask(task, taskContext, submissionId, inputItems);
 
-      console.log(`[$$$][BrowserxAgent] ========== PROCESS USER INPUT WITH TASK COMPLETE ==========`);
 
       // Note: Session.spawnTask() is fire-and-forget
       // Task completion/abortion events are emitted by Session via eventEmitter
@@ -659,16 +632,10 @@ export class BrowserxAgent {
     op: Extract<Op, { type: 'UserInput' }>,
     context?: { tabId?: number }
   ): Promise<void> {
-    console.log(`[$$$][BrowserxAgent] ========== HANDLE USER INPUT ==========`);
-    console.log(`[$$$][BrowserxAgent] Context:`, context);
-    console.log(`[$$$][BrowserxAgent] Context tabId: ${context?.tabId}`);
-    console.log(`[$$$][BrowserxAgent] Session tabId before processing: ${this.session.getTabId()}`);
 
     this.session.addPendingInput(op.items);
     await this.processUserInputWithTask(op.items, undefined, true, context);
 
-    console.log(`[$$$][BrowserxAgent] Session tabId after processing: ${this.session.getTabId()}`);
-    console.log(`[$$$][BrowserxAgent] ========== HANDLE USER INPUT COMPLETE ==========`);
   }
 
   /**
