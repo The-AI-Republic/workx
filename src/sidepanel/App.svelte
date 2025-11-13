@@ -112,16 +112,9 @@
     checkConnection();
 
     // Fetch current session's tabId from storage
-    fetchCurrentTabId();
-
-    // Periodic connection check and tabId sync
-    const interval = setInterval(() => {
-      checkConnection();
-      fetchCurrentTabId();
-    }, 5000);
+    await fetchCurrentTabId();
 
     return () => {
-      clearInterval(interval);
       router?.cleanup();
     };
   });
@@ -135,6 +128,7 @@
     try {
       // Request current session state from service worker
       const response = await router?.send(MessageType.GET_STATE);
+      console.log('[App] Fetched session state:', response);
 
       if (response && response.payload) {
         // Extract tabId from session state
@@ -179,10 +173,7 @@
         console.log(`[App] Auto-binding to active tab: ${activeTab.id}`);
 
         // Send UPDATE_SESSION_TAB message to bind the active tab
-        await router?.send({
-          type: MessageType.UPDATE_SESSION_TAB,
-          payload: { tabId: activeTab.id },
-        });
+        await router?.send(MessageType.UPDATE_SESSION_TAB, { tabId: activeTab.id });
 
         // Update local state
         currentTabId = activeTab.id;
@@ -233,10 +224,7 @@
 
     try {
       // Notify backend to update session's tab binding
-      await router?.send({
-        type: 'UPDATE_SESSION_TAB',
-        payload: { tabId: newTabId },
-      });
+      await router?.send(MessageType.UPDATE_SESSION_TAB, { tabId: newTabId });
       console.log(`[App] Session tab updated to: ${newTabId}`);
     } catch (error) {
       console.error('[App] Failed to update session tab:', error);
