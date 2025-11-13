@@ -255,7 +255,9 @@ export class ToolRegistry {
         sessionId: request.sessionId,
         turnId: request.turnId,
         toolName: request.toolName,
-        metadata: undefined, // ToolDefinition doesn't have metadata field
+        metadata: {
+          tabId: request.tabId, // Pass tabId from request to tool via metadata
+        },
       };
 
       // Execute with timeout (default 120 seconds if not specified)

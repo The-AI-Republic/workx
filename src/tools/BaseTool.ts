@@ -76,6 +76,7 @@ export interface ToolExecutionRequest {
   parameters: Record<string, any>;
   sessionId: string;
   turnId: string;
+  tabId?: number; // Current session's bound tab ID
   timeout?: number;
 }
 

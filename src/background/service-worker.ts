@@ -154,11 +154,16 @@ function setupMessageHandlers(): void {
     if (agent) {
       // Get the current session
       const session = agent.getSession();
+      const sessionId = session.getId();
 
       // Abort all running tasks before resetting
-      await session.abortAllTasks('user_interrupt');
+      await session.abortAllTasks('UserInterrupt');
 
-      // Reset the session
+      // Unbind session from TabManager before reset
+      const tabManager = TabManager.getInstance();
+      tabManager.unbindSession(sessionId);
+
+      // Reset the session (this will also reset tabId to -1 in session and turnContext)
       await session.reset();
 
       return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
@@ -180,18 +185,54 @@ function setupMessageHandlers(): void {
     // Get current session
     const session = agent.getSession();
     const sessionId = session.getId();
+    const turnContext = session.getTurnContext();
 
-    // Update tab binding via TabManager
+    // Get TabManager instance
+    const tabManager = TabManager.getInstance();
+
     try {
+      // Handle unbinding case (tabId = -1)
+      if (tabId === -1) {
+        // Unbind session from TabManager
+        tabManager.unbindSession(sessionId);
+
+        // Update session state
+        session.setTabId(-1);
+
+        // Update turn context
+        if (turnContext && typeof turnContext.setTabId === 'function') {
+          turnContext.setTabId(-1);
+        }
+
+        console.log(`[ServiceWorker] Session ${sessionId} tab unbound (tabId set to -1)`);
+
+        return {
+          type: MessageType.STATE_UPDATE,
+          payload: {
+            tabId: -1,
+            sessionId,
+            timestamp: Date.now(),
+          },
+        };
+      }
+
+      // Handle binding case (tabId >= 0)
       // Get tab info
       const tab = await chrome.tabs.get(tabId);
 
-      // Get TabManager instance and bind tab to session
-      const tabManager = TabManager.getInstance();
+      // Bind tab to session via TabManager
       await tabManager.bindTabToSession(sessionId, tabId, {
         title: tab.title || 'Untitled',
         url: tab.url || '',
       });
+
+      // Update session state
+      session.setTabId(tabId);
+
+      // Update turn context
+      if (turnContext && typeof turnContext.setTabId === 'function') {
+        turnContext.setTabId(tabId);
+      }
 
       console.log(`[ServiceWorker] Session ${sessionId} tab updated to ${tabId}`);
 

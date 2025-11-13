@@ -405,6 +405,10 @@
     // Request session reset from backend
     try {
       await router.requestSessionReset();
+
+      // After session reset, auto-bind to the active tab
+      // This ensures the new conversation starts with the current tab
+      await bindToActiveTab();
     } catch (error) {
       console.error('Failed to reset session:', error);
       messages = [...messages, {

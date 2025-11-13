@@ -760,11 +760,15 @@ export class TurnManager {
 
     try {
       // Execute tool via ToolRegistry
+      // Get tabId from TurnContext to pass to tool execution
+      const tabId = this.turnContext.getTabId();
+
       const request = {
         toolName,
         parameters,
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
+        tabId, // Pass tabId in request for tools that need it
       };
 
       const response = await this.toolRegistry.execute(request);

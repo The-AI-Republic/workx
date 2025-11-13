@@ -481,13 +481,17 @@ export class Session {
    * Build initial context for review mode
    */
   buildInitialContext(turnContext?: any): any[] {
+    // T093: Replaced working directory with tab context
+    const tabId = turnContext?.tabId ?? -1;
+    const tabContext = tabId === -1 ? 'No tab bound' : `Tab ID: ${tabId}`;
+
     return [
       {
         role: 'system',
         content: [
           {
             type: 'input_text',
-            text: `Working directory: ${turnContext?.cwd || '/'}`,
+            text: `Browser tab context: ${tabContext}`,
           },
         ],
       },
@@ -544,6 +548,13 @@ export class Session {
 
     // Create new conversation ID
     Object.assign(this, { conversationId: `conv_${uuidv4()}` });
+
+    // Reset tab binding to -1 (unbound)
+    // Tab will be auto-bound by UI when side panel reopens
+    this.sessionState.setTabId(-1);
+    if (this.turnContext && typeof this.turnContext.setTabId === 'function') {
+      this.turnContext.setTabId(-1);
+    }
 
     // Reinitialize with RolloutRecorder if enabled
     if (this.isPersistent && this.services?.rollout) {
