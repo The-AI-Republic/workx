@@ -527,7 +527,7 @@
         bind:value={inputText}
         onSubmit={sendMessage}
         tabId={currentTabId}
-        placeholder="Enter command..."
+        placeholder=">> Enter command..."
         on:tabSelected={handleTabSelected}
       />
     </div>

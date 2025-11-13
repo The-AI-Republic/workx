@@ -3,7 +3,7 @@
   import TabContext from './TabContext.svelte';
 
   export let value: string = '';
-  export let placeholder: string = 'Enter command...';
+  export let placeholder: string = '>> Enter command...';
   export let onSubmit: (value: string) => void = () => {};
   export let tabId: number = -1;
 
@@ -32,15 +32,14 @@
     <TabContext {tabId} on:tabSelected={handleTabSelected} />
   </div>
 
-  <!-- Message Input with Prompt -->
-  <div class="terminal-prompt flex items-start">
-    <span class="text-term-dim-green mr-2 mt-1">&gt;</span>
+  <!-- Message Input -->
+  <div class="terminal-input-wrapper">
     <textarea
       bind:value
       {placeholder}
       on:keydown={handleKeyDown}
-      class="terminal-input flex-1"
-      rows="1"
+      class="terminal-input"
+      rows="2"
       aria-label="Message input"
     />
   </div>
@@ -55,25 +54,26 @@
     margin-bottom: 0.5rem;
   }
 
-  .terminal-prompt {
-    display: flex;
-    align-items: flex-start;
+  .terminal-input-wrapper {
+    width: 100%;
   }
 
   .terminal-input {
-    flex: 1;
+    width: 100%;
     background-color: transparent;
-    border: none;
+    border: 1px solid var(--color-term-dim-green, #00cc00);
+    border-radius: 2px;
     color: var(--term-green, #00ff00);
     font-family: 'Monaco', 'Courier New', monospace;
     font-size: 14px;
     outline: none;
-    resize: none;
-    overflow-y: hidden;
-    min-height: 20px;
+    resize: vertical;
+    overflow-y: auto;
+    min-height: calc(1.5em * 2 + 8px); /* 2 lines of text + padding */
     max-height: 200px;
-    padding: 0;
+    padding: 4px 8px;
     line-height: 1.5;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .terminal-input::placeholder {
@@ -83,10 +83,8 @@
 
   .terminal-input:focus {
     outline: none;
+    border-color: var(--color-term-bright-green, #33ff00);
+    box-shadow: 0 0 0 1px var(--color-term-bright-green, #33ff00);
   }
 
-  /* Auto-grow textarea based on content */
-  .terminal-input {
-    field-sizing: content;
-  }
 </style>
