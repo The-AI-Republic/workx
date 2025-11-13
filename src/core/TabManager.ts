@@ -95,14 +95,14 @@ export class TabManager {
     // Check if tab already bound to a different session
     const existingSessionId = this.tabToSession.get(tabId);
     if (existingSessionId && existingSessionId !== sessionId) {
-      // Last-write-wins: unbind previous session
-      this.sessionToTab.delete(existingSessionId);
+      // Last-write-wins: unbind previous session's tab
+      await this.unbindTab(tabId);
       console.log(`[TabManager] Tab ${tabId} rebound from session ${existingSessionId} to ${sessionId}`);
 
       // T085: Notify the previous session that it lost its tab binding (tab is still open, just reassigned)
       // Only notify if not silent
       if (!silent) {
-        this.notifyTabUnbound(existingSessionId, tabId, 'rebind');
+        this.notifyTabUnbind(existingSessionId, tabId, 'rebind');
       }
     }
 
@@ -111,13 +111,13 @@ export class TabManager {
     const switchedFromTab = existingTabId !== undefined && existingTabId !== tabId;
 
     if (switchedFromTab) {
-      this.tabToSession.delete(existingTabId);
-      this.bindings.delete(existingTabId);
+      // Reuse unbindTab to clean up the old tab binding
+      await this.unbindTab(existingTabId);
 
       // Notify that the session is switching to a different tab
       // Only notify if not silent
       if (!silent) {
-        this.notifyTabUnbound(sessionId, existingTabId, 'manual');
+        this.notifyTabUnbind(sessionId, existingTabId, 'manual');
       }
     }
 
@@ -302,7 +302,7 @@ export class TabManager {
   /**
    * Notify all registered callbacks of tab unbinding (tab lost but still open)
    */
-  private notifyTabUnbound(sessionId: string, tabId: number, reason: 'rebind' | 'manual'): void {
+  private notifyTabUnbind(sessionId: string, tabId: number, reason: 'rebind' | 'manual'): void {
     for (const callback of this.tabUnboundCallbacks) {
       try {
         callback(sessionId, tabId, reason);
@@ -515,9 +515,6 @@ export class TabManager {
         console.error('[TabManager] Created tab has no ID');
         return null;
       }
-
-      // Add tab to group
-      await this.addTabToGroup(tab.id);
 
       // Bind tab to session
       await this.bindTabToSession(sessionId, tab.id, {

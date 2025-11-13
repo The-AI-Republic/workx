@@ -7,7 +7,7 @@
    * Displays the current tab title for the session with:
    * - 25-character truncation with ellipsis
    * - Full title on hover tooltip
-   * - "No tab attached" state for tabId = -1
+   * - "Create New Tab" state for tabId = -1 (distinguished from browser's "New Tab")
    * - Real-time updates when tab title changes
    * - Graceful handling of missing/empty titles
    * - Clickable dropdown for manual tab selection (US3)
@@ -45,9 +45,9 @@
     if (tabId !== -1) {
       fetchTabTitle(tabId);
     } else {
-      tabTitle = 'No tab attached';
-      fullTitle = 'No tab attached';
-      displayTitle = 'No tab attached';
+      tabTitle = 'Create New Tab';
+      fullTitle = 'Create New Tab';
+      displayTitle = 'Create New Tab';
       error = null;
     }
   }
@@ -77,6 +77,7 @@
 
   /**
    * Update title from tab object
+   * Note: Browser "New Tab" tabs will have title="New Tab" and are displayed as-is
    */
   function updateTitle(tab: chrome.tabs.Tab): void {
     let title: string;
@@ -192,8 +193,15 @@
       availableTabs = allTabs.filter((tab) => {
         if (!tab.id) return false;
 
-        // Filter out Chrome internal pages (new tab, settings, etc.)
+        // Filter out Chrome internal pages EXCEPT for New Tab pages
         const url = tab.url || '';
+
+        // Allow blank tabs and Chrome new tab page (these are user's "New Tab" tabs)
+        if (url === 'about:blank' || url.startsWith('chrome://newtab')) {
+          return true;
+        }
+
+        // Filter out other Chrome internal pages (settings, extensions, etc.)
         if (url.startsWith('chrome://') ||
             url.startsWith('chrome-extension://') ||
             url.startsWith('about:')) {
@@ -302,7 +310,7 @@
       {:else if availableTabs.length === 0}
         <div class="dropdown-item no-tabs">No tabs available</div>
       {:else}
-        <!-- "New Tab" option to unbind session from any tab -->
+        <!-- "Create New Tab" option to unbind session from any tab -->
         <div
           class="dropdown-item new-tab-option"
           class:selected={tabId === -1}
@@ -312,7 +320,7 @@
           tabindex="0"
           data-testid="tab-dropdown-new-tab"
         >
-          <span class="tab-item-title">+ New Tab</span>
+          <span class="tab-item-title">+ Create New Tab</span>
           {#if tabId === -1}
             <span class="selected-indicator">✓</span>
           {/if}

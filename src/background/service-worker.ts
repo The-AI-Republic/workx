@@ -670,6 +670,12 @@ async function executeQuickAction(tabId: number): Promise<void> {
  * Setup periodic tasks
  */
 function setupPeriodicTasks(): void {
+  // NOTE: Keep-alive mechanism intentionally NOT implemented here
+  // The service worker will be woken up on-demand when messages arrive
+  // UI (App.svelte) handles retries with exponential backoff if service worker is asleep
+  // See App.svelte lines 54-87 for wake-up retry logic
+  // TODO: Implement sophisticated keep-alive mechanism in the future
+
   // Process event queue periodically
   setInterval(async () => {
     if (!agent || !router) return;
@@ -833,16 +839,57 @@ chrome.runtime.onSuspend.addListener(async () => {
   initializationPromise = null;
 });
 
+// ============================================================================
+// ON-DEMAND SERVICE WORKER WAKE-UP STRATEGY
+// ============================================================================
+// Chrome terminates service workers after 30 seconds of inactivity.
+// Instead of keeping the service worker alive with alarms, we use on-demand wake-up:
+//
+// 1. Service Worker: Auto-initializes when ANY message arrives (see below)
+// 2. UI (App.svelte): Retries with exponential backoff if worker is asleep
+//    - Initial retry: 200ms, then 400ms, 800ms, 1600ms, 3200ms
+//    - Max retries: 8 attempts
+//    - Detects "port closed" errors and shows helpful messages
+//
+// Benefits:
+// - Simpler implementation (no keep-alive alarms)
+// - Better battery life (worker sleeps when not needed)
+// - Graceful degradation (UI handles wake-up transparently)
+//
+// Trade-offs:
+// - First message after sleep takes longer (~200-400ms)
+// - User sees brief "Service worker starting..." message
+//
+// Future: Implement sophisticated keep-alive for production use
+// ============================================================================
+
 // Ensure initialization happens when messages arrive
 // This handles cases where the service worker wakes up from sleep
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Initialize if not already initialized
   if (!isInitialized && !initializationPromise) {
-    initialize().then(() => {
-      // Initialization complete - MessageRouter will handle the message
-    }).catch(err => {
-      console.error('Failed to initialize on message:', err);
-    });
+    // Start async initialization and keep port open
+    initialize()
+      .then(() => {
+        console.log('[Service Worker] Initialization complete on message wake-up');
+        sendResponse({ success: true, initialized: true });
+      })
+      .catch(err => {
+        console.error('Failed to initialize on message:', err);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; // Keep message port open for async response
+  }
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    initializationPromise
+      .then(() => {
+        sendResponse({ success: true, initialized: true });
+      })
+      .catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; // Keep message port open
   }
   // Don't return true - let MessageRouter handle the response
   return false;

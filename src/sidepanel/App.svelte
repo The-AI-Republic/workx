@@ -50,23 +50,51 @@
     } catch (error) {
       console.error('Failed to reset session:', error);
     }
-    // Wait for background service worker to be ready
+    // ========================================================================
+    // ON-DEMAND SERVICE WORKER WAKE-UP (UI Side)
+    // ========================================================================
+    // Chrome terminates service workers after 30 seconds of inactivity.
+    // When the side panel opens, the service worker might be asleep.
+    // We retry with exponential backoff to give it time to wake up.
+    //
+    // Retry schedule: 200ms → 400ms → 800ms → 1.6s → 3.2s (max 8 attempts)
+    // Total max wait time: ~12.6 seconds
+    //
+    // The service worker will auto-initialize on the first message.
+    // See service-worker.ts lines 842-896 for wake-up implementation.
+    // ========================================================================
+
     let retries = 0;
-    const maxRetries = 5;
-    const retryDelay = 500; // ms
+    const maxRetries = 8;
+    let retryDelay = 200; // Start with 200ms
 
     while (retries < maxRetries) {
       try {
         // Test connection with ping
         await router.send(MessageType.PING);
+        console.log('[App] Successfully connected to service worker');
         break;
       } catch (error) {
         retries++;
+        const isPortClosed = error instanceof Error &&
+          (error.message.includes('message port closed') ||
+           error.message.includes('Extension context invalidated'));
+
+        if (isPortClosed) {
+          console.log(`[App] Service worker unavailable (attempt ${retries}/${maxRetries}), waiting for initialization...`);
+        } else {
+          console.warn(`[App] Connection attempt ${retries}/${maxRetries} failed:`, error);
+        }
+
         if (retries >= maxRetries) {
-          console.warn('Failed to connect to background service worker after', maxRetries, 'attempts');
+          console.error('[App] Failed to connect to service worker after', maxRetries, 'attempts');
+          console.error('[App] This may indicate the service worker crashed. Try reloading the extension.');
           break;
         }
+
+        // Exponential backoff: 200ms, 400ms, 800ms, 1600ms, 3200ms
         await new Promise(resolve => setTimeout(resolve, retryDelay));
+        retryDelay = Math.min(retryDelay * 2, 3200); // Cap at 3.2 seconds
       }
     }
 
@@ -142,9 +170,24 @@
         }
       }
     } catch (error) {
-      console.error('[App] Failed to fetch current tabId from session:', error);
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      if (isPortClosed) {
+        console.warn('[App] Service worker not ready when fetching tabId, will retry later');
+      } else {
+        console.error('[App] Failed to fetch current tabId from session:', error);
+      }
+
       // Fallback: try to bind to active tab
-      await bindToActiveTab();
+      try {
+        await bindToActiveTab();
+      } catch (bindError) {
+        console.warn('[App] Failed to bind to active tab:', bindError);
+        // Set to -1 if all attempts fail
+        currentTabId = -1;
+      }
     }
   }
 
@@ -193,10 +236,21 @@
         agentReady = false;
         healthStatus = { ready: false, message: 'Unable to check agent status' };
       }
-    } catch {
+    } catch (error) {
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
       isConnected = false;
       agentReady = false;
-      healthStatus = { ready: false, message: 'Connection error' };
+
+      if (isPortClosed) {
+        console.warn('[App] Service worker unavailable during health check');
+        healthStatus = { ready: false, message: 'Service worker starting...' };
+      } else {
+        console.error('[App] Health check failed:', error);
+        healthStatus = { ready: false, message: 'Connection error' };
+      }
     }
   }
 
@@ -320,9 +374,19 @@
       });
     } catch (error) {
       console.error('Failed to send message:', error);
+
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      let errorMessage = 'Failed to send message. Please try again.';
+      if (isPortClosed) {
+        errorMessage = 'Service worker unavailable. The extension may be restarting. Please wait a moment and try again.';
+      }
+
       messages = [...messages, {
         type: 'agent',
-        content: 'Failed to send message. Please try again.',
+        content: errorMessage,
         timestamp: Date.now(),
       }];
     }
@@ -386,9 +450,19 @@
       await bindToActiveTab();
     } catch (error) {
       console.error('Failed to reset session:', error);
+
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      let errorMessage = 'Failed to start new conversation. Please try again.';
+      if (isPortClosed) {
+        errorMessage = 'Service worker unavailable. Please wait a moment and try again.';
+      }
+
       messages = [...messages, {
         type: 'agent',
-        content: 'Failed to start new conversation. Please try again.',
+        content: errorMessage,
         timestamp: Date.now(),
       }];
     }
