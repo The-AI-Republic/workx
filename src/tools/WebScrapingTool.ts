@@ -51,7 +51,6 @@ export interface PaginationConfig {
  */
 export interface ScrapingConfig extends BaseToolRequest {
   url?: string;
-  tabId?: number;
   patterns: ScrapingPattern[];
   waitFor?: WaitCondition;
   timeout?: number;
@@ -171,11 +170,7 @@ export class WebScrapingTool extends BaseTool {
       {
         url: {
           type: 'string',
-          description: 'URL to scrape (optional if tabId provided)',
-        },
-        tabId: {
-          type: 'number',
-          description: 'Tab ID to scrape from',
+          description: 'URL to scrape (optional if tab is already bound to session)',
         },
         patterns: {
           type: 'array',
@@ -254,8 +249,11 @@ export class WebScrapingTool extends BaseTool {
     const errors: string[] = [];
 
     try {
+      // Get tabId from metadata (passed internally, not from LLM)
+      const tabId = options?.metadata?.tabId;
+
       // Get the target tab
-      const tab = await this.getTab(request.tabId, request.url);
+      const tab = await this.getTab(tabId, request.url);
 
       // Wait for readiness if specified
       if (request.waitFor) {
@@ -296,7 +294,7 @@ export class WebScrapingTool extends BaseTool {
    * Get or navigate to tab
    */
   private async getTab(tabId?: number, url?: string): Promise<chrome.tabs.Tab> {
-    if (tabId) {
+    if (tabId !== undefined && tabId !== null && tabId !== -1) {
       return await this.validateTabId(tabId);
     }
 
@@ -309,8 +307,7 @@ export class WebScrapingTool extends BaseTool {
       return tab;
     }
 
-    // Use active tab
-    return await this.getActiveTab();
+    throw new Error('Target tab ID not provided in execution context and no URL specified');
   }
 
   /**

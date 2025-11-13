@@ -70,7 +70,6 @@ export interface NetworkInterceptConfig extends BaseToolRequest {
   responseModifications?: ResponseModification[];
   monitoring: MonitoringConfig;
   caching?: CachingConfig;
-  tabId?: number; // Optional: limit to specific tab
 }
 
 /**
@@ -180,10 +179,6 @@ export class NetworkInterceptTool extends BaseTool {
             captureHeaders: { type: 'boolean', default: true },
             maxBodySize: { type: 'number', default: 1024 * 1024 } // 1MB
           }
-        },
-        tabId: {
-          type: 'number',
-          description: 'Limit to specific tab',
         }
       },
       {
@@ -222,8 +217,11 @@ export class NetworkInterceptTool extends BaseTool {
     request: NetworkInterceptConfig,
     options?: BaseToolOptions
   ): Promise<any> {
+    // Get tabId from metadata (passed internally, not from LLM)
+    const tabId = options?.metadata?.tabId;
+
     if (request.enabled) {
-      return await this.startInterception(request);
+      return await this.startInterception(request, tabId);
     } else {
       return await this.stopInterception();
     }
@@ -232,14 +230,14 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Start network interception
    */
-  async startInterception(config: NetworkInterceptConfig): Promise<void> {
+  async startInterception(config: NetworkInterceptConfig, tabId?: number): Promise<void> {
     if (this.isIntercepting) {
       await this.stopInterception();
     }
 
     try {
       // Create declarative net request rules
-      this.rules = await this.createRules(config);
+      this.rules = await this.createRules(config, tabId);
 
       // Add rules
       if (this.rules.length > 0) {
@@ -251,7 +249,7 @@ export class NetworkInterceptTool extends BaseTool {
 
       // Set up monitoring if enabled
       if (config.monitoring.logRequests) {
-        this.setupMonitoring(config);
+        this.setupMonitoring(config, tabId);
       }
 
       this.isIntercepting = true;
@@ -296,7 +294,7 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Create declarative net request rules
    */
-  private async createRules(config: NetworkInterceptConfig): Promise<chrome.declarativeNetRequest.Rule[]> {
+  private async createRules(config: NetworkInterceptConfig, tabId?: number): Promise<chrome.declarativeNetRequest.Rule[]> {
     const rules: chrome.declarativeNetRequest.Rule[] = [];
     let ruleId = 1;
 
@@ -311,7 +309,7 @@ export class NetworkInterceptTool extends BaseTool {
             action: {
               type: chrome.declarativeNetRequest.RuleActionType.BLOCK,
             },
-            condition: this.createRuleCondition(config.patterns, config.tabId),
+            condition: this.createRuleCondition(config.patterns, tabId),
           });
         } else if (mod.type === 'header' && mod.action === 'add') {
           // Add header rule
@@ -328,7 +326,7 @@ export class NetworkInterceptTool extends BaseTool {
                 },
               ],
             },
-            condition: this.createRuleCondition(config.patterns, config.tabId),
+            condition: this.createRuleCondition(config.patterns, tabId),
           });
         } else if (mod.type === 'header' && mod.action === 'remove') {
           // Remove header rule
@@ -344,7 +342,7 @@ export class NetworkInterceptTool extends BaseTool {
                 },
               ],
             },
-            condition: this.createRuleCondition(config.patterns, config.tabId),
+            condition: this.createRuleCondition(config.patterns, tabId),
           });
         } else if (mod.type === 'url' && mod.action === 'modify') {
           // URL redirect rule
@@ -357,7 +355,7 @@ export class NetworkInterceptTool extends BaseTool {
                 url: mod.value,
               },
             },
-            condition: this.createRuleCondition(config.patterns, config.tabId),
+            condition: this.createRuleCondition(config.patterns, tabId),
           });
         }
       }
@@ -382,7 +380,7 @@ export class NetworkInterceptTool extends BaseTool {
                 },
               ],
             },
-            condition: this.createRuleCondition(config.patterns, config.tabId),
+            condition: this.createRuleCondition(config.patterns, tabId),
           });
         }
       }
@@ -442,7 +440,7 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Set up monitoring listeners
    */
-  private setupMonitoring(config: NetworkInterceptConfig): void {
+  private setupMonitoring(config: NetworkInterceptConfig, tabId?: number): void {
     // Remove existing listeners
     this.removeMonitoringListeners();
 
@@ -452,8 +450,8 @@ export class NetworkInterceptTool extends BaseTool {
         urls: ['<all_urls>'],
       };
 
-      if (config.tabId !== undefined) {
-        filter.tabId = config.tabId;
+      if (tabId !== undefined && tabId !== null && tabId !== -1) {
+        filter.tabId = tabId;
       }
 
       // Before request

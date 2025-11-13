@@ -12,7 +12,6 @@ import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOpti
  */
 export interface NavigationToolRequest extends BaseToolRequest {
   action: 'navigate' | 'reload' | 'goBack' | 'goForward' | 'getHistory' | 'stop' | 'getCurrentUrl' | 'waitForLoad';
-  tabId?: number;
   url?: string;
   options?: NavigationOptions;
 }
@@ -93,10 +92,6 @@ export class NavigationTool extends BaseTool {
         description: 'The navigation action to perform',
         enum: ['navigate', 'reload', 'goBack', 'goForward', 'getHistory', 'stop', 'getCurrentUrl', 'waitForLoad'],
       },
-      tabId: {
-        type: 'number',
-        description: 'Tab ID for navigation (uses active tab if not specified)',
-      },
       url: {
         type: 'string',
         description: 'URL to navigate to (required for navigate action)',
@@ -147,12 +142,24 @@ export class NavigationTool extends BaseTool {
 
     this.log('debug', `Executing navigation action: ${request.action}`, request);
 
-    // Get target tab - use session-aware validation if sessionId provided
+    // Get tabId from metadata (passed internally, not from LLM)
+    const tabId = options?.metadata?.tabId;
+
+    // Check if tabId is valid
+    if (tabId === undefined || tabId === null) {
+      throw new Error('Target tab ID not provided in execution context');
+    }
+
+    if (tabId === -1) {
+      throw new Error('Target tab cannot be found. Please ensure a tab is bound to the current session.');
+    }
+
+    // Validate tab exists
     let targetTab: chrome.tabs.Tab;
-    if (request.sessionId) {
-      targetTab = await this.validateSessionTab(request.sessionId);
-    } else {
-      targetTab = request.tabId ? await this.validateTabId(request.tabId) : await this.getActiveTab();
+    try {
+      targetTab = await chrome.tabs.get(tabId);
+    } catch (error) {
+      throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }
 
     switch (request.action) {
