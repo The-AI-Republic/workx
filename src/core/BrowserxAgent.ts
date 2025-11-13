@@ -122,8 +122,6 @@ export class BrowserxAgent {
 
     // Setup tab closure detection (User Story 2)
     this.setupTabChangeHandler();
-
-    console.log('Agent initialized successfully with model client');
   }
 
   /**

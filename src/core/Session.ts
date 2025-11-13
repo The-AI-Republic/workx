@@ -279,7 +279,6 @@ export class Session {
     // Import SessionState
     session.sessionState = SessionState.import(data.state);
 
-    // Set metadata
     Object.assign(session, {
       conversationId: data.id,
     });
