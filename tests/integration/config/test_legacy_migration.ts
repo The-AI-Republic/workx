@@ -1,5 +1,5 @@
 /**
- * T020: Integration test for migration from old system
+ * Integration test for migration from old system
  * Tests migrating from ModelClientFactory storage format
  */
 

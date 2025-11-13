@@ -35,8 +35,8 @@ describe('Session Cleanup Integration Tests', () => {
     }
   });
 
-  describe('T055-T058: Session Cleanup on End', () => {
-    it('T055,T057: should clear all items for a session', async () => {
+  describe('Session Cleanup on End', () => {
+    it('T055,should clear all items for a session', async () => {
       const sessionId = 'conv_cleanup_test';
 
       // Create 15 items (~2MB total)
@@ -72,7 +72,7 @@ describe('Session Cleanup Integration Tests', () => {
       expect(statsAfter.totalSize).toBe(0);
     });
 
-    it('T058: should cleanup large session within 5 minutes', async () => {
+    it('should cleanup large session within 5 minutes', async () => {
       const sessionId = 'conv_large_cleanup';
 
       // Create 100 items (stress test for SC-004)
@@ -127,8 +127,8 @@ describe('Session Cleanup Integration Tests', () => {
     });
   });
 
-  describe('T059-T062: Orphan Session Cleanup', () => {
-    it('T059,T061: should detect and cleanup orphaned sessions older than 24h', async () => {
+  describe('Orphan Session Cleanup', () => {
+    it('T059,should detect and cleanup orphaned sessions older than 24h', async () => {
       const orphanSession1 = 'conv_orphan_1';
       const orphanSession2 = 'conv_orphan_2';
       const activeSession = 'conv_active';
@@ -170,7 +170,7 @@ describe('Session Cleanup Integration Tests', () => {
       expect(activeItems).toHaveLength(1);
     });
 
-    it('T062: should simulate crashed session cleanup', async () => {
+    it('should simulate crashed session cleanup', async () => {
       const crashedSession = 'conv_crashed';
 
       // Create items in a session
@@ -219,8 +219,8 @@ describe('Session Cleanup Integration Tests', () => {
     });
   });
 
-  describe('T063-T066: Outdated Cache Cleanup', () => {
-    it('T063,T065: should cleanup items older than configured days', async () => {
+  describe('Outdated Cache Cleanup', () => {
+    it('T063,should cleanup items older than configured days', async () => {
       const sessionId = 'conv_outdated';
 
       // Create old items (simulate 31 days old)
@@ -252,7 +252,7 @@ describe('Session Cleanup Integration Tests', () => {
       expect(remainingItems[0].description).toBe('New item');
     });
 
-    it('T066: should preserve recent items when cleaning outdated', async () => {
+    it('should preserve recent items when cleaning outdated', async () => {
       const sessionId = 'conv_mixed_age';
 
       // Create items with different ages

@@ -38,7 +38,7 @@ export type Op =
       type: 'UserTurn';
       /** User input items */
       items: InputItem[];
-      /** T093: Replaced cwd with tabId - browser tab ID for tool execution context */
+      /** Replaced cwd with tabId - browser tab ID for tool execution context */
       tabId: number;
       /** Policy to use for command approval */
       approval_policy: AskForApproval;
@@ -53,7 +53,7 @@ export type Op =
     }
   | {
       type: 'OverrideTurnContext';
-      /** T093: Replaced cwd with tabId - updated browser tab ID for tool execution */
+      /** Replaced cwd with tabId - updated browser tab ID for tool execution */
       tabId?: number;
       /** Updated command approval policy */
       approval_policy?: AskForApproval;

@@ -19,7 +19,7 @@ describeIfKey('Gemini Agent Flow - Integration Tests', () => {
     }
   });
 
-  describe('T022: Simple greeting test', () => {
+  describe('Simple greeting test', () => {
     it('should respond with visible text when user sends "hi"', async () => {
       // This test would require full agent setup
       // For now, we document the expected behavior
@@ -55,7 +55,7 @@ describeIfKey('Gemini Agent Flow - Integration Tests', () => {
     });
   });
 
-  describe('T023: Knowledge question test', () => {
+  describe('Knowledge question test', () => {
     it('should respond to "what is TypeScript?" with streaming text', async () => {
       // Expected flow:
       // 1. User asks knowledge question
@@ -78,7 +78,7 @@ describeIfKey('Gemini Agent Flow - Integration Tests', () => {
     });
   });
 
-  describe('T031-T032: Tool call execution tests', () => {
+  describe('Tool call execution tests', () => {
     it('should execute tool calls and return results to agent', async () => {
       // Expected flow:
       // 1. User requests action requiring tool

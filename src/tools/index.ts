@@ -154,7 +154,7 @@ export async function registerTools(
       console.log('StorageTool disabled in configuration, skipping...');
     }
 
-    // T106-T108: FR-023 - TabTool excluded from LLM (tabs managed automatically by TabManager)
+    // FR-023 - TabTool excluded from LLM (tabs managed automatically by TabManager)
     // Tab Tool - DISABLED: Tab management is now automatic via TabManager
     // Tabs are automatically assigned on session creation and created on first message
     // if (isToolEnabled('tab_tool')) {

@@ -37,7 +37,7 @@ describe('SessionCacheManager', () => {
     }
   });
 
-  // T014-T016: Storage Key Generation
+  // Storage Key Generation
   describe('Storage Key Generation', () => {
     it('should generate valid storage keys with format sessionId_taskId_turnId', () => {
       const key = manager.generateStorageKey('conv_test123');
@@ -73,7 +73,7 @@ describe('SessionCacheManager', () => {
     });
   });
 
-  // T017-T021: Core Operations
+  // Core Operations
   describe('Write Operations', () => {
     it('should write data and return metadata only', async () => {
       const data = { test: 'data', numbers: [1, 2, 3] };
@@ -247,7 +247,7 @@ describe('SessionCacheManager', () => {
     });
   });
 
-  // T018-T021: Session Stats
+  // Session Stats
   describe('Session Statistics', () => {
     it('should track session total size and item count', async () => {
       await manager.write('conv_stats', { data: 1 }, 'Item 1');
@@ -306,7 +306,7 @@ describe('SessionCacheManager', () => {
     });
   });
 
-  // T022-T026: Quota & Auto-Eviction
+  // Quota & Auto-Eviction
   describe('Auto-Eviction', () => {
     it('should track session quota usage correctly', async () => {
       // Write several items

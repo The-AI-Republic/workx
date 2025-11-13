@@ -348,35 +348,35 @@ For fastest path to MVP with P1 stories only:
 ### Parallel Opportunities
 
 **Setup Phase (Phase 1)**:
-- T003-T006: Import updates in different files can run in parallel
-- T009-T011: Test file updates can run in parallel
+- Import updates in different files can run in parallel
+- Test file updates can run in parallel
 
 **Foundational Phase (Phase 2)**:
-- T014-T019: TabGroupManager method copying can run in parallel
-- T023-T025: Test file updates can run in parallel
-- T031-T032: Cleanup tasks can run in parallel
+- TabGroupManager method copying can run in parallel
+- Test file updates can run in parallel
+- Cleanup tasks can run in parallel
 
 **User Story 1 (Phase 3)**:
-- T040-T043: All test additions can run in parallel
+- All test additions can run in parallel
 
 **User Story 2 (Phase 4)**:
-- T050-T053: All test additions can run in parallel
+- All test additions can run in parallel
 
 **User Story 4 (Phase 6)**:
-- T063-T067: All test additions can run in parallel
+- All test additions can run in parallel
 
 **User Story 6 (Phase 7)**:
-- T077-T080: All test creations can run in parallel
+- All test creations can run in parallel
 
 **User Story 3 (Phase 8)**:
-- T097-T103: All test additions can run in parallel
+- All test additions can run in parallel
 
 **Polish Phase (Phase 9)**:
-- T106-T108: Tool exclusion tasks can run in parallel with other polish tasks
-- T109-T112: Edge case handling can run in parallel
-- T113-T116: Integration test updates can run in parallel
-- T117-T119: Performance tests can run in parallel
-- T120-T122: Documentation cleanup can run in parallel
+- Tool exclusion tasks can run in parallel with other polish tasks
+- Edge case handling can run in parallel
+- Integration test updates can run in parallel
+- Performance tests can run in parallel
+- Documentation cleanup can run in parallel
 
 ---
 
@@ -385,10 +385,10 @@ For fastest path to MVP with P1 stories only:
 ```bash
 # After Foundational (Phase 2) completes, launch all User Story 1 tests in parallel:
 
-Task T040: "Add test for session binding to active tab in tests/integration/session-tab-lifecycle.test.ts"
-Task T041: "Add test for session with no active tab in tests/integration/session-tab-lifecycle.test.ts"
-Task T042: "Add test for multiple windows scenario in tests/integration/session-tab-lifecycle.test.ts"
-Task T043: "Update contract tests in tests/contract/tab-binding.contract.test.ts"
+Task "Add test for session binding to active tab in tests/integration/session-tab-lifecycle.test.ts"
+Task "Add test for session with no active tab in tests/integration/session-tab-lifecycle.test.ts"
+Task "Add test for multiple windows scenario in tests/integration/session-tab-lifecycle.test.ts"
+Task "Update contract tests in tests/contract/tab-binding.contract.test.ts"
 
 # All 4 test tasks can be executed simultaneously by different agents/developers
 ```

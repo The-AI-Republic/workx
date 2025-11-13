@@ -293,7 +293,7 @@ export class ModelClientFactory {
   }
 
   /**
-   * T046: Load configuration for a provider from AgentConfig
+   * Load configuration for a provider from AgentConfig
    * @param provider The provider
    * @returns Promise resolving to the client configuration
    * Note: API key can be null - validation happens when making API requests

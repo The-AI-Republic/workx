@@ -35,7 +35,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     }
   });
 
-  describe('T040: Email Summaries Use Case', () => {
+  describe('Email Summaries Use Case', () => {
     it('should cache 10 email summaries, return metadata only, and list all items', async () => {
       // Create 10 email summary objects (~50KB each)
       const emailSummaries = [];
@@ -140,7 +140,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
   });
 
-  describe('T041: Performance Requirements', () => {
+  describe('Performance Requirements', () => {
     it('should write 1MB data in <100ms and return metadata <700 bytes', async () => {
       // Create 1MB of data
       const largeData = {
@@ -210,7 +210,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
   });
 
-  describe('T042: Description Truncation Edge Case', () => {
+  describe('Description Truncation Edge Case', () => {
     it('should truncate descriptions longer than 500 characters with ellipsis', async () => {
       // Create 600-character description
       const longDescription = 'This is a very long description that exceeds the maximum allowed length of 500 characters. '.repeat(7);
@@ -284,12 +284,12 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
   });
 
-  describe('T050-T052: US2 Integration Tests', () => {
-    it('T050: should support full write-list-read-delete cycle with data integrity', async () => {
+  describe('US2 Integration Tests', () => {
+    it('should support full write-list-read-delete cycle with data integrity', async () => {
       // Already covered above in "End-to-End Cache Lifecycle" test
     });
 
-    it('T051: should retrieve items sequentially without context accumulation', async () => {
+    it('should retrieve items sequentially without context accumulation', async () => {
       const sessionId = 'conv_sequential';
 
       // Cache 5 items
@@ -338,7 +338,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
       }
     });
 
-    it('T052: should retrieve 5KB item with full content for downstream processing', async () => {
+    it('should retrieve 5KB item with full content for downstream processing', async () => {
       const sessionId = 'conv_5kb';
 
       // Create 5KB item
@@ -382,8 +382,8 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
   });
 
-  describe('T053-T054: Session Isolation', () => {
-    it('T053-T054: should isolate cache entries by session', async () => {
+  describe('Session Isolation', () => {
+    it('should isolate cache entries by session', async () => {
       const sessionA = 'conv_session_a';
       const sessionB = 'conv_session_b';
 
@@ -556,8 +556,8 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
   });
 
-  describe('T071-T073: Progressive Updates Integration', () => {
-    it('T071: should support progressive updates - cache partial then complete results', async () => {
+  describe('Progressive Updates Integration', () => {
+    it('should support progressive updates - cache partial then complete results', async () => {
       const sessionId = 'conv_progressive';
 
       // 1. Cache partial results (10 items)
@@ -634,7 +634,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
       expect(readResult.data.item.description).toBe('Complete data collection results (15/15 items)');
     });
 
-    it('T072: should update metadata correctly - description, timestamp, dataSize', async () => {
+    it('should update metadata correctly - description, timestamp, dataSize', async () => {
       const sessionId = 'conv_metadata_update';
 
       // 1. Write initial item with small data
@@ -715,7 +715,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
       expect(timestamp3).toBeGreaterThan(timestamp2);
     });
 
-    it('T073: should handle concurrent updates - last write wins', async () => {
+    it('should handle concurrent updates - last write wins', async () => {
       const sessionId = 'conv_concurrent';
 
       // 1. Write initial item

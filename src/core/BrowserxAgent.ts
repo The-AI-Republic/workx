@@ -647,7 +647,7 @@ export class BrowserxAgent {
     context?: { tabId?: number }
   ): Promise<void> {
     await this.processUserInputWithTask(op.items, {
-      tabId: op.tabId, // T093: Replaced cwd with tabId
+      tabId: op.tabId, // Replaced cwd with tabId
       approval_policy: op.approval_policy,
       sandbox_policy: op.sandbox_policy,
       model: op.model,
@@ -677,7 +677,7 @@ export class BrowserxAgent {
     // Partial update of turn context
     const updates: any = {};
 
-    if (op.tabId !== undefined) updates.tabId = op.tabId; // T093: Replaced cwd with tabId
+    if (op.tabId !== undefined) updates.tabId = op.tabId; // Replaced cwd with tabId
     if (op.approval_policy !== undefined) updates.approval_policy = op.approval_policy;
     if (op.sandbox_policy !== undefined) updates.sandbox_policy = op.sandbox_policy;
     if (op.model !== undefined) updates.model = op.model;

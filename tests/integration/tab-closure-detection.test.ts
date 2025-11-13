@@ -71,7 +71,7 @@ describe('Tab Closure Detection Integration Tests', () => {
     vi.clearAllMocks();
   });
 
-  describe('T051: Tab Closure Detection', () => {
+  describe('Tab Closure Detection', () => {
     it('should detect when tab is closed by user', async () => {
       const sessionId = 'session-1';
       const tabId = 123;
@@ -257,7 +257,7 @@ describe('Tab Closure Detection Integration Tests', () => {
     });
   });
 
-  describe('T052: Tab Crash Detection', () => {
+  describe('Tab Crash Detection', () => {
     it('should detect when tab crashes', async () => {
       const sessionId = 'session-1';
       const tabId = 123;

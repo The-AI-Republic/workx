@@ -59,7 +59,7 @@ export class TabManager {
   }
 
   /**
-   * T015: Initialize binding manager
+   * Initialize binding manager
    * Sets up event listeners for tab lifecycle
    */
   async initialize(): Promise<void> {
@@ -67,21 +67,21 @@ export class TabManager {
       return;
     }
 
-    // T016: Register chrome.tabs.onRemoved event listener
+    // Register chrome.tabs.onRemoved event listener
     chrome.tabs.onRemoved.addListener(this.handleTabRemoved.bind(this));
 
-    // T017: Register chrome.tabs.onUpdated event listener (for crash detection)
+    // Register chrome.tabs.onUpdated event listener (for crash detection)
     chrome.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
 
-    // T020: Initialize tab group (find or prepare to create "browserx" group)
+    // Initialize tab group (find or prepare to create "browserx" group)
     await this.ensureBrowserXGroup();
 
     this.initialized = true;
   }
 
   /**
-   * T007: Bind a tab to a session (last-write-wins logic)
-   * T085: Notify previous session when it loses tab binding
+   * Bind a tab to a session (last-write-wins logic)
+   * Notify previous session when it loses tab binding
    * @param options.silent - If true, suppress unbind notifications (used for context-based tab switching)
    */
   async bindTabToSession(
@@ -96,7 +96,7 @@ export class TabManager {
     const existingSessionId = this.tabToSession.get(tabId);
     if (existingSessionId && existingSessionId !== sessionId) {
       // Last-write-wins: unbind previous session's tab
-      // T085: Notify the previous session that it lost its tab binding (tab is still open, just reassigned)
+      // Notify the previous session that it lost its tab binding (tab is still open, just reassigned)
       await this.unbindTab(tabId, 'rebind', silent);
       console.log(`[TabManager] Tab ${tabId} rebound from session ${existingSessionId} to ${sessionId}`);
     }
@@ -124,7 +124,7 @@ export class TabManager {
     this.sessionToTab.set(sessionId, tabId);
     this.bindings.set(tabId, binding);
 
-    // T021: Add tab to BrowserX group after binding
+    // Add tab to BrowserX group after binding
     await this.addTabToGroup(tabId);
 
     // Return information about whether this was a tab switch
@@ -135,7 +135,7 @@ export class TabManager {
   }
 
   /**
-   * T008: Unbind a tab from its session
+   * Unbind a tab from its session
    * @param reason - Reason for unbinding (used for notification callbacks)
    * @param silent - If true, suppress unbind notifications
    */
@@ -157,7 +157,7 @@ export class TabManager {
   }
 
   /**
-   * T009: Unbind a session from its tab
+   * Unbind a session from its tab
    * @param reason - Reason for unbinding (used for notification callbacks)
    * @param silent - If true, suppress unbind notifications
    */
@@ -179,28 +179,28 @@ export class TabManager {
   }
 
   /**
-   * T010: Get the session bound to a tab
+   * Get the session bound to a tab
    */
   getSessionForTab(tabId: number): string | undefined {
     return this.tabToSession.get(tabId);
   }
 
   /**
-   * T011: Get the tab bound to a session
+   * Get the tab bound to a session
    */
   getTabForSession(sessionId: string): number {
     return this.sessionToTab.get(sessionId) ?? -1;
   }
 
   /**
-   * T012: Get full binding information for a tab
+   * Get full binding information for a tab
    */
   getBinding(tabId: number): TabBindingState | undefined {
     return this.bindings.get(tabId);
   }
 
   /**
-   * T013: Validate that a tab exists and is accessible
+   * Validate that a tab exists and is accessible
    * Performance requirement: <100ms
    */
   async validateTab(tabId: number): Promise<TabValidationState> {
@@ -234,7 +234,7 @@ export class TabManager {
   }
 
   /**
-   * T018: Register a callback for tab closure events (when tab is actually closed)
+   * Register a callback for tab closure events (when tab is actually closed)
    */
   onTabClosed(callback: TabClosedCallback): void {
     this.tabClosedCallbacks.push(callback);
@@ -248,7 +248,7 @@ export class TabManager {
   }
 
   /**
-   * T016: Handle tab removed event
+   * Handle tab removed event
    */
   private handleTabRemoved(tabId: number, removeInfo: chrome.tabs.TabRemoveInfo): void {
     const sessionId = this.tabToSession.get(tabId);
@@ -266,7 +266,7 @@ export class TabManager {
   }
 
   /**
-   * T017: Handle tab updated event (for crash detection)
+   * Handle tab updated event (for crash detection)
    */
   private handleTabUpdated(
     tabId: number,
@@ -317,12 +317,12 @@ export class TabManager {
   }
 
   /**
-   * T015: Ensure BrowserX tab group exists (merged from TabGroupManager)
+   * Ensure BrowserX tab group exists (merged from TabGroupManager)
    * Finds or prepares to create the "browserx" tab group
-   * T112: Gracefully degrades if chrome.tabGroups API is unavailable
+   * Gracefully degrades if chrome.tabGroups API is unavailable
    */
   private async ensureBrowserXGroup(): Promise<void> {
-    // T112: Check if tab groups API is available
+    // Check if tab groups API is available
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.warn('[TabManager] Tab Groups API not available, grouping disabled');
       this.groupId = null;
@@ -353,7 +353,7 @@ export class TabManager {
   }
 
   /**
-   * T016: Create BrowserX tab group (merged from TabGroupManager)
+   * Create BrowserX tab group (merged from TabGroupManager)
    * @param tabId - Initial tab to add to the group
    */
   private async createBrowserXGroup(tabId: number): Promise<void> {
@@ -392,7 +392,7 @@ export class TabManager {
   }
 
   /**
-   * T017: Check if tab is in a normal window (merged from TabGroupManager)
+   * Check if tab is in a normal window (merged from TabGroupManager)
    */
   private async isTabInNormalWindow(tab: chrome.tabs.Tab): Promise<boolean> {
     if (tab.windowId === undefined || tab.id === undefined) {
@@ -416,7 +416,7 @@ export class TabManager {
   }
 
   /**
-   * T018: Ensure tab is in a normal window (merged from TabGroupManager)
+   * Ensure tab is in a normal window (merged from TabGroupManager)
    */
   private async ensureTabInNormalWindow(
     tab: chrome.tabs.Tab,
@@ -482,7 +482,7 @@ export class TabManager {
   }
 
   /**
-   * T019: Move tab to window (merged from TabGroupManager)
+   * Move tab to window (merged from TabGroupManager)
    */
   private async moveTabToWindow(tabId: number, windowId: number): Promise<chrome.tabs.Tab | null> {
     try {
@@ -500,7 +500,7 @@ export class TabManager {
   }
 
   /**
-   * T022: Create and bind a new tab to a session
+   * Create and bind a new tab to a session
    * @param sessionId - Session ID to bind the tab to
    * @param options - Tab creation options (url, active, etc.)
    * @returns The created tab ID, or null if creation failed
@@ -536,10 +536,10 @@ export class TabManager {
 
   /**
    * Add tab to BrowserX group (helper for createAndBindTab and bindTabToSession)
-   * T112: Gracefully degrades if tab groups API is unavailable
+   * Gracefully degrades if tab groups API is unavailable
    */
   private async addTabToGroup(tabId: number): Promise<number | null> {
-    // T112: Skip grouping if API is unavailable
+    // Skip grouping if API is unavailable
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.log('[TabManager] Tab Groups API not available, skipping grouping');
       return null;
@@ -596,10 +596,10 @@ export class TabManager {
 
   /**
    * Remove tab from BrowserX group when unbound from session
-   * T112: Gracefully degrades if tab groups API is unavailable
+   * Gracefully degrades if tab groups API is unavailable
    */
   private async removeTabFromGroup(tabId: number): Promise<void> {
-    // T112: Skip ungrouping if API is unavailable
+    // Skip ungrouping if API is unavailable
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.log('[TabManager] Tab Groups API not available, skipping ungrouping');
       return;

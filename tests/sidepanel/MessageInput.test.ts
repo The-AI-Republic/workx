@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import MessageInput from '../../src/sidepanel/components/MessageInput.svelte';
 
 describe('MessageInput Component', () => {
-  // T077: Component rendering test
+  // Component rendering test
   describe('Component Rendering', () => {
     it('should render with all props', () => {
       const onSubmit = vi.fn();
@@ -49,7 +49,7 @@ describe('MessageInput Component', () => {
     });
   });
 
-  // T078: TabContext integration test
+  // TabContext integration test
   describe('TabContext Integration', () => {
     it('should display TabContext with correct tabId', () => {
       const { container } = render(MessageInput, {
@@ -77,7 +77,7 @@ describe('MessageInput Component', () => {
     });
   });
 
-  // T079: Enter key submit test
+  // Enter key submit test
   describe('Keyboard Interactions', () => {
     it('should submit on Enter key without Shift', async () => {
       const onSubmit = vi.fn();
@@ -161,7 +161,7 @@ describe('MessageInput Component', () => {
     });
   });
 
-  // T080: Value binding test
+  // Value binding test
   describe('Value Binding', () => {
     it('should reflect value prop in textarea', () => {
       const { component } = render(MessageInput, {
@@ -192,7 +192,7 @@ describe('MessageInput Component', () => {
     });
   });
 
-  // T081: Placeholder test
+  // Placeholder test
   describe('Placeholder', () => {
     it('should display custom placeholder', () => {
       render(MessageInput, {
@@ -220,7 +220,7 @@ describe('MessageInput Component', () => {
     });
   });
 
-  // T082: Accessibility test
+  // Accessibility test
   describe('Accessibility', () => {
     it('should be keyboard accessible', () => {
       render(MessageInput, {

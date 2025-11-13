@@ -150,7 +150,7 @@ export class Session {
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        tabId: this.sessionState.getTabId(), // T093: Replaced cwd with tabId
+        tabId: this.sessionState.getTabId(), // Replaced cwd with tabId
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -464,7 +464,7 @@ export class Session {
    * Build initial context for review mode
    */
   buildInitialContext(turnContext?: any): any[] {
-    // T093: Replaced working directory with tab context
+    // Replaced working directory with tab context
     const tabId = turnContext?.tabId ?? -1;
     const tabContext = tabId === -1 ? 'No tab bound' : `Tab ID: ${tabId}`;
 
@@ -535,9 +535,6 @@ export class Session {
     // Reset tab binding to -1 (unbound)
     // Tab will be auto-bound by UI when side panel reopens
     this.sessionState.setTabId(-1);
-    if (this.turnContext && typeof this.turnContext.setTabId === 'function') {
-      this.turnContext.setTabId(-1);
-    }
 
     // Reinitialize with RolloutRecorder if enabled
     if (this.isPersistent && this.services?.rollout) {

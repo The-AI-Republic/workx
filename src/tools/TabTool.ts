@@ -18,7 +18,7 @@ export interface TabToolRequest extends BaseToolRequest {
   url?: string;
   properties?: TabProperties;
   query?: TabQuery;
-  sessionId?: string; // T043: Add sessionId for session-aware tab creation
+  sessionId?: string; // Add sessionId for session-aware tab creation
 }
 
 /**
@@ -175,17 +175,17 @@ export class TabTool extends BaseTool {
 
   /**
    * Create a new tab
-   * T043-T050: Session-aware tab creation
+   * Session-aware tab creation
    */
   private async createTab(request: TabToolRequest): Promise<TabToolResponse> {
-    // T043: Check if session already has a tab bound
+    // Check if session already has a tab bound
     if (request.sessionId) {
       const bindingManager = TabManager.getInstance();
       const existingTabId = bindingManager.getTabForSession(request.sessionId);
 
-      // T046: Prevent creating new tab if session already has one
+      // Prevent creating new tab if session already has one
       if (existingTabId !== -1) {
-        // T047: Return descriptive error when tab creation attempted with bound session
+        // Return descriptive error when tab creation attempted with bound session
         const binding = bindingManager.getBinding(existingTabId);
         const tabTitle = binding?.tabTitle || 'Unknown';
         const errorMessage = `Cannot create new tab: session is already bound to tab ${existingTabId} ("${tabTitle}"). ` +
@@ -197,15 +197,15 @@ export class TabTool extends BaseTool {
           tabTitle,
         });
 
-        // T048: User-friendly error message
-        // T049: TabCreationError maintains context for retry capability
+        // User-friendly error message
+        // TabCreationError maintains context for retry capability
         throw new TabCreationError(
           errorMessage,
           request.sessionId
         );
       }
 
-      // T050: Log tab creation attempt
+      // Log tab creation attempt
       this.log('info', `Creating new tab for session ${request.sessionId}`, {
         sessionId: request.sessionId,
         url: request.url || 'about:blank',
@@ -235,8 +235,8 @@ export class TabTool extends BaseTool {
 
       const tabInfo = this.convertTabToInfo(tab);
 
-      // T044: Bind created tab to session via TabManager
-      // T045: Update session.tabId after successful creation
+      // Bind created tab to session via TabManager
+      // Update session.tabId after successful creation
       if (request.sessionId) {
         const bindingManager = TabManager.getInstance();
 
@@ -260,7 +260,7 @@ export class TabTool extends BaseTool {
           bindingTabInfo
         );
 
-        // T050: Log successful tab creation and binding
+        // Log successful tab creation and binding
         this.log('info', `Created and bound tab ${tab.id} to session ${request.sessionId}`, {
           sessionId: request.sessionId,
           tabId: tab.id,
@@ -268,7 +268,7 @@ export class TabTool extends BaseTool {
           title: tab.title,
         });
       } else {
-        // T050: Log tab creation without session binding
+        // Log tab creation without session binding
         this.log('info', `Created tab with ID: ${tab.id} (no session binding)`, tabInfo);
       }
 
@@ -277,14 +277,14 @@ export class TabTool extends BaseTool {
         tabId: tab.id,
       };
     } catch (error) {
-      // T048: Implement tab creation error handling with user-friendly messages
-      // T049: TabCreationError maintains tabId = -1 for retry capability
+      // Implement tab creation error handling with user-friendly messages
+      // TabCreationError maintains tabId = -1 for retry capability
       if (error instanceof TabCreationError) {
         // Re-throw TabCreationError as-is (already has proper format)
         throw error;
       }
 
-      // T050: Log tab creation failure
+      // Log tab creation failure
       if (request.sessionId) {
         this.log('error', `Failed to create tab for session ${request.sessionId}`, {
           sessionId: request.sessionId,

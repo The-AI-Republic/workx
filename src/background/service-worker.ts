@@ -52,10 +52,9 @@ async function initialize(): Promise<void> {
  * Actual initialization logic
  */
 async function doInitialize(): Promise<void> {
-  // T027: Initialize TabManager at service worker level (before agent)
+  // Initialize TabManager at service worker level (before agent)
   const tabManager = TabManager.getInstance();
   await tabManager.initialize();
-  console.log('[Service Worker] TabManager initialized');
 
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
@@ -176,69 +175,6 @@ function setupMessageHandlers(): void {
     throw new Error('Agent not initialized');
   });
 
-  // Handle manual tab selection from UI (US3)
-  router.on(MessageType.UPDATE_SESSION_TAB, async (message: { payload?: { tabId: number } }) => {
-    if (!agent) {
-      throw new Error('Agent not initialized');
-    }
-
-    const tabId = message.payload?.tabId;
-    if (tabId === undefined || tabId === null) {
-      console.error('Tab ID is required in UPDATE_SESSION_TAB message');
-      return;
-    }
-
-    // Get current session
-    const session = agent.getSession();
-    const sessionId = session.getId();
-
-    // Get TabManager instance
-    const tabManager = TabManager.getInstance();
-
-    try {
-      // Handle unbinding case (tabId = -1)
-      if (tabId === -1) {
-        // Unbind session from TabManager
-        tabManager.unbindSession(sessionId);
-
-        // Update session state (tabId is now only in SessionState, not TurnContext)
-        session.setTabId(-1);
-
-        console.log(`[ServiceWorker] Session ${sessionId} tab unbound (tabId set to -1)`);
-
-        return;
-      }
-
-      // Handle binding case (tabId >= 0)
-      // Get tab info
-      const tab = await chrome.tabs.get(tabId);
-
-      // Bind tab to session via TabManager
-      await tabManager.bindTabToSession(sessionId, tabId, {
-        title: tab.title || 'Untitled',
-        url: tab.url || '',
-      });
-
-      // Update session state (tabId is now only in SessionState, not TurnContext)
-      session.setTabId(tabId);
-
-      console.log(`[ServiceWorker] Session ${sessionId} tab updated to ${tabId}`);
-
-      // Return success
-      return {
-        type: MessageType.STATE_UPDATE,
-        payload: {
-          tabId,
-          sessionId,
-          timestamp: Date.now(),
-        },
-      };
-    } catch (error) {
-      console.error(`[ServiceWorker] Failed to update session tab:`, error);
-      throw error;
-    }
-  });
-
   // Handle stop agent session (from visual effects Stop Agent button)
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'STOP_AGENT_SESSION') {
@@ -248,7 +184,7 @@ function setupMessageHandlers(): void {
             const session = agent.getSession();
 
             // Abort all running tasks
-            await session.abortAllTasks('user_stop_button');
+            await session.abortAllTasks('UserInterrupt');
 
             // Reset the session
             await session.reset();

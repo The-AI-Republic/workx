@@ -502,8 +502,8 @@ export abstract class BaseTool {
   }
 
   /**
-   * T060: Validate session's bound tab before browser operations
-   * T061: Throw TabInvalidError when validation fails
+   * Validate session's bound tab before browser operations
+   * Throw TabInvalidError when validation fails
    *
    * @param sessionId - Session ID to validate tab for
    * @returns The valid tab
@@ -528,7 +528,7 @@ export abstract class BaseTool {
     const validation = await bindingManager.validateTab(tabId);
 
     if (validation.status === 'invalid') {
-      // T061: Throw TabInvalidError when validation fails
+      // Throw TabInvalidError when validation fails
       throw new TabInvalidError(tabId, validation.reason, sessionId);
     }
 

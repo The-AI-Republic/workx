@@ -201,7 +201,7 @@ export class TurnContext {
     this.sandboxPolicy = policy;
   }
 
-  // T030: Removed isPathWritable method (no longer applicable with tab-based context)
+  // Removed isPathWritable method (no longer applicable with tab-based context)
 
   /**
    * Check if network access is allowed

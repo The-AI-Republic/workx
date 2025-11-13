@@ -134,7 +134,7 @@ export interface EventMetadata {
   // Command Execution
   command?: string;               // Original command
   exitCode?: number;              // Exit code (0 = success)
-  tabId?: number;                 // T093: Browser tab ID (replaced workingDir/cwd)
+  tabId?: number;                 // Browser tab ID (replaced workingDir/cwd)
 
   // Tool Calls
   toolName?: string;              // MCP tool name
