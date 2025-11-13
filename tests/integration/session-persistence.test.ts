@@ -15,17 +15,17 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Session } from '../../src/core/Session';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import type { SessionServices } from '../../src/core/Session';
 
 describe('Session Persistence Integration Tests', () => {
   let chromeMock: any;
   let mockServices: SessionServices;
-  let tabBindingManager: TabBindingManager;
+  let tabBindingManager: TabManager;
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Mock chrome APIs
     chromeMock = {
@@ -61,8 +61,8 @@ describe('Session Persistence Integration Tests', () => {
     };
     global.chrome = chromeMock as any;
 
-    // Initialize TabBindingManager
-    tabBindingManager = TabBindingManager.getInstance();
+    // Initialize TabManager
+    tabBindingManager = TabManager.getInstance();
     await tabBindingManager.initialize();
 
     // Mock services
@@ -200,9 +200,9 @@ describe('Session Persistence Integration Tests', () => {
         },
       });
 
-      // Re-initialize TabBindingManager to load bindings
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      // Re-initialize TabManager to load bindings
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Import session
@@ -256,8 +256,8 @@ describe('Session Persistence Integration Tests', () => {
       });
 
       // Re-initialize
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Validation should pass
@@ -297,8 +297,8 @@ describe('Session Persistence Integration Tests', () => {
       });
 
       // Re-initialize (defensive restoration should clean up invalid bindings)
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Import session (should handle invalid tab gracefully)
@@ -329,7 +329,7 @@ describe('Session Persistence Integration Tests', () => {
   });
 
   describe('US4: Persistence Across Restarts', () => {
-    it('should maintain binding after TabBindingManager restart', async () => {
+    it('should maintain binding after TabManager restart', async () => {
       const mockTab = {
         id: 333,
         url: 'https://restart.com',
@@ -349,8 +349,8 @@ describe('Session Persistence Integration Tests', () => {
       // Verify binding
       expect(tabBindingManager.getTabForSession('session-restart')).toBe(333);
 
-      // Simulate restart: destroy and recreate TabBindingManager
-      (TabBindingManager as any).instance = null;
+      // Simulate restart: destroy and recreate TabManager
+      (TabManager as any).instance = null;
 
       // Mock storage returns persisted binding
       chromeMock.storage.local.get.mockResolvedValue({
@@ -370,7 +370,7 @@ describe('Session Persistence Integration Tests', () => {
       });
 
       // Reinitialize
-      const newBindingManager = TabBindingManager.getInstance();
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Binding should be restored
@@ -425,8 +425,8 @@ describe('Session Persistence Integration Tests', () => {
       });
 
       // Reinitialize
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Valid binding should exist
@@ -479,9 +479,9 @@ describe('Session Persistence Integration Tests', () => {
         },
       });
 
-      // Reinitialize TabBindingManager
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      // Reinitialize TabManager
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Import
@@ -532,8 +532,8 @@ describe('Session Persistence Integration Tests', () => {
         });
 
         // Reinitialize
-        (TabBindingManager as any).instance = null;
-        const newManager = TabBindingManager.getInstance();
+        (TabManager as any).instance = null;
+        const newManager = TabManager.getInstance();
         await newManager.initialize();
 
         // Import

@@ -1,7 +1,7 @@
 /**
- * Unit Test: TabBindingManager Event Handlers
+ * Unit Test: TabManager Event Handlers
  *
- * Purpose: Validates TabBindingManager event handling logic
+ * Purpose: Validates TabManager event handling logic
  *
  * Test Coverage:
  * - Tab removal event handling
@@ -12,15 +12,15 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 
-describe('TabBindingManager Event Handlers Unit Tests', () => {
+describe('TabManager Event Handlers Unit Tests', () => {
   let chromeMock: any;
-  let manager: TabBindingManager;
+  let manager: TabManager;
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Mock chrome APIs
     chromeMock = {
@@ -42,7 +42,7 @@ describe('TabBindingManager Event Handlers Unit Tests', () => {
     };
     global.chrome = chromeMock as any;
 
-    manager = TabBindingManager.getInstance();
+    manager = TabManager.getInstance();
     await manager.initialize();
   });
 

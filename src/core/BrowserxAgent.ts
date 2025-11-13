@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerTools } from '../tools';
+import { TabManager } from './TabManager';
 
 /**
  * Main agent class managing the submission and event queues
@@ -130,34 +131,31 @@ export class BrowserxAgent {
    * User Story 2: Detect tab closure and stop execution
    */
   private setupTabClosureHandler(): void {
-    // Import dynamically to avoid circular dependencies
-    import('./TabBindingManager').then(({ TabBindingManager }) => {
-      const tabBindingManager = TabBindingManager.getInstance();
+    const tabBindingManager = TabManager.getInstance();
 
-      tabBindingManager.onTabClosed(async (sessionId: string, tabId: number) => {
-        console.log(`[BrowserxAgent] Tab ${tabId} closed for session ${sessionId}`);
+    tabBindingManager.onTabClosed(async (sessionId: string, tabId: number) => {
+      console.log(`[BrowserxAgent] Tab ${tabId} closed for session ${sessionId}`);
 
-        // Reset session's tabId to -1
-        if (this.session && this.session.getId() === sessionId) {
-          // Access sessionState to reset tabId
-          const sessionState = (this.session as any).sessionState;
-          if (sessionState && typeof sessionState.setTabId === 'function') {
-            sessionState.setTabId(-1);
-            console.log(`[BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
-          }
-
-          // Abort all running tasks
-          await this.session.abortAllTasks('TabClosed');
-
-          // Show notification to user
-          await this.userNotifier.notifyWarning(
-            'Tab Closed',
-            'The tab has been closed'
-          );
-
-          console.log(`[BrowserxAgent] Stopped tasks and notified user for session ${sessionId}`);
+      // Reset session's tabId to -1
+      if (this.session && this.session.getId() === sessionId) {
+        // Access sessionState to reset tabId
+        const sessionState = (this.session as any).sessionState;
+        if (sessionState && typeof sessionState.setTabId === 'function') {
+          sessionState.setTabId(-1);
+          console.log(`[BrowserxAgent] Reset tabId to -1 for session ${sessionId}`);
         }
-      });
+
+        // Abort all running tasks
+        await this.session.abortAllTasks('TabClosed');
+
+        // Show notification to user
+        await this.userNotifier.notifyWarning(
+          'Tab Closed',
+          'The tab has been closed'
+        );
+
+        console.log(`[BrowserxAgent] Stopped tasks and notified user for session ${sessionId}`);
+      }
     });
   }
 
@@ -393,6 +391,46 @@ export class BrowserxAgent {
     newTask: boolean = false
   ): Promise<void> {
     try {
+      // T045-T049: User Story 2 - Automatic tab creation on first message
+      // Check if session has no tab bound (tabId = -1) and create one
+      const currentTabId = this.session.getTabId();
+      if (currentTabId === -1) {
+        console.log('[BrowserxAgent] No tab bound to session, creating new tab');
+        try {
+          // T046: Call TabManager.createAndBindTab() with about:blank URL
+          const tabManager = TabManager.getInstance();
+          const newTabId = await tabManager.createAndBindTab(this.session.getId(), {
+            url: 'about:blank',
+            active: false,
+          });
+
+          if (newTabId) {
+            // T047: Update session's tabId after successful tab creation
+            this.session.setTabId(newTabId);
+            console.log(`[BrowserxAgent] Created and bound new tab ${newTabId} to session ${this.session.getId()}`);
+            // T049: Tab is automatically added to "browserx" group by TabManager.createAndBindTab
+          } else {
+            // T048: Add error handling for tab creation failures
+            const errorMsg = 'Failed to create tab for session: tab creation returned null';
+            console.error(`[BrowserxAgent] ${errorMsg}`);
+            await this.userNotifier.notifyError(
+              'Tab Creation Failed',
+              'Could not create a browser tab for this session. Please try again or manually create a tab.'
+            );
+            throw new Error(errorMsg);
+          }
+        } catch (error) {
+          // T048: Handle any errors during tab creation
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
+          console.error('[BrowserxAgent] Error creating tab:', errorMsg);
+          await this.userNotifier.notifyError(
+            'Tab Creation Failed',
+            `Failed to create browser tab: ${errorMsg}`
+          );
+          throw error;
+        }
+      }
+
       // Convert input items to InputItem format for SessionTask
       const inputItems: InputItem[] = items.map(item => ({
         type: item.type || 'text',

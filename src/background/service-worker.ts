@@ -12,6 +12,7 @@ import { CacheManager } from '../storage/CacheManager';
 import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
 import { AgentConfig } from '../config/AgentConfig';
+import { TabManager } from '../core/TabManager';
 
 // Global instances
 let agent: BrowserxAgent | null = null;
@@ -51,6 +52,11 @@ async function initialize(): Promise<void> {
  * Actual initialization logic
  */
 async function doInitialize(): Promise<void> {
+  // T027: Initialize TabManager at service worker level (before agent)
+  const tabManager = TabManager.getInstance();
+  await tabManager.initialize();
+  console.log('[Service Worker] TabManager initialized');
+
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
 
@@ -103,12 +109,19 @@ function setupMessageHandlers(): void {
     if (!agent) return null;
 
     const session = agent.getSession();
+    const sessionId = session.getId();
+
+    // Get current tab binding for this session
+    const tabManager = TabManager.getInstance();
+    const tabId = tabManager.getTabForSession(sessionId);
+
     return {
       sessionId: session.conversationId,
       messageCount: session.getMessageCount(),
       turnContext: session.getTurnContext(),
       metadata: session.getMetadata(),
       isActiveTurn: session.isActiveTurn(), // Include active turn status
+      tabId: tabId, // US3: Include current tab binding
     };
   });
   
@@ -151,6 +164,50 @@ function setupMessageHandlers(): void {
       return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
     }
     throw new Error('Agent not initialized');
+  });
+
+  // Handle manual tab selection from UI (US3)
+  router.on(MessageType.UPDATE_SESSION_TAB, async (message: { payload?: { tabId: number } }) => {
+    if (!agent) {
+      throw new Error('Agent not initialized');
+    }
+
+    const tabId = message.payload?.tabId;
+    if (tabId === undefined || tabId === null) {
+      throw new Error('Tab ID is required');
+    }
+
+    // Get current session
+    const session = agent.getSession();
+    const sessionId = session.getId();
+
+    // Update tab binding via TabManager
+    try {
+      // Get tab info
+      const tab = await chrome.tabs.get(tabId);
+
+      // Get TabManager instance and bind tab to session
+      const tabManager = TabManager.getInstance();
+      await tabManager.bindTabToSession(sessionId, tabId, {
+        title: tab.title || 'Untitled',
+        url: tab.url || '',
+      });
+
+      console.log(`[ServiceWorker] Session ${sessionId} tab updated to ${tabId}`);
+
+      // Return success
+      return {
+        type: MessageType.STATE_UPDATE,
+        payload: {
+          tabId,
+          sessionId,
+          timestamp: Date.now(),
+        },
+      };
+    } catch (error) {
+      console.error(`[ServiceWorker] Failed to update session tab:`, error);
+      throw error;
+    }
   });
 
   // Handle stop agent session (from visual effects Stop Agent button)
@@ -672,7 +729,8 @@ chrome.runtime.onStartup.addListener(() => {
 /**
  * Handle service worker installation
  */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  // Continue with normal initialization
   initialize();
 });
 

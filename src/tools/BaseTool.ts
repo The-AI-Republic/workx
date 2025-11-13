@@ -509,11 +509,11 @@ export abstract class BaseTool {
    * @throws TabInvalidError if tab is invalid
    */
   protected async validateSessionTab(sessionId: string): Promise<chrome.tabs.Tab> {
-    // Import TabBindingManager and TabInvalidError dynamically to avoid circular dependencies
-    const { TabBindingManager } = await import('../core/TabBindingManager');
+    // Import TabManager and TabInvalidError dynamically to avoid circular dependencies
+    const { TabManager } = await import('../core/TabManager');
     const { TabInvalidError } = await import('../types/errors');
 
-    const bindingManager = TabBindingManager.getInstance();
+    const bindingManager = TabManager.getInstance();
 
     // Get the tab bound to this session
     const tabId = bindingManager.getTabForSession(sessionId);

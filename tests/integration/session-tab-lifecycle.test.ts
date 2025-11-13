@@ -15,7 +15,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Session } from '../../src/core/Session';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import type { SessionServices } from '../../src/core/Session';
 import { ModelClient } from '../../src/models/ModelClient';
 
@@ -26,7 +26,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Mock chrome APIs
     chromeMock = {
@@ -60,8 +60,8 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     };
     global.chrome = chromeMock as any;
 
-    // Initialize TabBindingManager
-    const bindingManager = TabBindingManager.getInstance();
+    // Initialize TabManager
+    const bindingManager = TabManager.getInstance();
     await bindingManager.initialize();
 
     // Mock services
@@ -83,7 +83,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
       expect(tabId).toBe(-1);
 
       // Should not be bound to any tab
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
       expect(bindingManager.getTabForSession('session-1')).toBe(-1);
     });
 
@@ -99,7 +99,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
   describe('US1: Tab Creation and Binding', () => {
     it('should bind tab when created for session', async () => {
       session = new Session('session-1', false, mockServices);
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 123,
@@ -125,7 +125,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
 
     it('should prevent creating new tab if session already has tab bound', async () => {
       session = new Session('session-1', false, mockServices);
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 123,
@@ -160,7 +160,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
 
   describe('US1: Tab Validation', () => {
     it('should validate tab exists before operations', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
       const mockTab = { id: 123, url: 'https://example.com' };
 
       chromeMock.tabs.get.mockResolvedValue(mockTab);
@@ -174,7 +174,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should detect when tab no longer exists', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       chromeMock.tabs.get.mockRejectedValue(new Error('No tab with id: 123'));
 
@@ -187,7 +187,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should return invalid for tabId = -1', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const validation = await bindingManager.validateTab(-1);
 
@@ -201,7 +201,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
   describe('US1: Session Persistence and Restoration', () => {
     it('should persist tab binding with session data', async () => {
       session = new Session('session-1', false, mockServices);
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 123,
@@ -228,7 +228,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should restore tab binding on session import', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       // Mock persisted binding
       chromeMock.storage.local.get.mockResolvedValue({
@@ -247,8 +247,8 @@ describe('Session Tab Lifecycle Integration Tests', () => {
       chromeMock.tabs.get.mockResolvedValue({ id: 123 });
 
       // Re-initialize to load from storage
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Binding should be restored
@@ -274,8 +274,8 @@ describe('Session Tab Lifecycle Integration Tests', () => {
       chromeMock.tabs.get.mockRejectedValue(new Error('No tab with id: 123'));
 
       // Re-initialize to load from storage
-      (TabBindingManager as any).instance = null;
-      const newBindingManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newBindingManager = TabManager.getInstance();
       await newBindingManager.initialize();
 
       // Binding should NOT be restored (tab is invalid)
@@ -286,7 +286,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
 
   describe('US1: Multiple Session Scenarios', () => {
     it('should support multiple sessions with different tabs', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const tab1 = {
         id: 123,
@@ -329,7 +329,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should handle session without tab (tabId = -1)', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       // Session with no tab bound
       const session1 = new Session('session-unbound', false, mockServices);
@@ -341,7 +341,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
 
   describe('US1: Tab Binding Lifecycle Edge Cases', () => {
     it('should handle rapid rebinding of same tab to different sessions', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 123,
@@ -371,7 +371,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should handle unbinding and rebinding', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 123,
@@ -404,7 +404,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
 
   describe('US4: Multi-Operation Tab Consistency', () => {
     it('should use same tabId for all operations in a session', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 999,
@@ -452,7 +452,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should maintain tab consistency across turn boundaries', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 777,
@@ -490,7 +490,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should prevent tab proliferation (multiple tabs for one session)', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const tab1 = {
         id: 100,
@@ -541,7 +541,7 @@ describe('Session Tab Lifecycle Integration Tests', () => {
     });
 
     it('should maintain consistency during rapid operations', async () => {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
 
       const mockTab = {
         id: 555,

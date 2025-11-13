@@ -655,52 +655,6 @@ export class TurnManager {
     }
   }
 
-  /**
-   * Execute command in browser context
-   */
-  private async executeCommand(command: string, cwd?: string): Promise<any> {
-    // Emit command begin event
-    await this.emitEvent({
-      type: 'ExecCommandBegin',
-      data: {
-        session_id: this.session.getSessionId(),
-        command,
-        tab_id: await this.getCurrentTabId(),
-        url: await this.getCurrentUrl(),
-      },
-    });
-
-    try {
-      // In browser context, this would interact with page content
-      // For now, return a placeholder response
-      const result = {
-        stdout: `Executed: ${command}`,
-        stderr: '',
-        exit_code: 0,
-      };
-
-      // Emit command end event
-      await this.emitEvent({
-        type: 'ExecCommandEnd',
-        data: {
-          session_id: this.session.getSessionId(),
-          exit_code: result.exit_code,
-        },
-      });
-
-      return result;
-
-    } catch (error) {
-      await this.emitEvent({
-        type: 'ExecCommandEnd',
-        data: {
-          session_id: this.session.getSessionId(),
-          exit_code: 1,
-        },
-      });
-      throw error;
-    }
-  }
 
   /**
    * Execute web search

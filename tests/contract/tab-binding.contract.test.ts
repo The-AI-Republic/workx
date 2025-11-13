@@ -1,8 +1,8 @@
 /**
- * Contract Test: TabBindingManager
+ * Contract Test: TabManager
  *
- * Purpose: Validates that TabBindingManager implementation conforms to the contract
- * defined in specs/001-session-tab-binding/contracts/TabBindingManager.contract.ts
+ * Purpose: Validates that TabManager implementation conforms to the contract
+ * defined in specs/001-session-tab-binding/contracts/TabManager.contract.ts
  *
  * This test verifies:
  * - Interface compliance (all methods exist with correct signatures)
@@ -16,17 +16,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import { TabInvalidReason } from '../../src/types/session';
 import type { TabInfo } from '../../src/types/session';
 
-describe('TabBindingManager Contract Tests', () => {
-  let manager: TabBindingManager;
+describe('TabManager Contract Tests', () => {
+  let manager: TabManager;
   let chromeMock: any;
 
   beforeEach(async () => {
     // Reset singleton instance for each test
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Mock chrome APIs
     chromeMock = {
@@ -48,7 +48,7 @@ describe('TabBindingManager Contract Tests', () => {
     };
     global.chrome = chromeMock as any;
 
-    manager = TabBindingManager.getInstance();
+    manager = TabManager.getInstance();
     await manager.initialize();
   });
 
@@ -408,8 +408,8 @@ describe('TabBindingManager Contract Tests', () => {
       chromeMock.tabs.get.mockResolvedValue({ id: tabId });
 
       // Create new manager instance
-      (TabBindingManager as any).instance = null;
-      const newManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newManager = TabManager.getInstance();
       await newManager.initialize();
 
       // Should restore binding from storage
@@ -438,8 +438,8 @@ describe('TabBindingManager Contract Tests', () => {
       chromeMock.tabs.get.mockRejectedValue(new Error('No tab with id: 123'));
 
       // Create new manager instance
-      (TabBindingManager as any).instance = null;
-      const newManager = TabBindingManager.getInstance();
+      (TabManager as any).instance = null;
+      const newManager = TabManager.getInstance();
       await newManager.initialize();
 
       // Should NOT restore binding (tab is invalid)

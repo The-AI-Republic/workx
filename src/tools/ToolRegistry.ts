@@ -20,7 +20,6 @@ import type {
   ToolContext,
   ToolHandler,
 } from './BaseTool';
-import { TabGroupManager } from './tab/TabGroupManager';
 
 /**
  * Tool registry entry
@@ -40,33 +39,10 @@ interface ToolRegistryEntry {
 export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
   private eventCollector?: EventCollector;
-  private tabGroupManager: TabGroupManager;
 
   constructor(eventCollector?: EventCollector) {
     this.eventCollector = eventCollector;
-
-    // Initialize TabGroupManager
-    this.tabGroupManager = TabGroupManager.getInstance();
-    this.initializeTabGroupManager();
-  }
-
-  /**
-   * Initialize the tab group manager
-   */
-  private async initializeTabGroupManager(): Promise<void> {
-    try {
-      await this.tabGroupManager.initialize();
-      console.log('TabGroupManager initialized in ToolRegistry');
-    } catch (error) {
-      console.error('Failed to initialize TabGroupManager:', error);
-    }
-  }
-
-  /**
-   * Get the TabGroupManager instance
-   */
-  getTabGroupManager(): TabGroupManager {
-    return this.tabGroupManager;
+    // Note: TabManager (including tab grouping) is now initialized at service worker level
   }
 
   /**

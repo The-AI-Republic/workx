@@ -14,18 +14,18 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import { Session } from '../../src/core/Session';
 import type { SessionServices } from '../../src/core/Session';
 
 describe('Tab Closure Detection Integration Tests', () => {
   let chromeMock: any;
-  let bindingManager: TabBindingManager;
+  let bindingManager: TabManager;
   let mockServices: SessionServices;
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Mock chrome APIs
     chromeMock = {
@@ -60,8 +60,8 @@ describe('Tab Closure Detection Integration Tests', () => {
     };
     global.chrome = chromeMock as any;
 
-    // Initialize TabBindingManager
-    bindingManager = TabBindingManager.getInstance();
+    // Initialize TabManager
+    bindingManager = TabManager.getInstance();
     await bindingManager.initialize();
 
     mockServices = {} as SessionServices;

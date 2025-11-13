@@ -6,8 +6,7 @@
   import type { ProcessedEvent } from '../types/ui';
   import TerminalContainer from './components/TerminalContainer.svelte';
   import TerminalMessage from './components/TerminalMessage.svelte';
-  import TerminalInput from './components/TerminalInput.svelte';
-  import TabContext from './components/TabContext.svelte';
+  import MessageInput from './components/MessageInput.svelte';
   import Settings from './Settings.svelte';
   import EventDisplay from './components/event_display/EventDisplay.svelte';
   import { EventProcessor } from './components/event_display/EventProcessor';
@@ -128,35 +127,72 @@
   });
 
   /**
-   * Fetch the current session's tabId from TabBindingManager via storage
+   * Fetch the current session's tabId from BrowserAgent session
+   * US3: Get tabId from session on mount
+   * If tabId is -1, automatically bind to the current active tab
    */
   async function fetchCurrentTabId() {
     try {
-      // Query chrome.storage.local for session state
-      // The session ID is typically 'default-session' or similar
-      // For now, we'll use a heuristic: get all bindings and find the most recent one
-      const result = await chrome.storage.local.get(['tabBindings', 'currentSessionId']);
+      // Request current session state from service worker
+      const response = await router?.send(MessageType.GET_STATE);
 
-      if (result.currentSessionId && result.tabBindings) {
-        const bindings = result.tabBindings;
-        // Find binding for current session
-        for (const [tabIdStr, binding] of Object.entries(bindings)) {
-          if (binding && typeof binding === 'object' && 'sessionId' in binding) {
-            if ((binding as any).sessionId === result.currentSessionId) {
-              currentTabId = parseInt(tabIdStr, 10);
-              return;
-            }
+      if (response && response.payload) {
+        // Extract tabId from session state
+        let fetchedTabId = -1;
+        if ('tabId' in response.payload && typeof response.payload.tabId === 'number') {
+          fetchedTabId = response.payload.tabId;
+          console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
+        } else if ('session' in response.payload && response.payload.session) {
+          // Check if tabId is nested in session object
+          const session = response.payload.session;
+          if (typeof session === 'object' && 'tabId' in session) {
+            fetchedTabId = (session as any).tabId;
+            console.log(`[App] Fetched session tabId from nested session: ${fetchedTabId}`);
           }
         }
-      }
 
-      // If we have bindings but no match, check if there's only one binding (likely the current session)
-      if (result.tabBindings && Object.keys(result.tabBindings).length === 1) {
-        const tabIdStr = Object.keys(result.tabBindings)[0];
-        currentTabId = parseInt(tabIdStr, 10);
+        // If no tab is bound (tabId === -1), automatically bind to current active tab
+        if (fetchedTabId === -1) {
+          await bindToActiveTab();
+        } else {
+          currentTabId = fetchedTabId;
+        }
       }
     } catch (error) {
-      console.error('[TabContext] Failed to fetch current tabId:', error);
+      console.error('[App] Failed to fetch current tabId from session:', error);
+      // Fallback: try to bind to active tab
+      await bindToActiveTab();
+    }
+  }
+
+  /**
+   * Bind the session to the current active tab
+   * Called when session has no tab binding (tabId === -1)
+   */
+  async function bindToActiveTab() {
+    try {
+      // Get the current active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const activeTab = tabs[0];
+
+      if (activeTab?.id) {
+        console.log(`[App] Auto-binding to active tab: ${activeTab.id}`);
+
+        // Send UPDATE_SESSION_TAB message to bind the active tab
+        await router?.send({
+          type: MessageType.UPDATE_SESSION_TAB,
+          payload: { tabId: activeTab.id },
+        });
+
+        // Update local state
+        currentTabId = activeTab.id;
+      } else {
+        console.warn('[App] No active tab found for auto-binding');
+        currentTabId = -1;
+      }
+    } catch (error) {
+      console.error('[App] Failed to bind to active tab:', error);
+      currentTabId = -1;
     }
   }
 
@@ -181,6 +217,30 @@
       isConnected = false;
       agentReady = false;
       healthStatus = { ready: false, message: 'Connection error' };
+    }
+  }
+
+  /**
+   * Handle manual tab selection from TabContext dropdown
+   * Updates the session's tab binding to the selected tab
+   */
+  async function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
+    const newTabId = event.detail.tabId;
+    console.log(`[App] Tab selected: ${newTabId}`);
+
+    // Update local state immediately for responsiveness
+    currentTabId = newTabId;
+
+    try {
+      // Notify backend to update session's tab binding
+      await router?.send({
+        type: 'UPDATE_SESSION_TAB',
+        payload: { tabId: newTabId },
+      });
+      console.log(`[App] Session tab updated to: ${newTabId}`);
+    } catch (error) {
+      console.error('[App] Failed to update session tab:', error);
+      // Optionally show error message to user
     }
   }
 
@@ -410,19 +470,13 @@
 
     <!-- Input area -->
     <div class="input-area">
-      <!-- Tab Context Display -->
-      <div class="tab-context-container mb-2">
-        <TabContext tabId={currentTabId} />
-      </div>
-
-      <div class="terminal-prompt flex items-center">
-        <span class="text-term-dim-green mr-2">&gt;</span>
-        <TerminalInput
-          bind:value={inputText}
-          onSubmit={sendMessage}
-          placeholder="Enter command..."
-        />
-      </div>
+      <MessageInput
+        bind:value={inputText}
+        onSubmit={sendMessage}
+        tabId={currentTabId}
+        placeholder="Enter command..."
+        on:tabSelected={handleTabSelected}
+      />
     </div>
 
     <!-- Fixed bottom function menu -->

@@ -10,7 +10,7 @@ import { ModelClient } from '../models/ModelClient';
 import { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig } from '../protocol/types';
 import type { IToolsConfig } from '../config/types';
 import { DEFAULT_TOOLS_CONFIG } from '../config/defaults';
-import { TabBindingManager } from './TabBindingManager';
+import { TabManager } from './TabManager';
 import { TabValidationState } from '../types/session';
 
 /**
@@ -158,7 +158,7 @@ export class TurnContext {
    * T034: Validate current tab exists and is accessible
    */
   async validateCurrentTab(): Promise<TabValidationState> {
-    const bindingManager = TabBindingManager.getInstance();
+    const bindingManager = TabManager.getInstance();
     return await bindingManager.validateTab(this.tabId);
   }
 

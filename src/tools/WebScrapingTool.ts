@@ -6,7 +6,6 @@
  */
 
 import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
-import { TabGroupManager } from './tab/TabGroupManager';
 
 /**
  * Scraping pattern configuration
@@ -305,9 +304,7 @@ export class WebScrapingTool extends BaseTool {
       // Create new tab with URL
       const tab = await chrome.tabs.create({ url, active: false });
 
-      // Add tab to BrowserX group
-      const tabGroupManager = TabGroupManager.getInstance();
-      await tabGroupManager.addTabToGroup(tab.id!);
+      // Note: Tab will be added to group automatically when bound to session via TabManager
 
       return tab;
     }

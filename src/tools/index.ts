@@ -147,13 +147,16 @@ export async function registerTools(
       console.log('StorageTool disabled in configuration, skipping...');
     }
 
-    // Tab Tool
-    if (isToolEnabled('tab_tool')) {
-      const tabTool = new TabTool();
-      await registerTool('tab_tool', tabTool);
-    } else {
-      console.log('TabTool disabled in configuration, skipping...');
-    }
+    // T106-T108: FR-023 - TabTool excluded from LLM (tabs managed automatically by TabManager)
+    // Tab Tool - DISABLED: Tab management is now automatic via TabManager
+    // Tabs are automatically assigned on session creation and created on first message
+    // if (isToolEnabled('tab_tool')) {
+    //   const tabTool = new TabTool();
+    //   await registerTool('tab_tool', tabTool);
+    // } else {
+    //   console.log('TabTool disabled in configuration, skipping...');
+    // }
+    console.log('TabTool disabled: Tab management is automatic via TabManager (FR-023)');
 
     // PageVision Tool - Only register if model supports image input
     if (isToolEnabled('page_vision_tool')) {

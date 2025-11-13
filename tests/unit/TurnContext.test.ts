@@ -20,7 +20,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TurnContext } from '../../src/core/TurnContext';
 import { ModelClient } from '../../src/models/ModelClient';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import { TabInvalidReason } from '../../src/types/session';
 
 describe('TurnContext tabId Methods', () => {
@@ -29,7 +29,7 @@ describe('TurnContext tabId Methods', () => {
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Mock chrome APIs
     chromeMock = {
@@ -51,8 +51,8 @@ describe('TurnContext tabId Methods', () => {
     };
     global.chrome = chromeMock as any;
 
-    // Initialize TabBindingManager
-    const bindingManager = TabBindingManager.getInstance();
+    // Initialize TabManager
+    const bindingManager = TabManager.getInstance();
     await bindingManager.initialize();
 
     // Create mock ModelClient

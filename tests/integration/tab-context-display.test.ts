@@ -9,11 +9,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import type { TabInfo } from '../../src/types/session';
 
 describe('Tab Context Display Integration', () => {
-  let tabBindingManager: TabBindingManager;
+  let tabBindingManager: TabManager;
   let mockTabs: Map<number, chrome.tabs.Tab>;
   let tabUpdateCallbacks: Array<
     (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => void
@@ -21,7 +21,7 @@ describe('Tab Context Display Integration', () => {
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = undefined;
+    (TabManager as any).instance = undefined;
 
     // Mock chrome.tabs API
     mockTabs = new Map();
@@ -63,8 +63,8 @@ describe('Tab Context Display Integration', () => {
       },
     } as any;
 
-    // Initialize TabBindingManager
-    tabBindingManager = TabBindingManager.getInstance();
+    // Initialize TabManager
+    tabBindingManager = TabManager.getInstance();
     await tabBindingManager.initialize();
   });
 

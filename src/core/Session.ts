@@ -93,6 +93,10 @@ export class Session {
 
     this.activeTurn = new ActiveTurn();
 
+    // Session starts with no tab binding (tabId = -1)
+    // Tab binding is handled by the UI when the side panel opens
+    this.sessionState.setTabId(-1);
+
     // Handle initial history
     const historyMode = initialHistory ?? { mode: 'new' as const };
 
@@ -164,8 +168,6 @@ export class Session {
    */
   setTurnContext(context: TurnContext): void {
     this.turnContext = context;
-    // T083: Sync tabId to ensure turn-to-turn consistency
-    this.syncTurnTabId();
   }
 
   /**
@@ -182,22 +184,6 @@ export class Session {
    */
   getTurnContext(): TurnContext {
     return this.turnContext;
-  }
-
-  /**
-   * T083: Sync turn context tabId with session state for turn-to-turn consistency
-   * Should be called at the start of each turn to ensure tabId doesn't drift
-   */
-  private syncTurnTabId(): void {
-    if (this.turnContext && typeof this.turnContext.setTabId === 'function') {
-      const sessionTabId = this.sessionState.getTabId();
-      const turnTabId = this.turnContext.getTabId();
-
-      if (turnTabId !== sessionTabId) {
-        console.log(`[Session] Syncing turn tabId from ${turnTabId} to ${sessionTabId}`);
-        this.turnContext.setTabId(sessionTabId);
-      }
-    }
   }
 
   /**
@@ -293,7 +279,6 @@ export class Session {
 
   /**
    * Import session from persistence
-   * T038-T039: Includes defensive restoration for tab binding
    */
   static async import(data: {
     id: string;
@@ -310,20 +295,6 @@ export class Session {
 
     // Import SessionState
     session.sessionState = SessionState.import(data.state);
-
-    // T039: Defensive session restoration - validate tabId
-    const tabId = session.sessionState.getTabId();
-    if (tabId !== -1) {
-      try {
-        // Validate that tab still exists
-        await chrome.tabs.get(tabId);
-        // Tab exists, binding is still valid
-      } catch (error) {
-        // Tab no longer exists, reset to unbound state
-        console.log(`[Session.import] Tab ${tabId} no longer exists, resetting to -1`);
-        session.sessionState.setTabId(-1);
-      }
-    }
 
     // Set metadata
     Object.assign(session, {
@@ -633,6 +604,20 @@ export class Session {
    */
   getId(): string {
     return this.conversationId;
+  }
+
+  /**
+   * Get current tab ID bound to this session
+   */
+  getTabId(): number {
+    return this.sessionState.getTabId();
+  }
+
+  /**
+   * Set tab ID for this session
+   */
+  setTabId(tabId: number): void {
+    this.sessionState.setTabId(tabId);
   }
 
   /**

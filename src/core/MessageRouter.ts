@@ -30,6 +30,7 @@ export enum MessageType {
   // Tab operations
   TAB_COMMAND = 'TAB_COMMAND',
   TAB_RESULT = 'TAB_RESULT',
+  UPDATE_SESSION_TAB = 'UPDATE_SESSION_TAB', // Manual tab selection from UI
 
   // Storage operations
   STORAGE_GET = 'STORAGE_GET',

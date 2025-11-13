@@ -14,17 +14,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TabBindingManager } from '../../src/core/TabBindingManager';
+import { TabManager } from '../../src/core/TabManager';
 import type { TabInfo } from '../../src/types/session';
 
 describe('Concurrent Session Binding Integration Tests', () => {
   let chromeMock: any;
-  let tabBindingManager: TabBindingManager;
+  let tabBindingManager: TabManager;
   let closureCallbacks: Array<(sessionId: string, tabId: number) => void>;
 
   beforeEach(async () => {
     // Reset singleton
-    (TabBindingManager as any).instance = null;
+    (TabManager as any).instance = null;
 
     // Track closure callbacks
     closureCallbacks = [];
@@ -59,8 +59,8 @@ describe('Concurrent Session Binding Integration Tests', () => {
     };
     global.chrome = chromeMock as any;
 
-    // Initialize TabBindingManager
-    tabBindingManager = TabBindingManager.getInstance();
+    // Initialize TabManager
+    tabBindingManager = TabManager.getInstance();
     await tabBindingManager.initialize();
   });
 

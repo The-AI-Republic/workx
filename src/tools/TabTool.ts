@@ -6,8 +6,7 @@
  */
 
 import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
-import { TabGroupManager } from './tab/TabGroupManager';
-import { TabBindingManager } from '../core/TabBindingManager';
+import { TabManager } from '../core/TabManager';
 import { TabCreationError } from '../types/errors';
 
 /**
@@ -181,7 +180,7 @@ export class TabTool extends BaseTool {
   private async createTab(request: TabToolRequest): Promise<TabToolResponse> {
     // T043: Check if session already has a tab bound
     if (request.sessionId) {
-      const bindingManager = TabBindingManager.getInstance();
+      const bindingManager = TabManager.getInstance();
       const existingTabId = bindingManager.getTabForSession(request.sessionId);
 
       // T046: Prevent creating new tab if session already has one
@@ -227,9 +226,7 @@ export class TabTool extends BaseTool {
         throw new Error('Created tab has no ID');
       }
 
-      // Add tab to BrowserX group
-      const tabGroupManager = TabGroupManager.getInstance();
-      await tabGroupManager.addTabToGroup(tab.id);
+      // Note: Tab will be added to group automatically when bound to session via TabManager
 
       // Wait for tab to load if URL was provided
       if (request.url && request.url !== 'about:blank') {
@@ -238,10 +235,10 @@ export class TabTool extends BaseTool {
 
       const tabInfo = this.convertTabToInfo(tab);
 
-      // T044: Bind created tab to session via TabBindingManager
+      // T044: Bind created tab to session via TabManager
       // T045: Update session.tabId after successful creation
       if (request.sessionId) {
-        const bindingManager = TabBindingManager.getInstance();
+        const bindingManager = TabManager.getInstance();
 
         // Create TabInfo for binding
         const bindingTabInfo: TabInfo = {
