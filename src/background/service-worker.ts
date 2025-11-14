@@ -58,12 +58,12 @@ async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
 
-  // Create agent instance with config (agent will initialize ModelClientFactory and ToolRegistry)
-  agent = new BrowserxAgent(agentConfig!);
-  await agent.initialize();
-
-  // Create message router
+  // Create message router (must be created before agent)
   router = new MessageRouter('background');
+
+  // Create agent instance with config and router (agent will initialize ModelClientFactory and ToolRegistry)
+  agent = new BrowserxAgent(agentConfig!, router);
+  await agent.initialize();
 
   // Setup message handlers
   setupMessageHandlers();
@@ -262,7 +262,7 @@ function setupMessageHandlers(): void {
       }
 
       // Create new agent with updated config
-      agent = new BrowserxAgent(agentConfig);
+      agent = new BrowserxAgent(agentConfig, router!);
       await agent.initialize();
 
       // Notify all clients (sidepanel, etc.) that agent was reinitialized
