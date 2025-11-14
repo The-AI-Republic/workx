@@ -278,14 +278,6 @@ export class BrowserxAgent {
    * Handle a single submission
    */
   private async handleSubmission(submission: Submission): Promise<void> {
-    // Emit TaskStarted event
-    this.emitEvent({
-      type: 'TaskStarted',
-      data: {
-        model_context_window: undefined, // Will be set when model is connected
-      },
-    });
-
     try {
       switch (submission.op.type) {
         case 'Interrupt':
