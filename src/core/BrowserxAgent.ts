@@ -14,6 +14,7 @@ import { DiffTracker } from './DiffTracker';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from '../models/ModelClientFactory';
 import { UserNotifier } from './UserNotifier';
+import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
@@ -36,10 +37,12 @@ export class BrowserxAgent {
   private toolRegistry: ToolRegistry;
   private modelClientFactory: ModelClientFactory;
   private userNotifier: UserNotifier;
+  private messageRouter: MessageRouter;
 
-  constructor(config: AgentConfig) {
+  constructor(config: AgentConfig, router: MessageRouter) {
     // Config must be provided (use await AgentConfig.getInstance() if needed)
     this.config = config;
+    this.messageRouter = router;
 
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
@@ -278,14 +281,6 @@ export class BrowserxAgent {
    * Handle a single submission
    */
   private async handleSubmission(submission: Submission): Promise<void> {
-    // Emit TaskStarted event
-    this.emitEvent({
-      type: 'TaskStarted',
-      data: {
-        model_context_window: undefined, // Will be set when model is connected
-      },
-    });
-
     try {
       switch (submission.op.type) {
         case 'Interrupt':
@@ -408,6 +403,12 @@ export class BrowserxAgent {
 
         if (createdTabId) {
           this.session.setTabId(createdTabId);
+
+          // Notify UI of tab binding update
+          await this.messageRouter.updateState({
+            sessionId: this.session.getId(),
+            tabId: createdTabId,
+          });
         } else {
           const errorMsg = 'Failed to create tab for session: tab creation returned null';
 

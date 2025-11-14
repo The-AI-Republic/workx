@@ -5,9 +5,8 @@
 
 import { BrowserxAgent } from '../core/BrowserxAgent';
 import { MessageRouter, MessageType } from '../core/MessageRouter';
-import type { Submission, Event } from '../protocol/types';
+import type { Submission } from '../protocol/types';
 import { validateSubmission } from '../protocol/schemas';
-import { ModelClientFactory } from '../models/ModelClientFactory';
 import { CacheManager } from '../storage/CacheManager';
 import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
@@ -59,12 +58,12 @@ async function doInitialize(): Promise<void> {
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
 
-  // Create agent instance with config (agent will initialize ModelClientFactory and ToolRegistry)
-  agent = new BrowserxAgent(agentConfig!);
-  await agent.initialize();
-
-  // Create message router
+  // Create message router (must be created before agent)
   router = new MessageRouter('background');
+
+  // Create agent instance with config and router (agent will initialize ModelClientFactory and ToolRegistry)
+  agent = new BrowserxAgent(agentConfig!, router);
+  await agent.initialize();
 
   // Setup message handlers
   setupMessageHandlers();
@@ -263,7 +262,7 @@ function setupMessageHandlers(): void {
       }
 
       // Create new agent with updated config
-      agent = new BrowserxAgent(agentConfig);
+      agent = new BrowserxAgent(agentConfig, router!);
       await agent.initialize();
 
       // Notify all clients (sidepanel, etc.) that agent was reinitialized
