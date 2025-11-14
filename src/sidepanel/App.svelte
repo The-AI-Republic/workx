@@ -485,7 +485,7 @@
 <div class="terminal-layout">
   <TerminalContainer>
     <!-- Status Line -->
-    <div class="flex justify-between mb-2">
+    <div class="status-line flex justify-between mb-2">
       <TerminalMessage type="system" content="Browserx (Alpha)" />
       <div class="flex items-center space-x-2">
         {#if isProcessing}
@@ -534,61 +534,64 @@
       {/each}
     </div>
 
-    <!-- Input area -->
-    <div class="input-area">
-      <MessageInput
-        bind:value={inputText}
-        onSubmit={sendMessage}
-        tabId={currentTabId}
-        placeholder=">> Enter command..."
-        on:tabSelected={handleTabSelected}
-      />
-    </div>
+    <!-- Fixed bottom controls container -->
+    <div class="bottom-controls">
+      <!-- Input area -->
+      <div class="input-area">
+        <MessageInput
+          bind:value={inputText}
+          onSubmit={sendMessage}
+          tabId={currentTabId}
+          placeholder=">> Enter command..."
+          on:tabSelected={handleTabSelected}
+        />
+      </div>
 
-    <!-- Fixed bottom function menu -->
-    <div class="function-menu">
-      <!-- New Conversation Button -->
-      <button
-        class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-        on:click={startNewConversation}
-        on:mouseenter={() => showNewConvTooltip = true}
-        on:mouseleave={() => showNewConvTooltip = false}
-        aria-label="Start New Conversation"
-      >
-        <!-- New Conversation Icon SVG (Plus/Refresh) -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
+      <!-- Function menu -->
+      <div class="function-menu">
+        <!-- New Conversation Button -->
+        <button
+          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+          on:click={startNewConversation}
+          on:mouseenter={() => showNewConvTooltip = true}
+          on:mouseleave={() => showNewConvTooltip = false}
+          aria-label="Start New Conversation"
+        >
+          <!-- New Conversation Icon SVG (Plus/Refresh) -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
 
-        <!-- Tooltip -->
-        {#if showNewConvTooltip}
-          <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-            New Conversation
-          </div>
-        {/if}
-      </button>
+          <!-- Tooltip -->
+          {#if showNewConvTooltip}
+            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+              New Conversation
+            </div>
+          {/if}
+        </button>
 
-      <!-- Settings Button -->
-      <button
-        class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-        on:click={toggleSettings}
-        on:mouseenter={() => showTooltip = true}
-        on:mouseleave={() => showTooltip = false}
-        aria-label="Settings"
-      >
-        <!-- Gear Icon SVG -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <!-- Settings Button -->
+        <button
+          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+          on:click={toggleSettings}
+          on:mouseenter={() => showTooltip = true}
+          on:mouseleave={() => showTooltip = false}
+          aria-label="Settings"
+        >
+          <!-- Gear Icon SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
 
-        <!-- Tooltip -->
-        {#if showTooltip}
-          <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-            Settings
-          </div>
-        {/if}
-      </button>
+          <!-- Tooltip -->
+          {#if showTooltip}
+            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+              Settings
+            </div>
+          {/if}
+        </button>
+      </div>
     </div>
   </TerminalContainer>
 </div>
@@ -609,51 +612,43 @@
   /* Component-specific styles */
 
   .terminal-layout {
-    display: flex;
-    flex-direction: column;
     height: 100vh;
-    position: relative;
+    overflow: hidden;
+  }
+
+  .status-line {
+    flex-shrink: 0;
   }
 
   .messages-container {
     flex: 1;
     overflow-y: auto;
-    margin-bottom: 1rem;
+    overflow-x: hidden;
     padding-bottom: 1rem;
-    /* Reserve space for input and function menu */
-    max-height: calc(100vh - 200px);
+    /* This container will automatically take up remaining space */
+  }
+
+  /* Parent container for input area and function menu */
+  .bottom-controls {
+    flex-shrink: 0;
+    background: var(--color-term-bg);
+    border-top: 1px solid var(--color-term-border);
   }
 
   .input-area {
-    padding: 0.5rem 0;
-    background: var(--color-term-bg);
-    position: relative;
-    z-index: 10;
-  }
-
-  .tab-context-container {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.5rem 0.5rem 0;
   }
 
   .function-menu {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     display: flex;
     justify-content: flex-end;
     align-items: center;
     gap: 0.75rem;
     padding: 1rem;
-    background: var(--color-term-bg);
-    z-index: 30;
+    border-top: 1px solid var(--color-term-border);
   }
 
   .function-button {
-    z-index: 40;
     transition: all 0.2s ease;
   }
 

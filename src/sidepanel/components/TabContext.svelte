@@ -28,7 +28,6 @@
   let isDropdownOpen: boolean = false;
   let availableTabs: chrome.tabs.Tab[] = [];
   let loadingTabs: boolean = false;
-  let dropdownPosition: 'below' | 'above' = 'below';
 
   // DOM element references
   let containerElement: HTMLDivElement;
@@ -131,28 +130,6 @@
   });
 
   /**
-   * Calculate optimal dropdown position based on available space
-   */
-  function calculateDropdownPosition(): void {
-    if (!containerElement || !dropdownElement) return;
-
-    const containerRect = containerElement.getBoundingClientRect();
-    const dropdownHeight = dropdownElement.offsetHeight || 300; // Use actual height or max-height
-    const viewportHeight = window.innerHeight;
-
-    const spaceBelow = viewportHeight - containerRect.bottom;
-    const spaceAbove = containerRect.top;
-
-    // Position above if there's not enough space below but enough space above
-    // Add a buffer of 20px for comfortable spacing
-    if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight + 20) {
-      dropdownPosition = 'above';
-    } else {
-      dropdownPosition = 'below';
-    }
-  }
-
-  /**
    * Toggle dropdown and fetch available tabs
    */
   async function toggleDropdown(): Promise<void> {
@@ -163,14 +140,8 @@
     if (isDropdownOpen) {
       await fetchAvailableTabs();
       setupClickOutsideHandler();
-
-      // Calculate position after DOM updates
-      setTimeout(() => {
-        calculateDropdownPosition();
-      }, 0);
     } else {
       cleanupClickOutsideHandler();
-      dropdownPosition = 'below'; // Reset to default
     }
   }
 
@@ -300,8 +271,6 @@
   {#if isDropdownOpen}
     <div
       class="dropdown-menu"
-      class:position-above={dropdownPosition === 'above'}
-      class:position-below={dropdownPosition === 'below'}
       bind:this={dropdownElement}
       data-testid="tab-dropdown-menu"
     >
@@ -415,6 +384,8 @@
   .dropdown-menu {
     position: absolute;
     left: 0;
+    bottom: 100%;
+    margin-bottom: 4px;
     min-width: 300px;
     max-width: 400px;
     max-height: 300px;
@@ -424,18 +395,6 @@
     border-radius: 4px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     z-index: 1000;
-  }
-
-  /* Position below the button (default) */
-  .dropdown-menu.position-below {
-    top: 100%;
-    margin-top: 4px;
-  }
-
-  /* Position above the button */
-  .dropdown-menu.position-above {
-    bottom: 100%;
-    margin-bottom: 4px;
   }
 
   .dropdown-item {
