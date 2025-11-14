@@ -35,7 +35,7 @@ describe('Cache Performance Benchmarks', () => {
     }
   });
 
-  describe('T080: SC-002 - Write Performance', () => {
+  describe('SC-002 - Write Performance', () => {
     it('should write 1MB data in <100ms', async () => {
       const sessionId = 'conv_perf_write';
 
@@ -64,7 +64,7 @@ describe('Cache Performance Benchmarks', () => {
     });
   });
 
-  describe('T080: SC-003 - Metadata Size', () => {
+  describe('SC-003 - Metadata Size', () => {
     it('should return metadata <700 bytes', async () => {
       const sessionId = 'conv_perf_metadata';
 
@@ -112,7 +112,7 @@ describe('Cache Performance Benchmarks', () => {
     });
   });
 
-  describe('T080: List Performance', () => {
+  describe('List Performance', () => {
     it('should list 50 items in <50ms', async () => {
       const sessionId = 'conv_perf_list';
 
@@ -137,7 +137,7 @@ describe('Cache Performance Benchmarks', () => {
     });
   });
 
-  describe('T080: SC-004 - Session Cleanup Performance', () => {
+  describe('SC-004 - Session Cleanup Performance', () => {
     it('should cleanup 100 items in <5 minutes', async () => {
       const sessionId = 'conv_perf_cleanup';
 
@@ -171,7 +171,7 @@ describe('Cache Performance Benchmarks', () => {
     });
   });
 
-  describe('T081: Stress Test - Auto-Eviction', () => {
+  describe('Stress Test - Auto-Eviction', () => {
     it('should handle items near 200MB quota with auto-eviction', { timeout: 30000 }, async () => {
       const sessionId = 'conv_stress_eviction';
 
@@ -263,7 +263,7 @@ describe('Cache Performance Benchmarks', () => {
     });
   });
 
-  describe('T081: Stress Test - Concurrent Operations', () => {
+  describe('Stress Test - Concurrent Operations', () => {
     it('should handle concurrent writes without performance degradation', async () => {
       const sessionId = 'conv_stress_concurrent';
 

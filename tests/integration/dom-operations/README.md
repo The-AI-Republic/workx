@@ -4,7 +4,7 @@ This directory contains comprehensive integration tests for DOM operations in th
 
 ## Test Files
 
-### T018: form_automation.test.ts
+### form_automation.test.ts
 Tests form filling and submission flow including:
 - Complete form workflows with validation
 - Individual field interactions (typing, focusing, scrolling)
@@ -12,7 +12,7 @@ Tests form filling and submission flow including:
 - Error handling for form operations
 - Multi-step form processes
 
-### T019: wait_for_element.test.ts
+### wait_for_element.test.ts
 Tests element visibility and waiting functionality including:
 - Waiting for elements to appear in the DOM
 - Waiting for elements to become visible
@@ -20,7 +20,7 @@ Tests element visibility and waiting functionality including:
 - AJAX content handling
 - Timeout and error conditions
 
-### T020: action_sequence.test.ts
+### action_sequence.test.ts
 Tests executing sequences of actions including:
 - Basic action sequences and workflows
 - Complex multi-step navigation flows
@@ -28,7 +28,7 @@ Tests executing sequences of actions including:
 - Conditional action sequences
 - Error recovery in sequences
 
-### T021: iframe_access.test.ts
+### iframe_access.test.ts
 Tests accessing elements in iframes including:
 - Same-origin iframe access
 - Cross-origin iframe limitations
@@ -36,7 +36,7 @@ Tests accessing elements in iframes including:
 - Frame-specific operations (scroll, form filling)
 - Security restrictions and error handling
 
-### T022: error_retry.test.ts
+### error_retry.test.ts
 Tests error handling and retry logic including:
 - Common DOM error scenarios (not found, not visible, timeout)
 - Retry logic implementation with exponential backoff

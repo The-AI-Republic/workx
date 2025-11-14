@@ -11,7 +11,6 @@ import { DataExtractionTool } from './DataExtractionTool';
 import { DOMTool } from './DOMTool';
 import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
-import { TabTool } from './TabTool';
 import { PageVisionTool } from './PageVisionTool';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
@@ -25,7 +24,6 @@ export { DataExtractionTool } from './DataExtractionTool';
 export { DOMTool } from './DOMTool';
 export { NavigationTool } from './NavigationTool';
 export { StorageTool } from './StorageTool';
-export { TabTool } from './TabTool';
 export { PageVisionTool } from './PageVisionTool';
 
 /**
@@ -65,8 +63,6 @@ export async function registerTools(
           return toolsConfig.navigation_tool === true;
         case 'storage_tool':
           return toolsConfig.storage_tool === true;
-        case 'tab_tool':
-          return toolsConfig.tab_tool === true;
         case 'page_vision_tool':
           return toolsConfig.page_vision_tool === true;
         case 'page_action':
@@ -83,8 +79,15 @@ export async function registerTools(
         console.log(`Registering ${toolName}...`);
 
         await registry.register(definition, async (params, context) => {
-          // Pass context (including sessionId) to tool's execute method via options.metadata
-          return toolInstance.execute(params, { metadata: context });
+          // Flatten context: pass metadata directly, with sessionId/turnId/toolName alongside
+          return toolInstance.execute(params, {
+            metadata: {
+              ...context.metadata,  // tabId and other metadata fields
+              sessionId: context.sessionId,
+              turnId: context.turnId,
+              toolName: context.toolName,
+            }
+          });
         });
       } else {
         console.log(`${toolName} already registered, skipping...`);
@@ -147,13 +150,7 @@ export async function registerTools(
       console.log('StorageTool disabled in configuration, skipping...');
     }
 
-    // Tab Tool
-    if (isToolEnabled('tab_tool')) {
-      const tabTool = new TabTool();
-      await registerTool('tab_tool', tabTool);
-    } else {
-      console.log('TabTool disabled in configuration, skipping...');
-    }
+    // Tab management is automatic via TabManager (FR-023) - no TabTool needed
 
     // PageVision Tool - Only register if model supports image input
     if (isToolEnabled('page_vision_tool')) {

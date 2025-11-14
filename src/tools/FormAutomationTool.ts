@@ -6,7 +6,6 @@
  */
 
 import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from './BaseTool';
-import { TabGroupManager } from './tab/TabGroupManager';
 
 /**
  * Form field types
@@ -48,7 +47,6 @@ export interface FormFieldMapping {
  */
 export interface FormAutomationTask extends BaseToolRequest {
   url?: string;
-  tabId?: number;
   formSelector?: string;
   autoDetect?: boolean;
   fields: FormFieldMapping[];
@@ -124,11 +122,7 @@ export class FormAutomationTool extends BaseTool {
       {
         url: {
           type: 'string',
-          description: 'URL to navigate to (optional if tabId provided)',
-        },
-        tabId: {
-          type: 'number',
-          description: 'Tab ID to work with',
+          description: 'URL to navigate to (optional if tab is already bound to session)',
         },
         formSelector: {
           type: 'string',
@@ -195,8 +189,11 @@ export class FormAutomationTool extends BaseTool {
     const filledFields: string[] = [];
 
     try {
+      // Get tabId from metadata (passed internally, not from LLM)
+      const tabId = options?.metadata?.tabId;
+
       // Get target tab
-      const tab = await this.getTab(request.tabId, request.url);
+      const tab = await this.getTab(tabId, request.url);
 
       // Wait for form to be ready
       if (request.formSelector) {
@@ -279,21 +276,19 @@ export class FormAutomationTool extends BaseTool {
    * Get or navigate to tab
    */
   private async getTab(tabId?: number, url?: string): Promise<chrome.tabs.Tab> {
-    if (tabId) {
+    if (tabId !== undefined && tabId !== null && tabId !== -1) {
       return await this.validateTabId(tabId);
     }
 
     if (url) {
       const tab = await chrome.tabs.create({ url, active: false });
 
-      // Add tab to BrowserX group
-      const tabGroupManager = TabGroupManager.getInstance();
-      await tabGroupManager.addTabToGroup(tab.id!);
+      // Note: Tab will be added to group automatically when bound to session via TabManager
 
       return tab;
     }
 
-    return await this.getActiveTab();
+    throw new Error('Target tab ID not provided in execution context and no URL specified');
   }
 
   /**

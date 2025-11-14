@@ -6,7 +6,7 @@
   import type { ProcessedEvent } from '../types/ui';
   import TerminalContainer from './components/TerminalContainer.svelte';
   import TerminalMessage from './components/TerminalMessage.svelte';
-  import TerminalInput from './components/TerminalInput.svelte';
+  import MessageInput from './components/MessageInput.svelte';
   import Settings from './Settings.svelte';
   import EventDisplay from './components/event_display/EventDisplay.svelte';
   import { EventProcessor } from './components/event_display/EventProcessor';
@@ -24,6 +24,7 @@
   let showNewConvTooltip = false;
   let showWelcome = false;
   let scrollContainer: HTMLDivElement;
+  let currentTabId: number = -1; // Track current session's bound tab
   let agentReady = false;
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string } = { ready: false };
   $: showWelcome =
@@ -40,23 +41,60 @@
     // Initialize router
     router = new MessageRouter('sidepanel');
 
-    // Wait for background service worker to be ready
+    // Request session reset when side panel opens
+    try {
+      await router.requestSessionReset();
+      console.log('Session reset on side panel open');
+      // Reset tabId when session resets
+      currentTabId = -1;
+    } catch (error) {
+      console.error('Failed to reset session:', error);
+    }
+    // ========================================================================
+    // ON-DEMAND SERVICE WORKER WAKE-UP (UI Side)
+    // ========================================================================
+    // Chrome terminates service workers after 30 seconds of inactivity.
+    // When the side panel opens, the service worker might be asleep.
+    // We retry with exponential backoff to give it time to wake up.
+    //
+    // Retry schedule: 200ms → 400ms → 800ms → 1.6s → 3.2s (max 8 attempts)
+    // Total max wait time: ~12.6 seconds
+    //
+    // The service worker will auto-initialize on the first message.
+    // See service-worker.ts lines 842-896 for wake-up implementation.
+    // ========================================================================
+
     let retries = 0;
-    const maxRetries = 5;
-    const retryDelay = 500; // ms
+    const maxRetries = 8;
+    let retryDelay = 200; // Start with 200ms
 
     while (retries < maxRetries) {
       try {
         // Test connection with ping
         await router.send(MessageType.PING);
+        console.log('[App] Successfully connected to service worker');
         break;
       } catch (error) {
         retries++;
+        const isPortClosed = error instanceof Error &&
+          (error.message.includes('message port closed') ||
+           error.message.includes('Extension context invalidated'));
+
+        if (isPortClosed) {
+          console.log(`[App] Service worker unavailable (attempt ${retries}/${maxRetries}), waiting for initialization...`);
+        } else {
+          console.warn(`[App] Connection attempt ${retries}/${maxRetries} failed:`, error);
+        }
+
         if (retries >= maxRetries) {
-          console.warn('Failed to connect to background service worker after', maxRetries, 'attempts');
+          console.error('[App] Failed to connect to service worker after', maxRetries, 'attempts');
+          console.error('[App] This may indicate the service worker crashed. Try reloading the extension.');
           break;
         }
+
+        // Exponential backoff: 200ms, 400ms, 800ms, 1600ms, 3200ms
         await new Promise(resolve => setTimeout(resolve, retryDelay));
+        retryDelay = Math.min(retryDelay * 2, 3200); // Cap at 3.2 seconds
       }
     }
 
@@ -82,6 +120,11 @@
     });
 
     router.on(MessageType.STATE_UPDATE, (message) => {
+      // Update tabId if available in state update
+      if (message.payload && 'tabId' in message.payload) {
+        const newTabId = message.payload.tabId;
+        currentTabId = newTabId;
+      }
     });
 
     // Handle agent re-initialization (e.g., when model is changed)
@@ -96,14 +139,96 @@
     // Check connection
     checkConnection();
 
-    // Periodic connection check
-    const interval = setInterval(checkConnection, 5000);
+    // Fetch current session's tabId from storage
+    await fetchCurrentTabId();
 
     return () => {
-      clearInterval(interval);
       router?.cleanup();
     };
   });
+
+  /**
+   * Fetch the current session's tabId from BrowserAgent session
+   * US3: Get tabId from session on mount
+   * If tabId is -1, automatically bind to the current active tab
+   */
+  async function fetchCurrentTabId() {
+    try {
+      // Request current session state from service worker
+      const response = await router?.send(MessageType.GET_STATE);
+      console.log('[App] Fetched session state:', response);
+
+      if (response && typeof response.tabId === 'number') {
+        const fetchedTabId = response.tabId;
+        console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
+
+        // If no tab is bound (tabId === -1), get the current active tab ID
+        // but don't bind yet - just prepare to send it as context with the first message
+        if (fetchedTabId === -1) {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          const activeTab = tabs[0];
+          if (activeTab?.id) {
+            console.log(`[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`);
+            currentTabId = activeTab.id;
+          } else {
+            console.warn('[App] No active tab found');
+            currentTabId = -1;
+          }
+        } else {
+          currentTabId = fetchedTabId;
+        }
+      }
+    } catch (error) {
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      if (isPortClosed) {
+        console.warn('[App] Service worker not ready when fetching tabId, will retry later');
+      } else {
+        console.error('[App] Failed to fetch current tabId from session:', error);
+      }
+
+      // Fallback: get current active tab to send as suggestion
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+        if (activeTab?.id) {
+          console.log(`[App] Using active tab ${activeTab.id} as fallback`);
+          currentTabId = activeTab.id;
+        } else {
+          currentTabId = -1;
+        }
+      } catch (tabError) {
+        console.warn('[App] Failed to get active tab:', tabError);
+        currentTabId = -1;
+      }
+    }
+  }
+
+  /**
+   * Bind the session to the current active tab
+   * Called when session has no tab binding (tabId === -1)
+   */
+  async function bindToActiveTab() {
+    try {
+      // Get the current active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const activeTab = tabs[0];
+
+      if (activeTab?.id) {
+        console.log(`[App] Auto-binding to active tab: ${activeTab.id}`);
+        // Update local state
+        currentTabId = activeTab.id;
+      } else {
+        console.warn('[App] No active tab found for auto-binding');
+        currentTabId = -1;
+      }
+    } catch (error) {
+      console.error('[App] Failed to bind to active tab:', error);
+      currentTabId = -1;
+    }
+  }
 
   async function checkConnection() {
     try {
@@ -122,11 +247,38 @@
         agentReady = false;
         healthStatus = { ready: false, message: 'Unable to check agent status' };
       }
-    } catch {
+    } catch (error) {
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
       isConnected = false;
       agentReady = false;
-      healthStatus = { ready: false, message: 'Connection error' };
+
+      if (isPortClosed) {
+        console.warn('[App] Service worker unavailable during health check');
+        healthStatus = { ready: false, message: 'Service worker starting...' };
+      } else {
+        console.error('[App] Health check failed:', error);
+        healthStatus = { ready: false, message: 'Connection error' };
+      }
     }
+  }
+
+  /**
+   * Handle manual tab selection from TabContext dropdown
+   * Updates local state only - actual binding happens when user sends a message
+   */
+  async function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
+    const newTabId = event.detail.tabId;
+    console.log(`[App] Tab selected: ${newTabId} (will bind on next message)`);
+
+    // Update local state immediately for responsiveness
+    currentTabId = newTabId;
+
+    // Note: We don't immediately bind the tab to the session here.
+    // Instead, the tab binding will happen when the user sends their next message,
+    // and the service-worker will detect the context.tabId change and rebind then.
   }
 
   function handleEvent(event: Event) {
@@ -219,20 +371,35 @@
     };
     processedEvents = [...processedEvents, userEvent];
 
-    // Send to agent
+    // Send to agent with tab context
     try {
+
       await router.sendSubmission({
         id: `user_${Date.now()}`,
         op: {
           type: 'UserInput',
           items: [{ type: 'text', text }],
         },
+        context: {
+          tabId: currentTabId, // Include current tab selection in context
+        },
       });
+
     } catch (error) {
       console.error('Failed to send message:', error);
+
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      let errorMessage = 'Failed to send message. Please try again.';
+      if (isPortClosed) {
+        errorMessage = 'Service worker unavailable. The extension may be restarting. Please wait a moment and try again.';
+      }
+
       messages = [...messages, {
         type: 'agent',
-        content: 'Failed to send message. Please try again.',
+        content: errorMessage,
         timestamp: Date.now(),
       }];
     }
@@ -281,17 +448,34 @@
     inputText = '';
     isProcessing = false;
 
+    // Reset tab context
+    currentTabId = -1;
+
     // Reset event processor
     eventProcessor.reset();
 
     // Request session reset from backend
     try {
       await router.requestSessionReset();
+
+      // After session reset, auto-bind to the active tab
+      // This ensures the new conversation starts with the current tab
+      await bindToActiveTab();
     } catch (error) {
       console.error('Failed to reset session:', error);
+
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      let errorMessage = 'Failed to start new conversation. Please try again.';
+      if (isPortClosed) {
+        errorMessage = 'Service worker unavailable. Please wait a moment and try again.';
+      }
+
       messages = [...messages, {
         type: 'agent',
-        content: 'Failed to start new conversation. Please try again.',
+        content: errorMessage,
         timestamp: Date.now(),
       }];
     }
@@ -301,7 +485,7 @@
 <div class="terminal-layout">
   <TerminalContainer>
     <!-- Status Line -->
-    <div class="flex justify-between mb-2">
+    <div class="status-line flex justify-between mb-2">
       <TerminalMessage type="system" content="Browserx (Alpha)" />
       <div class="flex items-center space-x-2">
         {#if isProcessing}
@@ -350,62 +534,64 @@
       {/each}
     </div>
 
-    <!-- Input area -->
-    <div class="input-area">
-      <div class="terminal-prompt flex items-center">
-        <span class="text-term-dim-green mr-2">&gt;</span>
-        <TerminalInput
+    <!-- Fixed bottom controls container -->
+    <div class="bottom-controls">
+      <!-- Input area -->
+      <div class="input-area">
+        <MessageInput
           bind:value={inputText}
           onSubmit={sendMessage}
-          placeholder="Enter command..."
+          tabId={currentTabId}
+          placeholder=">> Enter command..."
+          on:tabSelected={handleTabSelected}
         />
       </div>
-    </div>
 
-    <!-- Fixed bottom function menu -->
-    <div class="function-menu">
-      <!-- New Conversation Button -->
-      <button
-        class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-        on:click={startNewConversation}
-        on:mouseenter={() => showNewConvTooltip = true}
-        on:mouseleave={() => showNewConvTooltip = false}
-        aria-label="Start New Conversation"
-      >
-        <!-- New Conversation Icon SVG (Plus/Refresh) -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
+      <!-- Function menu -->
+      <div class="function-menu">
+        <!-- New Conversation Button -->
+        <button
+          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+          on:click={startNewConversation}
+          on:mouseenter={() => showNewConvTooltip = true}
+          on:mouseleave={() => showNewConvTooltip = false}
+          aria-label="Start New Conversation"
+        >
+          <!-- New Conversation Icon SVG (Plus/Refresh) -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
 
-        <!-- Tooltip -->
-        {#if showNewConvTooltip}
-          <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-            New Conversation
-          </div>
-        {/if}
-      </button>
+          <!-- Tooltip -->
+          {#if showNewConvTooltip}
+            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+              New Conversation
+            </div>
+          {/if}
+        </button>
 
-      <!-- Settings Button -->
-      <button
-        class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-        on:click={toggleSettings}
-        on:mouseenter={() => showTooltip = true}
-        on:mouseleave={() => showTooltip = false}
-        aria-label="Settings"
-      >
-        <!-- Gear Icon SVG -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <!-- Settings Button -->
+        <button
+          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+          on:click={toggleSettings}
+          on:mouseenter={() => showTooltip = true}
+          on:mouseleave={() => showTooltip = false}
+          aria-label="Settings"
+        >
+          <!-- Gear Icon SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
 
-        <!-- Tooltip -->
-        {#if showTooltip}
-          <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-            Settings
-          </div>
-        {/if}
-      </button>
+          <!-- Tooltip -->
+          {#if showTooltip}
+            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+              Settings
+            </div>
+          {/if}
+        </button>
+      </div>
     </div>
   </TerminalContainer>
 </div>
@@ -426,44 +612,43 @@
   /* Component-specific styles */
 
   .terminal-layout {
-    display: flex;
-    flex-direction: column;
     height: 100vh;
-    position: relative;
+    overflow: hidden;
+  }
+
+  .status-line {
+    flex-shrink: 0;
   }
 
   .messages-container {
     flex: 1;
     overflow-y: auto;
-    margin-bottom: 1rem;
+    overflow-x: hidden;
     padding-bottom: 1rem;
-    /* Reserve space for input and function menu */
-    max-height: calc(100vh - 200px);
+    /* This container will automatically take up remaining space */
+  }
+
+  /* Parent container for input area and function menu */
+  .bottom-controls {
+    flex-shrink: 0;
+    background: var(--color-term-bg);
+    border-top: 1px solid var(--color-term-border);
   }
 
   .input-area {
-    padding: 0.5rem 0;
-    background: var(--color-term-bg);
-    position: relative;
-    z-index: 10;
+    padding: 0.5rem 0.5rem 0.5rem 0;
   }
 
   .function-menu {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     display: flex;
     justify-content: flex-end;
     align-items: center;
     gap: 0.75rem;
     padding: 1rem;
-    background: var(--color-term-bg);
-    z-index: 30;
+    border-top: 1px solid var(--color-term-border);
   }
 
   .function-button {
-    z-index: 40;
     transition: all 0.2s ease;
   }
 

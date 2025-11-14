@@ -12,6 +12,7 @@ import { CacheManager } from '../storage/CacheManager';
 import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
 import { AgentConfig } from '../config/AgentConfig';
+import { TabManager } from '../core/TabManager';
 
 // Global instances
 let agent: BrowserxAgent | null = null;
@@ -51,6 +52,10 @@ async function initialize(): Promise<void> {
  * Actual initialization logic
  */
 async function doInitialize(): Promise<void> {
+  // Initialize TabManager at service worker level (before agent)
+  const tabManager = TabManager.getInstance();
+  await tabManager.initialize();
+
   // Initialize configuration singleton first
   agentConfig = await AgentConfig.getInstance();
 
@@ -83,17 +88,25 @@ function setupMessageHandlers(): void {
   // Handle submissions from UI
   router.on(MessageType.SUBMISSION, async (message) => {
     const submission = message.payload as Submission;
-    
+
+
     if (!validateSubmission(submission)) {
-      console.error('Invalid submission:', submission);
       return;
     }
-    
+
+    const session = agent!.getSession();
+    const currentSessionTabId = session.getTabId();
+
     try {
-      const id = await agent!.submitOperation(submission.op);
+      // Pass the submission context to the agent
+      // The agent will handle tab binding/creation based on context.tabId
+      const id = await agent!.submitOperation(submission.op, submission.context);
+
+      const sessionTabIdAfter = session.getTabId();
+
+
       return { submissionId: id };
     } catch (error) {
-      console.error('Failed to submit operation:', error);
       throw error;
     }
   });
@@ -103,12 +116,16 @@ function setupMessageHandlers(): void {
     if (!agent) return null;
 
     const session = agent.getSession();
+    const sessionId = session.getId();
+
+    // Get current tab binding for this session
+    const tabManager = TabManager.getInstance();
+    const tabId = tabManager.getTabForSession(sessionId);
+
     return {
       sessionId: session.conversationId,
-      messageCount: session.getMessageCount(),
-      turnContext: session.getTurnContext(),
-      metadata: session.getMetadata(),
       isActiveTurn: session.isActiveTurn(), // Include active turn status
+      tabId: tabId, // US3: Include current tab binding
     };
   });
   
@@ -141,11 +158,16 @@ function setupMessageHandlers(): void {
     if (agent) {
       // Get the current session
       const session = agent.getSession();
+      const sessionId = session.getId();
 
       // Abort all running tasks before resetting
-      await session.abortAllTasks('user_interrupt');
+      await session.abortAllTasks('UserInterrupt');
 
-      // Reset the session
+      // Unbind session from TabManager before reset
+      const tabManager = TabManager.getInstance();
+      await tabManager.unbindSession(sessionId);
+
+      // Reset the session (this will also reset tabId to -1 in session and turnContext)
       await session.reset();
 
       return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
@@ -162,7 +184,7 @@ function setupMessageHandlers(): void {
             const session = agent.getSession();
 
             // Abort all running tasks
-            await session.abortAllTasks('user_stop_button');
+            await session.abortAllTasks('UserInterrupt');
 
             // Reset the session
             await session.reset();
@@ -542,6 +564,12 @@ async function executeQuickAction(tabId: number): Promise<void> {
  * Setup periodic tasks
  */
 function setupPeriodicTasks(): void {
+  // NOTE: Keep-alive mechanism intentionally NOT implemented here
+  // The service worker will be woken up on-demand when messages arrive
+  // UI (App.svelte) handles retries with exponential backoff if service worker is asleep
+  // See App.svelte lines 54-87 for wake-up retry logic
+  // TODO: Implement sophisticated keep-alive mechanism in the future
+
   // Process event queue periodically
   setInterval(async () => {
     if (!agent || !router) return;
@@ -672,7 +700,8 @@ chrome.runtime.onStartup.addListener(() => {
 /**
  * Handle service worker installation
  */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  // Continue with normal initialization
   initialize();
 });
 
@@ -704,16 +733,57 @@ chrome.runtime.onSuspend.addListener(async () => {
   initializationPromise = null;
 });
 
+// ============================================================================
+// ON-DEMAND SERVICE WORKER WAKE-UP STRATEGY
+// ============================================================================
+// Chrome terminates service workers after 30 seconds of inactivity.
+// Instead of keeping the service worker alive with alarms, we use on-demand wake-up:
+//
+// 1. Service Worker: Auto-initializes when ANY message arrives (see below)
+// 2. UI (App.svelte): Retries with exponential backoff if worker is asleep
+//    - Initial retry: 200ms, then 400ms, 800ms, 1600ms, 3200ms
+//    - Max retries: 8 attempts
+//    - Detects "port closed" errors and shows helpful messages
+//
+// Benefits:
+// - Simpler implementation (no keep-alive alarms)
+// - Better battery life (worker sleeps when not needed)
+// - Graceful degradation (UI handles wake-up transparently)
+//
+// Trade-offs:
+// - First message after sleep takes longer (~200-400ms)
+// - User sees brief "Service worker starting..." message
+//
+// Future: Implement sophisticated keep-alive for production use
+// ============================================================================
+
 // Ensure initialization happens when messages arrive
 // This handles cases where the service worker wakes up from sleep
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Initialize if not already initialized
   if (!isInitialized && !initializationPromise) {
-    initialize().then(() => {
-      // Initialization complete - MessageRouter will handle the message
-    }).catch(err => {
-      console.error('Failed to initialize on message:', err);
-    });
+    // Start async initialization and keep port open
+    initialize()
+      .then(() => {
+        console.log('[Service Worker] Initialization complete on message wake-up');
+        sendResponse({ success: true, initialized: true });
+      })
+      .catch(err => {
+        console.error('Failed to initialize on message:', err);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; // Keep message port open for async response
+  }
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    initializationPromise
+      .then(() => {
+        sendResponse({ success: true, initialized: true });
+      })
+      .catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; // Keep message port open
   }
   // Don't return true - let MessageRouter handle the response
   return false;

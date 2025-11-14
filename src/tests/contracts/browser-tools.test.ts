@@ -1,55 +1,10 @@
 /**
  * Contract tests for Browser Tools
- * Tests TabTool, DOMTool, StorageTool, and NavigationTool contracts
+ * Tests DOMTool, StorageTool, and NavigationTool contracts
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventCollector, createMockToolResult } from '../utils/test-helpers';
-
-// Define Browser Tool contract interfaces
-interface TabToolRequest {
-  action: 'create' | 'close' | 'update' | 'query' | 'activate';
-  tabId?: number;
-  url?: string;
-  properties?: TabProperties;
-  query?: TabQuery;
-}
-
-interface TabProperties {
-  url?: string;
-  title?: string;
-  active?: boolean;
-  pinned?: boolean;
-  muted?: boolean;
-  windowId?: number;
-}
-
-interface TabQuery {
-  url?: string;
-  title?: string;
-  active?: boolean;
-  windowId?: number;
-}
-
-interface TabToolResponse {
-  success: boolean;
-  data?: {
-    tabs?: Tab[];
-    tab?: Tab;
-    tabId?: number;
-  };
-  error?: string;
-}
-
-interface Tab {
-  id: number;
-  url: string;
-  title: string;
-  active: boolean;
-  pinned: boolean;
-  windowId: number;
-  status: 'loading' | 'complete';
-}
 
 interface DOMToolRequest {
   action: 'query' | 'click' | 'type' | 'getAttribute' | 'setAttribute' | 'getText' | 'getHtml';
@@ -145,10 +100,6 @@ interface HistoryEntry {
 }
 
 // Tool interfaces
-interface TabTool {
-  execute(request: TabToolRequest): Promise<TabToolResponse>;
-}
-
 interface DOMTool {
   execute(request: DOMToolRequest): Promise<DOMToolResponse>;
 }
@@ -166,183 +117,6 @@ describe('Browser Tools Contracts', () => {
 
   beforeEach(() => {
     eventCollector = new EventCollector();
-  });
-
-  describe('TabTool Contract', () => {
-    let mockTabTool: TabTool;
-
-    beforeEach(() => {
-      mockTabTool = {
-        async execute(request: TabToolRequest): Promise<TabToolResponse> {
-          eventCollector.collect({
-            id: 'evt_tab_action',
-            msg: {
-              type: 'TabActionStart',
-              data: {
-                action: request.action,
-                tab_id: request.tabId,
-              },
-            },
-          });
-
-          switch (request.action) {
-            case 'create':
-              const newTab: Tab = {
-                id: 123,
-                url: request.url || 'about:blank',
-                title: 'New Tab',
-                active: true,
-                pinned: false,
-                windowId: 1,
-                status: 'complete',
-              };
-              return {
-                success: true,
-                data: { tab: newTab, tabId: newTab.id },
-              };
-
-            case 'query':
-              const mockTabs: Tab[] = [
-                {
-                  id: 1,
-                  url: 'https://example.com',
-                  title: 'Example Site',
-                  active: true,
-                  pinned: false,
-                  windowId: 1,
-                  status: 'complete',
-                },
-                {
-                  id: 2,
-                  url: 'https://github.com',
-                  title: 'GitHub',
-                  active: false,
-                  pinned: true,
-                  windowId: 1,
-                  status: 'complete',
-                },
-              ];
-
-              let filteredTabs = mockTabs;
-              if (request.query?.active !== undefined) {
-                filteredTabs = filteredTabs.filter(tab => tab.active === request.query!.active);
-              }
-              if (request.query?.url) {
-                filteredTabs = filteredTabs.filter(tab => tab.url.includes(request.query!.url!));
-              }
-
-              return {
-                success: true,
-                data: { tabs: filteredTabs },
-              };
-
-            case 'close':
-              if (!request.tabId) {
-                return {
-                  success: false,
-                  error: 'Tab ID required for close action',
-                };
-              }
-              return {
-                success: true,
-                data: { tabId: request.tabId },
-              };
-
-            case 'activate':
-              return {
-                success: true,
-                data: { tabId: request.tabId },
-              };
-
-            case 'update':
-              return {
-                success: true,
-                data: {
-                  tab: {
-                    id: request.tabId || 1,
-                    url: request.properties?.url || 'https://example.com',
-                    title: request.properties?.title || 'Updated Tab',
-                    active: request.properties?.active || false,
-                    pinned: request.properties?.pinned || false,
-                    windowId: 1,
-                    status: 'complete',
-                  },
-                },
-              };
-
-            default:
-              return {
-                success: false,
-                error: `Unsupported action: ${request.action}`,
-              };
-          }
-        },
-      };
-    });
-
-    it('should handle tab creation', async () => {
-      const request: TabToolRequest = {
-        action: 'create',
-        url: 'https://example.com',
-      };
-
-      const response = await mockTabTool.execute(request);
-
-      expect(response.success).toBe(true);
-      expect(response.data?.tab).toMatchObject({
-        id: expect.any(Number),
-        url: 'https://example.com',
-        title: expect.any(String),
-        active: true,
-        status: 'complete',
-      });
-
-      const event = eventCollector.findByType('TabActionStart');
-      expect(event).toBeDefined();
-      expect((event?.msg as any).data.action).toBe('create');
-    });
-
-    it('should handle tab querying', async () => {
-      const request: TabToolRequest = {
-        action: 'query',
-        query: { active: true },
-      };
-
-      const response = await mockTabTool.execute(request);
-
-      expect(response.success).toBe(true);
-      expect(response.data?.tabs).toBeInstanceOf(Array);
-      expect(response.data?.tabs?.[0]).toMatchObject({
-        id: expect.any(Number),
-        url: expect.any(String),
-        title: expect.any(String),
-        active: true,
-      });
-    });
-
-    it('should handle tab closure', async () => {
-      const request: TabToolRequest = {
-        action: 'close',
-        tabId: 123,
-      };
-
-      const response = await mockTabTool.execute(request);
-
-      expect(response.success).toBe(true);
-      expect(response.data?.tabId).toBe(123);
-    });
-
-    it('should validate required parameters', async () => {
-      const request: TabToolRequest = {
-        action: 'close',
-        // Missing required tabId
-      };
-
-      const response = await mockTabTool.execute(request);
-
-      expect(response.success).toBe(false);
-      expect(response.error).toContain('Tab ID required');
-    });
   });
 
   describe('DOMTool Contract', () => {
@@ -860,7 +634,7 @@ describe('Browser Tools Contracts', () => {
 
     it('should handle error responses consistently', () => {
       // All tools should return consistent error response format
-      const errorResponse: TabToolResponse = {
+      const errorResponse: StorageToolResponse = {
         success: false,
         error: 'Test error message',
       };
@@ -872,9 +646,9 @@ describe('Browser Tools Contracts', () => {
 
     it('should handle success responses consistently', () => {
       // All tools should return consistent success response format
-      const successResponse: TabToolResponse = {
+      const successResponse: StorageToolResponse = {
         success: true,
-        data: { tabId: 123 },
+        data: { keys: ['key1', 'key2'] },
       };
 
       expect(successResponse.success).toBe(true);
@@ -884,21 +658,22 @@ describe('Browser Tools Contracts', () => {
 
     it('should support optional parameters', () => {
       // Test that tools handle optional parameters gracefully
-      const requestWithOptionals: TabToolRequest = {
-        action: 'create',
+      const requestWithOptionals: NavigationToolRequest = {
+        action: 'navigate',
         url: 'https://example.com',
-        properties: {
-          pinned: true,
-          active: false,
+        options: {
+          waitForLoad: true,
+          timeout: 5000,
         },
       };
 
-      const requestWithoutOptionals: TabToolRequest = {
-        action: 'create',
+      const requestWithoutOptionals: NavigationToolRequest = {
+        action: 'navigate',
+        url: 'https://example.com',
       };
 
-      expect(requestWithOptionals.properties).toBeDefined();
-      expect(requestWithoutOptionals.properties).toBeUndefined();
+      expect(requestWithOptionals.options).toBeDefined();
+      expect(requestWithoutOptionals.options).toBeUndefined();
     });
   });
 });

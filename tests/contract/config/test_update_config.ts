@@ -1,5 +1,5 @@
 /**
- * T007: Contract test for PUT /config
+ * Contract test for PUT /config
  * Tests updating the complete configuration
  */
 

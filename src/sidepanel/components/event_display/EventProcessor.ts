@@ -323,7 +323,7 @@ export class EventProcessor {
     if (msg.type === 'TaskStarted') {
       const metadata: EventMetadata = {
         model: msg.data.model,
-        workingDir: msg.data.cwd,
+        tabId: msg.data.tabId, // Replaced workingDir/cwd with tabId
       };
 
       return {
@@ -403,7 +403,7 @@ export class EventProcessor {
         buffer: '',
         metadata: {
           command: msg.data.command,
-          workingDir: msg.data.cwd,
+          // Removed workingDir/cwd - not applicable in browser context
         },
       };
       this.operationMetadata.set(msg.data.session_id, state);

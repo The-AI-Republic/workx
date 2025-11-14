@@ -1,5 +1,5 @@
 <!--
-  T018-T023, T043: ModelInfoTooltip component
+  T018-T023, ModelInfoTooltip component
   Feature: 001-multi-model-support
   User Story 2: Model Information Display
 -->
@@ -16,7 +16,7 @@
   let tooltipElement: HTMLDivElement;
   let position = { top: 0, left: 0 };
 
-  // T023: Update tooltip position when visibility changes or anchor moves
+  // Update tooltip position when visibility changes or anchor moves
   $: if (visible && anchorElement && tooltipElement) {
     updatePosition();
   }
@@ -33,7 +33,7 @@
     let top = anchorRect.top;
     let left = anchorRect.right + 8; // 8px gap
 
-    // T023: Prevent overflow - if tooltip goes off right edge, position to the left
+    // Prevent overflow - if tooltip goes off right edge, position to the left
     if (left + tooltipRect.width > viewportWidth) {
       left = anchorRect.left - tooltipRect.width - 8;
     }
@@ -61,7 +61,7 @@
     window.removeEventListener('scroll', updatePosition, true);
   });
 
-  // T020: Format context window for display
+  // Format context window for display
   function formatContextWindow(tokens: number): string {
     if (tokens >= 1000000) {
       return `${(tokens / 1000000).toFixed(1)}M tokens`;
@@ -102,7 +102,7 @@
       </p>
     </div>
 
-    <!-- T020: Context Window -->
+    <!-- Context Window -->
     <div class="mb-3">
       <div class="flex items-center gap-2 mb-1">
         <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +130,7 @@
       </div>
     {/if}
 
-    <!-- T021: Capability Badges -->
+    <!-- Capability Badges -->
     <div class="mb-3">
       <div class="flex items-center gap-2 mb-2">
         <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

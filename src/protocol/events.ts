@@ -75,7 +75,7 @@ export interface TaskStartedEvent {
   submission_id?: string;
   model_context_window?: number;
   model?: string;
-  cwd?: string;
+  tabId?: number; // Replaced cwd with tabId
   approval_policy?: AskForApproval;
   sandbox_policy?: SandboxPolicy;
   review_mode?: boolean;

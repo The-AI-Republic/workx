@@ -1,5 +1,5 @@
 /**
- * T006: Contract test for GET /config
+ * Contract test for GET /config
  * Tests retrieving the complete configuration
  */
 
