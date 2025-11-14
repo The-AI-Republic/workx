@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "S2_Browserx: General AI Agent For Work Tasks Automation",
-  "version": "0.0.4",
+  "name": "Browserx: General AI Agent For Work Tasks Automation",
+  "version": "0.0.5",
   "description": "Privacy Preserving And Open Source AI agent With Browser Automation Capabilities",
   "permissions": [
     "tabs",
