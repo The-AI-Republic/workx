@@ -5,9 +5,8 @@
 
 import { BrowserxAgent } from '../core/BrowserxAgent';
 import { MessageRouter, MessageType } from '../core/MessageRouter';
-import type { Submission, Event } from '../protocol/types';
+import type { Submission } from '../protocol/types';
 import { validateSubmission } from '../protocol/schemas';
-import { ModelClientFactory } from '../models/ModelClientFactory';
 import { CacheManager } from '../storage/CacheManager';
 import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
