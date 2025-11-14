@@ -384,10 +384,10 @@
   .dropdown-menu {
     position: absolute;
     left: 0;
+    right: 0;
     bottom: 100%;
     margin-bottom: 4px;
-    min-width: 300px;
-    max-width: 400px;
+    width: calc(100vw - 2rem);
     max-height: 300px;
     overflow-y: auto;
     background-color: var(--color-term-black, #000000);
