@@ -22,16 +22,16 @@ jobs:
 
       - name: Debug - Check secret availability
         run: |
-          if [ -z "${{ secrets.PRIVATE_REPO_PAT }}" ]; then
-            echo "❌ ERROR: PRIVATE_REPO_PAT secret is empty or not set!"
+          if [ -z "${{ secrets.OSS_SYNC_TO_PRIVATE }}" ]; then
+            echo "❌ ERROR: OSS_SYNC_TO_PRIVATE secret is empty or not set!"
             echo "Secret length: 0"
             exit 1
           else
-            echo "✅ PRIVATE_REPO_PAT secret is available"
-            echo "Secret length: ${#PRIVATE_REPO_PAT}"
+            echo "✅ OSS_SYNC_TO_PRIVATE secret is available"
+            echo "Secret length: ${#OSS_SYNC_TO_PRIVATE}"
           fi
         env:
-          PRIVATE_REPO_PAT: ${{ secrets.PRIVATE_REPO_PAT }}
+          OSS_SYNC_TO_PRIVATE: ${{ secrets.OSS_SYNC_TO_PRIVATE }}
 
       - name: Clone private repo
         run: |
@@ -40,10 +40,10 @@ jobs:
 
           echo "Cloning private repository..."
           if ! git clone \
-            https://x-access-token:${{ secrets.PRIVATE_REPO_PAT }}@github.com/The-AI-Republic/ai-republic-agents.git \
+            https://x-access-token:${{ secrets.OSS_SYNC_TO_PRIVATE }}@github.com/The-AI-Republic/ai-republic-agents.git \
             private-repo; then
             echo "ERROR: Failed to clone private repository" >&2
-            echo "Check that PRIVATE_REPO_PAT secret is set and valid" >&2
+            echo "Check that OSS_SYNC_TO_PRIVATE secret is set and valid" >&2
             exit 1
           fi
 
