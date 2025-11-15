@@ -58,7 +58,7 @@ jobs:
           set -o pipefail
 
           PUBLIC_SRC_DIR="."
-          PRIVATE_TARGET_DIR="in_browser_agent/open_source"
+          PRIVATE_TARGET_DIR="open_source"
 
           echo "Syncing files from public repo to private repo..."
           echo "Source: $PUBLIC_SRC_DIR"
