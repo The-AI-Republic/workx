@@ -20,6 +20,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Debug - Check secret availability
+        run: |
+          if [ -z "${{ secrets.PRIVATE_REPO_PAT }}" ]; then
+            echo "❌ ERROR: PRIVATE_REPO_PAT secret is empty or not set!"
+            echo "Secret length: 0"
+            exit 1
+          else
+            echo "✅ PRIVATE_REPO_PAT secret is available"
+            echo "Secret length: ${#PRIVATE_REPO_PAT}"
+          fi
+        env:
+          PRIVATE_REPO_PAT: ${{ secrets.PRIVATE_REPO_PAT }}
+
       - name: Clone private repo
         run: |
           set -e
