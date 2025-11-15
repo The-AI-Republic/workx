@@ -59,28 +59,78 @@ jobs:
 
           PUBLIC_SRC_DIR="."
           PRIVATE_TARGET_DIR="open_source"
+          MAPPING_FILE="open_source_mapping.json"
 
           echo "Syncing files from public repo to private repo..."
           echo "Source: $PUBLIC_SRC_DIR"
           echo "Target: $PRIVATE_TARGET_DIR"
+
+          # Read mapping configuration from private repo
+          if [ -f "private-repo/$MAPPING_FILE" ]; then
+            echo "Found mapping configuration at private-repo/$MAPPING_FILE"
+
+            # Parse exclude patterns from JSON
+            EXCLUDE_PATTERNS=$(jq -r '.exclude[]? // empty' "private-repo/$MAPPING_FILE")
+
+            # Parse file renames from JSON (array of [original, target] pairs)
+            RENAMES=$(jq -r '.rename[]? // empty | "\(.[0]):\(.[1])"' "private-repo/$MAPPING_FILE")
+
+            echo "Exclude patterns:"
+            echo "$EXCLUDE_PATTERNS"
+            echo ""
+            echo "File renames:"
+            echo "$RENAMES"
+          else
+            echo "No mapping file found, using default excludes only"
+            EXCLUDE_PATTERNS=""
+            RENAMES=""
+          fi
 
           # Create and clean target directory
           cd private-repo
           mkdir -p "$PRIVATE_TARGET_DIR"
           find "$PRIVATE_TARGET_DIR" -mindepth 1 -maxdepth 999 -print0 | xargs -0 rm -rf 2>/dev/null || true
 
-          # Sync files from public to private
+          # Build rsync exclude arguments
           cd ..
+          RSYNC_EXCLUDES="--exclude .git --exclude .github --exclude node_modules --exclude .gitignore"
+
+          # Add custom excludes from mapping file
+          if [ -n "$EXCLUDE_PATTERNS" ]; then
+            while IFS= read -r pattern; do
+              if [ -n "$pattern" ]; then
+                RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude $pattern"
+              fi
+            done <<< "$EXCLUDE_PATTERNS"
+          fi
+
+          # Sync files from public to private
+          echo "Running rsync with excludes: $RSYNC_EXCLUDES"
           if ! rsync -av \
             --delete \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude 'node_modules' \
-            --exclude '.gitignore' \
+            $RSYNC_EXCLUDES \
             "$PUBLIC_SRC_DIR"/ \
             "private-repo/$PRIVATE_TARGET_DIR"/; then
             echo "ERROR: rsync failed - check disk space and permissions" >&2
             exit 1
+          fi
+
+          # Handle file renames
+          if [ -n "$RENAMES" ]; then
+            echo "Processing file renames..."
+            cd private-repo/$PRIVATE_TARGET_DIR
+            while IFS=: read -r from to; do
+              if [ -n "$from" ] && [ -n "$to" ]; then
+                if [ -e "$from" ]; then
+                  echo "Renaming: $from -> $to"
+                  mkdir -p "$(dirname "$to")"
+                  mv "$from" "$to"
+                else
+                  echo "Warning: Source file not found for rename: $from"
+                fi
+              fi
+            done <<< "$RENAMES"
+            cd ../..
           fi
 
           echo "File sync completed successfully"
