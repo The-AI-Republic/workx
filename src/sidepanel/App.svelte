@@ -484,113 +484,115 @@
 
 <div class="terminal-layout">
   <TerminalContainer>
-    <!-- Status Line -->
-    <div class="status-line flex justify-between mb-2">
-      <TerminalMessage type="system" content="Browserx (Alpha)" />
-      <div class="flex items-center space-x-2">
-        {#if isProcessing}
-          <TerminalMessage type="warning" content="[PROCESSING]" />
-        {/if}
-        {#if !isConnected}
-          <TerminalMessage type="error" content="[DISCONNECTED]" />
-        {:else if !agentReady}
-          <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
-        {/if}
-      </div>
-    </div>
-
-    <!-- Messages - scrollable area -->
-    <div class="messages-container" bind:this={scrollContainer}>
-      {#if showWelcome}
-        <div class="welcome-screen" role="presentation">
-          <pre class="welcome-ascii">
-            {#each welcomeAsciiLines as line, index (index)}
-              <span class={line.color}>{line.text}</span>
-            {/each}
-          </pre>
-          <p class="welcome-subtitle text-term-bright-green">
-            General in-browser AI agent for work tasks
-          </p>
-          <p class="welcome-subtitle text-term-dim-green">
-            Developed and supported by AI Republic
-          </p>
-          <a
-            class="welcome-link"
-            href="https://airepublic.com"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            Learn more
-          </a>
+    <div class="terminal-content-container">
+      <!-- Status Line -->
+      <div class="status-line flex justify-between mb-2">
+        <TerminalMessage type="system" content="Browserx (Alpha)" />
+        <div class="flex items-center space-x-2">
+          {#if isProcessing}
+            <TerminalMessage type="warning" content="[PROCESSING]" />
+          {/if}
+          {#if !isConnected}
+            <TerminalMessage type="error" content="[DISCONNECTED]" />
+          {:else if !agentReady}
+            <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
+          {/if}
         </div>
-      {/if}
-
-      {#each messages as message (message.timestamp)}
-        <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
-      {/each}
-
-      {#each processedEvents as event (event.id)}
-        <EventDisplay {event} />
-      {/each}
-    </div>
-
-    <!-- Fixed bottom controls container -->
-    <div class="bottom-controls">
-      <!-- Input area -->
-      <div class="input-area">
-        <MessageInput
-          bind:value={inputText}
-          onSubmit={sendMessage}
-          tabId={currentTabId}
-          placeholder=">> Enter command..."
-          on:tabSelected={handleTabSelected}
-        />
       </div>
 
-      <!-- Function menu -->
-      <div class="function-menu">
-        <!-- New Conversation Button -->
-        <button
-          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-          on:click={startNewConversation}
-          on:mouseenter={() => showNewConvTooltip = true}
-          on:mouseleave={() => showNewConvTooltip = false}
-          aria-label="Start New Conversation"
-        >
-          <!-- New Conversation Icon SVG (Plus/Refresh) -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
+      <!-- Messages - scrollable area -->
+      <div class="messages-container" bind:this={scrollContainer}>
+        {#if showWelcome}
+          <div class="welcome-screen" role="presentation">
+            <pre class="welcome-ascii">
+              {#each welcomeAsciiLines as line, index (index)}
+                <span class={line.color}>{line.text}</span>
+              {/each}
+            </pre>
+            <p class="welcome-subtitle text-term-bright-green">
+              General in-browser AI agent for work tasks
+            </p>
+            <p class="welcome-subtitle text-term-dim-green">
+              Developed and supported by AI Republic
+            </p>
+            <a
+              class="welcome-link"
+              href="https://airepublic.com"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Learn more
+            </a>
+          </div>
+        {/if}
 
-          <!-- Tooltip -->
-          {#if showNewConvTooltip}
-            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-              New Conversation
-            </div>
-          {/if}
-        </button>
+        {#each messages as message (message.timestamp)}
+          <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
+        {/each}
 
-        <!-- Settings Button -->
-        <button
-          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-          on:click={toggleSettings}
-          on:mouseenter={() => showTooltip = true}
-          on:mouseleave={() => showTooltip = false}
-          aria-label="Settings"
-        >
-          <!-- Gear Icon SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+        {#each processedEvents as event (event.id)}
+          <EventDisplay {event} />
+        {/each}
+      </div>
 
-          <!-- Tooltip -->
-          {#if showTooltip}
-            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-              Settings
-            </div>
-          {/if}
-        </button>
+      <!-- Fixed bottom controls container -->
+      <div class="bottom-controls">
+        <!-- Input area -->
+        <div class="input-area">
+          <MessageInput
+            bind:value={inputText}
+            onSubmit={sendMessage}
+            tabId={currentTabId}
+            placeholder=">> Enter command..."
+            on:tabSelected={handleTabSelected}
+          />
+        </div>
+
+        <!-- Function menu -->
+        <div class="function-menu">
+          <!-- New Conversation Button -->
+          <button
+            class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+            on:click={startNewConversation}
+            on:mouseenter={() => showNewConvTooltip = true}
+            on:mouseleave={() => showNewConvTooltip = false}
+            aria-label="Start New Conversation"
+          >
+            <!-- New Conversation Icon SVG (Plus/Refresh) -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+
+            <!-- Tooltip -->
+            {#if showNewConvTooltip}
+              <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+                New Conversation
+              </div>
+            {/if}
+          </button>
+
+          <!-- Settings Button -->
+          <button
+            class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+            on:click={toggleSettings}
+            on:mouseenter={() => showTooltip = true}
+            on:mouseleave={() => showTooltip = false}
+            aria-label="Settings"
+          >
+            <!-- Gear Icon SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+
+            <!-- Tooltip -->
+            {#if showTooltip}
+              <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+                Settings
+              </div>
+            {/if}
+          </button>
+        </div>
       </div>
     </div>
   </TerminalContainer>
@@ -614,6 +616,15 @@
   .terminal-layout {
     height: 100vh;
     overflow: hidden;
+  }
+
+  .terminal-content-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
   }
 
   .status-line {

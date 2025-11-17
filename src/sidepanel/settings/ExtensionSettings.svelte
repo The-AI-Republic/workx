@@ -11,8 +11,12 @@
   }>();
 
   // Form state
-  let originalExtension: IExtensionSettings = {};
-  let currentExtension: IExtensionSettings = {};
+  let originalExtension: IExtensionSettings = {
+    permissions: {}
+  };
+  let currentExtension: IExtensionSettings = {
+    permissions: {}
+  };
   let isDirty = false;
   let isSaving = false;
   let saveMessage = '';
@@ -189,76 +193,6 @@
           placeholder="https://example.com&#10;https://api.example.com&#10;https://*.example.org"
         ></textarea>
         <div class="help-text">List of allowed origins (one per line). Supports wildcards (*).</div>
-      </div>
-    </div>
-
-    <!-- Permissions Section -->
-    <div class="section">
-      <h3 class="section-title">Permissions</h3>
-
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            bind:checked={currentExtension.permissions.tabs}
-            on:input={handleInput}
-            class="form-checkbox"
-          />
-          <span>Tabs Permission</span>
-        </label>
-        <div class="help-text">Allow access to browser tab information and management</div>
-      </div>
-
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            bind:checked={currentExtension.permissions.storage}
-            on:input={handleInput}
-            class="form-checkbox"
-          />
-          <span>Storage Permission</span>
-        </label>
-        <div class="help-text">Allow access to browser storage APIs</div>
-      </div>
-
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            bind:checked={currentExtension.permissions.notifications}
-            on:input={handleInput}
-            class="form-checkbox"
-          />
-          <span>Notifications Permission</span>
-        </label>
-        <div class="help-text">Allow sending browser notifications</div>
-      </div>
-
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            bind:checked={currentExtension.permissions.clipboardRead}
-            on:input={handleInput}
-            class="form-checkbox"
-          />
-          <span>Clipboard Read Permission</span>
-        </label>
-        <div class="help-text">Allow reading from clipboard</div>
-      </div>
-
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            bind:checked={currentExtension.permissions.clipboardWrite}
-            on:input={handleInput}
-            class="form-checkbox"
-          />
-          <span>Clipboard Write Permission</span>
-        </label>
-        <div class="help-text">Allow writing to clipboard</div>
       </div>
     </div>
 
