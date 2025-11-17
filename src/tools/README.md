@@ -21,19 +21,11 @@ The Browser Tools System follows a modular architecture with the following key c
    - Timeout and permission management
 
 3. **Individual Tools**
-   - **TabTool** (`TabTool.ts`) - Browser tab management
    - **DOMTool** (`DOMTool.ts`) - DOM interaction and manipulation
    - **StorageTool** (`StorageTool.ts`) - Chrome storage management
    - **NavigationTool** (`NavigationTool.ts`) - Page navigation and history
 
 ## Tool Capabilities
-
-### TabTool
-- Create, close, activate, and update tabs
-- Query tabs with filters
-- Take screenshots
-- Duplicate tabs
-- Tab event listening
 
 ### DOMTool
 - Query DOM elements with CSS selectors

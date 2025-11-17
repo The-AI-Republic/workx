@@ -47,10 +47,7 @@
   color: var(--color-term-dim-green);
 }
 
-.terminal-prompt::before {
-  content: '> ';
-  color: var(--color-term-dim-green);
-}
+/* Removed duplicate arrow - now handled inline in MessageInput.svelte */
 
 .text-term-green {
   color: var(--color-term-green);

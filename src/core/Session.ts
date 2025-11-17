@@ -93,6 +93,10 @@ export class Session {
 
     this.activeTurn = new ActiveTurn();
 
+    // Session starts with no tab binding (tabId = -1)
+    // Tab binding is handled by the UI when the side panel opens
+    this.sessionState.setTabId(-1);
+
     // Handle initial history
     const historyMode = initialHistory ?? { mode: 'new' as const };
 
@@ -146,7 +150,7 @@ export class Session {
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        cwd: this.turnContext?.getCwd?.() || '/',
+        tabId: this.sessionState.getTabId(), // Replaced cwd with tabId
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -183,8 +187,7 @@ export class Session {
   }
 
   /**
-   * Add a message to history using dual persistence
-   * Legacy API - converts simple text entry to ResponseItem
+   * Add a message to history using RolloutRecorder
    */
   async addToHistory(entry: { timestamp: number; text: string; type: 'user' | 'agent' | 'system' }): Promise<void> {
     // Convert to ResponseItem
@@ -236,23 +239,6 @@ export class Session {
 
 
   /**
-   * Get session metadata
-   */
-  getMetadata(): {
-    conversationId: string;
-    messageCount: number;
-    startTime: number;
-    currentModel: string;
-  } {
-    return {
-      conversationId: this.conversationId,
-      messageCount: this.getMessageCount(),
-      startTime: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
-      currentModel: this.turnContext?.getModel?.() || 'gpt-5',
-    };
-  }
-
-  /**
    * Export session for persistence
    * Uses SessionState export structure
    */
@@ -277,7 +263,7 @@ export class Session {
   /**
    * Import session from persistence
    */
-  static import(data: {
+  static async import(data: {
     id: string;
     state: SessionStateExport;
     metadata: {
@@ -285,7 +271,7 @@ export class Session {
       lastAccessed: number;
       messageCount?: number; // Optional for backward compatibility
     };
-  }, services?: SessionServices, toolRegistry?: ToolRegistry): Session {
+  }, services?: SessionServices, toolRegistry?: ToolRegistry): Promise<Session> {
     // Create session with resumed history mode (no rollout items since we're importing directly)
     const initialHistory: InitialHistory = { mode: 'new' }; // Use 'new' mode since we're setting state directly
     const session = new Session(undefined, true, services, toolRegistry, initialHistory);
@@ -293,7 +279,6 @@ export class Session {
     // Import SessionState
     session.sessionState = SessionState.import(data.state);
 
-    // Set metadata (messageCount is now derived from sessionState, not persisted)
     Object.assign(session, {
       conversationId: data.id,
     });
@@ -478,13 +463,17 @@ export class Session {
    * Build initial context for review mode
    */
   buildInitialContext(turnContext?: any): any[] {
+    // Replaced working directory with tab context
+    const tabId = turnContext?.tabId ?? -1;
+    const tabContext = tabId === -1 ? 'No tab bound' : `Tab ID: ${tabId}`;
+
     return [
       {
         role: 'system',
         content: [
           {
             type: 'input_text',
-            text: `Working directory: ${turnContext?.cwd || '/'}`,
+            text: `Browser tab context: ${tabContext}`,
           },
         ],
       },
@@ -541,6 +530,10 @@ export class Session {
 
     // Create new conversation ID
     Object.assign(this, { conversationId: `conv_${uuidv4()}` });
+
+    // Reset tab binding to -1 (unbound)
+    // Tab will be auto-bound by UI when side panel reopens
+    this.sessionState.setTabId(-1);
 
     // Reinitialize with RolloutRecorder if enabled
     if (this.isPersistent && this.services?.rollout) {
@@ -601,6 +594,20 @@ export class Session {
    */
   getId(): string {
     return this.conversationId;
+  }
+
+  /**
+   * Get current tab ID bound to this session
+   */
+  getTabId(): number {
+    return this.sessionState.getTabId();
+  }
+
+  /**
+   * Set tab ID for this session
+   */
+  setTabId(tabId: number): void {
+    this.sessionState.setTabId(tabId);
   }
 
   /**

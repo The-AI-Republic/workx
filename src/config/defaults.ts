@@ -3,6 +3,7 @@
  */
 
 import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig } from './types';
+import defaultProviders from '../models/providers/default.json';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
@@ -142,7 +143,7 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
 // Helper to create default config without module-level execution
 export function getDefaultAgentConfig(): IAgentConfig {
   return {
-    version: '2.0.0',
+    version: '2.1.0',
     selectedModelId: '', // Will be set to first available model during initialization
     modelRegistry: {}, // Will be populated during initialization
     providers: getDefaultProviders(),
@@ -248,63 +249,9 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
 /**
  * Get default provider configurations
  * Multi-provider support with models arrays
+ * Loaded from JSON configuration file
  */
 export function getDefaultProviders(): Record<string, any> {
-  return {
-    openai: {
-      id: 'openai',
-      name: 'OpenAI',
-      apiKey: '',
-      organization: null,
-      baseUrl: 'https://api.openai.com/v1',
-      version: null,
-      headers: {},
-      timeout: DEFAULT_TIMEOUTS.API_REQUEST,
-      retryConfig: DEFAULT_RETRY_CONFIG,
-      models: [
-        {
-          id: '', // Will be randomly generated on first init
-          name: 'GPT-5',
-          modelKey: 'gpt-5',
-          creator: 'OpenAI',
-          contextWindow: 200000,
-          maxOutputTokens: 16384,
-          supportsReasoning: true,
-          reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
-          supportsReasoningSummaries: true,
-          supportsVerbosity: true,
-          verbosityLevels: ['low', 'medium', 'high'],
-          releaseDate: '2024-12-05',
-          deprecated: false
-        }
-      ]
-    },
-    xai: {
-      id: 'xai',
-      name: 'xAI',
-      apiKey: '',
-      organization: null,
-      baseUrl: 'https://api.x.ai/v1',
-      version: null,
-      headers: {},
-      timeout: DEFAULT_TIMEOUTS.API_REQUEST,
-      retryConfig: DEFAULT_RETRY_CONFIG,
-      models: [
-        {
-          id: '', // Will be randomly generated on first init
-          name: 'Grok 4 Fast Reasoning',
-          modelKey: 'grok-4-fast-reasoning',
-          creator: 'xAI',
-          contextWindow: 131072,
-          maxOutputTokens: 16384,
-          supportsReasoning: true,
-          reasoningEfforts: ['minimal', 'low', 'medium', 'high', 'ultra'],
-          supportsReasoningSummaries: false,
-          supportsVerbosity: false,
-          releaseDate: '2024-11-15',
-          deprecated: false
-        }
-      ]
-    }
-  };
+  // Return a deep copy to avoid mutation of the imported JSON
+  return JSON.parse(JSON.stringify(defaultProviders));
 }

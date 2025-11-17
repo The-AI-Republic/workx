@@ -323,7 +323,7 @@ export class EventProcessor {
     if (msg.type === 'TaskStarted') {
       const metadata: EventMetadata = {
         model: msg.data.model,
-        workingDir: msg.data.cwd,
+        tabId: msg.data.tabId, // Replaced workingDir/cwd with tabId
       };
 
       return {
@@ -403,7 +403,7 @@ export class EventProcessor {
         buffer: '',
         metadata: {
           command: msg.data.command,
-          workingDir: msg.data.cwd,
+          // Removed workingDir/cwd - not applicable in browser context
         },
       };
       this.operationMetadata.set(msg.data.session_id, state);
@@ -599,17 +599,41 @@ export class EventProcessor {
         style: STYLE_PRESETS.reasoning,
         streaming: false,
         collapsible: true,
-        collapsed: true, // Collapsed by default
+        collapsed: false, // Expanded by default to show reasoning
       };
     }
 
-    // Handle raw reasoning content
-    if (
-      msg.type === 'AgentReasoningRawContent' ||
-      msg.type === 'AgentReasoningRawContentDelta' ||
-      msg.type === 'AgentReasoningSectionBreak'
-    ) {
-      // These are typically internal - skip for now
+    // Handle raw reasoning content (for thinking models like Kimi K2, o1, o3)
+    if (msg.type === 'AgentReasoningRawContent') {
+      const content = msg.data.content || '';
+
+      // Only display if showReasoning is enabled
+      if (!this.showReasoning) {
+        return null;
+      }
+
+      return {
+        id: event.id,
+        category: 'reasoning',
+        timestamp: new Date(),
+        title: 'detailed thinking',
+        content: content,
+        style: STYLE_PRESETS.reasoning,
+        streaming: false,
+        collapsible: true,
+        collapsed: false, // Show expanded by default for detailed thinking
+      };
+    }
+
+    // Handle raw reasoning content deltas (for future streaming support)
+    if (msg.type === 'AgentReasoningRawContentDelta') {
+      // Skip for now - currently we accumulate and emit complete content
+      return null;
+    }
+
+    // Handle reasoning section breaks
+    if (msg.type === 'AgentReasoningSectionBreak') {
+      // Skip for now - not used by current implementations
       return null;
     }
 

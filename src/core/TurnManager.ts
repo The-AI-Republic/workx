@@ -338,33 +338,34 @@ export class TurnManager {
       });
     }
 
-    // Add update_plan tool (always enabled for task management)
-    tools.push({
-      type: 'function',
-      function: {
-        name: 'update_plan',
-        description: 'Update the current task plan',
-        strict: false,
-        parameters: {
-          type: 'object',
-          properties: {
-            tasks: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  description: { type: 'string' },
-                  status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
-                },
-                required: ['id', 'description', 'status'],
-              },
-            },
-          },
-          required: ['tasks'],
-        },
-      },
-    });
+    // Add update_plan tool (DISABLED - not working as expected)
+    // TODO: Re-enable after fixing update_plan functionality
+    // tools.push({
+    //   type: 'function',
+    //   function: {
+    //     name: 'update_plan',
+    //     description: 'Update the current task plan',
+    //     strict: false,
+    //     parameters: {
+    //       type: 'object',
+    //       properties: {
+    //         tasks: {
+    //           type: 'array',
+    //           items: {
+    //             type: 'object',
+    //             properties: {
+    //               id: { type: 'string' },
+    //               description: { type: 'string' },
+    //               status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
+    //             },
+    //             required: ['id', 'description', 'status'],
+    //           },
+    //         },
+    //       },
+    //       required: ['tasks'],
+    //     },
+    //   },
+    // });
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -516,7 +517,7 @@ export class TurnManager {
   private async handleResponseItem(item: any): Promise<any | undefined> {
     // Check item type and handle accordingly
     if (item.type === 'function_call') {
-      // Function call - execute and return response
+      // Legacy function_call item - execute and return response
       const { name, arguments: args, call_id } = item;
 
       try {
@@ -539,6 +540,27 @@ export class TurnManager {
           await this.emitEvent(msg);
         } else {
           console.warn('Skipping malformed event from mapResponseItemToEventMessages:', msg);
+        }
+      }
+
+      // Handle tool_calls embedded in message items (unified format)
+      // NEW: Assistant messages can now contain tool_calls directly
+      if (item.type === 'message' && item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
+        // Execute the first tool call (parallel_tool_calls is false)
+        const toolCall = item.tool_calls[0];
+        try {
+          const result = await this.executeToolCall(
+            toolCall.function.name,
+            toolCall.function.arguments,
+            toolCall.id
+          );
+          return result;
+        } catch (error) {
+          return {
+            type: 'function_call_output',
+            call_id: toolCall.id,
+            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          };
         }
       }
 
@@ -592,9 +614,10 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
-        case 'update_plan':
-          result = await this.updatePlan(parsedParams.tasks);
-          break;
+        // DISABLED: update_plan tool not working as expected
+        // case 'update_plan':
+        //   result = await this.updatePlan(parsedParams.tasks);
+        //   break;
 
         default:
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
@@ -632,52 +655,6 @@ export class TurnManager {
     }
   }
 
-  /**
-   * Execute command in browser context
-   */
-  private async executeCommand(command: string, cwd?: string): Promise<any> {
-    // Emit command begin event
-    await this.emitEvent({
-      type: 'ExecCommandBegin',
-      data: {
-        session_id: this.session.getSessionId(),
-        command,
-        tab_id: await this.getCurrentTabId(),
-        url: await this.getCurrentUrl(),
-      },
-    });
-
-    try {
-      // In browser context, this would interact with page content
-      // For now, return a placeholder response
-      const result = {
-        stdout: `Executed: ${command}`,
-        stderr: '',
-        exit_code: 0,
-      };
-
-      // Emit command end event
-      await this.emitEvent({
-        type: 'ExecCommandEnd',
-        data: {
-          session_id: this.session.getSessionId(),
-          exit_code: result.exit_code,
-        },
-      });
-
-      return result;
-
-    } catch (error) {
-      await this.emitEvent({
-        type: 'ExecCommandEnd',
-        data: {
-          session_id: this.session.getSessionId(),
-          exit_code: 1,
-        },
-      });
-      throw error;
-    }
-  }
 
   /**
    * Execute web search
@@ -783,11 +760,16 @@ export class TurnManager {
 
     try {
       // Execute tool via ToolRegistry
+      // Get tabId from Session to pass to tool execution
+      const tabId = this.session.getTabId();
+
+
       const request = {
         toolName,
         parameters,
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
+        tabId, // Pass tabId in request for tools that need it
       };
 
       const response = await this.toolRegistry.execute(request);
@@ -840,7 +822,8 @@ export class TurnManager {
    */
   private async recordTurnContext(): Promise<void> {
     const turnContextItem = {
-      cwd: this.turnContext.getCwd(),
+      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
+      sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       model: this.turnContext.getModel(),

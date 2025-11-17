@@ -41,8 +41,8 @@ describe('Backward Compatibility', () => {
       const factory = new ModelClientFactory();
 
       // Should be able to create clients without initialization
-      // (using default config or environment variables)
-      const client = await factory.createClientForModel('default');
+      // (using default config from AgentConfig)
+      const client = await factory.createClientForCurrentModel();
       expect(client).toBeDefined();
     });
 

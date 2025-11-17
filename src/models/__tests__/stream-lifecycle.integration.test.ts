@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIResponsesClient } from '../OpenAIResponsesClient';
+import { OpenAIChatCompletionClient } from '../client/OpenAIChatCompletionClient';
 import { ResponseStream } from '../ResponseStream';
 import type { Prompt, ModelFamily, ModelProviderInfo } from '../types/ResponsesAPI';
 import type { ResponseEvent } from '../types/ResponseEvent';
@@ -22,7 +22,7 @@ import {
 } from './fixtures/sse-events';
 
 describe('Full Stream Lifecycle Integration', () => {
-  let client: OpenAIResponsesClient;
+  let client: OpenAIChatCompletionClient;
   let mockModelFamily: ModelFamily;
   let mockProvider: ModelProviderInfo;
 
@@ -43,7 +43,7 @@ describe('Full Stream Lifecycle Integration', () => {
       requires_openai_auth: true,
     };
 
-    client = new OpenAIResponsesClient(
+    client = new OpenAIChatCompletionClient(
       {
         apiKey: 'test-api-key',
         conversationId: 'integration-test',

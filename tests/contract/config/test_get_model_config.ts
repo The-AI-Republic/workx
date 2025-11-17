@@ -1,5 +1,5 @@
 /**
- * T008: Contract test for GET /config/model
+ * Contract test for GET /config/model
  * Tests retrieving model configuration
  */
 

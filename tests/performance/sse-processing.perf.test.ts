@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { OpenAIResponsesClient } from '@/models/OpenAIResponsesClient';
+import { OpenAIResponsesClient } from '@/models/client/OpenAIResponsesClient';
 import type { ModelFamily, ModelProviderInfo } from '@/models/types/ResponsesAPI';
 
 describe('SSE Processing Performance', () => {

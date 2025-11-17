@@ -38,12 +38,12 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Get the singleton instance of AgentConfig
-   * @returns The singleton AgentConfig instance
+   * @returns Promise resolving to the singleton AgentConfig instance
    */
-  public static getInstance(): AgentConfig {
+  public static async getInstance(): Promise<AgentConfig> {
     if (!AgentConfig.instance) {
       const instance = new AgentConfig();
-      instance.initialize();
+      await instance.initialize();
       AgentConfig.instance = instance;
     }
     return AgentConfig.instance;
@@ -385,7 +385,7 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
-   * T063: Add a new provider with automatic model ID assignment
+   * Add a new provider with automatic model ID assignment
    * @param provider Provider configuration to add
    * @returns Added provider with model IDs assigned
    */
@@ -427,7 +427,7 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
-   * T064: Update a provider with automatic model ID assignment for new models
+   * Update a provider with automatic model ID assignment for new models
    * @param id Provider ID to update
    * @param provider Partial provider config with updates
    * @returns Updated provider configuration
@@ -496,7 +496,7 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Set API key for a specific provider
-   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
    * @param apiKey - Unencrypted API key (will be encrypted before storage)
    * @returns Provider configuration with encrypted API key
    * @throws Error if provider is unknown
@@ -527,7 +527,7 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Get decrypted API key for a specific provider
-   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
    * @returns Decrypted API key or null if not configured
    * @remarks Includes backward compatibility fallback to auth.apiKey
    * @example
@@ -552,7 +552,7 @@ export class AgentConfig implements IConfigService {
 
   /**
    * Delete API key for a specific provider
-   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic')
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
    * @throws Error if provider is not found
    * @example
    * await agentConfig.deleteProviderApiKey('xai');

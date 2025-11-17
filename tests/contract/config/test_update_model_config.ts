@@ -1,5 +1,5 @@
 /**
- * T009: Contract test for PATCH /config/model
+ * Contract test for PATCH /config/model
  * Tests updating model configuration
  */
 

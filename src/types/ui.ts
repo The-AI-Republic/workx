@@ -65,7 +65,7 @@ export interface EventStyle {
  */
 export const STYLE_PRESETS: Record<string, EventStyle> = {
   task_started: {
-    textColor: 'text-cyan-400',
+    textColor: 'text-green-400',
     icon: 'info',
   },
   task_complete: {
@@ -81,7 +81,7 @@ export const STYLE_PRESETS: Record<string, EventStyle> = {
     textStyle: 'italic',
   },
   reasoning: {
-    textColor: 'text-purple-400',
+    textColor: 'text-green-400',
     textStyle: 'italic',
     icon: 'thinking',
   },
@@ -134,7 +134,7 @@ export interface EventMetadata {
   // Command Execution
   command?: string;               // Original command
   exitCode?: number;              // Exit code (0 = success)
-  workingDir?: string;            // CWD for command
+  tabId?: number;                 // Browser tab ID (replaced workingDir/cwd)
 
   // Tool Calls
   toolName?: string;              // MCP tool name

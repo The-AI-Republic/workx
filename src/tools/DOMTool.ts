@@ -25,10 +25,10 @@ import { DomService } from './dom/DomService';
 
 /**
  * Unified DOM tool request (discriminated union by action type)
+ * Note: tab_id is passed internally via metadata, not exposed to LLM
  */
 export interface DOMToolRequest {
   action: 'snapshot' | 'click' | 'type' | 'keypress' | 'scroll';
-  tab_id?: number;
   node_id?: number; // Numeric CDP nodeId
   text?: string;
   key?: string;
@@ -82,10 +82,6 @@ export class DOMTool extends BaseTool {
         type: 'string',
         description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - use node_id=-1 for page scroll, or element node_id for scrollable containers)',
         enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
-      },
-      tab_id: {
-        type: 'number',
-        description: 'Target tab ID (optional, defaults to active tab)',
       },
       node_id: {
         type: 'number',
@@ -156,6 +152,7 @@ export class DOMTool extends BaseTool {
     request: BaseToolRequest,
     options?: BaseToolOptions
   ): Promise<SerializedDom | ActionResult> {
+
     // Validate Chrome context
     this.validateChromeContext();
 
@@ -170,28 +167,50 @@ export class DOMTool extends BaseTool {
 
     const typedRequest = request as DOMToolRequest;
 
-    // Get target tab
-    const targetTab = typedRequest.tab_id
-      ? await this.validateTabId(typedRequest.tab_id)
-      : await this.getActiveTab();
+    // Get tabId from metadata (passed internally, not from LLM)
+    const tabId = options?.metadata?.tabId;
 
-    const tabId = targetTab.id!;
+    // Check if tabId is valid
+    if (tabId === undefined || tabId === null) {
+      throw new Error('Target tab ID not provided in execution context');
+    }
+
+    if (tabId === -1) {
+      throw new Error('Target tab cannot be found. Please ensure a tab is bound to the current session.');
+    }
+
+
+    // Validate tab exists
+    try {
+      const tab = await chrome.tabs.get(tabId);
+    } catch (error) {
+      throw new Error(`Target tab ${tabId} not found or inaccessible`);
+    }
+
 
     // Route by action type - return raw data, BaseTool.execute() will wrap it
+    let result: SerializedDom | ActionResult;
     switch (typedRequest.action) {
       case 'snapshot':
-        return await this.executeSnapshot(tabId, typedRequest.options);
+        result = await this.executeSnapshot(tabId, typedRequest.options);
+        break;
       case 'click':
-        return await this.executeClick(tabId, typedRequest.node_id!, typedRequest.options);
+        result = await this.executeClick(tabId, typedRequest.node_id!, typedRequest.options);
+        break;
       case 'type':
-        return await this.executeType(tabId, typedRequest.node_id!, typedRequest.text!, typedRequest.options);
+        result = await this.executeType(tabId, typedRequest.node_id!, typedRequest.text!, typedRequest.options);
+        break;
       case 'keypress':
-        return await this.executeKeypress(tabId, typedRequest.key!, typedRequest.options);
+        result = await this.executeKeypress(tabId, typedRequest.key!, typedRequest.options);
+        break;
       case 'scroll':
-        return await this.executeScroll(tabId, typedRequest.node_id!, typedRequest.options);
+        result = await this.executeScroll(tabId, typedRequest.node_id!, typedRequest.options);
+        break;
       default:
         throw new Error(`Unknown action: ${typedRequest.action}`);
     }
+
+    return result;
   }
 
   // ============================================================================
@@ -299,11 +318,6 @@ export class DOMTool extends BaseTool {
     // Validate action
     if (!['snapshot', 'click', 'type', 'keypress', 'scroll'].includes(req.action)) {
       return `Invalid action: ${req.action}. Must be one of: snapshot, click, type, keypress, scroll`;
-    }
-
-    // Validate tab_id if provided
-    if (req.tab_id !== undefined && typeof req.tab_id !== 'number') {
-      return 'tab_id must be a number';
     }
 
     // Action-specific validation

@@ -400,7 +400,7 @@ export class TaskRunner {
       submission_id: this.submissionId,
       model_context_window: contextWindow,
       model: this.turnContext.getModel(),
-      cwd: this.turnContext.getCwd(),
+      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       auto_compact: this.options.autoCompact !== false,
@@ -550,7 +550,19 @@ export class TaskRunner {
       if (messageItem.type === 'message' && messageItem.role === 'assistant' && !response) {
         itemsToRecord.push(messageItem);
       }
-      // Case 2: FunctionCall with FunctionCallOutput response
+      // Case 1b: Assistant message with tool_calls and FunctionCallOutput response (unified format)
+      // NEW: Chat Completions API returns message items with embedded tool_calls
+      else if (
+        messageItem.type === 'message' &&
+        messageItem.role === 'assistant' &&
+        (messageItem as any).tool_calls &&
+        response?.type === 'function_call_output'
+      ) {
+        taskComplete = false;
+        itemsToRecord.push(messageItem);
+        itemsToRecord.push(response as ResponseItem);
+      }
+      // Case 2: FunctionCall with FunctionCallOutput response (legacy format)
       else if (
         messageItem.type === 'function_call' &&
         response?.type === 'function_call_output'

@@ -183,14 +183,11 @@ describe('Session Integration (Refactored)', () => {
       expect(importedHistory.items.length).toBe(originalHistory.items.length);
     });
 
-    it('should preserve metadata through export/import', async () => {
+    it('should preserve message count through export/import', async () => {
       const exported = session.export();
       const imported = Session.import(exported);
 
-      const originalMeta = session.getMetadata();
-      const importedMeta = imported.getMetadata();
-
-      expect(importedMeta.created).toBe(originalMeta.created);
+      expect(imported.getMessageCount()).toBe(session.getMessageCount());
     });
   });
 

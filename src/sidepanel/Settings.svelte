@@ -38,13 +38,13 @@
   let testResult: { valid: boolean; error?: string } | null = null;
   let isAuthenticated = false;
 
-  // T011: Model configuration state
+  // Model configuration state
   // selectedModelId starts empty, will be loaded from AgentConfig in loadSettings()
   let selectedModelId = '';
   let configuredFeatures: ConfiguredFeatures = {};
   let modelValidationError = '';
 
-  // T022, T023: Provider-aware API key display
+  // T022, Provider-aware API key display
   let currentProvider = 'openai';
   let currentProviderName = 'OpenAI';
   let currentProviderOrganization: string | null = null;
@@ -64,7 +64,13 @@
     contextWindow: number;
     maxOutputTokens: number;
     baseUrl: string;
+    supportsImage: boolean;  // Whether model supports image input
     selected: boolean;       // Indicates if this model is currently selected
+    pricing?: {              // Model pricing information
+      inputToken: string;
+      outputToken: string;
+      link: string;
+    };
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
 
@@ -135,7 +141,9 @@
             contextWindow: model.contextWindow,
             maxOutputTokens: model.maxOutputTokens,
             baseUrl: provider.baseUrl || '',
-            selected: model.id === selectedModelId  // Mark as selected if it matches
+            supportsImage: model.supportsImage !== false,  // Default to true if not specified
+            selected: model.id === selectedModelId,  // Mark as selected if it matches
+            pricing: model.pricing  // Include pricing information if available
           });
         }
       }
@@ -168,8 +176,13 @@
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
         isAuthenticated = !!selectedItem.apiKey;
 
+        // Set default reasoning effort for models that support reasoning
+        const defaultReasoningEffort = selectedItem.supportsReasoning && selectedItem.reasoningEfforts?.length > 0
+          ? 'medium'  // Default to medium effort for reasoning-capable models
+          : null;
+
         configuredFeatures = {
-          reasoningEffort: null,
+          reasoningEffort: defaultReasoningEffort,
           reasoningSummary: undefined,
           verbosity: null,
           contextWindow: selectedItem.contextWindow,
@@ -189,8 +202,14 @@
           apiKey = fallbackItem.apiKey || '';
           maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
           isAuthenticated = !!fallbackItem.apiKey;
+
+          // Set default reasoning effort for models that support reasoning
+          const fallbackReasoningEffort = fallbackItem.supportsReasoning && fallbackItem.reasoningEfforts?.length > 0
+            ? 'medium'  // Default to medium effort for reasoning-capable models
+            : null;
+
           configuredFeatures = {
-            reasoningEffort: null,
+            reasoningEffort: fallbackReasoningEffort,
             reasoningSummary: undefined,
             verbosity: null,
             contextWindow: fallbackItem.contextWindow,
@@ -456,6 +475,8 @@
     const providerName = currentProvider === 'openai' ? 'OpenAI'
       : currentProvider === 'xai' ? 'xAI'
       : currentProvider === 'anthropic' ? 'Anthropic'
+      : currentProvider === 'google-ai-studio' ? 'Google AI Studio'
+      : currentProvider === 'groq' ? 'Groq'
       : currentProvider;
 
     if (!confirm(`Are you sure you want to remove your ${providerName} API key? You will need to enter it again to use this provider.`)) {
@@ -587,13 +608,18 @@
       }
 
       // User confirmed - proceed with model change
+      // Check if model supports image input and show warning if not
+      if (selectedItem.supportsImage === false) {
+        alert(`Model "${selectedItem.modelName}" currently does not support image input. Some tools (PageVision) will be disabled.`);
+      }
+
       // Update ALL UI state IMMEDIATELY for instant feedback
       // This ensures dropdown, provider section, API key field, and features all stay in sync
       selectedModelId = modelId;
       currentProvider = selectedItem.providerId;
       currentProviderName = selectedItem.providerName;
       currentProviderOrganization = selectedItem.organization;
-      
+
       // Load the API key for this provider from the cache (already fetched in loadSettings)
       apiKey = selectedItem.apiKey || '';
       maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
@@ -655,7 +681,7 @@
   }
 
   /**
-   * T015: Handle validation errors
+   * Handle validation errors
    */
   function handleValidationError(event: CustomEvent) {
     const { errors, incompatibleFeatures } = event.detail;
@@ -720,7 +746,8 @@
     {:else if currentView === 'model-config'}
       <!-- Model configuration - existing content -->
       <button class="back-button" on:click={handleBack}>← Back</button>
-      <div class="settings-section">
+    <!-- Model Selection moved above API Key Section -->
+    <div class="settings-section">
       <h3 class="section-title">Model Selection</h3>
       <div class="form-group">
         <label class="form-label">
@@ -793,6 +820,10 @@
             xAI API Key
           {:else if currentProvider === 'anthropic'}
             Anthropic API Key
+          {:else if currentProvider === 'google-ai-studio'}
+            Google AI Studio API Key
+          {:else if currentProvider === 'groq'}
+            Groq API Key
           {:else}
             OpenAI API Key
           {/if}
@@ -805,7 +836,7 @@
               bind:value={apiKey}
               on:input={handleApiKeyInput}
               on:keydown={handleKeydown}
-              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...')}
+              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : currentProvider === 'groq' ? 'gsk_...' : 'sk-...')}
               class="api-key-input"
               disabled={isInitializing || isSaving}
               autocomplete="off"
@@ -818,7 +849,7 @@
               bind:value={apiKey}
               on:input={handleApiKeyInput}
               on:keydown={handleKeydown}
-              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...')}
+              placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : currentProvider === 'groq' ? 'gsk_...' : 'sk-...')}
               class="api-key-input"
               disabled={isInitializing || isSaving}
               autocomplete="off"
@@ -849,6 +880,8 @@
             Enter your xAI API key (starts with 'xai-')
           {:else if currentProvider === 'anthropic'}
             Enter your Anthropic API key (starts with 'sk-ant-')
+          {:else if currentProvider === 'google-ai-studio'}
+            Enter your Google AI Studio API key (typically starts with 'AIza')
           {:else}
             Enter your OpenAI API key (starts with 'sk-' or 'sk-proj-')
           {/if}

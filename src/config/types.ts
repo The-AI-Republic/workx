@@ -50,6 +50,27 @@ export interface IAgentConfig {
   storage?: IStorageConfig;
 }
 
+// Model pricing information
+export interface IModelPrice {
+  /**
+   * Input token pricing
+   * String format to support complex pricing (e.g., "$1 / 1M tokens < 200K, $2 / 1M tokens > 200K")
+   */
+  inputToken: string;
+
+  /**
+   * Output token pricing
+   * String format to support complex pricing
+   */
+  outputToken: string;
+
+  /**
+   * Official pricing page URL
+   * Link to the provider's official pricing documentation
+   */
+  link: string;
+}
+
 // Model configuration
 export interface IModelConfig {
   /**
@@ -92,6 +113,12 @@ export interface IModelConfig {
   maxOutputTokens: number;
 
   /**
+   * Pricing information (optional)
+   * Contains input/output token pricing and link to official pricing page
+   */
+  pricing?: IModelPrice;
+
+  /**
    * Whether model supports reasoning features
    * If true, the model can be configured with reasoning effort levels
    */
@@ -120,6 +147,13 @@ export interface IModelConfig {
    * Array of valid verbosity level strings for this model
    */
   verbosityLevels?: string[];
+
+  /**
+   * Whether model supports image input (optional)
+   * If true, the model can accept and process image inputs
+   * If false, vision-related tools will be disabled
+   */
+  supportsImage?: boolean;
 
   /**
    * Model release date (optional)
@@ -378,7 +412,7 @@ export interface IConfigFactory {
 // Multi-provider validation result types
 export interface IProviderValidationResult {
   isValid: boolean;
-  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'unknown';
+  detectedProvider: 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'unknown';
   warnings: string[];
   errors: string[];
 }

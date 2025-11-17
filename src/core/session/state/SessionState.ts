@@ -14,6 +14,7 @@ export interface SessionStateExport {
   approvedCommands: string[];
   tokenInfo?: TokenUsageInfo;
   latestRateLimits?: RateLimitSnapshot;
+  tabId?: number; // Add tabId to export format
 }
 
 /**
@@ -33,11 +34,15 @@ export class SessionState {
   /** Latest rate limit information */
   private latestRateLimits?: RateLimitSnapshot;
 
+  /** Bound tab ID (-1 = no tab attached, >0 = bound) */
+  private tabId: number;
+
   constructor() {
     this.approvedCommands = new Set();
     this.history = [];
     this.tokenInfo = undefined;
     this.latestRateLimits = undefined;
+    this.tabId = -1; // Initialize with tabId = -1
   }
 
   // ===== History Management =====
@@ -159,6 +164,32 @@ export class SessionState {
     return this.approvedCommands.has(command);
   }
 
+  // ===== Tab Binding (T021-T023) =====
+
+  /**
+   * Get bound tab ID
+   * @returns tabId (-1 if no tab attached, positive integer if bound)
+   */
+  getTabId(): number {
+    return this.tabId;
+  }
+
+  /**
+   * Set bound tab ID
+   * @param tabId Tab ID to set (-1 or positive integer)
+   */
+  setTabId(tabId: number): void {
+    this.tabId = tabId;
+  }
+
+  /**
+   * Check if tab is currently bound
+   * @returns true if tabId !== -1
+   */
+  hasTabAttached(): boolean {
+    return this.tabId !== -1;
+  }
+
   // ===== Export/Import =====
 
   /**
@@ -175,6 +206,7 @@ export class SessionState {
       latestRateLimits: this.latestRateLimits
         ? { ...this.latestRateLimits }
         : undefined,
+      tabId: this.tabId, // Include tabId in export
     };
   }
 
@@ -204,6 +236,11 @@ export class SessionState {
     // Restore rate limits
     if (data.latestRateLimits) {
       state.latestRateLimits = { ...data.latestRateLimits };
+    }
+
+    // Restore tabId (default to -1 if not present for backward compatibility)
+    if (data.tabId !== undefined) {
+      state.tabId = data.tabId;
     }
 
     return state;

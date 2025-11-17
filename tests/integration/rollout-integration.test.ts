@@ -35,7 +35,7 @@ describe('Rollout Integration Tests', () => {
     vi.setSystemTime(new Date('2025-10-01T12:00:00.000Z'));
   });
 
-  describe('T019: Create → Record → Flush → Resume Cycle', () => {
+  describe('Create → Record → Flush → Resume Cycle', () => {
     const conversationId: ConversationId = '5973b6c0-94b8-4f7b-a530-2aeb6098ae0e';
 
     it('should complete full lifecycle: create, record, flush, shutdown, resume', async () => {
@@ -155,7 +155,7 @@ describe('Rollout Integration Tests', () => {
     });
   });
 
-  describe('T020: Pagination Across Multiple Pages', () => {
+  describe('Pagination Across Multiple Pages', () => {
     it('should paginate through 50 rollouts without duplicates or gaps', async () => {
       // Create 50 rollouts
       const rolloutIds: ConversationId[] = [];
@@ -248,7 +248,7 @@ describe('Rollout Integration Tests', () => {
     });
   });
 
-  describe('T021: TTL and Cleanup Integration', () => {
+  describe('TTL and Cleanup Integration', () => {
     it('should delete expired rollouts and preserve permanent ones', async () => {
       const expiredId = '3333b6c0-94b8-4f7b-a530-2aeb6098ae0e';
       const permanentId = '4444b6c0-94b8-4f7b-a530-2aeb6098ae0e';
