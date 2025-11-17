@@ -75,10 +75,12 @@
         on:click={() => selectCategory(category.id)}
         aria-label={`Open ${category.label} settings`}
       >
-        <div class="category-icon">
-          {@html category.icon}
+        <div class="category-header">
+          <div class="category-icon">
+            {@html category.icon}
+          </div>
+          <h3 class="category-label">{category.label}</h3>
         </div>
-        <h3 class="category-label">{category.label}</h3>
         <p class="category-description">{category.description}</p>
       </button>
     {/each}
@@ -128,21 +130,27 @@
     transform: translateY(0);
   }
 
+  .category-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
   .category-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 0.75rem;
-    padding: 0.75rem;
+    width: 24px;
+    height: 24px;
+    margin-right: 0.75rem;
+    padding: 0.375rem;
     background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
     border-radius: 0.375rem;
     color: var(--browserx-primary);
   }
 
   .category-label {
-    margin: 0 0 0.5rem 0;
+    margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
     color: var(--browserx-text);
