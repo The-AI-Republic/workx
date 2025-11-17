@@ -243,11 +243,12 @@ export function validateProviderConfig(provider: any): ValidationResult {
     };
   }
 
-  if (!provider.apiKey || typeof provider.apiKey !== 'string') {
+  // API key must be a string, but can be empty (empty string = not configured)
+  if (typeof provider.apiKey !== 'string' && provider.apiKey !== undefined) {
     return {
       valid: false,
       field: 'apiKey',
-      error: 'API key is required'
+      error: 'API key must be a string'
     };
   }
 
