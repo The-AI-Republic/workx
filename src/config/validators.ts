@@ -527,7 +527,7 @@ export function isValidModelId(id: string): boolean {
 }
 
 /**
- * T065: Validate model ID uniqueness across all providers
+ * Validate model ID uniqueness across all providers
  * Ensures no duplicate model IDs exist in the configuration
  * @param config - Agent configuration to validate
  * @returns Validation result with duplicate IDs if found

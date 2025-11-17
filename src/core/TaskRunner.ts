@@ -400,7 +400,7 @@ export class TaskRunner {
       submission_id: this.submissionId,
       model_context_window: contextWindow,
       model: this.turnContext.getModel(),
-      cwd: this.turnContext.getCwd(),
+      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       auto_compact: this.options.autoCompact !== false,

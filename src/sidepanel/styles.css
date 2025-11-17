@@ -47,7 +47,7 @@
   color: var(--color-term-dim-green);
 }
 
-/* Removed .terminal-prompt::before since we now handle the prompt in Svelte */
+/* Removed duplicate arrow - now handled inline in MessageInput.svelte */
 
 .text-term-green {
   color: var(--color-term-green);

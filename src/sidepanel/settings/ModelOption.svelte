@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * T010, T019: ModelOption component
+   * T010, ModelOption component
    * Feature: 001-multi-model-support
    * User Story 1: Model Selection in Settings
    * User Story 2: Model Information Display
@@ -21,7 +21,7 @@
   $: isCompatible = true;
   $: hasErrors = false;
 
-  // T019: Tooltip state
+  // Tooltip state
   let showTooltip = false;
   let buttonElement: HTMLButtonElement;
 
@@ -29,7 +29,7 @@
     dispatch('click');
   }
 
-  // T019: Show tooltip on hover
+  // Show tooltip on hover
   function handleMouseEnter() {
     showTooltip = true;
   }
@@ -38,7 +38,7 @@
     showTooltip = false;
   }
 
-  // T019: Show tooltip on focus
+  // Show tooltip on focus
   function handleFocus() {
     showTooltip = true;
   }
@@ -159,7 +159,7 @@
   </div>
 </button>
 
-<!-- T019: Model Information Tooltip -->
+<!-- Model Information Tooltip -->
 <ModelInfoTooltip
   {model}
   anchorElement={buttonElement}

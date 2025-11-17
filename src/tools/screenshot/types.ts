@@ -36,7 +36,6 @@ export interface ActionOptions {
 
 export interface ScreenshotToolRequest {
   action: ScreenshotAction;
-  tab_id?: number;
   coordinates?: Coordinates;
   text?: string;
   key?: string;

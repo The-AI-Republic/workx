@@ -655,52 +655,6 @@ export class TurnManager {
     }
   }
 
-  /**
-   * Execute command in browser context
-   */
-  private async executeCommand(command: string, cwd?: string): Promise<any> {
-    // Emit command begin event
-    await this.emitEvent({
-      type: 'ExecCommandBegin',
-      data: {
-        session_id: this.session.getSessionId(),
-        command,
-        tab_id: await this.getCurrentTabId(),
-        url: await this.getCurrentUrl(),
-      },
-    });
-
-    try {
-      // In browser context, this would interact with page content
-      // For now, return a placeholder response
-      const result = {
-        stdout: `Executed: ${command}`,
-        stderr: '',
-        exit_code: 0,
-      };
-
-      // Emit command end event
-      await this.emitEvent({
-        type: 'ExecCommandEnd',
-        data: {
-          session_id: this.session.getSessionId(),
-          exit_code: result.exit_code,
-        },
-      });
-
-      return result;
-
-    } catch (error) {
-      await this.emitEvent({
-        type: 'ExecCommandEnd',
-        data: {
-          session_id: this.session.getSessionId(),
-          exit_code: 1,
-        },
-      });
-      throw error;
-    }
-  }
 
   /**
    * Execute web search
@@ -806,11 +760,16 @@ export class TurnManager {
 
     try {
       // Execute tool via ToolRegistry
+      // Get tabId from Session to pass to tool execution
+      const tabId = this.session.getTabId();
+
+
       const request = {
         toolName,
         parameters,
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
+        tabId, // Pass tabId in request for tools that need it
       };
 
       const response = await this.toolRegistry.execute(request);
@@ -863,7 +822,8 @@ export class TurnManager {
    */
   private async recordTurnContext(): Promise<void> {
     const turnContextItem = {
-      cwd: this.turnContext.getCwd(),
+      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
+      sessionId: this.turnContext.getSessionId(),
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       model: this.turnContext.getModel(),

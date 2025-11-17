@@ -54,7 +54,7 @@ describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
     });
   });
 
-  describe('T010: Text delta accumulation', () => {
+  describe('Text delta accumulation', () => {
     it('should accumulate text content across multiple delta.content chunks', () => {
       // Access private property for testing
       const textContentBefore = client['chatCompletionTextContent'];
@@ -80,7 +80,7 @@ describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
     });
   });
 
-  describe('T011: OutputItemDone emission with message item', () => {
+  describe('OutputItemDone emission with message item', () => {
     it('should create message item with accumulated text when finish_reason=stop', () => {
       // Set up accumulated text
       client['chatCompletionTextContent'] = 'This is a test response';
@@ -113,7 +113,7 @@ describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
     });
   });
 
-  describe('T012: State reset between requests', () => {
+  describe('State reset between requests', () => {
     it('should reset chatCompletionTextContent to empty on new stream', () => {
       // Set up some accumulated state
       client['chatCompletionTextContent'] = 'Old text content';
@@ -148,7 +148,7 @@ describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
     });
   });
 
-  describe('T013: Empty response handling', () => {
+  describe('Empty response handling', () => {
     it('should detect when finish_reason=stop but no content accumulated', () => {
       // Simulate empty response scenario
       client['chatCompletionTextContent'] = '';
@@ -263,7 +263,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling (User Story 2)', () =>
     });
   });
 
-  describe('T024: Tool call accumulation across chunks', () => {
+  describe('Tool call accumulation across chunks', () => {
     it('should accumulate tool call function name and arguments across multiple deltas', () => {
       // Simulate incremental tool call accumulation
       client['chatCompletionToolCalls'].set(0, {
@@ -312,7 +312,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling (User Story 2)', () =>
     });
   });
 
-  describe('T025: finish_reason="tool_calls" handling', () => {
+  describe('finish_reason="tool_calls" handling', () => {
     it('should emit OutputItemDone with function_call item when tool calls present', () => {
       // Set up accumulated tool call
       client['chatCompletionToolCalls'].set(0, {
@@ -354,7 +354,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling (User Story 2)', () =>
     });
   });
 
-  describe('T026: Multiple tool calls in single turn', () => {
+  describe('Multiple tool calls in single turn', () => {
     it('should handle multiple tool calls correctly', () => {
       // BrowserX sets parallel_tool_calls to false, so only one tool call should be emitted
       // But the accumulator should support multiple tool calls
@@ -407,7 +407,7 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content (User Story 3)',
     });
   });
 
-  describe('T033: Mixed content handling', () => {
+  describe('Mixed content handling', () => {
     it('should handle turn with both text content and tool calls', () => {
       // Simulate scenario where same turn has both text and tool calls
       client['chatCompletionTextContent'] = 'Let me search for that information.';
@@ -430,7 +430,7 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content (User Story 3)',
     });
   });
 
-  describe('T034: State cleanup between turns', () => {
+  describe('State cleanup between turns', () => {
     it('should properly reset chatCompletionTextContent between turns', () => {
       // First turn
       client['chatCompletionTextContent'] = 'First response';
@@ -496,7 +496,7 @@ describe('OpenAIChatCompletionClient - Payload Conversion Bug Fix', () => {
     });
   });
 
-  describe('T066: ContentItem type handling bug fix', () => {
+  describe('ContentItem type handling bug fix', () => {
     it('should handle input_text type correctly (the actual bug)', () => {
       // This tests the fix for the bug where input_text was not recognized
       // causing empty content to be sent to Gemini API

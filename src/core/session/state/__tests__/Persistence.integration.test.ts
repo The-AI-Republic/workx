@@ -63,7 +63,7 @@ describe('Persistence Integration', () => {
       expect(imported.getSessionId()).toBe(originalId);
     });
 
-    it('should preserve metadata', async () => {
+    it('should preserve message count', async () => {
       await session.addToHistory({
         timestamp: Date.now(),
         text: 'Test',
@@ -73,11 +73,7 @@ describe('Persistence Integration', () => {
       const exported = session.export();
       const imported = Session.import(exported);
 
-      const originalMeta = session.getMetadata();
-      const importedMeta = imported.getMetadata();
-
-      expect(importedMeta.created).toBe(originalMeta.created);
-      expect(importedMeta.messageCount).toBe(originalMeta.messageCount);
+      expect(imported.getMessageCount()).toBe(session.getMessageCount());
     });
 
     it('should preserve turn context', async () => {

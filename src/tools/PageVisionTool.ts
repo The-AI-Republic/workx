@@ -31,10 +31,6 @@ export class PageVisionTool extends BaseTool {
         description: 'Action type: screenshot (capture viewport), click (click at coordinates), type (type text at coordinates), scroll (scroll to coordinates), keypress (press key)',
         enum: ['screenshot', 'click', 'type', 'scroll', 'keypress'],
       },
-      tab_id: {
-        type: 'number',
-        description: 'Target tab ID (optional, defaults to active tab)',
-      },
       coordinates: {
         type: 'object',
         description: 'Screen coordinates for click, type, or scroll actions (x, y in pixels). Provide coordinates based on your visual analysis of the screenshot image. Out-of-bounds coordinates are automatically clipped to valid viewport bounds - no manual validation needed.',
@@ -125,33 +121,56 @@ export class PageVisionTool extends BaseTool {
     request: BaseToolRequest,
     options?: BaseToolOptions
   ): Promise<ResponseData> {
+
     const typedRequest = request as ScreenshotToolRequest;
 
     // Validate Chrome context
     this.validateChromeContext();
 
-    // Get target tab
-    const targetTab = typedRequest.tab_id
-      ? await this.validateTabId(typedRequest.tab_id)
-      : await this.getActiveTab();
+    // Get tabId from metadata (passed internally, not from LLM)
+    const tabId = options?.metadata?.tabId;
 
-    const tabId = targetTab.id!;
+    // Check if tabId is valid
+    if (tabId === undefined || tabId === null) {
+      throw new Error('Target tab ID not provided in execution context');
+    }
+
+    if (tabId === -1) {
+      throw new Error('Target tab cannot be found. Please ensure a tab is bound to the current session.');
+    }
+
+
+    // Validate tab exists
+    try {
+      const tab = await chrome.tabs.get(tabId);
+    } catch (error) {
+      throw new Error(`Target tab ${tabId} not found or inaccessible`);
+    }
+
 
     // Route by action type - return raw data, BaseTool.execute() will wrap it
+    let result: ResponseData;
     switch (typedRequest.action) {
       case 'screenshot':
-        return await this.executeScreenshot(tabId, typedRequest);
+        result = await this.executeScreenshot(tabId, typedRequest);
+        break;
       case 'click':
-        return await this.executeClick(tabId, typedRequest);
+        result = await this.executeClick(tabId, typedRequest);
+        break;
       case 'type':
-        return await this.executeType(tabId, typedRequest);
+        result = await this.executeType(tabId, typedRequest);
+        break;
       case 'scroll':
-        return await this.executeScrollAction(tabId, typedRequest);
+        result = await this.executeScrollAction(tabId, typedRequest);
+        break;
       case 'keypress':
-        return await this.executeKeypress(tabId, typedRequest);
+        result = await this.executeKeypress(tabId, typedRequest);
+        break;
       default:
         throw new Error(`Unknown action: ${typedRequest.action}`);
     }
+
+    return result;
   }
 
   /**
@@ -351,29 +370,6 @@ export class PageVisionTool extends BaseTool {
   protected validateChromeContext(): void {
     if (typeof chrome === 'undefined' || !chrome.tabs) {
       throw new Error('VALIDATION_ERROR: Chrome extension context required');
-    }
-  }
-
-  /**
-   * Get active tab
-   */
-  protected async getActiveTab(): Promise<chrome.tabs.Tab> {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) {
-      throw new Error('TAB_NOT_FOUND: No active tab found');
-    }
-    return tab;
-  }
-
-  /**
-   * Validate tab ID exists
-   */
-  protected async validateTabId(tabId: number): Promise<chrome.tabs.Tab> {
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      return tab;
-    } catch (error: any) {
-      throw new Error(`TAB_NOT_FOUND: No tab with id ${tabId}`);
     }
   }
 

@@ -44,8 +44,7 @@ describe('Turn Execution Integration', () => {
       const history = session.getConversationHistory();
       expect(history.items.length).toBeGreaterThanOrEqual(2);
 
-      const metadata = session.getMetadata();
-      expect(metadata.messageCount).toBeGreaterThanOrEqual(2);
+      expect(session.getMessageCount()).toBeGreaterThanOrEqual(2);
     });
 
     it('should handle turn with tool execution', async () => {

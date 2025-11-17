@@ -132,7 +132,7 @@
   }
 </script>
 
-<!-- T023: Model selector with "[Model Name] - [Provider Name]" format -->
+<!-- Model selector with "[Model Name] - [Provider Name]" format -->
 <div
   bind:this={selectorRef}
   class="model-selector relative"

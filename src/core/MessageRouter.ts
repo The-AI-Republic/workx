@@ -16,8 +16,6 @@ export enum MessageType {
   EVENT = 'EVENT',
 
   // Connection management
-  CONNECT = 'CONNECT',
-  DISCONNECT = 'DISCONNECT',
   PING = 'PING',
   PONG = 'PONG',
   HEALTH_CHECK = 'HEALTH_CHECK',
@@ -30,21 +28,13 @@ export enum MessageType {
 
   // Tab operations
   TAB_COMMAND = 'TAB_COMMAND',
-  TAB_RESULT = 'TAB_RESULT',
 
   // Storage operations
   STORAGE_GET = 'STORAGE_GET',
   STORAGE_SET = 'STORAGE_SET',
-  STORAGE_RESULT = 'STORAGE_RESULT',
 
-  // Model client messages
-  MODEL_RESPONSE = 'MODEL_RESPONSE',
-  MODEL_ERROR = 'MODEL_ERROR',
-
-  // Tool execution messages
+  // Tool execution messages (kept for future use)
   TOOL_EXECUTE = 'TOOL_EXECUTE',
-  TOOL_RESULT = 'TOOL_RESULT',
-  TOOL_ERROR = 'TOOL_ERROR',
 
   // DOM operation messages
   DOM_ACTION = 'DOM_ACTION',
@@ -54,21 +44,11 @@ export enum MessageType {
   DOM_CAPTURE_REQUEST = 'DOM_CAPTURE_REQUEST',
   DOM_CAPTURE_RESPONSE = 'DOM_CAPTURE_RESPONSE',
 
-  // Approval messages
+  // Approval messages (kept for future use)
   APPROVAL_REQUEST = 'APPROVAL_REQUEST',
-  APPROVAL_RESPONSE = 'APPROVAL_RESPONSE',
-  APPROVAL_TIMEOUT = 'APPROVAL_TIMEOUT',
 
-  // Diff tracking messages
+  // Diff tracking messages (kept for future use)
   DIFF_GENERATED = 'DIFF_GENERATED',
-  DIFF_APPLIED = 'DIFF_APPLIED',
-  DIFF_REJECTED = 'DIFF_REJECTED',
-  DIFF_UPDATED = 'DIFF_UPDATED',
-
-  // Turn management messages
-  TURN_STARTED = 'TURN_STARTED',
-  TURN_COMPLETED = 'TURN_COMPLETED',
-  TURN_ABORTED = 'TURN_ABORTED',
 
   // ResponseEvent streaming messages (Phase 6)
   RESPONSE_EVENT = 'RESPONSE_EVENT',
@@ -447,14 +427,6 @@ export class MessageRouter {
     await this.send(MessageType.STORAGE_SET, { key, value });
   }
 
-  async sendModelResponse(response: any): Promise<void> {
-    await this.send(MessageType.MODEL_RESPONSE, response);
-  }
-
-  async sendModelError(error: string): Promise<void> {
-    await this.send(MessageType.MODEL_ERROR, { error });
-  }
-
   /**
    * Tool execution operations
    */
@@ -462,61 +434,18 @@ export class MessageRouter {
     return this.send(MessageType.TOOL_EXECUTE, { toolName, args });
   }
 
-  async sendToolResult(result: any): Promise<void> {
-    await this.send(MessageType.TOOL_RESULT, result);
-  }
-
-  async sendToolError(error: string): Promise<void> {
-    await this.send(MessageType.TOOL_ERROR, { error });
-  }
-
   /**
-   * Approval operations
+   * Approval operations (kept for future use)
    */
   async requestApproval(approvalId: string, type: string, details: any): Promise<any> {
     return this.send(MessageType.APPROVAL_REQUEST, { approvalId, type, details });
   }
 
-  async sendApprovalResponse(approvalId: string, approved: boolean): Promise<void> {
-    await this.send(MessageType.APPROVAL_RESPONSE, { approvalId, approved });
-  }
-
-  async sendApprovalTimeout(approvalId: string): Promise<void> {
-    await this.send(MessageType.APPROVAL_TIMEOUT, { approvalId });
-  }
-
   /**
-   * Diff tracking operations
+   * Diff tracking operations (kept for future use)
    */
   async sendDiffGenerated(diffId: string, path: string, content: any): Promise<void> {
     await this.send(MessageType.DIFF_GENERATED, { diffId, path, content });
-  }
-
-  async sendDiffApplied(diffId: string): Promise<void> {
-    await this.send(MessageType.DIFF_APPLIED, { diffId });
-  }
-
-  async sendDiffRejected(diffId: string): Promise<void> {
-    await this.send(MessageType.DIFF_REJECTED, { diffId });
-  }
-
-  async sendDiffUpdated(diffId: string, content: any): Promise<void> {
-    await this.send(MessageType.DIFF_UPDATED, { diffId, content });
-  }
-
-  /**
-   * Turn management operations
-   */
-  async sendTurnStarted(turnId: string): Promise<void> {
-    await this.send(MessageType.TURN_STARTED, { turnId });
-  }
-
-  async sendTurnCompleted(turnId: string, result: any): Promise<void> {
-    await this.send(MessageType.TURN_COMPLETED, { turnId, result });
-  }
-
-  async sendTurnAborted(turnId: string, reason: string): Promise<void> {
-    await this.send(MessageType.TURN_ABORTED, { turnId, reason });
   }
 
   /**

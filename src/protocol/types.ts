@@ -17,6 +17,11 @@ export interface Submission {
   id: string;
   /** Payload */
   op: Op;
+  /** Context information (optional) */
+  context?: {
+    /** Tab ID to execute this submission in */
+    tabId?: number;
+  };
 }
 
 /**
@@ -33,8 +38,8 @@ export type Op =
       type: 'UserTurn';
       /** User input items */
       items: InputItem[];
-      /** cwd to use with the SandboxPolicy */
-      cwd: string;
+      /** Replaced cwd with tabId - browser tab ID for tool execution context */
+      tabId: number;
       /** Policy to use for command approval */
       approval_policy: AskForApproval;
       /** Policy to use for tool calls */
@@ -48,8 +53,8 @@ export type Op =
     }
   | {
       type: 'OverrideTurnContext';
-      /** Updated cwd for sandbox/tool calls */
-      cwd?: string;
+      /** Replaced cwd with tabId - updated browser tab ID for tool execution */
+      tabId?: number;
       /** Updated command approval policy */
       approval_policy?: AskForApproval;
       /** Updated sandbox policy for tool calls */

@@ -25,13 +25,13 @@
   let testResult: { valid: boolean; error?: string } | null = null;
   let isAuthenticated = false;
 
-  // T011: Model configuration state
+  // Model configuration state
   // selectedModelId starts empty, will be loaded from AgentConfig in loadSettings()
   let selectedModelId = '';
   let configuredFeatures: ConfiguredFeatures = {};
   let modelValidationError = '';
 
-  // T022, T023: Provider-aware API key display
+  // T022, Provider-aware API key display
   let currentProvider = 'openai';
   let currentProviderName = 'OpenAI';
   let currentProviderOrganization: string | null = null;
@@ -668,7 +668,7 @@
   }
 
   /**
-   * T015: Handle validation errors
+   * Handle validation errors
    */
   function handleValidationError(event: CustomEvent) {
     const { errors, incompatibleFeatures } = event.detail;
@@ -689,7 +689,7 @@
   </div>
 
   <div class="settings-content">
-    <!-- T021: Model Selection moved above API Key Section -->
+    <!-- Model Selection moved above API Key Section -->
     <div class="settings-section">
       <h3 class="section-title">Model Selection</h3>
       <div class="form-group">

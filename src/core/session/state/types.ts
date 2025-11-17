@@ -99,7 +99,7 @@ export interface SessionExport {
 /**
  * Reason for aborting a turn
  */
-export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout';
+export type TurnAbortReason = 'Replaced' | 'UserInterrupt' | 'Error' | 'Timeout' | 'TabClosed';
 
 /**
  * Configuration for initializing a new Session

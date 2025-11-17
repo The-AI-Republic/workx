@@ -21,7 +21,7 @@ describe('Agent Prompt Loader', () => {
 
 ## General
 
-- Browser operations are performed through specialized tools (DOMTool, NavigationTool, TabTool, FormAutomationTool, WebScrapingTool, NetworkInterceptTool, StorageTool)
+- Browser operations are performed through specialized tools (DOMTool, NavigationTool, FormAutomationTool, WebScrapingTool, NetworkInterceptTool, StorageTool)
 - Always specify the target tab when performing operations. Do not rely on "current tab" unless explicitly confirmed
 - When searching for elements, prefer CSS selectors over XPath for better performance and readability. Use querySelector for single elements and querySelectorAll for multiple elements`;
 

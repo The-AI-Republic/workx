@@ -385,7 +385,7 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
-   * T063: Add a new provider with automatic model ID assignment
+   * Add a new provider with automatic model ID assignment
    * @param provider Provider configuration to add
    * @returns Added provider with model IDs assigned
    */
@@ -427,7 +427,7 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
-   * T064: Update a provider with automatic model ID assignment for new models
+   * Update a provider with automatic model ID assignment for new models
    * @param id Provider ID to update
    * @param provider Partial provider config with updates
    * @returns Updated provider configuration

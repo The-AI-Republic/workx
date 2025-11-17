@@ -1,6 +1,9 @@
 /**
  * TurnContext implementation
  * Manages turn state, context switching, approval policies, and sandbox settings
+ *
+ * BREAKING CHANGE: Replaced cwd (current working directory) with tabId (current working tab)
+ * for session-tab binding feature
  */
 
 import { ModelClient } from '../models/ModelClient';
@@ -17,8 +20,8 @@ export type BrowserEnvironmentPolicy = 'preserve' | 'clean' | 'restricted';
  * Turn configuration that can be updated during execution
  */
 export interface TurnContextConfig {
-  /** Current working directory */
-  cwd?: string;
+  /** Parent session identifier */
+  sessionId?: string;
   /** Base instructions override */
   baseInstructions?: string;
   /** User instructions for this turn */
@@ -46,7 +49,7 @@ export interface TurnContextConfig {
  */
 export class TurnContext {
   private modelClient: ModelClient;
-  private cwd: string;
+  private sessionId: string;
   private baseInstructions?: string;
   private userInstructions?: string;
   private approvalPolicy: AskForApproval;
@@ -62,7 +65,7 @@ export class TurnContext {
     this.modelClient = modelClient;
 
     // Initialize with defaults or provided config
-    this.cwd = config.cwd || '/';
+    this.sessionId = config.sessionId || ''; // Default to empty string
     this.baseInstructions = config.baseInstructions;
     this.userInstructions = config.userInstructions;
     this.approvalPolicy = config.approvalPolicy || 'on-request';
@@ -81,8 +84,8 @@ export class TurnContext {
    * Update turn context configuration
    */
   update(config: TurnContextConfig): void {
-    if (config.cwd !== undefined) {
-      this.cwd = config.cwd;
+    if (config.sessionId !== undefined) {
+      this.sessionId = config.sessionId;
     }
     if (config.baseInstructions !== undefined) {
       this.baseInstructions = config.baseInstructions;
@@ -119,58 +122,10 @@ export class TurnContext {
   }
 
   /**
-   * Get current working directory
+   * Get session identifier
    */
-  getCwd(): string {
-    return this.cwd;
-  }
-
-  /**
-   * Set current working directory
-   */
-  setCwd(cwd: string): void {
-    this.cwd = cwd;
-  }
-
-  /**
-   * Resolve a path relative to the current working directory
-   */
-  resolvePath(path?: string): string {
-    if (!path) {
-      return this.cwd;
-    }
-
-    // If path is absolute, return as-is
-    if (path.startsWith('/') || path.match(/^[a-zA-Z]:/)) {
-      return path;
-    }
-
-    // Resolve relative path against cwd
-    const resolved = this.cwd === '/'
-      ? `/${path}`
-      : `${this.cwd.replace(/\/$/, '')}/${path}`;
-
-    return this.normalizePath(resolved);
-  }
-
-  /**
-   * Normalize path by resolving . and .. components
-   */
-  private normalizePath(path: string): string {
-    const parts = path.split('/').filter(part => part !== '');
-    const normalized: string[] = [];
-
-    for (const part of parts) {
-      if (part === '.') {
-        continue; // Skip current directory references
-      } else if (part === '..') {
-        normalized.pop(); // Go up one directory
-      } else {
-        normalized.push(part);
-      }
-    }
-
-    return '/' + normalized.join('/');
+  getSessionId(): string {
+    return this.sessionId;
   }
 
   /**
@@ -246,31 +201,7 @@ export class TurnContext {
     this.sandboxPolicy = policy;
   }
 
-  /**
-   * Check if a path is writable according to sandbox policy
-   */
-  isPathWritable(path: string): boolean {
-    const resolvedPath = this.resolvePath(path);
-
-    switch (this.sandboxPolicy.mode) {
-      case 'danger-full-access':
-        return true;
-
-      case 'read-only':
-        return false;
-
-      case 'workspace-write':
-        // Check if path is within writable roots
-        const writableRoots = this.sandboxPolicy.writable_roots || [this.cwd];
-        return writableRoots.some(root => {
-          const normalizedRoot = this.resolvePath(root);
-          return resolvedPath.startsWith(normalizedRoot);
-        });
-
-      default:
-        return false;
-    }
-  }
+  // Removed isPathWritable method (no longer applicable with tab-based context)
 
   /**
    * Check if network access is allowed
@@ -387,7 +318,7 @@ export class TurnContext {
    */
   clone(): TurnContext {
     const cloned = new TurnContext(this.modelClient, {
-      cwd: this.cwd,
+      sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
       userInstructions: this.userInstructions,
       approvalPolicy: this.approvalPolicy,
@@ -404,7 +335,7 @@ export class TurnContext {
    * Export turn context for serialization
    */
   export(): {
-    cwd: string;
+    sessionId: string;
     baseInstructions?: string;
     userInstructions?: string;
     approvalPolicy: AskForApproval;
@@ -417,7 +348,7 @@ export class TurnContext {
     reviewMode: boolean;
   } {
     return {
-      cwd: this.cwd,
+      sessionId: this.sessionId,
       baseInstructions: this.baseInstructions,
       userInstructions: this.userInstructions,
       approvalPolicy: this.approvalPolicy,
@@ -437,7 +368,7 @@ export class TurnContext {
   static import(
     modelClient: ModelClient,
     data: {
-      cwd: string;
+      sessionId: string;
       baseInstructions?: string;
       userInstructions?: string;
       approvalPolicy: AskForApproval;
@@ -458,7 +389,7 @@ export class TurnContext {
     modelClient.setReasoningSummary(data.summary);
 
     return new TurnContext(modelClient, {
-      cwd: data.cwd,
+      sessionId: data.sessionId,
       baseInstructions: data.baseInstructions,
       userInstructions: data.userInstructions,
       approvalPolicy: data.approvalPolicy,
@@ -489,9 +420,9 @@ export class TurnContext {
   validate(): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    // Validate cwd
-    if (!this.cwd) {
-      errors.push('Current working directory is required');
+    // Validate sessionId
+    if (!this.sessionId) {
+      errors.push('Session ID is required');
     }
 
     // Validate model client
@@ -528,7 +459,7 @@ export class TurnContext {
    */
   getDebugInfo(): Record<string, any> {
     return {
-      cwd: this.cwd,
+      sessionId: this.sessionId,
       model: this.getModel(),
       approvalPolicy: this.approvalPolicy,
       sandboxPolicy: this.sandboxPolicy,
