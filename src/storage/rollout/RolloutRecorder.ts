@@ -88,8 +88,9 @@ export class RolloutRecorder {
   ): Promise<RolloutRecorder> {
     const { conversationId, instructions } = params;
 
-    // Validate conversation ID
-    if (!isValidConversationId(conversationId)) {
+    // Validate conversation ID (accepts both plain UUID and conv_ prefixed)
+    const idToValidate = conversationId.startsWith('conv_') ? conversationId.slice(5) : conversationId;
+    if (!isValidConversationId(idToValidate)) {
       throw createInvalidIdError(conversationId);
     }
 
@@ -109,7 +110,7 @@ export class RolloutRecorder {
       sessionMeta: {
         id: conversationId,
         timestamp: getCurrentTimestamp(),
-        cwd: typeof process !== 'undefined' ? process.cwd() : '/',
+        cwd:  '/',
         originator: 'chrome-extension',
         cliVersion: '1.0.0', // TODO: Load from package.json or config
         instructions,
@@ -237,6 +238,46 @@ export class RolloutRecorder {
           reject(
             createDatabaseError('getLastSequenceNumber', request.error?.message || 'unknown error')
           );
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  /**
+   * Load all items for a conversation from IndexedDB.
+   * Returns items in chronological order (by sequence).
+   */
+  static async loadConversationHistory(rolloutId: ConversationId): Promise<RolloutItem[]> {
+    const db = await RolloutRecorder.openDatabase();
+
+    try {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
+        const store = tx.objectStore(STORE_ROLLOUT_ITEMS);
+        const index = store.index('rolloutId_sequence');
+
+        const keyRange = IDBKeyRange.bound(
+          [rolloutId, 0],
+          [rolloutId, Number.MAX_SAFE_INTEGER]
+        );
+
+        const items: RolloutItem[] = [];
+        const request = index.openCursor(keyRange, 'next'); // Chronological order
+
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (cursor) {
+            const record = cursor.value as RolloutItemRecord;
+            items.push(record.item);
+            cursor.continue();
+          } else {
+            resolve(items);
+          }
+        };
+
+        request.onerror = () =>
+          reject(createDatabaseError('loadConversationHistory', request.error?.message || 'unknown error'));
       });
     } finally {
       db.close();

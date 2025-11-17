@@ -20,6 +20,7 @@ import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerTools } from '../tools';
 import { TabManager } from './TabManager';
+import { ActiveConversationTracker } from '../storage/ActiveConversationTracker';
 
 /**
  * Main agent class managing the submission and event queues
@@ -51,10 +52,9 @@ export class BrowserxAgent {
     this.diffTracker = new DiffTracker();
     this.userNotifier = new UserNotifier();
 
-    // Initialize session with config and toolRegistry
+    // Session will be initialized in initialize() method (either new or resumed)
+    // Create a temporary empty session for now to satisfy TypeScript
     this.session = new Session(this.config, true, undefined, this.toolRegistry);
-    // Wire up session event emitter to BrowserxAgent's event queue
-    this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
 
     // Setup event processing for notifications
     this.setupNotificationHandlers();
@@ -66,8 +66,35 @@ export class BrowserxAgent {
   /**
    * Initialize the agent (ensures config is loaded)
    * Creates model client during initialization with nullable API key
+   * Attempts to resume previous session if available
    */
   async initialize(): Promise<void> {
+    // Check for active conversation to resume
+    const activeConversationId = await ActiveConversationTracker.getActiveConversation();
+
+    if (activeConversationId) {
+      console.log('[BrowserxAgent] Found active conversation, attempting resume:', activeConversationId);
+      try {
+        // Attempt to resume the previous session
+        this.session = await Session.resume(activeConversationId, this.config, this.toolRegistry);
+        console.log('[BrowserxAgent] Successfully resumed session:', activeConversationId);
+      } catch (error) {
+        console.error('[BrowserxAgent] Failed to resume session, creating new one:', error);
+        // If resume fails, create a new session
+        this.session = new Session(this.config, true, undefined, this.toolRegistry);
+        // Save the new session's conversation ID
+        await ActiveConversationTracker.setActiveConversation(this.session.getId());
+      }
+    } else {
+      console.log('[BrowserxAgent] No active conversation found, creating new session');
+      // Create new session
+      this.session = new Session(this.config, true, undefined, this.toolRegistry);
+      // Save the new session's conversation ID
+      await ActiveConversationTracker.setActiveConversation(this.session.getId());
+    }
+
+    // Wire up session event emitter to BrowserxAgent's event queue
+    this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
 
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
