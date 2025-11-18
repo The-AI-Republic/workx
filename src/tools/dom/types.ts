@@ -123,6 +123,8 @@ export interface VirtualNode {
     display?: string;
     visibility?: string;
     cursor?: string;
+    overflowX?: string;
+    overflowY?: string;
   };
 
   // NEW: Scroll dimensions for scrollability detection
@@ -135,6 +137,9 @@ export interface VirtualNode {
     width: number;
     height: number;
   };
+
+  // NEW: Scrollability indicator for LLM to identify scroll targets
+  scrollable?: 'vertical' | 'horizontal' | 'both';
 
   // NEW: Filtering flags
   ignoredByPaintOrder?: boolean;  // F5: Paint Order Filtering
@@ -380,6 +385,8 @@ export interface LayoutData {
     display?: string;
     visibility?: string;
     cursor?: string;
+    overflowX?: string;
+    overflowY?: string;
   };
 
   // Scroll dimensions (scrollable content size)

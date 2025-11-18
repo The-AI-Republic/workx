@@ -10,7 +10,7 @@ import type {
   PerformanceMetrics
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
-import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml } from './utils';
+import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable } from './utils';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -297,7 +297,7 @@ export class DomService {
         this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
         // Fetch paint order and layout data via DOMSnapshot.captureSnapshot()
         this.sendCommand<any>('DOMSnapshot.captureSnapshot', {
-          computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor'],
+          computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'],
           includePaintOrder: true,
           includeDOMRects: true
         }).catch((error: any) => {
@@ -394,7 +394,9 @@ export class DomService {
         paintOrder: layoutData?.paintOrder,
         computedStyle: layoutData?.computedStyle,
         scrollRects: layoutData?.scrollRects,
-        clientRects: layoutData?.clientRects
+        clientRects: layoutData?.clientRects,
+        // Compute scrollability based on dimensions and overflow styles
+        scrollable: computeScrollable(layoutData)
       };
 
       // Recurse to children
@@ -620,6 +622,8 @@ export class DomService {
           if (propertyName === 'display') computedStyle.display = propertyValue;
           if (propertyName === 'visibility') computedStyle.visibility = propertyValue;
           if (propertyName === 'cursor') computedStyle.cursor = propertyValue;
+          if (propertyName === 'overflow-x') computedStyle.overflowX = propertyValue;
+          if (propertyName === 'overflow-y') computedStyle.overflowY = propertyValue;
         }
 
         if (Object.keys(computedStyle).length > 0) {

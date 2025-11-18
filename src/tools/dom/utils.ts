@@ -1,9 +1,81 @@
-import type { VirtualNode, SerializedNode } from './types';
+import type { VirtualNode, SerializedNode, LayoutData } from './types';
 import { NODE_TYPE_TEXT } from './types';
 
 /**
  * Helper utilities for DOM tool CDP implementation
  */
+
+/**
+ * Check if element is vertically scrollable
+ * Requires scroll height > client height AND overflow-y allows scrolling
+ */
+export function isVerticallyScrollable(
+  scrollRects?: { width: number; height: number },
+  clientRects?: { width: number; height: number },
+  computedStyle?: { overflowY?: string }
+): boolean {
+  if (!scrollRects || !clientRects) {
+    return false;
+  }
+
+  const hasOverflow = scrollRects.height > clientRects.height;
+  if (!hasOverflow) {
+    return false;
+  }
+
+  const overflowY = computedStyle?.overflowY;
+  return overflowY === 'auto' || overflowY === 'scroll';
+}
+
+/**
+ * Check if element is horizontally scrollable
+ * Requires scroll width > client width AND overflow-x allows scrolling
+ */
+export function isHorizontallyScrollable(
+  scrollRects?: { width: number; height: number },
+  clientRects?: { width: number; height: number },
+  computedStyle?: { overflowX?: string }
+): boolean {
+  if (!scrollRects || !clientRects) {
+    return false;
+  }
+
+  const hasOverflow = scrollRects.width > clientRects.width;
+  if (!hasOverflow) {
+    return false;
+  }
+
+  const overflowX = computedStyle?.overflowX;
+  return overflowX === 'auto' || overflowX === 'scroll';
+}
+
+/**
+ * Compute scrollable direction from layout data
+ * Returns 'vertical', 'horizontal', 'both', or undefined
+ */
+export function computeScrollable(
+  layoutData?: LayoutData
+): 'vertical' | 'horizontal' | 'both' | undefined {
+  if (!layoutData?.scrollRects || !layoutData?.clientRects) {
+    return undefined;
+  }
+
+  const isVertical = isVerticallyScrollable(
+    layoutData.scrollRects,
+    layoutData.clientRects,
+    layoutData.computedStyle
+  );
+  const isHorizontal = isHorizontallyScrollable(
+    layoutData.scrollRects,
+    layoutData.clientRects,
+    layoutData.computedStyle
+  );
+
+  if (isVertical && isHorizontal) return 'both';
+  if (isVertical) return 'vertical';
+  if (isHorizontal) return 'horizontal';
+  return undefined;
+}
 
 /**
  * Compute heuristics for interactive element detection
@@ -269,7 +341,7 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
   }
 
   // not include closing tag for token efficiency
-  // html += `</${tag}>\n`;
+  html += `</${tag}>\n`;
 
   return html;
 }

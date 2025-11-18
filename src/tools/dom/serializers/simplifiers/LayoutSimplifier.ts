@@ -154,6 +154,14 @@ export class LayoutSimplifier {
   }
 
   /**
+   * Check if node is scrollable (vertically or horizontally)
+   * Uses the pre-computed scrollable property from DomService
+   */
+  private isScrollable(node: VirtualNode): boolean {
+    return node.scrollable !== undefined;
+  }
+
+  /**
    * Check if node is a meaningless container that can be hoisted
    * Meaningless containers are divs with no semantic value (generic role or no role)
    * or divs with zero bounding box (layout wrappers for CSS positioning)
@@ -173,6 +181,11 @@ export class LayoutSimplifier {
       if (width === 0 || height === 0) {
         return true;
       }
+    }
+
+    // Scrollable containers are meaningful - they enable scroll actions
+    if (this.isScrollable(node)) {
+      return false;
     }
 
     // Interactive elements are never meaningless

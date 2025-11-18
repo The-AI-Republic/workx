@@ -101,6 +101,14 @@ export class DomSnapshot implements IDomSnapshot {
     // Convert SerializedNode back to HTML
     const htmlString = serializedNodeToHtml(body);
 
+    //test>>
+    const bodyString = JSON.stringify(body, null, 2);
+    console.log('Body JSON:', bodyString);
+    console.log('Body char length:', bodyString.length);
+    console.log('HTML String:', htmlString);
+    console.log('HTML char length:', htmlString.length);
+    
+
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
       console.warn('the body is null or has no kids');
