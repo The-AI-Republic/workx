@@ -67,7 +67,7 @@ export class TabManager {
     await this.ensureBrowserXGroup();
 
     // Remove all tabs from the BrowserX group on initialization
-    await this.removeAllTabsFromGroup();
+    await this.clearAllTabsFromGroup();
 
     // Setup Chrome event listeners
     this.setupChromeEventListeners();
@@ -478,8 +478,9 @@ export class TabManager {
   /**
    * Remove all tabs from the BrowserX group
    * Called during initialization to clean up any tabs left in the group from previous sessions
+   * Also used when switching tabs to ensure consistency
    */
-  private async removeAllTabsFromGroup(): Promise<void> {
+  async clearAllTabsFromGroup(): Promise<void> {
     // Skip if API is unavailable
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.log('[TabManager] Tab Groups API not available, skipping group cleanup');

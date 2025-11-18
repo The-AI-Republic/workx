@@ -145,9 +145,9 @@ export class BrowserxAgent {
         // Clear session's tabId
         this.session.setTabId(-1);
 
-        // Remove tab from group (best effort - tab may already be gone)
+        // Clear all tabs from group (best effort - tab may already be gone)
         try {
-          await tabManager.removeTabFromGroup(closedTabId);
+          await tabManager.clearAllTabsFromGroup();
         } catch (error) {
           // Ignore errors - tab is already closed
         }
@@ -389,6 +389,10 @@ export class BrowserxAgent {
           url: 'about:blank',
           active: false,
         });
+        const oldTabId = currentTabId;
+        if (oldTabId !== -1) {
+          await tabManager.clearAllTabsFromGroup();
+        }
 
         if (createdTabId) {
           // Update session's tabId (SessionState is the source of truth)
@@ -479,9 +483,9 @@ export class BrowserxAgent {
 
       // Tab is valid, proceed with switching
       try {
-        // Remove old tab from group if it exists
+        // Clear all tabs from group if it exists
         if (currentTabId !== -1) {
-          await tabManager.removeTabFromGroup(currentTabId);
+          await tabManager.clearAllTabsFromGroup();
         }
 
         // Update session's tabId (SessionState is the source of truth)
