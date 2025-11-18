@@ -1,20 +1,8 @@
 /**
- * Session Tab Binding Type Definitions
+ * Session Tab Type Definitions
  *
- * Types and interfaces for managing tab-to-session bindings in BrowserX
+ * Types and interfaces for managing tabs in BrowserX
  */
-
-/**
- * Tab Binding State
- * Represents the association between a session and a browser tab
- */
-export interface TabBindingState {
-  tabId: number;              // Browser tab ID
-  sessionId: string;          // Bound session ID
-  boundAt: number;            // Timestamp when binding established
-  tabTitle: string;           // Last known tab title (for UI display)
-  tabUrl: string;             // Last known tab URL
-}
 
 /**
  * Reasons a tab can become invalid

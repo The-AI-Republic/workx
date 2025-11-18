@@ -123,23 +123,34 @@ export class BrowserxAgent {
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
 
-    // Setup tab closure detection (User Story 2)
-    this.setupTabChangeHandler();
+    // Setup tab closure detection via TabManager callback
+    this.setupTabClosureHandler();
   }
 
   /**
    * Setup tab closure event handler
-   * User Story 2: Detect tab closure and stop execution
+   * Registers callback with TabManager to handle tab closure/crash events
    */
-  private setupTabChangeHandler(): void {
-    const tabBindingManager = TabManager.getInstance();
+  private setupTabClosureHandler(): void {
+    const tabManager = TabManager.getInstance();
 
-    // Handle actual tab closure (tab is closed in browser)
-    // Note: TabManager already unbound the tab before this callback
-    tabBindingManager.onTabClosed(async (sessionId: string, tabId: number) => {
+    // Register callback for tab closure events
+    tabManager.onTabClosure(async (closedTabId: number) => {
+      // Check if the closed tab is the one bound to this session
+      const sessionTabId = this.session.getTabId();
 
-      if (this.session && this.session.getId() === sessionId) {
-        this.session.setTabId(-1); // Clear session's tabId
+      if (sessionTabId === closedTabId) {
+        console.log(`[BrowserxAgent] Session ${this.session.getId()} tab ${closedTabId} was closed/crashed`);
+
+        // Clear session's tabId
+        this.session.setTabId(-1);
+
+        // Remove tab from group (best effort - tab may already be gone)
+        try {
+          await tabManager.removeTabFromGroup(closedTabId);
+        } catch (error) {
+          // Ignore errors - tab is already closed
+        }
 
         // Abort all running tasks
         await this.session.abortAllTasks('TabClosed');
@@ -147,30 +158,8 @@ export class BrowserxAgent {
         // Show notification to user
         await this.userNotifier.notifyWarning(
           'Tab Closed',
-          'The tab was closed. All tasks have been stopped.'
+          'The tab was closed or crashed. All tasks have been stopped.'
         );
-
-      }
-    });
-
-    // Handle tab unbinding (session loses tab, but tab is still open)
-    // Note: TabManager already called unbindTab/unbindSession before this callback
-    tabBindingManager.onTabUnbound(async (sessionId: string, tabId: number, reason: 'rebind' | 'manual') => {
-
-      if (this.session && this.session.getId() === sessionId) {
-        this.session.setTabId(-1); // Clear session's tabId
-        // Show different notification based on reason
-        if (reason === 'rebind') {
-          await this.userNotifier.notifyInfo(
-            'Tab Reassigned',
-            'The tab was reassigned to another session. Tasks have been stopped.'
-          );
-        } else {
-          await this.userNotifier.notifyInfo(
-            'Tab Changed',
-            'The session is no longer bound to a tab. Tasks have been stopped.'
-          );
-        }
       }
     });
   }
@@ -396,13 +385,17 @@ export class BrowserxAgent {
     // ================================================================
     if (newTabId === -1) {
       try {
-        const createdTabId = await tabManager.createAndBindTab(this.session.getId(), {
+        const createdTabId = await tabManager.createTab({
           url: 'about:blank',
           active: false,
         });
 
         if (createdTabId) {
+          // Update session's tabId (SessionState is the source of truth)
           this.session.setTabId(createdTabId);
+
+          // Add tab to BrowserX group
+          await tabManager.addTabToGroup(createdTabId);
 
           // Notify UI of tab binding update
           await this.messageRouter.updateState({
@@ -459,7 +452,7 @@ export class BrowserxAgent {
 
     }
     // ================================================================
-    // CASE 3: newTabId !== currentTabId → Rebind to new tab
+    // CASE 3: newTabId !== currentTabId → Switch to new tab
     // ================================================================
     else {
 
@@ -484,23 +477,20 @@ export class BrowserxAgent {
         throw new Error(errorMsg);
       }
 
-      // Tab is valid, proceed with rebinding
-      const tab = validation.tab;
-
+      // Tab is valid, proceed with switching
       try {
-        await tabManager.bindTabToSession(
-          this.session.getId(),
-          newTabId,
-          {
-            title: tab.title || 'Untitled',
-            url: tab.url || '',
-          }
-        );
+        // Remove old tab from group if it exists
+        if (currentTabId !== -1) {
+          await tabManager.removeTabFromGroup(currentTabId);
+        }
 
-        // Update session's tabId
+        // Update session's tabId (SessionState is the source of truth)
         this.session.setTabId(newTabId);
+
+        // Add new tab to BrowserX group
+        await tabManager.addTabToGroup(newTabId);
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab rebinding';
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
 
         // Emit error to chat UI
         this.emitEvent({
