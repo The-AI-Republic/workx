@@ -951,7 +951,7 @@
       </div>
 
       <!-- Service Tier Selection (OpenAI only) -->
-      {#if currentProvider === 'openai' && serviceTier !== undefined}
+      {#if currentProvider === 'openai'}
         <div class="form-group">
           <label for="service-tier" class="form-label">
             Service Tier
