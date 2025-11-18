@@ -185,17 +185,11 @@ export class LayoutSimplifier {
 
     // Scrollable containers are meaningful - they enable scroll actions
     if (this.isScrollable(node)) {
-      //test>>
-      // console.log('$$$ Debug meaningless scrollable, current node:', node);
-      //test<<
       return false;
     }
 
     // Interactive elements are never meaningless
     if (node.tier === 'semantic') {
-      //test>>
-      // console.log('$$$ Debug meaningless semantic, current node:', node);
-      //test<<
       return false;
     }
 
@@ -204,9 +198,6 @@ export class LayoutSimplifier {
 
     // Only generic or no role qualifies as meaningless
     if (role && role !== 'generic') {
-      //test>>
-      // console.log('$$$ Debug meaningless role, current node:', node);
-      //test<<
       return false;
     }
 
@@ -215,25 +206,16 @@ export class LayoutSimplifier {
     if (node.accessibility) {
       // expanded is meaningful - indicates collapsible/expandable section
       if (node.accessibility.expanded !== undefined) {
-        //test>>
-        // console.log('$$$ Debug meaningless expanded, current node:', node);
-        //test<<
         return false;
       }
       // name/description indicate semantic meaning
       if (node.accessibility.name || node.accessibility.description) {
-        //test>>
-        // console.log('$$$ Debug meaningless name/description, current node:', node);
-        //test<<
         return false;
       }
     }
 
     // Semantic containers are never meaningless
     if (this.semanticContainers.has(tagName)) {
-      //test>>
-      // console.log('$$$ Debug meaningless semantic container, current node:', node);
-      //test<<
       return false;
     }
 
@@ -254,9 +236,6 @@ export class LayoutSimplifier {
 
       for (const attr of semanticAttrs) {
         if (attrMap.has(attr)) {
-          //test>>
-          // console.log('$$$ Debug meaningless semantic attribute, current node:', node);
-          //test<<
           return false;
         }
       }

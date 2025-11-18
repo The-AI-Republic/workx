@@ -91,36 +91,15 @@ export class DomSnapshot implements IDomSnapshot {
     // Use SerializationPipeline for compaction on body node only
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(bodyVirtualNode);
-    //test>>
-    const resultString = JSON.stringify(result, null, 2);
-    console.log('Body Before flattern node:', resultString);
-    //test<<
 
     // Build flattened tree structure from pipeline result with v3 schema
     const bodyBeforeFilter = this.flatternNode(result.tree, opts);
-    //test>>
-    const bodyBeforeFilterString = JSON.stringify(bodyBeforeFilter, null, 2);
-    console.log('Body Before view port Filter JSON:', bodyBeforeFilterString);
-    //test<<
 
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
 
-    //test>>
-    const bodyAfterFilterString = JSON.stringify(body, null, 2);
-    console.log('Body After view port Filter JSON:', bodyAfterFilterString);
-    //test<<
-
     // Convert SerializedNode back to HTML
     const htmlString = serializedNodeToHtml(body);
-
-    //test>>
-    const bodyString = JSON.stringify(body, null, 2);
-    console.log('Body JSON:', bodyString);
-    console.log('Body char length:', bodyString.length);
-    console.log('HTML String:', htmlString);
-    console.log('HTML char length:', htmlString.length);
-    
 
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {

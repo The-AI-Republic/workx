@@ -155,15 +155,9 @@ export class SerializationPipeline {
     }
 
     // S2.2: LayoutSimplifier - Collapse single-child wrappers & hoist containers
-    //test>>
-    console.log('$$$ before Simplifying node:', JSON.stringify(simplified, null, 2));
-    //test<<
     if (this.config.enableLayoutSimplification) {
       simplified = this.applyLayoutSimplifier(simplified);
     }
-    //test>>
-    console.log('$$$ after Simplifying node:', JSON.stringify(simplified, null, 2));
-    //test<<
 
     // S2.3: ClickableTextAggregator - Aggregate nested text in clickable elements
     if (this.config.enableClickableTextAggregation) {

@@ -132,9 +132,6 @@ export class DomService {
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
-    //test>>
-    console.log("$$$ the dom html content: " + JSON.stringify(rawDom.page.body, null, 2));
-    //test<<
     const serializedDom = {
       page: {
         context: {
@@ -377,7 +374,7 @@ export class DomService {
         attributes: cdpNode.attributes,
         frameId: cdpNode.frameId,
         shadowRootType: cdpNode.shadowRootType,
-        tier: classifyNode(cdpNode, axNode, heuristics),
+        tier: classifyNode(axNode, heuristics),
         interactionType: determineInteractionType(cdpNode, axNode),
         accessibility: axNode
           ? {
