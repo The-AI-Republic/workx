@@ -124,45 +124,6 @@ export class Session {
     }
   }
 
-  /**
-   * Resume a session from IndexedDB by conversation ID
-   * Loads conversation history and recreates the session state
-   *
-   * @param conversationId - The conversation ID to resume
-   * @param config - Agent configuration
-   * @param toolRegistry - Tool registry instance
-   * @returns Promise resolving to the resumed Session
-   */
-  static async resume(
-    conversationId: string,
-    config?: AgentConfig,
-    toolRegistry?: ToolRegistry
-  ): Promise<Session> {
-    console.log('[Session] Resuming session from IndexedDB:', conversationId);
-
-    // Load conversation history from IndexedDB using getRolloutHistory
-    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
-    console.log('[Session] Loaded history type:', initialHistory.mode);
-
-    if (initialHistory.mode === 'new') {
-      // No history found, create new session
-      console.warn('[Session] No history found for conversation:', conversationId, '- creating new session');
-      const session = new Session(config, true, undefined, toolRegistry);
-      return session;
-    }
-
-    console.log('[Session] Loaded', initialHistory.payload.history.length, 'items from IndexedDB');
-
-    // Create session with resumed history
-    const session = new Session(config, true, undefined, toolRegistry, initialHistory);
-
-    // Override the conversationId to use the resumed one (constructor generates a new one)
-    (session as any).conversationId = conversationId;
-
-    console.log('[Session] Successfully resumed session:', conversationId);
-
-    return session;
-  }
 
   /**
    * Get or create a conversation in storage using RolloutRecorder
@@ -800,12 +761,17 @@ export class Session {
     config?: AgentConfig
   ): Promise<void> {
     try {
+      // Strip conv_ prefix if present - RolloutRecorder expects plain UUID
+      const uuid = conversationId.startsWith('conv_')
+        ? conversationId.slice(5)
+        : conversationId;
+
       if (mode === 'create') {
         // Create new rollout
         const rollout = await RolloutRecorder.create(
           {
             type: 'create',
-            conversationId: conversationId,
+            conversationId: uuid,
           },
           config as any
         );
@@ -818,7 +784,7 @@ export class Session {
         const rollout = await RolloutRecorder.create(
           {
             type: 'resume',
-            rolloutId: conversationId,
+            rolloutId: uuid,
           },
           config as any
         );
@@ -828,7 +794,7 @@ export class Session {
         }
 
         // Reconstruct history from rollout
-        const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+        const initialHistory = await RolloutRecorder.getRolloutHistory(uuid);
         if (initialHistory.type === 'resumed' && initialHistory.payload.history) {
           this.reconstructHistoryFromRollout(initialHistory.payload.history);
         }
