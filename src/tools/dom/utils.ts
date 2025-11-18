@@ -99,12 +99,11 @@ export function computeHeuristics(attributes: string[] = []): NonNullable<Virtua
  * Classify node into semantic, non-semantic, or structural tier
  */
 export function classifyNode(
-  cdpNode: any,
   axNode: any | null,
   heuristics?: VirtualNode['heuristics']
 ): 'semantic' | 'non-semantic' | 'structural' {
   // Has proper accessibility role - semantic
-  if (axNode?.role?.value && axNode.role.value !== 'generic') {
+  if (axNode?.role?.value && axNode.role.value !== 'generic' && axNode.role.value !== 'none' && axNode?.ignored !== true) {
     return 'semantic';
   }
 
@@ -254,9 +253,16 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
     attributes.push(`role="${escapeHtml(node.role)}"`);
   }
 
-  // Add aria-label if present
+  // Add aria-label if present (with scrollable appended if available)
   if (node.aria_label) {
-    attributes.push(`aria-label="${escapeHtml(node.aria_label)}"`);
+    let ariaLabel = node.aria_label;
+    if (node.scrollable !== undefined) {
+      ariaLabel += ` | scrollable: ${node.scrollable}`;
+    }
+    attributes.push(`aria-label="${escapeHtml(ariaLabel)}"`);
+  } else if (node.scrollable !== undefined) {
+    // Add aria-label with just scrollable info if no existing aria-label
+    attributes.push(`aria-label="scrollable: ${node.scrollable}"`);
   }
 
   // Add href for links

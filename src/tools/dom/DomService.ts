@@ -131,6 +131,10 @@ export class DomService {
     // Transform to stringified format for LLM consumption:
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
+    const htmlContent = serializedNodeToHtml(rawDom.page.body);
+    //test>>
+    console.log("$$$ the dom html content: " + JSON.stringify(rawDom.page.body, null, 2));
+    //test<<
     const serializedDom = {
       page: {
         context: {
@@ -145,7 +149,7 @@ export class DomService {
             overflowRight: `${rawDom.page.context.viewport.overflowRight}px`
           }
         },
-        body: serializedNodeToHtml(rawDom.page.body),
+        body: htmlContent,
       }
     };
 
