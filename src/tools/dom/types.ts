@@ -139,7 +139,7 @@ export interface VirtualNode {
   };
 
   // NEW: Scrollability indicator for LLM to identify scroll targets
-  scrollable?: 'vertical' | 'horizontal' | 'both';
+  scrollable?: 'vertical' | 'horizontal' | 'vertical and horizontal';
 
   // NEW: Filtering flags
   ignoredByPaintOrder?: boolean;  // F5: Paint Order Filtering

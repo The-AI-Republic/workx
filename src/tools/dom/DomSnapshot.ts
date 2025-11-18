@@ -310,6 +310,11 @@ export class DomSnapshot implements IDomSnapshot {
         serializedNode.inViewport = this.calculateInViewport(node.boundingBox);
       }
 
+      // scrollable (for LLM to identify scroll targets)
+      if (node.scrollable) {
+        serializedNode.scrollable = node.scrollable;
+      }
+
       // Build states object from accessibility info
       if (opts.metadata.includeStates) {
         const states: Record<string, boolean | string> = {};

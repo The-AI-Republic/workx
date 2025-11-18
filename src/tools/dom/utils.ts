@@ -51,11 +51,11 @@ export function isHorizontallyScrollable(
 
 /**
  * Compute scrollable direction from layout data
- * Returns 'vertical', 'horizontal', 'both', or undefined
+ * Returns 'vertical', 'horizontal', 'vertical and horizontal', or undefined
  */
 export function computeScrollable(
   layoutData?: LayoutData
-): 'vertical' | 'horizontal' | 'both' | undefined {
+): 'vertical' | 'horizontal' | 'vertical and horizontal' | undefined {
   if (!layoutData?.scrollRects || !layoutData?.clientRects) {
     return undefined;
   }
@@ -71,7 +71,7 @@ export function computeScrollable(
     layoutData.computedStyle
   );
 
-  if (isVertical && isHorizontal) return 'both';
+  if (isVertical && isHorizontal) return 'vertical and horizontal';
   if (isVertical) return 'vertical';
   if (isHorizontal) return 'horizontal';
   return undefined;
