@@ -132,6 +132,13 @@
         const providerApiKey = await settingsConfig.getProviderApiKey(providerId);
 
         for (const model of provider.models) {
+          // For OpenAI models, merge default serviceTier value with stored value
+          // If serviceTier is not defined in stored config, default to 'default'
+          let modelServiceTier = model.serviceTier;
+          if (providerId === 'openai' && !modelServiceTier) {
+            modelServiceTier = 'default';
+          }
+
           tempModelItems.push({
             modelId: model.id,
             modelName: model.name,
@@ -145,7 +152,7 @@
             baseUrl: provider.baseUrl || '',
             supportsImage: model.supportsImage !== false,  // Default to true if not specified
             selected: model.id === selectedModelId,  // Mark as selected if it matches
-            serviceTier: model.serviceTier,  // Service tier for OpenAI models
+            serviceTier: modelServiceTier,  // Service tier for OpenAI models (with default fallback)
             pricing: model.pricing  // Include pricing information if available
           });
         }
@@ -960,8 +967,14 @@
             id="service-tier"
             bind:value={serviceTier}
             on:change={handleServiceTierChange}
-            class="service-tier-select"
+            class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 font-medium transition-colors appearance-none cursor-pointer"
+            class:opacity-50={isInitializing || isSaving}
+            class:cursor-not-allowed={isInitializing || isSaving}
+            class:hover:bg-gray-700={!isInitializing && !isSaving}
+            class:focus:ring-2={!isInitializing && !isSaving}
+            class:focus:ring-cyan-400={!isInitializing && !isSaving}
             disabled={isInitializing || isSaving}
+            style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25rem; padding-right: 2.5rem;"
           >
             <option value="default">Default</option>
             <option value="flex">Flex</option>

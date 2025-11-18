@@ -193,10 +193,48 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
   if (partial.providers) {
     Object.entries(partial.providers).forEach(([id, provider]) => {
       if (mergedProviders[id]) {
-        // Provider exists in defaults, merge with stored values (preserve API keys)
+        // Provider exists in defaults, deep merge models array
+        const defaultProvider = mergedProviders[id];
+        const storedProvider = provider;
+
+        // Merge models: combine default models with stored models
+        const mergedModels: any[] = [];
+        const defaultModels = defaultProvider.models || [];
+        const storedModels = storedProvider.models || [];
+
+        // First, merge existing models (by modelKey)
+        for (const defaultModel of defaultModels) {
+          // Find matching stored model by modelKey
+          const storedModel = storedModels.find((m: any) => m.modelKey === defaultModel.modelKey);
+
+          if (storedModel) {
+            // Model exists in both - merge default fields with stored values
+            // Stored values take precedence (preserves user customizations)
+            mergedModels.push({
+              ...defaultModel,      // Default fields (includes new fields like serviceTier)
+              ...storedModel,       // Stored values (preserves user customizations)
+              id: storedModel.id || defaultModel.id  // Preserve existing ID
+            });
+          } else {
+            // Model only exists in defaults - add it as new
+            mergedModels.push({ ...defaultModel });
+          }
+        }
+
+        // Add any models that exist in stored config but not in defaults
+        // (e.g., user manually added models)
+        for (const storedModel of storedModels) {
+          const existsInDefaults = defaultModels.some((m: any) => m.modelKey === storedModel.modelKey);
+          if (!existsInDefaults) {
+            mergedModels.push({ ...storedModel });
+          }
+        }
+
+        // Merge provider with deep-merged models array
         mergedProviders[id] = {
-          ...mergedProviders[id],
-          ...provider
+          ...defaultProvider,
+          ...storedProvider,
+          models: mergedModels
         };
       } else {
         // Provider doesn't exist in defaults, keep it anyway

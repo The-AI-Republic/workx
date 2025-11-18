@@ -394,7 +394,11 @@ export class ModelClientFactory {
       if (modelData?.model) {
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        // For OpenAI models, merge default serviceTier value with stored value
         serviceTier = modelData.model.serviceTier;
+        if (providerName === 'openai' && !serviceTier) {
+          serviceTier = 'default';
+        }
       }
     }
 
