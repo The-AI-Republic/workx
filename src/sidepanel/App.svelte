@@ -142,7 +142,25 @@
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
 
+    // ========================================================================
+    // KEEP-ALIVE: Send periodic pings to prevent service worker termination
+    // ========================================================================
+    // Chrome terminates service workers after ~30 seconds of inactivity.
+    // While the side panel is open, send pings every 20 seconds to keep it alive.
+    // This ensures responsive UI and prevents state loss.
+    // ========================================================================
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        await router.send(MessageType.PING);
+        console.log('[App] Keep-alive ping sent');
+      } catch (error) {
+        console.warn('[App] Keep-alive ping failed:', error);
+      }
+    }, 25000); // Every 25 seconds
+
     return () => {
+      // Clean up keep-alive interval when panel closes
+      clearInterval(keepAliveInterval);
       router?.cleanup();
     };
   });
