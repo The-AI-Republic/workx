@@ -12,7 +12,6 @@ import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
 import { AgentConfig } from '../config/AgentConfig';
 import { TabManager } from '../core/TabManager';
-import { ActiveConversationTracker } from '../storage/ActiveConversationTracker';
 
 // Global instances
 let agent: BrowserxAgent | null = null;
@@ -167,14 +166,8 @@ function setupMessageHandlers(): void {
       const tabManager = TabManager.getInstance();
       await tabManager.unbindSession(sessionId);
 
-      // Clear the active conversation tracker (user explicitly reset)
-      await ActiveConversationTracker.clearActiveConversation();
-
       // Reset the session (this will also reset tabId to -1 in session and turnContext)
       await session.reset();
-
-      // Save the new conversation ID after reset
-      await ActiveConversationTracker.setActiveConversation(session.getId());
 
       return { type: MessageType.SESSION_RESET_COMPLETE, timestamp: Date.now() };
     }
