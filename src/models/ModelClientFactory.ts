@@ -387,12 +387,14 @@ export class ModelClientFactory {
     const selectedModel = this.getSelectedModel();
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
+    let serviceTier: 'default' | 'flex' | 'priority' | undefined;
     if (this.config) {
       const configData = this.config.getConfig();
       const modelData = this.config.getModelById(configData.selectedModelId);
       if (modelData?.model) {
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        serviceTier = modelData.model.serviceTier;
       }
     }
 
@@ -503,6 +505,7 @@ export class ModelClientFactory {
           provider,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+          serviceTier,
         });
     }
   }

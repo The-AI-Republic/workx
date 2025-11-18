@@ -69,8 +69,29 @@
         "releaseDate": "2024-12-05",
         "deprecated": false,
         "pricing": {
-          "inputToken": "Input: $1.25 / 1M tokens, Cached: $0.125 / 1M tokens",
-          "outputToken": "$10.00 / 1M tokens",
+          "inputToken": "Default: $1.25 / 1M tokens, Cached: $0.125 / 1M tokens | Priority: $2.50 / 1M tokens, Cached: $0.25 / 1M tokens",
+          "outputToken": "Default: $10.00 / 1M tokens | Priority: $20.00 / 1M tokens",
+          "link": "https://openai.com/api/pricing/"
+        }
+      },
+      {
+        "id": "",
+        "name": "GPT-5.1",
+        "modelKey": "gpt-5.1",
+        "creator": "OpenAI",
+        "contextWindow": 200000,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["minimal", "low", "medium", "high"],
+        "supportsReasoningSummaries": true,
+        "supportsVerbosity": true,
+        "verbosityLevels": ["low", "medium", "high"],
+        "supportsImage": true,
+        "releaseDate": "2024-12-05",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "Default: $1.25 / 1M tokens, Cached: $0.125 / 1M tokens | Priority: $2.50 / 1M tokens, Cached: $0.25 / 1M tokens",
+          "outputToken": "Default: $10.00 / 1M tokens | Priority: $20.00 / 1M tokens",
           "link": "https://openai.com/api/pricing/"
         }
       }

@@ -43,6 +43,7 @@
   let selectedModelId = '';
   let configuredFeatures: ConfiguredFeatures = {};
   let modelValidationError = '';
+  let serviceTier: 'default' | 'flex' | 'priority' | undefined;
 
   // T022, Provider-aware API key display
   let currentProvider = 'openai';
@@ -66,6 +67,7 @@
     baseUrl: string;
     supportsImage: boolean;  // Whether model supports image input
     selected: boolean;       // Indicates if this model is currently selected
+    serviceTier?: 'default' | 'flex' | 'priority';  // Service tier for OpenAI models
     pricing?: {              // Model pricing information
       inputToken: string;
       outputToken: string;
@@ -143,6 +145,7 @@
             baseUrl: provider.baseUrl || '',
             supportsImage: model.supportsImage !== false,  // Default to true if not specified
             selected: model.id === selectedModelId,  // Mark as selected if it matches
+            serviceTier: model.serviceTier,  // Service tier for OpenAI models
             pricing: model.pricing  // Include pricing information if available
           });
         }
@@ -176,6 +179,9 @@
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
         isAuthenticated = !!selectedItem.apiKey;
 
+        // Load service tier from model configuration
+        serviceTier = selectedItem.serviceTier;
+
         // Set default reasoning effort for models that support reasoning
         const defaultReasoningEffort = selectedItem.supportsReasoning && selectedItem.reasoningEfforts?.length > 0
           ? 'medium'  // Default to medium effort for reasoning-capable models
@@ -202,6 +208,9 @@
           apiKey = fallbackItem.apiKey || '';
           maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
           isAuthenticated = !!fallbackItem.apiKey;
+
+          // Load service tier from model configuration
+          serviceTier = fallbackItem.serviceTier;
 
           // Set default reasoning effort for models that support reasoning
           const fallbackReasoningEffort = fallbackItem.supportsReasoning && fallbackItem.reasoningEfforts?.length > 0
@@ -624,7 +633,10 @@
       apiKey = selectedItem.apiKey || '';
       maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
       isAuthenticated = !!selectedItem.apiKey;
-      
+
+      // Load service tier from selected model
+      serviceTier = selectedItem.serviceTier;
+
       // Update model features
       configuredFeatures = {
         reasoningEffort: null,
@@ -687,6 +699,45 @@
     const { errors, incompatibleFeatures } = event.detail;
     modelValidationError = errors.join('. ');
     showMessage(`Cannot select model: ${modelValidationError}`, 'error');
+  }
+
+  /**
+   * Handle service tier change
+   */
+  async function handleServiceTierChange(event: Event) {
+    if (!settingsConfig) return;
+
+    try {
+      const target = event.target as HTMLSelectElement;
+      const newServiceTier = target.value as 'default' | 'flex' | 'priority' | '';
+
+      // Update local state
+      serviceTier = newServiceTier === '' ? undefined : newServiceTier;
+
+      // Update model configuration in AgentConfig
+      const modelData = settingsConfig.getModelById(selectedModelId);
+      if (modelData?.model) {
+        // Update the model's serviceTier in the provider's models array
+        const provider = settingsConfig.getProvider(modelData.providerId);
+        if (provider) {
+          const modelIndex = provider.models.findIndex(m => m.id === selectedModelId);
+          if (modelIndex !== -1) {
+            provider.models[modelIndex].serviceTier = serviceTier;
+            await settingsConfig.updateProvider(modelData.providerId, { models: provider.models });
+
+            // Trigger BrowserAgent re-initialization
+            chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
+              // Silently handle message errors
+            });
+
+            showMessage(`Service tier updated to ${serviceTier || 'default'}`, 'success');
+          }
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showMessage(`Failed to update service tier: ${errorMessage}`, 'error');
+    }
   }
 
   /**
@@ -898,6 +949,29 @@
           </div>
         {/if}
       </div>
+
+      <!-- Service Tier Selection (OpenAI only) -->
+      {#if currentProvider === 'openai' && serviceTier !== undefined}
+        <div class="form-group">
+          <label for="service-tier" class="form-label">
+            Service Tier
+          </label>
+          <select
+            id="service-tier"
+            bind:value={serviceTier}
+            on:change={handleServiceTierChange}
+            class="service-tier-select"
+            disabled={isInitializing || isSaving}
+          >
+            <option value="default">Default</option>
+            <option value="flex">Flex</option>
+            <option value="priority">Priority</option>
+          </select>
+          <div class="help-text">
+            Priority tier provides faster response times with higher pricing. Default and Flex tiers have standard pricing.
+          </div>
+        </div>
+      {/if}
 
       <!-- Action Buttons -->
       <div class="button-group">

@@ -172,6 +172,14 @@ export interface IModelConfig {
    * Custom message to display when deprecated is true
    */
   deprecationMessage?: string | null;
+
+  /**
+   * Service tier for API requests (optional)
+   * OpenAI-specific parameter for controlling service level
+   * Supported values: 'default' | 'flex' | 'priority'
+   * When omitted, the provider's default service tier is used
+   */
+  serviceTier?: 'default' | 'flex' | 'priority';
 }
 
 // Provider configuration
