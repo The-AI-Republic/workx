@@ -413,6 +413,7 @@ export class SerializationPipeline {
       computedStyle: node.computedStyle ? { ...node.computedStyle } : undefined,
       scrollRects: node.scrollRects ? { ...node.scrollRects } : undefined,
       clientRects: node.clientRects ? { ...node.clientRects } : undefined,
+      scrollable: node.scrollable,
       ignoredByPaintOrder: node.ignoredByPaintOrder,
       excludedByParent: node.excludedByParent
     };

@@ -10,7 +10,7 @@ import type {
   PerformanceMetrics
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
-import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml } from './utils';
+import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable } from './utils';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -131,6 +131,7 @@ export class DomService {
     // Transform to stringified format for LLM consumption:
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
+    const htmlContent = serializedNodeToHtml(rawDom.page.body);
     const serializedDom = {
       page: {
         context: {
@@ -145,7 +146,7 @@ export class DomService {
             overflowRight: `${rawDom.page.context.viewport.overflowRight}px`
           }
         },
-        body: serializedNodeToHtml(rawDom.page.body),
+        body: htmlContent,
       }
     };
 
@@ -297,7 +298,7 @@ export class DomService {
         this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
         // Fetch paint order and layout data via DOMSnapshot.captureSnapshot()
         this.sendCommand<any>('DOMSnapshot.captureSnapshot', {
-          computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor'],
+          computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'],
           includePaintOrder: true,
           includeDOMRects: true
         }).catch((error: any) => {
@@ -363,6 +364,7 @@ export class DomService {
       const heuristics = computeHeuristics(cdpNode.attributes);
       const layoutData = layoutMap.get(backendNodeId); // Get layout data
 
+      
       const vNode: VirtualNode = {
         nodeId: cdpNode.nodeId,
         backendNodeId,
@@ -373,7 +375,7 @@ export class DomService {
         attributes: cdpNode.attributes,
         frameId: cdpNode.frameId,
         shadowRootType: cdpNode.shadowRootType,
-        tier: classifyNode(cdpNode, axNode, heuristics),
+        tier: classifyNode(axNode, heuristics),
         interactionType: determineInteractionType(cdpNode, axNode),
         accessibility: axNode
           ? {
@@ -394,7 +396,9 @@ export class DomService {
         paintOrder: layoutData?.paintOrder,
         computedStyle: layoutData?.computedStyle,
         scrollRects: layoutData?.scrollRects,
-        clientRects: layoutData?.clientRects
+        clientRects: layoutData?.clientRects,
+        // Compute scrollability based on dimensions and overflow styles
+        scrollable: computeScrollable(layoutData)
       };
 
       // Recurse to children
@@ -552,11 +556,15 @@ export class DomService {
     // CDP DOMSnapshot returns parallel arrays where indices correspond
     const backendNodeIds = doc.nodes?.backendNodeId || [];
 
+    // Property names in the order they were requested in captureSnapshot
+    const styleProperties = ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'];
+
     for (let i = 0; i < layout.nodeIndex.length; i++) {
       const nodeIndex = layout.nodeIndex[i];
       const backendNodeId = backendNodeIds[nodeIndex];
 
-      if (!backendNodeId) continue;
+      // backendNodeId can be 0, so check for undefined explicitly
+      if (backendNodeId === undefined) continue;
 
       const layoutData: any = {};
 
@@ -604,15 +612,14 @@ export class DomService {
       }
 
       // Computed styles
+      // styleIndices is an array of string table indices, one per property in styleProperties order
       if (layout.styles && layout.styles[i]) {
         const styleIndices = layout.styles[i];
         const computedStyle: any = {};
 
-        // styleIndices is an array of indices into the strings table
-        // Format: [propertyIndex1, valueIndex1, propertyIndex2, valueIndex2, ...]
-        for (let j = 0; j < styleIndices.length; j += 2) {
-          const propertyName = strings[styleIndices[j]];
-          const propertyValue = strings[styleIndices[j + 1]];
+        for (let j = 0; j < styleIndices.length && j < styleProperties.length; j++) {
+          const propertyName = styleProperties[j];
+          const propertyValue = strings[styleIndices[j]];
 
           // Map to camelCase for our interface
           if (propertyName === 'opacity') computedStyle.opacity = propertyValue;
@@ -620,6 +627,8 @@ export class DomService {
           if (propertyName === 'display') computedStyle.display = propertyValue;
           if (propertyName === 'visibility') computedStyle.visibility = propertyValue;
           if (propertyName === 'cursor') computedStyle.cursor = propertyValue;
+          if (propertyName === 'overflow-x') computedStyle.overflowX = propertyValue;
+          if (propertyName === 'overflow-y') computedStyle.overflowY = propertyValue;
         }
 
         if (Object.keys(computedStyle).length > 0) {
@@ -627,7 +636,10 @@ export class DomService {
         }
       }
 
-      layoutMap.set(backendNodeId, layoutData);
+      // Only add to map if we have actual layout data
+      if (Object.keys(layoutData).length > 0) {
+        layoutMap.set(backendNodeId, layoutData);
+      }
     }
 
     return layoutMap;

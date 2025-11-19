@@ -138,6 +138,11 @@ export class LayoutSimplifier {
       return false;
     }
 
+    // Scrollable containers are preserved - they enable scroll actions
+    if (this.isScrollable(node)) {
+      return false;
+    }
+
     // Semantic containers are preserved
     const tagName = (node.localName || node.nodeName || '').toLowerCase();
     if (this.semanticContainers.has(tagName)) {
@@ -151,6 +156,14 @@ export class LayoutSimplifier {
     }
 
     return true;
+  }
+
+  /**
+   * Check if node is scrollable (vertically or horizontally)
+   * Uses the pre-computed scrollable property from DomService
+   */
+  private isScrollable(node: VirtualNode): boolean {
+    return node.scrollable !== undefined;
   }
 
   /**
@@ -175,6 +188,11 @@ export class LayoutSimplifier {
       }
     }
 
+    // Scrollable containers are meaningful - they enable scroll actions
+    if (this.isScrollable(node)) {
+      return false;
+    }
+
     // Interactive elements are never meaningless
     if (node.tier === 'semantic') {
       return false;
@@ -186,6 +204,19 @@ export class LayoutSimplifier {
     // Only generic or no role qualifies as meaningless
     if (role && role !== 'generic') {
       return false;
+    }
+
+    // Check for meaningful accessibility states on divs
+    // Note: checked/required on a div are meaningless, but expanded indicates collapsible container
+    if (node.accessibility) {
+      // expanded is meaningful - indicates collapsible/expandable section
+      if (node.accessibility.expanded !== undefined) {
+        return false;
+      }
+      // name/description indicate semantic meaning
+      if (node.accessibility.name || node.accessibility.description) {
+        return false;
+      }
     }
 
     // Semantic containers are never meaningless
