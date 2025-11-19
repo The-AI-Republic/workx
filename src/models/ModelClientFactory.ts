@@ -6,6 +6,7 @@
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './client/OpenAIResponsesClient';
 import { OpenAIChatCompletionClient } from './client/OpenAIChatCompletionClient';
+import { GoogleCompletionClient } from './client/GoogleCompletionClient';
 import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
@@ -472,8 +473,8 @@ export class ModelClientFactory {
         });
 
       case 'google-ai-studio':
-        console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Google AI Studio`);
-        return new OpenAIChatCompletionClient({
+        console.log(`[ModelClientFactory] Instantiating GoogleCompletionClient for Google AI Studio`);
+        return new GoogleCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
