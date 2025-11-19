@@ -98,11 +98,6 @@ export class DomSnapshot implements IDomSnapshot {
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
 
-    // Safety check: if body is null or has no kids, log detailed diagnostics
-    if (!body || (body.kids && body.kids.length === 0)) {
-      console.warn('the body is null or has no kids');
-    }
-
     // Calculate viewport overflow (pixels outside viewport in each direction)
     const viewport = this.pageContext.viewport;
     const scrollX = viewport.scrollX ?? 0;
@@ -145,6 +140,13 @@ export class DomSnapshot implements IDomSnapshot {
   /**
    * Flatten VirtualNode tree to v3 SerializedNode with normalized field names
    *
+   * Node preservation rules:
+   * - Semantic/non-semantic nodes (Tier 1 & 2): Always kept
+   * - Semantic containers (form, table, dialog, navigation, main): Always kept
+   * - Scrollable containers: Always kept (enable scroll actions)
+   * - Structural nodes with children: Hoisted if single child, kept as grouping if multiple
+   * - Leaf structural nodes: Discarded
+   *
    * Normalized field mappings:
    * - aria-label → aria_label
    * - children → kids
@@ -166,6 +168,11 @@ export class DomSnapshot implements IDomSnapshot {
       return this.buildSerializedNode(node, minimalOpts);
     }
 
+    // Case 2.5: Keep scrollable containers - they enable scroll actions
+    if (node.scrollable) {
+      return this.buildSerializedNode(node, opts);
+    }
+
     // Case 3: Structural node with children - hoist children to parent level
     if (node.children && node.children.length > 0) {
       const flattenedChildren = node.children
@@ -179,11 +186,16 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If multiple children, return minimal structural node to maintain grouping
       if (flattenedChildren.length > 1) {
-        return {
+        const structuralNode: SerializedNode = {
           node_id: node.backendNodeId,
           tag: node.localName || node.nodeName.toLowerCase(),
           kids: flattenedChildren
         };
+        // Preserve scrollable property for scroll targets
+        if (node.scrollable) {
+          structuralNode.scrollable = node.scrollable;
+        }
+        return structuralNode;
       }
 
       // FIX: If all children were filtered out (flattenedChildren.length === 0),

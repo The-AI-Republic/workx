@@ -138,6 +138,11 @@ export class LayoutSimplifier {
       return false;
     }
 
+    // Scrollable containers are preserved - they enable scroll actions
+    if (this.isScrollable(node)) {
+      return false;
+    }
+
     // Semantic containers are preserved
     const tagName = (node.localName || node.nodeName || '').toLowerCase();
     if (this.semanticContainers.has(tagName)) {

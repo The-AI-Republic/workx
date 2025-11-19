@@ -364,6 +364,7 @@ export class DomService {
       const heuristics = computeHeuristics(cdpNode.attributes);
       const layoutData = layoutMap.get(backendNodeId); // Get layout data
 
+      
       const vNode: VirtualNode = {
         nodeId: cdpNode.nodeId,
         backendNodeId,
@@ -555,11 +556,15 @@ export class DomService {
     // CDP DOMSnapshot returns parallel arrays where indices correspond
     const backendNodeIds = doc.nodes?.backendNodeId || [];
 
+    // Property names in the order they were requested in captureSnapshot
+    const styleProperties = ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'];
+
     for (let i = 0; i < layout.nodeIndex.length; i++) {
       const nodeIndex = layout.nodeIndex[i];
       const backendNodeId = backendNodeIds[nodeIndex];
 
-      if (!backendNodeId) continue;
+      // backendNodeId can be 0, so check for undefined explicitly
+      if (backendNodeId === undefined) continue;
 
       const layoutData: any = {};
 
@@ -607,15 +612,14 @@ export class DomService {
       }
 
       // Computed styles
+      // styleIndices is an array of string table indices, one per property in styleProperties order
       if (layout.styles && layout.styles[i]) {
         const styleIndices = layout.styles[i];
         const computedStyle: any = {};
 
-        // styleIndices is an array of indices into the strings table
-        // Format: [propertyIndex1, valueIndex1, propertyIndex2, valueIndex2, ...]
-        for (let j = 0; j < styleIndices.length; j += 2) {
-          const propertyName = strings[styleIndices[j]];
-          const propertyValue = strings[styleIndices[j + 1]];
+        for (let j = 0; j < styleIndices.length && j < styleProperties.length; j++) {
+          const propertyName = styleProperties[j];
+          const propertyValue = strings[styleIndices[j]];
 
           // Map to camelCase for our interface
           if (propertyName === 'opacity') computedStyle.opacity = propertyValue;
@@ -632,7 +636,10 @@ export class DomService {
         }
       }
 
-      layoutMap.set(backendNodeId, layoutData);
+      // Only add to map if we have actual layout data
+      if (Object.keys(layoutData).length > 0) {
+        layoutMap.set(backendNodeId, layoutData);
+      }
     }
 
     return layoutMap;
