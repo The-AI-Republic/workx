@@ -98,9 +98,6 @@ export class DomSnapshot implements IDomSnapshot {
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
 
-    // Convert SerializedNode back to HTML
-    const htmlString = serializedNodeToHtml(body);
-
     // Safety check: if body is null or has no kids, log detailed diagnostics
     if (!body || (body.kids && body.kids.length === 0)) {
       console.warn('the body is null or has no kids');
