@@ -80,6 +80,8 @@ export interface VirtualNode {
   nodeValue?: string;
   attributes?: string[];
   children?: VirtualNode[];
+  shadowRoots?: VirtualNode[];
+  contentDocument?: VirtualNode;
   frameId?: string;
   shadowRootType?: 'open' | 'closed';
 

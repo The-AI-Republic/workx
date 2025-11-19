@@ -159,6 +159,12 @@ export interface SerializedNode {
   /** Child nodes (normalized from children) */
   kids?: SerializedNode[];
 
+  /** Shadow roots (for Shadow DOM support) */
+  shadow_roots?: SerializedNode[];
+
+  /** Content document (for iframe support) */
+  content_document?: SerializedNode;
+
   /** Link href */
   href?: string;
 

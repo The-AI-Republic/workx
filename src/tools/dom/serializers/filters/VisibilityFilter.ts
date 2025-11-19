@@ -28,20 +28,30 @@ export class VisibilityFilter {
       return null;
     }
 
+    const result = { ...tree };
+
     // Recursively filter children
     if (tree.children && tree.children.length > 0) {
       const filteredChildren = tree.children
         .map(child => this.filter(child))
         .filter((child): child is VirtualNode => child !== null);
-
-      // Return node with filtered children
-      return {
-        ...tree,
-        children: filteredChildren.length > 0 ? filteredChildren : undefined
-      };
+      result.children = filteredChildren.length > 0 ? filteredChildren : undefined;
     }
 
-    return tree;
+    // Recursively filter shadow roots
+    if (tree.shadowRoots && tree.shadowRoots.length > 0) {
+      const filteredShadowRoots = tree.shadowRoots
+        .map(sr => this.filter(sr))
+        .filter((sr): sr is VirtualNode => sr !== null);
+      result.shadowRoots = filteredShadowRoots.length > 0 ? filteredShadowRoots : undefined;
+    }
+
+    // Recursively filter content document
+    if (tree.contentDocument) {
+      result.contentDocument = this.filter(tree.contentDocument) || undefined;
+    }
+
+    return result;
   }
 
   /**
@@ -114,6 +124,20 @@ export class VisibilityFilter {
 
       // Recursively check this child's descendants
       if (this.hasVisibleDescendant(child)) {
+        return true;
+      }
+
+      // Also check shadow roots for visible descendants
+      if (child.shadowRoots) {
+        for (const shadowRoot of child.shadowRoots) {
+          if (this.hasVisibleDescendant(shadowRoot)) {
+            return true;
+          }
+        }
+      }
+
+      // Also check content document for visible descendants
+      if (child.contentDocument && this.hasVisibleDescendant(child.contentDocument)) {
         return true;
       }
     }

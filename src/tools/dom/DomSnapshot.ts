@@ -45,6 +45,12 @@ export class DomSnapshot implements IDomSnapshot {
       if (node.children) {
         node.children.forEach(traverse);
       }
+      if (node.shadowRoots) {
+        node.shadowRoots.forEach(traverse);
+      }
+      if (node.contentDocument) {
+        traverse(node.contentDocument);
+      }
     };
     traverse(this.virtualDom);
     return this._backendNodeMap;
@@ -173,6 +179,12 @@ export class DomSnapshot implements IDomSnapshot {
       return this.buildSerializedNode(node, opts);
     }
 
+    // Case 2.6: Keep nodes with shadow roots or content documents (iframes)
+    // These act as containers for nested content trees
+    if ((node.shadowRoots && node.shadowRoots.length > 0) || node.contentDocument) {
+      return this.buildSerializedNode(node, opts);
+    }
+
     // Case 3: Structural node with children - hoist children to parent level
     if (node.children && node.children.length > 0) {
       const flattenedChildren = node.children
@@ -180,12 +192,16 @@ export class DomSnapshot implements IDomSnapshot {
         .filter((child): child is SerializedNode => child !== null);
 
       // If only one child, return it directly (hoist)
-      if (flattenedChildren.length === 1) {
+      // Exception: Don't hoist if this node is a structural root we want to preserve
+      const tag = node.localName || node.nodeName.toLowerCase();
+      const isStructuralRoot = ['html', 'body'].includes(tag);
+
+      if (flattenedChildren.length === 1 && !isStructuralRoot) {
         return flattenedChildren[0];
       }
 
-      // If multiple children, return minimal structural node to maintain grouping
-      if (flattenedChildren.length > 1) {
+      // If multiple children (OR single child that wasn't hoisted), return structural node
+      if (flattenedChildren.length > 0) {
         const structuralNode: SerializedNode = {
           node_id: node.backendNodeId,
           tag: node.localName || node.nodeName.toLowerCase(),
@@ -272,7 +288,7 @@ export class DomSnapshot implements IDomSnapshot {
 
       // Value (for inputs)
       if ((opts.metadata.includeValue || opts.includeValues) &&
-          typeof node.accessibility?.value === 'string') {
+        typeof node.accessibility?.value === 'string') {
         serializedNode.value = node.accessibility.value;
       }
 
@@ -338,6 +354,25 @@ export class DomSnapshot implements IDomSnapshot {
 
       if (flattenedChildren.length > 0) {
         serializedNode.kids = flattenedChildren; // v3: kids instead of children
+      }
+    }
+
+    // Recursively flatten shadow roots
+    if (node.shadowRoots && node.shadowRoots.length > 0) {
+      const flattenedShadowRoots = node.shadowRoots
+        .map(root => this.flatternNode(root, opts))
+        .filter((root): root is SerializedNode => root !== null);
+
+      if (flattenedShadowRoots.length > 0) {
+        serializedNode.shadow_roots = flattenedShadowRoots;
+      }
+    }
+
+    // Recursively flatten content document (iframe)
+    if (node.contentDocument) {
+      const flattenedContentDoc = this.flatternNode(node.contentDocument, opts);
+      if (flattenedContentDoc) {
+        serializedNode.content_document = flattenedContentDoc;
       }
     }
 
@@ -464,12 +499,23 @@ export class DomSnapshot implements IDomSnapshot {
   private filterByViewport(node: SerializedNode | null): SerializedNode | null {
     if (!node) return null;
 
+
     // Always preserve critical structural nodes (starting from body level)
-    const structuralTags = ['body', 'main'];
+    const structuralTags = ['body', 'main', 'html'];
     const isStructural = structuralTags.includes(node.tag);
+
 
     // If node is explicitly in viewport, keep it and all children
     if (node.inViewport === true) {
+      const { inViewport, ...nodeWithoutInViewport } = node;
+      return nodeWithoutInViewport;
+    }
+
+    // Preserve interactive elements even if inViewport is not set (no bounding box data)
+    // Interactive elements are identifiable by role or interactive tags
+    const interactiveTags = new Set(['button', 'a', 'input', 'select', 'textarea', 'label', 'option']);
+    const isInteractive = node.role || interactiveTags.has(node.tag);
+    if (isInteractive && node.inViewport === undefined) {
       const { inViewport, ...nodeWithoutInViewport } = node;
       return nodeWithoutInViewport;
     }
@@ -483,11 +529,62 @@ export class DomSnapshot implements IDomSnapshot {
       // If node has visible children OR is structural, keep it with filtered children
       if (filteredKids.length > 0 || isStructural) {
         const { inViewport, ...nodeWithoutInViewport } = node;
-        return {
+        const result: SerializedNode = {
           ...nodeWithoutInViewport,
           kids: filteredKids.length > 0 ? filteredKids : undefined
         };
+
+        // Also filter shadow roots if present
+        if (node.shadow_roots) {
+          const filteredShadowRoots = node.shadow_roots
+            .map(root => this.filterByViewport(root))
+            .filter((root): root is SerializedNode => root !== null);
+          if (filteredShadowRoots.length > 0) {
+            result.shadow_roots = filteredShadowRoots;
+          }
+        }
+
+        // Also filter content document if present
+        if (node.content_document) {
+          const filteredContentDoc = this.filterByViewport(node.content_document);
+          if (filteredContentDoc) {
+            result.content_document = filteredContentDoc;
+          }
+        }
+
+        return result;
       }
+    }
+
+    // Check shadow roots and content document even if no kids
+    let hasVisibleContent = false;
+    const result: SerializedNode = { ...node };
+    delete result.inViewport;
+
+    if (node.shadow_roots) {
+      const filteredShadowRoots = node.shadow_roots
+        .map(root => this.filterByViewport(root))
+        .filter((root): root is SerializedNode => root !== null);
+      if (filteredShadowRoots.length > 0) {
+        result.shadow_roots = filteredShadowRoots;
+        hasVisibleContent = true;
+      } else {
+        delete result.shadow_roots;
+      }
+    }
+
+    if (node.content_document) {
+      const filteredContentDoc = this.filterByViewport(node.content_document);
+      if (filteredContentDoc) {
+        result.content_document = filteredContentDoc;
+        hasVisibleContent = true;
+      } else {
+        delete result.content_document;
+      }
+    }
+
+    if (hasVisibleContent || isStructural) {
+      return result;
     }
 
     // Node is not in viewport and has no visible children - remove it

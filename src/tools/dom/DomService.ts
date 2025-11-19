@@ -286,7 +286,9 @@ export class DomService {
       // Parallel fetch: DOM tree + A11y tree + DOMSnapshot (paint order + layout)
       // Note: A11y fetch may fail on some CSP-restricted pages - we handle this gracefully
       // Note: DOMSnapshot may fail on older Chrome (<92) or CSP-restricted pages - graceful fallback
-      const [domTree, axTree, domSnapshot] = await Promise.all([
+      const [axTree, domTree, domSnapshot] = await Promise.all([
+        // Get accessibility tree for semantic classification
+        this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
         this.sendCommand<any>('DOM.getDocument', { depth: -1, pierce: true })
           .catch((error: any) => {
             // X-Frame-Options DENY detection
@@ -295,7 +297,6 @@ export class DomService {
             }
             throw error;
           }),
-        this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
         // Fetch paint order and layout data via DOMSnapshot.captureSnapshot()
         this.sendCommand<any>('DOMSnapshot.captureSnapshot', {
           computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'],
@@ -306,14 +307,14 @@ export class DomService {
           return null;
         })
       ]);
-      return { domTree, axTree, domSnapshot };
+      return { axTree, domTree, domSnapshot };
     })();
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error(`SNAPSHOT_TIMEOUT: Snapshot took longer than ${this.config.snapshotTimeout}ms. Consider reducing depth or page complexity.`)), this.config.snapshotTimeout);
     });
 
-    const { domTree, axTree, domSnapshot } = await Promise.race([snapshotPromise, timeoutPromise]);
+    const { axTree, domTree, domSnapshot } = await Promise.race([snapshotPromise, timeoutPromise]);
 
     // Build enrichment map: backendNodeId → AXNode
     const axMap = new Map<number, any>();
@@ -343,7 +344,7 @@ export class DomService {
     // Convert device pixels to CSS pixels for web standard compatibility
     const layoutMap = this.buildLayoutMap(domSnapshot, devicePixelRatio);
 
-    // Build VirtualNode tree
+    // Build virtual DOM tree
     let nodeCounter = 0;
 
     const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0): VirtualNode | null => {
@@ -364,7 +365,8 @@ export class DomService {
       const heuristics = computeHeuristics(cdpNode.attributes);
       const layoutData = layoutMap.get(backendNodeId); // Get layout data
 
-      
+      const tier = classifyNode(axNode, heuristics);
+
       const vNode: VirtualNode = {
         nodeId: cdpNode.nodeId,
         backendNodeId,
@@ -375,20 +377,20 @@ export class DomService {
         attributes: cdpNode.attributes,
         frameId: cdpNode.frameId,
         shadowRootType: cdpNode.shadowRootType,
-        tier: classifyNode(axNode, heuristics),
+        tier,
         interactionType: determineInteractionType(cdpNode, axNode),
         accessibility: axNode
           ? {
-              role: axNode.role?.value,
-              name: axNode.name?.value,
-              description: axNode.description?.value,
-              value: axNode.value?.value,
-              checked: axNode.checked?.value === 'true',
-              disabled: axNode.disabled,
-              expanded: axNode.expanded,
-              level: axNode.level,
-              required: axNode.required
-            }
+            role: axNode.role?.value,
+            name: axNode.name?.value,
+            description: axNode.description?.value,
+            value: axNode.value?.value,
+            checked: axNode.checked?.value === 'true',
+            disabled: axNode.disabled,
+            expanded: axNode.expanded,
+            level: axNode.level,
+            required: axNode.required
+          }
           : undefined,
         heuristics,
         // Attach layout data from DOMSnapshot.captureSnapshot()
@@ -407,6 +409,22 @@ export class DomService {
         vNode.children = cdpNode.children
           .map((c: any) => buildVirtualTree(c, depth + 1, nextIframeDepth))
           .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
+      }
+
+      // Recurse to shadow roots
+      if (cdpNode.shadowRoots) {
+        vNode.shadowRoots = cdpNode.shadowRoots
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth))
+          .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
+      }
+
+      // Recurse to iframe content document
+      if (cdpNode.contentDocument) {
+        const nextIframeDepth = iframeDepth + 1;
+        const contentDoc = buildVirtualTree(cdpNode.contentDocument, depth + 1, nextIframeDepth);
+        if (contentDoc) {
+          vNode.contentDocument = contentDoc;
+        }
       }
 
       return vNode;
@@ -540,105 +558,104 @@ export class DomService {
   private buildLayoutMap(domSnapshot: any, devicePixelRatio: number = 1): Map<number, any> {
     const layoutMap = new Map<number, any>();
 
-    if (!domSnapshot?.documents?.[0]) {
+    if (!domSnapshot?.documents) {
       return layoutMap;
     }
 
-    const doc = domSnapshot.documents[0];
-    const layout = doc.layout;
     const strings = domSnapshot.strings || [];
-
-    if (!layout || !layout.nodeIndex) {
-      return layoutMap;
-    }
-
-    // Extract backendNodeIds from the nodes structure
-    // CDP DOMSnapshot returns parallel arrays where indices correspond
-    const backendNodeIds = doc.nodes?.backendNodeId || [];
-
-    // Property names in the order they were requested in captureSnapshot
     const styleProperties = ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'];
 
-    for (let i = 0; i < layout.nodeIndex.length; i++) {
-      const nodeIndex = layout.nodeIndex[i];
-      const backendNodeId = backendNodeIds[nodeIndex];
+    // Iterate over all documents (main frame + iframes)
+    for (const doc of domSnapshot.documents) {
+      const layout = doc.layout;
 
-      // backendNodeId can be 0, so check for undefined explicitly
-      if (backendNodeId === undefined) continue;
-
-      const layoutData: any = {};
-
-      // Bounding box (bounds are stored as [x, y, width, height] arrays)
-      // CDP returns device pixels, convert to CSS pixels (web standard)
-      if (layout.bounds && layout.bounds[i]) {
-        const bounds = layout.bounds[i];
-        const devicePixels = {
-          x: bounds[0],
-          y: bounds[1],
-          width: bounds[2],
-          height: bounds[3]
-        };
-
-        // Convert from device pixels to CSS pixels
-        layoutData.boundingBox = {
-          x: devicePixels.x / devicePixelRatio,
-          y: devicePixels.y / devicePixelRatio,
-          width: devicePixels.width / devicePixelRatio,
-          height: devicePixels.height / devicePixelRatio
-        };
+      if (!layout || !layout.nodeIndex) {
+        continue;
       }
 
-      // Paint order
-      if (layout.paintOrders && layout.paintOrders[i] !== undefined) {
-        layoutData.paintOrder = layout.paintOrders[i];
-      }
+      // Extract backendNodeIds from the nodes structure
+      const backendNodeIds = doc.nodes?.backendNodeId || [];
 
-      // Scroll dimensions
-      if (layout.scrollRects && layout.scrollRects[i]) {
-        const scrollRect = layout.scrollRects[i];
-        layoutData.scrollRects = {
-          width: scrollRect[0],
-          height: scrollRect[1]
-        };
-      }
+      for (let i = 0; i < layout.nodeIndex.length; i++) {
+        const nodeIndex = layout.nodeIndex[i];
+        const backendNodeId = backendNodeIds[nodeIndex];
 
-      // Client dimensions
-      if (layout.clientRects && layout.clientRects[i]) {
-        const clientRect = layout.clientRects[i];
-        layoutData.clientRects = {
-          width: clientRect[0],
-          height: clientRect[1]
-        };
-      }
+        // backendNodeId can be 0, so check for undefined explicitly
+        if (backendNodeId === undefined) continue;
 
-      // Computed styles
-      // styleIndices is an array of string table indices, one per property in styleProperties order
-      if (layout.styles && layout.styles[i]) {
-        const styleIndices = layout.styles[i];
-        const computedStyle: any = {};
+        const layoutData: any = {};
 
-        for (let j = 0; j < styleIndices.length && j < styleProperties.length; j++) {
-          const propertyName = styleProperties[j];
-          const propertyValue = strings[styleIndices[j]];
+        // Bounding box (bounds are stored as [x, y, width, height] arrays)
+        // CDP returns device pixels, convert to CSS pixels (web standard)
+        if (layout.bounds && layout.bounds[i]) {
+          const bounds = layout.bounds[i];
+          const devicePixels = {
+            x: bounds[0],
+            y: bounds[1],
+            width: bounds[2],
+            height: bounds[3]
+          };
 
-          // Map to camelCase for our interface
-          if (propertyName === 'opacity') computedStyle.opacity = propertyValue;
-          if (propertyName === 'background-color') computedStyle.backgroundColor = propertyValue;
-          if (propertyName === 'display') computedStyle.display = propertyValue;
-          if (propertyName === 'visibility') computedStyle.visibility = propertyValue;
-          if (propertyName === 'cursor') computedStyle.cursor = propertyValue;
-          if (propertyName === 'overflow-x') computedStyle.overflowX = propertyValue;
-          if (propertyName === 'overflow-y') computedStyle.overflowY = propertyValue;
+          // Convert from device pixels to CSS pixels
+          layoutData.boundingBox = {
+            x: devicePixels.x / devicePixelRatio,
+            y: devicePixels.y / devicePixelRatio,
+            width: devicePixels.width / devicePixelRatio,
+            height: devicePixels.height / devicePixelRatio
+          };
         }
 
-        if (Object.keys(computedStyle).length > 0) {
-          layoutData.computedStyle = computedStyle;
+        // Paint order
+        if (layout.paintOrders && layout.paintOrders[i] !== undefined) {
+          layoutData.paintOrder = layout.paintOrders[i];
         }
-      }
 
-      // Only add to map if we have actual layout data
-      if (Object.keys(layoutData).length > 0) {
-        layoutMap.set(backendNodeId, layoutData);
+        // Scroll dimensions
+        if (layout.scrollRects && layout.scrollRects[i]) {
+          const scrollRect = layout.scrollRects[i];
+          layoutData.scrollRects = {
+            width: scrollRect[0],
+            height: scrollRect[1]
+          };
+        }
+
+        // Client dimensions
+        if (layout.clientRects && layout.clientRects[i]) {
+          const clientRect = layout.clientRects[i];
+          layoutData.clientRects = {
+            width: clientRect[0],
+            height: clientRect[1]
+          };
+        }
+
+        // Computed styles
+        if (layout.styles && layout.styles[i]) {
+          const styleIndices = layout.styles[i];
+          const computedStyle: any = {};
+
+          for (let j = 0; j < styleIndices.length && j < styleProperties.length; j++) {
+            const propertyName = styleProperties[j];
+            const propertyValue = strings[styleIndices[j]];
+
+            // Map to camelCase for our interface
+            if (propertyName === 'opacity') computedStyle.opacity = propertyValue;
+            if (propertyName === 'background-color') computedStyle.backgroundColor = propertyValue;
+            if (propertyName === 'display') computedStyle.display = propertyValue;
+            if (propertyName === 'visibility') computedStyle.visibility = propertyValue;
+            if (propertyName === 'cursor') computedStyle.cursor = propertyValue;
+            if (propertyName === 'overflow-x') computedStyle.overflowX = propertyValue;
+            if (propertyName === 'overflow-y') computedStyle.overflowY = propertyValue;
+          }
+
+          if (Object.keys(computedStyle).length > 0) {
+            layoutData.computedStyle = computedStyle;
+          }
+        }
+
+        // Only add to map if we have actual layout data
+        if (Object.keys(layoutData).length > 0) {
+          layoutMap.set(backendNodeId, layoutData);
+        }
       }
     }
 
@@ -658,6 +675,14 @@ export class DomService {
       for (const child of node.children) {
         this.computeStats(child, stats);
       }
+    }
+    if (node.shadowRoots) {
+      for (const child of node.shadowRoots) {
+        this.computeStats(child, stats);
+      }
+    }
+    if (node.contentDocument) {
+      this.computeStats(node.contentDocument, stats);
     }
   }
 
@@ -850,7 +875,7 @@ export class DomService {
         }
       } else {
         // Visual effects disabled - still scroll into view if needed, but don't wait
-        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => {});
+        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => { });
       }
 
       // CDP MIGRATION: Trigger ripple visual effect BEFORE click (with correct coordinates)
@@ -1061,7 +1086,7 @@ export class DomService {
         // Release the object reference to prevent memory leaks
         await this.sendCommand('Runtime.releaseObject', {
           objectId: resolveResult.object.objectId
-        }).catch(() => {}); // Ignore errors on cleanup
+        }).catch(() => { }); // Ignore errors on cleanup
       }
 
       // Wait for smooth scroll animation to complete (typically 300-500ms)
