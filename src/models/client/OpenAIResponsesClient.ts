@@ -85,6 +85,8 @@ export interface OpenAIResponsesConfig {
   reasoningSummary?: ReasoningSummaryConfig;
   /** Model verbosity setting */
   modelVerbosity?: OpenAiVerbosity;
+  /** Service tier for request prioritization (OpenAI-specific) */
+  serviceTier?: 'default' | 'flex' | 'priority';
 }
 
 /**
@@ -101,6 +103,7 @@ export class OpenAIResponsesClient extends ModelClient {
   protected reasoningEffort?: ReasoningEffortConfig;
   protected reasoningSummary?: ReasoningSummaryConfig;
   protected modelVerbosity?: OpenAiVerbosity;
+  protected serviceTier?: 'default' | 'flex' | 'priority';
   protected currentModel: string;
 
   // OpenAI SDK client instance
@@ -126,6 +129,7 @@ export class OpenAIResponsesClient extends ModelClient {
     this.reasoningEffort = config.reasoningEffort;
     this.reasoningSummary = config.reasoningSummary;
     this.modelVerbosity = config.modelVerbosity;
+    this.serviceTier = config.serviceTier;
     this.currentModel = config.modelFamily.family;
 
     // Initialize OpenAI SDK client with provider-specific baseURL
@@ -314,6 +318,7 @@ export class OpenAIResponsesClient extends ModelClient {
       ...(include !== undefined && include.length > 0 && { include }), // Conditionally include
       prompt_cache_key: this.conversationId,
       text: textControls,
+      ...(this.serviceTier && { service_tier: this.serviceTier }), // Conditionally include service_tier
     };
 
     // Add reasoning parameter if model supports it

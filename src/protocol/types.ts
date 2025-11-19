@@ -200,6 +200,8 @@ export type ResponseItem =
           name: string;
           arguments: string;
         };
+        /** Gemini thought signature for maintaining reasoning context across turns */
+        thoughtSignature?: string;
       }>;
     }
   | {

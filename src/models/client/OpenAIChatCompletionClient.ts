@@ -55,6 +55,8 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       name: string;
       arguments: string;
     };
+    /** Gemini thought signature for maintaining reasoning context across turns */
+    thoughtSignature?: string;
   }> = new Map();
 
   // Text content accumulator for Chat Completions API
@@ -368,7 +370,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
    * - finish_reason signals completion: "stop", "length", "tool_calls", etc.
    * - Usage info comes in the final chunk (when finish_reason is set)
    */
-  private convertChatCompletionEventToResponseEvent(chatEvent: any): ResponseEvent | null {
+  protected convertChatCompletionEventToResponseEvent(chatEvent: any): ResponseEvent | null {
     // Check if we have pending events from previous chunk
     if (this.pendingEvents.length > 0) {
       const pendingEvent = this.pendingEvents.shift()!;
@@ -454,6 +456,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         if (toolCallDelta.function?.arguments) {
           accumulated.function.arguments += toolCallDelta.function.arguments;
         }
+
       }
 
       // Don't emit event yet - fall through to check finish_reason in same chunk
@@ -582,7 +585,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
    * Used for providers that support the OpenAI Chat Completions endpoint (Gemini, etc.)
    * Returns an async iterable stream converted to ResponseEvent format
    */
-  private async makeChatCompletionsRequest(prompt: Prompt): Promise<AsyncIterable<any>> {
+  protected async makeChatCompletionsRequest(prompt: Prompt): Promise<AsyncIterable<any>> {
     // Validate API key before making request
     if (!this.apiKey || !this.apiKey.trim()) {
       throw new ModelClientError(`No API key configured for provider: ${this.provider.name}`);

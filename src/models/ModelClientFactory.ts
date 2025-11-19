@@ -6,6 +6,7 @@
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './client/OpenAIResponsesClient';
 import { OpenAIChatCompletionClient } from './client/OpenAIChatCompletionClient';
+import { GoogleCompletionClient } from './client/GoogleCompletionClient';
 import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
@@ -387,12 +388,18 @@ export class ModelClientFactory {
     const selectedModel = this.getSelectedModel();
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
+    let serviceTier: 'default' | 'flex' | 'priority' | undefined;
     if (this.config) {
       const configData = this.config.getConfig();
       const modelData = this.config.getModelById(configData.selectedModelId);
       if (modelData?.model) {
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        // For OpenAI models, merge default serviceTier value with stored value
+        serviceTier = modelData.model.serviceTier;
+        if (providerName === 'openai' && !serviceTier) {
+          serviceTier = 'default';
+        }
       }
     }
 
@@ -466,8 +473,8 @@ export class ModelClientFactory {
         });
 
       case 'google-ai-studio':
-        console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Google AI Studio`);
-        return new OpenAIChatCompletionClient({
+        console.log(`[ModelClientFactory] Instantiating GoogleCompletionClient for Google AI Studio`);
+        return new GoogleCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
@@ -503,6 +510,7 @@ export class ModelClientFactory {
           provider,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+          serviceTier,
         });
     }
   }

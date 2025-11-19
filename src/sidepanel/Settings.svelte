@@ -43,6 +43,7 @@
   let selectedModelId = '';
   let configuredFeatures: ConfiguredFeatures = {};
   let modelValidationError = '';
+  let serviceTier: 'default' | 'flex' | 'priority' | undefined;
 
   // T022, Provider-aware API key display
   let currentProvider = 'openai';
@@ -66,6 +67,7 @@
     baseUrl: string;
     supportsImage: boolean;  // Whether model supports image input
     selected: boolean;       // Indicates if this model is currently selected
+    serviceTier?: 'default' | 'flex' | 'priority';  // Service tier for OpenAI models
     pricing?: {              // Model pricing information
       inputToken: string;
       outputToken: string;
@@ -130,6 +132,13 @@
         const providerApiKey = await settingsConfig.getProviderApiKey(providerId);
 
         for (const model of provider.models) {
+          // For OpenAI models, merge default serviceTier value with stored value
+          // If serviceTier is not defined in stored config, default to 'default'
+          let modelServiceTier = model.serviceTier;
+          if (providerId === 'openai' && !modelServiceTier) {
+            modelServiceTier = 'default';
+          }
+
           tempModelItems.push({
             modelId: model.id,
             modelName: model.name,
@@ -143,6 +152,7 @@
             baseUrl: provider.baseUrl || '',
             supportsImage: model.supportsImage !== false,  // Default to true if not specified
             selected: model.id === selectedModelId,  // Mark as selected if it matches
+            serviceTier: modelServiceTier,  // Service tier for OpenAI models (with default fallback)
             pricing: model.pricing  // Include pricing information if available
           });
         }
@@ -176,6 +186,9 @@
         maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
         isAuthenticated = !!selectedItem.apiKey;
 
+        // Load service tier from model configuration
+        serviceTier = selectedItem.serviceTier;
+
         // Set default reasoning effort for models that support reasoning
         const defaultReasoningEffort = selectedItem.supportsReasoning && selectedItem.reasoningEfforts?.length > 0
           ? 'medium'  // Default to medium effort for reasoning-capable models
@@ -202,6 +215,9 @@
           apiKey = fallbackItem.apiKey || '';
           maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
           isAuthenticated = !!fallbackItem.apiKey;
+
+          // Load service tier from model configuration
+          serviceTier = fallbackItem.serviceTier;
 
           // Set default reasoning effort for models that support reasoning
           const fallbackReasoningEffort = fallbackItem.supportsReasoning && fallbackItem.reasoningEfforts?.length > 0
@@ -624,7 +640,10 @@
       apiKey = selectedItem.apiKey || '';
       maskedApiKey = apiKey ? maskApiKey(apiKey) : '';
       isAuthenticated = !!selectedItem.apiKey;
-      
+
+      // Load service tier from selected model
+      serviceTier = selectedItem.serviceTier;
+
       // Update model features
       configuredFeatures = {
         reasoningEffort: null,
@@ -687,6 +706,45 @@
     const { errors, incompatibleFeatures } = event.detail;
     modelValidationError = errors.join('. ');
     showMessage(`Cannot select model: ${modelValidationError}`, 'error');
+  }
+
+  /**
+   * Handle service tier change
+   */
+  async function handleServiceTierChange(event: Event) {
+    if (!settingsConfig) return;
+
+    try {
+      const target = event.target as HTMLSelectElement;
+      const newServiceTier = target.value as 'default' | 'flex' | 'priority' | '';
+
+      // Update local state
+      serviceTier = newServiceTier === '' ? undefined : newServiceTier;
+
+      // Update model configuration in AgentConfig
+      const modelData = settingsConfig.getModelById(selectedModelId);
+      if (modelData?.model) {
+        // Update the model's serviceTier in the provider's models array
+        const provider = settingsConfig.getProvider(modelData.providerId);
+        if (provider) {
+          const modelIndex = provider.models.findIndex(m => m.id === selectedModelId);
+          if (modelIndex !== -1) {
+            provider.models[modelIndex].serviceTier = serviceTier;
+            await settingsConfig.updateProvider(modelData.providerId, { models: provider.models });
+
+            // Trigger BrowserAgent re-initialization
+            chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
+              // Silently handle message errors
+            });
+
+            showMessage(`Service tier updated to ${serviceTier || 'default'}`, 'success');
+          }
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showMessage(`Failed to update service tier: ${errorMessage}`, 'error');
+    }
   }
 
   /**
@@ -898,6 +956,35 @@
           </div>
         {/if}
       </div>
+
+      <!-- Service Tier Selection (OpenAI only) -->
+      {#if currentProvider === 'openai'}
+        <div class="form-group">
+          <label for="service-tier" class="form-label">
+            Service Tier
+          </label>
+          <select
+            id="service-tier"
+            bind:value={serviceTier}
+            on:change={handleServiceTierChange}
+            class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 font-medium transition-colors appearance-none cursor-pointer"
+            class:opacity-50={isInitializing || isSaving}
+            class:cursor-not-allowed={isInitializing || isSaving}
+            class:hover:bg-gray-700={!isInitializing && !isSaving}
+            class:focus:ring-2={!isInitializing && !isSaving}
+            class:focus:ring-cyan-400={!isInitializing && !isSaving}
+            disabled={isInitializing || isSaving}
+            style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%239ca3af%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3e%3cpolyline points=%226 9 12 15 18 9%22%3e%3c/polyline%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25rem; padding-right: 2.5rem;"
+          >
+            <option value="default">Default</option>
+            <option value="flex">Flex</option>
+            <option value="priority">Priority</option>
+          </select>
+          <div class="help-text">
+            Priority tier provides faster response times with higher pricing. Default and Flex tiers have standard pricing.
+          </div>
+        </div>
+      {/if}
 
       <!-- Action Buttons -->
       <div class="button-group">
