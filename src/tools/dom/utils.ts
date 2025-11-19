@@ -14,17 +14,16 @@ export function isVerticallyScrollable(
   clientRects?: { width: number; height: number },
   computedStyle?: { overflowY?: string }
 ): boolean {
+  const overflowY = computedStyle?.overflowY;
+  if (overflowY == 'auto' || overflowY == 'scroll') {
+    return true;
+  }
+
   if (!scrollRects || !clientRects) {
     return false;
   }
 
-  const hasOverflow = scrollRects.height > clientRects.height;
-  if (!hasOverflow) {
-    return false;
-  }
-
-  const overflowY = computedStyle?.overflowY;
-  return overflowY === 'auto' || overflowY === 'scroll';
+  return scrollRects.height > clientRects.height;
 }
 
 /**
@@ -36,17 +35,16 @@ export function isHorizontallyScrollable(
   clientRects?: { width: number; height: number },
   computedStyle?: { overflowX?: string }
 ): boolean {
+  const overflowX = computedStyle?.overflowX;
+  if (overflowX == 'auto' || overflowX == 'scroll') {
+    return true;
+  }
+
   if (!scrollRects || !clientRects) {
     return false;
   }
 
-  const hasOverflow = scrollRects.width > clientRects.width;
-  if (!hasOverflow) {
-    return false;
-  }
-
-  const overflowX = computedStyle?.overflowX;
-  return overflowX === 'auto' || overflowX === 'scroll';
+  return scrollRects.width > clientRects.width;
 }
 
 /**
