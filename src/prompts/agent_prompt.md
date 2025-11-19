@@ -269,8 +269,8 @@ When you capture a DOM snapshot, you ONLY receive elements that are currently vi
    - This is your default choice unless you specifically need to scroll a sub-container
 
 4. **Scrolling Sub-Containers**: Some pages have scrollable regions within the page (e.g., chat windows, sidebars, infinite-scroll lists)
-   - Use your best knowledge reasoning to identify scrollable containers in the DOM
-   - Look for elements with overflow properties or that represent content areas (lists, feeds, chat history)
+   - Scrollable containers are marked with `aria-label="scrollable: [direction]"` where direction is `vertical`, `horizontal`, or `veritial and horizontal`
+   - Example: `<div id="317340" aria-label="scrollable: vertical">` indicates a vertically scrollable sidebar
    - Use the element's `node_id` to scroll that specific container instead of the page
 
 **Common Scrolling Scenarios:**
@@ -309,9 +309,9 @@ When you capture a DOM snapshot, you ONLY receive elements that are currently vi
 
 Ask yourself:
 - Am I looking for content in the main page flow? → Scroll page (node_id=-1)
-- Am I looking for content in a specific widget/panel/sidebar? → Scroll that container
+- Is there an element with `aria-label="scrollable: ..."` that contains my target? → Scroll that container
+- Am I looking for content in a specific widget/panel/sidebar marked as scrollable? → Scroll that container
 - Is there a scrollbar visible on a sub-element in the screenshot? → Scroll that element
-- Does the element represent a list/feed/chat? → Likely scrollable, try scrolling it
 
 **Example Workflow:**
 

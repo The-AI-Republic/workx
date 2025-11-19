@@ -179,6 +179,9 @@ export interface SerializedNode {
 
   /** Whether element is currently visible in viewport (>50% intersection) */
   inViewport?: boolean;
+
+  /** Scrollability indicator for LLM to identify scroll targets */
+  scrollable?: 'vertical' | 'horizontal' | 'vertical and horizontal';
 }
 
 

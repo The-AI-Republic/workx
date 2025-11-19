@@ -1,9 +1,79 @@
-import type { VirtualNode, SerializedNode } from './types';
+import type { VirtualNode, SerializedNode, LayoutData } from './types';
 import { NODE_TYPE_TEXT } from './types';
 
 /**
  * Helper utilities for DOM tool CDP implementation
  */
+
+/**
+ * Check if element is vertically scrollable
+ * Requires scroll height > client height AND overflow-y allows scrolling
+ */
+export function isVerticallyScrollable(
+  scrollRects?: { width: number; height: number },
+  clientRects?: { width: number; height: number },
+  computedStyle?: { overflowY?: string }
+): boolean {
+  const overflowY = computedStyle?.overflowY;
+  if (overflowY == 'auto' || overflowY == 'scroll') {
+    return true;
+  }
+
+  if (!scrollRects || !clientRects) {
+    return false;
+  }
+
+  return scrollRects.height > clientRects.height;
+}
+
+/**
+ * Check if element is horizontally scrollable
+ * Requires scroll width > client width AND overflow-x allows scrolling
+ */
+export function isHorizontallyScrollable(
+  scrollRects?: { width: number; height: number },
+  clientRects?: { width: number; height: number },
+  computedStyle?: { overflowX?: string }
+): boolean {
+  const overflowX = computedStyle?.overflowX;
+  if (overflowX == 'auto' || overflowX == 'scroll') {
+    return true;
+  }
+
+  if (!scrollRects || !clientRects) {
+    return false;
+  }
+
+  return scrollRects.width > clientRects.width;
+}
+
+/**
+ * Compute scrollable direction from layout data
+ * Returns 'vertical', 'horizontal', 'vertical and horizontal', or undefined
+ */
+export function computeScrollable(
+  layoutData?: LayoutData
+): 'vertical' | 'horizontal' | 'vertical and horizontal' | undefined {
+  if (!layoutData?.scrollRects || !layoutData?.clientRects) {
+    return undefined;
+  }
+
+  const isVertical = isVerticallyScrollable(
+    layoutData.scrollRects,
+    layoutData.clientRects,
+    layoutData.computedStyle
+  );
+  const isHorizontal = isHorizontallyScrollable(
+    layoutData.scrollRects,
+    layoutData.clientRects,
+    layoutData.computedStyle
+  );
+
+  if (isVertical && isHorizontal) return 'vertical and horizontal';
+  if (isVertical) return 'vertical';
+  if (isHorizontal) return 'horizontal';
+  return undefined;
+}
 
 /**
  * Compute heuristics for interactive element detection
@@ -27,12 +97,11 @@ export function computeHeuristics(attributes: string[] = []): NonNullable<Virtua
  * Classify node into semantic, non-semantic, or structural tier
  */
 export function classifyNode(
-  cdpNode: any,
   axNode: any | null,
   heuristics?: VirtualNode['heuristics']
 ): 'semantic' | 'non-semantic' | 'structural' {
   // Has proper accessibility role - semantic
-  if (axNode?.role?.value && axNode.role.value !== 'generic') {
+  if (axNode?.role?.value && axNode.role.value !== 'generic' && axNode.role.value !== 'none' && axNode?.ignored !== true) {
     return 'semantic';
   }
 
@@ -182,9 +251,16 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
     attributes.push(`role="${escapeHtml(node.role)}"`);
   }
 
-  // Add aria-label if present
+  // Add aria-label if present (with scrollable appended if available)
   if (node.aria_label) {
-    attributes.push(`aria-label="${escapeHtml(node.aria_label)}"`);
+    let ariaLabel = node.aria_label;
+    if (node.scrollable !== undefined) {
+      ariaLabel += ` | scrollable: ${node.scrollable}`;
+    }
+    attributes.push(`aria-label="${escapeHtml(ariaLabel)}"`);
+  } else if (node.scrollable !== undefined) {
+    // Add aria-label with just scrollable info if no existing aria-label
+    attributes.push(`aria-label="scrollable: ${node.scrollable}"`);
   }
 
   // Add href for links
@@ -269,7 +345,7 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
   }
 
   // not include closing tag for token efficiency
-  // html += `</${tag}>\n`;
+  html += `</${tag}>\n`;
 
   return html;
 }
