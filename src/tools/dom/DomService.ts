@@ -134,9 +134,6 @@ export class DomService {
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
 
-    // test logging
-    console.log('[DomService] the html content:', htmlContent);
-
     const serializedDom = {
       page: {
         context: {
@@ -366,7 +363,6 @@ export class DomService {
 
       // Skip nested iframes (layer 2+) - only process layer 1
       if (iframeDepth > 1) {
-        console.debug(`[DomService] Skipping nested iframe at depth ${iframeDepth}. Only layer 1 iframes are processed.`);
         return null;
       }
 
@@ -434,8 +430,7 @@ export class DomService {
       if (cdpNode.contentDocument) {
         // Check iframe limit before processing
         if (iframeCount >= MAX_IFRAMES) {
-          console.warn(`[DomService] Max iframe limit (${MAX_IFRAMES}) reached. Skipping additional iframes.`);
-          // Don't process this iframe's content
+          // Don't process this iframe's content - max limit reached
         } else {
           iframeCount++;
           const newFrameIndex = iframeCount; // 1-5 for iframes
