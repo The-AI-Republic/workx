@@ -88,7 +88,8 @@ describe('DomSnapshot', () => {
     const buttonNode = allNodes.find(n => n.tag === 'button');
 
     expect(buttonNode).toBeDefined();
-    expect(buttonNode?.node_id).toBe(101); // Uses backendNodeId directly (no remapping)
+    expect(buttonNode?.node_id).toBe('0:101'); // Uses frame-scoped format (frameId:backendNodeId)
+    expect(buttonNode?.frame_id).toBe(0); // Main frame
     expect(buttonNode?.role).toBe('button');
     expect(buttonNode?.aria_label).toBe('Submit');
   });

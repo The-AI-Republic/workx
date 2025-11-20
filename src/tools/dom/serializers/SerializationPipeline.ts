@@ -301,6 +301,18 @@ export class SerializationPipeline {
         this.traverseAndRegisterIds(child);
       }
     }
+
+    // Recurse to shadow roots
+    if (node.shadowRoots) {
+      for (const shadowRoot of node.shadowRoots) {
+        this.traverseAndRegisterIds(shadowRoot);
+      }
+    }
+
+    // Recurse to content document
+    if (node.contentDocument) {
+      this.traverseAndRegisterIds(node.contentDocument);
+    }
   }
 
   private applyAttributePruner(tree: VirtualNode): VirtualNode {
@@ -344,11 +356,23 @@ export class SerializationPipeline {
         interactiveNodes++;
       }
 
-      // Recurse
+      // Recurse to children
       if (node.children) {
         for (const child of node.children) {
           traverse(child);
         }
+      }
+
+      // Recurse to shadow roots
+      if (node.shadowRoots) {
+        for (const shadowRoot of node.shadowRoots) {
+          traverse(shadowRoot);
+        }
+      }
+
+      // Recurse to content document
+      if (node.contentDocument) {
+        traverse(node.contentDocument);
       }
     };
 
@@ -373,11 +397,23 @@ export class SerializationPipeline {
       if (node.nodeValue) totalChars += node.nodeValue.length;
       if (node.attributes) totalChars += node.attributes.join('').length;
 
-      // Recurse
+      // Recurse to children
       if (node.children) {
         for (const child of node.children) {
           traverse(child);
         }
+      }
+
+      // Recurse to shadow roots
+      if (node.shadowRoots) {
+        for (const shadowRoot of node.shadowRoots) {
+          traverse(shadowRoot);
+        }
+      }
+
+      // Recurse to content document
+      if (node.contentDocument) {
+        traverse(node.contentDocument);
       }
     };
 
@@ -420,6 +456,16 @@ export class SerializationPipeline {
 
     if (node.children) {
       clone.children = node.children.map(child => this.cloneTree(child));
+    }
+
+    // Clone shadow roots (critical for shadow DOM support)
+    if (node.shadowRoots) {
+      clone.shadowRoots = node.shadowRoots.map(sr => this.cloneTree(sr));
+    }
+
+    // Clone content document (critical for iframe support)
+    if (node.contentDocument) {
+      clone.contentDocument = this.cloneTree(node.contentDocument);
     }
 
     return clone;

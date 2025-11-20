@@ -68,6 +68,16 @@ export class PaintOrderFilter {
           if (hasPaintOrder) return;
         }
       }
+      if (node.shadowRoots) {
+        for (const shadowRoot of node.shadowRoots) {
+          check(shadowRoot);
+          if (hasPaintOrder) return;
+        }
+      }
+      if (node.contentDocument) {
+        check(node.contentDocument);
+        if (hasPaintOrder) return;
+      }
     };
     check(tree);
     return hasPaintOrder;
@@ -82,6 +92,14 @@ export class PaintOrderFilter {
       for (const child of node.children) {
         this.collectNodes(child, result);
       }
+    }
+    if (node.shadowRoots) {
+      for (const shadowRoot of node.shadowRoots) {
+        this.collectNodes(shadowRoot, result);
+      }
+    }
+    if (node.contentDocument) {
+      this.collectNodes(node.contentDocument, result);
     }
   }
 
@@ -153,17 +171,34 @@ export class PaintOrderFilter {
     }
 
     // Recursively filter children
+    let filteredChildren: VirtualNode[] | undefined;
     if (node.children && node.children.length > 0) {
-      const filteredChildren = node.children
+      const filtered = node.children
         .map(child => this.filterByOcclusion(child, occludedNodes))
         .filter((child): child is VirtualNode => child !== null);
-
-      return {
-        ...node,
-        children: filteredChildren.length > 0 ? filteredChildren : undefined
-      };
+      filteredChildren = filtered.length > 0 ? filtered : undefined;
     }
 
-    return node;
+    // Recursively filter shadow roots
+    let filteredShadowRoots: VirtualNode[] | undefined;
+    if (node.shadowRoots && node.shadowRoots.length > 0) {
+      const filtered = node.shadowRoots
+        .map(sr => this.filterByOcclusion(sr, occludedNodes))
+        .filter((sr): sr is VirtualNode => sr !== null);
+      filteredShadowRoots = filtered.length > 0 ? filtered : undefined;
+    }
+
+    // Recursively filter content document
+    let filteredContentDocument: VirtualNode | undefined;
+    if (node.contentDocument) {
+      filteredContentDocument = this.filterByOcclusion(node.contentDocument, occludedNodes) || undefined;
+    }
+
+    return {
+      ...node,
+      children: filteredChildren,
+      shadowRoots: filteredShadowRoots,
+      contentDocument: filteredContentDocument
+    };
   }
 }

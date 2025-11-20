@@ -28,20 +28,30 @@ export class VisibilityFilter {
       return null;
     }
 
+    const result = { ...tree };
+
     // Recursively filter children
     if (tree.children && tree.children.length > 0) {
       const filteredChildren = tree.children
         .map(child => this.filter(child))
         .filter((child): child is VirtualNode => child !== null);
-
-      // Return node with filtered children
-      return {
-        ...tree,
-        children: filteredChildren.length > 0 ? filteredChildren : undefined
-      };
+      result.children = filteredChildren.length > 0 ? filteredChildren : undefined;
     }
 
-    return tree;
+    // Recursively filter shadow roots
+    if (tree.shadowRoots && tree.shadowRoots.length > 0) {
+      const filteredShadowRoots = tree.shadowRoots
+        .map(sr => this.filter(sr))
+        .filter((sr): sr is VirtualNode => sr !== null);
+      result.shadowRoots = filteredShadowRoots.length > 0 ? filteredShadowRoots : undefined;
+    }
+
+    // Recursively filter content document
+    if (tree.contentDocument) {
+      result.contentDocument = this.filter(tree.contentDocument) || undefined;
+    }
+
+    return result;
   }
 
   /**
@@ -99,21 +109,37 @@ export class VisibilityFilter {
    * Check if node has any descendant with non-zero dimensions
    */
   private hasVisibleDescendant(node: VirtualNode): boolean {
-    if (!node.children || node.children.length === 0) {
-      return false;
-    }
+    // Check children
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        // Check if this child has non-zero dimensions
+        if (child.boundingBox) {
+          const { width, height } = child.boundingBox;
+          if (width > 0 && height > 0) {
+            return true;
+          }
+        }
 
-    for (const child of node.children) {
-      // Check if this child has non-zero dimensions
-      if (child.boundingBox) {
-        const { width, height } = child.boundingBox;
-        if (width > 0 && height > 0) {
+        // Recursively check this child's descendants
+        if (this.hasVisibleDescendant(child)) {
           return true;
         }
       }
+    }
 
-      // Recursively check this child's descendants
-      if (this.hasVisibleDescendant(child)) {
+    // Check shadow roots
+    if (node.shadowRoots && node.shadowRoots.length > 0) {
+      for (const shadowRoot of node.shadowRoots) {
+        // Shadow roots themselves don't usually have bounding boxes, so check their children
+        if (this.hasVisibleDescendant(shadowRoot)) {
+          return true;
+        }
+      }
+    }
+
+    // Check content document (iframe)
+    if (node.contentDocument) {
+      if (this.hasVisibleDescendant(node.contentDocument)) {
         return true;
       }
     }

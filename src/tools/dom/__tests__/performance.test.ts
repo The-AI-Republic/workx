@@ -554,4 +554,191 @@ describe('Performance: Snapshot Caching', () => {
     const stats = snapshot.getStats();
     expect(stats.totalNodes).toBeLessThanOrEqual(101); // 100 depth + root
   });
+
+  it('should complete snapshot with 5 iframes in less than 200ms', async () => {
+    // Create a page with 5 iframes, each containing interactive elements
+    const createIframeContent = (iframeNum: number): any => ({
+      nodeId: 100 + iframeNum * 10,
+      backendNodeId: 100 + iframeNum * 10,
+      nodeType: 9, // DOCUMENT
+      nodeName: '#document',
+      children: [
+        {
+          nodeId: 101 + iframeNum * 10,
+          backendNodeId: 101 + iframeNum * 10,
+          nodeType: NODE_TYPE_ELEMENT,
+          nodeName: 'HTML',
+          children: [
+            {
+              nodeId: 102 + iframeNum * 10,
+              backendNodeId: 102 + iframeNum * 10,
+              nodeType: NODE_TYPE_ELEMENT,
+              nodeName: 'BODY',
+              children: [
+                {
+                  nodeId: 103 + iframeNum * 10,
+                  backendNodeId: 103 + iframeNum * 10,
+                  nodeType: NODE_TYPE_ELEMENT,
+                  nodeName: 'BUTTON',
+                  localName: 'button'
+                },
+                {
+                  nodeId: 104 + iframeNum * 10,
+                  backendNodeId: 104 + iframeNum * 10,
+                  nodeType: NODE_TYPE_ELEMENT,
+                  nodeName: 'INPUT',
+                  localName: 'input',
+                  attributes: ['type', 'text']
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    mockChrome.debugger.sendCommand.mockImplementation(async (target: any, method: string, params: any) => {
+      if (method === 'DOM.enable') return {};
+      if (method === 'Accessibility.enable') return {};
+      if (method === 'Page.enable') return {};
+
+      if (method === 'DOM.getDocument') {
+        return {
+          root: {
+            nodeId: 1,
+            backendNodeId: 1,
+            nodeType: NODE_TYPE_ELEMENT,
+            nodeName: 'HTML',
+            children: [
+              {
+                nodeId: 2,
+                backendNodeId: 2,
+                nodeType: NODE_TYPE_ELEMENT,
+                nodeName: 'BODY',
+                children: [
+                  // 5 iframes with content
+                  ...Array.from({ length: 5 }, (_, i) => ({
+                    nodeId: 10 + i,
+                    backendNodeId: 10 + i,
+                    nodeType: NODE_TYPE_ELEMENT,
+                    nodeName: 'IFRAME',
+                    localName: 'iframe',
+                    contentDocument: createIframeContent(i)
+                  }))
+                ]
+              }
+            ]
+          }
+        };
+      }
+
+      if (method === 'Accessibility.getFullAXTree') {
+        return {
+          nodes: [
+            // Buttons and inputs in each iframe
+            ...Array.from({ length: 5 }, (_, i) => [
+              {
+                backendDOMNodeId: 103 + i * 10,
+                role: { value: 'button' },
+                name: { value: `Iframe ${i + 1} Button` }
+              },
+              {
+                backendDOMNodeId: 104 + i * 10,
+                role: { value: 'textbox' },
+                name: { value: `Iframe ${i + 1} Input` }
+              }
+            ]).flat()
+          ]
+        };
+      }
+
+      if (method === 'DOMSnapshot.captureSnapshot') {
+        return {
+          documents: [
+            {
+              nodes: {
+                backendNodeId: [1, 2, 10, 11, 12, 13, 14]
+              },
+              layout: {
+                nodeIndex: [0, 1, 2, 3, 4, 5, 6],
+                bounds: [
+                  [0, 0, 1920, 1080],
+                  [0, 0, 1920, 1080],
+                  [0, 0, 300, 200],
+                  [400, 0, 300, 200],
+                  [800, 0, 300, 200],
+                  [0, 300, 300, 200],
+                  [400, 300, 300, 200]
+                ],
+                paintOrders: [0, 1, 2, 3, 4, 5, 6],
+                styles: []
+              }
+            }
+          ],
+          strings: []
+        };
+      }
+
+      if (method === 'Runtime.evaluate') {
+        if (params.expression === 'document.readyState') {
+          return { result: { value: 'complete' } };
+        }
+        if (params.expression === 'window.devicePixelRatio') {
+          return { result: { value: 1 } };
+        }
+        if (params.expression.includes('window.innerWidth')) {
+          return {
+            result: {
+              value: {
+                width: 1920,
+                height: 1080,
+                scrollX: 0,
+                scrollY: 0,
+                pageWidth: 1920,
+                pageHeight: 1080
+              }
+            }
+          };
+        }
+        // SPA content check
+        if (params.expression.includes('buttons')) {
+          return {
+            result: {
+              value: {
+                interactiveCount: 20,
+                textLength: 1000,
+                hasLoadingIndicator: false,
+                isStillLoading: false
+              }
+            }
+          };
+        }
+      }
+
+      return {};
+    });
+
+    const domService = await DomService.forTab(mockTabId);
+
+    // Measure snapshot build time
+    const start = Date.now();
+    const snapshot = await domService.buildSnapshot();
+    const duration = Date.now() - start;
+
+    // Performance requirement: snapshot with 5 iframes should complete in <200ms
+    expect(duration).toBeLessThan(200);
+
+    // Verify all iframes were captured
+    const stats = snapshot.getStats();
+    expect(stats.frameCount).toBe(5);
+    expect(stats.interactiveNodes).toBe(10); // 2 interactive elements per iframe × 5 iframes
+
+    // Verify serialization is also fast
+    const serializeStart = Date.now();
+    const serialized = snapshot.serialize();
+    const serializeDuration = Date.now() - serializeStart;
+
+    expect(serializeDuration).toBeLessThan(100); // Serialization should be quick
+    expect(serialized.page.body).toBeDefined();
+  });
 });
