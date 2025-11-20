@@ -6,10 +6,18 @@ import type { SerializedNode } from '../types';
 // Helper to flatten tree structure for testing
 function flattenNodes(node: SerializedNode): SerializedNode[] {
   const result: SerializedNode[] = [node];
-  if (node.children) {
-    for (const child of node.children) {
+  if (node.kids) {
+    for (const child of node.kids) {
       result.push(...flattenNodes(child));
     }
+  }
+  if (node.shadow_roots) {
+    for (const root of node.shadow_roots) {
+      result.push(...flattenNodes(root));
+    }
+  }
+  if (node.content_document) {
+    result.push(...flattenNodes(node.content_document));
   }
   return result;
 }
@@ -69,7 +77,7 @@ describe('Integration: Shadow DOM Support', () => {
   afterEach(async () => {
     const instances = (DomService as any).instances;
     for (const [tabId, service] of instances.entries()) {
-      await service.detach().catch(() => {});
+      await service.detach().catch(() => { });
     }
     instances.clear();
     vi.clearAllMocks();
@@ -105,7 +113,8 @@ describe('Integration: Shadow DOM Support', () => {
                     nodeName: 'MY-COMPONENT',
                     localName: 'my-component',
                     attributes: [],
-                    children: [
+                    // Shadow roots are in shadowRoots array, not children
+                    shadowRoots: [
                       {
                         // Shadow root node
                         nodeId: 4,
@@ -177,11 +186,14 @@ describe('Integration: Shadow DOM Support', () => {
     const serialized = snapshot.serialize();
     const nodes = flattenNodes(serialized.page.body);
     const buttons = nodes.filter(n => n.tag === 'button');
-    const shadowButton = buttons.find(n => n.text === 'Shadow Button');
+
+    // Button should be found - check by aria_label which comes from accessibility name
+    const shadowButton = buttons.find(n => n.aria_label === 'Shadow Button' || n.text === 'Shadow Button');
 
     expect(shadowButton).toBeDefined();
     expect(shadowButton?.tag).toBe('button');
-    expect(shadowButton?.text).toBe('Shadow Button');
+    // Check accessibility name (aria_label)
+    expect(shadowButton?.aria_label).toBe('Shadow Button');
     // Check if button has role from a11y data
     if (shadowButton?.role) {
       expect(shadowButton.role).toBe('button');
@@ -284,7 +296,8 @@ describe('Integration: Shadow DOM Support', () => {
                 backendNodeId: 2,
                 nodeType: NODE_TYPE_ELEMENT,
                 nodeName: 'OUTER-COMPONENT',
-                children: [
+                // Shadow roots should be in shadowRoots array
+                shadowRoots: [
                   {
                     // Outer shadow root
                     nodeId: 3,
@@ -299,7 +312,8 @@ describe('Integration: Shadow DOM Support', () => {
                         backendNodeId: 4,
                         nodeType: NODE_TYPE_ELEMENT,
                         nodeName: 'INNER-COMPONENT',
-                        children: [
+                        // Inner shadow root also in shadowRoots
+                        shadowRoots: [
                           {
                             // Inner shadow root
                             nodeId: 5,
@@ -363,11 +377,11 @@ describe('Integration: Shadow DOM Support', () => {
     const serialized = snapshot.serialize();
     const nodes = flattenNodes(serialized.page.body);
     const buttons = nodes.filter(n => n.tag === 'button');
-    const deepButton = buttons[0];
+    const deepButton = buttons.find(n => n.aria_label === 'Deeply Nested Button' || n.text === 'Deeply Nested Button');
 
     expect(deepButton).toBeDefined();
-    expect(deepButton.text).toBe('Deeply Nested Button');
-    expect(deepButton.role).toBe('button');
+    expect(deepButton?.aria_label).toBe('Deeply Nested Button');
+    expect(deepButton?.role).toBe('button');
   });
 
   it('should click element inside shadow DOM', async () => {
@@ -432,6 +446,27 @@ describe('Integration: Shadow DOM Support', () => {
         };
       }
 
+      if (method === 'Runtime.evaluate') {
+        if (params.expression === 'document.readyState') {
+          return { result: { value: 'complete' } };
+        }
+        if (params.expression === 'window.devicePixelRatio') {
+          return { result: { value: 1 } };
+        }
+        if (params.expression.includes('window.innerWidth')) {
+          return {
+            result: {
+              value: {
+                width: 1920,
+                height: 1080,
+                scrollX: 0,
+                scrollY: 0
+              }
+            }
+          };
+        }
+      }
+
       if (method === 'DOM.scrollIntoViewIfNeeded') return {};
       if (method === 'Input.dispatchMouseEvent') return {};
 
@@ -448,6 +483,9 @@ describe('Integration: Shadow DOM Support', () => {
     // Click shadow DOM button
     const result = await domService.click(backendNodeId);
 
+    if (!result.success) {
+      throw new Error('Click failed: ' + result.error);
+    }
     expect(result.success).toBe(true);
 
     // Verify click dispatched correctly

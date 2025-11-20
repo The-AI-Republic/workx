@@ -50,31 +50,54 @@ export class SemanticContainerFilter {
       filteredChildren = filtered.length > 0 ? filtered : undefined;
     }
 
+    // Recursively filter shadow roots
+    let filteredShadowRoots: VirtualNode[] | undefined;
+    if (tree.shadowRoots && tree.shadowRoots.length > 0) {
+      const filtered = tree.shadowRoots
+        .map(sr => this.filter(sr))
+        .filter((sr): sr is VirtualNode => sr !== null);
+      filteredShadowRoots = filtered.length > 0 ? filtered : undefined;
+    }
+
+    // Recursively filter content document
+    let filteredContentDocument: VirtualNode | undefined;
+    if (tree.contentDocument) {
+      filteredContentDocument = this.filter(tree.contentDocument) || undefined;
+    }
+
     // Check if this node should be filtered out
-    if (this.shouldFilterContainer(tree, filteredChildren)) {
+    if (this.shouldFilterContainer(tree, filteredChildren, filteredShadowRoots, filteredContentDocument)) {
       return null;
     }
 
-    // Return node with filtered children
+    // Return node with filtered content
+    const result = { ...tree };
     if (filteredChildren !== undefined) {
-      return {
-        ...tree,
-        children: filteredChildren
-      };
+      result.children = filteredChildren;
+    }
+    if (filteredShadowRoots !== undefined) {
+      result.shadowRoots = filteredShadowRoots;
+    }
+    if (filteredContentDocument !== undefined) {
+      result.contentDocument = filteredContentDocument;
     }
 
-    return tree;
+    return result;
   }
 
   /**
    * Check if container should be filtered
    * @param node - Container node to check
    * @param filteredChildren - Children after filtering
+   * @param filteredShadowRoots - Shadow roots after filtering
+   * @param filteredContentDocument - Content document after filtering
    * @returns true if should be filtered, false otherwise
    */
   private shouldFilterContainer(
     node: VirtualNode,
-    filteredChildren: VirtualNode[] | undefined
+    filteredChildren: VirtualNode[] | undefined,
+    filteredShadowRoots?: VirtualNode[] | undefined,
+    filteredContentDocument?: VirtualNode | undefined
   ): boolean {
     // Interactive elements are never filtered
     if (this.isInteractive(node)) {
@@ -86,11 +109,20 @@ export class SemanticContainerFilter {
       return false;
     }
 
+    // Nodes with shadow roots or content documents are preserved (they contain nested content)
+    if (filteredShadowRoots && filteredShadowRoots.length > 0) {
+      return false;
+    }
+    if (filteredContentDocument) {
+      return false;
+    }
+
     // Structural containers: require ≥1 interactive descendant
     if (node.tier === 'structural') {
-      // Check if has any interactive descendants
-      const hasInteractiveDescendant = this.hasInteractiveDescendant(filteredChildren);
-      if (!hasInteractiveDescendant) {
+      // Check if has any interactive descendants in children
+      const hasInteractiveInChildren = this.hasInteractiveDescendant(filteredChildren);
+
+      if (!hasInteractiveInChildren) {
         return true; // Filter out empty structural container
       }
     }
@@ -138,9 +170,25 @@ export class SemanticContainerFilter {
         return true;
       }
 
-      // Recursive check for interactive descendants
+      // Recursive check for interactive descendants in children
       if (this.hasInteractiveDescendant(child.children)) {
         return true;
+      }
+
+      // Recursive check in shadow roots
+      if (child.shadowRoots) {
+        for (const shadowRoot of child.shadowRoots) {
+          if (this.isInteractive(shadowRoot) || this.hasInteractiveDescendant(shadowRoot.children)) {
+            return true;
+          }
+        }
+      }
+
+      // Recursive check in content document
+      if (child.contentDocument) {
+        if (this.isInteractive(child.contentDocument) || this.hasInteractiveDescendant(child.contentDocument.children)) {
+          return true;
+        }
       }
     }
 

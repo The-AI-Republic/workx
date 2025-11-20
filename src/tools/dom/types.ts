@@ -54,6 +54,40 @@ export const NODE_ID_WINDOW = -1;
 export const NODE_ID_DOCUMENT = -2;
 
 /**
+ * Frame metadata for multi-frame support
+ */
+export interface FrameMetadata {
+  /** Frame ID (0 for main, 1-5 for iframes) */
+  frameId: number;
+  /** backendNodeId of iframe element (0 for main frame) */
+  backendNodeId: number;
+  /** Frame viewport dimensions and scroll position */
+  viewport: {
+    width: number;
+    height: number;
+    scrollX: number;
+    scrollY: number;
+  };
+  /** Position in parent frame (iframes only) */
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+/**
+ * Parsed node ID from frame-scoped format
+ */
+export interface ParsedNodeId {
+  /** Frame ID (0-5) */
+  frameId: number;
+  /** CDP backend node ID */
+  backendNodeId: number;
+}
+
+/**
  * DOM Node Type Constants (from W3C DOM specification)
  * https://developer.mozilla.org/en-US/docs/Web/API/Node/nodeType
  */
@@ -80,8 +114,13 @@ export interface VirtualNode {
   nodeValue?: string;
   attributes?: string[];
   children?: VirtualNode[];
+  shadowRoots?: VirtualNode[];
+  contentDocument?: VirtualNode;
   frameId?: string;
   shadowRootType?: 'open' | 'closed';
+
+  // Frame identification for multi-frame support
+  frameIndex?: number;  // 0 for main frame, 1-5 for iframes
 
   accessibility?: {
     role: string;
