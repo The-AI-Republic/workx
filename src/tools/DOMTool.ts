@@ -97,7 +97,7 @@ export class DOMTool extends BaseTool {
       },
       options: {
         type: 'object',
-        description: 'Action-specific options. For scroll: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas, not absolute positions). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px, {scrollY: -300} scrolls up 300px. For type: { clearFirst?: boolean, speed?: number, commit?: "change"|"enter", blur?: boolean }. For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
+        description: 'Action-specific options. For scroll: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas, not absolute positions). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px, {scrollY: -300} scrolls up 300px. For type: { clearFirst?: boolean, speed?: number, method?: "auto"|"instant"|"char-by-char"|"paste", commit?: "change"|"enter", blur?: boolean }. The method option controls typing strategy: "auto" (default, auto-detects element type - uses char-by-char for contenteditable/rich text editors, instant for simple inputs), "instant" (fast, works for <input>/<textarea>), "char-by-char" (simulates human typing character-by-character, best for rich text editors like Quill/Slate/Draft.js, configurable speed in ms per character), "paste" (simulates Ctrl+V paste, fast for rich editors). For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
       },
     },
     {
@@ -258,7 +258,7 @@ export class DOMTool extends BaseTool {
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
-    return await domService.type(nodeId, text);
+    return await domService.type(nodeId, text, options);
   }
 
   /**
@@ -275,8 +275,8 @@ export class DOMTool extends BaseTool {
     // Extract modifiers from options if present
     const modifiers = options?.modifiers
       ? Object.entries(options.modifiers)
-          .filter(([_, enabled]) => enabled)
-          .map(([mod]) => mod.charAt(0).toUpperCase() + mod.slice(1))
+        .filter(([_, enabled]) => enabled)
+        .map(([mod]) => mod.charAt(0).toUpperCase() + mod.slice(1))
       : undefined;
     return await domService.keypress(key, modifiers);
   }

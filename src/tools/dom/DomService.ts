@@ -12,6 +12,7 @@ import type {
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
 import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
+import type { TypeOptions } from '../../types/domTool';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -1000,7 +1001,222 @@ export class DomService {
     }
   }
 
-  async type(nodeId: number | string, text: string): Promise<ActionResult> {
+  /**
+   * Detect element type for typing strategy selection
+   */
+  private async detectElementType(backendNodeId: number): Promise<'input' | 'textarea' | 'contenteditable' | 'unknown'> {
+    try {
+      const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+      if (!resolveResult?.object?.objectId) return 'unknown';
+
+      const result = await this.sendCommand<any>('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function() {
+          const tagName = this.tagName?.toLowerCase();
+          const isContentEditable = this.contentEditable === 'true' || this.contentEditable === '';
+
+          if (tagName === 'input') return 'input';
+          if (tagName === 'textarea') return 'textarea';
+          if (isContentEditable) return 'contenteditable';
+          return 'unknown';
+        }`,
+        returnByValue: true
+      });
+
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+      return result?.result?.value || 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Clear contenteditable element (rich text editors like Quill, Slate, etc.)
+   */
+  private async clearContentEditable(backendNodeId: number): Promise<void> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for clearing');
+    }
+
+    try {
+      // Strategy 1: Select all and delete for contenteditable
+      // This works better than direct innerHTML manipulation for rich text editors
+      await this.sendCommand('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function() {
+          // Focus the element
+          this.focus();
+
+          // Select all content
+          const range = document.createRange();
+          range.selectNodeContents(this);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+
+          return { selected: true };
+        }`,
+        returnByValue: true
+      });
+
+      // Wait for selection
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Send Backspace key to delete selected content
+      // This triggers the editor's event handlers properly
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Backspace',
+        code: 'Backspace'
+      });
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Backspace',
+        code: 'Backspace'
+      });
+
+      // Alternative: Send Delete key
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Delete',
+        code: 'Delete'
+      });
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Delete',
+        code: 'Delete'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+    }
+  }
+
+  /**
+   * Type text character-by-character (simulates human typing)
+   * Works well for rich text editors (Quill, Slate, Draft.js, ProseMirror)
+   */
+  private async typeCharByChar(text: string, speed: number = 50): Promise<void> {
+    for (const char of text) {
+      // Determine key code and key name
+      const key = char;
+      const code = this.getKeyCode(char);
+
+      // Dispatch keydown event
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: key,
+        code: code,
+        text: char
+      });
+
+      // Dispatch keyup event
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: key,
+        code: code,
+        text: char
+      });
+
+      // Wait between characters to simulate human typing
+      if (speed > 0) {
+        await new Promise(resolve => setTimeout(resolve, speed));
+      }
+    }
+  }
+
+  /**
+   * Type text using paste simulation (Ctrl+V)
+   * Works well for rich text editors and is faster than char-by-char
+   */
+  private async typePaste(text: string, backendNodeId: number): Promise<void> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for paste');
+    }
+
+    try {
+      // Use execCommand('insertText') which triggers proper events
+      await this.sendCommand('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function(text) {
+          // Focus the element
+          this.focus();
+
+          // Try execCommand first (works for many rich text editors)
+          if (document.execCommand) {
+            const success = document.execCommand('insertText', false, text);
+            if (success) return { method: 'execCommand', success: true };
+          }
+
+          // Fallback: Dispatch paste event manually
+          const dataTransfer = new DataTransfer();
+          dataTransfer.setData('text/plain', text);
+
+          const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: dataTransfer,
+            bubbles: true,
+            cancelable: true
+          });
+
+          this.dispatchEvent(pasteEvent);
+
+          // Also fire beforeinput and input events
+          const beforeInputEvent = new InputEvent('beforeinput', {
+            data: text,
+            inputType: 'insertFromPaste',
+            bubbles: true,
+            cancelable: true
+          });
+          this.dispatchEvent(beforeInputEvent);
+
+          const inputEvent = new InputEvent('input', {
+            data: text,
+            inputType: 'insertFromPaste',
+            bubbles: true
+          });
+          this.dispatchEvent(inputEvent);
+
+          return { method: 'events', success: true };
+        }`,
+        arguments: [{ value: text }],
+        returnByValue: true
+      });
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+    }
+  }
+
+  /**
+   * Get key code for a character
+   */
+  private getKeyCode(char: string): string {
+    if (char === ' ') return 'Space';
+    if (char === '\n') return 'Enter';
+    if (char === '\t') return 'Tab';
+    if (/[a-z]/i.test(char)) return `Key${char.toUpperCase()}`;
+    if (/[0-9]/.test(char)) return `Digit${char}`;
+
+    // Special characters
+    const specialKeys: Record<string, string> = {
+      '.': 'Period',
+      ',': 'Comma',
+      ';': 'Semicolon',
+      "'": 'Quote',
+      '[': 'BracketLeft',
+      ']': 'BracketRight',
+      '\\': 'Backslash',
+      '-': 'Minus',
+      '=': 'Equal',
+      '/': 'Slash'
+    };
+
+    return specialKeys[char] || 'Unidentified';
+  }
+
+  async type(nodeId: number | string, text: string, options?: TypeOptions): Promise<ActionResult> {
     const start = Date.now();
 
     // Parse frame-scoped node ID
@@ -1042,29 +1258,173 @@ export class DomService {
         throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
       }
 
-      // Focus element
-      await this.sendCommand('DOM.focus', { backendNodeId });
+      // Detect element type
+      const elementType = await this.detectElementType(backendNodeId);
+      console.log(`[DomService] Element type detected: ${elementType}`);
 
-      // Clear existing value
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key: 'a',
-        code: 'KeyA',
-        modifiers: 2 // Ctrl
-      });
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key: 'Backspace',
-        code: 'Backspace'
-      });
+      // Determine typing method
+      let method = options?.method || 'auto';
+      if (method === 'auto') {
+        // Auto-detect best method based on element type
+        if (elementType === 'contenteditable') {
+          method = 'char-by-char'; // Rich text editors work best with char-by-char
+        } else {
+          method = 'instant'; // Simple inputs work fine with instant
+        }
+      }
+      console.log(`[DomService] Using typing method: ${method}`);
 
-      // Insert text
-      await this.sendCommand('Input.insertText', { text });
+      // 1. Robust Focus: Scroll into view and Click
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
 
-      // Press Enter if text ends with newline
-      if (text.endsWith('\n')) {
+      // Get box model for coordinates to click (ensures focus works on complex frameworks)
+      let boxModel;
+      try {
+        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
+      } catch (e) {
+        // Fallback if box model fails (e.g. SVG), just try DOM.focus
+      }
+
+      if (boxModel) {
+        const { content } = boxModel.model;
+        const centerX = (content[0] + content[2]) / 2;
+        const centerY = (content[1] + content[5]) / 2;
+
+        await this.sendCommand('Input.dispatchMouseEvent', {
+          type: 'mousePressed',
+          x: centerX,
+          y: centerY,
+          button: 'left',
+          clickCount: 1
+        });
+        await this.sendCommand('Input.dispatchMouseEvent', {
+          type: 'mouseReleased',
+          x: centerX,
+          y: centerY,
+          button: 'left',
+          clickCount: 1
+        });
+      } else {
+        // Fallback
+        await this.sendCommand('DOM.focus', { backendNodeId });
+      }
+
+      // Wait a bit for focus to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 2. Clear if requested
+      if (options?.clearFirst) {
+        if (elementType === 'contenteditable') {
+          // Use special clearing for contenteditable elements
+          await this.clearContentEditable(backendNodeId);
+        } else {
+          // For input/textarea elements
+          const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+
+          if (resolveResult?.object?.objectId) {
+            // Clear the input value and fire events
+            await this.sendCommand('Runtime.callFunctionOn', {
+              objectId: resolveResult.object.objectId,
+              functionDeclaration: `function() {
+                // Set value to empty string
+                this.value = '';
+
+                // Fire input event (React listens to this)
+                const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+                this.dispatchEvent(inputEvent);
+
+                // Fire change event
+                const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+                this.dispatchEvent(changeEvent);
+
+                return { cleared: true };
+              }`,
+              returnByValue: true
+            });
+
+            // Release the object reference
+            await this.sendCommand('Runtime.releaseObject', {
+              objectId: resolveResult.object.objectId
+            }).catch(() => { });
+
+            // Wait for framework to process events
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } else {
+            // Fallback to keyboard method if resolve fails
+            console.warn('[DomService] Could not resolve node for clearing, falling back to keyboard method');
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyDown',
+              key: 'a',
+              code: 'KeyA',
+              modifiers: 2 // Ctrl
+            });
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyUp',
+              key: 'a',
+              code: 'KeyA',
+              modifiers: 2
+            });
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyDown',
+              key: 'Backspace',
+              code: 'Backspace'
+            });
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyUp',
+              key: 'Backspace',
+              code: 'Backspace'
+            });
+          }
+        }
+      }
+
+      // 3. Type text using the appropriate method
+      if (method === 'char-by-char') {
+        // Character-by-character typing (best for rich text editors)
+        const speed = options?.speed !== undefined ? options.speed : 50; // Default 50ms between chars
+        await this.typeCharByChar(text, speed);
+      } else if (method === 'paste') {
+        // Paste simulation (fast, works for rich text editors)
+        await this.typePaste(text, backendNodeId);
+      } else {
+        // Instant typing (CDP Input.insertText, works for simple inputs)
+        await this.sendCommand('Input.insertText', { text });
+
+        // For React controlled components, additionally fire events
+        if (elementType === 'input' || elementType === 'textarea') {
+          try {
+            const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+            if (resolveResult?.object?.objectId) {
+              await this.sendCommand('Runtime.callFunctionOn', {
+                objectId: resolveResult.object.objectId,
+                functionDeclaration: `function() {
+                  const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+                  this.dispatchEvent(inputEvent);
+                  const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+                  this.dispatchEvent(changeEvent);
+                  return { value: this.value };
+                }`,
+                returnByValue: true
+              });
+              await this.sendCommand('Runtime.releaseObject', {
+                objectId: resolveResult.object.objectId
+              }).catch(() => { });
+            }
+          } catch (error) {
+            console.debug('[DomService] Could not fire additional events after typing');
+          }
+        }
+      }
+
+      // 4. Commit (Enter) if requested or implied
+      if (options?.commit === 'enter' || text.endsWith('\n')) {
         await this.sendCommand('Input.dispatchKeyEvent', {
           type: 'keyDown',
+          key: 'Enter',
+          code: 'Enter'
+        });
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyUp',
           key: 'Enter',
           code: 'Enter'
         });

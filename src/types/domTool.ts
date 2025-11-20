@@ -317,6 +317,15 @@ export interface TypeOptions {
   speed?: number; // default: 0
 
   /**
+   * Typing method (how to insert text)
+   * - "auto": Automatically detect best method based on element type (default)
+   * - "instant": CDP Input.insertText (fast, works for simple inputs/textareas)
+   * - "char-by-char": Simulate character-by-character keyboard typing (works for rich text editors)
+   * - "paste": Simulate copy-paste (Ctrl+V, works for rich text editors)
+   */
+  method?: "auto" | "instant" | "char-by-char" | "paste"; // default: "auto"
+
+  /**
    * How to finalize the input after typing
    * - "change": Fire change event (default, appropriate for most text boxes)
    * - "enter": Append Enter keystroke (useful for search boxes or chat inputs)

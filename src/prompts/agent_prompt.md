@@ -212,7 +212,7 @@ The DOM tool implements a closed-loop observe-action pattern where each observat
   5. Observe page → See submit button → Click submit
 
 **Type Action Behavior:**
-The `type` action automatically focuses the target element before typing, eliminating the need for separate click-to-focus actions:
+The `type` action automatically focuses the target element before typing and auto-detects the element type to use the optimal typing method (fast for simple inputs, char-by-char for rich text editors):
 
 - **DO NOT** click an element to focus it before typing - the type action handles focus automatically
 - **EXCEPTION**: If the target element is a button or trigger that will render a NEW text input area (e.g., "Add comment" button that shows a text box), follow the observe-action pattern:
