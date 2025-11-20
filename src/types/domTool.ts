@@ -138,8 +138,11 @@ export interface SerializedDom {
  * - boundingBox → bbox (compact array [x, y, w, h])
  */
 export interface SerializedNode {
-  /** Node ID (uses CDP backendNodeId directly, no remapping) */
-  node_id: number;
+  /** Node ID in format "<frameId>:<backendNodeId>" (e.g., "1:42") */
+  node_id: string;
+
+  /** Frame ID (0 for main frame, 1-5 for iframes) */
+  frame_id: number;
 
   /** HTML tag name */
   tag: string;

@@ -1,4 +1,4 @@
-import { DomSnapshot } from './DomSnapshot';
+import { DomSnapshot, FrameRegistry } from './DomSnapshot';
 import type {
   VirtualNode,
   ActionResult,
@@ -7,10 +7,11 @@ import type {
   PageContext,
   SnapshotStats,
   ServiceConfig,
-  PerformanceMetrics
+  PerformanceMetrics,
+  FrameMetadata
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
-import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable } from './utils';
+import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -132,6 +133,10 @@ export class DomService {
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
+
+    // test logging
+    console.log('[DomService] the html content:', htmlContent);
+
     const serializedDom = {
       page: {
         context: {
@@ -344,18 +349,24 @@ export class DomService {
     // Convert device pixels to CSS pixels for web standard compatibility
     const layoutMap = this.buildLayoutMap(domSnapshot, devicePixelRatio);
 
-    // Build virtual DOM tree
+    // Build virtual DOM tree with frame tracking
     let nodeCounter = 0;
+    const frameRegistry = new FrameRegistry();
 
-    const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0): VirtualNode | null => {
+    // Track iframe count for the 5 iframe limit
+    let iframeCount = 0;
+    const MAX_IFRAMES = 5;
+
+    const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0, currentFrameIndex: number = 0): VirtualNode | null => {
       // Pathological case protection for deeply nested iframes
       if (depth > this.config.maxTreeDepth) {
         console.warn(`[DomService] Max tree depth (${this.config.maxTreeDepth}) reached at iframe depth ${iframeDepth}. Tree traversal stopped.`);
         return null;
       }
 
-      if (iframeDepth > 100) {
-        console.error('[DomService] PATHOLOGICAL_NESTING: More than 100 nested iframes detected. This is highly unusual and may indicate malicious page structure.');
+      // Skip nested iframes (layer 2+) - only process layer 1
+      if (iframeDepth > 1) {
+        console.debug(`[DomService] Skipping nested iframe at depth ${iframeDepth}. Only layer 1 iframes are processed.`);
         return null;
       }
 
@@ -400,30 +411,55 @@ export class DomService {
         scrollRects: layoutData?.scrollRects,
         clientRects: layoutData?.clientRects,
         // Compute scrollability based on dimensions and overflow styles
-        scrollable: computeScrollable(layoutData)
+        scrollable: computeScrollable(layoutData),
+        // Assign frame index for multi-frame support
+        frameIndex: currentFrameIndex
       };
 
       // Recurse to children
       if (cdpNode.children) {
-        const nextIframeDepth = cdpNode.localName === 'iframe' ? iframeDepth + 1 : iframeDepth;
         vNode.children = cdpNode.children
-          .map((c: any) => buildVirtualTree(c, depth + 1, nextIframeDepth))
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex))
           .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
       }
 
       // Recurse to shadow roots
       if (cdpNode.shadowRoots) {
         vNode.shadowRoots = cdpNode.shadowRoots
-          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth))
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex))
           .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
       }
 
       // Recurse to iframe content document
       if (cdpNode.contentDocument) {
-        const nextIframeDepth = iframeDepth + 1;
-        const contentDoc = buildVirtualTree(cdpNode.contentDocument, depth + 1, nextIframeDepth);
-        if (contentDoc) {
-          vNode.contentDocument = contentDoc;
+        // Check iframe limit before processing
+        if (iframeCount >= MAX_IFRAMES) {
+          console.warn(`[DomService] Max iframe limit (${MAX_IFRAMES}) reached. Skipping additional iframes.`);
+          // Don't process this iframe's content
+        } else {
+          iframeCount++;
+          const newFrameIndex = iframeCount; // 1-5 for iframes
+          const nextIframeDepth = iframeDepth + 1;
+
+          // Register iframe metadata
+          const iframeMetadata: FrameMetadata = {
+            frameId: newFrameIndex,
+            backendNodeId: backendNodeId, // The iframe element's backendNodeId
+            viewport: {
+              // Use bounding box dimensions as iframe viewport
+              width: layoutData?.boundingBox?.width ?? 0,
+              height: layoutData?.boundingBox?.height ?? 0,
+              scrollX: 0, // Will be updated if we can get scroll position
+              scrollY: 0
+            },
+            boundingBox: layoutData?.boundingBox
+          };
+          frameRegistry.addFrame(iframeMetadata);
+
+          const contentDoc = buildVirtualTree(cdpNode.contentDocument, depth + 1, nextIframeDepth, newFrameIndex);
+          if (contentDoc) {
+            vNode.contentDocument = contentDoc;
+          }
         }
       }
 
@@ -495,7 +531,7 @@ export class DomService {
       frameworkDetected: framework
     };
 
-    this.currentSnapshot = new DomSnapshot(virtualDom, pageContext, stats);
+    this.currentSnapshot = new DomSnapshot(virtualDom, pageContext, stats, frameRegistry);
 
     // Track snapshot metrics
     if (this.config.enableMetrics) {
@@ -662,27 +698,33 @@ export class DomService {
     return layoutMap;
   }
 
-  private computeStats(node: VirtualNode, stats: SnapshotStats): void {
+  private computeStats(node: VirtualNode, stats: SnapshotStats, countedFrames: Set<number> = new Set()): void {
     if (node.tier === 'semantic') stats.semanticNodes++;
     else if (node.tier === 'non-semantic') stats.nonSemanticNodes++;
     else stats.structuralNodes++;
 
     if (node.interactionType) stats.interactiveNodes++;
-    if (node.frameId && node.frameId !== 'main') stats.frameCount++;
+
+    // Count unique frames (excluding main frame 0)
+    if (node.frameIndex !== undefined && node.frameIndex > 0 && !countedFrames.has(node.frameIndex)) {
+      countedFrames.add(node.frameIndex);
+      stats.frameCount++;
+    }
+
     if (node.shadowRootType) stats.shadowRootCount++;
 
     if (node.children) {
       for (const child of node.children) {
-        this.computeStats(child, stats);
+        this.computeStats(child, stats, countedFrames);
       }
     }
     if (node.shadowRoots) {
       for (const child of node.shadowRoots) {
-        this.computeStats(child, stats);
+        this.computeStats(child, stats, countedFrames);
       }
     }
     if (node.contentDocument) {
-      this.computeStats(node.contentDocument, stats);
+      this.computeStats(node.contentDocument, stats, countedFrames);
     }
   }
 
@@ -795,16 +837,41 @@ export class DomService {
   }
 
   // Action methods (T037-T045 will implement these)
-  async click(nodeId: number): Promise<ActionResult> {
+  async click(nodeId: number | string): Promise<ActionResult> {
     const start = Date.now();
+
+    // Parse frame-scoped node ID
+    let parsedId;
+    try {
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'click',
+        timestamp: new Date().toISOString()
+      };
+    }
 
     try {
       if (!this.currentSnapshot) {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // nodeId is now the backendNodeId directly (no translation needed)
-      const backendNodeId = nodeId;
+      // Validate frame exists
+      if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+        throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+      }
+
+      const backendNodeId = parsedId.backendNodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
@@ -938,16 +1005,41 @@ export class DomService {
     }
   }
 
-  async type(nodeId: number, text: string): Promise<ActionResult> {
+  async type(nodeId: number | string, text: string): Promise<ActionResult> {
     const start = Date.now();
+
+    // Parse frame-scoped node ID
+    let parsedId;
+    try {
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'type',
+        timestamp: new Date().toISOString()
+      };
+    }
 
     try {
       if (!this.currentSnapshot) {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // nodeId is now the backendNodeId directly (no translation needed)
-      const backendNodeId = nodeId;
+      // Validate frame exists
+      if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+        throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+      }
+
+      const backendNodeId = parsedId.backendNodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
@@ -1027,12 +1119,33 @@ export class DomService {
 
   /**
    * Scroll by relative offset (delta)
-   * @param nodeId - Target node ID (use NODE_ID_WINDOW for window scroll)
+   * @param nodeId - Target node ID (use NODE_ID_WINDOW/-1 for window scroll, or frame-scoped like "1:-1" for iframe scroll)
    * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left), defaults to 0
    * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up), defaults to 80% of window height
    */
-  async scroll(nodeId: number, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
+  async scroll(nodeId: number | string, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
     const start = Date.now();
+
+    // Parse frame-scoped node ID
+    let parsedId;
+    try {
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    }
 
     try {
       // Get default scrollY if not provided or 0 (80% of current window height)
@@ -1046,20 +1159,66 @@ export class DomService {
         actualScrollY = Math.floor(windowHeight * 0.8);
       }
 
-      if (nodeId === NODE_ID_WINDOW) {
-        // Scroll window by relative offset with smooth animation
-        await this.sendCommand('Runtime.evaluate', {
-          expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
-          returnByValue: false
-        });
+      // Handle window/document scroll (backendNodeId === -1)
+      if (parsedId.backendNodeId === NODE_ID_WINDOW) {
+        if (parsedId.frameId === 0) {
+          // Main frame window scroll
+          await this.sendCommand('Runtime.evaluate', {
+            expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
+            returnByValue: false
+          });
+        } else {
+          // Iframe window scroll - need to scroll the iframe's document
+          if (!this.currentSnapshot) {
+            throw new Error('NODE_NOT_FOUND: No snapshot available');
+          }
+
+          const frameMetadata = this.currentSnapshot.frameRegistry.getFrame(parsedId.frameId);
+          if (!frameMetadata) {
+            throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+          }
+
+          // Resolve the iframe element and scroll its content document
+          const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
+            backendNodeId: frameMetadata.backendNodeId
+          });
+
+          if (!resolveResult?.object?.objectId) {
+            throw new Error(`RESOLVE_FAILED: Could not resolve iframe element for frame ${parsedId.frameId}`);
+          }
+
+          // Scroll the iframe's content window
+          await this.sendCommand('Runtime.callFunctionOn', {
+            objectId: resolveResult.object.objectId,
+            functionDeclaration: `function() {
+              if (this.contentWindow) {
+                this.contentWindow.scrollTo({
+                  left: this.contentWindow.scrollX + ${scrollX},
+                  top: this.contentWindow.scrollY + ${actualScrollY},
+                  behavior: 'smooth'
+                });
+              }
+            }`,
+            returnByValue: false
+          });
+
+          // Release the object reference
+          await this.sendCommand('Runtime.releaseObject', {
+            objectId: resolveResult.object.objectId
+          }).catch(() => { });
+        }
       } else {
-        // Scroll element by relative offset
+        // Scroll specific element by relative offset
         if (!this.currentSnapshot) {
           throw new Error('NODE_NOT_FOUND: No snapshot available');
         }
 
-        // nodeId is now the backendNodeId directly (no translation needed)
-        const backendNodeId = nodeId;
+        // Validate frame exists
+        if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+          throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+        }
+
+        const backendNodeId = parsedId.backendNodeId;
 
         // Verify node exists in snapshot
         const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
@@ -1204,14 +1363,34 @@ export class DomService {
    * Scroll element into view with configurable alignment
    */
   async scrollIntoView(
-    nodeId: number,
+    nodeId: number | string,
     options?: { block?: 'start' | 'center' | 'end' | 'nearest'; inline?: 'start' | 'center' | 'end' | 'nearest' }
   ): Promise<ActionResult> {
     const start = Date.now();
 
+    // Parse frame-scoped node ID
+    let parsedId;
     try {
-      // Get backendNodeId from nodeId
-      const backendNodeId = nodeId;
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    try {
+      const backendNodeId = parsedId.backendNodeId;
 
       // Use CDP's scrollIntoViewIfNeeded for basic scrolling
       await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });

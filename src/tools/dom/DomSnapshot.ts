@@ -4,7 +4,8 @@ import type {
   RawSerializedDom,
   SerializedNode,
   SnapshotStats,
-  PageContext
+  PageContext,
+  FrameMetadata
 } from './types';
 import type { SerializationOptions } from '../../types/domTool';
 import { getTextContent, serializedNodeToHtml } from './utils';
@@ -12,11 +13,71 @@ import { SerializationPipeline } from './serializers/SerializationPipeline';
 import { DEFAULT_SERIALIZATION_OPTIONS } from '../../types/domTool';
 import type { ViewportBounds } from '../screenshot/ViewportDetector';
 
+/**
+ * Registry for managing frame metadata in multi-frame DOM snapshots
+ * Supports main frame (0) and up to 5 iframes (1-5)
+ */
+export class FrameRegistry {
+  private frames: Map<number, FrameMetadata> = new Map();
+
+  /**
+   * Register a frame with its metadata
+   */
+  addFrame(metadata: FrameMetadata): void {
+    if (metadata.frameId < 0 || metadata.frameId > 5) {
+      throw new Error(`Frame ID out of range (0-5): ${metadata.frameId}`);
+    }
+    this.frames.set(metadata.frameId, metadata);
+  }
+
+  /**
+   * Get frame metadata by frameId
+   */
+  getFrame(frameId: number): FrameMetadata | undefined {
+    return this.frames.get(frameId);
+  }
+
+  /**
+   * Check if a frame exists
+   */
+  hasFrame(frameId: number): boolean {
+    return this.frames.has(frameId);
+  }
+
+  /**
+   * Get count of iframes (excluding main frame)
+   */
+  getIframeCount(): number {
+    return Math.max(0, this.frames.size - 1); // Subtract main frame
+  }
+
+  /**
+   * Get all registered frames
+   */
+  getAllFrames(): FrameMetadata[] {
+    return Array.from(this.frames.values());
+  }
+
+  /**
+   * Get next available iframe ID (1-5)
+   * Returns null if max iframes reached
+   */
+  getNextIframeId(): number | null {
+    for (let i = 1; i <= 5; i++) {
+      if (!this.frames.has(i)) {
+        return i;
+      }
+    }
+    return null; // Max 5 iframes reached
+  }
+}
+
 export class DomSnapshot implements IDomSnapshot {
   readonly virtualDom: VirtualNode;
   readonly timestamp: Date;
   readonly pageContext: PageContext;
   readonly stats: SnapshotStats;
+  readonly frameRegistry: FrameRegistry;
 
   private _backendNodeMap?: Map<number, VirtualNode>;
   private _serialized?: RawSerializedDom;
@@ -24,12 +85,30 @@ export class DomSnapshot implements IDomSnapshot {
   constructor(
     virtualDom: VirtualNode,
     pageContext: PageContext,
-    stats: SnapshotStats
+    stats: SnapshotStats,
+    frameRegistry?: FrameRegistry
   ) {
     this.virtualDom = virtualDom;
     this.pageContext = pageContext;
     this.stats = stats;
     this.timestamp = new Date();
+
+    // Initialize frame registry with main frame if not provided
+    this.frameRegistry = frameRegistry || new FrameRegistry();
+    if (!this.frameRegistry.hasFrame(0)) {
+      // Register main frame with viewport dimensions
+      this.frameRegistry.addFrame({
+        frameId: 0,
+        backendNodeId: 0, // Main frame has no iframe element
+        viewport: {
+          width: pageContext.viewport.width,
+          height: pageContext.viewport.height,
+          scrollX: pageContext.viewport.scrollX ?? 0,
+          scrollY: pageContext.viewport.scrollY ?? 0
+        }
+        // No boundingBox for main frame
+      });
+    }
   }
 
 
@@ -202,8 +281,10 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If multiple children (OR single child that wasn't hoisted), return structural node
       if (flattenedChildren.length > 0) {
+        const frameIndex = node.frameIndex ?? 0;
         const structuralNode: SerializedNode = {
-          node_id: node.backendNodeId,
+          node_id: `${frameIndex}:${node.backendNodeId}`,
+          frame_id: frameIndex,
           tag: node.localName || node.nodeName.toLowerCase(),
           kids: flattenedChildren
         };
@@ -222,8 +303,10 @@ export class DomSnapshot implements IDomSnapshot {
         // Note: html and #document are excluded since we extract body directly
         if (tag === 'body' || tag === 'main') {
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
+          const frameIndex = node.frameIndex ?? 0;
           return {
-            node_id: node.backendNodeId,
+            node_id: `${frameIndex}:${node.backendNodeId}`,
+            frame_id: frameIndex,
             tag,
             kids: [] // Empty kids array to indicate no interactive elements found
           };
@@ -249,9 +332,14 @@ export class DomSnapshot implements IDomSnapshot {
       }
     }
 
+    // Determine frame index (default to 0 for main frame)
+    const frameIndex = node.frameIndex ?? 0;
+
     // Build base node with v3 field names
+    // Format node_id as "<frameId>:<backendNodeId>" for multi-frame support
     const serializedNode: SerializedNode = {
-      node_id: node.backendNodeId,
+      node_id: `${frameIndex}:${node.backendNodeId}`,
+      frame_id: frameIndex,
       tag: node.localName || node.nodeName.toLowerCase()
     };
 

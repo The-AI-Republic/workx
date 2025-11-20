@@ -1,5 +1,56 @@
-import type { VirtualNode, SerializedNode, LayoutData } from './types';
+import type { VirtualNode, SerializedNode, LayoutData, ParsedNodeId } from './types';
 import { NODE_TYPE_TEXT } from './types';
+
+/**
+ * Parse a node ID string into frameId and backendNodeId
+ *
+ * Supports formats:
+ * - "1:42" → { frameId: 1, backendNodeId: 42 }
+ * - "0:42" → { frameId: 0, backendNodeId: 42 }
+ * - "42" or 42 → { frameId: 0, backendNodeId: 42 } (backward compatible)
+ * - "-1" → { frameId: 0, backendNodeId: -1 } (main frame scroll target)
+ * - "1:-1" → { frameId: 1, backendNodeId: -1 } (iframe scroll target)
+ *
+ * @param input - Node ID as string or number
+ * @returns Parsed node ID with frameId and backendNodeId
+ * @throws Error if input format is invalid
+ */
+export function parseNodeId(input: string | number): ParsedNodeId {
+  // Handle numeric input (backward compatibility)
+  if (typeof input === 'number') {
+    return { frameId: 0, backendNodeId: input };
+  }
+
+  const str = String(input).trim();
+
+  // Handle bare number format (backward compatibility)
+  if (!str.includes(':')) {
+    const backendNodeId = parseInt(str, 10);
+    if (isNaN(backendNodeId)) {
+      throw new Error(`Invalid node ID format: "${input}"`);
+    }
+    return { frameId: 0, backendNodeId };
+  }
+
+  // Handle frame-scoped format "frameId:backendNodeId"
+  const parts = str.split(':');
+  if (parts.length !== 2) {
+    throw new Error(`Invalid node ID format: "${input}"`);
+  }
+
+  const frameId = parseInt(parts[0], 10);
+  const backendNodeId = parseInt(parts[1], 10);
+
+  if (isNaN(frameId) || isNaN(backendNodeId)) {
+    throw new Error(`Invalid node ID format: "${input}"`);
+  }
+
+  if (frameId < 0 || frameId > 5) {
+    throw new Error(`Frame ID out of range (0-5): ${frameId}`);
+  }
+
+  return { frameId, backendNodeId };
+}
 
 /**
  * Helper utilities for DOM tool CDP implementation
@@ -288,6 +339,15 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
     attributes.push(`data-testid="${escapeHtml(node.testid)}"`);
   }
 
+  // Add data-frame-id for iframe elements to indicate which frame the content belongs to
+  if (tag === 'iframe' && node.content_document) {
+    // Extract frame ID from the first child's node_id (format: "frameId:backendNodeId")
+    const contentFrameId = node.content_document.frame_id;
+    if (contentFrameId !== undefined && contentFrameId > 0) {
+      attributes.push(`data-frame-id="${contentFrameId}"`);
+    }
+  }
+
   // Add states as attributes
   if (node.states) {
     for (const [key, value] of Object.entries(node.states)) {
@@ -338,6 +398,20 @@ export function serializedNodeToHtml(node: SerializedNode | null, indent: number
     if (!node.text) {
       html += indentStr;
     }
+  } else if (node.content_document) {
+    // Process iframe content document
+    html += '\n';
+    const contentHtml = serializedNodeToHtml(node.content_document, indent + 1);
+    html += contentHtml;
+    html += indentStr;
+  } else if (node.shadow_roots && node.shadow_roots.length > 0) {
+    // Process shadow roots
+    html += '\n';
+    for (const shadowRoot of node.shadow_roots) {
+      const shadowHtml = serializedNodeToHtml(shadowRoot, indent + 1);
+      html += shadowHtml;
+    }
+    html += indentStr;
   } else if (node.text) {
     // Text content already added, no indentation needed
   } else {
