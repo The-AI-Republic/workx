@@ -173,15 +173,31 @@ export class DomSnapshot implements IDomSnapshot {
     // If no body tag found, returns the root node as fallback
     const bodyVirtualNode = this.findBodyNode(this.virtualDom);
 
+    //test>>
+    // console.log('$$$ bodyVirtualNode before processing', JSON.stringify(bodyVirtualNode, null, 2));
+    //test<<
+
     // Use SerializationPipeline for compaction on body node only
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(bodyVirtualNode);
 
+    //test>>
+    // console.log('$$$ bodyVirtualNode after processing', JSON.stringify(result, null, 2));
+    //test<<
+
     // Build flattened tree structure from pipeline result with v3 schema
     const bodyBeforeFilter = this.flatternNode(result.tree, opts);
 
+    //test>>
+    // console.log('$$$ serialized node before filtering', JSON.stringify(bodyBeforeFilter, null, 2));
+    //test<<
+
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
+
+    //test>>
+    // console.log('$$$ serialized node after filtering', JSON.stringify(body, null, 2));
+    //test<<
 
     // Calculate viewport overflow (pixels outside viewport in each direction)
     const viewport = this.pageContext.viewport;

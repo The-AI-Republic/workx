@@ -109,35 +109,37 @@ export class VisibilityFilter {
    * Check if node has any descendant with non-zero dimensions
    */
   private hasVisibleDescendant(node: VirtualNode): boolean {
-    if (!node.children || node.children.length === 0) {
-      return false;
-    }
-
-    for (const child of node.children) {
-      // Check if this child has non-zero dimensions
-      if (child.boundingBox) {
-        const { width, height } = child.boundingBox;
-        if (width > 0 && height > 0) {
-          return true;
-        }
-      }
-
-      // Recursively check this child's descendants
-      if (this.hasVisibleDescendant(child)) {
-        return true;
-      }
-
-      // Also check shadow roots for visible descendants
-      if (child.shadowRoots) {
-        for (const shadowRoot of child.shadowRoots) {
-          if (this.hasVisibleDescendant(shadowRoot)) {
+    // Check children
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        // Check if this child has non-zero dimensions
+        if (child.boundingBox) {
+          const { width, height } = child.boundingBox;
+          if (width > 0 && height > 0) {
             return true;
           }
         }
-      }
 
-      // Also check content document for visible descendants
-      if (child.contentDocument && this.hasVisibleDescendant(child.contentDocument)) {
+        // Recursively check this child's descendants
+        if (this.hasVisibleDescendant(child)) {
+          return true;
+        }
+      }
+    }
+
+    // Check shadow roots
+    if (node.shadowRoots && node.shadowRoots.length > 0) {
+      for (const shadowRoot of node.shadowRoots) {
+        // Shadow roots themselves don't usually have bounding boxes, so check their children
+        if (this.hasVisibleDescendant(shadowRoot)) {
+          return true;
+        }
+      }
+    }
+
+    // Check content document (iframe)
+    if (node.contentDocument) {
+      if (this.hasVisibleDescendant(node.contentDocument)) {
         return true;
       }
     }

@@ -15,7 +15,7 @@
  * Stage 1 Signal Filtering
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 import { NODE_TYPE_COMMENT } from '../../types';
 
 export class NoiseFilter {
@@ -46,19 +46,38 @@ export class NoiseFilter {
     }
 
     // Recursively filter children
+    let filteredChildren: VirtualNode[] | undefined;
     if (tree.children && tree.children.length > 0) {
-      const filteredChildren = tree.children
+      const filtered = tree.children
         .map(child => this.filter(child))
         .filter((child): child is VirtualNode => child !== null);
-
-      // Return node with filtered children
-      return {
-        ...tree,
-        children: filteredChildren.length > 0 ? filteredChildren : undefined
-      };
+      filteredChildren = filtered.length > 0 ? filtered : undefined;
     }
 
-    return tree;
+    // Recursively filter shadow roots
+    let filteredShadowRoots: VirtualNode[] | undefined;
+    if (tree.shadowRoots && tree.shadowRoots.length > 0) {
+      const filtered = tree.shadowRoots
+        .map(sr => this.filter(sr))
+        .filter((sr): sr is VirtualNode => sr !== null);
+      filteredShadowRoots = filtered.length > 0 ? filtered : undefined;
+    }
+
+    // Recursively filter content document
+    let filteredContentDocument: VirtualNode | undefined;
+    if (tree.contentDocument) {
+      filteredContentDocument = this.filter(tree.contentDocument) || undefined;
+    }
+
+    // Return node with filtered content
+    // Only return if we have children, shadow roots, or content document, OR if it's not a container that became empty
+    // But NoiseFilter only removes specific tags, so we should return the tree with updated children
+    return {
+      ...tree,
+      children: filteredChildren,
+      shadowRoots: filteredShadowRoots,
+      contentDocument: filteredContentDocument
+    };
   }
 
   /**

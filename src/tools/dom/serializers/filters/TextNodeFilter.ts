@@ -12,7 +12,7 @@
  * Stage 1 Signal Filtering
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 import { NODE_TYPE_TEXT } from '../../types';
 
 export class TextNodeFilter {
@@ -50,10 +50,45 @@ export class TextNodeFilter {
         .filter((child): child is VirtualNode => child !== null);
 
       // Return node with filtered children
-      return {
+      const result = {
         ...tree,
         children: filteredChildren.length > 0 ? filteredChildren : undefined
       };
+
+      // Recursively filter shadow roots
+      if (tree.shadowRoots && tree.shadowRoots.length > 0) {
+        const filteredShadowRoots = tree.shadowRoots
+          .map(sr => this.filter(sr))
+          .filter((sr): sr is VirtualNode => sr !== null);
+        result.shadowRoots = filteredShadowRoots.length > 0 ? filteredShadowRoots : undefined;
+      }
+
+      // Recursively filter content document
+      if (tree.contentDocument) {
+        result.contentDocument = this.filter(tree.contentDocument) || undefined;
+      }
+
+      return result;
+    }
+
+    // Handle shadow roots and content document even if no children
+    if ((tree.shadowRoots && tree.shadowRoots.length > 0) || tree.contentDocument) {
+      const result = { ...tree };
+
+      // Recursively filter shadow roots
+      if (tree.shadowRoots && tree.shadowRoots.length > 0) {
+        const filteredShadowRoots = tree.shadowRoots
+          .map(sr => this.filter(sr))
+          .filter((sr): sr is VirtualNode => sr !== null);
+        result.shadowRoots = filteredShadowRoots.length > 0 ? filteredShadowRoots : undefined;
+      }
+
+      // Recursively filter content document
+      if (tree.contentDocument) {
+        result.contentDocument = this.filter(tree.contentDocument) || undefined;
+      }
+
+      return result;
     }
 
     return tree;
