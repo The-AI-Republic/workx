@@ -382,6 +382,18 @@ export interface ActionResult {
     /** Scroll position changed */
     scrollChanged: boolean;
 
+    /** Previous scroll position (for scroll actions) */
+    previousScrollPosition?: { x: number; y: number };
+
+    /** Current scroll position (for scroll actions) */
+    currentScrollPosition?: { x: number; y: number };
+
+    /** Actual scroll delta that occurred */
+    actualScrollDelta?: { x: number; y: number };
+
+    /** Whether scroll reached the limit (top/bottom/left/right) */
+    scrollLimitReached?: boolean;
+
     /** Form value changed */
     valueChanged: boolean;
 
