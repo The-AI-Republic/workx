@@ -1487,54 +1487,40 @@ export class DomService {
   async scroll(nodeId: number | string, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
     const start = Date.now();
 
-    // Parse frame-scoped node ID
+    // Parse frame-scoped node ID, default to main frame window scroll on failure
     let parsedId;
     try {
       parsedId = parseNodeId(nodeId);
     } catch (error: any) {
-      return {
-        success: false,
-        duration: Date.now() - start,
-        error: error.message,
-        changes: {
-          navigationOccurred: false,
-          domMutations: 0,
-          scrollChanged: false,
-          valueChanged: false
-        },
-        nodeId: typeof nodeId === 'number' ? nodeId : -1,
-        actionType: 'scroll',
-        timestamp: new Date().toISOString()
-      };
+      console.warn(`[DomService] scroll: parseNodeId failed for "${nodeId}", defaulting to main frame window scroll: ${error.message}`);
+      parsedId = { frameId: 0, backendNodeId: NODE_ID_WINDOW };
     }
 
     try {
-      // Get default scrollY if not provided or 0 (80% of current window height)
-      let actualScrollY = scrollY;
-      if (!actualScrollY) {
-        const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
-          expression: 'window.innerHeight',
-          returnByValue: true
-        });
-        const windowHeight = viewportResult?.result?.value || 600; // Fallback to 600px
-        actualScrollY = Math.floor(windowHeight * 0.8);
-      }
-
       // Capture scroll position BEFORE scroll
       let beforeScrollPos: { x: number; y: number } = { x: 0, y: 0 };
       let afterScrollPos: { x: number; y: number } = { x: 0, y: 0 };
       let scrollLimitReached = false;
+
+      // actualScrollY will be computed based on scroll context if not provided or 0
+      let actualScrollY = scrollY;
 
       // Handle window/document scroll (backendNodeId === -1)
       if (parsedId.backendNodeId === NODE_ID_WINDOW) {
         if (parsedId.frameId === 0) {
           // Main frame window scroll - capture before position
           const beforeResult = await this.sendCommand<any>('Runtime.evaluate', {
-            expression: '({ x: window.scrollX, y: window.scrollY, maxX: document.documentElement.scrollWidth - window.innerWidth, maxY: document.documentElement.scrollHeight - window.innerHeight })',
+            expression: '({ x: window.scrollX, y: window.scrollY, maxX: document.documentElement.scrollWidth - window.innerWidth, maxY: document.documentElement.scrollHeight - window.innerHeight, viewportHeight: window.innerHeight })',
             returnByValue: true
           });
           beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
           const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+          // Get default scrollY if not provided or 0: 80% of main window height
+          if (!actualScrollY) {
+            const windowHeight = beforeResult.result.value.viewportHeight || 600;
+            actualScrollY = Math.floor(windowHeight * 0.8);
+          }
 
           // Execute scroll
           await this.sendCommand('Runtime.evaluate', {
@@ -1579,7 +1565,7 @@ export class DomService {
             throw new Error(`RESOLVE_FAILED: Could not resolve iframe element for frame ${parsedId.frameId}`);
           }
 
-          // Capture before position
+          // Capture before position and iframe dimensions
           const beforeResult = await this.sendCommand<any>('Runtime.callFunctionOn', {
             objectId: resolveResult.object.objectId,
             functionDeclaration: `function() {
@@ -1588,15 +1574,22 @@ export class DomService {
                   x: this.contentWindow.scrollX,
                   y: this.contentWindow.scrollY,
                   maxX: this.contentWindow.document.documentElement.scrollWidth - this.contentWindow.innerWidth,
-                  maxY: this.contentWindow.document.documentElement.scrollHeight - this.contentWindow.innerHeight
+                  maxY: this.contentWindow.document.documentElement.scrollHeight - this.contentWindow.innerHeight,
+                  iframeHeight: this.offsetHeight || this.clientHeight || 0
                 };
               }
-              return { x: 0, y: 0, maxX: 0, maxY: 0 };
+              return { x: 0, y: 0, maxX: 0, maxY: 0, iframeHeight: 0 };
             }`,
             returnByValue: true
           });
           beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
           const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+          // Get default scrollY if not provided or 0: 80% of iframe's offsetHeight
+          if (!actualScrollY) {
+            const iframeHeight = beforeResult.result.value.iframeHeight || 600;
+            actualScrollY = Math.floor(iframeHeight * 0.8);
+          }
 
           // Scroll the iframe's content window
           await this.sendCommand('Runtime.callFunctionOn', {
@@ -1670,7 +1663,7 @@ export class DomService {
           throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId}`);
         }
 
-        // Capture before position
+        // Capture before position and container dimensions
         const beforeResult = await this.sendCommand<any>('Runtime.callFunctionOn', {
           objectId: resolveResult.object.objectId,
           functionDeclaration: `function() {
@@ -1678,13 +1671,20 @@ export class DomService {
               x: this.scrollLeft,
               y: this.scrollTop,
               maxX: this.scrollWidth - this.clientWidth,
-              maxY: this.scrollHeight - this.clientHeight
+              maxY: this.scrollHeight - this.clientHeight,
+              containerHeight: this.clientHeight || 0
             };
           }`,
           returnByValue: true
         });
         beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
         const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+        // Get default scrollY if not provided or 0: 80% of container's clientHeight (min 100px if height is 0)
+        if (!actualScrollY) {
+          const containerHeight = beforeResult.result.value.containerHeight;
+          actualScrollY = containerHeight > 0 ? Math.floor(containerHeight * 0.8) : 100;
+        }
 
         // Execute scroll with smooth animation
         await this.sendCommand('Runtime.callFunctionOn', {
@@ -1734,8 +1734,9 @@ export class DomService {
       this.trackActionMetrics('scroll', duration, scrollChanged);
 
       return {
-        success: true,
+        success: scrollChanged,
         duration,
+        ...(scrollChanged ? {} : { error: 'Scroll position did not change' }),
         changes: {
           navigationOccurred: false,
           domMutations: scrollChanged ? 1 : 0,
