@@ -135,12 +135,6 @@ export class DomService {
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
 
-    //test>>
-    const virtualDom = this.currentSnapshot!.virtualDom;
-    console.log("[DomService] $$$ Raw Virtual DOM:", JSON.stringify(virtualDom, null, 2));
-    console.log("[DomService] $$$ Serialized HTML content:", htmlContent);
-    //<<test
-
     const serializedDom = {
       page: {
         context: {
