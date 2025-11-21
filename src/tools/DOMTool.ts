@@ -80,12 +80,12 @@ export class DOMTool extends BaseTool {
     {
       action: {
         type: 'string',
-        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - use node_id=-1 for page scroll, or element node_id for scrollable containers)',
+        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - MOST COMMONLY use node_id=-1 for page/window scroll, rarely use element node_id for scrollable containers)',
         enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
       },
       node_id: {
         type: 'number',
-        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window/page scroll (default for main content), -2 for document-level keypress. For scroll action: use -1 to scroll the main page, or use a specific element node_id to scroll a container (chat window, sidebar, infinite-scroll list, etc.).',
+        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window/page scroll (RECOMMENDED - use this for most scrolling scenarios to scroll the main page content), -2 for document-level keypress. For scroll action: PREFER node_id=-1 to scroll the main page (most common case). Only use a specific element node_id for rare cases like scrolling within a modal dialog, chat message container, or sidebar with independent scrolling.',
       },
       text: {
         type: 'string',
