@@ -76,7 +76,61 @@ export enum DOMToolErrorCode {
 export class DOMTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
     'browser_dom',
-    'Unified DOM inspection and action tool. Capture page DOM snapshots with token-optimized serialization, and execute actions (click, type, keypress, scroll) on elements using persistent node IDs. Combines DOM capture with page interaction in a single tool.',
+    `Unified DOM inspection and action tool for page interaction.
+
+## USAGE PATTERN: Observe-Action Cycle
+The DOM tool implements a closed-loop observe-action pattern:
+- **One Observation + One Action = One Unit**: After observing the page state, perform ONLY ONE action (click, type, scroll), then observe again
+- **DO NOT** plan or execute multiple actions based on a single observation
+- **DO** observe the page after each action to see the updated state before deciding the next action
+
+Example workflow:
+1. Observe page → See login form → Click username field
+2. Observe page → See username field focused → Type username
+3. Observe page → See password field → Click password field
+4. Observe page → See password field focused → Type password
+5. Observe page → See submit button → Click submit
+
+## TYPE ACTION BEHAVIOR
+The type action automatically focuses the target element before typing and auto-detects element type:
+- **DO NOT** click an element to focus it before typing - type action handles focus automatically
+- **EXCEPTION**: If target is a button/trigger that renders a NEW text input (e.g., "Add comment" button), follow observe-action pattern:
+  1. Observe page → See "Add comment" button → Click button
+  2. Observe page → See newly rendered text area → Type text
+
+## FINDING CORRECT INPUT TARGETS
+
+**Traditional Input Elements** (type directly):
+- <input>, <textarea> elements
+- contenteditable="true" divs already visible
+
+**Modern Rich Text Editors** (find the contenteditable div):
+- Quill: .ql-editor div with contenteditable="true"
+- Slate: [data-slate-editor="true"] div
+- Draft.js: .public-DraftEditor-content div
+- TinyMCE: #tinymce or .mce-content-body
+- CKEditor: .cke_editable
+- ProseMirror/Tiptap: .ProseMirror
+- Lexical: [contenteditable="true"][data-lexical-editor="true"]
+**Important**: Target the inner contenteditable div, NOT wrapper containers
+
+**Trigger Buttons** (click first to reveal input):
+- Buttons with labels like "Add", "Reply", "Comment", "Edit", "Write"
+- Placeholder divs that expand into editors when clicked
+
+## VIEWPORT AWARENESS
+Snapshots only return elements visible in the current viewport (inViewport: true). Elements outside viewport are filtered to reduce token consumption.
+
+**Key Principles**:
+1. If you don't see expected elements, they may be below/above current scroll position
+2. Use scroll action to discover more content
+3. Default scrolling target: page itself (node_id=-1 for main window)
+4. Scrollable containers marked with aria-label="scrollable: [direction]"
+
+**Scrolling Decision**:
+- Looking for content in main page flow? → node_id=-1
+- Element has aria-label="scrollable: ..."? → Scroll that container
+- Looking in specific widget/panel/sidebar? → Scroll that container`,
     {
       action: {
         type: 'string',

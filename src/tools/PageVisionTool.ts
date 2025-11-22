@@ -24,7 +24,46 @@ import { CoordinateActionService } from './screenshot/CoordinateActionService';
 export class PageVisionTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
     'page_vision',
-    'Visual page screenshot and coordinate-based interaction tool. Captures viewport screenshots and performs coordinate-based actions (click, type, scroll, keypress) for visual analysis. Use as complement to browser_dom when visual understanding is needed. COORDINATES ARE AUTOMATICALLY CLIPPED: Simply provide coordinates based on your visual analysis of the screenshot image. The system will automatically clip out-of-bounds coordinates to the nearest valid position within the viewport.',
+    `Visual page screenshot and coordinate-based interaction tool. COMPLEMENTARY to browser_dom - use only in specific scenarios.
+
+## WHEN TO USE (use ONLY in these scenarios)
+
+1. **Visual Understanding Needed**: DOM structure alone cannot convey visual layout/styling
+   - Canvas-based UIs, WebGL content, complex visualizations
+   - PDF content analysis
+   - Styled elements where appearance matters (buttons, colors, layouts)
+   - Image-heavy pages where visual context is crucial
+
+2. **DOM Analysis Failed**: DOM structure is obfuscated, heavily nested, or unclear
+   - Shadow DOM with complex nesting
+   - Dynamically generated IDs without semantic meaning
+   - Iframe content that's difficult to parse
+
+## WHEN NOT TO USE
+- ❌ Standard web forms with clear DOM structure (use browser_dom)
+- ❌ Text content extraction (use browser_dom)
+- ❌ Standard button clicks with accessible node IDs (use browser_dom)
+- ❌ First attempt at any page interaction (always try browser_dom first)
+
+## WORKFLOW PATTERN
+1. browser_dom.snapshot() → Analyze DOM structure
+2. Check inViewport field for target elements
+3. If inViewport: false → browser_dom.scroll(node_id) → Bring into view
+4. If DOM analysis insufficient → page_vision.screenshot() → Visual analysis
+5. Perform action:
+   - If DOM node identified → browser_dom.click/type (PREFERRED)
+   - If coordinate-based needed → page_vision.click/type(x, y)
+
+## COORDINATE USAGE
+Simply provide coordinates based on visual analysis of the screenshot image.
+- The system automatically clips out-of-bounds coordinates to valid viewport bounds
+- No manual validation needed - just report what you see in the image
+- Example: "Search box appears at (850, 95)" → Use page_vision.click(x=850, y=95)
+
+## COST AWARENESS
+- Screenshots consume 1000-2000 tokens per image
+- Use judiciously - only when DOM-based approach is genuinely insufficient
+- Prefer browser_dom for all standard interactions`,
     {
       action: {
         type: 'string',
