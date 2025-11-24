@@ -1,5 +1,5 @@
 /**
- * NumericCompactor (P3.4): Compact bounding boxes to integer arrays
+ * NumericCompactor (For Dom): Compact bounding boxes to integer arrays
  *
  * Reduces token count by converting bounding box objects to compact arrays:
  *

@@ -389,10 +389,12 @@ export class ModelClientFactory {
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
     let serviceTier: 'default' | 'flex' | 'priority' | undefined;
+    let modelConfig: any = undefined;
     if (this.config) {
       const configData = this.config.getConfig();
       const modelData = this.config.getModelById(configData.selectedModelId);
       if (modelData?.model) {
+        modelConfig = modelData.model;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
         // For OpenAI models, merge default serviceTier value with stored value
@@ -459,6 +461,7 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
         });
 
       case 'fireworks':
@@ -470,6 +473,7 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
         });
 
       case 'google-ai-studio':
@@ -481,6 +485,7 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
         });
 
       case 'groq':
@@ -492,6 +497,7 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
@@ -508,6 +514,7 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
           serviceTier,

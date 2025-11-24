@@ -21,6 +21,8 @@ import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 import { GeminiLogger } from '../../utils/logger';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
 
+import type { IModelConfig } from '../../config/types';
+
 /**
  * Authentication configuration for OpenAI Chat Completion API
  */
@@ -37,6 +39,8 @@ export interface OpenAIChatCompletionConfig {
   modelFamily: ModelFamily;
   /** Model provider information */
   provider: ModelProviderInfo;
+  /** Model configuration from AgentConfig */
+  modelConfig?: IModelConfig;
 }
 
 /**
@@ -80,6 +84,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       conversationId: config.conversationId,
       modelFamily: config.modelFamily,
       provider: config.provider,
+      modelConfig: config.modelConfig,
     }, retryConfig);
 
     // Gemini through Google AI Studio expects API key via `key` query param / X-Goog-Api-Key header.

@@ -96,7 +96,7 @@ export class TaskRunner {
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
   private static readonly MAX_TURNS = 500;
-  private static readonly COMPACTION_THRESHOLD = 0.90; // Updated from 0.75 to 0.90 per spec
+  private static readonly COMPACTION_THRESHOLD = 0.90; // 0.90 per spec
 
   constructor(
     session: Session,
