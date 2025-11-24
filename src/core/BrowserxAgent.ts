@@ -305,7 +305,11 @@ export class BrowserxAgent {
           break;
 
         case 'Compact':
-          await this.handleCompact();
+          await this.handleCompact('auto');
+          break;
+
+        case 'ManualCompact':
+          await this.handleCompact('manual');
           break;
 
         case 'GetHistoryEntryRequest':
@@ -755,14 +759,15 @@ export class BrowserxAgent {
   /**
    * Handle compact operation
    * Triggers conversation history compaction to reduce token usage
+   * @param trigger - What triggered this compaction ('auto' | 'manual')
    */
-  private async handleCompact(): Promise<void> {
+  private async handleCompact(trigger: 'auto' | 'manual' = 'auto'): Promise<void> {
     try {
       // Emit background event indicating compaction started
       this.emitEvent({
         type: 'BackgroundEvent',
         data: {
-          message: 'History compaction started',
+          message: `History compaction started (${trigger})`,
           level: 'info',
         },
       });
@@ -770,17 +775,34 @@ export class BrowserxAgent {
       // Get history size before compaction
       const historyBefore = this.session.getConversationHistory().items.length;
 
-      // Perform compaction
-      await this.session.compact();
+      // Get model client for LLM-based summarization
+      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+
+      // Perform compaction with LLM-based summarization
+      const result = await this.session.compact(trigger, modelClient);
 
       // Get history size after compaction
       const historyAfter = this.session.getConversationHistory().items.length;
+
+      // Emit CompactionCompleted event for UI notification (T036)
+      this.emitEvent({
+        type: 'CompactionCompleted',
+        data: {
+          success: result.success,
+          tokensBefore: result.tokensBefore,
+          tokensAfter: result.tokensAfter,
+          itemsTrimmed: result.itemsTrimmed,
+          compactionCount: this.session.getCompactionCount(),
+          triggerReason: trigger,
+          error: result.error,
+        },
+      });
 
       // Emit background event indicating compaction completed
       this.emitEvent({
         type: 'BackgroundEvent',
         data: {
-          message: `History compaction completed: ${historyBefore} → ${historyAfter} items`,
+          message: `History compaction completed: ${historyBefore} → ${historyAfter} items (saved ~${result.tokensBefore - result.tokensAfter} tokens)`,
           level: 'info',
         },
       });

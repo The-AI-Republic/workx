@@ -15,7 +15,9 @@ import type {
   TaskStartedEvent,
   TokenUsage,
   TurnAbortReason,
+  CompactionCompletedEvent,
 } from '../protocol/events';
+import type { CompactionResult } from './compact/types';
 
 /**
  * Task state for tracking execution
@@ -94,7 +96,7 @@ export class TaskRunner {
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
   private static readonly MAX_TURNS = 500;
-  private static readonly COMPACTION_THRESHOLD = 0.75;
+  private static readonly COMPACTION_THRESHOLD = 0.90; // Updated from 0.75 to 0.90 per spec
 
   constructor(
     session: Session,
@@ -658,12 +660,29 @@ export class TaskRunner {
     const usageNote = usage ? ` (tokens: ${usage.total_tokens}/${this.state.tokenUsage.max})` : '';
 
     try {
-      await this.session.compact();
+      // Get model client for LLM-based summarization
+      const modelClient = this.turnContext.getModelClient();
+
+      const result = await this.session.compact('auto', modelClient);
+
+      // Emit compaction completed event for UI notification
+      await this.notifyCompactionComplete(result);
+
+      // FR-009: Invalidate cached token state after successful compaction
+      // Update state to reflect post-compaction token count
+      if (result.success) {
+        this.state.tokenUsage.used = result.tokensAfter;
+        console.debug('[TaskRunner] Token state invalidated after compaction', {
+          before: result.tokensBefore,
+          after: result.tokensAfter,
+        });
+      }
+
       await this.emitBackgroundEvent(
         `Context compacted at turn ${turnIndex}${usageNote}`,
         'info'
       );
-      return true;
+      return result.success;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn('Auto-compact failed:', error);
@@ -673,6 +692,39 @@ export class TaskRunner {
       );
       return false;
     }
+  }
+
+  /**
+   * Notify UI about compaction completion (T031)
+   */
+  private async notifyCompactionComplete(result: CompactionResult): Promise<void> {
+    const compactionCount = this.session.getCompactionCount();
+
+    const data: CompactionCompletedEvent = {
+      success: result.success,
+      tokensBefore: result.tokensBefore,
+      tokensAfter: result.tokensAfter,
+      itemsTrimmed: result.itemsTrimmed,
+      compactionCount,
+      triggerReason: result.triggerReason,
+      error: result.error,
+    };
+
+    await this.emitEvent({
+      type: 'CompactionCompleted',
+      data,
+    });
+
+    // Log compaction metrics for debugging (FR-012)
+    console.debug('[Compaction] Completed', {
+      success: result.success,
+      tokensBefore: result.tokensBefore,
+      tokensAfter: result.tokensAfter,
+      tokensSaved: result.tokensBefore - result.tokensAfter,
+      itemsTrimmed: result.itemsTrimmed,
+      compactionCount,
+      triggerReason: result.triggerReason,
+    });
   }
 
   /**
