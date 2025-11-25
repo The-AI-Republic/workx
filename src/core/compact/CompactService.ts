@@ -65,13 +65,15 @@ export class CompactService {
    * @param trigger - What triggered this compaction
    * @param modelClient - Model client for LLM-based summarization
    * @param tokensBefore - Current token count (for metrics)
+   * @param baseInstructions - Base instructions (agent_prompt.md) to include in summarization request
    * @returns CompactionResult with success/failure and metrics
    */
   async compact(
     history: ResponseItem[],
     trigger: CompactionTrigger,
     modelClient: ModelClient,
-    tokensBefore: number = 0
+    tokensBefore: number = 0,
+    baseInstructions?: string
   ): Promise<CompactionResult> {
     console.debug('[Compaction] Starting', {
       trigger,
@@ -87,7 +89,7 @@ export class CompactService {
     while (retriesUsed <= this.config.maxRetries) {
       try {
         // Generate summary using embedded streaming logic
-        const summaryText = await this.generateSummaryWithModel(workingHistory, modelClient);
+        const summaryText = await this.generateSummaryWithModel(workingHistory, modelClient, baseInstructions);
 
         // Collect and select user messages
         const userMessages = this.summaryGenerator.collectUserMessages(workingHistory);
@@ -241,11 +243,13 @@ export class CompactService {
    *
    * @param history - Conversation history to summarize
    * @param modelClient - Model client for LLM calls
+   * @param baseInstructions - Base instructions (agent_prompt.md) to include in request
    * @returns Generated summary text
    */
   private async generateSummaryWithModel(
     history: ResponseItem[],
-    modelClient: ModelClient
+    modelClient: ModelClient,
+    baseInstructions?: string
   ): Promise<string> {
     // Build summary request: history + summarization prompt
     const summaryRequest: ResponseItem[] = [
@@ -258,9 +262,11 @@ export class CompactService {
     ];
 
     // Stream the response and collect text
+    // Include base_instructions_override so the compact LLM has full agent context
     const stream = await modelClient.stream({
       input: summaryRequest,
       tools: [], // No tools needed for summarization
+      base_instructions_override: baseInstructions,
     });
 
     let summaryText = '';

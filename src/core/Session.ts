@@ -483,12 +483,16 @@ export class Session {
       };
     }
 
+    // Get base instructions from turn context (same as TurnManager does for normal turns)
+    const baseInstructions = this.turnContext?.getBaseInstructions?.();
+
     // Use CompactService for LLM-based compaction
     const result = await this.compactService.compact(
       items,
       trigger,
       modelClient,
-      tokensBefore
+      tokensBefore,
+      baseInstructions
     );
 
     if (result.success && result.newHistory) {
