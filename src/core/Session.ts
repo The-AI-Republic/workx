@@ -491,11 +491,9 @@ export class Session {
       tokensBefore
     );
 
-    if (result.success && result.summaryText) {
-      // Build and replace history with compacted version
-      const compacted = this.compactService.buildCompactedHistory(items, result.summaryText);
-      const newHistory = this.compactService.getHistoryReconstructor().toResponseItems(compacted);
-      this.sessionState.replaceHistory(newHistory);
+    if (result.success && result.newHistory) {
+      // Replace history with compacted version from CompactService
+      this.sessionState.replaceHistory(result.newHistory);
 
       // Update compaction state
       const tokensSaved = result.tokensBefore - result.tokensAfter;

@@ -61,6 +61,9 @@ export interface CompactionResult {
   /** Generated summary text (only if success=true) */
   summaryText?: string;
 
+  /** Reconstructed history as ResponseItems (only if success=true) */
+  newHistory?: ResponseItem[];
+
   /** Error message (only if success=false) */
   error?: string;
 

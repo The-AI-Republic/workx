@@ -88,14 +88,6 @@ export class CompactService {
       try {
         // Generate summary using embedded streaming logic
         const summaryText = await this.generateSummaryWithModel(workingHistory, modelClient);
-        const summaryResponse = {
-          success: true,
-          summaryText: summaryText || '',
-        };
-
-        if (!summaryResponse.success) {
-          throw new Error(summaryResponse.error || 'Summary generation failed');
-        }
 
         // Collect and select user messages
         const userMessages = this.summaryGenerator.collectUserMessages(workingHistory);
@@ -106,7 +98,7 @@ export class CompactService {
 
         // Format summary with prefix
         const formattedSummary = this.summaryGenerator.formatSummaryWithPrefix(
-          summaryResponse.summaryText || ''
+          summaryText || ''
         );
 
         // Build compacted history
@@ -127,6 +119,7 @@ export class CompactService {
           tokensAfter,
           itemsTrimmed,
           summaryText: formattedSummary,
+          newHistory,
           retriesUsed,
           triggerReason: trigger,
         };
