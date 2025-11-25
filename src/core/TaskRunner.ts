@@ -258,7 +258,6 @@ export class TaskRunner {
     let turnCount = 0;
     let lastAgentMessage: string | undefined;
     let compactionPerformed = false;
-    let autoCompactAttempted = false;
     let totalTokenUsage: TokenUsage | undefined;
     let lastTokenUsage: TokenUsage | undefined;
 
@@ -313,13 +312,11 @@ export class TaskRunner {
         turnCount += 1;
         this.state.currentTurnIndex = turnCount;
 
-        if (
-          processResult.tokenLimitReached &&
-          this.options.autoCompact &&
-          !autoCompactAttempted
-        ) {
-          compactionPerformed = await this.attemptAutoCompact(turnCount, totalTokenUsage);
-          autoCompactAttempted = true;
+        if (processResult.tokenLimitReached && this.options.autoCompact) {
+          const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
+          if (compacted) {
+            compactionPerformed = true;
+          }
         }
 
         if (processResult.taskComplete) {
