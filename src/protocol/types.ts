@@ -94,6 +94,7 @@ export type Op =
   | { type: 'ListMcpTools' }
   | { type: 'ListCustomPrompts' }
   | { type: 'Compact' }
+  | { type: 'ManualCompact' } // Manual compaction trigger from UI
   | {
       type: 'Review';
       review_request: ReviewRequest;

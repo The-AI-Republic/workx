@@ -63,7 +63,8 @@ export type EventMsg =
   | { type: 'ExitedReviewMode'; data: ExitedReviewModeEvent }
   | { type: 'Notification'; data: NotificationEvent }
   | { type: 'Interrupted' }
-  | { type: 'TaskFailed'; data: TaskFailedEvent };
+  | { type: 'TaskFailed'; data: TaskFailedEvent }
+  | { type: 'CompactionCompleted'; data: CompactionCompletedEvent };
 
 // Individual event payload types
 
@@ -331,5 +332,25 @@ export interface NotificationEvent {
 
 export interface TaskFailedEvent {
   reason: string;
+  error?: string;
+}
+
+/**
+ * Event emitted when chat history compaction completes
+ */
+export interface CompactionCompletedEvent {
+  /** Whether compaction succeeded */
+  success: boolean;
+  /** Token count before compaction */
+  tokensBefore: number;
+  /** Token count after compaction */
+  tokensAfter: number;
+  /** Number of history items trimmed */
+  itemsTrimmed: number;
+  /** Total number of compactions in this session */
+  compactionCount: number;
+  /** What triggered this compaction */
+  triggerReason: 'auto' | 'manual';
+  /** Error message if compaction failed */
   error?: string;
 }

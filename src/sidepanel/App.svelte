@@ -27,6 +27,13 @@
   let currentTabId: number = -1; // Track current session's bound tab
   let agentReady = false;
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string } = { ready: false };
+  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = {
+    show: false,
+    tokensSaved: 0,
+    compactionCount: 0,
+    isWarning: false,
+  };
+  let showCompactTooltip = false;
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -346,6 +353,36 @@
           }];
         }
         break;
+
+      // Handle compaction completed notification (T032, T033)
+      case 'CompactionCompleted':
+        if ('data' in msg && msg.data) {
+          const data = msg.data as {
+            success: boolean;
+            tokensBefore: number;
+            tokensAfter: number;
+            compactionCount: number;
+            error?: string;
+          };
+
+          if (data.success) {
+            const tokensSaved = data.tokensBefore - data.tokensAfter;
+            const isWarning = data.compactionCount > 1; // Multi-compaction warning (FR-008)
+
+            compactionNotification = {
+              show: true,
+              tokensSaved,
+              compactionCount: data.compactionCount,
+              isWarning,
+            };
+
+            // Auto-hide notification after 5 seconds
+            setTimeout(() => {
+              compactionNotification = { ...compactionNotification, show: false };
+            }, 5000);
+          }
+        }
+        break;
     }
   }
 
@@ -459,6 +496,42 @@
     // Handle auth updates if needed
   }
 
+  /**
+   * Trigger manual compaction (T034, T035)
+   */
+  async function triggerManualCompaction() {
+    if (isProcessing) {
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Cannot compact while processing. Please wait for the current task to complete.',
+        timestamp: Date.now(),
+      }];
+      return;
+    }
+
+    try {
+      await router.sendSubmission({
+        id: `compact_${Date.now()}`,
+        op: {
+          type: 'ManualCompact',
+        },
+      });
+
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Manual compaction initiated...',
+        timestamp: Date.now(),
+      }];
+    } catch (error) {
+      console.error('Failed to trigger manual compaction:', error);
+      messages = [...messages, {
+        type: 'agent',
+        content: 'Failed to trigger compaction. Please try again.',
+        timestamp: Date.now(),
+      }];
+    }
+  }
+
   async function startNewConversation() {
     // Clear UI state
     messages = [];
@@ -518,6 +591,28 @@
         </div>
       </div>
 
+      <!-- Compaction Notification (T032, T033) -->
+      {#if compactionNotification.show}
+        <div class="compaction-notification {compactionNotification.isWarning ? 'warning' : 'success'}">
+          <span class="notification-icon">
+            {#if compactionNotification.isWarning}⚠️{:else}✓{/if}
+          </span>
+          <span class="notification-text">
+            Context compacted: saved ~{Math.round(compactionNotification.tokensSaved / 1000)}k tokens
+            {#if compactionNotification.isWarning}
+              <span class="warning-text">
+                (#{compactionNotification.compactionCount} - accuracy may be reduced)
+              </span>
+            {/if}
+          </span>
+          <button
+            class="notification-close"
+            on:click={() => compactionNotification = { ...compactionNotification, show: false }}
+            aria-label="Dismiss notification"
+          >×</button>
+        </div>
+      {/if}
+
       <!-- Messages - scrollable area -->
       <div class="messages-container" bind:this={scrollContainer}>
         {#if showWelcome}
@@ -568,6 +663,28 @@
 
         <!-- Function menu -->
         <div class="function-menu">
+          <!-- Manual Compaction Button (T034) -->
+          <button
+            class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+            on:click={triggerManualCompaction}
+            on:mouseenter={() => showCompactTooltip = true}
+            on:mouseleave={() => showCompactTooltip = false}
+            aria-label="Compact History"
+            disabled={isProcessing}
+          >
+            <!-- Compress/Archive Icon SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+
+            <!-- Tooltip -->
+            {#if showCompactTooltip}
+              <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+                Compact History
+              </div>
+            {/if}
+          </button>
+
           <!-- New Conversation Button -->
           <button
             class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
@@ -743,5 +860,78 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* Compaction notification styles (T032) */
+  .compaction-notification {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    animation: slideIn 0.3s ease;
+    font-size: 0.85rem;
+  }
+
+  .compaction-notification.success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid var(--color-term-dim-green);
+    color: var(--color-term-bright-green);
+  }
+
+  .compaction-notification.warning {
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid var(--color-term-yellow);
+    color: var(--color-term-yellow);
+  }
+
+  .notification-icon {
+    flex-shrink: 0;
+  }
+
+  .notification-text {
+    flex: 1;
+  }
+
+  .warning-text {
+    opacity: 0.8;
+    font-size: 0.8rem;
+  }
+
+  .notification-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-size: 1.1rem;
+    opacity: 0.7;
+  }
+
+  .notification-close:hover {
+    opacity: 1;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Disabled button state */
+  .function-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .function-button:disabled:hover {
+    transform: none;
   }
 </style>

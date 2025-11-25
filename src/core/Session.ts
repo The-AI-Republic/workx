@@ -23,6 +23,11 @@ import { ActiveTurn } from './session/state/ActiveTurn';
 import type { TokenUsageInfo, RunningTask, RateLimitSnapshot, TurnAbortReason, InitialHistory } from './session/state/types';
 import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotCompressor';
 
+// Compaction imports
+import { CompactService } from './compact/CompactService';
+import type { CompactionResult, CompactionTrigger } from './compact/types';
+import type { ModelClient } from '../models/ModelClient';
+
 /**
  * Execution state of the session
  */
@@ -52,6 +57,7 @@ export class Session {
   private toolUsageStats: Map<string, number> = new Map();
   private errorHistory: Array<{timestamp: number, error: string, context?: any}> = [];
   private interruptRequested: boolean = false;
+  private compactService: CompactService;
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -76,6 +82,7 @@ export class Session {
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
     this.toolRegistry = toolRegistry ?? null; // Tool registry from BrowserxAgent
+    this.compactService = new CompactService(); // Initialize compaction service
 
     // Initialize services (merged from initialize() method)
     if (services) {
@@ -447,16 +454,76 @@ export class Session {
   }
 
   /**
-   * Compact conversation history to save tokens
+   * Compact conversation history using LLM-based summarization
+   * Requires modelClient - if not provided, no compaction occurs
+   *
+   * @param trigger - What triggered the compaction ('auto' or 'manual')
+   * @param modelClient - Model client for LLM-based summarization (required for compaction)
+   * @returns CompactionResult with metrics
    */
-  async compact(): Promise<void> {
+  async compact(
+    trigger: CompactionTrigger = 'auto',
+    modelClient?: ModelClient
+  ): Promise<CompactionResult> {
     const items = this.sessionState.historySnapshot();
-    const keepCount = 20;
-    if (items.length > keepCount) {
-      const kept = items.slice(-keepCount);
-      this.sessionState = new SessionState();
-      this.sessionState.recordItems(kept);
+    const tokenInfo = this.getTokenUsageInfo();
+    const tokensBefore = tokenInfo?.total_tokens ?? 0;
+
+    // If no modelClient provided, do not compact - return without changes
+    if (!modelClient) {
+      console.warn('[Session] compact() called without modelClient - skipping compaction');
+      return {
+        success: false,
+        tokensBefore,
+        tokensAfter: tokensBefore,
+        itemsTrimmed: 0,
+        retriesUsed: 0,
+        triggerReason: trigger,
+        error: 'No modelClient provided for LLM-based summarization',
+      };
     }
+
+    // Get base instructions from turn context (same as TurnManager does for normal turns)
+    const baseInstructions = this.turnContext?.getBaseInstructions?.();
+
+    // Use CompactService for LLM-based compaction
+    const result = await this.compactService.compact(
+      items,
+      trigger,
+      modelClient,
+      tokensBefore,
+      baseInstructions
+    );
+
+    if (result.success && result.newHistory) {
+      // Replace history with compacted version from CompactService
+      this.sessionState.replaceHistory(result.newHistory);
+
+      // Update compaction state
+      const tokensSaved = result.tokensBefore - result.tokensAfter;
+      this.sessionState.incrementCompactionCount(tokensSaved);
+    }
+
+    return result;
+  }
+
+  /**
+   * Check if compaction should be triggered based on current token usage
+   *
+   * @param contextWindow - Model's context window size
+   * @returns true if compaction should be triggered
+   */
+  shouldCompact(contextWindow: number): boolean {
+    const tokenInfo = this.getTokenUsageInfo();
+    const currentTokens = tokenInfo?.total_tokens ?? 0;
+    return this.compactService.shouldCompact(currentTokens, contextWindow);
+  }
+
+  /**
+   * Get compaction count for this session
+   */
+  getCompactionCount(): number {
+    return this.sessionState.getCompactionCount();
   }
 
   /**
@@ -615,6 +682,14 @@ export class Session {
    */
   addTokenUsage(tokens: number): void {
     this.sessionState.addTokenUsage(tokens);
+  }
+
+  /**
+   * Get token usage info
+   * @returns Token usage information or undefined if not set
+   */
+  getTokenUsageInfo(): TokenUsageInfo | undefined {
+    return this.sessionState.getTokenInfo();
   }
 
   /**
@@ -1163,7 +1238,7 @@ export class Session {
    * Used when user explicitly interrupts execution.
    */
   async interruptTask(): Promise<void> {
-    await this.abortAllTasks('user_interrupt');
+    await this.abortAllTasks('UserInterrupt');
   }
 
   // ========================================================================

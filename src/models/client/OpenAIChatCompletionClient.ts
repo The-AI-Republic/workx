@@ -21,6 +21,8 @@ import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 import { GeminiLogger } from '../../utils/logger';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
 
+import type { IModelConfig } from '../../config/types';
+
 /**
  * Authentication configuration for OpenAI Chat Completion API
  */
@@ -37,6 +39,8 @@ export interface OpenAIChatCompletionConfig {
   modelFamily: ModelFamily;
   /** Model provider information */
   provider: ModelProviderInfo;
+  /** Model configuration from AgentConfig */
+  modelConfig?: IModelConfig;
 }
 
 /**
@@ -80,6 +84,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       conversationId: config.conversationId,
       modelFamily: config.modelFamily,
       provider: config.provider,
+      modelConfig: config.modelConfig,
     }, retryConfig);
 
     // Gemini through Google AI Studio expects API key via `key` query param / X-Goog-Api-Key header.
@@ -468,10 +473,13 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     // NEW APPROACH: Create ONE unified message item with all accumulated parts
     // (reasoning_content, content, tool_calls) instead of separate items
     if (finishReason) {
+      // Extract usage data - some APIs (like Moonshot) put usage in choices[0].usage instead of top-level usage
+      const usage = chatEvent.usage || chatEvent.choices?.[0]?.usage;
+
       const completedEvent: ResponseEvent = {
         type: 'Completed',
         responseId: chatEvent.id || '',
-        tokenUsage: chatEvent.usage ? this.convertChatCompletionUsageToTokenUsage(chatEvent.usage) : undefined,
+        tokenUsage: usage ? this.convertChatCompletionUsageToTokenUsage(usage) : undefined,
       };
 
       // Check what we have accumulated
@@ -573,7 +581,8 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
   private convertChatCompletionUsageToTokenUsage(usage: any): TokenUsage {
     return {
       input_tokens: usage.prompt_tokens || 0,
-      cached_input_tokens: usage.prompt_tokens_details?.cached_tokens || 0,
+      // Support both OpenAI format (prompt_tokens_details.cached_tokens) and Moonshot format (cached_tokens)
+      cached_input_tokens: usage.prompt_tokens_details?.cached_tokens || usage.cached_tokens || 0,
       output_tokens: usage.completion_tokens || 0,
       reasoning_output_tokens: usage.completion_tokens_details?.reasoning_tokens || 0,
       total_tokens: usage.total_tokens || 0,

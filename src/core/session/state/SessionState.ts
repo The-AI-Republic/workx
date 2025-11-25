@@ -15,6 +15,10 @@ export interface SessionStateExport {
   tokenInfo?: TokenUsageInfo;
   latestRateLimits?: RateLimitSnapshot;
   tabId?: number; // Add tabId to export format
+  // Compaction state fields
+  compactionCount?: number;
+  lastCompactionTime?: number;
+  lastCompactionTokensSaved?: number;
 }
 
 /**
@@ -37,12 +41,25 @@ export class SessionState {
   /** Bound tab ID (-1 = no tab attached, >0 = bound) */
   private tabId: number;
 
+  // Compaction tracking fields
+  /** Number of successful compactions this session */
+  private compactionCount: number;
+
+  /** Unix timestamp of last compaction */
+  private lastCompactionTime?: number;
+
+  /** Tokens saved in last compaction */
+  private lastCompactionTokensSaved?: number;
+
   constructor() {
     this.approvedCommands = new Set();
     this.history = [];
     this.tokenInfo = undefined;
     this.latestRateLimits = undefined;
     this.tabId = -1; // Initialize with tabId = -1
+    this.compactionCount = 0;
+    this.lastCompactionTime = undefined;
+    this.lastCompactionTokensSaved = undefined;
   }
 
   // ===== History Management =====
@@ -135,6 +152,14 @@ export class SessionState {
     }
   }
 
+  /**
+   * Get token usage info
+   * @returns Token usage information or undefined if not set
+   */
+  getTokenInfo(): TokenUsageInfo | undefined {
+    return this.tokenInfo ? { ...this.tokenInfo } : undefined;
+  }
+
   // ===== Rate Limit Tracking =====
 
   /**
@@ -190,6 +215,53 @@ export class SessionState {
     return this.tabId !== -1;
   }
 
+  // ===== Compaction State Management =====
+
+  /**
+   * Increment compaction count and record timestamp
+   * @param tokensSaved Optional tokens saved in this compaction
+   */
+  incrementCompactionCount(tokensSaved?: number): void {
+    this.compactionCount++;
+    this.lastCompactionTime = Date.now();
+    if (tokensSaved !== undefined) {
+      this.lastCompactionTokensSaved = tokensSaved;
+    }
+  }
+
+  /**
+   * Get number of compactions performed this session
+   * @returns Compaction count
+   */
+  getCompactionCount(): number {
+    return this.compactionCount;
+  }
+
+  /**
+   * Get timestamp of last compaction
+   * @returns Unix timestamp or undefined if no compaction occurred
+   */
+  getLastCompactionTime(): number | undefined {
+    return this.lastCompactionTime;
+  }
+
+  /**
+   * Get tokens saved in last compaction
+   * @returns Token count or undefined
+   */
+  getLastCompactionTokensSaved(): number | undefined {
+    return this.lastCompactionTokensSaved;
+  }
+
+  /**
+   * Reset compaction state (for new sessions)
+   */
+  resetCompactionState(): void {
+    this.compactionCount = 0;
+    this.lastCompactionTime = undefined;
+    this.lastCompactionTokensSaved = undefined;
+  }
+
   // ===== Export/Import =====
 
   /**
@@ -207,6 +279,10 @@ export class SessionState {
         ? { ...this.latestRateLimits }
         : undefined,
       tabId: this.tabId, // Include tabId in export
+      // Include compaction state in export
+      compactionCount: this.compactionCount,
+      lastCompactionTime: this.lastCompactionTime,
+      lastCompactionTokensSaved: this.lastCompactionTokensSaved,
     };
   }
 
@@ -241,6 +317,17 @@ export class SessionState {
     // Restore tabId (default to -1 if not present for backward compatibility)
     if (data.tabId !== undefined) {
       state.tabId = data.tabId;
+    }
+
+    // Restore compaction state
+    if (data.compactionCount !== undefined) {
+      state.compactionCount = data.compactionCount;
+    }
+    if (data.lastCompactionTime !== undefined) {
+      state.lastCompactionTime = data.lastCompactionTime;
+    }
+    if (data.lastCompactionTokensSaved !== undefined) {
+      state.lastCompactionTokensSaved = data.lastCompactionTokensSaved;
     }
 
     return state;
