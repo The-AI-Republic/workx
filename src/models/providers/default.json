@@ -264,8 +264,8 @@
         "releaseDate": "2025-01-09",
         "deprecated": false,
         "pricing": {
-          "inputToken": "$1.20 / 1M tokens",
-          "outputToken": "$1.20 / 1M tokens",
+          "inputToken": "$0.60 / 1M tokens",
+          "outputToken": "$2.50 / 1M tokens",
           "link": "https://fireworks.ai/models/fireworks/kimi-k2-thinking"
         }
       }
