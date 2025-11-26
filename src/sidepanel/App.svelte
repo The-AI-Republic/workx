@@ -27,6 +27,12 @@
   let currentTabId: number = -1; // Track current session's bound tab
   let agentReady = false;
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string } = { ready: false };
+  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = {
+    show: false,
+    tokensSaved: 0,
+    compactionCount: 0,
+    isWarning: false,
+  };
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -143,7 +149,25 @@
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
 
+    // ========================================================================
+    // KEEP-ALIVE: Send periodic pings to prevent service worker termination
+    // ========================================================================
+    // Chrome terminates service workers after ~30 seconds of inactivity.
+    // While the side panel is open, send pings every 20 seconds to keep it alive.
+    // This ensures responsive UI and prevents state loss.
+    // ========================================================================
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        await router.send(MessageType.PING);
+        console.log('[App] Keep-alive ping sent');
+      } catch (error) {
+        console.warn('[App] Keep-alive ping failed:', error);
+      }
+    }, 25000); // Every 25 seconds
+
     return () => {
+      // Clean up keep-alive interval when panel closes
+      clearInterval(keepAliveInterval);
       router?.cleanup();
     };
   });
@@ -327,6 +351,36 @@
             content: `Error: ${msg.data.message}`,
             timestamp: Date.now(),
           }];
+        }
+        break;
+
+      // Handle compaction completed notification (T032, T033)
+      case 'CompactionCompleted':
+        if ('data' in msg && msg.data) {
+          const data = msg.data as {
+            success: boolean;
+            tokensBefore: number;
+            tokensAfter: number;
+            compactionCount: number;
+            error?: string;
+          };
+
+          if (data.success) {
+            const tokensSaved = data.tokensBefore - data.tokensAfter;
+            const isWarning = data.compactionCount > 1; // Multi-compaction warning (FR-008)
+
+            compactionNotification = {
+              show: true,
+              tokensSaved,
+              compactionCount: data.compactionCount,
+              isWarning,
+            };
+
+            // Auto-hide notification after 5 seconds
+            setTimeout(() => {
+              compactionNotification = { ...compactionNotification, show: false };
+            }, 5000);
+          }
         }
         break;
     }
@@ -515,119 +569,137 @@
 
 <div class="terminal-layout">
   <TerminalContainer>
-    <!-- Status Line -->
-    <div class="status-line flex justify-between mb-2">
-      <TerminalMessage type="system" content="Browserx (Alpha)" />
-      <div class="flex items-center space-x-2">
-        {#if isProcessing}
-          <TerminalMessage type="warning" content="[PROCESSING]" />
-        {/if}
-        {#if !isConnected}
-          <TerminalMessage type="error" content="[DISCONNECTED]" />
-        {:else if !agentReady}
-          <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
-        {/if}
+    <div class="terminal-content-container">
+      <!-- Status Line -->
+      <div class="status-line flex justify-between mb-2">
+        <TerminalMessage type="system" content="Browserx (Alpha)" />
+        <div class="flex items-center space-x-2">
+          {#if isProcessing}
+            <TerminalMessage type="warning" content="[PROCESSING]" />
+          {/if}
+          {#if !isConnected}
+            <TerminalMessage type="error" content="[DISCONNECTED]" />
+          {:else if !agentReady}
+            <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
+          {/if}
+        </div>
       </div>
-    </div>
 
-    <!-- Messages - scrollable area -->
-    <div class="messages-container" bind:this={scrollContainer}>
-      {#if showWelcome}
-        <div class="welcome-screen" role="presentation">
-          <pre class="welcome-ascii">
-            {#each welcomeAsciiLines as line, index (index)}
-              <span class={line.color}>{line.text}</span>
-            {/each}
-          </pre>
-          <p class="welcome-subtitle text-term-bright-green">
-            General in-browser AI agent for work tasks
-          </p>
-          <p class="welcome-subtitle text-term-dim-green">
-            Developed and supported by AI Republic
-          </p>
-          <a
-            class="welcome-link"
-            href="https://airepublic.com"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            Learn more
-          </a>
+      <!-- Compaction Notification (T032, T033) -->
+      {#if compactionNotification.show}
+        <div class="compaction-notification {compactionNotification.isWarning ? 'warning' : 'success'}">
+          <span class="notification-icon">
+            {#if compactionNotification.isWarning}⚠️{:else}✓{/if}
+          </span>
+          <span class="notification-text">
+            Context compacted: saved ~{Math.round(compactionNotification.tokensSaved / 1000)}k tokens
+            {#if compactionNotification.isWarning}
+              <span class="warning-text">
+                (#{compactionNotification.compactionCount} - accuracy may be reduced)
+              </span>
+            {/if}
+          </span>
+          <button
+            class="notification-close"
+            on:click={() => compactionNotification = { ...compactionNotification, show: false }}
+            aria-label="Dismiss notification"
+          >×</button>
         </div>
       {/if}
 
-      {#each messages as message (message.timestamp)}
-        <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
-      {/each}
+      <!-- Messages - scrollable area -->
+      <div class="messages-container" bind:this={scrollContainer}>
+        {#if showWelcome}
+          <div class="welcome-screen" role="presentation">
+            <pre class="welcome-ascii">
+              {#each welcomeAsciiLines as line, index (index)}
+                <span class={line.color}>{line.text}</span>
+              {/each}
+            </pre>
+            <p class="welcome-subtitle text-term-bright-green">
+              General in-browser AI agent for work tasks
+            </p>
+            <p class="welcome-subtitle text-term-dim-green">
+              Developed and supported by AI Republic
+            </p>
+            <a
+              class="welcome-link"
+              href="https://airepublic.com"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Learn more
+            </a>
+          </div>
+        {/if}
 
-      {#each processedEvents as event (event.id)}
-        <EventDisplay {event} />
-      {/each}
-    </div>
+        {#each messages as message (message.timestamp)}
+          <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
+        {/each}
 
-    <!-- Input area -->
-    <TerminalInput
-      bind:value={inputText}
-      onSubmit={sendMessage}
-      placeholder={isProcessing ? "Processing..." : "Enter command..."}
-      disabled={isProcessing} />
-    <!-- Fixed bottom controls container -->
-    <div class="bottom-controls">
-      <!-- Input area -->
-      <div class="input-area">
-        <MessageInput
-          bind:value={inputText}
-          onSubmit={sendMessage}
-          tabId={currentTabId}
-          placeholder=">> Enter command..."
-          on:tabSelected={handleTabSelected}
-        />
+        {#each processedEvents as event (event.id)}
+          <EventDisplay {event} />
+        {/each}
       </div>
 
-      <!-- Function menu -->
-      <div class="function-menu">
-        <!-- New Conversation Button -->
-        <button
-          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-          on:click={startNewConversation}
-          on:mouseenter={() => showNewConvTooltip = true}
-          on:mouseleave={() => showNewConvTooltip = false}
-          aria-label="Start New Conversation"
-        >
-          <!-- New Conversation Icon SVG (Plus/Refresh) -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
+      <!-- Fixed bottom controls container -->
+      <div class="bottom-controls">
+        <!-- Input area -->
+        <div class="input-area">
+          <MessageInput
+            bind:value={inputText}
+            onSubmit={sendMessage}
+            tabId={currentTabId}
+            placeholder=">> Enter command..."
+            on:tabSelected={handleTabSelected}
+          />
+        </div>
 
-          <!-- Tooltip -->
-          {#if showNewConvTooltip}
-            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-              New Conversation
-            </div>
-          {/if}
-        </button>
+        <!-- Function menu -->
+        <div class="function-menu">
+          <!-- New Conversation Button -->
+          <button
+            class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+            on:click={startNewConversation}
+            on:mouseenter={() => showNewConvTooltip = true}
+            on:mouseleave={() => showNewConvTooltip = false}
+            aria-label="Start New Conversation"
+          >
+            <!-- New Conversation Icon SVG (Plus/Refresh) -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
 
-        <!-- Settings Button -->
-        <button
-          class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-          on:click={toggleSettings}
-          on:mouseenter={() => showTooltip = true}
-          on:mouseleave={() => showTooltip = false}
-          aria-label="Settings"
-        >
-          <!-- Gear Icon SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+            <!-- Tooltip -->
+            {#if showNewConvTooltip}
+              <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+                New Conversation
+              </div>
+            {/if}
+          </button>
 
-          <!-- Tooltip -->
-          {#if showTooltip}
-            <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-              Settings
-            </div>
-          {/if}
-        </button>
+          <!-- Settings Button -->
+          <button
+            class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
+            on:click={toggleSettings}
+            on:mouseenter={() => showTooltip = true}
+            on:mouseleave={() => showTooltip = false}
+            aria-label="Settings"
+          >
+            <!-- Gear Icon SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+
+            <!-- Tooltip -->
+            {#if showTooltip}
+              <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
+                Settings
+              </div>
+            {/if}
+          </button>
+        </div>
       </div>
     </div>
   </TerminalContainer>
@@ -651,6 +723,15 @@
   .terminal-layout {
     height: 100vh;
     overflow: hidden;
+  }
+
+  .terminal-content-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
   }
 
   .status-line {
@@ -768,5 +849,78 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* Compaction notification styles (T032) */
+  .compaction-notification {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    animation: slideIn 0.3s ease;
+    font-size: 0.85rem;
+  }
+
+  .compaction-notification.success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid var(--color-term-dim-green);
+    color: var(--color-term-bright-green);
+  }
+
+  .compaction-notification.warning {
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid var(--color-term-yellow);
+    color: var(--color-term-yellow);
+  }
+
+  .notification-icon {
+    flex-shrink: 0;
+  }
+
+  .notification-text {
+    flex: 1;
+  }
+
+  .warning-text {
+    opacity: 0.8;
+    font-size: 0.8rem;
+  }
+
+  .notification-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-size: 1.1rem;
+    opacity: 0.7;
+  }
+
+  .notification-close:hover {
+    opacity: 1;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Disabled button state */
+  .function-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .function-button:disabled:hover {
+    transform: none;
   }
 </style>

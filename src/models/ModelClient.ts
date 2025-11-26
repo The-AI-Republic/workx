@@ -8,6 +8,7 @@ import type { ResponseEvent } from './types/ResponseEvent';
 import type { StreamAttemptError } from './types/StreamAttemptError';
 import type { ResponseStream } from './ResponseStream';
 import type { RateLimitSnapshot } from './types/RateLimits';
+import type { IModelConfig } from '../config/types';
 
 /**
  * Request configuration for completion API calls
@@ -148,6 +149,7 @@ export class ModelClientError extends Error {
  */
 export abstract class ModelClient {
   protected retryConfig: RetryConfig;
+  protected modelConfig?: IModelConfig;
 
   constructor(retryConfig?: Partial<RetryConfig>) {
     this.retryConfig = {
@@ -232,8 +234,19 @@ export abstract class ModelClient {
 
   /**
    * Get model context window size
+   * Reads from IModelConfig if available, otherwise subclasses can override
    */
-  abstract getModelContextWindow(): number | undefined;
+  getModelContextWindow(): number | undefined {
+    return this.modelConfig?.contextWindow;
+  }
+
+  /**
+   * Set model configuration
+   * Allows updating the model config after construction
+   */
+  setModelConfig(config: IModelConfig | undefined): void {
+    this.modelConfig = config;
+  }
 
   /**
    * Get auto-compact token limit for this model

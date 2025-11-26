@@ -270,7 +270,38 @@ export type CacheErrorResponse =
  */
 export const CACHE_TOOL_DEFINITION = {
   name: 'cache_storage_tool',
-  description: 'Cache intermediate results during complex multi-step operations to avoid context overflow. Store processed data with concise metadata (max 500 chars), retrieve selectively, and manage session-scoped cache lifecycle. Session quota: 200MB. Auto-evicts oldest 50% when quota reached. USAGE: For write/update - MUST provide both "data" and "description" fields. For read/delete - MUST provide "storageKey". For list - only "action" needed.',
+  description: `Cache intermediate results during complex multi-step operations to avoid context overflow.
+
+## WHEN TO USE CACHE
+
+Use the cache tool when:
+1. **Processing 5+ similar items** (emails, documents, records, etc.)
+2. **Single result size > 3KB** and used in later steps (not immediate reasoning)
+3. **Multi-step workflows** requiring aggregation or pause/resume
+
+## DESCRIPTION GUIDELINES (IMPORTANT)
+
+**MUST keep descriptions under 500 characters.** Focus on:
+- **What**: Type of data cached
+- **Why**: Purpose/context (e.g., "customer support tickets re: pricing")
+- **Size**: Approximate data size
+
+**Good Examples**:
+- ✅ "Email summaries batch 1-20: customer support tickets re pricing, 15KB total"
+- ✅ "Processed order data for Q4 2024 analysis, contains 50 order objects with metadata, 120KB"
+- ✅ "Gmail thread summaries (unread), filtered for action items, 8 threads, 22KB"
+
+**Bad Examples**:
+- ❌ "Email summaries" (too vague, no context)
+- ❌ Verbose multi-sentence descriptions over 500 chars
+
+## QUOTA MANAGEMENT
+Session quota: 200MB. Auto-evicts oldest 50% when quota reached. You don't need to manually manage quota.
+
+## USAGE
+- For write/update: MUST provide both "data" and "description" fields
+- For read/delete: MUST provide "storageKey"
+- For list: only "action" needed`,
   inputSchema: {
     type: 'object',
     properties: {

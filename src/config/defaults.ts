@@ -193,10 +193,64 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
   if (partial.providers) {
     Object.entries(partial.providers).forEach(([id, provider]) => {
       if (mergedProviders[id]) {
-        // Provider exists in defaults, merge with stored values (preserve API keys)
+        // Provider exists in defaults, deep merge models array
+        const defaultProvider = mergedProviders[id];
+        const storedProvider = provider;
+
+        // Merge models: combine default models with stored models
+        const mergedModels: any[] = [];
+        const defaultModels = defaultProvider.models || [];
+        const storedModels = storedProvider.models || [];
+
+        // First, merge existing models (by modelKey)
+        for (const defaultModel of defaultModels) {
+          // Find matching stored model by modelKey
+          const storedModel = storedModels.find((m: any) => m.modelKey === defaultModel.modelKey);
+
+          if (storedModel) {
+            // Model exists in both - merge default fields with stored values
+            // Stored values take precedence (preserves user customizations)
+            mergedModels.push({
+              ...defaultModel,      // Default fields (includes new fields like serviceTier)
+              ...storedModel,       // Stored values (preserves user customizations)
+              id: storedModel.id || defaultModel.id  // Preserve existing ID
+            });
+          } else {
+            // Model only exists in defaults - add it as new
+            mergedModels.push({ ...defaultModel });
+          }
+        }
+
+        // Add any models that exist in stored config but not in defaults
+        // (e.g., user manually added models)
+        // Also check by model ID to prevent duplicates from migration issues
+        for (const storedModel of storedModels) {
+          const existsInDefaults = defaultModels.some((m: any) => m.modelKey === storedModel.modelKey);
+          const alreadyMerged = mergedModels.some((m: any) =>
+            m.modelKey === storedModel.modelKey ||
+            (m.id && storedModel.id && m.id === storedModel.id)
+          );
+          if (!existsInDefaults && !alreadyMerged) {
+            mergedModels.push({ ...storedModel });
+          }
+        }
+
+        // Final deduplication pass - remove any duplicate modelKeys
+        const seenModelKeys = new Set<string>();
+        const deduplicatedModels = mergedModels.filter((model: any) => {
+          if (seenModelKeys.has(model.modelKey)) {
+            console.warn(`[mergeWithDefaults] Removing duplicate model: ${model.modelKey} from provider: ${id}`);
+            return false;
+          }
+          seenModelKeys.add(model.modelKey);
+          return true;
+        });
+
+        // Merge provider with deep-merged models array
         mergedProviders[id] = {
-          ...mergedProviders[id],
-          ...provider
+          ...defaultProvider,
+          ...storedProvider,
+          models: deduplicatedModels
         };
       } else {
         // Provider doesn't exist in defaults, keep it anyway

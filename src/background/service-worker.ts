@@ -119,11 +119,9 @@ function setupMessageHandlers(): void {
     if (!agent) return null;
 
     const session = agent.getSession();
-    const sessionId = session.getId();
 
-    // Get current tab binding for this session
-    const tabManager = TabManager.getInstance();
-    const tabId = tabManager.getTabForSession(sessionId);
+    // Get current tab ID from session (SessionState is the source of truth)
+    const tabId = session.getTabId();
 
     return {
       sessionId: session.conversationId,
@@ -217,14 +215,16 @@ function setupMessageHandlers(): void {
     if (agent) {
       // Get the current session
       const session = agent.getSession();
-      const sessionId = session.getId();
 
       // Abort all running tasks before resetting
       await session.abortAllTasks('UserInterrupt');
 
-      // Unbind session from TabManager before reset
-      const tabManager = TabManager.getInstance();
-      await tabManager.unbindSession(sessionId);
+      // Remove tab from group if it's currently bound
+      const currentTabId = session.getTabId();
+      if (currentTabId !== -1) {
+        const tabManager = TabManager.getInstance();
+        await tabManager.removeTabFromGroup(currentTabId);
+      }
 
       // Reset the session (this will also reset tabId to -1 in session and turnContext)
       await session.reset();

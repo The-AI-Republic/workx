@@ -94,6 +94,7 @@ export type Op =
   | { type: 'ListMcpTools' }
   | { type: 'ListCustomPrompts' }
   | { type: 'Compact' }
+  | { type: 'ManualCompact' } // Manual compaction trigger from UI
   | {
       type: 'Review';
       review_request: ReviewRequest;
@@ -200,6 +201,8 @@ export type ResponseItem =
           name: string;
           arguments: string;
         };
+        /** Gemini thought signature for maintaining reasoning context across turns */
+        thoughtSignature?: string;
       }>;
     }
   | {

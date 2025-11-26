@@ -23,6 +23,7 @@ export type { ToolDefinition } from '../tools/BaseTool';
 // Provider implementations
 export { OpenAIResponsesClient, type OpenAIResponsesConfig } from './client/OpenAIResponsesClient';
 export { OpenAIChatCompletionClient, type OpenAIChatCompletionConfig } from './client/OpenAIChatCompletionClient';
+export { GoogleCompletionClient } from './client/GoogleCompletionClient';
 export { GroqClient } from './client/GroqClient';
 
 // Factory and utilities

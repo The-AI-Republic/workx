@@ -138,8 +138,11 @@ export interface SerializedDom {
  * - boundingBox → bbox (compact array [x, y, w, h])
  */
 export interface SerializedNode {
-  /** Node ID (uses CDP backendNodeId directly, no remapping) */
-  node_id: number;
+  /** Node ID in format "<frameId>:<backendNodeId>" (e.g., "1:42") */
+  node_id: string;
+
+  /** Frame ID (0 for main frame, 1-5 for iframes) */
+  frame_id: number;
 
   /** HTML tag name */
   tag: string;
@@ -158,6 +161,12 @@ export interface SerializedNode {
 
   /** Child nodes (normalized from children) */
   kids?: SerializedNode[];
+
+  /** Shadow roots (for Shadow DOM support) */
+  shadow_roots?: SerializedNode[];
+
+  /** Content document (for iframe support) */
+  content_document?: SerializedNode;
 
   /** Link href */
   href?: string;
@@ -179,6 +188,9 @@ export interface SerializedNode {
 
   /** Whether element is currently visible in viewport (>50% intersection) */
   inViewport?: boolean;
+
+  /** Scrollability indicator for LLM to identify scroll targets */
+  scrollable?: 'vertical' | 'horizontal' | 'vertical and horizontal';
 }
 
 
@@ -305,6 +317,15 @@ export interface TypeOptions {
   speed?: number; // default: 0
 
   /**
+   * Typing method (how to insert text)
+   * - "auto": Automatically detect best method based on element type (default)
+   * - "instant": CDP Input.insertText (fast, works for simple inputs/textareas)
+   * - "char-by-char": Simulate character-by-character keyboard typing (works for rich text editors)
+   * - "paste": Simulate copy-paste (Ctrl+V, works for rich text editors)
+   */
+  method?: "auto" | "instant" | "char-by-char" | "paste"; // default: "auto"
+
+  /**
    * How to finalize the input after typing
    * - "change": Fire change event (default, appropriate for most text boxes)
    * - "enter": Append Enter keystroke (useful for search boxes or chat inputs)
@@ -360,6 +381,18 @@ export interface ActionResult {
 
     /** Scroll position changed */
     scrollChanged: boolean;
+
+    /** Previous scroll position (for scroll actions) */
+    previousScrollPosition?: { x: number; y: number };
+
+    /** Current scroll position (for scroll actions) */
+    currentScrollPosition?: { x: number; y: number };
+
+    /** Actual scroll delta that occurred */
+    actualScrollDelta?: { x: number; y: number };
+
+    /** Whether scroll reached the limit (top/bottom/left/right) */
+    scrollLimitReached?: boolean;
 
     /** Form value changed */
     valueChanged: boolean;

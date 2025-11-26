@@ -24,6 +24,7 @@ import type {
   ReasoningSummaryConfig,
   OpenAiVerbosity
 } from '../types/ResponsesAPI';
+import type { IModelConfig } from '../../config/types';
 import type { RateLimitSnapshot } from '../types/RateLimits';
 import type { TokenUsage } from '../types/TokenUsage';
 import { SSEEventParser } from '../SSEEventParser';
@@ -79,12 +80,16 @@ export interface OpenAIResponsesConfig {
   modelFamily: ModelFamily;
   /** Model provider information */
   provider: ModelProviderInfo;
+  /** Model configuration from AgentConfig */
+  modelConfig?: IModelConfig;
   /** Reasoning effort configuration */
   reasoningEffort?: ReasoningEffortConfig;
   /** Reasoning summary configuration */
   reasoningSummary?: ReasoningSummaryConfig;
   /** Model verbosity setting */
   modelVerbosity?: OpenAiVerbosity;
+  /** Service tier for request prioritization (OpenAI-specific) */
+  serviceTier?: 'default' | 'flex' | 'priority';
 }
 
 /**
@@ -101,6 +106,7 @@ export class OpenAIResponsesClient extends ModelClient {
   protected reasoningEffort?: ReasoningEffortConfig;
   protected reasoningSummary?: ReasoningSummaryConfig;
   protected modelVerbosity?: OpenAiVerbosity;
+  protected serviceTier?: 'default' | 'flex' | 'priority';
   protected currentModel: string;
 
   // OpenAI SDK client instance
@@ -123,9 +129,11 @@ export class OpenAIResponsesClient extends ModelClient {
     this.conversationId = config.conversationId;
     this.modelFamily = config.modelFamily;
     this.provider = config.provider;
+    this.modelConfig = config.modelConfig;
     this.reasoningEffort = config.reasoningEffort;
     this.reasoningSummary = config.reasoningSummary;
     this.modelVerbosity = config.modelVerbosity;
+    this.serviceTier = config.serviceTier;
     this.currentModel = config.modelFamily.family;
 
     // Initialize OpenAI SDK client with provider-specific baseURL
@@ -166,9 +174,15 @@ export class OpenAIResponsesClient extends ModelClient {
     this.currentModel = model;
   }
 
-  // Return context window from modelFamily configuration
+  // Override to provide fallback for legacy hardcoded values
   getModelContextWindow(): number | undefined {
-    // Use default context windows based on model key
+    // Try base class implementation first (reads from IModelConfig)
+    const contextWindow = super.getModelContextWindow();
+    if (contextWindow) {
+      return contextWindow;
+    }
+
+    // Fallback to legacy hardcoded values for backward compatibility
     if (this.currentModel === 'gpt-5') {
       return 200000;
     } else if (this.currentModel === 'grok-4-fast-reasoning') {
@@ -314,6 +328,7 @@ export class OpenAIResponsesClient extends ModelClient {
       ...(include !== undefined && include.length > 0 && { include }), // Conditionally include
       prompt_cache_key: this.conversationId,
       text: textControls,
+      ...(this.serviceTier && { service_tier: this.serviceTier }), // Conditionally include service_tier
     };
 
     // Add reasoning parameter if model supports it

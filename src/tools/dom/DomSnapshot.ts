@@ -4,7 +4,8 @@ import type {
   RawSerializedDom,
   SerializedNode,
   SnapshotStats,
-  PageContext
+  PageContext,
+  FrameMetadata
 } from './types';
 import type { SerializationOptions } from '../../types/domTool';
 import { getTextContent, serializedNodeToHtml } from './utils';
@@ -12,11 +13,71 @@ import { SerializationPipeline } from './serializers/SerializationPipeline';
 import { DEFAULT_SERIALIZATION_OPTIONS } from '../../types/domTool';
 import type { ViewportBounds } from '../screenshot/ViewportDetector';
 
+/**
+ * Registry for managing frame metadata in multi-frame DOM snapshots
+ * Supports main frame (0) and up to 5 iframes (1-5)
+ */
+export class FrameRegistry {
+  private frames: Map<number, FrameMetadata> = new Map();
+
+  /**
+   * Register a frame with its metadata
+   */
+  addFrame(metadata: FrameMetadata): void {
+    if (metadata.frameId < 0 || metadata.frameId > 5) {
+      throw new Error(`Frame ID out of range (0-5): ${metadata.frameId}`);
+    }
+    this.frames.set(metadata.frameId, metadata);
+  }
+
+  /**
+   * Get frame metadata by frameId
+   */
+  getFrame(frameId: number): FrameMetadata | undefined {
+    return this.frames.get(frameId);
+  }
+
+  /**
+   * Check if a frame exists
+   */
+  hasFrame(frameId: number): boolean {
+    return this.frames.has(frameId);
+  }
+
+  /**
+   * Get count of iframes (excluding main frame)
+   */
+  getIframeCount(): number {
+    return Math.max(0, this.frames.size - 1); // Subtract main frame
+  }
+
+  /**
+   * Get all registered frames
+   */
+  getAllFrames(): FrameMetadata[] {
+    return Array.from(this.frames.values());
+  }
+
+  /**
+   * Get next available iframe ID (1-5)
+   * Returns null if max iframes reached
+   */
+  getNextIframeId(): number | null {
+    for (let i = 1; i <= 5; i++) {
+      if (!this.frames.has(i)) {
+        return i;
+      }
+    }
+    return null; // Max 5 iframes reached
+  }
+}
+
 export class DomSnapshot implements IDomSnapshot {
   readonly virtualDom: VirtualNode;
   readonly timestamp: Date;
   readonly pageContext: PageContext;
   readonly stats: SnapshotStats;
+  readonly frameRegistry: FrameRegistry;
 
   private _backendNodeMap?: Map<number, VirtualNode>;
   private _serialized?: RawSerializedDom;
@@ -24,12 +85,30 @@ export class DomSnapshot implements IDomSnapshot {
   constructor(
     virtualDom: VirtualNode,
     pageContext: PageContext,
-    stats: SnapshotStats
+    stats: SnapshotStats,
+    frameRegistry?: FrameRegistry
   ) {
     this.virtualDom = virtualDom;
     this.pageContext = pageContext;
     this.stats = stats;
     this.timestamp = new Date();
+
+    // Initialize frame registry with main frame if not provided
+    this.frameRegistry = frameRegistry || new FrameRegistry();
+    if (!this.frameRegistry.hasFrame(0)) {
+      // Register main frame with viewport dimensions
+      this.frameRegistry.addFrame({
+        frameId: 0,
+        backendNodeId: 0, // Main frame has no iframe element
+        viewport: {
+          width: pageContext.viewport.width,
+          height: pageContext.viewport.height,
+          scrollX: pageContext.viewport.scrollX ?? 0,
+          scrollY: pageContext.viewport.scrollY ?? 0
+        }
+        // No boundingBox for main frame
+      });
+    }
   }
 
 
@@ -44,6 +123,12 @@ export class DomSnapshot implements IDomSnapshot {
       this._backendNodeMap!.set(node.backendNodeId, node);
       if (node.children) {
         node.children.forEach(traverse);
+      }
+      if (node.shadowRoots) {
+        node.shadowRoots.forEach(traverse);
+      }
+      if (node.contentDocument) {
+        traverse(node.contentDocument);
       }
     };
     traverse(this.virtualDom);
@@ -98,14 +183,6 @@ export class DomSnapshot implements IDomSnapshot {
     // Apply viewport filtering to only include visible nodes
     const body = this.filterByViewport(bodyBeforeFilter);
 
-    // Convert SerializedNode back to HTML
-    const htmlString = serializedNodeToHtml(body);
-
-    // Safety check: if body is null or has no kids, log detailed diagnostics
-    if (!body || (body.kids && body.kids.length === 0)) {
-      console.warn('the body is null or has no kids');
-    }
-
     // Calculate viewport overflow (pixels outside viewport in each direction)
     const viewport = this.pageContext.viewport;
     const scrollX = viewport.scrollX ?? 0;
@@ -148,6 +225,13 @@ export class DomSnapshot implements IDomSnapshot {
   /**
    * Flatten VirtualNode tree to v3 SerializedNode with normalized field names
    *
+   * Node preservation rules:
+   * - Semantic/non-semantic nodes (Tier 1 & 2): Always kept
+   * - Semantic containers (form, table, dialog, navigation, main): Always kept
+   * - Scrollable containers: Always kept (enable scroll actions)
+   * - Structural nodes with children: Hoisted if single child, kept as grouping if multiple
+   * - Leaf structural nodes: Discarded
+   *
    * Normalized field mappings:
    * - aria-label → aria_label
    * - children → kids
@@ -169,6 +253,17 @@ export class DomSnapshot implements IDomSnapshot {
       return this.buildSerializedNode(node, minimalOpts);
     }
 
+    // Case 2.5: Keep scrollable containers - they enable scroll actions
+    if (node.scrollable) {
+      return this.buildSerializedNode(node, opts);
+    }
+
+    // Case 2.6: Keep nodes with shadow roots or content documents (iframes)
+    // These act as containers for nested content trees
+    if ((node.shadowRoots && node.shadowRoots.length > 0) || node.contentDocument) {
+      return this.buildSerializedNode(node, opts);
+    }
+
     // Case 3: Structural node with children - hoist children to parent level
     if (node.children && node.children.length > 0) {
       const flattenedChildren = node.children
@@ -176,17 +271,28 @@ export class DomSnapshot implements IDomSnapshot {
         .filter((child): child is SerializedNode => child !== null);
 
       // If only one child, return it directly (hoist)
-      if (flattenedChildren.length === 1) {
+      // Exception: Don't hoist if this node is a structural root we want to preserve
+      const tag = node.localName || node.nodeName.toLowerCase();
+      const isStructuralRoot = ['html', 'body'].includes(tag);
+
+      if (flattenedChildren.length === 1 && !isStructuralRoot) {
         return flattenedChildren[0];
       }
 
-      // If multiple children, return minimal structural node to maintain grouping
-      if (flattenedChildren.length > 1) {
-        return {
-          node_id: node.backendNodeId,
+      // If multiple children (OR single child that wasn't hoisted), return structural node
+      if (flattenedChildren.length > 0) {
+        const frameIndex = node.frameIndex ?? 0;
+        const structuralNode: SerializedNode = {
+          node_id: `${frameIndex}:${node.backendNodeId}`,
+          frame_id: frameIndex,
           tag: node.localName || node.nodeName.toLowerCase(),
           kids: flattenedChildren
         };
+        // Preserve scrollable property for scroll targets
+        if (node.scrollable) {
+          structuralNode.scrollable = node.scrollable;
+        }
+        return structuralNode;
       }
 
       // FIX: If all children were filtered out (flattenedChildren.length === 0),
@@ -197,8 +303,10 @@ export class DomSnapshot implements IDomSnapshot {
         // Note: html and #document are excluded since we extract body directly
         if (tag === 'body' || tag === 'main') {
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
+          const frameIndex = node.frameIndex ?? 0;
           return {
-            node_id: node.backendNodeId,
+            node_id: `${frameIndex}:${node.backendNodeId}`,
+            frame_id: frameIndex,
             tag,
             kids: [] // Empty kids array to indicate no interactive elements found
           };
@@ -224,9 +332,14 @@ export class DomSnapshot implements IDomSnapshot {
       }
     }
 
+    // Determine frame index (default to 0 for main frame)
+    const frameIndex = node.frameIndex ?? 0;
+
     // Build base node with v3 field names
+    // Format node_id as "<frameId>:<backendNodeId>" for multi-frame support
     const serializedNode: SerializedNode = {
-      node_id: node.backendNodeId,
+      node_id: `${frameIndex}:${node.backendNodeId}`,
+      frame_id: frameIndex,
       tag: node.localName || node.nodeName.toLowerCase()
     };
 
@@ -263,7 +376,7 @@ export class DomSnapshot implements IDomSnapshot {
 
       // Value (for inputs)
       if ((opts.metadata.includeValue || opts.includeValues) &&
-          typeof node.accessibility?.value === 'string') {
+        typeof node.accessibility?.value === 'string') {
         serializedNode.value = node.accessibility.value;
       }
 
@@ -302,6 +415,11 @@ export class DomSnapshot implements IDomSnapshot {
         serializedNode.inViewport = this.calculateInViewport(node.boundingBox);
       }
 
+      // scrollable (for LLM to identify scroll targets)
+      if (node.scrollable) {
+        serializedNode.scrollable = node.scrollable;
+      }
+
       // Build states object from accessibility info
       if (opts.metadata.includeStates) {
         const states: Record<string, boolean | string> = {};
@@ -324,6 +442,25 @@ export class DomSnapshot implements IDomSnapshot {
 
       if (flattenedChildren.length > 0) {
         serializedNode.kids = flattenedChildren; // v3: kids instead of children
+      }
+    }
+
+    // Recursively flatten shadow roots
+    if (node.shadowRoots && node.shadowRoots.length > 0) {
+      const flattenedShadowRoots = node.shadowRoots
+        .map(root => this.flatternNode(root, opts))
+        .filter((root): root is SerializedNode => root !== null);
+
+      if (flattenedShadowRoots.length > 0) {
+        serializedNode.shadow_roots = flattenedShadowRoots;
+      }
+    }
+
+    // Recursively flatten content document (iframe)
+    if (node.contentDocument) {
+      const flattenedContentDoc = this.flatternNode(node.contentDocument, opts);
+      if (flattenedContentDoc) {
+        serializedNode.content_document = flattenedContentDoc;
       }
     }
 
@@ -450,12 +587,23 @@ export class DomSnapshot implements IDomSnapshot {
   private filterByViewport(node: SerializedNode | null): SerializedNode | null {
     if (!node) return null;
 
+
     // Always preserve critical structural nodes (starting from body level)
-    const structuralTags = ['body', 'main'];
+    const structuralTags = ['body', 'main', 'html'];
     const isStructural = structuralTags.includes(node.tag);
+
 
     // If node is explicitly in viewport, keep it and all children
     if (node.inViewport === true) {
+      const { inViewport, ...nodeWithoutInViewport } = node;
+      return nodeWithoutInViewport;
+    }
+
+    // Preserve interactive elements even if inViewport is not set (no bounding box data)
+    // Interactive elements are identifiable by role or interactive tags
+    const interactiveTags = new Set(['button', 'a', 'input', 'select', 'textarea', 'label', 'option']);
+    const isInteractive = node.role || interactiveTags.has(node.tag);
+    if (isInteractive && node.inViewport === undefined) {
       const { inViewport, ...nodeWithoutInViewport } = node;
       return nodeWithoutInViewport;
     }
@@ -469,11 +617,62 @@ export class DomSnapshot implements IDomSnapshot {
       // If node has visible children OR is structural, keep it with filtered children
       if (filteredKids.length > 0 || isStructural) {
         const { inViewport, ...nodeWithoutInViewport } = node;
-        return {
+        const result: SerializedNode = {
           ...nodeWithoutInViewport,
           kids: filteredKids.length > 0 ? filteredKids : undefined
         };
+
+        // Also filter shadow roots if present
+        if (node.shadow_roots) {
+          const filteredShadowRoots = node.shadow_roots
+            .map(root => this.filterByViewport(root))
+            .filter((root): root is SerializedNode => root !== null);
+          if (filteredShadowRoots.length > 0) {
+            result.shadow_roots = filteredShadowRoots;
+          }
+        }
+
+        // Also filter content document if present
+        if (node.content_document) {
+          const filteredContentDoc = this.filterByViewport(node.content_document);
+          if (filteredContentDoc) {
+            result.content_document = filteredContentDoc;
+          }
+        }
+
+        return result;
       }
+    }
+
+    // Check shadow roots and content document even if no kids
+    let hasVisibleContent = false;
+    const result: SerializedNode = { ...node };
+    delete result.inViewport;
+
+    if (node.shadow_roots) {
+      const filteredShadowRoots = node.shadow_roots
+        .map(root => this.filterByViewport(root))
+        .filter((root): root is SerializedNode => root !== null);
+      if (filteredShadowRoots.length > 0) {
+        result.shadow_roots = filteredShadowRoots;
+        hasVisibleContent = true;
+      } else {
+        delete result.shadow_roots;
+      }
+    }
+
+    if (node.content_document) {
+      const filteredContentDoc = this.filterByViewport(node.content_document);
+      if (filteredContentDoc) {
+        result.content_document = filteredContentDoc;
+        hasVisibleContent = true;
+      } else {
+        delete result.content_document;
+      }
+    }
+
+    if (hasVisibleContent || isStructural) {
+      return result;
     }
 
     // Node is not in viewport and has no visible children - remove it

@@ -6,14 +6,16 @@
 import { ModelClient, ModelClientError, type RetryConfig } from './ModelClient';
 import { OpenAIResponsesClient } from './client/OpenAIResponsesClient';
 import { OpenAIChatCompletionClient } from './client/OpenAIChatCompletionClient';
+import { GoogleCompletionClient } from './client/GoogleCompletionClient';
 import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
+import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot' | 'together';
 
 /**
  * Configuration for model client creation
@@ -82,7 +84,7 @@ export class ModelClientFactory {
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot' || providerId === 'together') {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -249,7 +251,7 @@ export class ModelClientFactory {
    * @returns Promise resolving to configuration status
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, defaultProvider] = await Promise.all([
+    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, togetherHasKey, defaultProvider] = await Promise.all([
       this.hasValidApiKey('openai'),
       this.hasValidApiKey('xai'),
       this.hasValidApiKey('anthropic'),
@@ -257,6 +259,7 @@ export class ModelClientFactory {
       this.hasValidApiKey('google-ai-studio'),
       this.hasValidApiKey('fireworks'),
       this.hasValidApiKey('moonshot'),
+      this.hasValidApiKey('together'),
       this.getDefaultProvider(),
     ]);
 
@@ -268,6 +271,10 @@ export class ModelClientFactory {
       fireworks: {
         hasApiKey: fireworksHasKey,
         isDefault: defaultProvider === 'fireworks',
+      },
+      together: {
+        hasApiKey: togetherHasKey,
+        isDefault: defaultProvider === 'together',
       },
       openai: {
         hasApiKey: openaiHasKey,
@@ -387,12 +394,20 @@ export class ModelClientFactory {
     const selectedModel = this.getSelectedModel();
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
+    let serviceTier: 'default' | 'flex' | 'priority' | undefined;
+    let modelConfig: any = undefined;
     if (this.config) {
       const configData = this.config.getConfig();
       const modelData = this.config.getModelById(configData.selectedModelId);
       if (modelData?.model) {
+        modelConfig = modelData.model;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
         supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        // For OpenAI models, merge default serviceTier value with stored value
+        serviceTier = modelData.model.serviceTier;
+        if (providerName === 'openai' && !serviceTier) {
+          serviceTier = 'default';
+        }
       }
     }
 
@@ -414,6 +429,8 @@ export class ModelClientFactory {
       displayName = 'Google AI Studio';
     } else if (providerName === 'fireworks') {
       displayName = 'Fireworks AI';
+    } else if (providerName === 'together') {
+      displayName = 'Together AI';
     }
 
     const provider = {
@@ -452,6 +469,19 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
+        });
+
+      case 'together':
+        console.log(`[ModelClientFactory] Instantiating TogetherChatCompletionClient for Together AI`);
+        return new TogetherChatCompletionClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+          modelConfig,
         });
 
       case 'fireworks':
@@ -463,17 +493,19 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
         });
 
       case 'google-ai-studio':
-        console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Google AI Studio`);
-        return new OpenAIChatCompletionClient({
+        console.log(`[ModelClientFactory] Instantiating GoogleCompletionClient for Google AI Studio`);
+        return new GoogleCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
         });
 
       case 'groq':
@@ -485,6 +517,7 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
         });
@@ -501,8 +534,10 @@ export class ModelClientFactory {
           conversationId,
           modelFamily,
           provider,
+          modelConfig,
           reasoningEffort: reasoningEffort as any,
           reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+          serviceTier,
         });
     }
   }

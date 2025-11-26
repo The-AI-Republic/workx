@@ -1,4 +1,4 @@
-import { DomSnapshot } from './DomSnapshot';
+import { DomSnapshot, FrameRegistry } from './DomSnapshot';
 import type {
   VirtualNode,
   ActionResult,
@@ -7,10 +7,12 @@ import type {
   PageContext,
   SnapshotStats,
   ServiceConfig,
-  PerformanceMetrics
+  PerformanceMetrics,
+  FrameMetadata
 } from './types';
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
-import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml } from './utils';
+import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
+import type { TypeOptions } from '../../types/domTool';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -131,6 +133,8 @@ export class DomService {
     // Transform to stringified format for LLM consumption:
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
+    const htmlContent = serializedNodeToHtml(rawDom.page.body);
+
     const serializedDom = {
       page: {
         context: {
@@ -145,7 +149,7 @@ export class DomService {
             overflowRight: `${rawDom.page.context.viewport.overflowRight}px`
           }
         },
-        body: serializedNodeToHtml(rawDom.page.body),
+        body: htmlContent,
       }
     };
 
@@ -285,7 +289,9 @@ export class DomService {
       // Parallel fetch: DOM tree + A11y tree + DOMSnapshot (paint order + layout)
       // Note: A11y fetch may fail on some CSP-restricted pages - we handle this gracefully
       // Note: DOMSnapshot may fail on older Chrome (<92) or CSP-restricted pages - graceful fallback
-      const [domTree, axTree, domSnapshot] = await Promise.all([
+      const [axTree, domTree, domSnapshot] = await Promise.all([
+        // Get accessibility tree for semantic classification
+        this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
         this.sendCommand<any>('DOM.getDocument', { depth: -1, pierce: true })
           .catch((error: any) => {
             // X-Frame-Options DENY detection
@@ -294,10 +300,9 @@ export class DomService {
             }
             throw error;
           }),
-        this.sendCommand<any>('Accessibility.getFullAXTree', { depth: -1 }).catch(() => null),
         // Fetch paint order and layout data via DOMSnapshot.captureSnapshot()
         this.sendCommand<any>('DOMSnapshot.captureSnapshot', {
-          computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor'],
+          computedStyles: ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'],
           includePaintOrder: true,
           includeDOMRects: true
         }).catch((error: any) => {
@@ -305,14 +310,14 @@ export class DomService {
           return null;
         })
       ]);
-      return { domTree, axTree, domSnapshot };
+      return { axTree, domTree, domSnapshot };
     })();
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error(`SNAPSHOT_TIMEOUT: Snapshot took longer than ${this.config.snapshotTimeout}ms. Consider reducing depth or page complexity.`)), this.config.snapshotTimeout);
     });
 
-    const { domTree, axTree, domSnapshot } = await Promise.race([snapshotPromise, timeoutPromise]);
+    const { axTree, domTree, domSnapshot } = await Promise.race([snapshotPromise, timeoutPromise]);
 
     // Build enrichment map: backendNodeId → AXNode
     const axMap = new Map<number, any>();
@@ -342,18 +347,23 @@ export class DomService {
     // Convert device pixels to CSS pixels for web standard compatibility
     const layoutMap = this.buildLayoutMap(domSnapshot, devicePixelRatio);
 
-    // Build VirtualNode tree
+    // Build virtual DOM tree with frame tracking
     let nodeCounter = 0;
+    const frameRegistry = new FrameRegistry();
 
-    const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0): VirtualNode | null => {
+    // Track iframe count for the 5 iframe limit
+    let iframeCount = 0;
+    const MAX_IFRAMES = 5;
+
+    const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0, currentFrameIndex: number = 0): VirtualNode | null => {
       // Pathological case protection for deeply nested iframes
       if (depth > this.config.maxTreeDepth) {
         console.warn(`[DomService] Max tree depth (${this.config.maxTreeDepth}) reached at iframe depth ${iframeDepth}. Tree traversal stopped.`);
         return null;
       }
 
-      if (iframeDepth > 100) {
-        console.error('[DomService] PATHOLOGICAL_NESTING: More than 100 nested iframes detected. This is highly unusual and may indicate malicious page structure.');
+      // Skip nested iframes (layer 2+) - only process layer 1
+      if (iframeDepth > 1) {
         return null;
       }
 
@@ -362,6 +372,8 @@ export class DomService {
       const axNode = axMap.get(backendNodeId);
       const heuristics = computeHeuristics(cdpNode.attributes);
       const layoutData = layoutMap.get(backendNodeId); // Get layout data
+
+      const tier = classifyNode(axNode, heuristics);
 
       const vNode: VirtualNode = {
         nodeId: cdpNode.nodeId,
@@ -373,20 +385,20 @@ export class DomService {
         attributes: cdpNode.attributes,
         frameId: cdpNode.frameId,
         shadowRootType: cdpNode.shadowRootType,
-        tier: classifyNode(cdpNode, axNode, heuristics),
+        tier,
         interactionType: determineInteractionType(cdpNode, axNode),
         accessibility: axNode
           ? {
-              role: axNode.role?.value,
-              name: axNode.name?.value,
-              description: axNode.description?.value,
-              value: axNode.value?.value,
-              checked: axNode.checked?.value === 'true',
-              disabled: axNode.disabled,
-              expanded: axNode.expanded,
-              level: axNode.level,
-              required: axNode.required
-            }
+            role: axNode.role?.value,
+            name: axNode.name?.value,
+            description: axNode.description?.value,
+            value: axNode.value?.value,
+            checked: axNode.checked?.value === 'true',
+            disabled: axNode.disabled,
+            expanded: axNode.expanded,
+            level: axNode.level,
+            required: axNode.required
+          }
           : undefined,
         heuristics,
         // Attach layout data from DOMSnapshot.captureSnapshot()
@@ -394,15 +406,57 @@ export class DomService {
         paintOrder: layoutData?.paintOrder,
         computedStyle: layoutData?.computedStyle,
         scrollRects: layoutData?.scrollRects,
-        clientRects: layoutData?.clientRects
+        clientRects: layoutData?.clientRects,
+        // Compute scrollability based on dimensions and overflow styles
+        scrollable: computeScrollable(layoutData),
+        // Assign frame index for multi-frame support
+        frameIndex: currentFrameIndex
       };
 
       // Recurse to children
       if (cdpNode.children) {
-        const nextIframeDepth = cdpNode.localName === 'iframe' ? iframeDepth + 1 : iframeDepth;
         vNode.children = cdpNode.children
-          .map((c: any) => buildVirtualTree(c, depth + 1, nextIframeDepth))
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex))
           .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
+      }
+
+      // Recurse to shadow roots
+      if (cdpNode.shadowRoots) {
+        vNode.shadowRoots = cdpNode.shadowRoots
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex))
+          .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
+      }
+
+      // Recurse to iframe content document
+      if (cdpNode.contentDocument) {
+        // Check iframe limit before processing
+        if (iframeCount >= MAX_IFRAMES) {
+          // Don't process this iframe's content - max limit reached
+        } else {
+          iframeCount++;
+          const newFrameIndex = iframeCount; // 1-5 for iframes
+          const nextIframeDepth = iframeDepth + 1;
+
+          // Register iframe metadata
+          const iframeMetadata: FrameMetadata = {
+            frameId: newFrameIndex,
+            backendNodeId: backendNodeId, // The iframe element's backendNodeId
+            viewport: {
+              // Use bounding box dimensions as iframe viewport
+              width: layoutData?.boundingBox?.width ?? 0,
+              height: layoutData?.boundingBox?.height ?? 0,
+              scrollX: 0, // Will be updated if we can get scroll position
+              scrollY: 0
+            },
+            boundingBox: layoutData?.boundingBox
+          };
+          frameRegistry.addFrame(iframeMetadata);
+
+          const contentDoc = buildVirtualTree(cdpNode.contentDocument, depth + 1, nextIframeDepth, newFrameIndex);
+          if (contentDoc) {
+            vNode.contentDocument = contentDoc;
+          }
+        }
       }
 
       return vNode;
@@ -473,7 +527,7 @@ export class DomService {
       frameworkDetected: framework
     };
 
-    this.currentSnapshot = new DomSnapshot(virtualDom, pageContext, stats);
+    this.currentSnapshot = new DomSnapshot(virtualDom, pageContext, stats, frameRegistry);
 
     // Track snapshot metrics
     if (this.config.enableMetrics) {
@@ -536,116 +590,137 @@ export class DomService {
   private buildLayoutMap(domSnapshot: any, devicePixelRatio: number = 1): Map<number, any> {
     const layoutMap = new Map<number, any>();
 
-    if (!domSnapshot?.documents?.[0]) {
+    if (!domSnapshot?.documents) {
       return layoutMap;
     }
 
-    const doc = domSnapshot.documents[0];
-    const layout = doc.layout;
     const strings = domSnapshot.strings || [];
+    const styleProperties = ['opacity', 'background-color', 'display', 'visibility', 'cursor', 'overflow-x', 'overflow-y'];
 
-    if (!layout || !layout.nodeIndex) {
-      return layoutMap;
-    }
+    // Iterate over all documents (main frame + iframes)
+    for (const doc of domSnapshot.documents) {
+      const layout = doc.layout;
 
-    // Extract backendNodeIds from the nodes structure
-    // CDP DOMSnapshot returns parallel arrays where indices correspond
-    const backendNodeIds = doc.nodes?.backendNodeId || [];
-
-    for (let i = 0; i < layout.nodeIndex.length; i++) {
-      const nodeIndex = layout.nodeIndex[i];
-      const backendNodeId = backendNodeIds[nodeIndex];
-
-      if (!backendNodeId) continue;
-
-      const layoutData: any = {};
-
-      // Bounding box (bounds are stored as [x, y, width, height] arrays)
-      // CDP returns device pixels, convert to CSS pixels (web standard)
-      if (layout.bounds && layout.bounds[i]) {
-        const bounds = layout.bounds[i];
-        const devicePixels = {
-          x: bounds[0],
-          y: bounds[1],
-          width: bounds[2],
-          height: bounds[3]
-        };
-
-        // Convert from device pixels to CSS pixels
-        layoutData.boundingBox = {
-          x: devicePixels.x / devicePixelRatio,
-          y: devicePixels.y / devicePixelRatio,
-          width: devicePixels.width / devicePixelRatio,
-          height: devicePixels.height / devicePixelRatio
-        };
+      if (!layout || !layout.nodeIndex) {
+        continue;
       }
 
-      // Paint order
-      if (layout.paintOrders && layout.paintOrders[i] !== undefined) {
-        layoutData.paintOrder = layout.paintOrders[i];
-      }
+      // Extract backendNodeIds from the nodes structure
+      const backendNodeIds = doc.nodes?.backendNodeId || [];
 
-      // Scroll dimensions
-      if (layout.scrollRects && layout.scrollRects[i]) {
-        const scrollRect = layout.scrollRects[i];
-        layoutData.scrollRects = {
-          width: scrollRect[0],
-          height: scrollRect[1]
-        };
-      }
+      for (let i = 0; i < layout.nodeIndex.length; i++) {
+        const nodeIndex = layout.nodeIndex[i];
+        const backendNodeId = backendNodeIds[nodeIndex];
 
-      // Client dimensions
-      if (layout.clientRects && layout.clientRects[i]) {
-        const clientRect = layout.clientRects[i];
-        layoutData.clientRects = {
-          width: clientRect[0],
-          height: clientRect[1]
-        };
-      }
+        // backendNodeId can be 0, so check for undefined explicitly
+        if (backendNodeId === undefined) continue;
 
-      // Computed styles
-      if (layout.styles && layout.styles[i]) {
-        const styleIndices = layout.styles[i];
-        const computedStyle: any = {};
+        const layoutData: any = {};
 
-        // styleIndices is an array of indices into the strings table
-        // Format: [propertyIndex1, valueIndex1, propertyIndex2, valueIndex2, ...]
-        for (let j = 0; j < styleIndices.length; j += 2) {
-          const propertyName = strings[styleIndices[j]];
-          const propertyValue = strings[styleIndices[j + 1]];
+        // Bounding box (bounds are stored as [x, y, width, height] arrays)
+        // CDP returns device pixels, convert to CSS pixels (web standard)
+        if (layout.bounds && layout.bounds[i]) {
+          const bounds = layout.bounds[i];
+          const devicePixels = {
+            x: bounds[0],
+            y: bounds[1],
+            width: bounds[2],
+            height: bounds[3]
+          };
 
-          // Map to camelCase for our interface
-          if (propertyName === 'opacity') computedStyle.opacity = propertyValue;
-          if (propertyName === 'background-color') computedStyle.backgroundColor = propertyValue;
-          if (propertyName === 'display') computedStyle.display = propertyValue;
-          if (propertyName === 'visibility') computedStyle.visibility = propertyValue;
-          if (propertyName === 'cursor') computedStyle.cursor = propertyValue;
+          // Convert from device pixels to CSS pixels
+          layoutData.boundingBox = {
+            x: devicePixels.x / devicePixelRatio,
+            y: devicePixels.y / devicePixelRatio,
+            width: devicePixels.width / devicePixelRatio,
+            height: devicePixels.height / devicePixelRatio
+          };
         }
 
-        if (Object.keys(computedStyle).length > 0) {
-          layoutData.computedStyle = computedStyle;
+        // Paint order
+        if (layout.paintOrders && layout.paintOrders[i] !== undefined) {
+          layoutData.paintOrder = layout.paintOrders[i];
+        }
+
+        // Scroll dimensions
+        if (layout.scrollRects && layout.scrollRects[i]) {
+          const scrollRect = layout.scrollRects[i];
+          layoutData.scrollRects = {
+            width: scrollRect[0],
+            height: scrollRect[1]
+          };
+        }
+
+        // Client dimensions
+        if (layout.clientRects && layout.clientRects[i]) {
+          const clientRect = layout.clientRects[i];
+          layoutData.clientRects = {
+            width: clientRect[0],
+            height: clientRect[1]
+          };
+        }
+
+        // Computed styles
+        if (layout.styles && layout.styles[i]) {
+          const styleIndices = layout.styles[i];
+          const computedStyle: any = {};
+
+          for (let j = 0; j < styleIndices.length && j < styleProperties.length; j++) {
+            const propertyName = styleProperties[j];
+            const propertyValue = strings[styleIndices[j]];
+
+            // Map to camelCase for our interface
+            if (propertyName === 'opacity') computedStyle.opacity = propertyValue;
+            if (propertyName === 'background-color') computedStyle.backgroundColor = propertyValue;
+            if (propertyName === 'display') computedStyle.display = propertyValue;
+            if (propertyName === 'visibility') computedStyle.visibility = propertyValue;
+            if (propertyName === 'cursor') computedStyle.cursor = propertyValue;
+            if (propertyName === 'overflow-x') computedStyle.overflowX = propertyValue;
+            if (propertyName === 'overflow-y') computedStyle.overflowY = propertyValue;
+          }
+
+          if (Object.keys(computedStyle).length > 0) {
+            layoutData.computedStyle = computedStyle;
+          }
+        }
+
+        // Only add to map if we have actual layout data
+        if (Object.keys(layoutData).length > 0) {
+          layoutMap.set(backendNodeId, layoutData);
         }
       }
-
-      layoutMap.set(backendNodeId, layoutData);
     }
 
     return layoutMap;
   }
 
-  private computeStats(node: VirtualNode, stats: SnapshotStats): void {
+  private computeStats(node: VirtualNode, stats: SnapshotStats, countedFrames: Set<number> = new Set()): void {
     if (node.tier === 'semantic') stats.semanticNodes++;
     else if (node.tier === 'non-semantic') stats.nonSemanticNodes++;
     else stats.structuralNodes++;
 
     if (node.interactionType) stats.interactiveNodes++;
-    if (node.frameId && node.frameId !== 'main') stats.frameCount++;
+
+    // Count unique frames (excluding main frame 0)
+    if (node.frameIndex !== undefined && node.frameIndex > 0 && !countedFrames.has(node.frameIndex)) {
+      countedFrames.add(node.frameIndex);
+      stats.frameCount++;
+    }
+
     if (node.shadowRootType) stats.shadowRootCount++;
 
     if (node.children) {
       for (const child of node.children) {
-        this.computeStats(child, stats);
+        this.computeStats(child, stats, countedFrames);
       }
+    }
+    if (node.shadowRoots) {
+      for (const child of node.shadowRoots) {
+        this.computeStats(child, stats, countedFrames);
+      }
+    }
+    if (node.contentDocument) {
+      this.computeStats(node.contentDocument, stats, countedFrames);
     }
   }
 
@@ -757,16 +832,41 @@ export class DomService {
   }
 
   // Action methods (T037-T045 will implement these)
-  async click(nodeId: number): Promise<ActionResult> {
+  async click(nodeId: number | string): Promise<ActionResult> {
     const start = Date.now();
+
+    // Parse frame-scoped node ID
+    let parsedId;
+    try {
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'click',
+        timestamp: new Date().toISOString()
+      };
+    }
 
     try {
       if (!this.currentSnapshot) {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // nodeId is now the backendNodeId directly (no translation needed)
-      const backendNodeId = nodeId;
+      // Validate frame exists
+      if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+        throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+      }
+
+      const backendNodeId = parsedId.backendNodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
@@ -837,7 +937,7 @@ export class DomService {
         }
       } else {
         // Visual effects disabled - still scroll into view if needed, but don't wait
-        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => {});
+        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => { });
       }
 
       // CDP MIGRATION: Trigger ripple visual effect BEFORE click (with correct coordinates)
@@ -900,16 +1000,256 @@ export class DomService {
     }
   }
 
-  async type(nodeId: number, text: string): Promise<ActionResult> {
+  /**
+   * Detect element type for typing strategy selection
+   */
+  private async detectElementType(backendNodeId: number): Promise<'input' | 'textarea' | 'contenteditable' | 'unknown'> {
+    try {
+      const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+      if (!resolveResult?.object?.objectId) return 'unknown';
+
+      const result = await this.sendCommand<any>('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function() {
+          const tagName = this.tagName?.toLowerCase();
+          const isContentEditable = this.contentEditable === 'true' || this.contentEditable === '';
+
+          if (tagName === 'input') return 'input';
+          if (tagName === 'textarea') return 'textarea';
+          if (isContentEditable) return 'contenteditable';
+          return 'unknown';
+        }`,
+        returnByValue: true
+      });
+
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+      return result?.result?.value || 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Clear contenteditable element (rich text editors like Quill, Slate, etc.)
+   */
+  private async clearContentEditable(backendNodeId: number): Promise<void> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for clearing');
+    }
+
+    try {
+      // Strategy 1: Select all and delete for contenteditable
+      // This works better than direct innerHTML manipulation for rich text editors
+      await this.sendCommand('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function() {
+          // Focus the element
+          this.focus();
+
+          // Select all content
+          const range = document.createRange();
+          range.selectNodeContents(this);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+
+          return { selected: true };
+        }`,
+        returnByValue: true
+      });
+
+      // Wait for selection
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Send Backspace key to delete selected content
+      // This triggers the editor's event handlers properly
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Backspace',
+        code: 'Backspace'
+      });
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Backspace',
+        code: 'Backspace'
+      });
+
+      // Alternative: Send Delete key
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Delete',
+        code: 'Delete'
+      });
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Delete',
+        code: 'Delete'
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+    }
+  }
+
+  /**
+   * Type text character-by-character (simulates human typing)
+   * Works well for rich text editors (Quill, Slate, Draft.js, ProseMirror)
+   */
+  private async typeCharByChar(text: string, speed: number = 50): Promise<void> {
+    for (const char of text) {
+      // Determine key code and key name
+      const key = char;
+      const code = this.getKeyCode(char);
+
+      // Dispatch keydown event
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: key,
+        code: code,
+        text: char
+      });
+
+      // Dispatch keyup event
+      await this.sendCommand('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: key,
+        code: code,
+        text: char
+      });
+
+      // Wait between characters to simulate human typing
+      if (speed > 0) {
+        await new Promise(resolve => setTimeout(resolve, speed));
+      }
+    }
+  }
+
+  /**
+   * Type text using paste simulation (Ctrl+V)
+   * Works well for rich text editors and is faster than char-by-char
+   */
+  private async typePaste(text: string, backendNodeId: number): Promise<void> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for paste');
+    }
+
+    try {
+      // Use execCommand('insertText') which triggers proper events
+      await this.sendCommand('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function(text) {
+          // Focus the element
+          this.focus();
+
+          // Try execCommand first (works for many rich text editors)
+          if (document.execCommand) {
+            const success = document.execCommand('insertText', false, text);
+            if (success) return { method: 'execCommand', success: true };
+          }
+
+          // Fallback: Dispatch paste event manually
+          const dataTransfer = new DataTransfer();
+          dataTransfer.setData('text/plain', text);
+
+          const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: dataTransfer,
+            bubbles: true,
+            cancelable: true
+          });
+
+          this.dispatchEvent(pasteEvent);
+
+          // Also fire beforeinput and input events
+          const beforeInputEvent = new InputEvent('beforeinput', {
+            data: text,
+            inputType: 'insertFromPaste',
+            bubbles: true,
+            cancelable: true
+          });
+          this.dispatchEvent(beforeInputEvent);
+
+          const inputEvent = new InputEvent('input', {
+            data: text,
+            inputType: 'insertFromPaste',
+            bubbles: true
+          });
+          this.dispatchEvent(inputEvent);
+
+          return { method: 'events', success: true };
+        }`,
+        arguments: [{ value: text }],
+        returnByValue: true
+      });
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+    }
+  }
+
+  /**
+   * Get key code for a character
+   */
+  private getKeyCode(char: string): string {
+    if (char === ' ') return 'Space';
+    if (char === '\n') return 'Enter';
+    if (char === '\t') return 'Tab';
+    if (/[a-z]/i.test(char)) return `Key${char.toUpperCase()}`;
+    if (/[0-9]/.test(char)) return `Digit${char}`;
+
+    // Special characters
+    const specialKeys: Record<string, string> = {
+      '.': 'Period',
+      ',': 'Comma',
+      ';': 'Semicolon',
+      "'": 'Quote',
+      '[': 'BracketLeft',
+      ']': 'BracketRight',
+      '\\': 'Backslash',
+      '-': 'Minus',
+      '=': 'Equal',
+      '/': 'Slash'
+    };
+
+    return specialKeys[char] || 'Unidentified';
+  }
+
+  async type(nodeId: number | string, text: string, options?: TypeOptions): Promise<ActionResult> {
     const start = Date.now();
+
+    // Parse frame-scoped node ID
+    let parsedId;
+    try {
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'type',
+        timestamp: new Date().toISOString()
+      };
+    }
 
     try {
       if (!this.currentSnapshot) {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
 
-      // nodeId is now the backendNodeId directly (no translation needed)
-      const backendNodeId = nodeId;
+      // Validate frame exists
+      if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+        throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+      }
+
+      const backendNodeId = parsedId.backendNodeId;
 
       // Verify node exists in snapshot
       const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
@@ -917,29 +1257,173 @@ export class DomService {
         throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
       }
 
-      // Focus element
-      await this.sendCommand('DOM.focus', { backendNodeId });
+      // Detect element type
+      const elementType = await this.detectElementType(backendNodeId);
+      console.log(`[DomService] Element type detected: ${elementType}`);
 
-      // Clear existing value
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key: 'a',
-        code: 'KeyA',
-        modifiers: 2 // Ctrl
-      });
-      await this.sendCommand('Input.dispatchKeyEvent', {
-        type: 'keyDown',
-        key: 'Backspace',
-        code: 'Backspace'
-      });
+      // Determine typing method
+      let method = options?.method || 'auto';
+      if (method === 'auto') {
+        // Auto-detect best method based on element type
+        if (elementType === 'contenteditable') {
+          method = 'char-by-char'; // Rich text editors work best with char-by-char
+        } else {
+          method = 'instant'; // Simple inputs work fine with instant
+        }
+      }
+      console.log(`[DomService] Using typing method: ${method}`);
 
-      // Insert text
-      await this.sendCommand('Input.insertText', { text });
+      // 1. Robust Focus: Scroll into view and Click
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
 
-      // Press Enter if text ends with newline
-      if (text.endsWith('\n')) {
+      // Get box model for coordinates to click (ensures focus works on complex frameworks)
+      let boxModel;
+      try {
+        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
+      } catch (e) {
+        // Fallback if box model fails (e.g. SVG), just try DOM.focus
+      }
+
+      if (boxModel) {
+        const { content } = boxModel.model;
+        const centerX = (content[0] + content[2]) / 2;
+        const centerY = (content[1] + content[5]) / 2;
+
+        await this.sendCommand('Input.dispatchMouseEvent', {
+          type: 'mousePressed',
+          x: centerX,
+          y: centerY,
+          button: 'left',
+          clickCount: 1
+        });
+        await this.sendCommand('Input.dispatchMouseEvent', {
+          type: 'mouseReleased',
+          x: centerX,
+          y: centerY,
+          button: 'left',
+          clickCount: 1
+        });
+      } else {
+        // Fallback
+        await this.sendCommand('DOM.focus', { backendNodeId });
+      }
+
+      // Wait a bit for focus to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 2. Clear if requested
+      if (options?.clearFirst) {
+        if (elementType === 'contenteditable') {
+          // Use special clearing for contenteditable elements
+          await this.clearContentEditable(backendNodeId);
+        } else {
+          // For input/textarea elements
+          const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+
+          if (resolveResult?.object?.objectId) {
+            // Clear the input value and fire events
+            await this.sendCommand('Runtime.callFunctionOn', {
+              objectId: resolveResult.object.objectId,
+              functionDeclaration: `function() {
+                // Set value to empty string
+                this.value = '';
+
+                // Fire input event (React listens to this)
+                const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+                this.dispatchEvent(inputEvent);
+
+                // Fire change event
+                const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+                this.dispatchEvent(changeEvent);
+
+                return { cleared: true };
+              }`,
+              returnByValue: true
+            });
+
+            // Release the object reference
+            await this.sendCommand('Runtime.releaseObject', {
+              objectId: resolveResult.object.objectId
+            }).catch(() => { });
+
+            // Wait for framework to process events
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } else {
+            // Fallback to keyboard method if resolve fails
+            console.warn('[DomService] Could not resolve node for clearing, falling back to keyboard method');
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyDown',
+              key: 'a',
+              code: 'KeyA',
+              modifiers: 2 // Ctrl
+            });
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyUp',
+              key: 'a',
+              code: 'KeyA',
+              modifiers: 2
+            });
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyDown',
+              key: 'Backspace',
+              code: 'Backspace'
+            });
+            await this.sendCommand('Input.dispatchKeyEvent', {
+              type: 'keyUp',
+              key: 'Backspace',
+              code: 'Backspace'
+            });
+          }
+        }
+      }
+
+      // 3. Type text using the appropriate method
+      if (method === 'char-by-char') {
+        // Character-by-character typing (best for rich text editors)
+        const speed = options?.speed !== undefined ? options.speed : 50; // Default 50ms between chars
+        await this.typeCharByChar(text, speed);
+      } else if (method === 'paste') {
+        // Paste simulation (fast, works for rich text editors)
+        await this.typePaste(text, backendNodeId);
+      } else {
+        // Instant typing (CDP Input.insertText, works for simple inputs)
+        await this.sendCommand('Input.insertText', { text });
+
+        // For React controlled components, additionally fire events
+        if (elementType === 'input' || elementType === 'textarea') {
+          try {
+            const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+            if (resolveResult?.object?.objectId) {
+              await this.sendCommand('Runtime.callFunctionOn', {
+                objectId: resolveResult.object.objectId,
+                functionDeclaration: `function() {
+                  const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+                  this.dispatchEvent(inputEvent);
+                  const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+                  this.dispatchEvent(changeEvent);
+                  return { value: this.value };
+                }`,
+                returnByValue: true
+              });
+              await this.sendCommand('Runtime.releaseObject', {
+                objectId: resolveResult.object.objectId
+              }).catch(() => { });
+            }
+          } catch (error) {
+            console.debug('[DomService] Could not fire additional events after typing');
+          }
+        }
+      }
+
+      // 4. Commit (Enter) if requested or implied
+      if (options?.commit === 'enter' || text.endsWith('\n')) {
         await this.sendCommand('Input.dispatchKeyEvent', {
           type: 'keyDown',
+          key: 'Enter',
+          code: 'Enter'
+        });
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyUp',
           key: 'Enter',
           code: 'Enter'
         });
@@ -989,39 +1473,173 @@ export class DomService {
 
   /**
    * Scroll by relative offset (delta)
-   * @param nodeId - Target node ID (use NODE_ID_WINDOW for window scroll)
+   * @param nodeId - Target node ID (use NODE_ID_WINDOW/-1 for window scroll, or frame-scoped like "1:-1" for iframe scroll)
    * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left), defaults to 0
    * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up), defaults to 80% of window height
    */
-  async scroll(nodeId: number, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
+  async scroll(nodeId: number | string, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
     const start = Date.now();
 
+    // Parse frame-scoped node ID, default to main frame window scroll on failure
+    let parsedId;
     try {
-      // Get default scrollY if not provided or 0 (80% of current window height)
-      let actualScrollY = scrollY;
-      if (!actualScrollY) {
-        const viewportResult = await this.sendCommand<any>('Runtime.evaluate', {
-          expression: 'window.innerHeight',
-          returnByValue: true
-        });
-        const windowHeight = viewportResult?.result?.value || 600; // Fallback to 600px
-        actualScrollY = Math.floor(windowHeight * 0.8);
-      }
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      console.warn(`[DomService] scroll: parseNodeId failed for "${nodeId}", defaulting to main frame window scroll: ${error.message}`);
+      parsedId = { frameId: 0, backendNodeId: NODE_ID_WINDOW };
+    }
 
-      if (nodeId === NODE_ID_WINDOW) {
-        // Scroll window by relative offset with smooth animation
-        await this.sendCommand('Runtime.evaluate', {
-          expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
-          returnByValue: false
-        });
+    try {
+      // Capture scroll position BEFORE scroll
+      let beforeScrollPos: { x: number; y: number } = { x: 0, y: 0 };
+      let afterScrollPos: { x: number; y: number } = { x: 0, y: 0 };
+      let scrollLimitReached = false;
+
+      // actualScrollY will be computed based on scroll context if not provided or 0
+      let actualScrollY = scrollY;
+
+      // Handle window/document scroll (backendNodeId === -1)
+      if (parsedId.backendNodeId === NODE_ID_WINDOW) {
+        if (parsedId.frameId === 0) {
+          // Main frame window scroll - capture before position
+          const beforeResult = await this.sendCommand<any>('Runtime.evaluate', {
+            expression: '({ x: window.scrollX, y: window.scrollY, maxX: document.documentElement.scrollWidth - window.innerWidth, maxY: document.documentElement.scrollHeight - window.innerHeight, viewportHeight: window.innerHeight })',
+            returnByValue: true
+          });
+          beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
+          const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+          // Get default scrollY if not provided or 0: 80% of main window height
+          if (!actualScrollY) {
+            const windowHeight = beforeResult.result.value.viewportHeight || 600;
+            actualScrollY = Math.floor(windowHeight * 0.8);
+          }
+
+          // Execute scroll
+          await this.sendCommand('Runtime.evaluate', {
+            expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
+            returnByValue: false
+          });
+
+          // Wait for smooth scroll animation to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Capture after position
+          const afterResult = await this.sendCommand<any>('Runtime.evaluate', {
+            expression: '({ x: window.scrollX, y: window.scrollY })',
+            returnByValue: true
+          });
+          afterScrollPos = { x: afterResult.result.value.x, y: afterResult.result.value.y };
+
+          // Check if we hit scroll limits
+          scrollLimitReached = (
+            (actualScrollY > 0 && afterScrollPos.y >= maxScroll.y) || // scrolling down and hit bottom
+            (actualScrollY < 0 && afterScrollPos.y <= 0) || // scrolling up and hit top
+            (scrollX > 0 && afterScrollPos.x >= maxScroll.x) || // scrolling right and hit right edge
+            (scrollX < 0 && afterScrollPos.x <= 0) // scrolling left and hit left edge
+          );
+        } else {
+          // Iframe window scroll - need to scroll the iframe's document
+          if (!this.currentSnapshot) {
+            throw new Error('NODE_NOT_FOUND: No snapshot available');
+          }
+
+          const frameMetadata = this.currentSnapshot.frameRegistry.getFrame(parsedId.frameId);
+          if (!frameMetadata) {
+            throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+          }
+
+          // Resolve the iframe element and scroll its content document
+          const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
+            backendNodeId: frameMetadata.backendNodeId
+          });
+
+          if (!resolveResult?.object?.objectId) {
+            throw new Error(`RESOLVE_FAILED: Could not resolve iframe element for frame ${parsedId.frameId}`);
+          }
+
+          // Capture before position and iframe dimensions
+          const beforeResult = await this.sendCommand<any>('Runtime.callFunctionOn', {
+            objectId: resolveResult.object.objectId,
+            functionDeclaration: `function() {
+              if (this.contentWindow) {
+                return {
+                  x: this.contentWindow.scrollX,
+                  y: this.contentWindow.scrollY,
+                  maxX: this.contentWindow.document.documentElement.scrollWidth - this.contentWindow.innerWidth,
+                  maxY: this.contentWindow.document.documentElement.scrollHeight - this.contentWindow.innerHeight,
+                  iframeHeight: this.offsetHeight || this.clientHeight || 0
+                };
+              }
+              return { x: 0, y: 0, maxX: 0, maxY: 0, iframeHeight: 0 };
+            }`,
+            returnByValue: true
+          });
+          beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
+          const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+          // Get default scrollY if not provided or 0: 80% of iframe's offsetHeight
+          if (!actualScrollY) {
+            const iframeHeight = beforeResult.result.value.iframeHeight || 600;
+            actualScrollY = Math.floor(iframeHeight * 0.8);
+          }
+
+          // Scroll the iframe's content window
+          await this.sendCommand('Runtime.callFunctionOn', {
+            objectId: resolveResult.object.objectId,
+            functionDeclaration: `function() {
+              if (this.contentWindow) {
+                this.contentWindow.scrollTo({
+                  left: this.contentWindow.scrollX + ${scrollX},
+                  top: this.contentWindow.scrollY + ${actualScrollY},
+                  behavior: 'smooth'
+                });
+              }
+            }`,
+            returnByValue: false
+          });
+
+          // Wait for animation
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Capture after position
+          const afterResult = await this.sendCommand<any>('Runtime.callFunctionOn', {
+            objectId: resolveResult.object.objectId,
+            functionDeclaration: `function() {
+              if (this.contentWindow) {
+                return { x: this.contentWindow.scrollX, y: this.contentWindow.scrollY };
+              }
+              return { x: 0, y: 0 };
+            }`,
+            returnByValue: true
+          });
+          afterScrollPos = { x: afterResult.result.value.x, y: afterResult.result.value.y };
+
+          // Check scroll limits
+          scrollLimitReached = (
+            (actualScrollY > 0 && afterScrollPos.y >= maxScroll.y) ||
+            (actualScrollY < 0 && afterScrollPos.y <= 0) ||
+            (scrollX > 0 && afterScrollPos.x >= maxScroll.x) ||
+            (scrollX < 0 && afterScrollPos.x <= 0)
+          );
+
+          // Release the object reference
+          await this.sendCommand('Runtime.releaseObject', {
+            objectId: resolveResult.object.objectId
+          }).catch(() => { });
+        }
       } else {
-        // Scroll element by relative offset
+        // Scroll specific element by relative offset
         if (!this.currentSnapshot) {
           throw new Error('NODE_NOT_FOUND: No snapshot available');
         }
 
-        // nodeId is now the backendNodeId directly (no translation needed)
-        const backendNodeId = nodeId;
+        // Validate frame exists
+        if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+          throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+        }
+
+        const backendNodeId = parsedId.backendNodeId;
 
         // Verify node exists in snapshot
         const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
@@ -1038,34 +1656,88 @@ export class DomService {
           throw new Error(`RESOLVE_FAILED: Could not resolve node ${nodeId}`);
         }
 
-        // Use Runtime.callFunctionOn to execute scrollTo with smooth animation
+        // Capture before position and container dimensions
+        const beforeResult = await this.sendCommand<any>('Runtime.callFunctionOn', {
+          objectId: resolveResult.object.objectId,
+          functionDeclaration: `function() {
+            return {
+              x: this.scrollLeft,
+              y: this.scrollTop,
+              maxX: this.scrollWidth - this.clientWidth,
+              maxY: this.scrollHeight - this.clientHeight,
+              containerHeight: this.clientHeight || 0
+            };
+          }`,
+          returnByValue: true
+        });
+        beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
+        const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+        // Get default scrollY if not provided or 0: 80% of container's clientHeight (min 100px if height is 0)
+        if (!actualScrollY) {
+          const containerHeight = beforeResult.result.value.containerHeight;
+          actualScrollY = containerHeight > 0 ? Math.floor(containerHeight * 0.8) : 100;
+        }
+
+        // Execute scroll with smooth animation
         await this.sendCommand('Runtime.callFunctionOn', {
           objectId: resolveResult.object.objectId,
           functionDeclaration: `function() { this.scrollTo({ left: this.scrollLeft + ${scrollX}, top: this.scrollTop + ${actualScrollY}, behavior: 'smooth' }); }`,
           returnByValue: false
         });
 
+        // Wait for animation
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Capture after position
+        const afterResult = await this.sendCommand<any>('Runtime.callFunctionOn', {
+          objectId: resolveResult.object.objectId,
+          functionDeclaration: `function() { return { x: this.scrollLeft, y: this.scrollTop }; }`,
+          returnByValue: true
+        });
+        afterScrollPos = { x: afterResult.result.value.x, y: afterResult.result.value.y };
+
+        // Check scroll limits
+        scrollLimitReached = (
+          (actualScrollY > 0 && afterScrollPos.y >= maxScroll.y) ||
+          (actualScrollY < 0 && afterScrollPos.y <= 0) ||
+          (scrollX > 0 && afterScrollPos.x >= maxScroll.x) ||
+          (scrollX < 0 && afterScrollPos.x <= 0)
+        );
+
         // Release the object reference to prevent memory leaks
         await this.sendCommand('Runtime.releaseObject', {
           objectId: resolveResult.object.objectId
-        }).catch(() => {}); // Ignore errors on cleanup
+        }).catch(() => { }); // Ignore errors on cleanup
       }
-
-      // Wait for smooth scroll animation to complete (typically 300-500ms)
-      await new Promise(resolve => setTimeout(resolve, 500));
 
       this.invalidateSnapshot();
 
       const duration = Date.now() - start;
-      this.trackActionMetrics('scroll', duration, true);
+
+      // Calculate actual scroll delta
+      const actualDelta = {
+        x: afterScrollPos.x - beforeScrollPos.x,
+        y: afterScrollPos.y - beforeScrollPos.y
+      };
+
+      // Determine if scroll actually changed
+      const scrollChanged = actualDelta.x !== 0 || actualDelta.y !== 0;
+
+      this.trackActionMetrics('scroll', duration, scrollChanged);
 
       return {
-        success: true,
+        success: scrollChanged,
         duration,
+        ...(scrollChanged ? {} : { error: 'Scroll position did not change' }),
         changes: {
           navigationOccurred: false,
-          domMutations: 1,
-          scrollChanged: true,
+          domMutations: scrollChanged ? 1 : 0,
+          scrollChanged,
+          previousScrollPosition: beforeScrollPos,
+          currentScrollPosition: afterScrollPos,
+          actualScrollDelta: actualDelta,
+          scrollLimitReached,
           valueChanged: false
         },
         nodeId: nodeId,
@@ -1166,14 +1838,34 @@ export class DomService {
    * Scroll element into view with configurable alignment
    */
   async scrollIntoView(
-    nodeId: number,
+    nodeId: number | string,
     options?: { block?: 'start' | 'center' | 'end' | 'nearest'; inline?: 'start' | 'center' | 'end' | 'nearest' }
   ): Promise<ActionResult> {
     const start = Date.now();
 
+    // Parse frame-scoped node ID
+    let parsedId;
     try {
-      // Get backendNodeId from nodeId
-      const backendNodeId = nodeId;
+      parsedId = parseNodeId(nodeId);
+    } catch (error: any) {
+      return {
+        success: false,
+        duration: Date.now() - start,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: typeof nodeId === 'number' ? nodeId : -1,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    try {
+      const backendNodeId = parsedId.backendNodeId;
 
       // Use CDP's scrollIntoViewIfNeeded for basic scrolling
       await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });

@@ -76,16 +76,70 @@ export enum DOMToolErrorCode {
 export class DOMTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
     'browser_dom',
-    'Unified DOM inspection and action tool. Capture page DOM snapshots with token-optimized serialization, and execute actions (click, type, keypress, scroll) on elements using persistent node IDs. Combines DOM capture with page interaction in a single tool.',
+    `Unified DOM inspection and action tool for page interaction.
+
+## USAGE PATTERN: Observe-Action Cycle
+The DOM tool implements a closed-loop observe-action pattern:
+- **One Observation + One Action = One Unit**: After observing the page state, perform ONLY ONE action (click, type, scroll), then observe again
+- **DO NOT** plan or execute multiple actions based on a single observation
+- **DO** observe the page after each action to see the updated state before deciding the next action
+
+Example workflow:
+1. Observe page → See login form → Click username field
+2. Observe page → See username field focused → Type username
+3. Observe page → See password field → Click password field
+4. Observe page → See password field focused → Type password
+5. Observe page → See submit button → Click submit
+
+## TYPE ACTION BEHAVIOR
+The type action automatically focuses the target element before typing and auto-detects element type:
+- **DO NOT** click an element to focus it before typing - type action handles focus automatically
+- **EXCEPTION**: If target is a button/trigger that renders a NEW text input (e.g., "Add comment" button), follow observe-action pattern:
+  1. Observe page → See "Add comment" button → Click button
+  2. Observe page → See newly rendered text area → Type text
+
+## FINDING CORRECT INPUT TARGETS
+
+**Traditional Input Elements** (type directly):
+- <input>, <textarea> elements
+- contenteditable="true" divs already visible
+
+**Modern Rich Text Editors** (find the contenteditable div):
+- Quill: .ql-editor div with contenteditable="true"
+- Slate: [data-slate-editor="true"] div
+- Draft.js: .public-DraftEditor-content div
+- TinyMCE: #tinymce or .mce-content-body
+- CKEditor: .cke_editable
+- ProseMirror/Tiptap: .ProseMirror
+- Lexical: [contenteditable="true"][data-lexical-editor="true"]
+**Important**: Target the inner contenteditable div, NOT wrapper containers
+
+**Trigger Buttons** (click first to reveal input):
+- Buttons with labels like "Add", "Reply", "Comment", "Edit", "Write"
+- Placeholder divs that expand into editors when clicked
+
+## VIEWPORT AWARENESS
+Snapshots only return elements visible in the current viewport (inViewport: true). Elements outside viewport are filtered to reduce token consumption.
+
+**Key Principles**:
+1. If you don't see expected elements, they may be below/above current scroll position
+2. Use scroll action to discover more content
+3. Default scrolling target: page itself (node_id=-1 for main window)
+4. Scrollable containers marked with aria-label="scrollable: [direction]"
+
+**Scrolling Decision**:
+- Looking for content in main page flow? → node_id=-1
+- Element has aria-label="scrollable: ..."? → Scroll that container
+- Looking in specific widget/panel/sidebar? → Scroll that container`,
     {
       action: {
         type: 'string',
-        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - use node_id=-1 for page scroll, or element node_id for scrollable containers)',
+        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - MOST COMMONLY use node_id=-1 for page/window scroll, rarely use element node_id for scrollable containers)',
         enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
       },
       node_id: {
         type: 'number',
-        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window/page scroll (default for main content), -2 for document-level keypress. For scroll action: use -1 to scroll the main page, or use a specific element node_id to scroll a container (chat window, sidebar, infinite-scroll list, etc.).',
+        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window/page scroll (RECOMMENDED - use this for most scrolling scenarios to scroll the main page content), -2 for document-level keypress. For scroll action: PREFER node_id=-1 to scroll the main page (most common case). Only use a specific element node_id for rare cases like scrolling within a modal dialog, chat message container, or sidebar with independent scrolling.',
       },
       text: {
         type: 'string',
@@ -97,7 +151,7 @@ export class DOMTool extends BaseTool {
       },
       options: {
         type: 'object',
-        description: 'Action-specific options. For scroll: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas, not absolute positions). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px, {scrollY: -300} scrolls up 300px. For type: { clearFirst?: boolean, speed?: number, commit?: "change"|"enter", blur?: boolean }. For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
+        description: 'Action-specific options. For scroll: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas, not absolute positions). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px, {scrollY: -300} scrolls up 300px. For type: { clearFirst?: boolean, speed?: number, method?: "auto"|"instant"|"char-by-char"|"paste", commit?: "change"|"enter", blur?: boolean }. The method option controls typing strategy: "auto" (default, auto-detects element type - uses char-by-char for contenteditable/rich text editors, instant for simple inputs), "instant" (fast, works for <input>/<textarea>), "char-by-char" (simulates human typing character-by-character, best for rich text editors like Quill/Slate/Draft.js, configurable speed in ms per character), "paste" (simulates Ctrl+V paste, fast for rich editors). For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
       },
     },
     {
@@ -258,7 +312,7 @@ export class DOMTool extends BaseTool {
 
     // Always use CDP-based implementation (content-script implementation removed)
     const domService = await DomService.forTab(tabId);
-    return await domService.type(nodeId, text);
+    return await domService.type(nodeId, text, options);
   }
 
   /**
@@ -275,8 +329,8 @@ export class DOMTool extends BaseTool {
     // Extract modifiers from options if present
     const modifiers = options?.modifiers
       ? Object.entries(options.modifiers)
-          .filter(([_, enabled]) => enabled)
-          .map(([mod]) => mod.charAt(0).toUpperCase() + mod.slice(1))
+        .filter(([_, enabled]) => enabled)
+        .map(([mod]) => mod.charAt(0).toUpperCase() + mod.slice(1))
       : undefined;
     return await domService.keypress(key, modifiers);
   }
