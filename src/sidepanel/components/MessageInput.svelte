@@ -13,8 +13,12 @@
 
   let showButtonTooltip = false;
   let textareaEl: HTMLTextAreaElement;
-  const minVisibleLines = 2;
+  const minVisibleLines = 3;
   const maxVisibleLines = 6;
+  const lineHeightPx = 21; // matches 14px font with 1.5 line-height
+  const verticalPaddingPx = 16; // padding-top + padding-bottom (8px each)
+  const minHeightPx = lineHeightPx * minVisibleLines + verticalPaddingPx;
+  const maxHeightPx = lineHeightPx * maxVisibleLines + verticalPaddingPx;
 
   function handleKeyDown(event: KeyboardEvent) {
     // Submit on Enter (without Shift)
@@ -41,25 +45,24 @@
   }
 
   function autoResize() {
-    if (!textareaEl || typeof window === 'undefined') return;
+    if (!textareaEl) return;
 
     textareaEl.style.height = 'auto';
 
-    const computed = window.getComputedStyle(textareaEl);
-    const lineHeight = parseFloat(computed.lineHeight) || 20;
-    const padding = (parseFloat(computed.paddingTop) || 0) + (parseFloat(computed.paddingBottom) || 0);
-    const border = (parseFloat(computed.borderTopWidth) || 0) + (parseFloat(computed.borderBottomWidth) || 0);
-    const maxHeight = lineHeight * maxVisibleLines + padding + border;
-    const minHeight = lineHeight * minVisibleLines + padding + border;
-
-    const scrollHeight = textareaEl.scrollHeight;
-    const nextHeight = Math.max(minHeight, Math.min(scrollHeight, maxHeight));
+    const rawHeight = textareaEl.scrollHeight;
+    const usableHeight = Math.max(rawHeight - verticalPaddingPx, 0);
+    const contentLines = Math.ceil(usableHeight / lineHeightPx);
+    const clampedLines = Math.max(minVisibleLines, Math.min(contentLines, maxVisibleLines));
+    const nextHeight = clampedLines * lineHeightPx + verticalPaddingPx;
 
     textareaEl.style.height = `${nextHeight}px`;
-    textareaEl.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
+    textareaEl.style.overflowY = contentLines > maxVisibleLines ? 'auto' : 'hidden';
   }
 
   onMount(() => {
+    if (textareaEl) {
+      textareaEl.style.height = `${minHeightPx}px`;
+    }
     autoResize();
   });
 
@@ -163,6 +166,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 79px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -183,8 +187,9 @@
     overflow-y: hidden;
     padding: 8px 12px;
     line-height: 1.5;
-    min-height: calc(1.5em * 2 + 16px);
-    max-height: calc(1.5em * 6 + 16px);
+    height: 79px;
+    min-height: 79px;
+    max-height: 142px;
   }
 
   .terminal-input::placeholder {
