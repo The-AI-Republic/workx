@@ -3,6 +3,7 @@
  */
 
 import type { ReviewDecision } from '../../../protocol/types';
+import type { SessionTask } from '../../tasks/SessionTask';
 
 /**
  * Kind of task running in an active turn
@@ -25,6 +26,9 @@ export interface RunningTask {
 
   /** AbortController for cancelling task execution */
   abortController: AbortController;
+
+  /** Reference to the session task for cleanup */
+  task: SessionTask;
 
   /** Promise representing the running task (returns final assistant message or null) */
   promise: Promise<string | null>;
