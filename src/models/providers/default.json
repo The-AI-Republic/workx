@@ -270,5 +270,43 @@
         }
       }
     ]
+  },
+  "together": {
+    "id": "together",
+    "name": "Together AI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.together.xyz/v1",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "id": "",
+        "name": "Kimi K2 Thinking",
+        "modelKey": "moonshotai/Kimi-K2-Thinking",
+        "creator": "Moonshot AI",
+        "contextWindow": 256000,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": ["low", "medium", "high"],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": false,
+        "releaseDate": "2025-01-09",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$1.20 / 1M tokens",
+          "outputToken": "$4.00 / 1M tokens",
+          "link": "https://www.together.ai/models/kimi-k2-thinking"
+        }
+      }
+    ]
   }
 }
