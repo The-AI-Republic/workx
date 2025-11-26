@@ -558,9 +558,7 @@
     font-size: 0.7rem;
     color: rgb(209, 213, 219);
     line-height: 1.3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
   }
 
   .tooltip-line:not(:last-child) {
