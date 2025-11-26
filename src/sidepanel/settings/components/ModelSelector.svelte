@@ -331,18 +331,31 @@
               <div class="provider-buttons flex flex-wrap gap-1.5 items-center">
                 {#each group.providers as provider (provider.modelId)}
                   {@const isProviderSelected = provider.modelId === selectedModel}
-                  <button
-                    type="button"
-                    class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
-                    class:provider-selected={isProviderSelected}
-                    class:provider-unselected={!isProviderSelected}
-                    on:click={(e) => handleProviderClick(e, provider.modelId, group.modelName)}
-                  >
-                    <span class="provider-name">{provider.providerName}</span>
-                    {#if provider.apiKey}
-                      <span class="ml-1 text-xs opacity-70">✓</span>
-                    {/if}
-                  </button>
+                  {@const tooltipText = provider.pricing
+                    ? `Input: ${provider.pricing.inputToken}\nOutput: ${provider.pricing.outputToken}`
+                    : `${provider.contextWindow.toLocaleString()} tokens context`}
+                  <div class="provider-tooltip-wrapper">
+                    <button
+                      type="button"
+                      class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
+                      class:provider-selected={isProviderSelected}
+                      class:provider-unselected={!isProviderSelected}
+                      on:click={(e) => handleProviderClick(e, provider.modelId, group.modelName)}
+                    >
+                      <span class="provider-name">{provider.providerName}</span>
+                      {#if provider.apiKey}
+                        <span class="ml-1 text-xs opacity-70">✓</span>
+                      {/if}
+                    </button>
+                    <div class="provider-tooltip">
+                      {#if provider.pricing}
+                        <div class="tooltip-line">In: {provider.pricing.inputToken}</div>
+                        <div class="tooltip-line">Out: {provider.pricing.outputToken}</div>
+                      {:else}
+                        <div class="tooltip-line">{provider.contextWindow.toLocaleString()} tokens</div>
+                      {/if}
+                    </div>
+                  </div>
                 {/each}
               </div>
             {:else}
@@ -486,6 +499,72 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  /* Provider tooltip wrapper */
+  .provider-tooltip-wrapper {
+    position: relative;
+    display: inline-flex;
+  }
+
+  /* Provider tooltip */
+  .provider-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background-color: rgb(17, 24, 39);
+    border: 1px solid rgb(55, 65, 81);
+    border-radius: 6px;
+    padding: 6px 10px;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    pointer-events: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    max-width: 200px;
+    width: max-content;
+  }
+
+  /* Tooltip arrow */
+  .provider-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 12px;
+    border: 6px solid transparent;
+    border-top-color: rgb(55, 65, 81);
+  }
+
+  .provider-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 13px;
+    border: 5px solid transparent;
+    border-top-color: rgb(17, 24, 39);
+    margin-top: -1px;
+    z-index: 1;
+  }
+
+  /* Show tooltip on hover */
+  .provider-tooltip-wrapper:hover .provider-tooltip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Tooltip line styling */
+  .tooltip-line {
+    font-size: 0.7rem;
+    color: rgb(209, 213, 219);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tooltip-line:not(:last-child) {
+    margin-bottom: 1px;
   }
 
   /* Error message styling */

@@ -33,7 +33,6 @@
     compactionCount: 0,
     isWarning: false,
   };
-  let showCompactTooltip = false;
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -496,42 +495,6 @@
     // Handle auth updates if needed
   }
 
-  /**
-   * Trigger manual compaction (T034, T035)
-   */
-  async function triggerManualCompaction() {
-    if (isProcessing) {
-      messages = [...messages, {
-        type: 'agent',
-        content: 'Cannot compact while processing. Please wait for the current task to complete.',
-        timestamp: Date.now(),
-      }];
-      return;
-    }
-
-    try {
-      await router.sendSubmission({
-        id: `compact_${Date.now()}`,
-        op: {
-          type: 'ManualCompact',
-        },
-      });
-
-      messages = [...messages, {
-        type: 'agent',
-        content: 'Manual compaction initiated...',
-        timestamp: Date.now(),
-      }];
-    } catch (error) {
-      console.error('Failed to trigger manual compaction:', error);
-      messages = [...messages, {
-        type: 'agent',
-        content: 'Failed to trigger compaction. Please try again.',
-        timestamp: Date.now(),
-      }];
-    }
-  }
-
   async function startNewConversation() {
     // Clear UI state
     messages = [];
@@ -663,28 +626,6 @@
 
         <!-- Function menu -->
         <div class="function-menu">
-          <!-- Manual Compaction Button (T034) -->
-          <button
-            class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
-            on:click={triggerManualCompaction}
-            on:mouseenter={() => showCompactTooltip = true}
-            on:mouseleave={() => showCompactTooltip = false}
-            aria-label="Compact History"
-            disabled={isProcessing}
-          >
-            <!-- Compress/Archive Icon SVG -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-term-dim-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-
-            <!-- Tooltip -->
-            {#if showCompactTooltip}
-              <div class="tooltip absolute bottom-full mb-2 right-0 px-2 py-1 bg-term-bg border border-term-dim-green rounded text-xs text-term-dim-green whitespace-nowrap">
-                Compact History
-              </div>
-            {/if}
-          </button>
-
           <!-- New Conversation Button -->
           <button
             class="function-button p-2 rounded-full bg-term-bg border border-term-dim-green hover:bg-term-bg-hover transition-colors relative"
