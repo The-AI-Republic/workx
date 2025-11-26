@@ -9,12 +9,13 @@ import { OpenAIChatCompletionClient } from './client/OpenAIChatCompletionClient'
 import { GoogleCompletionClient } from './client/GoogleCompletionClient';
 import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
+import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
 
 /**
  * Supported model providers
  */
-export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot';
+export type ModelProvider = 'openai' | 'xai' | 'anthropic' | 'groq' | 'google-ai-studio' | 'fireworks' | 'moonshot' | 'together';
 
 /**
  * Configuration for model client creation
@@ -83,7 +84,7 @@ export class ModelClientFactory {
    * @returns ModelProvider type
    */
   private mapProviderIdToType(providerId: string): ModelProvider {
-    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot') {
+    if (providerId === 'openai' || providerId === 'xai' || providerId === 'anthropic' || providerId === 'groq' || providerId === 'google-ai-studio' || providerId === 'fireworks' || providerId === 'moonshot' || providerId === 'together') {
       return providerId;
     }
     throw new ModelClientError(`Unsupported provider: ${providerId}`);
@@ -250,7 +251,7 @@ export class ModelClientFactory {
    * @returns Promise resolving to configuration status
    */
   async getConfigurationStatus(): Promise<Record<ModelProvider, { hasApiKey: boolean; isDefault: boolean }>> {
-    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, defaultProvider] = await Promise.all([
+    const [openaiHasKey, xaiHasKey, anthropicHasKey, groqHasKey, googleAiStudioHasKey, fireworksHasKey, moonshotHasKey, togetherHasKey, defaultProvider] = await Promise.all([
       this.hasValidApiKey('openai'),
       this.hasValidApiKey('xai'),
       this.hasValidApiKey('anthropic'),
@@ -258,6 +259,7 @@ export class ModelClientFactory {
       this.hasValidApiKey('google-ai-studio'),
       this.hasValidApiKey('fireworks'),
       this.hasValidApiKey('moonshot'),
+      this.hasValidApiKey('together'),
       this.getDefaultProvider(),
     ]);
 
@@ -269,6 +271,10 @@ export class ModelClientFactory {
       fireworks: {
         hasApiKey: fireworksHasKey,
         isDefault: defaultProvider === 'fireworks',
+      },
+      together: {
+        hasApiKey: togetherHasKey,
+        isDefault: defaultProvider === 'together',
       },
       openai: {
         hasApiKey: openaiHasKey,
@@ -423,6 +429,8 @@ export class ModelClientFactory {
       displayName = 'Google AI Studio';
     } else if (providerName === 'fireworks') {
       displayName = 'Fireworks AI';
+    } else if (providerName === 'together') {
+      displayName = 'Together AI';
     }
 
     const provider = {
@@ -455,6 +463,18 @@ export class ModelClientFactory {
       case 'moonshot':
         console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Moonshot AI`);
         return new OpenAIChatCompletionClient({
+          apiKey: config.apiKey,
+          baseUrl: resolvedBaseUrl,
+          organization,
+          conversationId,
+          modelFamily,
+          provider,
+          modelConfig,
+        });
+
+      case 'together':
+        console.log(`[ModelClientFactory] Instantiating TogetherChatCompletionClient for Together AI`);
+        return new TogetherChatCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
           organization,

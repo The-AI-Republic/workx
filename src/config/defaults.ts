@@ -223,18 +223,34 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
 
         // Add any models that exist in stored config but not in defaults
         // (e.g., user manually added models)
+        // Also check by model ID to prevent duplicates from migration issues
         for (const storedModel of storedModels) {
           const existsInDefaults = defaultModels.some((m: any) => m.modelKey === storedModel.modelKey);
-          if (!existsInDefaults) {
+          const alreadyMerged = mergedModels.some((m: any) =>
+            m.modelKey === storedModel.modelKey ||
+            (m.id && storedModel.id && m.id === storedModel.id)
+          );
+          if (!existsInDefaults && !alreadyMerged) {
             mergedModels.push({ ...storedModel });
           }
         }
+
+        // Final deduplication pass - remove any duplicate modelKeys
+        const seenModelKeys = new Set<string>();
+        const deduplicatedModels = mergedModels.filter((model: any) => {
+          if (seenModelKeys.has(model.modelKey)) {
+            console.warn(`[mergeWithDefaults] Removing duplicate model: ${model.modelKey} from provider: ${id}`);
+            return false;
+          }
+          seenModelKeys.add(model.modelKey);
+          return true;
+        });
 
         // Merge provider with deep-merged models array
         mergedProviders[id] = {
           ...defaultProvider,
           ...storedProvider,
-          models: mergedModels
+          models: deduplicatedModels
         };
       } else {
         // Provider doesn't exist in defaults, keep it anyway

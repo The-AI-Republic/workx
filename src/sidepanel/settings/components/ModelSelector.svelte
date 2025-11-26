@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * ModelSelector component for multi-provider system
-   * Displays models grouped by provider with "[Model Name] - [Provider Name]" format
+   * Groups models by name and shows provider capsule buttons when multiple providers exist
    * Now uses pre-built modelSelectionItems from parent
    */
   import { createEventDispatcher } from 'svelte';
@@ -35,12 +35,133 @@
   let focusedIndex = -1;
   let selectorRef: HTMLDivElement;
 
+  // Track pending provider selection per model name (when user clicks model row but hasn't selected provider)
+  let pendingSelectionModelName: string | null = null;
+  let pendingProviderErrors: Map<string, boolean> = new Map();
+
+  // Group models by model name for UI display
+  interface GroupedModel {
+    modelName: string;
+    providers: Array<{
+      modelId: string;
+      modelKey: string;
+      providerId: string;
+      providerName: string;
+      apiKey: string | null;
+      contextWindow: number;
+      maxOutputTokens: number;
+      pricing?: {
+        inputToken: string;
+        outputToken: string;
+        link: string;
+      };
+    }>;
+  }
+
+  // Computed: group models by name
+  $: groupedModels = (() => {
+    const groups = new Map<string, GroupedModel>();
+
+    // Debug: log all items to find duplicates
+    console.log('[ModelSelector] Building grouped models from items:', modelSelectionItems.map(i => ({
+      modelId: i.modelId,
+      modelName: i.modelName,
+      providerId: i.providerId,
+      providerName: i.providerName
+    })));
+
+    for (const item of modelSelectionItems) {
+      const existing = groups.get(item.modelName);
+      if (existing) {
+        // Check for duplicate provider before adding
+        const isDuplicate = existing.providers.some(p => p.providerId === item.providerId);
+        if (isDuplicate) {
+          console.warn('[ModelSelector] Skipping duplicate provider:', item.providerName, 'for model:', item.modelName);
+          continue;
+        }
+        existing.providers.push({
+          modelId: item.modelId,
+          modelKey: item.modelKey,
+          providerId: item.providerId,
+          providerName: item.providerName,
+          apiKey: item.apiKey,
+          contextWindow: item.contextWindow,
+          maxOutputTokens: item.maxOutputTokens,
+          pricing: item.pricing
+        });
+      } else {
+        groups.set(item.modelName, {
+          modelName: item.modelName,
+          providers: [{
+            modelId: item.modelId,
+            modelKey: item.modelKey,
+            providerId: item.providerId,
+            providerName: item.providerName,
+            apiKey: item.apiKey,
+            contextWindow: item.contextWindow,
+            maxOutputTokens: item.maxOutputTokens,
+            pricing: item.pricing
+          }]
+        });
+      }
+    }
+
+    console.log('[ModelSelector] Grouped models result:', Array.from(groups.values()).map(g => ({
+      modelName: g.modelName,
+      providers: g.providers.map(p => p.providerName)
+    })));
+
+    return Array.from(groups.values());
+  })();
+
+  // Get selected model's name and provider
+  $: selectedModelData = modelSelectionItems.find(m => m.modelId === selectedModel);
+  $: selectedModelName = selectedModelData?.modelName || '';
+  $: selectedProviderId = selectedModelData?.providerId || '';
+
   function toggleDropdown() {
     if (disabled) return;
     isOpen = !isOpen;
     if (isOpen) {
-      focusedIndex = modelSelectionItems.findIndex(m => m.modelId === selectedModel);
+      focusedIndex = groupedModels.findIndex(g => g.modelName === selectedModelName);
+      // Clear pending selections when opening dropdown
+      pendingSelectionModelName = null;
+      pendingProviderErrors.clear();
     }
+  }
+
+  function handleModelRowClick(group: GroupedModel) {
+    if (disabled) return;
+
+    // If only one provider, select it directly
+    if (group.providers.length === 1) {
+      selectModel(group.providers[0].modelId);
+      return;
+    }
+
+    // If this model name is already selected, don't require re-selection
+    if (group.modelName === selectedModelName) {
+      // Model already selected, close dropdown
+      isOpen = false;
+      return;
+    }
+
+    // Multiple providers: mark as pending selection and show error
+    pendingSelectionModelName = group.modelName;
+    pendingProviderErrors.set(group.modelName, true);
+    pendingProviderErrors = pendingProviderErrors; // Trigger reactivity
+  }
+
+  function handleProviderClick(event: MouseEvent, modelId: string, modelName: string) {
+    event.stopPropagation();
+    if (disabled) return;
+
+    // Clear error for this model name
+    pendingProviderErrors.delete(modelName);
+    pendingProviderErrors = pendingProviderErrors;
+    pendingSelectionModelName = null;
+
+    selectModel(modelId);
   }
 
   function selectModel(modelId: string) {
@@ -59,9 +180,9 @@
         event.preventDefault();
         if (!isOpen) {
           isOpen = true;
-          focusedIndex = modelSelectionItems.findIndex(m => m.modelId === selectedModel);
+          focusedIndex = groupedModels.findIndex(g => g.modelName === selectedModelName);
         } else {
-          focusedIndex = Math.min(focusedIndex + 1, modelSelectionItems.length - 1);
+          focusedIndex = Math.min(focusedIndex + 1, groupedModels.length - 1);
         }
         break;
       case 'ArrowUp':
@@ -74,7 +195,11 @@
       case ' ':
         event.preventDefault();
         if (isOpen && focusedIndex >= 0) {
-          selectModel(modelSelectionItems[focusedIndex].modelId);
+          const group = groupedModels[focusedIndex];
+          if (group.providers.length === 1) {
+            selectModel(group.providers[0].modelId);
+          }
+          // For multiple providers, user must click provider button
         } else {
           toggleDropdown();
         }
@@ -82,6 +207,8 @@
       case 'Escape':
         event.preventDefault();
         isOpen = false;
+        pendingSelectionModelName = null;
+        pendingProviderErrors.clear();
         break;
       case 'Home':
         event.preventDefault();
@@ -89,7 +216,7 @@
         break;
       case 'End':
         event.preventDefault();
-        if (isOpen) focusedIndex = modelSelectionItems.length - 1;
+        if (isOpen) focusedIndex = groupedModels.length - 1;
         break;
     }
   }
@@ -97,6 +224,8 @@
   function handleClickOutside(event: MouseEvent) {
     if (selectorRef && !selectorRef.contains(event.target as Node)) {
       isOpen = false;
+      pendingSelectionModelName = null;
+      pendingProviderErrors.clear();
     }
   }
 
@@ -114,13 +243,9 @@
   $: {
     console.log('[ModelSelector] selectedModel prop changed to:', selectedModel);
     console.log('[ModelSelector] modelSelectionItems length:', modelSelectionItems?.length || 0);
-    console.log('[ModelSelector] modelSelectionItems:', modelSelectionItems);
+    console.log('[ModelSelector] groupedModels:', groupedModels);
     console.log('[ModelSelector] currentModelData:', currentModelData);
     console.log('[ModelSelector] currentModelDisplay:', currentModelDisplay);
-    if (modelSelectionItems?.length > 0) {
-      console.log('[ModelSelector] First model:', modelSelectionItems[0]);
-      console.log('[ModelSelector] Model IDs:', modelSelectionItems.map(m => m.modelId));
-    }
   }
 
   $: if (typeof window !== 'undefined') {
@@ -132,7 +257,7 @@
   }
 </script>
 
-<!-- Model selector with "[Model Name] - [Provider Name]" format -->
+<!-- Model selector with grouped providers -->
 <div
   bind:this={selectorRef}
   class="model-selector relative"
@@ -171,55 +296,135 @@
     </svg>
   </button>
 
-  <!-- Dropdown list -->
+  <!-- Dropdown list with grouped models -->
   {#if isOpen}
     <div
       class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-96 overflow-y-auto"
     >
-      {#each modelSelectionItems as item, index (item.modelId)}
-        <button
-          type="button"
-          class="w-full px-4 py-3 text-left transition-colors border-b border-gray-700 last:border-b-0"
-          class:bg-gray-700={item.modelId === selectedModel}
-          class:bg-gray-750={index === focusedIndex && item.modelId !== selectedModel}
-          class:hover:bg-gray-700={item.modelId !== selectedModel}
-          on:click={() => selectModel(item.modelId)}
+      {#each groupedModels as group, index (group.modelName)}
+        {@const isSelectedModelName = group.modelName === selectedModelName}
+        {@const hasMultipleProviders = group.providers.length > 1}
+        {@const hasError = pendingProviderErrors.get(group.modelName)}
+        {@const firstProvider = group.providers[0]}
+
+        <div
+          class="model-row w-full px-4 py-3 text-left transition-colors border-b border-gray-700 last:border-b-0"
+          class:bg-gray-700={isSelectedModelName}
+          class:bg-gray-750={index === focusedIndex && !isSelectedModelName}
+          class:hover:bg-gray-700={!isSelectedModelName}
+          class:cursor-pointer={!hasMultipleProviders}
+          role="option"
+          aria-selected={isSelectedModelName}
+          on:click={() => handleModelRowClick(group)}
+          on:keydown={(e) => e.key === 'Enter' && handleModelRowClick(group)}
+          tabindex={0}
         >
-          <div class="flex items-center justify-between">
-            <span class="font-medium text-gray-100">
-              {item.modelName} - {item.providerName}
+          <!-- Model name with providers: "<Model Name> - <provider1> <provider2> ..." format -->
+          <div class="model-name-row flex items-start flex-wrap gap-x-2 gap-y-1">
+            <span class="font-medium text-gray-100 flex-shrink-0">
+              {group.modelName}
             </span>
-            {#if item.apiKey}
-              <span class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
-                Configured
+
+            {#if hasMultipleProviders}
+              <!-- Multiple providers: show dash then capsule buttons inline -->
+              <span class="text-gray-500 flex-shrink-0">-</span>
+              <div class="provider-buttons flex flex-wrap gap-1.5 items-center">
+                {#each group.providers as provider (provider.modelId)}
+                  {@const isProviderSelected = provider.modelId === selectedModel}
+                  <button
+                    type="button"
+                    class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
+                    class:provider-selected={isProviderSelected}
+                    class:provider-unselected={!isProviderSelected}
+                    on:click={(e) => handleProviderClick(e, provider.modelId, group.modelName)}
+                  >
+                    <span class="provider-name">{provider.providerName}</span>
+                    {#if provider.apiKey}
+                      <span class="ml-1 text-xs opacity-70">✓</span>
+                    {/if}
+                  </button>
+                {/each}
+              </div>
+            {:else}
+              <!-- Single provider: show provider name and configured badge -->
+              <span class="text-gray-500 flex-shrink-0">-</span>
+              <span class="text-sm text-gray-400">
+                {firstProvider.providerName}
               </span>
+              {#if firstProvider.apiKey}
+                <span class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
+                  Configured
+                </span>
+              {/if}
             {/if}
           </div>
-          {#if item.pricing}
-            <div class="mt-1 flex items-center justify-between gap-2">
-              <div class="text-xs text-gray-400">
-                <div>Input: {item.pricing.inputToken}</div>
-                <div>Output: {item.pricing.outputToken}</div>
-              </div>
-              <a
-                href={item.pricing.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
-                on:click={(e) => e.stopPropagation()}
-                aria-label="View pricing details"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            </div>
-          {:else}
-            <div class="mt-1 text-xs text-gray-400">
-              {item.contextWindow.toLocaleString()} tokens
+
+          <!-- Error message when no provider selected (for multi-provider models) -->
+          {#if hasMultipleProviders && hasError}
+            <div class="provider-error mt-2 text-xs text-red-400 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Please select a provider
             </div>
           {/if}
-        </button>
+
+          <!-- Pricing info (show from first provider or selected provider) -->
+          {#if hasMultipleProviders}
+            {@const displayProvider = group.providers.find(p => p.modelId === selectedModel) || firstProvider}
+            {#if displayProvider.pricing}
+              <div class="mt-2 flex items-center justify-between gap-2">
+                <div class="text-xs text-gray-400">
+                  <div>Input: {displayProvider.pricing.inputToken}</div>
+                  <div>Output: {displayProvider.pricing.outputToken}</div>
+                </div>
+                <a
+                  href={displayProvider.pricing.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
+                  on:click={(e) => e.stopPropagation()}
+                  aria-label="View pricing details"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            {:else}
+              <div class="mt-1 text-xs text-gray-400">
+                {displayProvider.contextWindow.toLocaleString()} tokens
+              </div>
+            {/if}
+          {:else}
+            {#if firstProvider.pricing}
+              <div class="mt-2 flex items-center justify-between gap-2">
+                <div class="text-xs text-gray-400">
+                  <div>Input: {firstProvider.pricing.inputToken}</div>
+                  <div>Output: {firstProvider.pricing.outputToken}</div>
+                </div>
+                <a
+                  href={firstProvider.pricing.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
+                  on:click={(e) => e.stopPropagation()}
+                  aria-label="View pricing details"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            {:else}
+              <div class="mt-1 text-xs text-gray-400">
+                {firstProvider.contextWindow.toLocaleString()} tokens
+              </div>
+            {/if}
+          {/if}
+        </div>
       {/each}
     </div>
   {/if}
@@ -228,5 +433,69 @@
 <style>
   .model-selector:focus {
     outline: none;
+  }
+
+  .model-row {
+    cursor: default;
+  }
+
+  .model-row:focus {
+    outline: none;
+  }
+
+  /* Provider capsule button styles */
+  .provider-capsule {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .provider-capsule:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+  }
+
+  /* Selected provider: bright green border */
+  .provider-selected {
+    border-color: rgb(34, 197, 94);
+    background-color: rgba(34, 197, 94, 0.15);
+    color: rgb(134, 239, 172);
+  }
+
+  .provider-selected:hover {
+    background-color: rgba(34, 197, 94, 0.25);
+  }
+
+  /* Unselected provider: grey border */
+  .provider-unselected {
+    border-color: rgb(75, 85, 99);
+    background-color: transparent;
+    color: rgb(156, 163, 175);
+  }
+
+  .provider-unselected:hover {
+    border-color: rgb(107, 114, 128);
+    background-color: rgba(107, 114, 128, 0.1);
+    color: rgb(209, 213, 219);
+  }
+
+  /* Provider buttons container - allow wrapping */
+  .provider-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Error message styling */
+  .provider-error {
+    animation: shake 0.3s ease-in-out;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
   }
 </style>
