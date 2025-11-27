@@ -60,6 +60,8 @@ export class EventProcessor {
         return this.processOutputEvent(event);
       case 'approval':
         return this.processApprovalEvent(event);
+      case 'plan':
+        return this.processPlanEvent(event);
       case 'system':
         return this.processSystemEvent(event);
       default:
@@ -158,9 +160,12 @@ export class EventProcessor {
       case 'ApplyPatchApprovalRequest':
         return 'approval';
 
+      // Plan events
+      case 'PlanUpdate':
+        return 'plan';
+
       // System events
       case 'TokenCount':
-      case 'PlanUpdate':
       case 'Notification':
       case 'SessionConfigured':
       case 'BackgroundEvent':
@@ -714,6 +719,33 @@ export class EventProcessor {
             console.log('Patch approval rejected');
           },
         },
+        collapsible: false,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Process plan events (PlanUpdate)
+   */
+  private processPlanEvent(event: Event): ProcessedEvent | null {
+    const msg = event.msg;
+
+    if (msg.type === 'PlanUpdate') {
+      const planData = msg.data;
+      const stepCount = planData.plan?.length || 0;
+      const summary = planData.explanation
+        ? planData.explanation
+        : `Plan: ${stepCount} step${stepCount !== 1 ? 's' : ''}`;
+
+      return {
+        id: event.id,
+        category: 'plan',
+        timestamp: new Date(),
+        title: 'Task Plan',
+        content: planData, // Pass the full plan data to PlanEvent component
+        style: { textColor: 'text-cyan-400' },
         collapsible: false,
       };
     }
