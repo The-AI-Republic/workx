@@ -338,34 +338,8 @@ export class TurnManager {
       });
     }
 
-    // Add update_plan tool (DISABLED - not working as expected)
-    // TODO: Re-enable after fixing update_plan functionality
-    // tools.push({
-    //   type: 'function',
-    //   function: {
-    //     name: 'update_plan',
-    //     description: 'Update the current task plan',
-    //     strict: false,
-    //     parameters: {
-    //       type: 'object',
-    //       properties: {
-    //         tasks: {
-    //           type: 'array',
-    //           items: {
-    //             type: 'object',
-    //             properties: {
-    //               id: { type: 'string' },
-    //               description: { type: 'string' },
-    //               status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
-    //             },
-    //             required: ['id', 'description', 'status'],
-    //           },
-    //         },
-    //       },
-    //       required: ['tasks'],
-    //     },
-    //   },
-    // });
+    // Note: planning_tool is registered via ToolRegistry in src/tools/index.ts
+    // It will be picked up automatically from registeredTools above
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -614,10 +588,10 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
-        // DISABLED: update_plan tool not working as expected
-        // case 'update_plan':
-        //   result = await this.updatePlan(parsedParams.tasks);
-        //   break;
+        case 'planning_tool':
+          // Planning tool - emit PlanUpdate event and return success
+          result = await this.updatePlan(parsedParams.plan, parsedParams.explanation);
+          break;
 
         default:
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
@@ -698,13 +672,13 @@ export class TurnManager {
   /**
    * Update task plan
    */
-  private async updatePlan(tasks: any[]): Promise<any> {
+  private async updatePlan(plan: any[], explanation?: string): Promise<any> {
     await this.emitEvent({
       type: 'PlanUpdate',
-      data: { tasks },
+      data: { plan, explanation },
     });
 
-    return { success: true, tasks };
+    return { success: true, plan };
   }
 
   /**

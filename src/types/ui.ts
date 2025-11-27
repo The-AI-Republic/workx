@@ -23,7 +23,8 @@ export type EventDisplayCategory =
   | 'output'      // ExecCommandOutputDelta
   | 'error'       // Error, StreamError, TaskFailed
   | 'approval'    // ExecApprovalRequest, ApplyPatchApprovalRequest
-  | 'system';     // TokenCount, PlanUpdate, Notification, etc.
+  | 'plan'        // PlanUpdate - task planning and progress tracking
+  | 'system';     // TokenCount, Notification, etc.
 
 /**
  * EventStatus - Current status of an operation

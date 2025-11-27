@@ -15,6 +15,7 @@
   import ReasoningEvent from './ReasoningEvent.svelte';
   import OutputEvent from './OutputEvent.svelte';
   import ApprovalEvent from './ApprovalEvent.svelte';
+  import PlanEvent from './PlanEvent.svelte';
   import SystemEvent from './SystemEvent.svelte';
 
   // Props
@@ -242,6 +243,8 @@
           <OutputEvent {event} />
         {:else if event.category === 'approval'}
           <ApprovalEvent {event} />
+        {:else if event.category === 'plan'}
+          <PlanEvent {event} />
         {:else if event.category === 'system'}
           <SystemEvent {event} />
         {:else}
@@ -257,8 +260,7 @@
 
 <style>
   .event-display {
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New',
-      monospace;
+    font-size: 1rem; /* text-base: 16px */
   }
 
   /* Simple left/right message alignment */

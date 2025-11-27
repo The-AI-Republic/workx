@@ -288,14 +288,33 @@ export interface CustomPrompt {
   content: string;
 }
 
-export interface UpdatePlanArgs {
-  tasks: PlanTask[];
+/**
+ * Step status for plan items
+ */
+export enum StepStatus {
+  Pending = "Pending",
+  InProgress = "InProgress",
+  Completed = "Completed",
 }
 
-export interface PlanTask {
-  id: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed';
+/**
+ * A single step in the task plan
+ */
+export interface PlanItemArg {
+  /** Human-readable step description (recommended 5-7 words) */
+  step: string;
+  /** Current execution state */
+  status: StepStatus;
+}
+
+/**
+ * Input arguments for the PlanningTool
+ */
+export interface UpdatePlanArgs {
+  /** Optional explanation for plan creation/update */
+  explanation?: string;
+  /** Ordered list of plan steps */
+  plan: PlanItemArg[];
 }
 
 export interface TurnAbortedEvent {

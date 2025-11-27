@@ -12,6 +12,7 @@ import { DOMTool } from './DOMTool';
 import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
+import { PlanningTool } from './PlanningTool';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
@@ -25,6 +26,7 @@ export { DOMTool } from './DOMTool';
 export { NavigationTool } from './NavigationTool';
 export { StorageTool } from './StorageTool';
 export { PageVisionTool } from './PageVisionTool';
+export { PlanningTool } from './PlanningTool';
 
 /**
  * Register browser automation tools based on configuration
@@ -167,6 +169,11 @@ export async function registerTools(
 
     // Page Action Tool - REMOVED: Functionality merged into DOMTool v3.0
     // Use DOMTool with action parameter instead
+
+    // Planning Tool - Always enabled for task planning and progress tracking
+    const planningTool = new PlanningTool();
+    await registerTool('planning_tool', planningTool);
+    console.log('PlanningTool registered (always enabled)');
 
     console.log('Advanced browser tools registration completed');
   } catch (error) {
