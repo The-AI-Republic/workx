@@ -28,7 +28,7 @@ export class DomService {
     this.config = {
       enableVisualEffects: true,
       maxTreeDepth: 100,
-      snapshotTimeout: 10000,
+      snapshotTimeout: 120000,
       retryAttempts: 2,
       enableMetrics: true,
       ...config
@@ -1263,13 +1263,22 @@ export class DomService {
       console.log(`[DomService] Element type detected: ${elementType}`);
 
       // Determine typing method
+      // Threshold for switching to paste method for long content
+      const LONG_CONTENT_THRESHOLD = 300;
+
       let method = options?.method || 'auto';
       if (method === 'auto') {
-        // Auto-detect best method based on element type
-        if (elementType === 'contenteditable') {
-          method = 'char-by-char'; // Rich text editors work best with char-by-char
+        // Auto-detect best method based on element type AND content length
+        if (text.length > LONG_CONTENT_THRESHOLD) {
+          // For long content (>300 chars), always use paste for efficiency
+          method = 'paste';
+          console.log(`[DomService] Long content detected (${text.length} chars > ${LONG_CONTENT_THRESHOLD}), using paste method`);
+        } else if (elementType === 'contenteditable') {
+          // For short content in rich text editors, use char-by-char
+          method = 'char-by-char';
         } else {
-          method = 'instant'; // Simple inputs work fine with instant
+          // For short content in simple inputs, use instant
+          method = 'instant';
         }
       }
       console.log(`[DomService] Using typing method: ${method}`);

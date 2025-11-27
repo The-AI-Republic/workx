@@ -203,7 +203,7 @@ export interface SerializedNode {
  */
 export interface DomToolConfig {
   /** Max time to wait for snapshot creation (ms) */
-  snapshotTimeout?: number; // default: 30000
+  snapshotTimeout?: number; // default: 120000
 
   /** Max interactive elements to capture */
   maxInteractiveElements?: number; // default: 400
@@ -420,7 +420,7 @@ export interface ActionResult {
  * Default configuration
  */
 export const DEFAULT_CONFIG: Required<DomToolConfig> = {
-  snapshotTimeout: 30000,
+  snapshotTimeout: 120000,
   maxInteractiveElements: 400,
   maxTreeDepth: 50,
   autoInvalidate: true,
