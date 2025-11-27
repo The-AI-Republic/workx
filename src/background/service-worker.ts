@@ -185,9 +185,6 @@ function setupMessageHandlers(): void {
             // Abort all running tasks
             await session.abortAllTasks('UserInterrupt');
 
-            // Reset the session
-            await session.reset();
-
             sendResponse({ success: true });
           } else {
             sendResponse({ success: false, error: 'Agent not initialized' });

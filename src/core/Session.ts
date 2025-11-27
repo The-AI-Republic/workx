@@ -1120,6 +1120,12 @@ export class Session {
     // Abort the task via AbortController
     task.abortController.abort();
 
+    try {
+      await task.task.abort(this, subId);
+    } catch (error) {
+      console.warn(`Task abort() failed for ${subId}:`, error);
+    }
+
     // Emit TurnAborted event
     const event: Event = {
       id: subId,
@@ -1220,6 +1226,7 @@ export class Session {
     const runningTask: RunningTask = {
       kind: task.kind(),
       abortController,
+      task,
       promise,
       startTime: Date.now()
     };

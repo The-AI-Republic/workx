@@ -534,6 +534,38 @@
       }];
     }
   }
+
+  /**
+   * Stop the current agent session
+   * Aborts all running tasks and resets processing state
+   */
+  async function stopAgent() {
+    if (!isProcessing) return;
+
+    try {
+      // Send stop message to service worker
+      await chrome.runtime.sendMessage({ type: 'STOP_AGENT_SESSION' });
+      isProcessing = false;
+      console.log('[App] Agent session stopped');
+    } catch (error) {
+      console.error('[App] Failed to stop agent:', error);
+
+      const isPortClosed = error instanceof Error &&
+        (error.message.includes('message port closed') ||
+         error.message.includes('Extension context invalidated'));
+
+      let errorMessage = 'Failed to stop the task. Please try again.';
+      if (isPortClosed) {
+        errorMessage = 'Service worker unavailable. Please wait a moment and try again.';
+      }
+
+      messages = [...messages, {
+        type: 'agent',
+        content: errorMessage,
+        timestamp: Date.now(),
+      }];
+    }
+  }
 </script>
 
 <div class="terminal-layout">
@@ -618,7 +650,9 @@
           <MessageInput
             bind:value={inputText}
             onSubmit={sendMessage}
+            onStop={stopAgent}
             tabId={currentTabId}
+            {isProcessing}
             placeholder=">> Enter command..."
             on:tabSelected={handleTabSelected}
           />
