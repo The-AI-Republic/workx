@@ -28,7 +28,7 @@ export class DomService {
     this.config = {
       enableVisualEffects: true,
       maxTreeDepth: 100,
-      snapshotTimeout: 10000,
+      snapshotTimeout: 120000,
       retryAttempts: 2,
       enableMetrics: true,
       ...config
