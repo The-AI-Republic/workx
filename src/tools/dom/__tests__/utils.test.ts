@@ -51,7 +51,8 @@ describe('classifyNode', () => {
     const axNode = { role: { value: 'button' } };
     const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
 
-    const tier = classifyNode(cdpNode, axNode, heuristics);
+    // classifyNode(axNode, heuristics, cdpNode)
+    const tier = classifyNode(axNode, heuristics, cdpNode);
     expect(tier).toBe('semantic');
   });
 
@@ -60,7 +61,7 @@ describe('classifyNode', () => {
     const axNode = { role: { value: 'generic' } };
     const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
 
-    const tier = classifyNode(cdpNode, axNode, heuristics);
+    const tier = classifyNode(axNode, heuristics, cdpNode);
     expect(tier).toBe('structural');
   });
 
@@ -69,7 +70,7 @@ describe('classifyNode', () => {
     const axNode = null;
     const heuristics = { hasOnClick: true, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
 
-    const tier = classifyNode(cdpNode, axNode, heuristics);
+    const tier = classifyNode(axNode, heuristics, cdpNode);
     expect(tier).toBe('non-semantic');
   });
 
@@ -78,7 +79,7 @@ describe('classifyNode', () => {
     const axNode = null;
     const heuristics = { hasOnClick: false, hasDataTestId: true, hasCursorPointer: false, isVisuallyInteractive: false };
 
-    const tier = classifyNode(cdpNode, axNode, heuristics);
+    const tier = classifyNode(axNode, heuristics, cdpNode);
     expect(tier).toBe('non-semantic');
   });
 
@@ -87,8 +88,82 @@ describe('classifyNode', () => {
     const axNode = null;
     const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
 
-    const tier = classifyNode(cdpNode, axNode, heuristics);
+    const tier = classifyNode(axNode, heuristics, cdpNode);
     expect(tier).toBe('structural');
+  });
+
+  // Tests for HTML tag fallback (Option B)
+  it('should classify <a> with href as semantic when no axNode', () => {
+    const cdpNode = { localName: 'a', attributes: ['href', 'https://example.com'] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('semantic');
+  });
+
+  it('should classify <button> as semantic when no axNode', () => {
+    const cdpNode = { localName: 'button', attributes: [] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('semantic');
+  });
+
+  it('should classify <input> as semantic when no axNode', () => {
+    const cdpNode = { localName: 'input', attributes: ['type', 'text'] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('semantic');
+  });
+
+  it('should classify element with role attribute as semantic when no axNode', () => {
+    const cdpNode = { localName: 'div', attributes: ['role', 'button'] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('semantic');
+  });
+
+  it('should classify element with tabindex>=0 as non-semantic when no axNode', () => {
+    const cdpNode = { localName: 'div', attributes: ['tabindex', '0'] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('non-semantic');
+  });
+
+  it('should classify contenteditable as non-semantic when no axNode', () => {
+    const cdpNode = { localName: 'div', attributes: ['contenteditable', 'true'] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('non-semantic');
+  });
+
+  it('should NOT classify <a> without href as semantic', () => {
+    const cdpNode = { localName: 'a', attributes: [] };
+    const axNode = null;
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('structural');
+  });
+
+  it('should NOT use HTML fallback when axNode exists', () => {
+    // Even if cdpNode is a button, if axNode has role=generic, use axNode classification
+    const cdpNode = { localName: 'button', attributes: [] };
+    const axNode = { role: { value: 'generic' } };
+    const heuristics = { hasOnClick: false, hasDataTestId: false, hasCursorPointer: false, isVisuallyInteractive: false };
+
+    const tier = classifyNode(axNode, heuristics, cdpNode);
+    expect(tier).toBe('structural'); // axNode says generic, so structural
   });
 });
 
