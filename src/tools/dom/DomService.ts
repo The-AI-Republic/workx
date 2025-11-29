@@ -638,7 +638,7 @@ export class DomService {
     };
 
     for (const plugin of this.plugins) {
-      await plugin.execute(tree, context);
+      await plugin.read(tree, context);
     }
   }
 

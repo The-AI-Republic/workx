@@ -38,20 +38,21 @@ export interface DomPluginResult {
  *
  * To create a new plugin:
  * 1. Extend this class
- * 2. Implement `execute()` to check activation and augment the tree
+ * 2. Implement `read()` to check activation and augment the tree with content
+ * 3. Optionally implement `write()` for editing capabilities
  */
 export abstract class DomPlugin {
   /** Plugin name for logging and debugging */
   abstract readonly name: string;
 
   /**
-   * Execute the plugin - checks activation and augments tree if applicable
-   * This is the only API exposed to DomService
+   * Read content and augment the tree - checks activation and injects content if applicable
+   * Called by DomService during snapshot building
    * @param tree The root VirtualNode tree
    * @param context Plugin context with CDP access
-   * @returns Result of the execution
+   * @returns Result of the read operation
    */
-  abstract execute(tree: VirtualNode, context: DomPluginContext): Promise<DomPluginResult>;
+  abstract read(tree: VirtualNode, context: DomPluginContext): Promise<DomPluginResult>;
 
   /**
    * Helper to find nodes matching a predicate

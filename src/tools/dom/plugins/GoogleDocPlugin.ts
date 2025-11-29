@@ -22,9 +22,9 @@ export class GoogleDocPlugin extends DomPlugin {
   readonly name = 'GoogleDocPlugin';
 
   /**
-   * Execute the plugin - checks if page is a Google Doc and injects content
+   * Read Google Doc content and inject it into the DOM tree
    */
-  async execute(tree: VirtualNode, context: DomPluginContext): Promise<DomPluginResult> {
+  async read(tree: VirtualNode, context: DomPluginContext): Promise<DomPluginResult> {
     // Check if this is a Google Doc
     if (!GOOGLE_DOC_PATTERN.test(context.url)) {
       return {
@@ -45,7 +45,6 @@ export class GoogleDocPlugin extends DomPlugin {
     }
 
     try {
-      console.log(`[${this.name}] Fetching content for doc: ${docId}`);
       const docContent = await this.fetchDocContent(docId, context);
 
       if (!docContent || docContent.trim().length === 0) {
@@ -57,8 +56,6 @@ export class GoogleDocPlugin extends DomPlugin {
         };
       }
 
-      console.log(`[${this.name}] Fetched ${docContent.length} chars of content`);
-
       // Find canvas elements in the tree
       const canvasNodes = this.findNodes(tree, (node) =>
         node.nodeName?.toLowerCase() === 'canvas'
@@ -66,8 +63,6 @@ export class GoogleDocPlugin extends DomPlugin {
 
       if (canvasNodes.length === 0) {
         // No canvas found - might be in editing mode with contenteditable
-        console.log(`[${this.name}] No canvas elements found, looking for editor container`);
-
         // Look for the main document editor container
         const editorContainers = this.findNodes(tree, (node) => {
           const attributes = this.getAttributeMap(node.attributes);
@@ -82,7 +77,6 @@ export class GoogleDocPlugin extends DomPlugin {
         if (editorContainers.length > 0) {
           const container = editorContainers[0];
           this.injectContentAsChild(container, docContent);
-          console.log(`[${this.name}] Injected content into editor container`);
           return {
             executed: true,
             success: true,
@@ -102,7 +96,6 @@ export class GoogleDocPlugin extends DomPlugin {
 
         if (bodyNodes.length > 0) {
           this.injectContentAsChild(bodyNodes[0], docContent, 'google-doc-content');
-          console.log(`[${this.name}] Injected content into body`);
           return {
             executed: true,
             success: true,
@@ -127,8 +120,6 @@ export class GoogleDocPlugin extends DomPlugin {
       const mainCanvas = this.findMainCanvas(canvasNodes);
       this.injectContentAsChild(mainCanvas, docContent);
 
-      console.log(`[${this.name}] Injected content into canvas element`);
-
       return {
         executed: true,
         success: true,
@@ -142,7 +133,6 @@ export class GoogleDocPlugin extends DomPlugin {
       };
 
     } catch (error: any) {
-      console.error(`[${this.name}] Failed to fetch/inject content:`, error);
       return {
         executed: true,
         success: false,
@@ -167,70 +157,61 @@ export class GoogleDocPlugin extends DomPlugin {
   private async fetchDocContent(docId: string, context: DomPluginContext): Promise<string> {
     const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
 
-    console.log(`[${this.name}] Attempting to fetch via CDP: ${exportUrl}`);
+    // Get the main frame ID - required for Network.loadNetworkResource
+    const frameTreeResult = await context.sendCommand<any>('Page.getFrameTree', {});
+    const frameId = frameTreeResult.frameTree.frame.id;
 
-    try {
-      // Get the main frame ID - required for Network.loadNetworkResource
-      const frameTreeResult = await context.sendCommand<any>('Page.getFrameTree', {});
-      const frameId = frameTreeResult.frameTree.frame.id;
+    // Use Network.loadNetworkResource to fetch with the page's cookies
+    // This bypasses CORS as it's a debugger-level request
+    const resourceResult = await context.sendCommand<any>('Network.loadNetworkResource', {
+      frameId: frameId,
+      url: exportUrl,
+      options: {
+        disableCache: false,
+        includeCredentials: true
+      }
+    });
 
-      // Use Network.loadNetworkResource to fetch with the page's cookies
-      // This bypasses CORS as it's a debugger-level request
-      const resourceResult = await context.sendCommand<any>('Network.loadNetworkResource', {
-        frameId: frameId,
-        url: exportUrl,
-        options: {
-          disableCache: false,
-          includeCredentials: true
-        }
-      });
+    if (resourceResult.resource.success) {
+      // The content is in a stream, we need to read it
+      const streamHandle = resourceResult.resource.stream;
 
-      console.log(`[${this.name}] Network.loadNetworkResource result:`, JSON.stringify(resourceResult, null, 2));
+      if (streamHandle) {
+        // Read the stream content
+        let content = '';
+        let eof = false;
 
-      if (resourceResult.resource.success) {
-        // The content is in a stream, we need to read it
-        const streamHandle = resourceResult.resource.stream;
+        while (!eof) {
+          const readResult = await context.sendCommand<any>('IO.read', {
+            handle: streamHandle,
+            size: 1024 * 1024 // Read up to 1MB at a time
+          });
 
-        if (streamHandle) {
-          // Read the stream content
-          let content = '';
-          let eof = false;
-
-          while (!eof) {
-            const readResult = await context.sendCommand<any>('IO.read', {
-              handle: streamHandle,
-              size: 1024 * 1024 // Read up to 1MB at a time
-            });
-
-            if (readResult.data) {
-              // Data might be base64 encoded
-              if (readResult.base64Encoded) {
-                content += atob(readResult.data);
-              } else {
-                content += readResult.data;
-              }
+          if (readResult.data) {
+            // Data might be base64 encoded
+            if (readResult.base64Encoded) {
+              content += atob(readResult.data);
+            } else {
+              content += readResult.data;
             }
-
-            eof = readResult.eof;
           }
 
-          // Close the stream
-          await context.sendCommand<any>('IO.close', { handle: streamHandle });
-
-          return content;
-        } else {
-          throw new Error('No stream handle returned from Network.loadNetworkResource');
+          eof = readResult.eof;
         }
-      } else {
-        const httpStatus = resourceResult.resource.httpStatusCode;
-        const netError = resourceResult.resource.netError;
-        const netErrorName = resourceResult.resource.netErrorName;
 
-        throw new Error(`Failed to load resource: HTTP ${httpStatus}, netError: ${netError} (${netErrorName})`);
+        // Close the stream
+        await context.sendCommand<any>('IO.close', { handle: streamHandle });
+
+        return content;
+      } else {
+        throw new Error('No stream handle returned from Network.loadNetworkResource');
       }
-    } catch (error: any) {
-      console.error(`[${this.name}] CDP fetch failed:`, error);
-      throw error;
+    } else {
+      const httpStatus = resourceResult.resource.httpStatusCode;
+      const netError = resourceResult.resource.netError;
+      const netErrorName = resourceResult.resource.netErrorName;
+
+      throw new Error(`Failed to load resource: HTTP ${httpStatus}, netError: ${netError} (${netErrorName})`);
     }
   }
 
