@@ -429,43 +429,34 @@ export class SerializationPipeline {
 
   // ========== Utility Methods ==========
 
+  /**
+   * Deep clone a VirtualNode tree
+   *
+   * Uses structured clone for all properties, then recursively clones
+   * children, shadowRoots, and contentDocument to handle circular references
+   * and ensure proper VirtualNode typing.
+   */
   private cloneTree(node: VirtualNode): VirtualNode {
-    const clone: VirtualNode = {
-      nodeId: node.nodeId,
-      backendNodeId: node.backendNodeId,
-      nodeType: node.nodeType,
-      nodeName: node.nodeName,
-      localName: node.localName,
-      nodeValue: node.nodeValue,
-      attributes: node.attributes ? [...node.attributes] : undefined,
-      frameId: node.frameId,
-      shadowRootType: node.shadowRootType,
-      tier: node.tier,
-      interactionType: node.interactionType,
-      accessibility: node.accessibility ? { ...node.accessibility } : undefined,
-      heuristics: node.heuristics ? { ...node.heuristics } : undefined,
-      boundingBox: node.boundingBox ? { ...node.boundingBox } : undefined,
-      paintOrder: node.paintOrder,
-      computedStyle: node.computedStyle ? { ...node.computedStyle } : undefined,
-      scrollRects: node.scrollRects ? { ...node.scrollRects } : undefined,
-      clientRects: node.clientRects ? { ...node.clientRects } : undefined,
-      scrollable: node.scrollable,
-      ignoredByPaintOrder: node.ignoredByPaintOrder,
-      excludedByParent: node.excludedByParent
-    };
+    // Clone all non-recursive properties using spread operator
+    // This automatically includes any new fields added to VirtualNode
+    const { children, shadowRoots, contentDocument, ...shallowProps } = node;
 
-    if (node.children) {
-      clone.children = node.children.map(child => this.cloneTree(child));
+    // Deep clone nested objects (accessibility, heuristics, boundingBox, etc.)
+    const clone: VirtualNode = JSON.parse(JSON.stringify(shallowProps));
+
+    // Recursively clone children
+    if (children) {
+      clone.children = children.map(child => this.cloneTree(child));
     }
 
-    // Clone shadow roots (critical for shadow DOM support)
-    if (node.shadowRoots) {
-      clone.shadowRoots = node.shadowRoots.map(sr => this.cloneTree(sr));
+    // Recursively clone shadow roots (critical for shadow DOM support)
+    if (shadowRoots) {
+      clone.shadowRoots = shadowRoots.map(sr => this.cloneTree(sr));
     }
 
-    // Clone content document (critical for iframe support)
-    if (node.contentDocument) {
-      clone.contentDocument = this.cloneTree(node.contentDocument);
+    // Recursively clone content document (critical for iframe support)
+    if (contentDocument) {
+      clone.contentDocument = this.cloneTree(contentDocument);
     }
 
     return clone;

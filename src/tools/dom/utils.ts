@@ -146,22 +146,102 @@ export function computeHeuristics(attributes: string[] = []): NonNullable<Virtua
 
 /**
  * Classify node into semantic, non-semantic, or structural tier
+ *
+ * Classification priority:
+ * 1. Accessibility role (semantic) - highest priority
+ * 2. HTML tag semantics (semantic/non-semantic) - fallback when no a11y data
+ * 3. Heuristic markers (non-semantic) - onclick, data-testid
+ * 4. Default (structural) - everything else
+ *
+ * @param axNode - Accessibility node from CDP Accessibility.getFullAXTree
+ * @param heuristics - Computed heuristics from element attributes
+ * @param cdpNode - Optional CDP DOM node for HTML tag fallback (used when axNode unavailable)
  */
 export function classifyNode(
   axNode: any | null,
-  heuristics?: VirtualNode['heuristics']
+  heuristics?: VirtualNode['heuristics'],
+  cdpNode?: any
 ): 'semantic' | 'non-semantic' | 'structural' {
-  // Has proper accessibility role - semantic
+  // Priority 1: Has proper accessibility role - semantic
   if (axNode?.role?.value && axNode.role.value !== 'generic' && axNode.role.value !== 'none' && axNode?.ignored !== true) {
     return 'semantic';
   }
 
-  // Has heuristic markers - non-semantic interactive
+  // Priority 2: HTML tag fallback when accessibility data is unavailable
+  // This is critical for iframe elements where Accessibility.getFullAXTree may not return data
+  if (!axNode && cdpNode) {
+    const tag = (cdpNode.localName || cdpNode.nodeName || '').toLowerCase();
+    const attributes = cdpNode.attributes || [];
+
+    // Build attribute map for checking specific conditions
+    const attrMap = new Map<string, string>();
+    for (let i = 0; i < attributes.length; i += 2) {
+      attrMap.set(attributes[i], attributes[i + 1]);
+    }
+
+    // Inherently semantic/interactive HTML elements
+    // These elements have implicit ARIA roles and are always interactive
+    const semanticTags = new Set([
+      'button',    // role: button
+      'input',     // role: textbox/checkbox/radio/etc based on type
+      'select',    // role: combobox/listbox
+      'textarea',  // role: textbox
+      'option',    // role: option
+      'optgroup',  // role: group
+      'details',   // role: group (disclosure widget)
+      'summary',   // role: button (disclosure trigger)
+      'dialog',    // role: dialog
+      'menu',      // role: menu
+      'menuitem',  // role: menuitem
+      'meter',     // role: meter
+      'progress',  // role: progressbar
+      'output',    // role: status
+    ]);
+
+    // Elements that are semantic only with certain attributes
+    // <a> is only a link if it has href
+    // <area> is only clickable if it has href
+    if (tag === 'a' && attrMap.has('href')) {
+      return 'semantic';
+    }
+    if (tag === 'area' && attrMap.has('href')) {
+      return 'semantic';
+    }
+
+    // Elements with explicit role attribute
+    if (attrMap.has('role')) {
+      const role = attrMap.get('role');
+      if (role && role !== 'none' && role !== 'presentation' && role !== 'generic') {
+        return 'semantic';
+      }
+    }
+
+    // Inherently semantic tags
+    if (semanticTags.has(tag)) {
+      return 'semantic';
+    }
+
+    // Elements with tabindex are focusable and thus interactive
+    if (attrMap.has('tabindex')) {
+      const tabindex = attrMap.get('tabindex');
+      // tabindex >= 0 means focusable
+      if (tabindex && parseInt(tabindex, 10) >= 0) {
+        return 'non-semantic';
+      }
+    }
+
+    // Contenteditable elements are interactive
+    if (attrMap.get('contenteditable') === 'true' || attrMap.get('contenteditable') === '') {
+      return 'non-semantic';
+    }
+  }
+
+  // Priority 3: Has heuristic markers - non-semantic interactive
   if (heuristics && (heuristics.hasOnClick || heuristics.hasDataTestId)) {
     return 'non-semantic';
   }
 
-  // Everything else is structural
+  // Priority 4: Everything else is structural
   return 'structural';
 }
 
@@ -242,7 +322,7 @@ export function detectFramework(root: VirtualNode): string | null {
 
       // Angular detection
       if (attrs.includes('ng-version') || attrs.includes('ng-app') ||
-          attrs.includes('_ngcontent-') || attrs.includes('_nghost-')) {
+        attrs.includes('_ngcontent-') || attrs.includes('_nghost-')) {
         return 'angular';
       }
 

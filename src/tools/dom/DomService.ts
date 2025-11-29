@@ -13,6 +13,8 @@ import type {
 import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
 import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
 import type { TypeOptions } from '../../types/domTool';
+import { DomPlugin, type DomPluginContext } from './plugins/DomPlugin';
+import { googleDocPlugin } from './plugins/GoogleDocPlugin';
 
 export class DomService {
   private static instances = new Map<number, DomService>();
@@ -22,6 +24,7 @@ export class DomService {
   private currentSnapshot: DomSnapshot | null = null;
   private config: ServiceConfig;
   private metrics: PerformanceMetrics; // Performance metrics tracking
+  private plugins: DomPlugin[] = [googleDocPlugin]; // DOM plugins for special content handling
 
   private constructor(tabId: number, config?: Partial<ServiceConfig>) {
     this.tabId = tabId;
@@ -134,6 +137,10 @@ export class DomService {
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
+
+    //test>>
+    console.log("$$$ the serialized HTML content: ", htmlContent);
+    //<<test
 
     const serializedDom = {
       page: {
@@ -319,13 +326,64 @@ export class DomService {
 
     const { axTree, domTree, domSnapshot } = await Promise.race([snapshotPromise, timeoutPromise]);
 
-    // Build enrichment map: backendNodeId → AXNode
-    const axMap = new Map<number, any>();
+    // Build per-frame accessibility maps: frameId (CDP string) → Map<backendNodeId, AXNode>
+    // Main frame uses empty string '' as key (main frame nodes have no frameId property)
+    // Iframes use their CDP frameId (e.g., "FC1382D98FABCC3C7AE375DF3174A884")
+    const axMapByFrame = new Map<string, Map<number, any>>();
+
+    // Initialize main frame accessibility map
+    const mainFrameAxMap = new Map<number, any>();
     if (axTree?.nodes) {
       for (const axNode of axTree.nodes) {
         if (axNode.backendDOMNodeId) {
-          axMap.set(axNode.backendDOMNodeId, axNode);
+          mainFrameAxMap.set(axNode.backendDOMNodeId, axNode);
         }
+      }
+    }
+    axMapByFrame.set('', mainFrameAxMap); // Main frame: empty string (nodes have undefined frameId)
+
+    // Collect iframe frameIds from DOM tree for per-frame accessibility fetching
+    const iframeFrameIds: string[] = [];
+    const collectIframeFrameIds = (node: any) => {
+      if (node.contentDocument && node.contentDocument.children) {
+        // The HTML element inside contentDocument has the frameId
+        for (const child of node.contentDocument.children) {
+          if (child.frameId && !iframeFrameIds.includes(child.frameId)) {
+            iframeFrameIds.push(child.frameId);
+          }
+        }
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          collectIframeFrameIds(child);
+        }
+      }
+    };
+    collectIframeFrameIds(domTree.root);
+
+    // Fetch accessibility trees for each iframe (up to MAX_IFRAMES)
+    const MAX_IFRAMES = 5;
+    for (let i = 0; i < Math.min(iframeFrameIds.length, MAX_IFRAMES); i++) {
+      const frameId = iframeFrameIds[i];
+      try {
+        const iframeAxTree = await this.sendCommand<any>('Accessibility.getFullAXTree', {
+          depth: -1,
+          frameId: frameId
+        });
+
+        if (iframeAxTree?.nodes) {
+          const frameAxMap = new Map<number, any>();
+          for (const axNode of iframeAxTree.nodes) {
+            if (axNode.backendDOMNodeId) {
+              frameAxMap.set(axNode.backendDOMNodeId, axNode);
+            }
+          }
+          axMapByFrame.set(frameId, frameAxMap);
+          console.log(`[DomService] Fetched accessibility tree for iframe ${frameId}: ${frameAxMap.size} nodes`);
+        }
+      } catch (error: any) {
+        console.warn(`[DomService] Could not fetch accessibility tree for iframe ${frameId}: ${error.message}`);
+        // Continue without accessibility data for this iframe - classifyNode will use fallback
       }
     }
 
@@ -353,9 +411,10 @@ export class DomService {
 
     // Track iframe count for the 5 iframe limit
     let iframeCount = 0;
-    const MAX_IFRAMES = 5;
 
-    const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0, currentFrameIndex: number = 0): VirtualNode | null => {
+    // Build virtual DOM tree with per-frame accessibility support
+    // currentCdpFrameId: CDP frame ID string ('' for main frame, e.g., "FC1382D98FABCC3C7AE375DF3174A884" for iframes)
+    const buildVirtualTree = (cdpNode: any, depth: number = 0, iframeDepth: number = 0, currentFrameIndex: number = 0, currentCdpFrameId: string = ''): VirtualNode | null => {
       // Pathological case protection for deeply nested iframes
       if (depth > this.config.maxTreeDepth) {
         console.warn(`[DomService] Max tree depth (${this.config.maxTreeDepth}) reached at iframe depth ${iframeDepth}. Tree traversal stopped.`);
@@ -369,11 +428,19 @@ export class DomService {
 
       nodeCounter++;
       const backendNodeId = cdpNode.backendNodeId;
+
+      // Get accessibility map for the current frame
+      // If node has its own frameId, use that; otherwise use the current frame's CDP frameId
+      // Main frame nodes have undefined frameId, which becomes '' (empty string)
+      const nodeFrameId = cdpNode.frameId || currentCdpFrameId;
+      const axMap = axMapByFrame.get(nodeFrameId) || axMapByFrame.get('') || new Map();
       const axNode = axMap.get(backendNodeId);
+
       const heuristics = computeHeuristics(cdpNode.attributes);
       const layoutData = layoutMap.get(backendNodeId); // Get layout data
 
-      const tier = classifyNode(axNode, heuristics);
+      // Pass cdpNode to classifyNode for HTML tag fallback when axNode is unavailable
+      const tier = classifyNode(axNode, heuristics, cdpNode);
 
       const vNode: VirtualNode = {
         nodeId: cdpNode.nodeId,
@@ -416,14 +483,14 @@ export class DomService {
       // Recurse to children
       if (cdpNode.children) {
         vNode.children = cdpNode.children
-          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex))
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex, currentCdpFrameId))
           .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
       }
 
       // Recurse to shadow roots
       if (cdpNode.shadowRoots) {
         vNode.shadowRoots = cdpNode.shadowRoots
-          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex))
+          .map((c: any) => buildVirtualTree(c, depth + 1, iframeDepth, currentFrameIndex, currentCdpFrameId))
           .filter((n: VirtualNode | null) => n !== null) as VirtualNode[];
       }
 
@@ -436,6 +503,18 @@ export class DomService {
           iframeCount++;
           const newFrameIndex = iframeCount; // 1-5 for iframes
           const nextIframeDepth = iframeDepth + 1;
+
+          // Get the CDP frameId from the iframe's content document
+          // The HTML element inside contentDocument typically has the frameId
+          let iframeCdpFrameId = '';
+          if (cdpNode.contentDocument.children) {
+            for (const child of cdpNode.contentDocument.children) {
+              if (child.frameId) {
+                iframeCdpFrameId = child.frameId;
+                break;
+              }
+            }
+          }
 
           // Register iframe metadata
           const iframeMetadata: FrameMetadata = {
@@ -452,7 +531,7 @@ export class DomService {
           };
           frameRegistry.addFrame(iframeMetadata);
 
-          const contentDoc = buildVirtualTree(cdpNode.contentDocument, depth + 1, nextIframeDepth, newFrameIndex);
+          const contentDoc = buildVirtualTree(cdpNode.contentDocument, depth + 1, nextIframeDepth, newFrameIndex, iframeCdpFrameId);
           if (contentDoc) {
             vNode.contentDocument = contentDoc;
           }
@@ -467,6 +546,14 @@ export class DomService {
     if (!virtualDom) {
       throw new Error('SNAPSHOT_FAILED: Could not build tree');
     }
+
+    // Get page info for plugins
+    const tab = await chrome.tabs.get(this.tabId);
+    const pageUrl = tab.url || '';
+    const pageTitle = tab.title || '';
+
+    // Run DOM plugins to augment the tree with special content (e.g., Google Docs)
+    await this.runPlugins(virtualDom, pageUrl, pageTitle);
 
     // Compute stats
     const stats: SnapshotStats = {
@@ -490,10 +577,8 @@ export class DomService {
     // Detect framework
     const framework = detectFramework(virtualDom);
 
-    // Get page context with viewport scroll position
-    const tab = await chrome.tabs.get(this.tabId);
-
     // Fetch viewport dimensions, scroll position, and page dimensions from the page
+    // Note: 'tab' already fetched above for plugin execution
     // Fallback values assume viewport = page (no overflow) if Runtime.evaluate fails
     let viewportData = {
       width: tab.width || 0,
@@ -518,8 +603,8 @@ export class DomService {
     }
 
     const pageContext: PageContext = {
-      url: tab.url || '',
-      title: tab.title || '',
+      url: pageUrl,
+      title: pageTitle,
       frameId: 'main',
       loaderId: '',
       viewport: viewportData,
@@ -537,6 +622,24 @@ export class DomService {
     }
 
     return this.currentSnapshot;
+  }
+
+  /**
+   * Run all registered DOM plugins to augment the tree
+   * Plugins can add special content that isn't accessible via standard DOM APIs
+   * (e.g., Google Docs canvas content)
+   */
+  private async runPlugins(tree: VirtualNode, url: string, title: string): Promise<void> {
+    const context: DomPluginContext = {
+      tabId: this.tabId,
+      url,
+      title,
+      sendCommand: this.sendCommand.bind(this)
+    };
+
+    for (const plugin of this.plugins) {
+      await plugin.read(tree, context);
+    }
   }
 
   private async sendCommand<T>(method: string, params: any): Promise<T> {
@@ -1023,7 +1126,7 @@ export class DomService {
         returnByValue: true
       });
 
-      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
       return result?.result?.value || 'unknown';
     } catch (error) {
       return 'unknown';
@@ -1090,7 +1193,7 @@ export class DomService {
 
       await new Promise(resolve => setTimeout(resolve, 50));
     } finally {
-      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
     }
   }
 
@@ -1185,7 +1288,7 @@ export class DomService {
         returnByValue: true
       });
     } finally {
-      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => {});
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
     }
   }
 
