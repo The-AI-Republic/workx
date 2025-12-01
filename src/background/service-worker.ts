@@ -159,12 +159,9 @@ function setupMessageHandlers(): void {
       // Abort all running tasks before resetting
       await session.abortAllTasks('UserInterrupt');
 
-      // Remove tab from group if it's currently bound
-      const currentTabId = session.getTabId();
-      if (currentTabId !== -1) {
-        const tabManager = TabManager.getInstance();
-        await tabManager.removeTabFromGroup(currentTabId);
-      }
+      // Reset TabManager - close all browserx tab groups
+      const tabManager = TabManager.getInstance();
+      await tabManager.reset();
 
       // Reset the session (this will also reset tabId to -1 in session and turnContext)
       await session.reset();
