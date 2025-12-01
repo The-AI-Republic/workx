@@ -213,10 +213,14 @@ describe('OpenAIChatCompletionClient - Gemini Fix Tests', () => {
       const event3 = convertMethod(chunk3);
       expect(event3).toBeDefined();
       expect(event3.type).toBe('OutputItemDone');
-      expect(event3.item.type).toBe('function_call');
-      expect(event3.item.call_id).toBe('call_123');
-      expect(event3.item.name).toBe('get_weather');
-      expect(event3.item.arguments).toBe('{"location":"NYC"}');
+      // NEW: Unified format - tool_calls are embedded in message item
+      expect(event3.item.type).toBe('message');
+      expect(event3.item.role).toBe('assistant');
+      expect(event3.item.tool_calls).toBeDefined();
+      expect(event3.item.tool_calls.length).toBe(1);
+      expect(event3.item.tool_calls[0].id).toBe('call_123');
+      expect(event3.item.tool_calls[0].function.name).toBe('get_weather');
+      expect(event3.item.tool_calls[0].function.arguments).toBe('{"location":"NYC"}');
 
       // Chunk 4: Flush pending Completed
       const event4 = convertMethod({});
@@ -318,29 +322,23 @@ describe('OpenAIChatCompletionClient - Gemini Fix Tests', () => {
         usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 }
       };
 
-      // BEFORE FIX: Would emit OutputItemDone with MESSAGE only, ignore tool call
-      // AFTER FIX: Should emit OutputItemDone with MESSAGE, then queue TOOL CALL
-
+      // NEW UNIFIED FORMAT: Both message content and tool_calls are in ONE OutputItemDone event
       const event4 = convertMethod(chunk4);
       expect(event4).toBeDefined();
       expect(event4.type).toBe('OutputItemDone');
 
-      // Should emit MESSAGE first
+      // Unified message item contains both content AND tool_calls
       expect(event4.item.type).toBe('message');
       expect(event4.item.content[0].text).toContain('I will now scroll down the page');
+      expect(event4.item.tool_calls).toBeDefined();
+      expect(event4.item.tool_calls.length).toBe(1);
+      expect(event4.item.tool_calls[0].function.name).toBe('browser_dom');
+      expect(event4.item.tool_calls[0].function.arguments).toContain('scroll');
 
-      // Next call should return queued TOOL CALL OutputItemDone
+      // Next call should return queued Completed (no separate function_call event)
       const event5 = convertMethod({});
       expect(event5).toBeDefined();
-      expect(event5.type).toBe('OutputItemDone');
-      expect(event5.item.type).toBe('function_call');
-      expect(event5.item.name).toBe('browser_dom');
-      expect(event5.item.arguments).toContain('scroll');
-
-      // Next call should return queued Completed
-      const event6 = convertMethod({});
-      expect(event6).toBeDefined();
-      expect(event6.type).toBe('Completed');
+      expect(event5.type).toBe('Completed');
     });
 
     it('should handle tool calls with finish_reason=stop and NO text (Gemini bug variant)', async () => {
@@ -383,8 +381,10 @@ describe('OpenAIChatCompletionClient - Gemini Fix Tests', () => {
       const event2 = convertMethod(chunk2);
       expect(event2).toBeDefined();
       expect(event2.type).toBe('OutputItemDone');
-      expect(event2.item.type).toBe('function_call');
-      expect(event2.item.name).toBe('browser_dom');
+      // NEW: Unified format - tool_calls embedded in message (even with no text content)
+      expect(event2.item.type).toBe('message');
+      expect(event2.item.tool_calls).toBeDefined();
+      expect(event2.item.tool_calls[0].function.name).toBe('browser_dom');
 
       // Next call should return Completed
       const event3 = convertMethod({});
@@ -394,7 +394,7 @@ describe('OpenAIChatCompletionClient - Gemini Fix Tests', () => {
   });
 
   describe('Scenario 6: Mixed content + tool call', () => {
-    it('should emit both message and tool call OutputItemDone events', async () => {
+    it('should emit unified message with content and tool_calls in one OutputItemDone', async () => {
       const convertMethod = (client as any).convertChatCompletionEventToResponseEvent.bind(client);
 
       // Chunk 1: Text content
@@ -428,24 +428,123 @@ describe('OpenAIChatCompletionClient - Gemini Fix Tests', () => {
         usage: { prompt_tokens: 20, completion_tokens: 10, total_tokens: 30 },
       };
 
-      // Should emit message OutputItemDone first
+      // NEW UNIFIED FORMAT: Should emit ONE OutputItemDone with both content AND tool_calls
       const event2 = convertMethod(chunk2);
       expect(event2).toBeDefined();
       expect(event2.type).toBe('OutputItemDone');
       expect(event2.item.type).toBe('message');
       expect(event2.item.content[0].text).toBe('Let me check the weather.');
+      expect(event2.item.tool_calls).toBeDefined();
+      expect(event2.item.tool_calls.length).toBe(1);
+      expect(event2.item.tool_calls[0].function.name).toBe('get_weather');
 
-      // Should emit tool call OutputItemDone next (from pending)
+      // Should emit Completed next (from pending)
       const event3 = convertMethod({});
       expect(event3).toBeDefined();
-      expect(event3.type).toBe('OutputItemDone');
-      expect(event3.item.type).toBe('function_call');
-
-      // Should emit Completed last (from pending)
-      const event4 = convertMethod({});
-      expect(event4).toBeDefined();
-      expect(event4.type).toBe('Completed');
+      expect(event3.type).toBe('Completed');
     });
+  });
+});
+
+describe('Scenario 7: Gemini 2.5 Pro bug - [DONE] without finish_reason', () => {
+  let client: OpenAIChatCompletionClient;
+  let mockProvider: ModelProviderInfo;
+  let mockModelFamily: ModelFamily;
+
+  beforeEach(() => {
+    mockProvider = {
+      name: 'Google AI Studio',
+      base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      wire_api: 'Chat',
+      requires_openai_auth: false,
+      http_headers: {},
+      query_params: {},
+    };
+
+    mockModelFamily = {
+      family: 'gemini-2.5-pro',
+      base_instructions: 'Test instructions',
+      supports_reasoning: false,
+      supports_reasoning_summaries: false,
+      needs_special_apply_patch_instructions: false,
+    };
+
+    client = new OpenAIChatCompletionClient(
+      {
+        apiKey: 'test-key',
+        conversationId: 'test-conv',
+        modelFamily: mockModelFamily,
+        provider: mockProvider,
+      },
+      { maxRetries: 0 }
+    );
+  });
+
+  it('should flush accumulated content and tool_calls when stream ends without finish_reason', async () => {
+    // This is the CRITICAL bug for Gemini 2.5 Pro:
+    // The stream sends content and tool_calls but NO finish_reason before [DONE]
+    // Without the fix, accumulated data is lost and task completes prematurely
+
+    const convertMethod = (client as any).convertChatCompletionEventToResponseEvent.bind(client);
+
+    // Chunk 1: Text content (no finish_reason)
+    const chunk1 = {
+      id: 'test-gemini-25',
+      choices: [{
+        index: 0,
+        delta: { content: 'I am now on the connections page.', role: 'assistant' },
+        finish_reason: null
+      }]
+    };
+    const event1 = convertMethod(chunk1);
+    expect(event1?.type).toBe('OutputTextDelta');
+
+    // Chunk 2: More text content (no finish_reason)
+    const chunk2 = {
+      id: 'test-gemini-25',
+      choices: [{
+        index: 0,
+        delta: { content: ' I will take a snapshot.', role: 'assistant' },
+        finish_reason: null
+      }]
+    };
+    const event2 = convertMethod(chunk2);
+    expect(event2?.type).toBe('OutputTextDelta');
+
+    // Chunk 3: Tool call (no finish_reason!)
+    const chunk3 = {
+      id: 'test-gemini-25',
+      choices: [{
+        index: 0,
+        delta: {
+          role: 'assistant',
+          tool_calls: [{
+            index: 0,
+            id: 'function-call-906932963595129372',
+            type: 'function',
+            function: {
+              name: 'browser_dom',
+              arguments: '{"action":"snapshot"}'
+            }
+          }]
+        },
+        finish_reason: null  // ← GEMINI 2.5 PRO BUG: No finish_reason!
+      }]
+    };
+    const event3 = convertMethod(chunk3);
+    expect(event3).toBeNull(); // Tool calls accumulate, waiting for finish_reason
+
+    // At this point, the stream ends with [DONE] but NO finish_reason was received
+    // The accumulated content and tool_calls are in the client's state:
+    // - chatCompletionTextContent = 'I am now on the connections page. I will take a snapshot.'
+    // - chatCompletionToolCalls = Map with browser_dom snapshot call
+
+    // Check accumulated state before flush
+    expect((client as any).chatCompletionTextContent).toBe('I am now on the connections page. I will take a snapshot.');
+    expect((client as any).chatCompletionToolCalls.size).toBe(1);
+
+    // Note: The actual flushing happens in runChatCompletionsSDKStream when the stream ends
+    // This test verifies that the accumulated state is correct before the flush
   });
 });
 
