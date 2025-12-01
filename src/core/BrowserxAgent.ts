@@ -145,13 +145,6 @@ export class BrowserxAgent {
         // Clear session's tabId
         this.session.setTabId(-1);
 
-        // Clear all tabs from group (best effort - tab may already be gone)
-        try {
-          await tabManager.clearAllTabsFromGroup();
-        } catch (error) {
-          // Ignore errors - tab is already closed
-        }
-
         // Abort all running tasks
         await this.session.abortAllTasks('TabClosed');
 

@@ -353,6 +353,69 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       // Safety check: ensure Completed event is always emitted
       // This prevents "stream closed before response.completed" errors
       if (!completedEmitted) {
+        // GEMINI BUG FIX: Gemini 2.5 Pro may send [DONE] without finish_reason
+        // If we have accumulated content or tool_calls, emit them as OutputItemDone
+        // before emitting the Completed event
+        const hasAccumulatedContent = this.chatCompletionTextContent.length > 0;
+        const hasAccumulatedToolCalls = this.chatCompletionToolCalls.size > 0;
+        const hasAccumulatedReasoning = this.chatCompletionReasoningContent.length > 0;
+
+        if (hasAccumulatedContent || hasAccumulatedToolCalls || hasAccumulatedReasoning) {
+          GeminiLogger.debug('Flushing accumulated content before fallback Completed', {
+            hasContent: hasAccumulatedContent,
+            hasToolCalls: hasAccumulatedToolCalls,
+            hasReasoning: hasAccumulatedReasoning,
+            toolCallCount: this.chatCompletionToolCalls.size,
+          });
+
+          // Build content array
+          const contentArray: any[] = [];
+          if (hasAccumulatedContent) {
+            contentArray.push({
+              type: 'output_text' as const,
+              text: this.chatCompletionTextContent,
+            });
+          }
+
+          // Build tool_calls array
+          let toolCallsArray: any[] | undefined;
+          if (hasAccumulatedToolCalls) {
+            toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
+            GeminiLogger.functionCallItemEmitted(
+              toolCallsArray.length,
+              toolCallsArray.map(tc => tc.function.name)
+            );
+          }
+
+          // Create unified message item
+          const messageItem: any = {
+            type: 'message' as const,
+            role: 'assistant' as const,
+            content: contentArray,
+          };
+
+          // Add reasoning_content if present
+          if (hasAccumulatedReasoning) {
+            messageItem.reasoning_content = this.chatCompletionReasoningContent;
+          }
+
+          // Add tool_calls if present
+          if (toolCallsArray && toolCallsArray.length > 0) {
+            messageItem.tool_calls = toolCallsArray;
+          }
+
+          // Clear accumulated state
+          this.chatCompletionTextContent = '';
+          this.chatCompletionReasoningContent = '';
+          this.chatCompletionToolCalls.clear();
+
+          // Emit OutputItemDone with the accumulated content
+          stream.addEvent({
+            type: 'OutputItemDone',
+            item: messageItem,
+          });
+        }
+
         GeminiLogger.debug('Emitting fallback Completed event');
         stream.addEvent({
           type: 'Completed',

@@ -63,11 +63,8 @@ export class TabManager {
       return;
     }
 
-    // Initialize tab group (find or prepare to create "browserx" group)
-    await this.ensureBrowserXGroup();
-
-    // Remove all tabs from the BrowserX group on initialization
-    await this.clearAllTabsFromGroup();
+    // Clean up all existing browserx groups on initialization
+    await this.reset();
 
     // Setup Chrome event listeners
     this.setupChromeEventListeners();
@@ -476,42 +473,92 @@ export class TabManager {
   }
 
   /**
-   * Remove all tabs from the BrowserX group
-   * Called during initialization to clean up any tabs left in the group from previous sessions
-   * Also used when switching tabs to ensure consistency
+   * Reset TabManager by ungrouping all tabs from "browserx" groups (tabs stay open)
+   * All "browserx" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
+   * Called during session reset and initialization to clean up all browserx groups
+   */
+  async reset(): Promise<void> {
+    // Skip if API is unavailable
+    if (typeof chrome === 'undefined' || !chrome.tabGroups) {
+      return;
+    }
+
+    // Query for both collapsed and non-collapsed browserx groups
+    const [collapsedGroups, expandedGroups] = await Promise.all([
+      chrome.tabGroups.query({ title: this.groupTitle, collapsed: true }),
+      chrome.tabGroups.query({ title: this.groupTitle, collapsed: false }),
+    ]);
+
+    const allGroups = [...collapsedGroups, ...expandedGroups];
+
+    if (allGroups.length === 0) {
+      this.groupId = null;
+      return;
+    }
+
+    // Ungroup all tabs from each browserx group
+    for (const group of allGroups) {
+      try {
+        // First, expand the group if it's collapsed (to ensure we can access all tabs)
+        if (group.collapsed) {
+          try {
+            await chrome.tabGroups.update(group.id, { collapsed: false });
+          } catch {
+            // Ignore error expanding group
+          }
+        }
+
+        // Get all tabs in this group
+        const tabs = await chrome.tabs.query({ groupId: group.id });
+        const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
+
+        if (tabIds.length > 0) {
+          await chrome.tabs.ungroup(tabIds);
+        }
+      } catch (error) {
+        console.error(`[TabManager] Failed to reset browserx group ${group.id}:`, error);
+      }
+    }
+
+    this.groupId = null;
+  }
+
+  /**
+   * Remove all tabs from all BrowserX groups (ungroup without closing)
+   * Used when switching tabs to ensure consistency
    */
   async clearAllTabsFromGroup(): Promise<void> {
     // Skip if API is unavailable
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
-      console.log('[TabManager] Tab Groups API not available, skipping group cleanup');
-      return;
-    }
-
-    // Skip if no group exists yet
-    if (this.groupId === null) {
-      console.log('[TabManager] No BrowserX group found, skipping group cleanup');
       return;
     }
 
     try {
-      // Get all tabs in the BrowserX group
-      const tabs = await chrome.tabs.query({ groupId: this.groupId });
+      // Find all browserx groups
+      const groups = await chrome.tabGroups.query({ title: this.groupTitle });
 
-      if (tabs.length === 0) {
-        console.log('[TabManager] BrowserX group is already empty');
+      if (groups.length === 0) {
+        this.groupId = null;
         return;
       }
 
-      // Collect tab IDs
-      const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
+      // Ungroup tabs from all browserx groups
+      for (const group of groups) {
+        try {
+          const tabs = await chrome.tabs.query({ groupId: group.id });
+          const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
 
-      if (tabIds.length > 0) {
-        // Ungroup all tabs at once
-        await chrome.tabs.ungroup(tabIds);
-        console.log(`[TabManager] Removed ${tabIds.length} tab(s) from BrowserX group on initialization`);
+          if (tabIds.length > 0) {
+            await chrome.tabs.ungroup(tabIds);
+          }
+        } catch (error) {
+          console.error(`[TabManager] Failed to ungroup tabs from group ${group.id}:`, error);
+        }
       }
+
+      this.groupId = null;
     } catch (error) {
-      console.error('[TabManager] Failed to remove all tabs from BrowserX group:', error);
+      console.error('[TabManager] Failed to clear tabs from BrowserX groups:', error);
     }
   }
 
