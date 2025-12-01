@@ -10,7 +10,7 @@ import type {
   PerformanceMetrics,
   FrameMetadata
 } from './types';
-import { NODE_ID_WINDOW, NODE_ID_DOCUMENT } from './types';
+import { NODE_ID_DOCUMENT } from './types';
 import { computeHeuristics, classifyNode, determineInteractionType, detectFramework, serializedNodeToHtml, computeScrollable, parseNodeId } from './utils';
 import type { TypeOptions } from '../../types/domTool';
 import { DomPlugin, type DomPluginContext } from './plugins/DomPlugin';
@@ -137,6 +137,10 @@ export class DomService {
     // 1. Viewport dimensions: Add "px" suffix to all numeric values
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
+
+    // test>>
+    console.log("$$$ Serialized HTML Content: ", htmlContent);
+    // <<test
 
     const serializedDom = {
       page: {
@@ -1581,21 +1585,123 @@ export class DomService {
   }
 
   /**
+   * Helper method to scroll the main frame window
+   * Used as fallback when target node/frame is not found
+   */
+  private async scrollMainFrame(
+    scrollX: number,
+    scrollY: number | undefined,
+    start: number,
+    originalNodeId: number | string
+  ): Promise<ActionResult> {
+    try {
+      // Capture before position and viewport info
+      const beforeResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: '({ x: window.scrollX, y: window.scrollY, maxX: document.documentElement.scrollWidth - window.innerWidth, maxY: document.documentElement.scrollHeight - window.innerHeight, viewportHeight: window.innerHeight })',
+        returnByValue: true
+      });
+      const beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
+      const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
+
+      // Get default scrollY if not provided or 0: 80% of window height
+      let actualScrollY = scrollY;
+      if (!actualScrollY) {
+        const windowHeight = beforeResult.result.value.viewportHeight || 600;
+        actualScrollY = Math.floor(windowHeight * 0.8);
+      }
+
+      // Execute scroll
+      await this.sendCommand('Runtime.evaluate', {
+        expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
+        returnByValue: false
+      });
+
+      // Wait for smooth scroll animation to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Capture after position
+      const afterResult = await this.sendCommand<any>('Runtime.evaluate', {
+        expression: '({ x: window.scrollX, y: window.scrollY })',
+        returnByValue: true
+      });
+      const afterScrollPos = { x: afterResult.result.value.x, y: afterResult.result.value.y };
+
+      // Check if we hit scroll limits
+      const scrollLimitReached = (
+        (actualScrollY > 0 && afterScrollPos.y >= maxScroll.y) ||
+        (actualScrollY < 0 && afterScrollPos.y <= 0) ||
+        (scrollX > 0 && afterScrollPos.x >= maxScroll.x) ||
+        (scrollX < 0 && afterScrollPos.x <= 0)
+      );
+
+      this.invalidateSnapshot();
+
+      const duration = Date.now() - start;
+      const actualDelta = {
+        x: afterScrollPos.x - beforeScrollPos.x,
+        y: afterScrollPos.y - beforeScrollPos.y
+      };
+      const scrollChanged = actualDelta.x !== 0 || actualDelta.y !== 0;
+
+      this.trackActionMetrics('scroll', duration, scrollChanged);
+
+      return {
+        success: scrollChanged,
+        duration,
+        ...(scrollChanged ? {} : { error: 'Scroll position did not change' }),
+        changes: {
+          navigationOccurred: false,
+          domMutations: scrollChanged ? 1 : 0,
+          scrollChanged,
+          previousScrollPosition: beforeScrollPos,
+          currentScrollPosition: afterScrollPos,
+          actualScrollDelta: actualDelta,
+          scrollLimitReached,
+          valueChanged: false
+        },
+        nodeId: originalNodeId,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    } catch (error: any) {
+      this.invalidateSnapshot();
+
+      const duration = Date.now() - start;
+      this.trackActionMetrics('scroll', duration, false, error.message);
+
+      return {
+        success: false,
+        duration,
+        error: error.message,
+        changes: {
+          navigationOccurred: false,
+          domMutations: 0,
+          scrollChanged: false,
+          valueChanged: false
+        },
+        nodeId: originalNodeId,
+        actionType: 'scroll',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
    * Scroll by relative offset (delta)
-   * @param nodeId - Target node ID (use NODE_ID_WINDOW/-1 for window scroll, or frame-scoped like "1:-1" for iframe scroll)
+   * @param nodeId - Target node ID in format "frameId:backendNodeId" (e.g., "0:123" for main frame html element)
    * @param scrollX - Horizontal scroll offset in pixels (positive = right, negative = left), defaults to 0
-   * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up), defaults to 80% of window height
+   * @param scrollY - Vertical scroll offset in pixels (positive = down, negative = up), defaults to 80% of element height
    */
   async scroll(nodeId: number | string, scrollX: number = 0, scrollY?: number): Promise<ActionResult> {
     const start = Date.now();
 
-    // Parse frame-scoped node ID, default to main frame window scroll on failure
+    // Parse frame-scoped node ID, fall back to main frame on parse error
     let parsedId;
     try {
       parsedId = parseNodeId(nodeId);
     } catch (error: any) {
-      console.warn(`[DomService] scroll: parseNodeId failed for "${nodeId}", defaulting to main frame window scroll: ${error.message}`);
-      parsedId = { frameId: 0, backendNodeId: NODE_ID_WINDOW };
+      console.error(`[DomService] scroll: Failed to parse node ID "${nodeId}", falling back to main frame scroll: ${error.message}`);
+      return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
     }
 
     try {
@@ -1607,64 +1713,53 @@ export class DomService {
       // actualScrollY will be computed based on scroll context if not provided or 0
       let actualScrollY = scrollY;
 
-      // Handle window/document scroll (backendNodeId === -1)
-      if (parsedId.backendNodeId === NODE_ID_WINDOW) {
+      // Fall back to main frame scroll if no snapshot available
+      if (!this.currentSnapshot) {
+        console.error(`[DomService] scroll: No snapshot available for node "${nodeId}", falling back to main frame scroll`);
+        return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
+      }
+
+      // Fall back to main frame scroll if frame not found
+      if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
+        console.error(`[DomService] scroll: Frame ${parsedId.frameId} not found in snapshot, falling back to main frame scroll`);
+        return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
+      }
+
+      const backendNodeId = parsedId.backendNodeId;
+
+      // Fall back to main frame scroll if node not found
+      const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
+      if (!node) {
+        console.error(`[DomService] scroll: Node ${nodeId} not found in snapshot, falling back to main frame scroll`);
+        return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
+      }
+
+      // Check if the target is an html element - use window.scrollTo for page-level scroll
+      const tagName = (node.localName || node.nodeName || '').toLowerCase();
+      const isHtmlElement = tagName === 'html';
+
+      if (isHtmlElement) {
+        // For html element, use window.scrollTo for proper page scrolling
+        // This handles both main frame and iframe html elements
         if (parsedId.frameId === 0) {
-          // Main frame window scroll - capture before position
-          const beforeResult = await this.sendCommand<any>('Runtime.evaluate', {
-            expression: '({ x: window.scrollX, y: window.scrollY, maxX: document.documentElement.scrollWidth - window.innerWidth, maxY: document.documentElement.scrollHeight - window.innerHeight, viewportHeight: window.innerHeight })',
-            returnByValue: true
-          });
-          beforeScrollPos = { x: beforeResult.result.value.x, y: beforeResult.result.value.y };
-          const maxScroll = { x: beforeResult.result.value.maxX, y: beforeResult.result.value.maxY };
-
-          // Get default scrollY if not provided or 0: 80% of main window height
-          if (!actualScrollY) {
-            const windowHeight = beforeResult.result.value.viewportHeight || 600;
-            actualScrollY = Math.floor(windowHeight * 0.8);
-          }
-
-          // Execute scroll
-          await this.sendCommand('Runtime.evaluate', {
-            expression: `window.scrollTo({ left: window.scrollX + ${scrollX}, top: window.scrollY + ${actualScrollY}, behavior: 'smooth' })`,
-            returnByValue: false
-          });
-
-          // Wait for smooth scroll animation to complete
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-          // Capture after position
-          const afterResult = await this.sendCommand<any>('Runtime.evaluate', {
-            expression: '({ x: window.scrollX, y: window.scrollY })',
-            returnByValue: true
-          });
-          afterScrollPos = { x: afterResult.result.value.x, y: afterResult.result.value.y };
-
-          // Check if we hit scroll limits
-          scrollLimitReached = (
-            (actualScrollY > 0 && afterScrollPos.y >= maxScroll.y) || // scrolling down and hit bottom
-            (actualScrollY < 0 && afterScrollPos.y <= 0) || // scrolling up and hit top
-            (scrollX > 0 && afterScrollPos.x >= maxScroll.x) || // scrolling right and hit right edge
-            (scrollX < 0 && afterScrollPos.x <= 0) // scrolling left and hit left edge
-          );
+          // Main frame - use window directly
+          return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
         } else {
-          // Iframe window scroll - need to scroll the iframe's document
-          if (!this.currentSnapshot) {
-            throw new Error('NODE_NOT_FOUND: No snapshot available');
-          }
-
+          // Iframe html element - need to get the iframe and scroll its contentWindow
           const frameMetadata = this.currentSnapshot.frameRegistry.getFrame(parsedId.frameId);
           if (!frameMetadata) {
-            throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
+            console.error(`[DomService] scroll: Frame ${parsedId.frameId} metadata not found, falling back to main frame scroll`);
+            return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
           }
 
-          // Resolve the iframe element and scroll its content document
+          // Resolve the iframe element
           const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
             backendNodeId: frameMetadata.backendNodeId
           });
 
           if (!resolveResult?.object?.objectId) {
-            throw new Error(`RESOLVE_FAILED: Could not resolve iframe element for frame ${parsedId.frameId}`);
+            console.error(`[DomService] scroll: Could not resolve iframe element for frame ${parsedId.frameId}, falling back to main frame scroll`);
+            return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
           }
 
           // Capture before position and iframe dimensions
@@ -1738,24 +1833,7 @@ export class DomService {
           }).catch(() => { });
         }
       } else {
-        // Scroll specific element by relative offset
-        if (!this.currentSnapshot) {
-          throw new Error('NODE_NOT_FOUND: No snapshot available');
-        }
-
-        // Validate frame exists
-        if (!this.currentSnapshot.frameRegistry.hasFrame(parsedId.frameId)) {
-          throw new Error(`FRAME_NOT_FOUND: Frame ${parsedId.frameId} not found in snapshot`);
-        }
-
-        const backendNodeId = parsedId.backendNodeId;
-
-        // Verify node exists in snapshot
-        const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
-        if (!node) {
-          throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
-        }
-
+        // Non-html element - use element's scrollTo method
         // Use CDP DOM.resolveNode to get a RemoteObject reference to the element
         const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
           backendNodeId

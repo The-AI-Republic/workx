@@ -23,8 +23,12 @@ export class VisibilityFilter {
    * @returns Filtered tree with invisible elements removed
    */
   filter(tree: VirtualNode): VirtualNode | null {
-    // Check if this node should be filtered out
-    if (this.isInvisible(tree)) {
+    // Always preserve html, head, and body - they are structural elements
+    const tagName = (tree.localName || tree.nodeName || '').toLowerCase();
+    const isStructuralRoot = tagName === 'html' || tagName === 'head' || tagName === 'body';
+
+    // Check if this node should be filtered out (unless structural)
+    if (!isStructuralRoot && this.isInvisible(tree)) {
       return null;
     }
 
