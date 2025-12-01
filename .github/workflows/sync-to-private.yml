@@ -93,7 +93,7 @@ jobs:
 
           # Build rsync exclude arguments
           cd ..
-          RSYNC_EXCLUDES="--exclude .git --exclude .github --exclude node_modules --exclude .gitignore"
+          RSYNC_EXCLUDES="--exclude .git --exclude .github --exclude node_modules --exclude .gitignore --exclude private-repo"
 
           # Add custom excludes from mapping file
           if [ -n "$EXCLUDE_PATTERNS" ]; then
