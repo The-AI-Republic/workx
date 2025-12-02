@@ -169,19 +169,22 @@ export class DomSnapshot implements IDomSnapshot {
       }
     };
 
-    // Extract html node from virtualDom before processing
-    // This includes the full document structure with html tag for proper scroll targeting
-    const htmlVirtualNode = this.findHtmlNode(this.virtualDom);
-
-    // Use SerializationPipeline for compaction on html node
+    // Use SerializationPipeline for compaction
+    // virtualDom is typically #document with html as child, or html directly
     const pipeline = new SerializationPipeline();
-    const result = pipeline.execute(htmlVirtualNode);
+    const result = pipeline.execute(this.virtualDom);
 
     // Build flattened tree structure from pipeline result with v3 schema
     const htmlBeforeFilter = this.flatternNode(result.tree, opts);
 
     // Apply viewport filtering to only include visible nodes
-    const body = this.filterByViewport(htmlBeforeFilter);
+    let body = this.filterByViewport(htmlBeforeFilter);
+
+    // Fallback if body is null (shouldn't happen but prevents crashes)
+    if (!body) {
+      console.error('[DomSnapshot] filterByViewport returned null, using htmlBeforeFilter as fallback');
+      body = htmlBeforeFilter;
+    }
 
     // Calculate viewport overflow (pixels outside viewport in each direction)
     const viewport = this.pageContext.viewport;
@@ -243,6 +246,29 @@ export class DomSnapshot implements IDomSnapshot {
   private flatternNode(node: VirtualNode, opts: Required<SerializationOptions>): SerializedNode {
     const tag = node.localName || node.nodeName.toLowerCase();
     const frameIndex = node.frameIndex ?? 0;
+
+    // Special Case: Handle #document node - skip it and process its html child directly
+    // DOM.getDocument returns #document as root, with html as its child
+    if (tag === '#document') {
+      // Find the html child and process it
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          const childTag = (child.localName || child.nodeName || '').toLowerCase();
+          if (childTag === 'html') {
+            return this.flatternNode(child, opts);
+          }
+        }
+        // If no html found, process first child
+        return this.flatternNode(node.children[0], opts);
+      }
+      // Empty document - shouldn't happen but handle gracefully
+      return {
+        node_id: `${frameIndex}:${node.backendNodeId}`,
+        frame_id: frameIndex,
+        tag: 'html',
+        scrollable: 'vertical'
+      };
+    }
 
     // Special Case: Handle <head> tag - keep empty tag, remove all children
     // This reduces token usage while maintaining document structure
@@ -584,36 +610,6 @@ export class DomSnapshot implements IDomSnapshot {
     const role = node.accessibility?.role || '';
     const containerRoles = ['form', 'table', 'dialog', 'navigation', 'main', 'region', 'article', 'section'];
     return containerRoles.includes(role);
-  }
-
-  /**
-   * Find html node from VirtualNode tree
-   * Traverses the tree to find the html element and returns it directly
-   *
-   * Expected structure: #document > html
-   * If no html tag is found, returns the input node as fallback
-   */
-  private findHtmlNode(node: VirtualNode): VirtualNode {
-    // If this is the html node, return it
-    const nodeName = node.localName || node.nodeName.toLowerCase();
-    if (nodeName === 'html') {
-      return node;
-    }
-
-    // If this node has children, search recursively
-    if (node.children && node.children.length > 0) {
-      for (const child of node.children) {
-        const htmlNode = this.findHtmlNode(child);
-        // Only return if we actually found an html node (not the fallback)
-        const childNodeName = htmlNode?.localName || htmlNode?.nodeName.toLowerCase();
-        if (htmlNode && childNodeName === 'html') {
-          return htmlNode;
-        }
-      }
-    }
-
-    // HTML not found - return input node as fallback
-    return node;
   }
 
   /**
