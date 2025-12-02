@@ -296,8 +296,6 @@ export class AgentConfig implements IConfigService {
     const oldModelId = this.currentConfig.selectedModelId;
     this.currentConfig.selectedModelId = modelId;
 
-    console.log(`[AgentConfig] Model switched: ${oldModelId} → ${modelId} (${model.name} - ${provider.name})`);
-
     await this.storage.set(this.currentConfig);
     this.emitChangeEvent('model', oldModelId, modelId);
   }
@@ -517,8 +515,6 @@ export class AgentConfig implements IConfigService {
     provider.apiKey = encryptApiKey(apiKey);
     this.currentConfig.providers[providerId] = provider;
 
-    console.log(`[AgentConfig] API key set for provider: ${providerId} (${provider.name})`);
-
     await this.storage.set(this.currentConfig);
     this.emitChangeEvent('provider', null, provider);
 
@@ -569,8 +565,6 @@ export class AgentConfig implements IConfigService {
     // Clear the API key
     provider.apiKey = '';
     this.currentConfig.providers[providerId] = provider;
-
-    console.log(`[AgentConfig] API key deleted for provider: ${providerId} (${provider.name})`);
 
     await this.storage.set(this.currentConfig);
     this.emitChangeEvent('provider', provider, { ...provider, apiKey: '' });

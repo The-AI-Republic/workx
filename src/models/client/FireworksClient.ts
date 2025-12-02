@@ -43,11 +43,6 @@ export class FireworksClient extends OpenAIResponsesClient {
     const textControls = this.createTextParam(prompt.output_schema);
     const formattedInput = await get_formatted_input(prompt);
 
-    console.log('[FireworksClient] Building request payload');
-    console.log('[FireworksClient] Input items:', formattedInput.length);
-    console.log('[FireworksClient] Tools:', toolsJson.length);
-    console.log('[FireworksClient] Last 2 input items:', JSON.stringify(formattedInput.slice(-2), null, 2));
-
     // Build base payload - omit Fireworks-unsupported parameters
     const payload: any = {
       model: this.currentModel,
@@ -67,19 +62,7 @@ export class FireworksClient extends OpenAIResponsesClient {
     // Add reasoning parameter if model supports it
     if (this.modelFamily.supports_reasoning && this.reasoningEffort) {
       payload.reasoning = this.buildReasoningParam();
-      console.log('[FireworksClient] Fireworks reasoning request:', JSON.stringify(payload.reasoning));
     }
-
-    console.log('[FireworksClient] Final payload (without input):', {
-      model: payload.model,
-      instructions: payload.instructions?.substring(0, 100) + '...',
-      inputCount: payload.input?.length,
-      toolsCount: payload.tools?.length,
-      tool_choice: payload.tool_choice,
-      parallel_tool_calls: payload.parallel_tool_calls,
-      stream: payload.stream,
-      reasoning: payload.reasoning,
-    });
 
     return payload;
   }

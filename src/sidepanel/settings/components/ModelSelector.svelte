@@ -62,14 +62,6 @@
   $: groupedModels = (() => {
     const groups = new Map<string, GroupedModel>();
 
-    // Debug: log all items to find duplicates
-    console.log('[ModelSelector] Building grouped models from items:', modelSelectionItems.map(i => ({
-      modelId: i.modelId,
-      modelName: i.modelName,
-      providerId: i.providerId,
-      providerName: i.providerName
-    })));
-
     for (const item of modelSelectionItems) {
       const existing = groups.get(item.modelName);
       if (existing) {
@@ -105,11 +97,6 @@
         });
       }
     }
-
-    console.log('[ModelSelector] Grouped models result:', Array.from(groups.values()).map(g => ({
-      modelName: g.modelName,
-      providers: g.providers.map(p => p.providerName)
-    })));
 
     return Array.from(groups.values());
   })();
@@ -238,15 +225,6 @@
       : modelSelectionItems.length > 0
         ? `Unknown model (${selectedModel})`
         : 'No models available';
-
-  // Debug logging for prop changes
-  $: {
-    console.log('[ModelSelector] selectedModel prop changed to:', selectedModel);
-    console.log('[ModelSelector] modelSelectionItems length:', modelSelectionItems?.length || 0);
-    console.log('[ModelSelector] groupedModels:', groupedModels);
-    console.log('[ModelSelector] currentModelData:', currentModelData);
-    console.log('[ModelSelector] currentModelDisplay:', currentModelDisplay);
-  }
 
   $: if (typeof window !== 'undefined') {
     if (isOpen) {

@@ -452,16 +452,12 @@ export class ModelClientFactory {
     let reasoningEffort: string | undefined;
     if (supportsReasoning) {
       reasoningEffort = 'medium'; // Default reasoning effort
-      console.log(`[ModelClientFactory] Enabling reasoning with effort: ${reasoningEffort} for model: ${selectedModel}`);
-    } else {
-      console.log(`[ModelClientFactory] Model ${selectedModel} does not support reasoning - omitting reasoning parameter`);
     }
 
     // Direct provider-to-client mapping
     // This is the single source of truth for which client each provider uses
     switch (providerName) {
       case 'moonshot':
-        console.log(`[ModelClientFactory] Instantiating OpenAIChatCompletionClient for Moonshot AI`);
         return new OpenAIChatCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -473,7 +469,6 @@ export class ModelClientFactory {
         });
 
       case 'together':
-        console.log(`[ModelClientFactory] Instantiating TogetherChatCompletionClient for Together AI`);
         return new TogetherChatCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -485,7 +480,6 @@ export class ModelClientFactory {
         });
 
       case 'fireworks':
-        console.log(`[ModelClientFactory] Instantiating FireworksChatCompletionClient for Fireworks`);
         return new FireworksChatCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -497,7 +491,6 @@ export class ModelClientFactory {
         });
 
       case 'google-ai-studio':
-        console.log(`[ModelClientFactory] Instantiating GoogleCompletionClient for Google AI Studio`);
         return new GoogleCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -509,7 +502,6 @@ export class ModelClientFactory {
         });
 
       case 'groq':
-        console.log(`[ModelClientFactory] Instantiating GroqClient for Groq`);
         return new GroqClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
@@ -526,7 +518,6 @@ export class ModelClientFactory {
       case 'xai':
       case 'anthropic':
       default:
-        console.log(`[ModelClientFactory] Instantiating OpenAIResponsesClient for ${providerName}`);
         return new OpenAIResponsesClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,

@@ -23,17 +23,5 @@ export class FireworksChatCompletionClient extends OpenAIChatCompletionClient {
     if (config.provider.name !== 'Fireworks AI') {
       console.warn(`[FireworksChatCompletionClient] Warning: FireworksChatCompletionClient instantiated with non-Fireworks provider: ${config.provider.name}`);
     }
-
-    console.log('[FireworksChatCompletionClient] Initialized for Fireworks AI');
-    console.log('[FireworksChatCompletionClient] Base URL:', this.baseUrl);
-    console.log('[FireworksChatCompletionClient] Model:', this.currentModel);
-  }
-
-  /**
-   * Override to add Fireworks-specific logging
-   * Can be extended in the future for Fireworks-specific behavior
-   */
-  protected log(message: string, ...args: any[]): void {
-    console.log(`[FireworksChatCompletionClient] ${message}`, ...args);
   }
 }
