@@ -147,12 +147,6 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
           toolCallsArray = Array.from(toolCalls.values());
         } else if (hasParsedToolCalls) {
           toolCallsArray = parsedToolCalls;
-          console.log('[TogetherChatCompletionClient] Parsed tool calls from reasoning:',
-            parsedToolCalls.map(tc => tc.function.name));
-        }
-
-        if (toolCallsArray && toolCallsArray.length > 1) {
-          console.warn('[TogetherChatCompletionClient] Multiple tool calls detected:', toolCallsArray);
         }
 
         // Create unified message item

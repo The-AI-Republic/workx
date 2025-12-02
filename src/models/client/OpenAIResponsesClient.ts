@@ -334,9 +334,6 @@ export class OpenAIResponsesClient extends ModelClient {
     // Add reasoning parameter if model supports it
     if (this.modelFamily.supports_reasoning && reasoning) {
       payload.reasoning = reasoning;
-      console.log('[OpenAIResponsesClient] Reasoning request:', JSON.stringify(payload.reasoning));
-    } else if (this.modelFamily.supports_reasoning) {
-      console.log(`[OpenAIResponsesClient] Model ${this.currentModel} supports reasoning but no reasoning config provided`);
     }
 
     return payload;
@@ -1242,24 +1239,10 @@ export class OpenAIResponsesClient extends ModelClient {
   }
 
   /**
-   * Cleanup resources and log performance summary
+   * Cleanup resources
    */
   public async cleanup(): Promise<void> {
-    const metrics = this.sseParser.getPerformanceMetrics();
-    if (metrics.totalProcessed > 0) {
-      console.log(
-        `SSE Processing Summary: ${metrics.totalProcessed} events, ` +
-        `${metrics.averageTime.toFixed(2)}ms average (target: <10ms), ` +
-        `Performance: ${metrics.isWithinTarget ? 'GOOD' : 'NEEDS_OPTIMIZATION'}`
-      );
-    }
-
     if (this.requestQueue) {
-      const queueAnalytics = this.requestQueue.getAnalytics();
-      console.log(
-        `Request Queue Summary: ${queueAnalytics.successRate * 100}% success rate, ` +
-        `${queueAnalytics.averageWaitTime.toFixed(0)}ms average wait`
-      );
       this.requestQueue.pause();
     }
 

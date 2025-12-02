@@ -222,13 +222,6 @@ export class GoogleCompletionClient extends OpenAIChatCompletionClient {
         // NOTE: parallel_tool_calls omitted for Gemini compatibility
       }
 
-      // Debug logging for Gemini requests
-      console.log('[GoogleCompletionClient] Gemini request:', {
-        model: requestParams.model,
-        messageCount: messages.length,
-        toolCount: requestParams.tools?.length || 0,
-      });
-
       // Use OpenAI SDK's chat completions API with streaming
       const stream = await this.client.chat.completions.create(requestParams);
 

@@ -60,7 +60,6 @@ export class GroqClient extends OpenAIResponsesClient {
     // Add reasoning parameter if model supports it
     if (this.modelFamily.supports_reasoning && this.reasoningEffort) {
       payload.reasoning = this.buildReasoningParam();
-      console.log('[GroqClient] Groq reasoning request:', JSON.stringify(payload.reasoning));
     }
 
     return payload;
@@ -97,8 +96,6 @@ export class GroqClient extends OpenAIResponsesClient {
     if (sdkEvent.type === 'response.completed' || sdkEvent.type === 'response.done') {
       // Extract output items from response
       if (sdkEvent.response?.output && Array.isArray(sdkEvent.response.output)) {
-        console.log('[GroqClient] DEBUG: Groq response.output:', JSON.stringify(sdkEvent.response.output, null, 2));
-
         for (const outputItem of sdkEvent.response.output) {
           if (outputItem && outputItem.type) {
             // Transform Groq reasoning format to standard format
@@ -133,15 +130,11 @@ export class GroqClient extends OpenAIResponsesClient {
    * Groq uses 'reasoning_content' field (string) instead of 'content' array
    */
   private transformGroqReasoningItem(outputItem: any): void {
-    console.log('[GroqClient] DEBUG: Groq reasoning item:', JSON.stringify(outputItem, null, 2));
-
     if (outputItem.reasoning_content && typeof outputItem.reasoning_content === 'string') {
       // Convert Groq's reasoning_content string to standard content array format
       outputItem.content = [
         { type: 'reasoning_text', text: outputItem.reasoning_content }
       ];
-
-      console.log('[GroqClient] Transformed Groq reasoning content to standard format');
 
       // Remove the Groq-specific field to avoid confusion
       delete outputItem.reasoning_content;
