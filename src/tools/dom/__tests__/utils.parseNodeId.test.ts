@@ -21,13 +21,13 @@ describe('parseNodeId', () => {
       expect(result.backendNodeId).toBe(999);
     });
 
-    it('should parse "0:-1" as main frame scroll target', () => {
+    it('should parse "0:-1" as main frame special value (deprecated, use html element instead)', () => {
       const result = parseNodeId('0:-1');
       expect(result.frameId).toBe(0);
       expect(result.backendNodeId).toBe(-1);
     });
 
-    it('should parse "1:-1" as iframe scroll target', () => {
+    it('should parse "1:-1" as iframe special value (deprecated, use html element instead)', () => {
       const result = parseNodeId('1:-1');
       expect(result.frameId).toBe(1);
       expect(result.backendNodeId).toBe(-1);
@@ -47,13 +47,13 @@ describe('parseNodeId', () => {
       expect(result.backendNodeId).toBe(42);
     });
 
-    it('should parse "-1" as main frame scroll target', () => {
+    it('should parse "-1" as main frame special value (deprecated, use html element instead)', () => {
       const result = parseNodeId('-1');
       expect(result.frameId).toBe(0);
       expect(result.backendNodeId).toBe(-1);
     });
 
-    it('should parse numeric -1 as main frame scroll target', () => {
+    it('should parse numeric -1 as main frame special value (deprecated, use html element instead)', () => {
       const result = parseNodeId(-1);
       expect(result.frameId).toBe(0);
       expect(result.backendNodeId).toBe(-1);

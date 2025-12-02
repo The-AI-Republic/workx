@@ -29,7 +29,7 @@ import { DomService } from './dom/DomService';
  */
 export interface DOMToolRequest {
   action: 'snapshot' | 'click' | 'type' | 'keypress' | 'scroll';
-  node_id?: number; // Numeric CDP nodeId
+  node_id?: string | number; // Format: "frameId:backendNodeId" (e.g., "0:123") or number for backward compatibility
   text?: string;
   key?: string;
   options?: any;
@@ -124,22 +124,23 @@ Snapshots only return elements visible in the current viewport (inViewport: true
 **Key Principles**:
 1. If you don't see expected elements, they may be below/above current scroll position
 2. Use scroll action to discover more content
-3. Default scrolling target: page itself (node_id=-1 for main window)
-4. Scrollable containers marked with aria-label="scrollable: [direction]"
+3. Scrollable elements are marked with aria-label="scrollable: [direction]" (including <html> tag for page scroll)
+4. To scroll the main page, target the <html> element which is always marked as scrollable
 
 **Scrolling Decision**:
-- Looking for content in main page flow? → node_id=-1
+- Looking for content in main page flow? → Scroll the <html> element (it has scrollable: vertical)
+- Page inside an iframe? → Scroll that iframe's <html> element
 - Element has aria-label="scrollable: ..."? → Scroll that container
 - Looking in specific widget/panel/sidebar? → Scroll that container`,
     {
       action: {
         type: 'string',
-        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll by relative pixel offset - MOST COMMONLY use node_id=-1 for page/window scroll, rarely use element node_id for scrollable containers)',
+        description: 'Action type: snapshot (capture DOM - only returns elements visible in viewport), click (click element), type (input text), keypress (keyboard input), scroll (scroll element by relative pixel offset)',
         enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
       },
       node_id: {
-        type: 'number',
-        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). This is a numeric identifier corresponding to the node_id field in the serialized DOM. Example: 1469, 1537, etc. Special values: -1 for window/page scroll (RECOMMENDED - use this for most scrolling scenarios to scroll the main page content), -2 for document-level keypress. For scroll action: PREFER node_id=-1 to scroll the main page (most common case). Only use a specific element node_id for rare cases like scrolling within a modal dialog, chat message container, or sidebar with independent scrolling.',
+        type: 'string',
+        description: 'Target element node ID from snapshot (required for click, type, and scroll actions). Format: "frameId:backendNodeId" (e.g., "0:123" for main frame, "1:456" for iframe). For scroll: target the <html> element (marked with scrollable: vertical) to scroll the main page. For iframe page scroll, target the iframe\'s <html> element. For scrollable containers (modals, chat, sidebars), target the element with aria-label="scrollable: ...".',
       },
       text: {
         type: 'string',
@@ -374,27 +375,46 @@ Snapshots only return elements visible in the current viewport (inViewport: true
       return `Invalid action: ${req.action}. Must be one of: snapshot, click, type, keypress, scroll`;
     }
 
+    // Helper to validate node_id (accepts string "frameId:backendNodeId" or number for backward compatibility)
+    const validateNodeId = (actionName: string): string | null => {
+      if (req.node_id === undefined) {
+        return `node_id is required for ${actionName} action`;
+      }
+      // Accept string format "frameId:backendNodeId" (e.g., "0:123", "1:456")
+      if (typeof req.node_id === 'string') {
+        // Validate format: should be "number:number"
+        const parts = req.node_id.split(':');
+        if (parts.length !== 2) {
+          return `node_id must be in format "frameId:backendNodeId" (e.g., "0:123")`;
+        }
+        const frameId = parseInt(parts[0], 10);
+        const backendNodeId = parseInt(parts[1], 10);
+        if (isNaN(frameId) || isNaN(backendNodeId)) {
+          return `node_id must contain valid numbers in format "frameId:backendNodeId"`;
+        }
+        return null;
+      }
+      // Accept number for backward compatibility
+      if (typeof req.node_id === 'number') {
+        if (!Number.isInteger(req.node_id)) {
+          return 'node_id must be an integer';
+        }
+        return null;
+      }
+      return `node_id must be a string (format: "frameId:backendNodeId") or number`;
+    };
+
     // Action-specific validation
     switch (req.action) {
       case 'snapshot':
         return null; // Only action is required
 
       case 'click':
-        if (req.node_id === undefined || typeof req.node_id !== 'number') {
-          return 'node_id is required for click action and must be a number';
-        }
-        if (!Number.isInteger(req.node_id)) {
-          return 'node_id must be an integer';
-        }
-        return null;
+        return validateNodeId('click');
 
       case 'type':
-        if (req.node_id === undefined || typeof req.node_id !== 'number') {
-          return 'node_id is required for type action and must be a number';
-        }
-        if (!Number.isInteger(req.node_id)) {
-          return 'node_id must be an integer';
-        }
+        const typeNodeIdError = validateNodeId('type');
+        if (typeNodeIdError) return typeNodeIdError;
         if (!req.text || typeof req.text !== 'string') {
           return 'text is required for type action';
         }
@@ -407,13 +427,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
         return null;
 
       case 'scroll':
-        if (req.node_id === undefined || typeof req.node_id !== 'number') {
-          return 'node_id is required for scroll action and must be a number';
-        }
-        if (!Number.isInteger(req.node_id)) {
-          return 'node_id must be an integer';
-        }
-        return null;
+        return validateNodeId('scroll');
 
       default:
         return `Unknown action: ${req.action}`;

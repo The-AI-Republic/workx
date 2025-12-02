@@ -13,8 +13,9 @@
 // ============================================================================
 
 /**
- * Special nodeId for window-level scroll actions
- * Use this when calling scroll() on the entire window
+ * @deprecated Use the html element's node_id instead for page scroll.
+ * The html element is automatically marked as scrollable in the DOM snapshot.
+ * Previously used for window-level scroll actions.
  */
 export const NODE_ID_WINDOW = -1;
 

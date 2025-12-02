@@ -149,6 +149,11 @@ export class LayoutSimplifier {
       return false;
     }
 
+    // Document structural elements are never collapsed
+    if (tagName === '#document' || tagName === 'html' || tagName === 'head' || tagName === 'body') {
+      return false;
+    }
+
     // Nodes with important accessibility roles are preserved
     const role = node.accessibility?.role;
     if (role && role !== 'generic' && role !== 'none') {

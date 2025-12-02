@@ -50,6 +50,7 @@ export interface RawSerializedDom {
 }
 
 // Special nodeId constants for non-element targets
+/** @deprecated Use the html element's node_id instead for page scroll */
 export const NODE_ID_WINDOW = -1;
 export const NODE_ID_DOCUMENT = -2;
 

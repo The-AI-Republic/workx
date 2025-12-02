@@ -79,7 +79,7 @@ export class DomSnapshot implements IDomSnapshot {
   readonly stats: SnapshotStats;
   readonly frameRegistry: FrameRegistry;
 
-  private _backendNodeMap?: Map<number, VirtualNode>;
+  private _backendNodeMap?: Map<number, VirtualNode[]>;
   private _serialized?: RawSerializedDom;
 
   constructor(
@@ -113,14 +113,20 @@ export class DomSnapshot implements IDomSnapshot {
 
 
   /**
-   * Build a flat map of backendNodeId -> VirtualNode for quick lookups
+   * Build a flat map of backendNodeId -> VirtualNode[] for quick lookups
+   * Since backendNodeIds are NOT unique across iframes, we store arrays of nodes
    */
-  private buildBackendNodeMap(): Map<number, VirtualNode> {
+  private buildBackendNodeMap(): Map<number, VirtualNode[]> {
     if (this._backendNodeMap) return this._backendNodeMap;
 
     this._backendNodeMap = new Map();
     const traverse = (node: VirtualNode) => {
-      this._backendNodeMap!.set(node.backendNodeId, node);
+      const existing = this._backendNodeMap!.get(node.backendNodeId);
+      if (existing) {
+        existing.push(node);
+      } else {
+        this._backendNodeMap!.set(node.backendNodeId, [node]);
+      }
       if (node.children) {
         node.children.forEach(traverse);
       }
@@ -137,9 +143,67 @@ export class DomSnapshot implements IDomSnapshot {
 
   /**
    * Get VirtualNode by backendNodeId (stable ID used in serialization)
+   * Note: This returns the first match found. For frame-aware lookup, use resolveNodeByBackendIdAndFrame()
    */
   getNodeByBackendId(backendNodeId: number): VirtualNode | null {
-    return this.buildBackendNodeMap().get(backendNodeId) ?? null;
+    const nodes = this.buildBackendNodeMap().get(backendNodeId);
+    return nodes?.[0] ?? null;
+  }
+
+  /**
+   * Get ALL VirtualNodes with the given backendNodeId
+   * backendNodeIds are NOT unique across iframes, so multiple nodes may match
+   * @returns Array of matching nodes with their frame information
+   */
+  getAllNodesByBackendId(backendNodeId: number): VirtualNode[] {
+    return this.buildBackendNodeMap().get(backendNodeId) ?? [];
+  }
+
+  /**
+   * Resolve node by backendNodeId with frame-aware disambiguation
+   *
+   * Logic:
+   * 1. Search for all nodes with the given backendNodeId
+   * 2. If exactly one match found, return it (even if frameId doesn't match)
+   * 3. If multiple matches found, filter by frameId
+   * 4. If no matches after filtering, return null
+   *
+   * @param backendNodeId - The backend node ID to search for
+   * @param frameId - The frame ID to use for disambiguation (0-5)
+   * @returns The resolved VirtualNode or null if not found
+   */
+  resolveNodeByBackendIdAndFrame(backendNodeId: number, frameId: number): VirtualNode | null {
+    const matches = this.getAllNodesByBackendId(backendNodeId);
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    if (matches.length === 1) {
+      // Single match - use it regardless of frameId
+      const node = matches[0];
+      if (node.frameIndex !== undefined && node.frameIndex !== frameId) {
+        console.warn(`[DomSnapshot] Node ${backendNodeId} found in frame ${node.frameIndex}, but frameId ${frameId} was specified. Using found node.`);
+      }
+      return node;
+    }
+
+    // Multiple matches - filter by frameId
+    const frameMatches = matches.filter(node => node.frameIndex === frameId);
+
+    if (frameMatches.length === 1) {
+      return frameMatches[0];
+    }
+
+    if (frameMatches.length === 0) {
+      console.warn(`[DomSnapshot] Multiple nodes found with backendNodeId ${backendNodeId} but none in frame ${frameId}. Found in frames: ${matches.map(n => n.frameIndex).join(', ')}`);
+      // Fall back to first match
+      return matches[0];
+    }
+
+    // Multiple matches even after frame filtering (shouldn't happen but handle gracefully)
+    console.warn(`[DomSnapshot] Multiple nodes with same backendNodeId ${backendNodeId} in frame ${frameId}. Using first match.`);
+    return frameMatches[0];
   }
 
 
@@ -169,19 +233,22 @@ export class DomSnapshot implements IDomSnapshot {
       }
     };
 
-    // Extract body node from virtualDom before processing
-    // If no body tag found, returns the root node as fallback
-    const bodyVirtualNode = this.findBodyNode(this.virtualDom);
-
-    // Use SerializationPipeline for compaction on body node only
+    // Use SerializationPipeline for compaction
+    // virtualDom is typically #document with html as child, or html directly
     const pipeline = new SerializationPipeline();
-    const result = pipeline.execute(bodyVirtualNode);
+    const result = pipeline.execute(this.virtualDom);
 
     // Build flattened tree structure from pipeline result with v3 schema
-    const bodyBeforeFilter = this.flatternNode(result.tree, opts);
+    const htmlBeforeFilter = this.flatternNode(result.tree, opts);
 
     // Apply viewport filtering to only include visible nodes
-    const body = this.filterByViewport(bodyBeforeFilter);
+    let body = this.filterByViewport(htmlBeforeFilter);
+
+    // Fallback if body is null (shouldn't happen but prevents crashes)
+    if (!body) {
+      console.error('[DomSnapshot] filterByViewport returned null, using htmlBeforeFilter as fallback');
+      body = htmlBeforeFilter;
+    }
 
     // Calculate viewport overflow (pixels outside viewport in each direction)
     const viewport = this.pageContext.viewport;
@@ -241,6 +308,49 @@ export class DomSnapshot implements IDomSnapshot {
    * - node IDs → sequential IDs via IdRemapper
    */
   private flatternNode(node: VirtualNode, opts: Required<SerializationOptions>): SerializedNode {
+    const tag = node.localName || node.nodeName.toLowerCase();
+    const frameIndex = node.frameIndex ?? 0;
+
+    // Special Case: Handle #document node - skip it and process its html child directly
+    // DOM.getDocument returns #document as root, with html as its child
+    if (tag === '#document') {
+      // Find the html child and process it
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          const childTag = (child.localName || child.nodeName || '').toLowerCase();
+          if (childTag === 'html') {
+            return this.flatternNode(child, opts);
+          }
+        }
+        // If no html found, process first child
+        return this.flatternNode(node.children[0], opts);
+      }
+      // Empty document - shouldn't happen but handle gracefully
+      return {
+        node_id: `${frameIndex}:${node.backendNodeId}`,
+        frame_id: frameIndex,
+        tag: 'html',
+        scrollable: 'vertical'
+      };
+    }
+
+    // Special Case: Handle <head> tag - keep empty tag, remove all children
+    // This reduces token usage while maintaining document structure
+    if (tag === 'head') {
+      return {
+        node_id: `${frameIndex}:${node.backendNodeId}`,
+        frame_id: frameIndex,
+        tag: 'head'
+        // No kids - intentionally empty
+      };
+    }
+
+    // Special Case: Handle <html> tag - always mark as scrollable for page scroll
+    // This enables LLM to scroll the page by targeting the html element
+    if (tag === 'html') {
+      return this.buildHtmlNode(node, opts);
+    }
+
     // Case 1: Keep semantic and non-semantic nodes (Tier 1 & 2)
     if (this.isSemanticNode(node)) {
       return this.buildSerializedNode(node, opts);
@@ -272,7 +382,6 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If only one child, return it directly (hoist)
       // Exception: Don't hoist if this node is a structural root we want to preserve
-      const tag = node.localName || node.nodeName.toLowerCase();
       const isStructuralRoot = ['html', 'body'].includes(tag);
 
       if (flattenedChildren.length === 1 && !isStructuralRoot) {
@@ -281,11 +390,10 @@ export class DomSnapshot implements IDomSnapshot {
 
       // If multiple children (OR single child that wasn't hoisted), return structural node
       if (flattenedChildren.length > 0) {
-        const frameIndex = node.frameIndex ?? 0;
         const structuralNode: SerializedNode = {
           node_id: `${frameIndex}:${node.backendNodeId}`,
           frame_id: frameIndex,
-          tag: node.localName || node.nodeName.toLowerCase(),
+          tag,
           kids: flattenedChildren
         };
         // Preserve scrollable property for scroll targets
@@ -298,12 +406,9 @@ export class DomSnapshot implements IDomSnapshot {
       // FIX: If all children were filtered out (flattenedChildren.length === 0),
       // preserve structural root/body nodes as placeholders to prevent tree collapse
       if (flattenedChildren.length === 0) {
-        const tag = node.localName || node.nodeName.toLowerCase();
         // Only preserve critical structural nodes when empty (body, main)
-        // Note: html and #document are excluded since we extract body directly
         if (tag === 'body' || tag === 'main') {
           console.warn(`[DomSnapshot] All children filtered out for <${tag}>. Returning placeholder node.`);
-          const frameIndex = node.frameIndex ?? 0;
           return {
             node_id: `${frameIndex}:${node.backendNodeId}`,
             frame_id: frameIndex,
@@ -318,6 +423,35 @@ export class DomSnapshot implements IDomSnapshot {
 
     // Case 4: Leaf structural node with no children - discard
     return null as any;
+  }
+
+  /**
+   * Build html node with scrollable property always set
+   * The html tag serves as the primary scroll target for the page
+   */
+  private buildHtmlNode(node: VirtualNode, opts: Required<SerializationOptions>): SerializedNode {
+    const frameIndex = node.frameIndex ?? 0;
+
+    // Process children (should be head and body)
+    const flattenedChildren = node.children
+      ? node.children
+          .map(child => this.flatternNode(child, opts))
+          .filter((child): child is SerializedNode => child !== null)
+      : [];
+
+    const htmlNode: SerializedNode = {
+      node_id: `${frameIndex}:${node.backendNodeId}`,
+      frame_id: frameIndex,
+      tag: 'html',
+      // Always mark html as vertically scrollable - this is the main page scroll target
+      scrollable: 'vertical',
+      // Mark html as always in viewport - it's the document root and contains all visible content
+      // This ensures filterByViewport preserves all children
+      inViewport: true,
+      kids: flattenedChildren.length > 0 ? flattenedChildren : undefined
+    };
+
+    return htmlNode;
   }
 
   /**
@@ -540,37 +674,6 @@ export class DomSnapshot implements IDomSnapshot {
     const role = node.accessibility?.role || '';
     const containerRoles = ['form', 'table', 'dialog', 'navigation', 'main', 'region', 'article', 'section'];
     return containerRoles.includes(role);
-  }
-
-  /**
-   * Find body node from VirtualNode tree
-   * Traverses the tree to find the body element and returns it directly
-   *
-   * Expected structure: #document > html > body
-   * If no body tag is found, returns the input node as fallback
-   */
-  private findBodyNode(node: VirtualNode): VirtualNode {
-
-    // If this is the body node, return it
-    const nodeName = node.localName || node.nodeName.toLowerCase();
-    if (nodeName === 'body') {
-      return node;
-    }
-
-    // If this node has children, search recursively
-    if (node.children && node.children.length > 0) {
-      for (const child of node.children) {
-        const bodyNode = this.findBodyNode(child);
-        // Only return if we actually found a body node (not the fallback)
-        const childNodeName = bodyNode?.localName || bodyNode?.nodeName.toLowerCase();
-        if (bodyNode && childNodeName === 'body') {
-          return bodyNode;
-        }
-      }
-    }
-
-    // Body not found - return input node as fallback
-    return node;
   }
 
   /**
