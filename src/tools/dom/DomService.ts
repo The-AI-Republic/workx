@@ -1302,7 +1302,6 @@ export class DomService {
    */
   private getKeyCode(char: string): string {
     if (char === ' ') return 'Space';
-    if (char === '\n') return 'Enter';
     if (char === '\t') return 'Tab';
     if (/[a-z]/i.test(char)) return `Key${char.toUpperCase()}`;
     if (/[0-9]/.test(char)) return `Digit${char}`;
@@ -1538,17 +1537,24 @@ export class DomService {
         }
       }
 
-      // 4. Commit (Enter) if requested or implied
-      if (options?.commit === 'enter' || text.endsWith('\n')) {
+      // 4. Commit (Enter) if explicitly requested
+      if (options?.commit === 'enter') {
+        // Dispatch Enter key with all necessary properties for cross-site compatibility
+        // Some sites (like Google) require windowsVirtualKeyCode and text properties
         await this.sendCommand('Input.dispatchKeyEvent', {
           type: 'keyDown',
           key: 'Enter',
-          code: 'Enter'
+          code: 'Enter',
+          windowsVirtualKeyCode: 13,
+          nativeVirtualKeyCode: 13,
+          text: '\r'
         });
         await this.sendCommand('Input.dispatchKeyEvent', {
           type: 'keyUp',
           key: 'Enter',
-          code: 'Enter'
+          code: 'Enter',
+          windowsVirtualKeyCode: 13,
+          nativeVirtualKeyCode: 13
         });
       }
 
