@@ -13,7 +13,8 @@ import {
   OpenAIChatCompletionClient,
   type OpenAIChatCompletionConfig,
 } from './OpenAIChatCompletionClient';
-import type { RetryConfig } from '../ModelClient';
+import { ModelClientError, type RetryConfig } from '../ModelClient';
+import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 
 /**
  * Google AI Studio (Gemini) client with thought signature support
@@ -74,15 +75,177 @@ export class GoogleCompletionClient extends OpenAIChatCompletionClient {
   }
 
   /**
-   * Override to include thought signatures when sending conversation history
+   * Override to build Gemini-compatible request
+   *
+   * Gemini's OpenAI compatibility layer does NOT support:
+   * - reasoning_content field in messages
+   * - strict field in tool function definitions
+   * - parallel_tool_calls parameter
    *
    * Thought signatures must be passed back exactly as received in subsequent turns
    * to maintain Gemini's reasoning context.
    */
   protected async makeChatCompletionsRequest(prompt: Prompt): Promise<AsyncIterable<any>> {
-    // Transform prompt to include thought signatures in tool_calls
-    const transformedPrompt = this.transformPromptWithThoughtSignatures(prompt);
-    return super.makeChatCompletionsRequest(transformedPrompt);
+    // Validate API key before making request
+    if (!this.apiKey || !this.apiKey.trim()) {
+      throw new ModelClientError(`No API key configured for provider: ${this.provider.name}`);
+    }
+
+    try {
+      // Reset streaming state before starting new request
+      (this as any).chatCompletionTextContent = '';
+      (this as any).chatCompletionReasoningContent = '';
+      (this as any).chatCompletionToolCalls.clear();
+      GeminiLogger.stateReset();
+      GeminiLogger.streamStart(this.currentModel, this.conversationId);
+
+      // Transform prompt to include thought signatures in tool_calls
+      const transformedPrompt = this.transformPromptWithThoughtSignatures(prompt);
+
+      // Convert Prompt to Chat Completions format
+      const messages: any[] = [];
+
+      // Get full instructions including base instructions and overrides
+      const fullInstructions = get_full_instructions(transformedPrompt, this.modelFamily);
+
+      // Add system message if instructions exist
+      if (fullInstructions) {
+        messages.push({
+          role: 'system',
+          content: fullInstructions
+        });
+      }
+
+      // Convert input array to messages
+      const formattedInput = await get_formatted_input(transformedPrompt);
+      if (formattedInput && Array.isArray(formattedInput)) {
+        for (const item of formattedInput) {
+          if (item.type === 'message') {
+            // Convert content array to Chat Completions format
+            let content: any = item.content;
+            if (Array.isArray(content)) {
+              // Handle all ContentItem types: 'text', 'input_text', 'output_text', 'input_image'
+              const convertedParts = content.map((part: any) => {
+                if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
+                  return { type: 'text', text: part.text };
+                } else if (part.type === 'input_image') {
+                  // Convert to Chat Completions image format
+                  return {
+                    type: 'image_url',
+                    image_url: { url: part.image_url }
+                  };
+                } else if (part.type === 'refusal') {
+                  return { type: 'text', text: part.refusal };
+                }
+                return null;
+              }).filter((c: any) => c !== null);
+
+              // If all parts are text, join into a single string for simplicity
+              // Otherwise, keep as multimodal array
+              const allText = convertedParts.every((p: any) => p.type === 'text');
+              if (allText && convertedParts.length > 0) {
+                content = convertedParts.map((p: any) => p.text).join('\n');
+              } else {
+                content = convertedParts;
+              }
+            }
+
+            // Build message object
+            const message: any = {
+              role: item.role,
+              content: content
+            };
+
+            // NOTE: Gemini does NOT support reasoning_content field - skip it
+            // (Other providers like Kimi K2, o1, o3 use this for multi-turn reasoning)
+
+            // Add tool_calls if present (unified format)
+            // Tool calls are now part of message items, not separate items
+            if (item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
+              message.tool_calls = item.tool_calls;
+            }
+
+            messages.push(message);
+          } else if (item.type === 'function_call') {
+            // Legacy support: Convert old function_call items to Chat Completions format
+            messages.push({
+              role: 'assistant',
+              tool_calls: [{
+                id: item.call_id || item.id,
+                type: 'function',
+                function: {
+                  name: item.name,
+                  arguments: item.arguments
+                }
+              }]
+            });
+          } else if (item.type === 'function_call_output') {
+            // Convert function_call_output to Chat Completions tool message
+            messages.push({
+              role: 'tool',
+              tool_call_id: item.call_id,
+              content: item.output
+            });
+          } else if (item.type === 'reasoning') {
+            // Legacy reasoning items are skipped for Gemini
+          }
+        }
+      }
+
+      // Build chat completions request
+      const requestParams: any = {
+        model: this.currentModel,
+        messages: messages,
+        stream: true,
+      };
+
+      // Add tools if present
+      if (transformedPrompt.tools && transformedPrompt.tools.length > 0) {
+        // Convert to Chat Completions tool format
+        // NOTE: Gemini does NOT support 'strict' field - omit it
+        requestParams.tools = transformedPrompt.tools.map((tool: any) => {
+          if (tool.type === 'function') {
+            return {
+              type: 'function',
+              function: {
+                name: tool.function.name,
+                description: tool.function.description,
+                parameters: tool.function.parameters,
+                // NOTE: 'strict' field omitted for Gemini compatibility
+              }
+            };
+          }
+          return tool;
+        });
+
+        requestParams.tool_choice = 'auto';
+        // NOTE: parallel_tool_calls omitted for Gemini compatibility
+      }
+
+      // Debug logging for Gemini requests
+      console.log('[GoogleCompletionClient] Gemini request:', {
+        model: requestParams.model,
+        messageCount: messages.length,
+        toolCount: requestParams.tools?.length || 0,
+      });
+
+      // Use OpenAI SDK's chat completions API with streaming
+      const stream = await this.client.chat.completions.create(requestParams);
+
+      // The SDK returns a Stream object which is AsyncIterable
+      return stream as any as AsyncIterable<any>;
+    } catch (error: any) {
+      // Handle SDK errors and convert to ModelClientError
+      const statusCode = error.status || error.statusCode || 500;
+      const errorMessage = error.message || `${this.provider.name} Chat Completions API error`;
+
+      throw new ModelClientError(
+        errorMessage,
+        statusCode,
+        this.provider.name,
+        (this as any).isRetryableHttpError(statusCode)
+      );
+    }
   }
 
   /**
