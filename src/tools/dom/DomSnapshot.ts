@@ -79,7 +79,7 @@ export class DomSnapshot implements IDomSnapshot {
   readonly stats: SnapshotStats;
   readonly frameRegistry: FrameRegistry;
 
-  private _backendNodeMap?: Map<number, VirtualNode>;
+  private _backendNodeMap?: Map<number, VirtualNode[]>;
   private _serialized?: RawSerializedDom;
 
   constructor(
@@ -113,14 +113,20 @@ export class DomSnapshot implements IDomSnapshot {
 
 
   /**
-   * Build a flat map of backendNodeId -> VirtualNode for quick lookups
+   * Build a flat map of backendNodeId -> VirtualNode[] for quick lookups
+   * Since backendNodeIds are NOT unique across iframes, we store arrays of nodes
    */
-  private buildBackendNodeMap(): Map<number, VirtualNode> {
+  private buildBackendNodeMap(): Map<number, VirtualNode[]> {
     if (this._backendNodeMap) return this._backendNodeMap;
 
     this._backendNodeMap = new Map();
     const traverse = (node: VirtualNode) => {
-      this._backendNodeMap!.set(node.backendNodeId, node);
+      const existing = this._backendNodeMap!.get(node.backendNodeId);
+      if (existing) {
+        existing.push(node);
+      } else {
+        this._backendNodeMap!.set(node.backendNodeId, [node]);
+      }
       if (node.children) {
         node.children.forEach(traverse);
       }
@@ -137,9 +143,67 @@ export class DomSnapshot implements IDomSnapshot {
 
   /**
    * Get VirtualNode by backendNodeId (stable ID used in serialization)
+   * Note: This returns the first match found. For frame-aware lookup, use resolveNodeByBackendIdAndFrame()
    */
   getNodeByBackendId(backendNodeId: number): VirtualNode | null {
-    return this.buildBackendNodeMap().get(backendNodeId) ?? null;
+    const nodes = this.buildBackendNodeMap().get(backendNodeId);
+    return nodes?.[0] ?? null;
+  }
+
+  /**
+   * Get ALL VirtualNodes with the given backendNodeId
+   * backendNodeIds are NOT unique across iframes, so multiple nodes may match
+   * @returns Array of matching nodes with their frame information
+   */
+  getAllNodesByBackendId(backendNodeId: number): VirtualNode[] {
+    return this.buildBackendNodeMap().get(backendNodeId) ?? [];
+  }
+
+  /**
+   * Resolve node by backendNodeId with frame-aware disambiguation
+   *
+   * Logic:
+   * 1. Search for all nodes with the given backendNodeId
+   * 2. If exactly one match found, return it (even if frameId doesn't match)
+   * 3. If multiple matches found, filter by frameId
+   * 4. If no matches after filtering, return null
+   *
+   * @param backendNodeId - The backend node ID to search for
+   * @param frameId - The frame ID to use for disambiguation (0-5)
+   * @returns The resolved VirtualNode or null if not found
+   */
+  resolveNodeByBackendIdAndFrame(backendNodeId: number, frameId: number): VirtualNode | null {
+    const matches = this.getAllNodesByBackendId(backendNodeId);
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    if (matches.length === 1) {
+      // Single match - use it regardless of frameId
+      const node = matches[0];
+      if (node.frameIndex !== undefined && node.frameIndex !== frameId) {
+        console.warn(`[DomSnapshot] Node ${backendNodeId} found in frame ${node.frameIndex}, but frameId ${frameId} was specified. Using found node.`);
+      }
+      return node;
+    }
+
+    // Multiple matches - filter by frameId
+    const frameMatches = matches.filter(node => node.frameIndex === frameId);
+
+    if (frameMatches.length === 1) {
+      return frameMatches[0];
+    }
+
+    if (frameMatches.length === 0) {
+      console.warn(`[DomSnapshot] Multiple nodes found with backendNodeId ${backendNodeId} but none in frame ${frameId}. Found in frames: ${matches.map(n => n.frameIndex).join(', ')}`);
+      // Fall back to first match
+      return matches[0];
+    }
+
+    // Multiple matches even after frame filtering (shouldn't happen but handle gracefully)
+    console.warn(`[DomSnapshot] Multiple nodes with same backendNodeId ${backendNodeId} in frame ${frameId}. Using first match.`);
+    return frameMatches[0];
   }
 
 

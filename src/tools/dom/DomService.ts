@@ -972,16 +972,21 @@ export class DomService {
 
       const backendNodeId = parsedId.backendNodeId;
 
-      // Verify node exists in snapshot
-      const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
+      // Resolve node with frame-aware disambiguation
+      // This handles the case where backendNodeId is not globally unique across iframes
+      const node = this.currentSnapshot.resolveNodeByBackendIdAndFrame(backendNodeId, parsedId.frameId);
       if (!node) {
         throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found in snapshot`);
       }
 
+      // Use the resolved node's backendNodeId for CDP commands
+      // (in case we found the node in a different frame than specified)
+      const resolvedBackendNodeId = node.backendNodeId;
+
       // Get box model for coordinates
       let boxModel;
       try {
-        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
+        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
       } catch (error: any) {
         // SVG elements don't have box models - try getting content quads instead
         if (error.message?.includes('Could not compute box model')) {
@@ -1026,13 +1031,13 @@ export class DomService {
 
         if (!isInViewport) {
           // Scroll element into view
-          await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
+          await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
 
           // Wait for scroll animation to complete
           await new Promise(resolve => setTimeout(resolve, 100));
 
           // Get box model AGAIN after scrolling (element position has changed)
-          const updatedBoxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
+          const updatedBoxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
           content = updatedBoxModel.model.content;
 
           // Recalculate center coordinates with new position
@@ -1041,7 +1046,7 @@ export class DomService {
         }
       } else {
         // Visual effects disabled - still scroll into view if needed, but don't wait
-        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId }).catch(() => { });
+        await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId }).catch(() => { });
       }
 
       // CDP MIGRATION: Trigger ripple visual effect BEFORE click (with correct coordinates)
@@ -1355,14 +1360,19 @@ export class DomService {
 
       const backendNodeId = parsedId.backendNodeId;
 
-      // Verify node exists in snapshot
-      const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
+      // Resolve node with frame-aware disambiguation
+      // This handles the case where backendNodeId is not globally unique across iframes
+      const node = this.currentSnapshot.resolveNodeByBackendIdAndFrame(backendNodeId, parsedId.frameId);
       if (!node) {
         throw new Error(`NODE_NOT_FOUND: Node ${nodeId} not found`);
       }
 
+      // Use the resolved node's backendNodeId for CDP commands
+      // (in case we found the node in a different frame than specified)
+      const resolvedBackendNodeId = node.backendNodeId;
+
       // Detect element type
-      const elementType = await this.detectElementType(backendNodeId);
+      const elementType = await this.detectElementType(resolvedBackendNodeId);
       console.log(`[DomService] Element type detected: ${elementType}`);
 
       // Determine typing method
@@ -1387,12 +1397,12 @@ export class DomService {
       console.log(`[DomService] Using typing method: ${method}`);
 
       // 1. Robust Focus: Scroll into view and Click
-      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
 
       // Get box model for coordinates to click (ensures focus works on complex frameworks)
       let boxModel;
       try {
-        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId });
+        boxModel = await this.sendCommand<any>('DOM.getBoxModel', { backendNodeId: resolvedBackendNodeId });
       } catch (e) {
         // Fallback if box model fails (e.g. SVG), just try DOM.focus
       }
@@ -1418,7 +1428,7 @@ export class DomService {
         });
       } else {
         // Fallback
-        await this.sendCommand('DOM.focus', { backendNodeId });
+        await this.sendCommand('DOM.focus', { backendNodeId: resolvedBackendNodeId });
       }
 
       // Wait a bit for focus to settle
@@ -1428,10 +1438,10 @@ export class DomService {
       if (options?.clearFirst) {
         if (elementType === 'contenteditable') {
           // Use special clearing for contenteditable elements
-          await this.clearContentEditable(backendNodeId);
+          await this.clearContentEditable(resolvedBackendNodeId);
         } else {
           // For input/textarea elements
-          const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+          const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId: resolvedBackendNodeId });
 
           if (resolveResult?.object?.objectId) {
             // Clear the input value and fire events
@@ -1497,7 +1507,7 @@ export class DomService {
         await this.typeCharByChar(text, speed);
       } else if (method === 'paste') {
         // Paste simulation (fast, works for rich text editors)
-        await this.typePaste(text, backendNodeId);
+        await this.typePaste(text, resolvedBackendNodeId);
       } else {
         // Instant typing (CDP Input.insertText, works for simple inputs)
         await this.sendCommand('Input.insertText', { text });
@@ -1505,7 +1515,7 @@ export class DomService {
         // For React controlled components, additionally fire events
         if (elementType === 'input' || elementType === 'textarea') {
           try {
-            const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+            const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId: resolvedBackendNodeId });
             if (resolveResult?.object?.objectId) {
               await this.sendCommand('Runtime.callFunctionOn', {
                 objectId: resolveResult.object.objectId,
@@ -1727,12 +1737,15 @@ export class DomService {
 
       const backendNodeId = parsedId.backendNodeId;
 
-      // Fall back to main frame scroll if node not found
-      const node = this.currentSnapshot.getNodeByBackendId(backendNodeId);
+      // Resolve node with frame-aware disambiguation and fall back to main frame if not found
+      const node = this.currentSnapshot.resolveNodeByBackendIdAndFrame(backendNodeId, parsedId.frameId);
       if (!node) {
         console.error(`[DomService] scroll: Node ${nodeId} not found in snapshot, falling back to main frame scroll`);
         return this.scrollMainFrame(scrollX, scrollY, start, nodeId);
       }
+
+      // Use the resolved node's backendNodeId for CDP commands
+      const resolvedBackendNodeId = node.backendNodeId;
 
       // Check if the target is an html element - use window.scrollTo for page-level scroll
       const tagName = (node.localName || node.nodeName || '').toLowerCase();
@@ -1836,7 +1849,7 @@ export class DomService {
         // Non-html element - use element's scrollTo method
         // Use CDP DOM.resolveNode to get a RemoteObject reference to the element
         const resolveResult = await this.sendCommand<any>('DOM.resolveNode', {
-          backendNodeId
+          backendNodeId: resolvedBackendNodeId
         });
 
         if (!resolveResult?.object?.objectId) {
@@ -2054,8 +2067,17 @@ export class DomService {
     try {
       const backendNodeId = parsedId.backendNodeId;
 
+      // Resolve node with frame-aware disambiguation if snapshot is available
+      let resolvedBackendNodeId = backendNodeId;
+      if (this.currentSnapshot) {
+        const node = this.currentSnapshot.resolveNodeByBackendIdAndFrame(backendNodeId, parsedId.frameId);
+        if (node) {
+          resolvedBackendNodeId = node.backendNodeId;
+        }
+      }
+
       // Use CDP's scrollIntoViewIfNeeded for basic scrolling
-      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId });
+      await this.sendCommand('DOM.scrollIntoViewIfNeeded', { backendNodeId: resolvedBackendNodeId });
 
       // If specific alignment options provided, use JavaScript scrollIntoView
       if (options?.block || options?.inline) {
