@@ -312,7 +312,7 @@ Session quota: 200MB. Auto-evicts oldest 50% when quota reached. You don't need 
       },
       data: {
         type: 'object',
-        description: '**REQUIRED for write/update operations** - The actual data to cache. Despite type="object", you can pass ANY JSON-serializable value: object {key: "value"}, array [1,2,3], string, number, or boolean. The tool accepts all types. Max 5MB. Example: {emailSummary: "Temu promo", sender: "Temu", importance: "low"}'
+        description: '**REQUIRED for write/update operations** - The actual data to cache. MUST be a JSON object. If you need to store a primitive (string, number, boolean), wrap it in an object, e.g., { "value": "your string" }. Max 5MB.'
       },
       description: {
         type: 'string',
@@ -348,7 +348,7 @@ Session quota: 200MB. Auto-evicts oldest 50% when quota reached. You don't need 
  * Storage Tool Request Interface
  * Extends BaseToolRequest with cache-specific fields
  */
-export interface StorageToolRequest extends BaseToolRequest, CacheToolRequest {}
+export interface StorageToolRequest extends BaseToolRequest, CacheToolRequest { }
 
 /**
  * Storage Tool Response

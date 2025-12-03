@@ -292,7 +292,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
    */
   private async executeClick(
     tabId: number,
-    nodeId: number,
+    nodeId: number | string,
     options?: ClickOptions
   ): Promise<ActionResult> {
 
@@ -306,7 +306,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
    */
   private async executeType(
     tabId: number,
-    nodeId: number,
+    nodeId: number | string,
     text: string,
     options?: TypeOptions
   ): Promise<ActionResult> {

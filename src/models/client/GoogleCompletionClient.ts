@@ -1,293 +1,487 @@
 /**
  * Google AI Studio (Gemini) Chat Completion API client implementation
- * Extends OpenAIChatCompletionClient with Gemini-specific thought signature handling
- *
- * Thought signatures are encrypted representations of Gemini's internal thought process
- * that must be preserved and passed back in multi-turn conversations with function calls.
- * See: https://ai.google.dev/gemini-api/docs/thought-signatures
+ * Uses the native @google/genai SDK
  */
 
+import { GoogleGenAI } from '@google/genai';
 import { GeminiLogger } from '../../utils/logger';
-import type { ResponseEvent, Prompt } from '../types/ResponsesAPI';
-import {
-  OpenAIChatCompletionClient,
-  type OpenAIChatCompletionConfig,
-} from './OpenAIChatCompletionClient';
-import { ModelClientError, type RetryConfig } from '../ModelClient';
+import type { ResponseEvent, Prompt, ModelProviderInfo } from '../types/ResponsesAPI';
+import { ModelClient, ModelClientError, type RetryConfig, type CompletionRequest, type CompletionResponse } from '../ModelClient';
 import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
+import { ResponseStream } from '../ResponseStream';
+import type { RateLimitSnapshot } from '../types/RateLimits';
+import type { ToolDefinition } from '../../tools/BaseTool';
+
+export interface GoogleGenAIConfig {
+  apiKey: string | null;
+  baseUrl?: string;
+  provider: ModelProviderInfo;
+  modelFamily: any;
+}
 
 /**
- * Google AI Studio (Gemini) client with thought signature support
- * Extends OpenAIChatCompletionClient to handle Gemini-specific requirements
+ * Google AI Studio (Gemini) client using native SDK
  */
-export class GoogleCompletionClient extends OpenAIChatCompletionClient {
-  constructor(config: OpenAIChatCompletionConfig, retryConfig?: Partial<RetryConfig>) {
-    super(config, retryConfig);
-  }
+export class GoogleCompletionClient extends ModelClient {
+  private client: GoogleGenAI;
+  private apiKey: string;
+  private provider: ModelProviderInfo;
+  private modelFamily: any;
+  private currentModel: string = 'gemini-2.0-flash-exp'; // Default
 
-  /**
-   * Override to capture Gemini thought signatures from tool call responses
-   *
-   * Thought signatures appear in functionCall parts and must be preserved
-   * to maintain reasoning context across multi-turn conversations.
-   */
-  protected convertChatCompletionEventToResponseEvent(chatEvent: any): ResponseEvent | null {
-    const choice = chatEvent.choices?.[0];
-    if (!choice) {
-      return super.convertChatCompletionEventToResponseEvent(chatEvent);
+  constructor(config: GoogleGenAIConfig, retryConfig?: Partial<RetryConfig>) {
+    super(retryConfig);
+
+    if (!config.apiKey) {
+      throw new Error('API key is required for GoogleCompletionClient');
     }
 
-    const delta = choice.delta;
+    this.apiKey = config.apiKey;
+    this.provider = config.provider;
+    this.modelFamily = config.modelFamily;
 
-    // Intercept tool call deltas to capture thought signatures
-    if (delta?.tool_calls && Array.isArray(delta.tool_calls)) {
-      for (const toolCallDelta of delta.tool_calls) {
-        const index = toolCallDelta.index ?? 0;
+    // Set model from family config if available
+    if (this.modelFamily && this.modelFamily.family) {
+      this.currentModel = this.modelFamily.family;
+    }
 
-        // Let parent handle the basic accumulation first
-        // We need to access the accumulated tool call after parent processes it
-        const result = super.convertChatCompletionEventToResponseEvent(chatEvent);
+    // Initialize Google GenAI client
+    this.client = new GoogleGenAI({ apiKey: this.apiKey });
+  }
 
-        // Now capture thought signature if present
-        // Check both direct field and OpenAI-compatible nested format
-        const thoughtSig = toolCallDelta.thoughtSignature
-          || toolCallDelta.extra_content?.google?.thought_signature;
+  getProvider(): ModelProviderInfo {
+    return this.provider;
+  }
 
-        if (thoughtSig) {
-          // Access parent's accumulated tool calls via any cast
-          const accumulated = (this as any).chatCompletionToolCalls.get(index);
-          if (accumulated) {
-            accumulated.thoughtSignature = thoughtSig;
-            GeminiLogger.debug('Captured thought signature for tool call', {
-              index,
-              functionName: accumulated.function.name,
-              signatureLength: thoughtSig.length
-            });
-          }
+  getModel(): string {
+    return this.currentModel;
+  }
+
+  setModel(model: string): void {
+    this.currentModel = model;
+  }
+
+  getAutoCompactTokenLimit(): number | undefined {
+    return 1000000; // Large context window for Gemini
+  }
+
+  getModelFamily(): any {
+    return this.modelFamily;
+  }
+
+  getAuthManager(): any {
+    return undefined;
+  }
+
+  getReasoningEffort(): any {
+    return undefined;
+  }
+
+  setReasoningEffort(effort: any): void {
+    // Not supported
+  }
+
+  getReasoningSummary(): any {
+    return undefined;
+  }
+
+  setReasoningSummary(summary: any): void {
+    // Not supported
+  }
+
+  countTokens(text: string, model: string): number {
+    // Rough estimation if SDK doesn't expose synchronous count
+    return Math.ceil(text.length / 4);
+  }
+
+  async complete(request: CompletionRequest): Promise<CompletionResponse> {
+    throw new Error('Method not implemented. Use stream() instead.');
+  }
+
+  async stream(prompt: Prompt): Promise<ResponseStream> {
+    // Reset state
+    GeminiLogger.stateReset();
+    GeminiLogger.streamStart(this.currentModel, 'conversation-' + Date.now());
+
+    // Create stream and start processing asynchronously
+    const stream = new ResponseStream(undefined, { eventTimeout: 1800000 });
+
+    // Spawn async task to populate stream
+    (async () => {
+      try {
+        await this.generateContentStream(prompt, stream);
+        stream.complete();
+      } catch (error: any) {
+        console.error('[GoogleCompletionClient] Stream error:', error);
+        stream.error(new ModelClientError(error.message || 'Stream failed', error.status || 500, this.provider.name));
+      }
+    })();
+
+    return stream;
+  }
+
+  private async generateContentStream(prompt: Prompt, stream: ResponseStream) {
+    // Prepare system instructions
+    const fullInstructions = get_full_instructions(prompt, this.modelFamily);
+
+    // Prepare tools
+    const tools = this.mapTools(prompt.tools);
+
+    // Prepare contents
+    const contents = await this.mapPromptToContents(prompt);
+
+    const config: any = {
+      systemInstruction: fullInstructions,
+      tools: tools ? [tools] : undefined,
+    };
+
+    // Add tool config if tools are present
+    if (tools) {
+      config.toolConfig = {
+        functionCallingConfig: {
+          mode: 'AUTO'
         }
-
-        return result;
-      }
+      };
     }
 
-    // For non-tool-call events, use parent implementation
-    return super.convertChatCompletionEventToResponseEvent(chatEvent);
-  }
+    let accumulatedText = '';
+    const accumulatedToolCalls: any[] = [];
+    let usageMetadata: any = undefined;
 
-  /**
-   * Override to build Gemini-compatible request
-   *
-   * Gemini's OpenAI compatibility layer does NOT support:
-   * - reasoning_content field in messages
-   * - strict field in tool function definitions
-   * - parallel_tool_calls parameter
-   *
-   * Thought signatures must be passed back exactly as received in subsequent turns
-   * to maintain Gemini's reasoning context.
-   */
-  protected async makeChatCompletionsRequest(prompt: Prompt): Promise<AsyncIterable<any>> {
-    // Validate API key before making request
-    if (!this.apiKey || !this.apiKey.trim()) {
-      throw new ModelClientError(`No API key configured for provider: ${this.provider.name}`);
-    }
+    let retryCount = 0;
+    const maxRetries = 3;
+    const baseDelay = 2000;
 
-    try {
-      // Reset streaming state before starting new request
-      (this as any).chatCompletionTextContent = '';
-      (this as any).chatCompletionReasoningContent = '';
-      (this as any).chatCompletionToolCalls.clear();
-      GeminiLogger.stateReset();
-      GeminiLogger.streamStart(this.currentModel, this.conversationId);
-
-      // Transform prompt to include thought signatures in tool_calls
-      const transformedPrompt = this.transformPromptWithThoughtSignatures(prompt);
-
-      // Convert Prompt to Chat Completions format
-      const messages: any[] = [];
-
-      // Get full instructions including base instructions and overrides
-      const fullInstructions = get_full_instructions(transformedPrompt, this.modelFamily);
-
-      // Add system message if instructions exist
-      if (fullInstructions) {
-        messages.push({
-          role: 'system',
-          content: fullInstructions
+    while (true) {
+      try {
+        // Use the models namespace from the new SDK
+        const result = await this.client.models.generateContentStream({
+          model: this.currentModel,
+          contents,
+          config
         });
-      }
 
-      // Convert input array to messages
-      const formattedInput = await get_formatted_input(transformedPrompt);
-      if (formattedInput && Array.isArray(formattedInput)) {
-        for (const item of formattedInput) {
-          if (item.type === 'message') {
-            // Convert content array to Chat Completions format
-            let content: any = item.content;
-            if (Array.isArray(content)) {
-              // Handle all ContentItem types: 'text', 'input_text', 'output_text', 'input_image'
-              const convertedParts = content.map((part: any) => {
-                if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
-                  return { type: 'text', text: part.text };
-                } else if (part.type === 'input_image') {
-                  // Convert to Chat Completions image format
-                  return {
-                    type: 'image_url',
-                    image_url: { url: part.image_url }
-                  };
-                } else if (part.type === 'refusal') {
-                  return { type: 'text', text: part.refusal };
+        for await (const chunk of result) {
+          // Capture usage metadata if present
+          if (chunk.usageMetadata) {
+            usageMetadata = chunk.usageMetadata;
+          }
+
+          const candidate = chunk.candidates?.[0];
+          if (!candidate) continue;
+
+          // Handle content parts
+          if (candidate.content?.parts) {
+            for (const part of candidate.content.parts) {
+              if (part.text) {
+                accumulatedText += part.text;
+                stream.addEvent({
+                  type: 'OutputTextDelta',
+                  delta: part.text
+                });
+              }
+
+              if (part.functionCall) {
+                // Gemini returns full function call in the part usually
+                // Capture thoughtSignature for Gemini 2.0+/3.0 models (required for function calling)
+                const toolCall: any = {
+                  id: part.functionCall.id || `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  type: 'function',
+                  function: {
+                    name: part.functionCall.name,
+                    arguments: JSON.stringify(part.functionCall.args)
+                  }
+                };
+
+                // Store thoughtSignature if present (required for Gemini 3.0+ function calls)
+                if ((part as any).thoughtSignature) {
+                  toolCall.thoughtSignature = (part as any).thoughtSignature;
                 }
-                return null;
-              }).filter((c: any) => c !== null);
 
-              // If all parts are text, join into a single string for simplicity
-              // Otherwise, keep as multimodal array
-              const allText = convertedParts.every((p: any) => p.type === 'text');
-              if (allText && convertedParts.length > 0) {
-                content = convertedParts.map((p: any) => p.text).join('\n');
-              } else {
-                content = convertedParts;
+                accumulatedToolCalls.push(toolCall);
               }
             }
-
-            // Build message object
-            const message: any = {
-              role: item.role,
-              content: content
-            };
-
-            // NOTE: Gemini does NOT support reasoning_content field - skip it
-            // (Other providers like Kimi K2, o1, o3 use this for multi-turn reasoning)
-
-            // Add tool_calls if present (unified format)
-            // Tool calls are now part of message items, not separate items
-            if (item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
-              message.tool_calls = item.tool_calls;
-            }
-
-            messages.push(message);
-          } else if (item.type === 'function_call') {
-            // Legacy support: Convert old function_call items to Chat Completions format
-            messages.push({
-              role: 'assistant',
-              tool_calls: [{
-                id: item.call_id || item.id,
-                type: 'function',
-                function: {
-                  name: item.name,
-                  arguments: item.arguments
-                }
-              }]
-            });
-          } else if (item.type === 'function_call_output') {
-            // Convert function_call_output to Chat Completions tool message
-            messages.push({
-              role: 'tool',
-              tool_call_id: item.call_id,
-              content: item.output
-            });
-          } else if (item.type === 'reasoning') {
-            // Legacy reasoning items are skipped for Gemini
           }
         }
-      }
 
-      // Build chat completions request
-      const requestParams: any = {
-        model: this.currentModel,
-        messages: messages,
-        stream: true,
+        // Success, break the retry loop
+        break;
+
+      } catch (error: any) {
+        // Check for rate limit error (429)
+        if (error.status === 429 || error.code === 429 || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw error;
+          }
+
+          console.warn(`[GoogleCompletionClient] Rate limit hit. Retrying (${retryCount}/${maxRetries})...`);
+
+          // Calculate delay
+          let delay = baseDelay * Math.pow(2, retryCount - 1);
+
+          // Try to parse retry delay from error details if available
+          // Error format: { error: { details: [ { retryDelay: "45s" } ] } }
+          try {
+            if (error.message) {
+              const messageJson = JSON.parse(error.message);
+              const details = messageJson.error?.details;
+              if (Array.isArray(details)) {
+                const retryInfo = details.find((d: any) => d.retryDelay);
+                if (retryInfo && retryInfo.retryDelay) {
+                  const seconds = parseFloat(retryInfo.retryDelay.replace('s', ''));
+                  if (!isNaN(seconds)) {
+                    delay = seconds * 1000;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore parsing errors
+          }
+
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        // Re-throw other errors
+        throw error;
+      }
+    }
+    // Stream finished. Emit OutputItemDone if we have content/tools.
+    if (accumulatedText || accumulatedToolCalls.length > 0) {
+      const messageItem: any = {
+        type: 'message',
+        role: 'assistant',
+        content: []
       };
 
-      // Add tools if present
-      if (transformedPrompt.tools && transformedPrompt.tools.length > 0) {
-        // Convert to Chat Completions tool format
-        // NOTE: Gemini does NOT support 'strict' field - omit it
-        requestParams.tools = transformedPrompt.tools.map((tool: any) => {
-          if (tool.type === 'function') {
-            return {
-              type: 'function',
-              function: {
-                name: tool.function.name,
-                description: tool.function.description,
-                parameters: tool.function.parameters,
-                // NOTE: 'strict' field omitted for Gemini compatibility
-              }
-            };
-          }
-          return tool;
-        });
-
-        requestParams.tool_choice = 'auto';
-        // NOTE: parallel_tool_calls omitted for Gemini compatibility
+      if (accumulatedText) {
+        messageItem.content.push({ type: 'output_text', text: accumulatedText });
       }
 
-      // Use OpenAI SDK's chat completions API with streaming
-      const stream = await this.client.chat.completions.create(requestParams);
-
-      // The SDK returns a Stream object which is AsyncIterable
-      return stream as any as AsyncIterable<any>;
-    } catch (error: any) {
-      // Handle SDK errors and convert to ModelClientError
-      const statusCode = error.status || error.statusCode || 500;
-      const errorMessage = error.message || `${this.provider.name} Chat Completions API error`;
-
-      throw new ModelClientError(
-        errorMessage,
-        statusCode,
-        this.provider.name,
-        (this as any).isRetryableHttpError(statusCode)
-      );
-    }
-  }
-
-  /**
-   * Transform prompt input to include thought signatures in the format expected by Gemini
-   */
-  private transformPromptWithThoughtSignatures(prompt: Prompt): Prompt {
-    const transformedInput = prompt.input.map((item: any) => {
-      // Only transform message items with tool_calls
-      if (item.type !== 'message' || !item.tool_calls || !Array.isArray(item.tool_calls)) {
-        return item;
+      if (accumulatedToolCalls.length > 0) {
+        messageItem.tool_calls = accumulatedToolCalls;
       }
 
-      // Check if any tool_calls have thought signatures
-      const hasThoughtSignatures = item.tool_calls.some((tc: any) => tc.thoughtSignature);
-      if (!hasThoughtSignatures) {
-        return item;
-      }
-
-      // Transform tool_calls to include thought signatures in the format Gemini expects
-      const transformedToolCalls = item.tool_calls.map((tc: any) => {
-        if (!tc.thoughtSignature) {
-          return tc;
-        }
-
-        // Return tool call with thought signature in both formats for compatibility
-        return {
-          id: tc.id,
-          type: tc.type,
-          function: tc.function,
-          // Direct field (some Gemini versions)
-          thoughtSignature: tc.thoughtSignature,
-          // OpenAI-compatible nested format
-          extra_content: {
-            google: {
-              thought_signature: tc.thoughtSignature
-            }
-          }
-        };
+      stream.addEvent({
+        type: 'OutputItemDone',
+        item: messageItem
       });
+    }
 
-      return {
-        ...item,
-        tool_calls: transformedToolCalls
-      };
+    // Emit Completed
+    stream.addEvent({
+      type: 'Completed',
+      responseId: 'gemini-response', // TODO: Get actual ID if available
+      tokenUsage: usageMetadata ? {
+        input_tokens: usageMetadata.promptTokenCount || 0,
+        output_tokens: usageMetadata.candidatesTokenCount || 0,
+        total_tokens: usageMetadata.totalTokenCount || 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0
+      } : undefined
     });
 
+  }
+
+  private mapTools(tools?: ToolDefinition[]): any {
+    if (!tools || tools.length === 0) return undefined;
+
     return {
-      ...prompt,
-      input: transformedInput
+      functionDeclarations: tools
+        .filter(tool => tool.type === 'function')
+        .map(tool => {
+          // We checked type above, so cast is safe or TS infers it
+          const fnTool = tool as Extract<ToolDefinition, { type: 'function' }>;
+
+          // Sanitize schema
+          const parameters = this.sanitizeSchema(fnTool.function.parameters);
+
+          return {
+            name: fnTool.function.name,
+            description: fnTool.function.description,
+            parameters: parameters
+          };
+        })
     };
+  }
+
+  private async mapPromptToContents(prompt: Prompt): Promise<any[]> {
+    const formattedInput = await get_formatted_input(prompt);
+    const contents: any[] = [];
+
+    if (!formattedInput) return contents;
+
+    // Build call_id to name map for function responses
+    const callIdToName = new Map<string, string>();
+    for (const item of prompt.input) {
+      if (item.type === 'message' && item.tool_calls) {
+        for (const tc of item.tool_calls) {
+          callIdToName.set(tc.id, tc.function.name);
+        }
+      } else if (item.type === 'function_call') {
+        callIdToName.set(item.call_id || item.id || '', item.name);
+      }
+    }
+
+    for (const item of formattedInput) {
+      if (item.type === 'message') {
+        const role = item.role === 'assistant' ? 'model' : 'user';
+
+        // Handle tool calls in assistant message
+        if (item.tool_calls && item.tool_calls.length > 0) {
+          const parts: any[] = [];
+
+          // Add text content if present (thought/reasoning)
+          if (item.content) {
+            if (Array.isArray(item.content)) {
+              for (const part of item.content) {
+                if (part.type === 'text' || part.type === 'output_text') {
+                  parts.push({ text: part.text });
+                }
+              }
+            } else if (typeof item.content === 'string') {
+              parts.push({ text: item.content });
+            }
+          }
+
+          // Add function calls with thoughtSignature if present (required for Gemini 3.0+)
+          const toolParts = item.tool_calls.map((tc: any) => {
+            const part: any = {
+              functionCall: {
+                name: tc.function.name,
+                args: typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments
+              }
+            };
+            // Pass back thoughtSignature exactly as received (required for Gemini 3.0+ function calls)
+            if (tc.thoughtSignature) {
+              part.thoughtSignature = tc.thoughtSignature;
+            }
+            return part;
+          });
+          parts.push(...toolParts);
+
+          contents.push({ role, parts });
+          continue;
+        }
+
+        // Handle text content
+        let parts: any[] = [];
+        if (Array.isArray(item.content)) {
+          for (const part of item.content) {
+            if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
+              parts.push({ text: part.text });
+            } else if (part.type === 'input_image') {
+              if (part.image_url.startsWith('data:')) {
+                const [mimeType, base64] = part.image_url.split(';base64,');
+                parts.push({
+                  inlineData: {
+                    mimeType: mimeType.replace('data:', ''),
+                    data: base64
+                  }
+                });
+              }
+            }
+          }
+        } else if (typeof item.content === 'string') {
+          parts.push({ text: item.content });
+        }
+
+        if (parts.length > 0) {
+          contents.push({ role, parts });
+        }
+
+      } else if (item.type === 'function_call_output') {
+        const functionName = callIdToName.get(item.call_id);
+        if (functionName) {
+          contents.push({
+            role: 'user',
+            parts: [{
+              functionResponse: {
+                name: functionName,
+                response: {
+                  name: functionName,
+                  content: item.output
+                }
+              }
+            }]
+          });
+        } else {
+          console.warn(`[GoogleCompletionClient] Could not find function name for call_id: ${item.call_id}`);
+        }
+      }
+    }
+
+    return contents;
+  }
+
+  /**
+   * Sanitize JSON schema for Gemini compatibility
+   */
+  private sanitizeSchema(schema: any): any {
+    if (!schema || typeof schema !== 'object') {
+      return schema;
+    }
+
+    const sanitized = { ...schema };
+
+    if ('title' in sanitized) delete sanitized.title;
+
+    if (sanitized.description && typeof sanitized.description === 'string' && sanitized.description.length > 1024) {
+      sanitized.description = sanitized.description.substring(0, 1021) + '...';
+    }
+
+    if (sanitized.type === 'object') {
+      if (!sanitized.properties) {
+        sanitized.properties = {};
+        sanitized.additionalProperties = true;
+      }
+    }
+
+    if (sanitized.properties && schema.properties) {
+      const sanitizedProps: any = {};
+      for (const [key, value] of Object.entries(schema.properties)) {
+        sanitizedProps[key] = this.sanitizeSchema(value);
+      }
+      sanitized.properties = sanitizedProps;
+      if (sanitized.additionalProperties === undefined) {
+        sanitized.additionalProperties = false;
+      }
+    }
+
+    if (sanitized.type === 'array' && sanitized.items) {
+      sanitized.items = this.sanitizeSchema(sanitized.items);
+    }
+
+    return sanitized;
+  }
+
+  // Required abstract methods
+
+  async * streamCompletion(request: CompletionRequest): AsyncGenerator<any> {
+    // Convert CompletionRequest to Prompt and use stream()
+    // Or just throw if not supported
+    throw new Error('streamCompletion not implemented. Use stream() instead.');
+  }
+
+  protected async * streamResponses(request: CompletionRequest): AsyncGenerator<ResponseEvent> {
+    throw new Error('streamResponses not implemented. Use stream() instead.');
+  }
+
+  protected async * streamChat(request: CompletionRequest): AsyncGenerator<ResponseEvent> {
+    throw new Error('streamChat not implemented. Use stream() instead.');
+  }
+
+  protected async attemptStreamResponses(attempt: number, payload: any): Promise<ResponseStream> {
+    throw new Error('attemptStreamResponses not implemented. Use stream() instead.');
+  }
+
+  protected async * processSSE(stream: ReadableStream<Uint8Array>): AsyncGenerator<ResponseEvent> {
+    throw new Error('processSSE not implemented.');
+  }
+
+  protected parseRateLimitSnapshot(headers?: Headers): RateLimitSnapshot | undefined {
+    return undefined;
   }
 }

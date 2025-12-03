@@ -558,17 +558,7 @@
 
     <div class="form-group">
       <label for="api-key" class="form-label">
-        {#if currentProvider === 'xai'}
-          xAI API Key
-        {:else if currentProvider === 'anthropic'}
-          Anthropic API Key
-        {:else if currentProvider === 'google-ai-studio'}
-          Google AI Studio API Key
-        {:else if currentProvider === 'groq'}
-          Groq API Key
-        {:else}
-          OpenAI API Key
-        {/if}
+        {currentProviderName} API Key
       </label>
       <div class="input-group">
         {#if showApiKey}
@@ -618,15 +608,7 @@
         </button>
       </div>
       <div class="help-text">
-        {#if currentProvider === 'xai'}
-          Enter your xAI API key (starts with 'xai-')
-        {:else if currentProvider === 'anthropic'}
-          Enter your Anthropic API key (starts with 'sk-ant-')
-        {:else if currentProvider === 'google-ai-studio'}
-          Enter your Google AI Studio API key
-        {:else}
-          Enter your OpenAI API key (starts with 'sk-' or 'sk-proj-')
-        {/if}
+          Enter your LLM API key
       </div>
 
       {#if !apiKey.trim()}

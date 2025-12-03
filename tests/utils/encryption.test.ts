@@ -88,7 +88,7 @@ describe('encryption utilities', () => {
       });
     });
 
-    it('should handle OpenAI API keys', () => {
+    it('should handle API keys', () => {
       const openaiKey = 'sk-proj-1234567890abcdefghijklmnopqrstuvwxyz';
       const encrypted = encryptApiKey(openaiKey);
       const decrypted = decryptApiKey(encrypted);

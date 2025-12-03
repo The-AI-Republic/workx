@@ -138,9 +138,10 @@ export class OpenAIResponsesClient extends ModelClient {
 
     // Initialize OpenAI SDK client with provider-specific baseURL
     this.client = new OpenAI({
-      apiKey: this.apiKey || 'placeholder', // SDK requires non-empty string, we validate later
+      apiKey: this.apiKey || 'dummy-key', // SDK requires key but we might not have one yet
       baseURL: this.baseUrl,
       organization: this.organization,
+      dangerouslyAllowBrowser: true,
       timeout: 360000, // 6 minutes for reasoning models
       maxRetries: 0, // We handle retries manually
     });

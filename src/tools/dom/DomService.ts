@@ -662,7 +662,11 @@ export class DomService {
     if (source.tabId !== this.tabId) return;
 
     if (method === 'DOM.documentUpdated') {
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      this.buildSnapshot().catch((error) => {
+        console.debug('[DomService] Background snapshot rebuild failed:', error.message);
+        this.invalidateSnapshot(); // Fallback to invalidation on error
+      });
     }
   }
 
@@ -1068,7 +1072,8 @@ export class DomService {
         button: 'left'
       });
 
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      await this.buildSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('click', duration, true);
@@ -1558,7 +1563,8 @@ export class DomService {
         });
       }
 
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      await this.buildSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('type', duration, true);
@@ -1650,7 +1656,8 @@ export class DomService {
         (scrollX < 0 && afterScrollPos.x <= 0)
       );
 
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      await this.buildSnapshot();
 
       const duration = Date.now() - start;
       const actualDelta = {
@@ -1917,7 +1924,8 @@ export class DomService {
         }).catch(() => { }); // Ignore errors on cleanup
       }
 
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      await this.buildSnapshot();
 
       const duration = Date.now() - start;
 
@@ -1999,7 +2007,8 @@ export class DomService {
         modifiers: modifierBits
       });
 
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      await this.buildSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('keypress', duration, true);
@@ -2109,7 +2118,8 @@ export class DomService {
       // Wait for scroll animation to complete
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      this.invalidateSnapshot();
+      // Proactively rebuild snapshot for faster next access
+      await this.buildSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('scroll', duration, true);

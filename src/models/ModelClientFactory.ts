@@ -494,11 +494,8 @@ export class ModelClientFactory {
         return new GoogleCompletionClient({
           apiKey: config.apiKey,
           baseUrl: resolvedBaseUrl,
-          organization,
-          conversationId,
-          modelFamily,
           provider,
-          modelConfig,
+          modelFamily,
         });
 
       case 'groq':
