@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, afterUpdate } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import TabContext from './TabContext.svelte';
 
   export let value: string = '';
@@ -12,13 +12,7 @@
   const dispatch = createEventDispatcher();
 
   let showButtonTooltip = false;
-  let textareaEl: HTMLTextAreaElement;
-  const minVisibleLines = 3;
-  const maxVisibleLines = 6;
-  const lineHeightPx = 21; // matches 14px font with 1.5 line-height
-  const verticalPaddingPx = 16; // padding-top + padding-bottom (8px each)
-  const minHeightPx = lineHeightPx * minVisibleLines + verticalPaddingPx;
-  const maxHeightPx = lineHeightPx * maxVisibleLines + verticalPaddingPx;
+  let isFocused = false;
 
   function handleKeyDown(event: KeyboardEvent) {
     // Submit on Enter (without Shift)
@@ -43,37 +37,11 @@
       onSubmit(value);
     }
   }
-
-  function autoResize() {
-    if (!textareaEl) return;
-
-    textareaEl.style.height = 'auto';
-
-    const rawHeight = textareaEl.scrollHeight;
-    const usableHeight = Math.max(rawHeight - verticalPaddingPx, 0);
-    const contentLines = Math.ceil(usableHeight / lineHeightPx);
-    const clampedLines = Math.max(minVisibleLines, Math.min(contentLines, maxVisibleLines));
-    const nextHeight = clampedLines * lineHeightPx + verticalPaddingPx;
-
-    textareaEl.style.height = `${nextHeight}px`;
-    textareaEl.style.overflowY = contentLines > maxVisibleLines ? 'auto' : 'hidden';
-  }
-
-  onMount(() => {
-    if (textareaEl) {
-      textareaEl.style.height = `${minHeightPx}px`;
-    }
-    autoResize();
-  });
-
-  afterUpdate(() => {
-    autoResize();
-  });
 </script>
 
 <div class="message-input-container">
   <!-- Tab Context Display -->
-  <div class="tab-context-wrapper mb-2">
+  <div class="tab-context-wrapper mb-2" on:mousedown|preventDefault>
     <TabContext {tabId} on:tabSelected={handleTabSelected} />
   </div>
 
@@ -81,13 +49,13 @@
   <div class="terminal-input-wrapper">
     <div class="terminal-input-shell">
       <textarea
-        bind:this={textareaEl}
         bind:value
         {placeholder}
-        rows={minVisibleLines}
         on:keydown={handleKeyDown}
-        on:input={autoResize}
+        on:focus={() => isFocused = true}
+        on:blur={() => isFocused = false}
         class="terminal-input"
+        class:expanded={isFocused}
         aria-label="Message input"
       />
       <div class="input-action-bar">
@@ -166,7 +134,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-height: 79px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -187,9 +154,13 @@
     overflow-y: hidden;
     padding: 8px 12px;
     line-height: 1.5;
-    height: 79px;
-    min-height: 79px;
-    max-height: 142px;
+    height: 37px;
+    transition: height 0.2s ease;
+  }
+
+  .terminal-input.expanded {
+    height: 142px;
+    overflow-y: auto;
   }
 
   .terminal-input::placeholder {

@@ -732,6 +732,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0; /* Important for nested flex overflow */
     max-width: 900px;
     margin: 0 auto;
     width: 100%;
@@ -743,6 +744,7 @@
 
   .messages-container {
     flex: 1;
+    min-height: 0; /* Important for flex overflow to work properly */
     overflow-y: auto;
     overflow-x: hidden;
     padding-bottom: 1rem;
@@ -754,6 +756,8 @@
     flex-shrink: 0;
     background: var(--color-term-bg);
     border-top: 1px solid var(--color-term-border);
+    position: relative;
+    z-index: 10;
   }
 
   .input-area {

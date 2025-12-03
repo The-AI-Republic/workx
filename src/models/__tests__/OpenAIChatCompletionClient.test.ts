@@ -77,7 +77,7 @@ describe('OpenAIChatCompletionClient', () => {
 
     it('should throw error with empty API key', () => {
       expect(() => new OpenAIChatCompletionClient({ ...config, apiKey: '' })).toThrow(
-        'OpenAI API key is required'
+        'LLM API key is required'
       );
     });
 
