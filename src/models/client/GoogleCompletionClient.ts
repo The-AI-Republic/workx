@@ -181,10 +181,18 @@ export class GoogleCompletionClient extends OpenAIChatCompletionClient {
             });
           } else if (item.type === 'function_call_output') {
             // Convert function_call_output to Chat Completions tool message
+            let content = item.output;
+            if (typeof content !== 'string') {
+              try {
+                content = JSON.stringify(content);
+              } catch (e) {
+                content = String(content);
+              }
+            }
             messages.push({
               role: 'tool',
               tool_call_id: item.call_id,
-              content: item.output
+              content: content
             });
           } else if (item.type === 'reasoning') {
             // Legacy reasoning items are skipped for Gemini
@@ -200,17 +208,34 @@ export class GoogleCompletionClient extends OpenAIChatCompletionClient {
       };
 
       // Add tools if present
+      let supplementalInstructions = '';
+
       if (transformedPrompt.tools && transformedPrompt.tools.length > 0) {
         // Convert to Chat Completions tool format
         // NOTE: Gemini does NOT support 'strict' field - omit it
         requestParams.tools = transformedPrompt.tools.map((tool: any) => {
           if (tool.type === 'function') {
+            // Check for long description and add to supplemental instructions
+            if (tool.function.description && tool.function.description.length > 1024) {
+              supplementalInstructions += `\n\n### Tool Instructions: ${tool.function.name}\n${tool.function.description}`;
+            }
+
+            // Sanitize parameters schema for Gemini compatibility
+            // This will also truncate the description in the tool definition
+            const sanitizedParameters = this.sanitizeSchema(tool.function.parameters);
+
+            // Truncate function description if needed
+            let description = tool.function.description;
+            if (description && description.length > 1024) {
+              description = description.substring(0, 1021) + '...';
+            }
+
             return {
               type: 'function',
               function: {
                 name: tool.function.name,
-                description: tool.function.description,
-                parameters: tool.function.parameters,
+                description: description,
+                parameters: sanitizedParameters,
                 // NOTE: 'strict' field omitted for Gemini compatibility
               }
             };
@@ -220,6 +245,20 @@ export class GoogleCompletionClient extends OpenAIChatCompletionClient {
 
         requestParams.tool_choice = 'auto';
         // NOTE: parallel_tool_calls omitted for Gemini compatibility
+      }
+
+      // Append supplemental instructions to system message
+      if (supplementalInstructions) {
+        const systemMessageIndex = messages.findIndex(m => m.role === 'system');
+        if (systemMessageIndex !== -1) {
+          messages[systemMessageIndex].content += supplementalInstructions;
+        } else {
+          // If no system message exists, create one (though get_full_instructions usually ensures one exists)
+          messages.unshift({
+            role: 'system',
+            content: supplementalInstructions.trim()
+          });
+        }
       }
 
       // Use OpenAI SDK's chat completions API with streaming
@@ -289,5 +328,59 @@ export class GoogleCompletionClient extends OpenAIChatCompletionClient {
       ...prompt,
       input: transformedInput
     };
+  }
+  /**
+   * Sanitize JSON schema for Gemini compatibility
+   * Ensures that all 'object' type schemas have a 'properties' field
+   * Truncates descriptions to 1024 characters
+   * Removes 'title' fields
+   */
+  private sanitizeSchema(schema: any): any {
+    if (!schema || typeof schema !== 'object') {
+      return schema;
+    }
+
+    // Clone to avoid mutating original
+    const sanitized = { ...schema };
+
+    // Remove title field if present (can confuse Gemini)
+    if ('title' in sanitized) {
+      delete sanitized.title;
+    }
+
+    // Truncate description if too long
+    if (sanitized.description && typeof sanitized.description === 'string' && sanitized.description.length > 1024) {
+      sanitized.description = sanitized.description.substring(0, 1021) + '...';
+    }
+
+    // If type is object, ensure properties exists
+    if (sanitized.type === 'object') {
+      if (!sanitized.properties) {
+        sanitized.properties = {};
+        // Explicitly allow additional properties when properties are empty
+        // This matches the intent of "any object"
+        sanitized.additionalProperties = true;
+      }
+    }
+
+    // Recursively sanitize properties
+    if (sanitized.properties && schema.properties) {
+      const sanitizedProps: any = {};
+      for (const [key, value] of Object.entries(schema.properties)) {
+        sanitizedProps[key] = this.sanitizeSchema(value);
+      }
+      sanitized.properties = sanitizedProps;
+      // Gemini recommends additionalProperties: false for defined objects
+      if (sanitized.additionalProperties === undefined) {
+        sanitized.additionalProperties = false;
+      }
+    }
+
+    // Recursively sanitize array items
+    if (sanitized.type === 'array' && sanitized.items) {
+      sanitized.items = this.sanitizeSchema(sanitized.items);
+    }
+
+    return sanitized;
   }
 }

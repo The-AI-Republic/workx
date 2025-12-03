@@ -14,7 +14,7 @@ import { StepStatus, type UpdatePlanArgs, type PlanItemArg } from '../protocol/e
  */
 export const PLANNING_TOOL_DEFINITION = {
   name: 'planning_tool',
-  description: 'Create and update task plans for multi-step operations. See system prompt for usage guidelines.',
+  description: 'Create and update task plans. You must provide a "plan" array where each item has a "step" description and a "status" (Pending, InProgress, Completed).',
   inputSchema: {
     type: 'object' as const,
     properties: {

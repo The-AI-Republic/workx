@@ -44,7 +44,7 @@ export class DataExtractionTool extends BaseTool {
           },
           schema: {
             type: 'object',
-            description: 'Expected data schema'
+            description: 'Expected data schema. Must be a valid JSON schema object defining the structure of the data to extract.'
           },
           format: {
             type: 'string',
@@ -242,7 +242,7 @@ export class DataExtractionTool extends BaseTool {
         if (article) {
           data.mainContent = article.innerText;
           data.title = article.querySelector('h1')?.textContent ||
-                       document.querySelector('h1')?.textContent;
+            document.querySelector('h1')?.textContent;
         }
 
         // Extract microdata (Schema.org)
@@ -566,10 +566,10 @@ export class DataExtractionTool extends BaseTool {
 
     const escapeXML = (str: string): string => {
       return str.replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&apos;');
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
     };
 
     // Export fields

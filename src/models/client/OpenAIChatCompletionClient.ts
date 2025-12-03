@@ -91,9 +91,10 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     // Re-initialize client with custom headers if needed
     if (!config.provider.requires_openai_auth && config.apiKey) {
       this.client = new OpenAI({
-        apiKey: config.apiKey || 'placeholder',
+        apiKey: config.apiKey || 'dummy-key',
         baseURL: this.baseUrl,
         organization: this.organization,
+        dangerouslyAllowBrowser: true,
         timeout: 360000,
         maxRetries: 0,
         defaultHeaders: {
