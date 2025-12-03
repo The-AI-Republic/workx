@@ -207,7 +207,7 @@ export class DomSnapshot implements IDomSnapshot {
   }
 
 
-  isStale(maxAgeMs: number = 120000): boolean {
+  isStale(maxAgeMs: number = 180000): boolean { // Default 3 minutes
     return Date.now() - this.timestamp.getTime() > maxAgeMs;
   }
 
