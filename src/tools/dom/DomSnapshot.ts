@@ -501,8 +501,14 @@ export class DomSnapshot implements IDomSnapshot {
     };
 
     // Add role if available (exclude "none" values)
+    // First check accessibility tree, then fallback to HTML role attribute
     if (node.accessibility?.role && node.accessibility.role !== 'none') {
       serializedNode.role = node.accessibility.role;
+    } else if (attrMap.has('role')) {
+      const htmlRole = attrMap.get('role');
+      if (htmlRole && htmlRole !== 'none' && htmlRole !== 'presentation') {
+        serializedNode.role = htmlRole;
+      }
     }
 
     // Determine if we should include metadata (check any fine-grained flag)
