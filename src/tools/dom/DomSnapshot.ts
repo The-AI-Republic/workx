@@ -705,6 +705,12 @@ export class DomSnapshot implements IDomSnapshot {
    * - Meaningful aria-label in HTML attributes
    */
   private hasRenderingData(node: VirtualNode): boolean {
+    // Text nodes (nodeType 3) with non-empty content always have rendering data
+    // They don't have boundingBox or accessibility roles, but contain actual visible text
+    if (node.nodeType === 3 && node.nodeValue && node.nodeValue.trim()) {
+      return true;
+    }
+
     // Has bounding box - element is laid out
     if (node.boundingBox) {
       return true;
