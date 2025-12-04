@@ -205,8 +205,8 @@ export class DomService {
       // Step 2: Check for SPA loading indicators and wait for meaningful content
       console.log('[DomService] Checking for SPA content rendering...');
 
-      const maxWaitForContent = 10000; // 10 seconds max wait for SPA content
-      const checkInterval = 500; // Check every 500ms
+      const maxWaitForContent = 15000; // 15 seconds max wait for SPA content
+      const checkInterval = 1000; // Check every 1s
       const startTime = Date.now();
 
       while (Date.now() - startTime < maxWaitForContent) {
@@ -286,10 +286,10 @@ export class DomService {
       throw new Error('NOT_ATTACHED: Must call attach() first');
     }
 
-    const start = Date.now();
-
     // Wait for page to finish loading before accessing DOM
     await this.waitForPageLoad();
+
+    const start = Date.now();
 
     // Add timeout protection for slow-loading iframes
     const snapshotPromise = (async () => {
@@ -1072,8 +1072,8 @@ export class DomService {
         button: 'left'
       });
 
-      // Proactively rebuild snapshot for faster next access
-      await this.buildSnapshot();
+      // Invalidate snapshot - let getSerializedDom() rebuild when needed
+      this.invalidateSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('click', duration, true);
@@ -1563,8 +1563,8 @@ export class DomService {
         });
       }
 
-      // Proactively rebuild snapshot for faster next access
-      await this.buildSnapshot();
+      // Invalidate snapshot - let getSerializedDom() rebuild when needed
+      this.invalidateSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('type', duration, true);
@@ -1656,8 +1656,8 @@ export class DomService {
         (scrollX < 0 && afterScrollPos.x <= 0)
       );
 
-      // Proactively rebuild snapshot for faster next access
-      await this.buildSnapshot();
+      // Invalidate snapshot - let getSerializedDom() rebuild when needed
+      this.invalidateSnapshot();
 
       const duration = Date.now() - start;
       const actualDelta = {
@@ -1924,8 +1924,8 @@ export class DomService {
         }).catch(() => { }); // Ignore errors on cleanup
       }
 
-      // Proactively rebuild snapshot for faster next access
-      await this.buildSnapshot();
+      // Invalidate snapshot - let getSerializedDom() rebuild when needed
+      this.invalidateSnapshot();
 
       const duration = Date.now() - start;
 
@@ -2007,8 +2007,8 @@ export class DomService {
         modifiers: modifierBits
       });
 
-      // Proactively rebuild snapshot for faster next access
-      await this.buildSnapshot();
+      // Invalidate snapshot - let getSerializedDom() rebuild when needed
+      this.invalidateSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('keypress', duration, true);
@@ -2118,8 +2118,8 @@ export class DomService {
       // Wait for scroll animation to complete
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Proactively rebuild snapshot for faster next access
-      await this.buildSnapshot();
+      // Invalidate snapshot - let getSerializedDom() rebuild when needed
+      this.invalidateSnapshot();
 
       const duration = Date.now() - start;
       this.trackActionMetrics('scroll', duration, true);
