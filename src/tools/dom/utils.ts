@@ -162,6 +162,11 @@ export function classifyNode(
   heuristics?: VirtualNode['heuristics'],
   cdpNode?: any
 ): 'semantic' | 'non-semantic' | 'structural' {
+  // Priority 0: Text nodes (nodeType 3) are semantic - they contain the actual content
+  if (cdpNode?.nodeType === 3) {
+    return 'semantic';
+  }
+
   // Priority 1: Has proper accessibility role - semantic
   if (axNode?.role?.value && axNode.role.value !== 'generic' && axNode.role.value !== 'none' && axNode?.ignored !== true) {
     return 'semantic';
