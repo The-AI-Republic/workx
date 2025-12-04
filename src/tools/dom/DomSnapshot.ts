@@ -233,31 +233,16 @@ export class DomSnapshot implements IDomSnapshot {
       }
     };
 
-    // Ddebug log
-    // test>>
-    console.log(`[DomSnapshot] $$$ virtual dom before serializing: ${JSON.stringify(this.virtualDom, null, 2)}`);
-    // test<<
-
-
     // Use SerializationPipeline for compaction
     // virtualDom is typically #document with html as child, or html directly
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(this.virtualDom);
-    // test>>
-    console.log(`[DomSnapshot] $$$ virtual dom after pipeline: ${JSON.stringify(result, null, 2)}`);
-    // test<<
 
     // Build flattened tree structure from pipeline result with v3 schema
     const htmlBeforeFilter = this.flatternNode(result.tree, opts);
-    // test>>
-    console.log(`[DomSnapshot] $$$ html after flattening: ${JSON.stringify(htmlBeforeFilter, null, 2)}`);
-    // test<<
 
     // Apply viewport filtering to only include visible nodes
     let body = this.filterByViewport(htmlBeforeFilter);
-    // test>>
-    console.log(`[DomSnapshot] $$$ body after viewport filtering: ${JSON.stringify(body, null, 2)}`);
-    // test<<
 
     // Fallback if body is null (shouldn't happen but prevents crashes)
     if (!body) {
