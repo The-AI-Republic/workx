@@ -201,11 +201,14 @@
 
   .message-content {
     line-height: 1.5;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .content-text {
     word-wrap: break-word;
     overflow-wrap: break-word;
+    min-width: 0;
   }
 
   /* Markdown styling */
@@ -265,8 +268,9 @@
     color: #abb2bf;
     padding: 1em;
     border-radius: 4px;
-    overflow-x: auto;
+    overflow: auto;
     margin: 0.5em 0;
+    max-width: 100%;
   }
 
   .content-text :global(pre code) {
