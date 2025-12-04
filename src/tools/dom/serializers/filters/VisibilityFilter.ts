@@ -5,11 +5,14 @@
  * - Zero bounding box (width = 0 or height = 0)
  * - aria-hidden="true" (with exception for dialogs/modals)
  * - display: none
- * - visibility: hidden
+ * - visibility: hidden (unless descendants override with visibility: visible)
  * - opacity: 0
  *
- * Exception: Dialog/modal elements are preserved even if aria-hidden,
- * as they may contain interactive content that becomes visible.
+ * Exceptions:
+ * - Dialog/modal elements are preserved even if aria-hidden
+ * - Elements with visibility: hidden are preserved if any descendant has
+ *   visibility: visible (CSS allows children to override parent visibility)
+ * - Zero-dimension containers are preserved if they have visible descendants
  *
  * Stage 1 Signal Filtering
  */
@@ -71,7 +74,14 @@ export class VisibilityFilter {
 
     // Check computed styles
     if (this.hasHiddenStyles(node)) {
-      return true;
+      // Exception for visibility: hidden - CSS allows children to override
+      // If this element has visibility: hidden but a descendant has visibility: visible,
+      // preserve the element so the visible descendant can be rendered
+      if (node.computedStyle?.visibility === 'hidden' && this.hasVisibleVisibilityDescendant(node)) {
+        // Don't filter - has visible descendants
+      } else {
+        return true;
+      }
     }
 
     // Check aria-hidden (with dialog exception)
@@ -106,7 +116,42 @@ export class VisibilityFilter {
       return false;
     }
 
+    // Exception: Preserve dialog/modal elements even with zero dimensions
+    // Dialogs may be positioned/rendered dynamically
+    if (this.isDialogOrModal(node)) {
+      return false;
+    }
+
     return true;
+  }
+
+  /**
+   * Check if element is a dialog or modal (by role or class name)
+   */
+  private isDialogOrModal(node: VirtualNode): boolean {
+    // Check accessibility role
+    const role = node.accessibility?.role;
+    if (role === 'dialog' || role === 'alertdialog') {
+      return true;
+    }
+
+    // Check for common modal/dialog class names
+    if (node.attributes) {
+      for (let i = 0; i < node.attributes.length; i += 2) {
+        if (node.attributes[i] === 'class') {
+          const className = node.attributes[i + 1].toLowerCase();
+          if (
+            className.includes('modal') ||
+            className.includes('dialog') ||
+            className.includes('overlay')
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -152,7 +197,7 @@ export class VisibilityFilter {
   }
 
   /**
-   * Check if element has CSS hiding styles
+   * Check if element has CSS hiding styles (checks only the element itself)
    */
   private hasHiddenStyles(node: VirtualNode): boolean {
     if (!node.computedStyle) {
@@ -181,6 +226,45 @@ export class VisibilityFilter {
   }
 
   /**
+   * Check if node has any descendant with visibility: visible
+   * CSS allows children to override parent's visibility: hidden
+   */
+  private hasVisibleVisibilityDescendant(node: VirtualNode): boolean {
+    // Check children
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        // Check if this child has visibility: visible
+        if (child.computedStyle?.visibility === 'visible') {
+          return true;
+        }
+
+        // Recursively check this child's descendants
+        if (this.hasVisibleVisibilityDescendant(child)) {
+          return true;
+        }
+      }
+    }
+
+    // Check shadow roots
+    if (node.shadowRoots && node.shadowRoots.length > 0) {
+      for (const shadowRoot of node.shadowRoots) {
+        if (this.hasVisibleVisibilityDescendant(shadowRoot)) {
+          return true;
+        }
+      }
+    }
+
+    // Check content document (iframe)
+    if (node.contentDocument) {
+      if (this.hasVisibleVisibilityDescendant(node.contentDocument)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Check if element is aria-hidden (with dialog exception)
    */
   private isAriaHidden(node: VirtualNode): boolean {
@@ -203,23 +287,8 @@ export class VisibilityFilter {
 
     // Exception: Preserve dialog/modal elements even if aria-hidden
     // Dialogs are often aria-hidden when closed, but still contain interactive content
-    const role = node.accessibility?.role;
-    if (role === 'dialog' || role === 'alertdialog') {
+    if (this.isDialogOrModal(node)) {
       return false;
-    }
-
-    // Check for common modal/dialog class names
-    for (let i = 0; i < (node.attributes?.length || 0); i += 2) {
-      if (node.attributes![i] === 'class') {
-        const className = node.attributes![i + 1].toLowerCase();
-        if (
-          className.includes('modal') ||
-          className.includes('dialog') ||
-          className.includes('overlay')
-        ) {
-          return false;
-        }
-      }
     }
 
     return true;
