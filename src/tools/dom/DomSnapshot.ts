@@ -233,16 +233,31 @@ export class DomSnapshot implements IDomSnapshot {
       }
     };
 
+    // Ddebug log
+    // test>>
+    console.log(`[DomSnapshot] $$$ virtual dom before serializing: ${JSON.stringify(this.virtualDom, null, 2)}`);
+    // test<<
+
+
     // Use SerializationPipeline for compaction
     // virtualDom is typically #document with html as child, or html directly
     const pipeline = new SerializationPipeline();
     const result = pipeline.execute(this.virtualDom);
+    // test>>
+    console.log(`[DomSnapshot] $$$ virtual dom after pipeline: ${JSON.stringify(result, null, 2)}`);
+    // test<<
 
     // Build flattened tree structure from pipeline result with v3 schema
     const htmlBeforeFilter = this.flatternNode(result.tree, opts);
+    // test>>
+    console.log(`[DomSnapshot] $$$ html after flattening: ${JSON.stringify(htmlBeforeFilter, null, 2)}`);
+    // test<<
 
     // Apply viewport filtering to only include visible nodes
     let body = this.filterByViewport(htmlBeforeFilter);
+    // test>>
+    console.log(`[DomSnapshot] $$$ body after viewport filtering: ${JSON.stringify(body, null, 2)}`);
+    // test<<
 
     // Fallback if body is null (shouldn't happen but prevents crashes)
     if (!body) {
@@ -352,8 +367,16 @@ export class DomSnapshot implements IDomSnapshot {
     }
 
     // Case 1: Keep semantic and non-semantic nodes (Tier 1 & 2)
+    // But only if they have actual rendering data (not ghost elements from virtual scrolling)
     if (this.isSemanticNode(node)) {
-      return this.buildSerializedNode(node, opts);
+      // Filter out "ghost" semantic nodes - nodes that have tier=semantic based on HTML attributes
+      // but no actual rendering data from CDP (common in virtualized lists like Gmail)
+      if (!this.hasRenderingData(node)) {
+        // Treat as structural node - will be processed in Case 3 (hoist children)
+        // This allows any visible children to bubble up
+      } else {
+        return this.buildSerializedNode(node, opts);
+      }
     }
 
     // Case 2: Keep semantic containers (form, table, dialog, navigation, main)
@@ -435,8 +458,8 @@ export class DomSnapshot implements IDomSnapshot {
     // Process children (should be head and body)
     const flattenedChildren = node.children
       ? node.children
-          .map(child => this.flatternNode(child, opts))
-          .filter((child): child is SerializedNode => child !== null)
+        .map(child => this.flatternNode(child, opts))
+        .filter((child): child is SerializedNode => child !== null)
       : [];
 
     const htmlNode: SerializedNode = {
@@ -665,6 +688,80 @@ export class DomSnapshot implements IDomSnapshot {
    */
   private isSemanticNode(node: VirtualNode): boolean {
     return node.tier === 'semantic' || node.tier === 'non-semantic';
+  }
+
+  /**
+   * Check if node has actual rendering data or meaningful semantic attributes
+   *
+   * Elements in virtualized lists (like Gmail) may have tier=semantic based on
+   * HTML attributes (role="checkbox") but no actual rendering data because
+   * they're outside the rendered viewport. These "ghost" nodes should be filtered.
+   *
+   * A node is considered to have rendering/semantic data if it has any of:
+   * - boundingBox (layout data from DOMSnapshot.captureSnapshot)
+   * - accessibility.role that is not "none" (from Accessibility.getPartialAXTree)
+   * - accessibility.name (aria label from accessibility tree)
+   * - Inherently interactive tag (a, button, input, select, textarea)
+   * - Meaningful aria-label in HTML attributes
+   */
+  private hasRenderingData(node: VirtualNode): boolean {
+    // Has bounding box - element is laid out
+    if (node.boundingBox) {
+      return true;
+    }
+
+    // Has meaningful accessibility role from CDP (not "none")
+    if (node.accessibility?.role && node.accessibility.role !== 'none') {
+      return true;
+    }
+
+    // Has accessibility name from CDP (aria-label resolved)
+    if (node.accessibility?.name) {
+      return true;
+    }
+
+    // Inherently interactive tags - always keep these
+    const tag = (node.localName || node.nodeName || '').toLowerCase();
+    const interactiveTags = ['a', 'button', 'input', 'select', 'textarea', 'option', 'label'];
+    if (interactiveTags.includes(tag)) {
+      return true;
+    }
+
+    // Check HTML attributes for meaningful semantic data (even without CDP accessibility data)
+    // This catches elements that have role/aria-label but weren't included in CDP accessibility tree
+    if (node.attributes) {
+      const meaningfulRoles = ['button', 'link', 'checkbox', 'radio', 'menuitem', 'menuitemcheckbox',
+                               'menuitemradio', 'tab', 'switch', 'slider', 'spinbutton', 'combobox',
+                               'listbox', 'textbox', 'searchbox', 'menu', 'menubar', 'tablist', 'tree',
+                               'grid', 'treegrid', 'toolbar', 'heading', 'option', 'row', 'gridcell',
+                               'cell', 'columnheader', 'rowheader', 'alert', 'alertdialog', 'dialog',
+                               'status', 'progressbar', 'scrollbar', 'img', 'figure'];
+
+      for (let i = 0; i < node.attributes.length; i += 2) {
+        const attrName = node.attributes[i];
+        const attrValue = node.attributes[i + 1];
+
+        // Has aria-label
+        if (attrName === 'aria-label' && attrValue) {
+          return true;
+        }
+
+        // Has meaningful interactive role in HTML attributes
+        if (attrName === 'role' && meaningfulRoles.includes(attrValue)) {
+          return true;
+        }
+
+        // Has tabindex >= 0 (focusable element)
+        if (attrName === 'tabindex') {
+          const tabIndex = parseInt(attrValue, 10);
+          if (!isNaN(tabIndex) && tabIndex >= 0) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
