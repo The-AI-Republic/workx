@@ -17,6 +17,7 @@ import { ToolRegistry } from '../tools/ToolRegistry';
 import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from '../protocol/types';
+import { WebSearchTool } from '../tools/WebSearchTool';
 
 /**
  * Result of processing a single response item
@@ -630,8 +631,11 @@ export class TurnManager {
   }
 
 
+  /** WebSearchTool instance for executing searches */
+  private webSearchTool = new WebSearchTool();
+
   /**
-   * Execute web search
+   * Execute web search using WebSearchTool
    */
   private async executeWebSearch(query: string): Promise<any> {
     await this.emitEvent({
@@ -640,23 +644,23 @@ export class TurnManager {
     });
 
     try {
-      // Placeholder web search implementation
-      const results = {
-        query,
-        results: [
-          { title: 'Sample Result', url: 'https://example.com', snippet: 'Sample snippet' },
-        ],
-      };
+      const result = await this.webSearchTool.execute({ query });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Web search failed');
+      }
+
+      const searchData = result.data;
 
       await this.emitEvent({
         type: 'WebSearchEnd',
         data: {
           query,
-          results_count: results.results.length,
+          results_count: searchData.results?.length || 0,
         },
       });
 
-      return results;
+      return searchData;
     } catch (error) {
       await this.emitEvent({
         type: 'WebSearchEnd',
