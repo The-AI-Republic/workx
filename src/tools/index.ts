@@ -13,6 +13,7 @@ import { NavigationTool } from './NavigationTool';
 import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
 import { PlanningTool } from './PlanningTool';
+import { WebSearchTool } from './WebSearchTool';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
@@ -27,6 +28,7 @@ export { NavigationTool } from './NavigationTool';
 export { StorageTool } from './StorageTool';
 export { PageVisionTool } from './PageVisionTool';
 export { PlanningTool } from './PlanningTool';
+export { WebSearchTool } from './WebSearchTool';
 
 /**
  * Register browser automation tools based on configuration

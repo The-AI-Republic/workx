@@ -288,20 +288,20 @@ export class NavigationTool extends BaseTool {
    */
   private async goBack(tabId: number, request: NavigationToolRequest): Promise<NavigationToolResponse> {
     try {
-      // Use webNavigation API if available, otherwise use executeScript
-      if (chrome.webNavigation) {
-        await chrome.tabs.executeScript(tabId, { code: 'history.back()' });
-      } else {
-        // Fallback using content script
-        await chrome.tabs.executeScript(tabId, { code: 'window.history.back()' });
-      }
+      // Use chrome.scripting.executeScript (Manifest V3 API)
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => { history.back(); }
+      });
 
       // Wait for navigation if requested
       if (request.options?.waitForLoad !== false) {
         await new Promise(resolve => setTimeout(resolve, 500)); // Brief wait for navigation to start
 
-        const tab = await chrome.tabs.get(tabId);
         await this.waitForTabToLoad(tabId, request.options?.timeout || 10000);
+
+        // Get tab info AFTER navigation completes
+        const tab = await chrome.tabs.get(tabId);
 
         return {
           url: tab.url || '',
@@ -324,20 +324,20 @@ export class NavigationTool extends BaseTool {
    */
   private async goForward(tabId: number, request: NavigationToolRequest): Promise<NavigationToolResponse> {
     try {
-      // Use webNavigation API if available, otherwise use executeScript
-      if (chrome.webNavigation) {
-        await chrome.tabs.executeScript(tabId, { code: 'history.forward()' });
-      } else {
-        // Fallback using content script
-        await chrome.tabs.executeScript(tabId, { code: 'window.history.forward()' });
-      }
+      // Use chrome.scripting.executeScript (Manifest V3 API)
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => { history.forward(); }
+      });
 
       // Wait for navigation if requested
       if (request.options?.waitForLoad !== false) {
         await new Promise(resolve => setTimeout(resolve, 500)); // Brief wait for navigation to start
 
-        const tab = await chrome.tabs.get(tabId);
         await this.waitForTabToLoad(tabId, request.options?.timeout || 10000);
+
+        // Get tab info AFTER navigation completes
+        const tab = await chrome.tabs.get(tabId);
 
         return {
           url: tab.url || '',
@@ -396,8 +396,11 @@ export class NavigationTool extends BaseTool {
    */
   private async stopNavigation(tabId: number, request: NavigationToolRequest): Promise<NavigationToolResponse> {
     try {
-      // Stop tab loading
-      await chrome.tabs.executeScript(tabId, { code: 'window.stop()' });
+      // Stop tab loading using chrome.scripting.executeScript (Manifest V3 API)
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => { window.stop(); }
+      });
 
       const tab = await chrome.tabs.get(tabId);
 
@@ -649,22 +652,21 @@ export class NavigationTool extends BaseTool {
    */
   async getNavigationMetrics(tabId: number): Promise<any> {
     try {
-      const result = await chrome.tabs.executeScript(tabId, {
-        code: `
-          (function() {
-            const navigation = performance.getEntriesByType('navigation')[0];
-            return {
-              loadTime: navigation.loadEventEnd - navigation.loadEventStart,
-              domContentLoaded: navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart,
-              responseTime: navigation.responseEnd - navigation.requestStart,
-              redirectCount: navigation.redirectCount,
-              type: navigation.type
-            };
-          })()
-        `
+      const results = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+          return {
+            loadTime: navigation.loadEventEnd - navigation.loadEventStart,
+            domContentLoaded: navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart,
+            responseTime: navigation.responseEnd - navigation.requestStart,
+            redirectCount: navigation.redirectCount,
+            type: navigation.type
+          };
+        }
       });
 
-      return result[0];
+      return results[0]?.result;
     } catch (error) {
       this.log('warn', `Could not get navigation metrics: ${error}`);
       return null;

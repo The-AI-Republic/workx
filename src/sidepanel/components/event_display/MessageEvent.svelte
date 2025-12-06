@@ -23,7 +23,7 @@
 </script>
 
 <div class="message-event">
-  <div class={`text-base markdown-content ${event.style.textColor}`}>
+  <div class={`text-base markdown-content ${event.style.textColor}`} style="min-width: 0; overflow: hidden;">
     {@html contentHtml}
   </div>
 
@@ -89,8 +89,9 @@
     color: #abb2bf;
     padding: 1em;
     border-radius: 4px;
-    overflow-x: auto;
+    overflow: auto;
     margin: 0.5em 0;
+    max-width: 100%;
   }
 
   .markdown-content :global(pre code) {
