@@ -545,21 +545,31 @@ export class TaskRunner {
       const { item, response } = processedItem as ProcessedResponseItem;
       const messageItem = item as ResponseItem;
 
+      // Normalize response to array for handling parallel tool calls (Gemini 3)
+      const responses: any[] = Array.isArray(response) ? response : (response ? [response] : []);
+
       // Case 1: Assistant message without response (task complete indicator)
-      if (messageItem.type === 'message' && messageItem.role === 'assistant' && !response) {
+      if (messageItem.type === 'message' && messageItem.role === 'assistant' && responses.length === 0) {
         itemsToRecord.push(messageItem);
       }
-      // Case 1b: Assistant message with tool_calls and FunctionCallOutput response (unified format)
+      // Case 1b: Assistant message with tool_calls and FunctionCallOutput response(s) (unified format)
       // NEW: Chat Completions API returns message items with embedded tool_calls
+      // IMPORTANT: Gemini 3 may send parallel tool calls, so we handle multiple responses
       else if (
         messageItem.type === 'message' &&
         messageItem.role === 'assistant' &&
         (messageItem as any).tool_calls &&
-        response?.type === 'function_call_output'
+        responses.length > 0 &&
+        responses.some(r => r?.type === 'function_call_output')
       ) {
         taskComplete = false;
         itemsToRecord.push(messageItem);
-        itemsToRecord.push(response as ResponseItem);
+        // Add ALL function call output responses (for parallel tool calls)
+        for (const resp of responses) {
+          if (resp?.type === 'function_call_output') {
+            itemsToRecord.push(resp as ResponseItem);
+          }
+        }
       }
       // Case 2: FunctionCall with FunctionCallOutput response (legacy format)
       else if (

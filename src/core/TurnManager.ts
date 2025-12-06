@@ -520,23 +520,36 @@ export class TurnManager {
 
       // Handle tool_calls embedded in message items (unified format)
       // NEW: Assistant messages can now contain tool_calls directly
+      // IMPORTANT: Gemini 3 may send parallel tool calls - we must execute ALL of them
+      // and return ALL responses, otherwise Gemini will return empty on next turn
       if (item.type === 'message' && item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
-        // Execute the first tool call (parallel_tool_calls is false)
-        const toolCall = item.tool_calls[0];
-        try {
-          const result = await this.executeToolCall(
-            toolCall.function.name,
-            toolCall.function.arguments,
-            toolCall.id
-          );
-          return result;
-        } catch (error) {
-          return {
-            type: 'function_call_output',
-            call_id: toolCall.id,
-            output: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          };
+        const toolCallResults: any[] = [];
+
+        // Execute ALL tool calls sequentially (Gemini expects responses for all)
+        for (const toolCall of item.tool_calls) {
+          try {
+            const result = await this.executeToolCall(
+              toolCall.function.name,
+              toolCall.function.arguments,
+              toolCall.id
+            );
+            toolCallResults.push(result);
+          } catch (error) {
+            toolCallResults.push({
+              type: 'function_call_output',
+              call_id: toolCall.id,
+              output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
         }
+
+        // Return all tool call results (will be added to conversation history)
+        // If single result, return as-is for backward compatibility
+        // If multiple results, return as array
+        if (toolCallResults.length === 1) {
+          return toolCallResults[0];
+        }
+        return toolCallResults;
       }
 
       // Handle web search response if needed
