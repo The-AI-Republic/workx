@@ -90,6 +90,8 @@ export interface OpenAIResponsesConfig {
   modelVerbosity?: OpenAiVerbosity;
   /** Service tier for request prioritization (OpenAI-specific) */
   serviceTier?: 'default' | 'flex' | 'priority';
+  /** Use credentials (cookies) for authentication - for backend routing */
+  useCredentials?: boolean;
 }
 
 /**
@@ -108,6 +110,7 @@ export class OpenAIResponsesClient extends ModelClient {
   protected modelVerbosity?: OpenAiVerbosity;
   protected serviceTier?: 'default' | 'flex' | 'priority';
   protected currentModel: string;
+  protected useCredentials: boolean;
 
   // OpenAI SDK client instance
   protected client: OpenAI;
@@ -135,8 +138,55 @@ export class OpenAIResponsesClient extends ModelClient {
     this.modelVerbosity = config.modelVerbosity;
     this.serviceTier = config.serviceTier;
     this.currentModel = config.modelFamily.family;
+    this.useCredentials = config.useCredentials ?? false;
 
     // Initialize OpenAI SDK client with provider-specific baseURL
+    // If useCredentials is true, configure custom fetch to include cookies for backend routing
+    const fetchOptions: OpenAI.RequestOptions['fetchOptions'] = this.useCredentials
+      ? { credentials: 'include' as RequestCredentials }
+      : undefined;
+
+    // Custom fetch wrapper that captures error response bodies
+    // The OpenAI SDK expects {"error": {"message": "..."}} format, but our backend
+    // returns FastAPI format {"detail": "..."}. This wrapper transforms error responses.
+    const customFetch = async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const fetchInit = this.useCredentials ? { ...init, credentials: 'include' as RequestCredentials } : init;
+      const response = await fetch(url, fetchInit);
+
+      // If it's an error response, clone it and try to extract the error detail
+      if (!response.ok) {
+        const clonedResponse = response.clone();
+        try {
+          const body = await clonedResponse.text();
+          if (body) {
+            // Store the raw error body for later extraction
+            // We'll create a new response with the body preserved
+            const errorData = JSON.parse(body);
+
+            // Transform FastAPI format to OpenAI format if needed
+            if (errorData.detail && !errorData.error) {
+              const transformedBody = JSON.stringify({
+                error: {
+                  message: errorData.detail,
+                  type: 'api_error',
+                  code: response.status.toString(),
+                },
+              });
+              return new Response(transformedBody, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+              });
+            }
+          }
+        } catch {
+          // If we can't parse the body, let the original response through
+        }
+      }
+
+      return response;
+    };
+
     this.client = new OpenAI({
       apiKey: this.apiKey || 'dummy-key', // SDK requires key but we might not have one yet
       baseURL: this.baseUrl,
@@ -144,6 +194,8 @@ export class OpenAIResponsesClient extends ModelClient {
       dangerouslyAllowBrowser: true,
       timeout: 360000, // 6 minutes for reasoning models
       maxRetries: 0, // We handle retries manually
+      // Use custom fetch to handle credentials and transform error responses
+      fetch: customFetch,
     });
 
     // Initialize performance optimizations
@@ -482,7 +534,22 @@ export class OpenAIResponsesClient extends ModelClient {
 
           // Check for auth errors
           if (error.statusCode === 401) {
-            throw new ModelClientError('Authentication failed - check API key', 401, this.provider.name);
+            // Differentiate between backend auth (session expired) and provider auth (API key)
+            if (this.useCredentials) {
+              throw new ModelClientError(
+                'Session expired - please log in again to continue using the AI agent',
+                401,
+                'Backend',
+                false // Not retryable
+              );
+            } else {
+              throw new ModelClientError(
+                'Authentication failed - check API key',
+                401,
+                this.provider.name,
+                false // Not retryable
+              );
+            }
           }
 
           // Non-retryable errors
@@ -532,9 +599,10 @@ export class OpenAIResponsesClient extends ModelClient {
           yield event;
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[OpenAIResponsesClient] SDK stream error:', error);
-      throw error;
+      // Convert to ModelClientError with extracted details for better error messages
+      throw this.toModelClientError(error, 'Stream processing error');
     }
   }
 
@@ -560,9 +628,10 @@ export class OpenAIResponsesClient extends ModelClient {
           stream.addEvent(event);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[OpenAIResponsesClient] SDK stream error:', error);
-      throw error;
+      // Convert to ModelClientError with extracted details for better error messages
+      throw this.toModelClientError(error, 'Stream processing error');
     }
   }
 
@@ -954,16 +1023,8 @@ export class OpenAIResponsesClient extends ModelClient {
 
       return stream;
     } catch (error: any) {
-      // Handle SDK errors and convert to ModelClientError
-      const statusCode = error.status || error.statusCode || 500;
-      const errorMessage = error.message || `${this.provider.name} Responses API error`;
-
-      throw new ModelClientError(
-        errorMessage,
-        statusCode,
-        this.provider.name,
-        this.isRetryableHttpError(statusCode)
-      );
+      // Handle SDK errors and convert to ModelClientError with extracted details
+      throw this.toModelClientError(error, `${this.provider.name} Responses API error`);
     }
   }
 
@@ -972,6 +1033,84 @@ export class OpenAIResponsesClient extends ModelClient {
    */
   protected getFullInstructions(prompt: Prompt): string {
     return get_full_instructions(prompt, this.modelFamily);
+  }
+
+  /**
+   * Extract detailed error message from SDK error
+   * Handles various error formats from OpenAI SDK and backend responses
+   */
+  protected extractErrorDetails(error: any): { message: string; statusCode: number } {
+    const statusCode = error.status || error.statusCode || 500;
+    let message = error.message || `${this.provider.name} API error`;
+
+    // Log the full error object for debugging
+    console.error('[OpenAIResponsesClient] Error details:', {
+      message: error.message,
+      status: error.status,
+      statusCode: error.statusCode,
+      error: error.error,
+      body: error.body,
+      response: error.response,
+      cause: error.cause,
+    });
+
+    // Try to extract more detailed error information from response body
+    // The OpenAI SDK stores parsed response body in error.error
+    if (error.error?.detail) {
+      // Backend error format: {"detail": "Model 'x' is not supported"}
+      message = error.error.detail;
+    } else if (error.error?.message) {
+      // OpenAI-style error format: {"error": {"message": "..."}}
+      message = error.error.message;
+    } else if (typeof error.error === 'string') {
+      // Plain string error - might be unparsed JSON
+      try {
+        const parsed = JSON.parse(error.error);
+        if (parsed.detail) {
+          message = parsed.detail;
+        } else if (parsed.message) {
+          message = parsed.message;
+        }
+      } catch {
+        message = error.error;
+      }
+    } else if (error.body) {
+      // Some errors have body property
+      if (typeof error.body === 'string') {
+        try {
+          const parsed = JSON.parse(error.body);
+          if (parsed.detail) {
+            message = parsed.detail;
+          } else if (parsed.message) {
+            message = parsed.message;
+          }
+        } catch {
+          // Not JSON, use as-is if not empty
+          if (error.body.trim()) {
+            message = error.body;
+          }
+        }
+      } else if (error.body?.detail) {
+        message = error.body.detail;
+      } else if (error.body?.message) {
+        message = error.body.message;
+      }
+    }
+
+    return { message, statusCode };
+  }
+
+  /**
+   * Convert any error to ModelClientError with extracted details
+   */
+  protected toModelClientError(error: any, defaultMessage?: string): ModelClientError {
+    const { message, statusCode } = this.extractErrorDetails(error);
+    return new ModelClientError(
+      message || defaultMessage || `${this.provider.name} API error`,
+      statusCode,
+      this.provider.name,
+      this.isRetryableHttpError(statusCode)
+    );
   }
 
   /**

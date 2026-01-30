@@ -152,7 +152,7 @@ export class SessionCacheManager {
 
   constructor(dbAdapter?: IndexedDBAdapter, configStorage?: ConfigStorage) {
     this.dbAdapter = dbAdapter || new IndexedDBAdapter();
-    this.configStorage = configStorage || new ConfigStorage(this.dbAdapter);
+    this.configStorage = configStorage || new ConfigStorage();
   }
 
   /**
@@ -197,7 +197,7 @@ export class SessionCacheManager {
    */
   validateStorageKey(key: string): boolean {
     // Session ID starts with conv_, followed by task and turn IDs (8 chars each)
-    const pattern = /^conv_[^_]+_[a-z0-9]{8}_[a-z0-9]{8}$/;
+    const pattern = /^[^_]+_[a-z0-9]{8}_[a-z0-9]{8}$/;
     return pattern.test(key);
   }
 

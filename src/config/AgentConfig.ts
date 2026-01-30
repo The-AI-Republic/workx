@@ -17,8 +17,8 @@ import { ConfigValidationError } from './types';
 import { ConfigStorage } from '../storage/ConfigStorage';
 import {
   getDefaultAgentConfig,
-  mergeWithDefaults,
-  getDefaultProviders
+  buildRuntimeConfig,
+  extractStoredConfig
 } from './defaults';
 import { validateConfig, validateModelConfig, validateProviderConfig, detectProviderFromKey } from './validators';
 import { encryptApiKey, decryptApiKey } from '../utils/encryption';
@@ -52,6 +52,9 @@ export class AgentConfig implements IConfigService {
   /**
    * Initialize the config from storage (lazy initialization)
    * Called automatically on first config access
+   *
+   * Storage contains only user-changeable data (API keys, selectedModelKey, preferences).
+   * Provider/model metadata is loaded fresh from default.json at runtime.
    */
   public async initialize(): Promise<void> {
     if (this.initialized) {
@@ -60,109 +63,28 @@ export class AgentConfig implements IConfigService {
 
     try {
       const storedConfig = await this.storage.get();
+      console.log('[AgentConfig] initialize - storedConfig from storage:', storedConfig?.selectedModelKey);
 
-      if (storedConfig) {
-        this.currentConfig = mergeWithDefaults(storedConfig);
-      } else {
-        // First time setup
-        this.currentConfig = getDefaultAgentConfig();
-      }
+      // Build full runtime config by merging stored data with default.json providers/models
+      this.currentConfig = buildRuntimeConfig(storedConfig);
+      console.log('[AgentConfig] initialize - after buildRuntimeConfig, selectedModelKey:', this.currentConfig.selectedModelKey);
 
-      // Ensure all models have IDs and registry is populated
-      await this.ensureModelIds();
-
-      await this.storage.set(this.currentConfig);
+      // Save back to storage (only minimal data)
+      await this.storage.set(extractStoredConfig(this.currentConfig));
       this.initialized = true;
     } catch (error) {
       console.error('[AgentConfig] Failed to initialize config:', error);
       this.currentConfig = getDefaultAgentConfig();
-      // Even on error, try to ensure model IDs
       try {
-        await this.ensureModelIds();
-        await this.storage.set(this.currentConfig);
+        await this.storage.set(extractStoredConfig(this.currentConfig));
       } catch (ensureError) {
-        console.error('[AgentConfig] Failed to ensure model IDs on error recovery:', ensureError);
+        console.error('[AgentConfig] Failed to save default config on error recovery:', ensureError);
       }
       this.initialized = true;
     }
   }
 
-  /**
-   * Generate a random 6-digit model ID that doesn't exist in the registry
-   * @private
-   * @returns Random 6-digit numeric string
-   */
-  private generateRandomModelId(): string {
-    const existingIds = new Set(Object.keys(this.currentConfig.modelRegistry));
-    let newId: string;
-    let attempts = 0;
-    const maxAttempts = 100;
 
-    do {
-      // Generate 6 random digits
-      let id = '';
-      for (let i = 0; i < 6; i++) {
-        id += Math.floor(Math.random() * 10).toString();
-      }
-      newId = id;
-      attempts++;
-
-      if (attempts >= maxAttempts) {
-        throw new Error('Failed to generate unique model ID after 100 attempts');
-      }
-    } while (existingIds.has(newId));
-
-    return newId;
-  }
-
-  /**
-   * Ensure all models have unique IDs and registry is populated
-   * Automatically generates IDs for any models missing them
-   * @private
-   */
-  private async ensureModelIds(): Promise<void> {
-    let modified = false;
-
-    // Iterate through all providers and their models
-    for (const provider of Object.values(this.currentConfig.providers)) {
-      if (!provider.models || !Array.isArray(provider.models)) {
-        console.warn(`[AgentConfig] Provider ${provider.id} has no models array`);
-        continue;
-      }
-
-      for (const model of provider.models) {
-        // Generate ID if missing or empty
-        if (!model.id || model.id === '') {
-          // Generate random 6-digit ID
-          model.id = this.generateRandomModelId();
-          modified = true;
-        }
-
-        // Add to registry
-        this.currentConfig.modelRegistry[model.id] = {
-          providerId: provider.id,
-          modelKey: model.modelKey
-        };
-      }
-    }
-
-    // Ensure selectedModelId is valid, otherwise pick first available model
-    if (!this.currentConfig.selectedModelId ||
-        !this.currentConfig.modelRegistry[this.currentConfig.selectedModelId]) {
-      const firstModelId = Object.keys(this.currentConfig.modelRegistry)[0];
-      if (firstModelId) {
-        this.currentConfig.selectedModelId = firstModelId;
-        modified = true;
-      } else {
-        console.error('[AgentConfig] No models found in registry after processing!');
-      }
-    }
-
-    // Save if we made any changes
-    if (modified) {
-      await this.storage.set(this.currentConfig);
-    }
-  }
 
   /**
    * Reload the config from storage
@@ -172,12 +94,8 @@ export class AgentConfig implements IConfigService {
     try {
       const storedConfig = await this.storage.get();
 
-      if (storedConfig) {
-        this.currentConfig = mergeWithDefaults(storedConfig);
-      } else {
-        // No stored config, use defaults
-        this.currentConfig = getDefaultAgentConfig();
-      }
+      // Build full runtime config by merging stored data with default.json providers/models
+      this.currentConfig = buildRuntimeConfig(storedConfig);
     } catch (error) {
       console.error('Failed to reload config:', error);
       throw error;
@@ -194,7 +112,7 @@ export class AgentConfig implements IConfigService {
     this.ensureInitialized();
 
     const oldConfig = { ...this.currentConfig };
-    const newConfig = mergeWithDefaults({ ...this.currentConfig, ...config });
+    const newConfig = { ...this.currentConfig, ...config };
 
     // Validate the new configuration
     const validation = validateConfig(newConfig);
@@ -207,13 +125,13 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig = newConfig;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
-    // Emit change events if selectedModelId changed
-    if (oldConfig.selectedModelId !== newConfig.selectedModelId) {
-      this.emitChangeEvent('model', oldConfig.selectedModelId, newConfig.selectedModelId);
+    // Emit change events if selectedModelKey changed
+    if (oldConfig.selectedModelKey !== newConfig.selectedModelKey) {
+      this.emitChangeEvent('model', oldConfig.selectedModelKey, newConfig.selectedModelKey);
     }
 
     return { ...this.currentConfig };
@@ -226,21 +144,16 @@ export class AgentConfig implements IConfigService {
 
     if (preserveApiKeys && this.currentConfig.providers) {
       // Preserve API keys from existing providers
-      const preservedProviders: Record<string, IProviderConfig> = {};
       Object.entries(this.currentConfig.providers).forEach(([id, provider]) => {
-        if (provider.apiKey) {
-          preservedProviders[id] = {
-            ...getDefaultProviders()[id],
-            apiKey: provider.apiKey,
-            organization: provider.organization
-          };
+        if (provider.apiKey && newConfig.providers[id]) {
+          newConfig.providers[id].apiKey = provider.apiKey;
+          newConfig.providers[id].organization = provider.organization;
         }
       });
-      newConfig.providers = preservedProviders;
     }
 
     this.currentConfig = newConfig;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -256,53 +169,38 @@ export class AgentConfig implements IConfigService {
   // Model operations
 
   /**
-   * Set the selected model by ID
-   * @param modelId - Model ID to select (must exist in modelRegistry)
-   * @throws Error if model ID is invalid or not found
+   * Set the selected model by composite key
+   * @param compositeKey - Model key in format "providerId:modelKey" (e.g., "openai:gpt-5.1")
+   * @throws Error if model is not found
    * @example
-   * await agentConfig.setSelectedModel('000001');
+   * await agentConfig.setSelectedModel('openai:gpt-5.1');
    */
-  async setSelectedModel(modelId: string): Promise<void> {
+  async setSelectedModel(compositeKey: string): Promise<void> {
     this.ensureInitialized();
 
-    // Validate model ID format
-    if (!/^\d{6}$/.test(modelId)) {
-      console.error(`[AgentConfig] Invalid model ID format: ${modelId}`);
-      throw new Error(`Invalid model ID format: ${modelId}. Expected 6-digit numeric string.`);
+    // Validate format
+    if (!compositeKey.includes(':')) {
+      console.error(`[AgentConfig] Invalid model key format: ${compositeKey}`);
+      throw new Error(`Invalid model key format: ${compositeKey}. Expected "providerId:modelKey".`);
     }
 
-    // Check if model exists in registry
-    const entry = this.currentConfig.modelRegistry[modelId];
-    if (!entry) {
-      console.error(`[AgentConfig] Model ID not found in registry: ${modelId}`);
-      throw new Error(`Model ID not found in registry: ${modelId}`);
+    // Verify model exists
+    const modelData = this.getModelByKey(compositeKey);
+    if (!modelData) {
+      console.error(`[AgentConfig] Model not found: ${compositeKey}`);
+      throw new Error(`Model not found: ${compositeKey}`);
     }
 
-    // Verify provider exists
-    const provider = this.currentConfig.providers[entry.providerId];
-    if (!provider) {
-      console.error(`[AgentConfig] Provider not found: ${entry.providerId} for model ${modelId}`);
-      throw new Error(`Provider not found for model: ${entry.providerId}`);
-    }
+    // Update selectedModelKey
+    const oldModelKey = this.currentConfig.selectedModelKey;
+    this.currentConfig.selectedModelKey = compositeKey;
 
-    // Verify model exists in provider
-    const model = provider.models?.find(m => m.modelKey === entry.modelKey);
-    if (!model) {
-      console.error(`[AgentConfig] Model not found in provider: ${entry.modelKey} in ${entry.providerId}`);
-      throw new Error(`Model not found in provider: ${entry.modelKey}`);
-    }
-
-    // Update selectedModelId
-    const oldModelId = this.currentConfig.selectedModelId;
-    this.currentConfig.selectedModelId = modelId;
-
-    await this.storage.set(this.currentConfig);
-    this.emitChangeEvent('model', oldModelId, modelId);
+    await this.storage.set(extractStoredConfig(this.currentConfig));
+    this.emitChangeEvent('model', oldModelKey, compositeKey);
   }
 
   /**
    * Get current model configuration
-   * Resolves selectedModelId through registry to find actual model config
    * @returns Model configuration for currently selected model
    * @example
    * const model = agentConfig.getModelConfig();
@@ -311,8 +209,7 @@ export class AgentConfig implements IConfigService {
   getModelConfig(): IModelConfig {
     this.ensureInitialized();
 
-    // Use selectedModelId system
-    const modelData = this.getModelById(this.currentConfig.selectedModelId);
+    const modelData = this.getModelByKey(this.currentConfig.selectedModelKey);
     if (modelData) {
       return modelData.model;
     }
@@ -344,12 +241,12 @@ export class AgentConfig implements IConfigService {
 
     // Validate maxOutputTokens <= contextWindow
     if (newModel.maxOutputTokens && newModel.contextWindow &&
-        newModel.maxOutputTokens > newModel.contextWindow) {
+      newModel.maxOutputTokens > newModel.contextWindow) {
       throw new Error('maxOutputTokens cannot exceed contextWindow');
     }
 
     // Update the model in the provider's models array
-    const modelData = this.getModelById(this.currentConfig.selectedModelId);
+    const modelData = this.getModelByKey(this.currentConfig.selectedModelKey);
     if (!modelData) {
       throw new Error('Cannot update model: selected model not found');
     }
@@ -360,14 +257,14 @@ export class AgentConfig implements IConfigService {
     }
 
     // Find and update the model in the provider's models array
-    const modelIndex = provider.models.findIndex(m => m.id === this.currentConfig.selectedModelId);
+    const modelIndex = provider.models.findIndex(m => m.modelKey === modelData.model.modelKey);
     if (modelIndex === -1) {
       throw new Error('Cannot update model: model not found in provider');
     }
 
     provider.models[modelIndex] = newModel;
 
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -399,23 +296,8 @@ export class AgentConfig implements IConfigService {
       );
     }
 
-    // Auto-assign model IDs for any models without IDs
-    if (provider.models) {
-      for (const model of provider.models) {
-        if (!model.id || model.id === '') {
-          model.id = this.generateModelId();
-        }
-
-        // Add to registry
-        this.currentConfig.modelRegistry[model.id] = {
-          providerId: provider.id,
-          modelKey: model.modelKey
-        };
-      }
-    }
-
     this.currentConfig.providers[provider.id] = provider;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -440,21 +322,6 @@ export class AgentConfig implements IConfigService {
 
     const updated = { ...existing, ...provider };
 
-    // Auto-assign model IDs for any new models without IDs
-    if (updated.models) {
-      for (const model of updated.models) {
-        if (!model.id || model.id === '') {
-          model.id = this.generateModelId();
-        }
-
-        // Update registry
-        this.currentConfig.modelRegistry[model.id] = {
-          providerId: updated.id,
-          modelKey: model.modelKey
-        };
-      }
-    }
-
     const validation = validateProviderConfig(updated);
     if (!validation.valid) {
       throw new ConfigValidationError(
@@ -465,7 +332,7 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.providers[id] = updated;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -478,14 +345,13 @@ export class AgentConfig implements IConfigService {
     this.ensureInitialized();
 
     // Check if provider hosts the currently selected model
-    const selectedModelEntry = this.currentConfig.modelRegistry[this.currentConfig.selectedModelId];
-    if (selectedModelEntry && selectedModelEntry.providerId === id) {
+    if (this.currentConfig.selectedModelKey.startsWith(`${id}:`)) {
       throw new Error('Cannot delete provider that hosts the currently selected model');
     }
 
     const deleted = this.currentConfig.providers[id];
     delete this.currentConfig.providers[id];
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -515,7 +381,7 @@ export class AgentConfig implements IConfigService {
     provider.apiKey = encryptApiKey(apiKey);
     this.currentConfig.providers[providerId] = provider;
 
-    await this.storage.set(this.currentConfig);
+    await this.storage.set(extractStoredConfig(this.currentConfig));
     this.emitChangeEvent('provider', null, provider);
 
     return provider;
@@ -535,7 +401,7 @@ export class AgentConfig implements IConfigService {
   async getProviderApiKey(providerId: string): Promise<string | null> {
     this.ensureInitialized();
 
-  // Use static import for encryption utilities
+    // Use static import for encryption utilities
 
     // Check provider-specific key first
     const provider = this.currentConfig.providers[providerId];
@@ -566,7 +432,7 @@ export class AgentConfig implements IConfigService {
     provider.apiKey = '';
     this.currentConfig.providers[providerId] = provider;
 
-    await this.storage.set(this.currentConfig);
+    await this.storage.set(extractStoredConfig(this.currentConfig));
     this.emitChangeEvent('provider', provider, { ...provider, apiKey: '' });
   }
 
@@ -600,51 +466,53 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
-   * Generate a unique 6-digit model ID using random generation
-   * @returns Random 6-digit numeric string (e.g., "847291", "103847")
+   * Create a composite model key from provider ID and model key
+   * @param providerId - Provider identifier (e.g., 'openai', 'xai')
+   * @param modelKey - Model's API identifier (e.g., 'gpt-5.1', 'grok-4-1-fast-reasoning')
+   * @returns Composite key in format "providerId:modelKey"
    * @example
-   * const modelId = agentConfig.generateModelId();
-   * console.log(modelId); // "847291"
+   * const key = AgentConfig.createModelKey('openai', 'gpt-5.1');
+   * console.log(key); // "openai:gpt-5.1"
    */
-  generateModelId(): string {
-    this.ensureInitialized();
-
-    // Generate random 6-digit ID that doesn't conflict with existing IDs
-    const newId = this.generateRandomModelId();
-
-    // Persist the config (registry has been updated)
-    this.storage.set(this.currentConfig).catch(err => {
-      console.error('Failed to persist config after ID generation:', err);
-    });
-
-    return newId;
+  static createModelKey(providerId: string, modelKey: string): string {
+    return `${providerId}:${modelKey}`;
   }
 
   /**
-   * Get model by ID
-   * Resolves model ID through registry to find actual model config
-   * @param modelId - Model ID to lookup
+   * Get model by composite key
+   * @param compositeKey - Model key in format "providerId:modelKey" (e.g., "openai:gpt-5.1")
    * @returns Model config with provider context, or null if not found
    * @example
-   * const result = agentConfig.getModelById('000001');
+   * const result = agentConfig.getModelByKey('openai:gpt-5.1');
    * if (result) {
-   *   console.log(result.model.name); // "GPT-5"
+   *   console.log(result.model.name); // "GPT-5.1"
    *   console.log(result.provider.name); // "OpenAI"
    * }
    */
-  getModelById(modelId: string): { model: IModelConfig; provider: IProviderConfig } | null {
+  getModelByKey(compositeKey: string): { model: IModelConfig; provider: IProviderConfig } | null {
     this.ensureInitialized();
 
-    const entry = this.currentConfig.modelRegistry[modelId];
-    if (!entry) return null;
+    if (!compositeKey || !compositeKey.includes(':')) return null;
 
-    const provider = this.currentConfig.providers[entry.providerId];
+    // Use indexOf to handle modelKeys that might contain colons
+    const colonIndex = compositeKey.indexOf(':');
+    const providerId = compositeKey.slice(0, colonIndex);
+    const modelKey = compositeKey.slice(colonIndex + 1);
+
+    const provider = this.currentConfig.providers[providerId];
     if (!provider) return null;
 
-    const model = provider.models?.find(m => m.modelKey === entry.modelKey);
+    const model = provider.models?.find(m => m.modelKey === modelKey);
     if (!model) return null;
 
     return { model, provider };
+  }
+
+  /**
+   * @deprecated Use getModelByKey instead
+   */
+  getModelById(compositeKey: string): { model: IModelConfig; provider: IProviderConfig } | null {
+    return this.getModelByKey(compositeKey);
   }
 
   /**
@@ -697,7 +565,7 @@ export class AgentConfig implements IConfigService {
    * console.log(provider); // 'xai'
    */
   async detectProviderFromKey(apiKey: string): Promise<string> {
-  return detectProviderFromKey(apiKey);
+    return detectProviderFromKey(apiKey);
   }
 
   // Profile management
@@ -723,7 +591,7 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.profiles[profile.name] = profile;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -741,7 +609,7 @@ export class AgentConfig implements IConfigService {
 
     const updated = { ...this.currentConfig.profiles[name], ...profile };
     this.currentConfig.profiles[name] = updated;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -761,7 +629,7 @@ export class AgentConfig implements IConfigService {
     if (this.currentConfig.profiles) {
       delete this.currentConfig.profiles[name];
     }
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -779,7 +647,7 @@ export class AgentConfig implements IConfigService {
     const profile = this.currentConfig.profiles[name];
     profile.lastUsed = Date.now();
 
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -817,7 +685,7 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig = data.config;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
 
@@ -848,7 +716,7 @@ export class AgentConfig implements IConfigService {
     };
 
     this.currentConfig.tools = newConfig as IToolsConfig;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
     this.emitChangeEvent('tools' as any, oldConfig, newConfig);
@@ -874,7 +742,7 @@ export class AgentConfig implements IConfigService {
     tools.disabled = tools.disabled.filter(name => name !== toolName);
 
     this.currentConfig.tools = tools as IToolsConfig;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
     this.emitChangeEvent('tools' as any, null, tools);
@@ -893,7 +761,7 @@ export class AgentConfig implements IConfigService {
     }
 
     this.currentConfig.tools = tools as IToolsConfig;
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
     this.emitChangeEvent('tools' as any, null, tools);
@@ -933,7 +801,7 @@ export class AgentConfig implements IConfigService {
       ...config
     };
 
-    this.storage.set(this.currentConfig).catch(err => {
+    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
       console.error('Failed to persist config:', err);
     });
     this.emitChangeEvent('tools' as any, oldConfig, this.currentConfig.tools.perToolConfig[toolName]);

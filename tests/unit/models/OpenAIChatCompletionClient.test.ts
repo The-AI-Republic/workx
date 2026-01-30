@@ -29,27 +29,26 @@ vi.mock('openai', () => {
   };
 });
 
-describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
+describe('OpenAIChatCompletionClient - Text Accumulation', () => {
   let client: any;
 
   beforeEach(() => {
     // Create client instance with test configuration
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      baseUrl: 'https://api.openai.com/v1',
       conversationId: 'test-conversation',
       modelFamily: {
-        family: 'gemini-2.5-pro',
+        family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
-        name: 'Google AI Studio',
-        base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        name: 'OpenAI',
+        base_url: 'https://api.openai.com/v1',
         wire_api: 'ChatCompletions',
         requires_openai_auth: true,
-        env_key: 'GOOGLE_AI_STUDIO_API_KEY',
       },
     });
   });
@@ -160,7 +159,7 @@ describe('OpenAIChatCompletionClient - Gemini Text Accumulation', () => {
       expect(hasContent).toBe(false);
       expect(hasToolCalls).toBe(false);
 
-      // Should log warning and skip completion in this case
+      // Should skip completion in this case
       expect(hasContent || hasToolCalls).toBe(false);
     });
 
@@ -201,20 +200,19 @@ describe('OpenAIChatCompletionClient - Event Conversion Integration', () => {
   beforeEach(() => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      baseUrl: 'https://api.openai.com/v1',
       conversationId: 'test-conversation',
       modelFamily: {
-        family: 'gemini-2.5-pro',
+        family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
-        name: 'Google AI Studio',
-        base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        name: 'OpenAI',
+        base_url: 'https://api.openai.com/v1',
         wire_api: 'ChatCompletions',
         requires_openai_auth: true,
-        env_key: 'GOOGLE_AI_STUDIO_API_KEY',
       },
     });
   });
@@ -239,26 +237,25 @@ describe('OpenAIChatCompletionClient - Event Conversion Integration', () => {
   });
 });
 
-describe('OpenAIChatCompletionClient - Tool Call Handling (User Story 2)', () => {
+describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
   let client: any;
 
   beforeEach(() => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      baseUrl: 'https://api.openai.com/v1',
       conversationId: 'test-conversation',
       modelFamily: {
-        family: 'gemini-2.5-pro',
+        family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
-        name: 'Google AI Studio',
-        base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        name: 'OpenAI',
+        base_url: 'https://api.openai.com/v1',
         wire_api: 'ChatCompletions',
         requires_openai_auth: true,
-        env_key: 'GOOGLE_AI_STUDIO_API_KEY',
       },
     });
   });
@@ -383,26 +380,25 @@ describe('OpenAIChatCompletionClient - Tool Call Handling (User Story 2)', () =>
   });
 });
 
-describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content (User Story 3)', () => {
+describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content', () => {
   let client: any;
 
   beforeEach(() => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      baseUrl: 'https://api.openai.com/v1',
       conversationId: 'test-conversation',
       modelFamily: {
-        family: 'gemini-2.5-pro',
+        family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
-        name: 'Google AI Studio',
-        base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        name: 'OpenAI',
+        base_url: 'https://api.openai.com/v1',
         wire_api: 'ChatCompletions',
         requires_openai_auth: true,
-        env_key: 'GOOGLE_AI_STUDIO_API_KEY',
       },
     });
   });
@@ -423,10 +419,6 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content (User Story 3)',
       // Both should be present
       expect(hasContent).toBe(true);
       expect(hasToolCalls).toBe(true);
-
-      // According to FR-014: process concurrently
-      // Tool calls take precedence in finish_reason='tool_calls'
-      // But text should still be emitted as deltas during streaming
     });
   });
 
@@ -472,43 +464,32 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content (User Story 3)',
   });
 });
 
-describe('OpenAIChatCompletionClient - Payload Conversion Bug Fix', () => {
+describe('OpenAIChatCompletionClient - Payload Conversion', () => {
   let client: any;
 
   beforeEach(() => {
     client = new OpenAIChatCompletionClient({
       apiKey: 'test-api-key',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      baseUrl: 'https://api.openai.com/v1',
       conversationId: 'test-conversation',
       modelFamily: {
-        family: 'gemini-2.5-pro',
+        family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
-        name: 'Google AI Studio',
-        base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        name: 'OpenAI',
+        base_url: 'https://api.openai.com/v1',
         wire_api: 'ChatCompletions',
         requires_openai_auth: true,
-        env_key: 'GOOGLE_AI_STUDIO_API_KEY',
       },
     });
   });
 
-  describe('ContentItem type handling bug fix', () => {
-    it('should handle input_text type correctly (the actual bug)', () => {
-      // This tests the fix for the bug where input_text was not recognized
-      // causing empty content to be sent to Gemini API
-
-      const buggyConversion = (part: any) => {
-        if (part.type === 'text') {  // ❌ Only checks 'text', not 'input_text'
-          return part.text;
-        }
-        return '';  // ❌ Returns empty for input_text!
-      };
-
-      const fixedConversion = (part: any) => {
+  describe('ContentItem type handling', () => {
+    it('should handle input_text type correctly', () => {
+      const conversion = (part: any) => {
         if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
           return part.text;
         }
@@ -516,12 +497,7 @@ describe('OpenAIChatCompletionClient - Payload Conversion Bug Fix', () => {
       };
 
       const inputTextPart = { type: 'input_text', text: 'hi' };
-
-      // Buggy version returns empty (THIS WAS THE BUG!)
-      expect(buggyConversion(inputTextPart)).toBe('');
-
-      // Fixed version returns the text
-      expect(fixedConversion(inputTextPart)).toBe('hi');
+      expect(conversion(inputTextPart)).toBe('hi');
     });
 
     it('should handle output_text type correctly', () => {

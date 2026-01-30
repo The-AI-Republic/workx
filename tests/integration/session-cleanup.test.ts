@@ -37,7 +37,7 @@ describe('Session Cleanup Integration Tests', () => {
 
   describe('Session Cleanup on End', () => {
     it('T055,should clear all items for a session', async () => {
-      const sessionId = 'conv_cleanup_test';
+      const sessionId = 'cleanup_test';
 
       // Create 15 items (~2MB total)
       for (let i = 1; i <= 15; i++) {
@@ -73,7 +73,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should cleanup large session within 5 minutes', async () => {
-      const sessionId = 'conv_large_cleanup';
+      const sessionId = 'large_cleanup';
 
       // Create 100 items (stress test for SC-004)
       for (let i = 1; i < 100; i++) {
@@ -102,8 +102,8 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should not affect other sessions when clearing one session', async () => {
-      const sessionA = 'conv_clear_a';
-      const sessionB = 'conv_clear_b';
+      const sessionA = 'clear_a';
+      const sessionB = 'clear_b';
 
       // Create items in both sessions
       await manager.write(sessionA, { data: 'A1' }, 'Session A item 1');
@@ -129,9 +129,9 @@ describe('Session Cleanup Integration Tests', () => {
 
   describe('Orphan Session Cleanup', () => {
     it('T059,should detect and cleanup orphaned sessions older than 24h', async () => {
-      const orphanSession1 = 'conv_orphan_1';
-      const orphanSession2 = 'conv_orphan_2';
-      const activeSession = 'conv_active';
+      const orphanSession1 = 'orphan_1';
+      const orphanSession2 = 'orphan_2';
+      const activeSession = 'active';
 
       // Create items in orphan sessions
       await manager.write(orphanSession1, { data: 'orphan1' }, 'Orphan 1');
@@ -171,7 +171,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should simulate crashed session cleanup', async () => {
-      const crashedSession = 'conv_crashed';
+      const crashedSession = 'crashed';
 
       // Create items in a session
       await manager.write(crashedSession, { data: 'crashed' }, 'Crashed session data');
@@ -195,7 +195,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should not cleanup sessions accessed within 24h', async () => {
-      const recentSession = 'conv_recent';
+      const recentSession = 'recent';
 
       // Create session accessed 12 hours ago
       await manager.write(recentSession, { data: 'recent' }, 'Recent data');
@@ -221,7 +221,7 @@ describe('Session Cleanup Integration Tests', () => {
 
   describe('Outdated Cache Cleanup', () => {
     it('T063,should cleanup items older than configured days', async () => {
-      const sessionId = 'conv_outdated';
+      const sessionId = 'outdated';
 
       // Create old items (simulate 31 days old)
       await manager.write(sessionId, { data: 'old1' }, 'Old item 1');
@@ -253,7 +253,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should preserve recent items when cleaning outdated', async () => {
-      const sessionId = 'conv_mixed_age';
+      const sessionId = 'mixed_age';
 
       // Create items with different ages
       const oldResult = await manager.write(sessionId, { data: 'very_old' }, 'Very old item');
@@ -279,7 +279,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should disable cleanup when maxAgeDays is -1', async () => {
-      const sessionId = 'conv_no_cleanup';
+      const sessionId = 'no_cleanup';
 
       // Set config to disable cleanup
       await manager.setConfig({ outdatedCleanupDays: -1 });
@@ -306,7 +306,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should respect custom maxAgeDays parameter', async () => {
-      const sessionId = 'conv_custom_age';
+      const sessionId = 'custom_age';
 
       // Create items and capture storage keys
       const item1Result = await manager.write(sessionId, { data: 'item1' }, 'Item 1');
@@ -334,7 +334,7 @@ describe('Session Cleanup Integration Tests', () => {
 
   describe('Cleanup Integration', () => {
     it('should handle cleanup of empty sessions gracefully', async () => {
-      const emptySession = 'conv_empty';
+      const emptySession = 'empty';
 
       // Try to clear non-existent session
       const deletedCount = await manager.clearSession(emptySession);
@@ -347,7 +347,7 @@ describe('Session Cleanup Integration Tests', () => {
     });
 
     it('should handle concurrent cleanup operations', async () => {
-      const sessionId = 'conv_concurrent';
+      const sessionId = 'concurrent';
 
       // Create multiple items
       for (let i = 1; i <= 10; i++) {

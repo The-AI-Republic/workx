@@ -108,18 +108,24 @@ interface ActionResult {
 ## Contract 3: Type Action
 
 ### DOMTool Responsibility
-- Validate nodeId is a number (CDP numeric identifier)
-- Validate text parameter is string
+- Validate nodeId is a string in format "frameId:backendNodeId" or number
+- Validate text parameter is string (can be empty for deletion)
+- Validate mutual exclusivity of text-based editing options
 - Ensure tab exists
-- Route to DomService when `useCDP = true`
+- Route to DomService
 
 ### DomService Responsibility
 - Validate nodeId exists in current snapshot
 - Resolve nodeId → backendNodeId
-- Focus element via CDP DOM.focus
-- Clear existing value (Ctrl+A, Backspace)
-- Insert text via CDP Input.insertText
-- Press Enter if text ends with `\n`
+- Focus element via click or DOM.focus
+- Handle text-based editing options:
+  - `insertAfter`: Find text, position cursor after it
+  - `insertBefore`: Find text, position cursor before it
+  - `replace`: Find and select text for replacement
+  - `replaceAll`: Find and replace all occurrences
+- Handle `clearFirst` option if specified
+- Insert text via appropriate method (auto-detect, instant, char-by-char, paste)
+- Handle commit option (change event or Enter key)
 - Invalidate snapshot after action
 
 ### Interface
@@ -127,9 +133,23 @@ interface ActionResult {
 // Input (from DOMTool)
 interface TypeRequest {
   tabId: number;
-  nodeId: string;  // Format: /^[A-Za-z0-9]{8}$/
-  text: string;
+  nodeId: string;  // Format: "frameId:backendNodeId" (e.g., "0:123")
+  text: string;    // Can be empty string for deletion
   options?: TypeOptions;
+}
+
+// TypeOptions for text-based editing (v3.1)
+interface TypeOptions {
+  clearFirst?: boolean;      // Clear all content before typing
+  insertAfter?: string;      // Insert after first match of this text
+  insertBefore?: string;     // Insert before first match of this text
+  replace?: string;          // Replace first match of this text
+  replaceAll?: string;       // Replace all matches of this text
+  occurrence?: number;       // Which occurrence (0-indexed, default 0)
+  speed?: number;            // Typing speed (ms per char)
+  method?: "auto" | "instant" | "char-by-char" | "paste";
+  commit?: "change" | "enter";
+  blur?: boolean;
 }
 
 // Output (from DomService)
@@ -141,18 +161,32 @@ interface ActionResult {
     message: string;
     recoverable: boolean;
   };
+  changes: {
+    navigationOccurred: boolean;
+    domMutations: number;
+    scrollChanged: boolean;
+    valueChanged: boolean;
+    newValue?: string;
+    deletedText?: string;
+    replacedText?: string;
+    replacementCount?: number;
+  };
   snapshotInvalidated: boolean;
 }
 ```
 
 ### Invariants
 1. Snapshot must be invalidated after type action
-2. Existing value must be cleared before typing
-3. Text must be inserted exactly as provided (no transformation)
-4. Enter key pressed only if text ends with `\n`
+2. Text-based options (insertAfter, insertBefore, replace, replaceAll) are mutually exclusive
+3. Text-based options cannot be combined with clearFirst
+4. Text matching uses visible text content (ignores HTML structure)
+5. Text must be inserted exactly as provided (no transformation)
+6. Enter key pressed only if commit === 'enter'
 
 ### Error Conditions
 - `NODE_NOT_FOUND`: nodeId not in current snapshot
+- `TEXT_NOT_FOUND`: Search text not found in element (for text-based editing)
+- `VALIDATION_ERROR`: Invalid options (mutually exclusive options used together)
 - `CDP_ERROR`: Chrome DevTools Protocol error
 
 ---

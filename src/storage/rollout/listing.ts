@@ -29,6 +29,12 @@ export async function listConversations(
   pageSize: number,
   cursor?: Cursor
 ): Promise<ConversationsPage> {
+  // Check if IndexedDB is available
+  if (typeof indexedDB === 'undefined') {
+    console.warn('[listConversations] IndexedDB not available');
+    return { items: [], nextCursor: undefined, numScanned: 0, reachedCap: false };
+  }
+
   // Validate page size
   if (pageSize < 1 || pageSize > 100) {
     throw new Error('Invalid page size: must be between 1 and 100');
@@ -41,14 +47,27 @@ export async function listConversations(
     }
   }
 
-  // Open database
-  const db = await openDatabase();
-
+  let db: IDBDatabase | null = null;
   try {
+    // Open database
+    db = await openDatabase();
+
+    // If database doesn't exist, return empty result
+    if (!db) {
+      console.log('[listConversations] Database does not exist, returning empty');
+      return { items: [], nextCursor: undefined, numScanned: 0, reachedCap: false };
+    }
+
     const result = await queryConversations(db, pageSize, cursor);
     return result;
+  } catch (err) {
+    console.error('[listConversations] Error:', err);
+    // Return empty result on error instead of throwing
+    return { items: [], nextCursor: undefined, numScanned: 0, reachedCap: false };
   } finally {
-    db.close();
+    if (db) {
+      db.close();
+    }
   }
 }
 
@@ -58,96 +77,160 @@ export async function listConversations(
 
 /**
  * Open IndexedDB database for reading.
+ * Opens without version to avoid blocking issues with other connections.
+ * If database doesn't exist, returns null.
  */
-function openDatabase(): Promise<IDBDatabase> {
+function openDatabase(): Promise<IDBDatabase | null> {
   return new Promise((resolve, reject) => {
+    console.log('[listing] Opening database...');
+
+    // Add timeout for database open
+    const timeout = setTimeout(() => {
+      console.error('[listing] Database open timed out');
+      reject(new Error('Database open timed out'));
+    }, 3000);
+
+    // Open without version - just read whatever exists
+    // This avoids upgrade/blocking issues with other connections
     const request = indexedDB.open(DB_NAME);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () =>
-      reject(createDatabaseError('open', request.error?.message || 'unknown error'));
+
+    request.onsuccess = () => {
+      clearTimeout(timeout);
+      console.log('[listing] Database opened successfully');
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      clearTimeout(timeout);
+      // If database doesn't exist, return null instead of error
+      console.log('[listing] Database does not exist or error:', request.error);
+      resolve(null);
+    };
+
+    request.onblocked = () => {
+      clearTimeout(timeout);
+      console.error('[listing] Database open blocked');
+      reject(new Error('Database open blocked'));
+    };
   });
 }
 
 /**
  * Query conversations from IndexedDB with pagination.
+ * Uses getAll() for simplicity - simpler than cursor and avoids async issues.
  */
-async function queryConversations(
+function queryConversations(
   db: IDBDatabase,
   pageSize: number,
   cursor?: Cursor
 ): Promise<ConversationsPage> {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction([STORE_ROLLOUTS, STORE_ROLLOUT_ITEMS], 'readonly');
-    const rolloutsStore = tx.objectStore(STORE_ROLLOUTS);
-    const itemsStore = tx.objectStore(STORE_ROLLOUT_ITEMS);
-    const updatedIndex = rolloutsStore.index('updated');
+    console.log('[listing] Querying conversations...');
 
-    const items: ConversationItem[] = [];
-    let numScanned = 0;
-    let reachedCap = false;
+    // Add timeout for query
+    const timeout = setTimeout(() => {
+      console.error('[listing] Query timed out');
+      reject(new Error('Query timed out'));
+    }, 3000);
 
-    // Set up key range for cursor-based pagination
-    let keyRange: IDBKeyRange | undefined;
-    if (cursor) {
-      // Query items with updated <= cursor.timestamp
-      keyRange = IDBKeyRange.upperBound([cursor.timestamp, cursor.id], true);
-    }
+    try {
+      // Check if store exists
+      if (!db.objectStoreNames.contains(STORE_ROLLOUTS)) {
+        clearTimeout(timeout);
+        console.log('[listing] Store does not exist, returning empty');
+        resolve({ items: [], nextCursor: undefined, numScanned: 0, reachedCap: false });
+        return;
+      }
 
-    // Open cursor on updated index (descending order)
-    const cursorRequest = updatedIndex.openCursor(keyRange, 'prev');
+      const tx = db.transaction([STORE_ROLLOUTS], 'readonly');
+      const rolloutsStore = tx.objectStore(STORE_ROLLOUTS);
 
-    cursorRequest.onsuccess = async (event) => {
-      const idbCursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+      // Use getAll to fetch all records, then sort and filter in memory
+      const request = rolloutsStore.getAll();
 
-      if (!idbCursor || items.length >= pageSize || numScanned >= MAX_SCAN) {
-        // Done scanning
-        if (numScanned >= MAX_SCAN) {
-          reachedCap = true;
+      request.onsuccess = () => {
+        clearTimeout(timeout);
+        try {
+          const allRecords = (request.result || []) as RolloutMetadataRecord[];
+          console.log('[listing] Got', allRecords.length, 'records from DB');
+
+          // Identify empty conversations to clean up (no sessionMeta or only session_meta item)
+          // Note: itemCount === 1 means only session_meta exists, no actual user messages
+          const emptyRecordIds = allRecords
+            .filter((r) => !r.sessionMeta || r.itemCount <= 1)
+            .map((r) => r.id);
+
+          // Passively clean up empty records in background (don't block listing)
+          if (emptyRecordIds.length > 0) {
+            console.log('[listing] Cleaning up', emptyRecordIds.length, 'empty conversations');
+            cleanupEmptyRecords(db, emptyRecordIds).catch((err) => {
+              console.warn('[listing] Cleanup failed:', err);
+            });
+          }
+
+          // Filter valid records with sessionMeta and actual messages (itemCount > 1), then sort by updated (descending)
+          let filtered = allRecords
+            .filter((r) => r.sessionMeta && r.itemCount > 1)
+            .sort((a, b) => b.updated - a.updated);
+
+          // Apply cursor-based pagination
+          if (cursor) {
+            const cursorIndex = filtered.findIndex(
+              (r) => r.updated < cursor.timestamp || (r.updated === cursor.timestamp && r.id <= cursor.id)
+            );
+            if (cursorIndex > 0) {
+              filtered = filtered.slice(cursorIndex);
+            }
+          }
+
+          // Take pageSize items
+          const pageRecords = filtered.slice(0, pageSize);
+          const hasMore = filtered.length > pageSize;
+
+          // Convert to ConversationItems
+          const items: ConversationItem[] = pageRecords.map((metadata) => ({
+            id: metadata.id,
+            rolloutId: metadata.id,
+            head: [],
+            tail: [],
+            created: metadata.created,
+            updated: metadata.updated,
+            sessionMeta: metadata.sessionMeta,
+            itemCount: metadata.itemCount,
+          }));
+
+          // Build nextCursor
+          const nextCursor = hasMore ? buildNextCursor(items) : undefined;
+
+          console.log('[listing] Returning', items.length, 'conversations');
+          resolve({
+            items,
+            nextCursor,
+            numScanned: allRecords.length,
+            reachedCap: false,
+          });
+        } catch (err) {
+          console.error('[listing] Process error:', err);
+          reject(createDatabaseError('process', err instanceof Error ? err.message : 'unknown error'));
         }
-
-        // Build nextCursor from last item
-        const nextCursor = buildNextCursor(items);
-
-        resolve({
-          items,
-          nextCursor,
-          numScanned,
-          reachedCap,
-        });
-        return;
-      }
-
-      numScanned++;
-      const metadata = idbCursor.value as RolloutMetadataRecord;
-
-      // Filter: must have SessionMeta
-      if (!metadata.sessionMeta) {
-        idbCursor.continue();
-        return;
-      }
-
-      // Load head and tail records
-      const { head, tail } = await loadHeadTail(itemsStore, metadata.id);
-
-      const item: ConversationItem = {
-        id: metadata.id,
-        rolloutId: metadata.id,
-        head,
-        tail,
-        created: metadata.created,
-        updated: metadata.updated,
-        sessionMeta: metadata.sessionMeta,
-        itemCount: metadata.itemCount,
       };
 
-      items.push(item);
-      idbCursor.continue();
-    };
+      request.onerror = () => {
+        clearTimeout(timeout);
+        console.error('[listing] Query error:', request.error);
+        reject(createDatabaseError('query', request.error?.message || 'unknown error'));
+      };
 
-    cursorRequest.onerror = () =>
-      reject(createDatabaseError('query', cursorRequest.error?.message || 'unknown error'));
-
-    tx.onerror = () => reject(createDatabaseError('transaction', tx.error?.message || 'unknown error'));
+      tx.onerror = () => {
+        clearTimeout(timeout);
+        console.error('[listing] Transaction error:', tx.error);
+        reject(createDatabaseError('transaction', tx.error?.message || 'unknown error'));
+      };
+    } catch (err) {
+      clearTimeout(timeout);
+      console.error('[listing] Setup error:', err);
+      reject(createDatabaseError('setup', err instanceof Error ? err.message : 'unknown error'));
+    }
   });
 }
 
@@ -187,4 +270,68 @@ function buildNextCursor(items: ConversationItem[]): Cursor | undefined {
     timestamp: lastItem.updated,
     id: lastItem.id,
   };
+}
+
+/**
+ * Clean up empty conversation records from storage.
+ * Deletes records from both rollouts and rollout_items stores.
+ * Runs asynchronously to not block the listing operation.
+ */
+async function cleanupEmptyRecords(db: IDBDatabase, recordIds: string[]): Promise<void> {
+  if (recordIds.length === 0) {
+    return;
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      // Check if stores exist
+      if (!db.objectStoreNames.contains(STORE_ROLLOUTS)) {
+        resolve();
+        return;
+      }
+
+      const stores = [STORE_ROLLOUTS];
+      if (db.objectStoreNames.contains(STORE_ROLLOUT_ITEMS)) {
+        stores.push(STORE_ROLLOUT_ITEMS);
+      }
+
+      const tx = db.transaction(stores, 'readwrite');
+      const rolloutsStore = tx.objectStore(STORE_ROLLOUTS);
+
+      // Delete from rollouts store
+      for (const id of recordIds) {
+        rolloutsStore.delete(id);
+      }
+
+      // Delete associated items from rollout_items store
+      if (stores.includes(STORE_ROLLOUT_ITEMS)) {
+        const itemsStore = tx.objectStore(STORE_ROLLOUT_ITEMS);
+        const rolloutIdIndex = itemsStore.index('rolloutId');
+
+        for (const rolloutId of recordIds) {
+          const range = IDBKeyRange.only(rolloutId);
+          const cursorRequest = rolloutIdIndex.openCursor(range);
+
+          cursorRequest.onsuccess = (event) => {
+            const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+            if (cursor) {
+              cursor.delete();
+              cursor.continue();
+            }
+          };
+        }
+      }
+
+      tx.oncomplete = () => {
+        console.log('[listing] Cleaned up', recordIds.length, 'empty records');
+        resolve();
+      };
+
+      tx.onerror = () => {
+        reject(new Error(`Cleanup transaction failed: ${tx.error?.message}`));
+      };
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
