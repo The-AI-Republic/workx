@@ -21,7 +21,8 @@ const path = require('path');
 // ============================================================================
 const CONFIG = {
   // Fireworks API configuration
-  apiKey: process.env.FIREWORKS_API_KEY || 'fw_3Za9g1tPTMGNTBBSCnEQkxwD',
+  // Set FIREWORKS_API_KEY environment variable before running
+  apiKey: process.env.FIREWORKS_API_KEY,
   apiUrl: 'https://api.fireworks.ai/inference/v1/chat/completions',
 
   // Model for TRANSLATION
@@ -182,9 +183,10 @@ function toChromeDirName(code) {
  * Check API key is configured
  */
 function checkApiKey() {
-  if (CONFIG.apiKey === 'YOUR_FIREWORKS_API_KEY_HERE' || !CONFIG.apiKey) {
+  if (!CONFIG.apiKey) {
     log('\n❌ Error: Fireworks API key not configured!', colors.red);
-    log('  Set FIREWORKS_API_KEY environment variable or edit CONFIG.apiKey in this script.', colors.yellow);
+    log('  Set FIREWORKS_API_KEY environment variable before running this script.', colors.yellow);
+    log('  Example: FIREWORKS_API_KEY=fw_xxx npm run translate', colors.yellow);
     process.exit(1);
   }
 }
