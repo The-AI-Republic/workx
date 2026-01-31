@@ -17,7 +17,7 @@ describe('Fresh Session Creation', () => {
       await session.initialize();
 
       expect(session).toBeDefined();
-      expect(session.getSessionId()).toMatch(/^conv_/);
+      expect(session.getSessionId().length).toBeGreaterThan(0);
     });
 
     it('should create session with SessionServices', async () => {

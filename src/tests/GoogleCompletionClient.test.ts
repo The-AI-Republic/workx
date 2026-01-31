@@ -434,4 +434,37 @@ describe('GoogleCompletionClient', () => {
             thoughtSignature: 'encrypted_thought_xyz789'
         });
     });
+    it('should use custom fetch with credentials: "include" when useCredentials is true', async () => {
+        const configWithCreds = {
+            ...mockConfig,
+            useCredentials: true,
+            baseUrl: 'https://api.airepublic.com/gemini'
+        };
+
+        const clientWithCreds = new GoogleCompletionClient(configWithCreds);
+
+        // Verify GoogleGenAI constructor call
+        expect(GoogleGenAI).toHaveBeenCalledWith(expect.objectContaining({
+            httpOptions: expect.objectContaining({
+                baseUrl: 'https://api.airepublic.com/gemini'
+            })
+        }));
+
+        // Get the options passed to GoogleGenAI
+        const options = mocks.GoogleGenAI.mock.calls[mocks.GoogleGenAI.mock.calls.length - 1][0];
+        const fetchFn = options.httpOptions.fetch;
+        expect(fetchFn).toBeDefined();
+
+        // Mock global fetch
+        const mockFetch = vi.fn().mockResolvedValue(new Response('{}'));
+        globalThis.fetch = mockFetch;
+
+        // Call the custom fetch function
+        await fetchFn('https://test.url', { method: 'GET' });
+
+        // Verify it was called with credentials: 'include'
+        expect(mockFetch).toHaveBeenCalledWith('https://test.url', expect.objectContaining({
+            credentials: 'include'
+        }));
+    });
 });

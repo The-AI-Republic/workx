@@ -24,74 +24,33 @@ This project is derived from OpenAI's open-source Browserx reference implementat
 
 **Current Status:** Alpha Testing
 
-Browserx for Chrome is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code remains publicly available for transparency and community review.
+Browserx for Chrome is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. At this time, we also **authorize** the use of this codebase to create derivative works for public distribution, including but not limited to publishing extensions to the Chrome Web Store or other browser extension marketplaces. The public usage of the code must acknowledge the AI Republic as original owner of the source code
 
-**Usage Restrictions:**
-
-- ✅ **Permitted:** Internal enterprise deployment and usage within your organization
-- ✅ **Permitted:** Personal evaluation and testing
-- ❌ **Restricted:** Any form of public redistribution, including but not limited to:
-  - Publishing this extension or derivatives to the Chrome Web Store or other browser extension marketplaces
-  - Incorporating any portion of the code (including individual tools like DOM utilities) into publicly distributed applications
-  - Rewriting or forking the project for public distribution
-
-**Prior written permission from AI Republic is required for any public redistribution or commercial use.**
-
-**Important Notice:** This software is provided "as is" without warranty of any kind. Use at your own risk. AI Republic and contributors are not liable for any damages, data loss, or security issues arising from the use of this software.
+**Important Notice:** This software is provided "as is" without warranty of any kind. While we authorize the use of this codebase for creating derivative works and public distribution under the Apache 2.0 license terms, users should be aware that the project is in active alpha development. Use at your own risk. AI Republic and contributors are not liable for any damages, data loss, or security issues arising from the use of this software.
 
 ---
 
 ## Licensing
 
-**Proprietary License with Source Availability**
-
-This project is **licensed under its own public license agreement**. While the source code remains publicly available for transparency and review, all rights are reserved by AI Republic.
-
-**License Terms:**
-
-- **Source Code Visibility:** The code is publicly accessible for educational purposes, security auditing, and internal enterprise evaluation
-- **Permitted Use:** Internal enterprise deployment and personal evaluation only
-- **Restricted Activities:** Any public redistribution, commercial use, or derivative works require prior written permission from AI Republic
-- **No Warranty:** The software is provided "as is" without any warranties or guarantees
-
-For licensing inquiries or permission requests, please contact [ceo@airepublic.com](mailto:ceo@airepublic.com).
+This project is now released under the **Apache License 2.0**—maintaining consistency with the upstream Browserx licensing framework. This fully permissive open-source license enables unrestricted use, modification, and distribution, including the creation and publication of derivative extensions.
 
 **Trademark Considerations:**
 
-The project name **BrowserX** (or **browserx**) is a trademark used by AI Republic. This naming convention better reflects the project's browser-centric architecture and cross-platform agent capabilities while avoiding potential trademark conflicts. The name emphasizes the extension's role as a powerful, extensible ("X") browser automation framework.
+To avoid potential trademark considerations regarding the "Browserx" name with OpenAI, the project has been rebranded to **BrowserX** (or **browserx**). This naming convention better reflects the project's browser-centric architecture and cross-platform agent capabilities while avoiding potential trademark conflicts. The name emphasizes the extension's role as a powerful, extensible ("X") browser automation framework.
 
 ---
 
 ## Large Language Model Support
 
-BrowserX supports multiple LLM providers and models with varying capabilities. Below are the currently supported providers:
+**Currently Supported:**
+- OpenAI GPT-5 (via OpenAI API endpoints)
 
-### OpenAI
-- **GPT-5.1** - Latest flagship model with advanced reasoning capabilities
-- **GPT-5** - Powerful reasoning model with extended context window
-- Context: 200K tokens | Output: 16K tokens | Supports: Reasoning, Images, Verbosity Control
+**In Development:**
+- Anthropic Claude
+- Google Gemini
+- DeepSeek
 
-### xAI
-- **Grok 4 Fast Reasoning** - High-performance reasoning model
-- Context: 131K tokens | Output: 16K tokens | Supports: Reasoning (5 effort levels), Images
-
-### Google AI Studio
-- **Gemini 3 Pro Preview** - Next-generation preview model with massive context
-- **Gemini 2.5 Pro** - Production-ready model with extensive capabilities
-- Context: 1M tokens | Output: 8K tokens | Supports: Reasoning, Images
-
-### Moonshot AI
-- **Kimi K2 Thinking** - Advanced reasoning model with cache optimization
-- **Kimi K2 Thinking Turbo** - Fast variant for quicker responses
-- Context: 262K tokens | Output: 16K tokens | Supports: Reasoning (3 effort levels)
-
-### Fireworks AI
-- **Kimi K2 Thinking** - Hosted version of Moonshot's reasoning model
-- Context: 262K tokens | Output: 16K tokens | Supports: Reasoning (3 effort levels)
-
-**Additional Providers:** Groq integration available (models can be configured)
-
-All models support function calling for browser tool integration. Reasoning-capable models provide enhanced decision-making for complex web automation tasks.
+We are actively working to expand model provider support to offer users greater flexibility and choice in their AI backend infrastructure.
 
 ---
 
@@ -231,7 +190,7 @@ We look forward to building the future of in-browser AI agents together.
 
 ## License
 
-All rights reserved. Copyright © 2025 AI Republic. This source code is publicly available for review and internal enterprise use only. Any public redistribution or commercial use requires prior written permission from AI Republic.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 

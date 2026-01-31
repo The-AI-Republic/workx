@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Generell AI-agent i webbläsaren för arbetsuppgifter"
+  },
+  "API_Key_Configuration": {
+    "message": "API-nyckelkonfiguration"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API-nycklar krypteras och lagras lokalt i din webbläsare. De skickas aldrig till externa servrar förutom vid API-anrop."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Åtkomst till webbläsarlagring (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Åtgärd"
+  },
+  "Action_Details": {
+    "message": "Åtgärdsdetaljer"
+  },
+  "Add_Modification": {
+    "message": "Lägg till ändring"
+  },
+  "Advanced_Configuration": {
+    "message": "Avancerad konfiguration"
+  },
+  "Advanced_Options": {
+    "message": "Avancerade alternativ"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Verktyg för agentexekvering"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Tillåt agenten att köra systemkommandon (använd med försiktighet)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Tillåt agenten att läsa, skriva och hantera filer (kommer i framtida uppdatering)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Tillåt innehållsskript att köras på webbsidor"
+  },
+  "Allowed_Origins": {
+    "message": "Tillåtna ursprung"
+  },
+  "Approval_History": {
+    "message": "Godkännandehistorik"
+  },
+  "Approve": {
+    "message": "Godkänn"
+  },
+  "Approve_this_action": {
+    "message": "Godkänn denna åtgärd"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Be Browserx att extrahera strukturerad data från vilken webbsida som helst"
+  },
+  "Available": {
+    "message": "Tillgängligt:"
+  },
+  "Back": {
+    "message": "Tillbaka"
+  },
+  "Backend_Mode": {
+    "message": "Backend-läge"
+  },
+  "Backend_Mode_Active": {
+    "message": "Backend-läge aktivt"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Webbläsarverktyg"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Växlar för webbläsarautomatiseringsverktyg"
+  },
+  "Cache_Settings": {
+    "message": "Cache-inställningar"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Cache TTL (sekunder)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Cachebeteende och datalagring"
+  },
+  "Cancel": {
+    "message": "Avbryt"
+  },
+  "Chat_History": {
+    "message": "Chatthistorik"
+  },
+  "Choose_AI_Model": {
+    "message": "Välj AI-modell"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Välj den visuella stilen för sidopanelens gränssnitt"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Välj vilken uppdateringskanal som ska följas"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Klassisk terminalstil med grön text på svart bakgrund"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Rent, modernt chattgränssnitt liknande ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Klicka på Browserx-ikonen i verktygsfältet eller tryck Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Klicka för att välja en modell"
+  },
+  "Close_settings": {
+    "message": "Stäng inställningar"
+  },
+  "Command": {
+    "message": "Kommando"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Komprimera cachelagrad data för att spara lagringsutrymme"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Konfigurera AI-modell och API-nycklar"
+  },
+  "Connected": {
+    "message": "Ansluten"
+  },
+  "Context": {
+    "message": "Kontext"
+  },
+  "Create_New_Tab": {
+    "message": "Skapa ny flik"
+  },
+  "Credit_Details": {
+    "message": "Kreditdetaljer"
+  },
+  "Current_Plan": {
+    "message": "Aktuell plan:"
+  },
+  "DOM_Tool": {
+    "message": "DOM-verktyg"
+  },
+  "Daily_Credits": {
+    "message": "Dagliga krediter"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Dataextraktionsverktyg"
+  },
+  "Days_until_expiration": {
+    "message": "Dagar kvar till utgång"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Utvecklad och stödd av AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Kassera ändringar"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Visa tokenförbrukning (input-/outputtokens) när uppgifter slutförs"
+  },
+  "Enable_All_Tools": {
+    "message": "Aktivera alla verktyg"
+  },
+  "Enable_Cache": {
+    "message": "Aktivera cache"
+  },
+  "Enable_Compression": {
+    "message": "Aktivera komprimering"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Aktivera innehållsskript"
+  },
+  "Enable_Extension": {
+    "message": "Aktivera tillägg"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Aktivera integration av Model Context Protocol-verktyg (kommer i en framtida uppdatering)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Aktivera cachelagring för att förbättra prestanda genom att lagra ofta åtkomna data"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Aktivera webbsökfunktioner för agenten"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Ange din LLM API-nyckel"
+  },
+  "Execute_Commands": {
+    "message": "Kör kommandon"
+  },
+  "Expire_after_days": {
+    "message": "Förfaller efter dagar"
+  },
+  "Explain_your_decision": {
+    "message": "Förklara ditt beslut..."
+  },
+  "Extension_Permission": {
+    "message": "Tillägg och behörigheter"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Inställningar för tillägg och behörigheter"
+  },
+  "Extension_Configuration": {
+    "message": "Tilläggskonfiguration"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Tilläggskonfiguration och behörigheter"
+  },
+  "Extra_Credits": {
+    "message": "Extra krediter"
+  },
+  "Extract_Data": {
+    "message": "Extrahera data:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Extrahera specifika datamönster från sidor"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Extrahera strukturerad data från webbsidor"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Kunde inte läsa in inställningarna"
+  },
+  "Failed_to_save_settings": {
+    "message": "Kunde inte spara inställningarna"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Filoperationer (ej tillgängligt)"
+  },
+  "File_Path": {
+    "message": "Filsökväg"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Fyll i formulär, skicka data, interagera med formulärelement"
+  },
+  "Form_Automation_Tool": {
+    "message": "Verktyg för formulärautomatisering"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Full åtkomst (Farlig)"
+  },
+  "General": {
+    "message": "Allmänt"
+  },
+  "General_Settings": {
+    "message": "Allmänna inställningar"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Kom igång"
+  },
+  "Hello_NAME": {
+    "message": "Hej $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hej världen"
+  },
+  "History": {
+    "message": "Historik"
+  },
+  "Impact": {
+    "message": "Påverkan"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Avskära och modifiera nätverksförfrågningar/svar"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Tangentbordsgenvägar"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-förfrågningar går direkt till leverantörens API:er"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-förfrågningar går via AI Republic-backend"
+  },
+  "Language": {
+    "message": "Språk"
+  },
+  "Learn_more": {
+    "message": "Läs mer"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Lista över tillåtna ursprungsdomäner (en på varje rad). Stöder jokertecken (*)"
+  },
+  "Loading_credits": {
+    "message": "Laddar krediter..."
+  },
+  "Loading_settings": {
+    "message": "Laddar inställningar..."
+  },
+  "Login": {
+    "message": "Logga in"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Logga in för att få gratis krediter"
+  },
+  "Low_credits_remaining": {
+    "message": "Lågt kreditsaldo"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP-verktyg (Ej tillgängligt)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Hantera webbläsarflikar (öppna, stänga, växla, sök)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Huvudväxel för att aktivera eller inaktivera alla webbläsar- och agentverktyg"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Huvudväxel för att aktivera eller inaktivera tillägget"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Maximal cache-storlek (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Maximal cache-storlek i megabyte (standard: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Maximal tid (i millisekunder) ett verktyg kan köras innan timeout (standard: 30000)"
+  },
+  "Model_Config": {
+    "message": "Modellkonfiguration"
+  },
+  "Model_Selection": {
+    "message": "Modellval"
+  },
+  "Modern_Chat": {
+    "message": "Modern Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Ändra parametrar vid begäran om förändringar"
+  },
+  "Monthly_Credits": {
+    "message": "Månatliga krediter"
+  },
+  "More_Config": {
+    "message": "Mer konfiguration"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navigera sidor, klicka på länkar, hantera webbläsarnavigering"
+  },
+  "Navigation_Tool": {
+    "message": "Navigationsverktyg"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Nätverksinspektionsverktyg"
+  },
+  "Never_expire_permanent": {
+    "message": "Upphör aldrig (permanent)"
+  },
+  "New_Conversation": {
+    "message": "Ny konversation"
+  },
+  "No_approval_history_yet": {
+    "message": "Ingen godkännandshistorik ännu."
+  },
+  "No_tabs_available": {
+    "message": "Inga flikar tillgängliga"
+  },
+  "Not_Connected": {
+    "message": "Ej ansluten"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Antal dagar innan utrullningsdata går ut (standard: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Öppna sidopanel:"
+  },
+  "Organization": {
+    "message": "Organisation"
+  },
+  "Page_Action_Tool": {
+    "message": "Sidåtgärdsverktyg"
+  },
+  "Page_Vision_Tool": {
+    "message": "Sidvisionsverktyg"
+  },
+  "Parameter_Modifications": {
+    "message": "Parameterändringar"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Utför sidåtgärder (scrolla, skärmdump, vänta)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Spara cache till lagring"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Ange en giltig API-nyckel."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Ange ett giltigt kommando"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Prioritetsskiktet ger snabbare svarstider med högre pris."
+  },
+  "Provider": {
+    "message": "Leverantör"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Fråga och manipulera DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Snabbstart"
+  },
+  "Quick_action": {
+    "message": "Snabbåtgärd"
+  },
+  "Read_only": {
+    "message": "Skrivskyddad"
+  },
+  "Reason_optional": {
+    "message": "Orsak (valfritt)"
+  },
+  "Refreshes_in": {
+    "message": "Uppdateras om"
+  },
+  "Reject": {
+    "message": "Avvisa"
+  },
+  "Reject_this_action": {
+    "message": "Avvisa denna åtgärd"
+  },
+  "Remaining": {
+    "message": "Återstår:"
+  },
+  "Remove_API_Key": {
+    "message": "Ta bort API-nyckel"
+  },
+  "Remove_modification": {
+    "message": "Ta bort ändring"
+  },
+  "Request_Changes": {
+    "message": "Begär ändringar"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Begär ändringar av denna åtgärd"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Högerklicka på någon text för att förklara eller förbättra den med Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Utgångsdatum för utrullning"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandboxpolicy"
+  },
+  "Save_API_Key": {
+    "message": "Spara API-nyckel"
+  },
+  "Save_Settings": {
+    "message": "Spara inställningar"
+  },
+  "Saving": {
+    "message": "Sparar..."
+  },
+  "Security_Privacy": {
+    "message": "Säkerhet & integritet"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Säkerhetsnivå för verktygets körmiljö"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Välj AI-modellen som ska användas för konversationer."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Välj ditt föredragna språk för gränssnittet"
+  },
+  "Send_the_message": {
+    "message": "Skicka meddelandet"
+  },
+  "Service_Tier": {
+    "message": "Tjänstenivå"
+  },
+  "Session": {
+    "message": "Session"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Ange när utrullningsdata ska gå ut"
+  },
+  "Settings": {
+    "message": "Inställningar"
+  },
+  "Settings_saved_successfully": {
+    "message": "Inställningarna sparades framgångsrikt"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Visa tokenanvändning i uppgifter"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Visa varning när lagringsanvändningen överstiger denna procentandel (förvalt: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Logga in på ditt konto"
+  },
+  "Stable": {
+    "message": "Stabil"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Stoppa aktuell uppgiftskörning"
+  },
+  "Storage_Cache": {
+    "message": "Lagring & Cache"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Lagrings- och cacheinställningar"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Varning för lagringskvot (%)"
+  },
+  "Storage_Settings": {
+    "message": "Lagringsinställningar"
+  },
+  "Storage_Tool": {
+    "message": "Lagringsverktyg"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Spara cachedata beständigt över webbläsarsessioner"
+  },
+  "Tab_Tool": {
+    "message": "Flikverktyg"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Testa anslutning"
+  },
+  "Testing": {
+    "message": "Testar..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Agenten använder just nu backend-läge. LLM-förfrågningar skickas via AI Republic-servern. Dina konversationer behandlas säkert genom vår infrastruktur."
+  },
+  "Time": {
+    "message": "Tid"
+  },
+  "Time_remaining": {
+    "message": "Återstående tid"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Livstid för cachade objekt i sekunder (standard: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Växla sidopanel"
+  },
+  "Tool": {
+    "message": "Verktyg"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Verktygstidsgräns (ms)"
+  },
+  "Tools": {
+    "message": "Verktyg"
+  },
+  "Tools_Settings": {
+    "message": "Verktygsinställningar"
+  },
+  "Turn": {
+    "message": "Runda"
+  },
+  "UI_Theme": {
+    "message": "UI-tema"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Det gick inte att läsa in kreditinformation"
+  },
+  "Unsaved_Changes": {
+    "message": "Osparade ändringar"
+  },
+  "Update_Channel": {
+    "message": "Uppdateringskanal"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Uppgradera min plan"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Uppgradera till Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Uppgradera ditt abonnemang för att utforska världens mest kraftfulla modeller"
+  },
+  "Use_Context_Menu": {
+    "message": "Använd kontextmeny:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Använd egen API-nyckel"
+  },
+  "User_Center": {
+    "message": "Användarcenter"
+  },
+  "User_approved_action": {
+    "message": "Användargodkänd åtgärd"
+  },
+  "User_decision": {
+    "message": "Användarbeslut"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Användarinställningar och gränssnittsinställningar"
+  },
+  "User_rejected_action": {
+    "message": "Användaren avvisade åtgärden"
+  },
+  "User_requested_modifications": {
+    "message": "Användaren begärde ändringar"
+  },
+  "Using_extra_credits": {
+    "message": "Använder extra krediter"
+  },
+  "View_Chat_History": {
+    "message": "Visa chatthistorik"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Visuell analys av sidinnehåll och layout"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Webbskrapningsverktyg"
+  },
+  "Web_Search": {
+    "message": "Webbsökning"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Välkommen till Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Skriv till arbetsyta"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Du har osparade ändringar. Vill du kassera dem?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Din AI-drivna webbläsarassistent är redo att hjälpa dig att navigera, förstå och interagera med webbinnehåll."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Din API-nyckel är krypterad"
+  },
+  "Your_Decision": {
+    "message": "Ditt beslut"
+  }
+}

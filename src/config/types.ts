@@ -4,41 +4,39 @@
  */
 
 /**
- * Model registry entry for fast provider lookup
+ * Main centralized configuration interface for the agent (RUNTIME)
  *
- * Maps model ID to provider ID and model key for O(1) lookups.
+ * This is the HYDRATED runtime configuration used throughout the application.
+ * It contains the complete configuration including static provider/model metadata.
+ *
+ * Relationship with IStoredConfig:
+ * - IStoredConfig: Minimal data persisted to chrome.storage.local (user-changeable only)
+ * - IAgentConfig: Full runtime config = IStoredConfig + static metadata from default.json
+ *
+ * At startup, the config service:
+ * 1. Loads IStoredConfig from storage (API keys, preferences, selected model)
+ * 2. Loads static metadata from default.json (provider info, model definitions)
+ * 3. Merges them to produce this IAgentConfig for runtime use
+ *
+ * @see IStoredConfig for the persistence format
  */
-export interface IModelRegistryEntry {
-  /**
-   * ID of the provider hosting this model
-   * MUST correspond to a key in IAgentConfig.providers
-   */
-  providerId: string;
-
-  /**
-   * Internal model identifier for API calls
-   * Corresponds to IModelConfig.modelKey in the provider's models array
-   */
-  modelKey: string;
-}
-
-// Main centralized configuration interface for the agent
 export interface IAgentConfig {
   version: string;
 
   /**
-   * Currently selected model ID
-   * The globally unique ID of the active model
-   * MUST exist in modelRegistry
+   * Currently selected model key
+   * Format: "providerId:modelKey" (e.g., "openai:gpt-5.1", "xai:grok-4-1-fast-reasoning")
+   * Uniquely identifies a model across all providers
    */
-  selectedModelId: string;
+  selectedModelKey: string;
 
   /**
-   * Model ID to provider/model lookup table
-   * Fast O(1) lookup from model ID to provider and model key
-   * Automatically maintained when providers/models are updated
+   * Model key for title generation (optional)
+   * Format: "providerId:modelKey" (e.g., "openai:gpt-4o-mini")
+   * If not specified, uses selectedModelKey
+   * Recommended: Use a fast/cheap model for title generation
    */
-  modelRegistry: Record<string, IModelRegistryEntry>;
+  modelForTitleGenerate?: string;
 
   providers: Record<string, IProviderConfig>;
   profiles?: Record<string, IProfileConfig>;
@@ -74,14 +72,6 @@ export interface IModelPrice {
 // Model configuration
 export interface IModelConfig {
   /**
-   * Globally unique model identifier
-   * Sequential 6-digit zero-padded numeric string
-   * Generated automatically when model is added to a provider
-   * MUST be unique across ALL providers
-   */
-  id: string;
-
-  /**
    * Human-readable model name
    * Display name shown to users in Settings UI
    */
@@ -90,6 +80,7 @@ export interface IModelConfig {
   /**
    * Internal API identifier
    * The exact model name/identifier used in API requests to the provider
+   * Also serves as the unique identifier for this model within a provider
    */
   modelKey: string;
 
@@ -180,6 +171,17 @@ export interface IModelConfig {
    * When omitted, the provider's default service tier is used
    */
   serviceTier?: 'default' | 'flex' | 'priority';
+
+  /**
+   * Backend mode routing support (optional)
+   * Indicates which backend API endpoint to use when routing through the backend service
+   * 0 or undefined = not supported (model only available in direct API mode)
+   * 1 = OpenAI Responses API
+   * 2 = OpenAI Chat Completions API
+   * 3 = Google API (Google's native API format)
+   * Default: 0 (must be explicitly enabled)
+   */
+  supportBackendMode?: number;
 }
 
 // Provider configuration
@@ -253,6 +255,26 @@ export interface IUserPreferences {
   autoSync?: boolean;
   telemetryEnabled?: boolean;
   theme?: 'light' | 'dark' | 'system';
+  /**
+   * UI theme for the side panel
+   * - 'terminal': Retro terminal-style UI with green text on black background
+   * - 'chatgpt': Modern ChatGPT-style UI with clean bubbles and light/dark mode
+   */
+  uiTheme?: 'terminal' | 'chatgpt';
+  /**
+   * Whether to use own API key directly instead of backend routing
+   * - When true: LLM requests go directly to provider APIs using user's API key
+   * - When false: LLM requests route through AI Republic backend (requires login)
+   * - Default: false for logged-in users, true (forced) for non-logged-in users
+   */
+  useOwnApiKey?: boolean;
+  /**
+   * Whether to show token usage information during task execution
+   * - When true: Token consumption (input/output tokens) is displayed in task events
+   * - When false: Token information is hidden from the UI
+   * - Default: false (hidden by default)
+   */
+  showTokenUsage?: boolean;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
 }
@@ -343,10 +365,69 @@ export interface IToolsConfig {
   perToolConfig?: Record<string, IToolSpecificConfig>;
 }
 
+/**
+ * Minimal stored provider config (only user-changeable fields)
+ * Static provider metadata (name, baseUrl, models, etc.) is loaded from default.json
+ */
+export interface IStoredProviderConfig {
+  /** Provider identifier (e.g., 'openai', 'xai', 'google-ai-studio') */
+  id: string;
+  /** Encrypted API key */
+  apiKey: string;
+  /** Provider-specific organization ID (optional) */
+  organization?: string | null;
+}
+
+/**
+ * Minimal configuration stored in chrome.storage.local (PERSISTENCE)
+ *
+ * This is the SERIALIZATION format for persisting user configuration.
+ * Only user-changeable data is stored; static model/provider metadata is NOT persisted.
+ *
+ * Relationship with IAgentConfig:
+ * - IStoredConfig: What gets saved to storage (minimal, user data only)
+ * - IAgentConfig: What the app uses at runtime (full, includes static metadata)
+ *
+ * Key differences from IAgentConfig:
+ * - Uses `providerKeys` (just apiKey + org) instead of full `providers` with model metadata
+ * - Static provider info (name, baseUrl, models, etc.) comes from default.json at runtime
+ *
+ * This separation ensures:
+ * - Smaller storage footprint
+ * - Model metadata updates via default.json don't require migration
+ * - User secrets (API keys) are cleanly separated from static config
+ *
+ * @see IAgentConfig for the runtime format
+ * @see IStoredProviderConfig for the minimal provider data stored
+ */
+export interface IStoredConfig {
+  version: string;
+  /** Currently selected model key (format: "providerId:modelKey") */
+  selectedModelKey: string;
+  /** Model key for title generation (optional, defaults to selectedModelKey) */
+  modelForTitleGenerate?: string;
+  /** Provider API keys and organization IDs only */
+  providerKeys: Record<string, IStoredProviderConfig>;
+  /** User preferences */
+  preferences: IUserPreferences;
+  /** Cache settings */
+  cache: ICacheSettings;
+  /** Extension settings */
+  extension: IExtensionSettings;
+  /** Profiles (user-created) */
+  profiles?: Record<string, IProfileConfig>;
+  /** Active profile name */
+  activeProfile?: string | null;
+  /** Tools configuration */
+  tools?: IToolsConfig;
+  /** Storage configuration */
+  storage?: IStorageConfig;
+}
+
 // Storage interfaces
 export interface IConfigStorage {
-  get(): Promise<IAgentConfig | null>;
-  set(config: IAgentConfig): Promise<void>;
+  get(): Promise<IStoredConfig | null>;
+  set(config: IStoredConfig): Promise<void>;
   clear(): Promise<void>;
   getStorageInfo(): Promise<IStorageInfo>;
 }
@@ -456,7 +537,8 @@ export interface ConfiguredFeatures {
  * Simplified version replacing ModelMetadata from ModelRegistry.ts
  */
 export interface ModelMetadata {
-  id: string;
+  /** Composite key: "providerId:modelKey" */
+  compositeKey: string;
   name: string;
   modelKey: string;
   creator: string;
@@ -470,7 +552,7 @@ export interface ModelMetadata {
   releaseDate?: string | null;
   deprecated?: boolean;
   deprecationMessage?: string | null;
-  provider: string; // Provider ID for UI display
+  providerId: string; // Provider ID for UI display
 }
 
 // Error types

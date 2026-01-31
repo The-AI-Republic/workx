@@ -62,7 +62,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
             data: emailSummaries[i],
             description: `Email summary ${i + 1}: ${emailSummaries[i].subject}`
           },
-          { metadata: { sessionId: 'conv_emails' } }
+          { metadata: { sessionId: 'emails' } }
         );
 
         expect(result.success).toBe(true);
@@ -70,7 +70,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
 
         // Verify metadata returned (not full data)
         expect(result.data.metadata).toBeDefined();
-        expect(result.data.metadata.storageKey).toMatch(/^conv_emails_[a-z0-9]{8}_[a-z0-9]{8}$/);
+        expect(result.data.metadata.storageKey).toMatch(/^emails_[a-z0-9]{8}_[a-z0-9]{8}$/);
         expect(result.data.metadata.description).toContain(`Email summary ${i + 1}`);
         expect(result.data.metadata.dataSize).toBeGreaterThan(50000); // ~50KB
         expect(result.data.metadata).not.toHaveProperty('data'); // Should NOT include full data
@@ -81,7 +81,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
       // List all cached items
       const listResult = await tool.execute(
         { action: 'list' },
-        { metadata: { sessionId: 'conv_emails' } }
+        { metadata: { sessionId: 'emails' } }
       );
 
       expect(listResult.success).toBe(true);
@@ -92,7 +92,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
       listResult.data.items.forEach((item: any, index: number) => {
         expect(item).not.toHaveProperty('data'); // Metadata only
         expect(item.description).toContain('Email summary');
-        expect(item.sessionId).toBe('conv_emails');
+        expect(item.sessionId).toBe('emails');
         expect(item.dataSize).toBeGreaterThan(50000);
       });
 
@@ -118,7 +118,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           data: emailData,
           description: 'Test email for retrieval'
         },
-        { metadata: { sessionId: 'conv_read_test' } }
+        { metadata: { sessionId: 'read_test' } }
       );
 
       expect(writeResult.success).toBe(true);
@@ -130,7 +130,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           action: 'read',
           storageKey
         },
-        { metadata: { sessionId: 'conv_read_test' } }
+        { metadata: { sessionId: 'read_test' } }
       );
 
       expect(readResult.success).toBe(true);
@@ -159,7 +159,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           data: largeData,
           description: 'Large document: 1MB processed text with metadata for downstream analysis'
         },
-        { metadata: { sessionId: 'conv_performance' } }
+        { metadata: { sessionId: 'performance' } }
       );
 
       const duration = Date.now() - startTime;
@@ -190,7 +190,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
               data: { ...data, index: i },
               description: `Rapid write ${i}`
             },
-            { metadata: { sessionId: 'conv_rapid' } }
+            { metadata: { sessionId: 'rapid' } }
           )
         );
       }
@@ -223,7 +223,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           data: { test: 'data with long description' },
           description: longDescription
         },
-        { metadata: { sessionId: 'conv_truncate' } }
+        { metadata: { sessionId: 'truncate' } }
       );
 
       expect(result.success).toBe(true);
@@ -241,7 +241,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           action: 'read',
           storageKey: result.data.metadata.storageKey
         },
-        { metadata: { sessionId: 'conv_truncate' } }
+        { metadata: { sessionId: 'truncate' } }
       );
 
       expect(readResult.success).toBe(true);
@@ -258,7 +258,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           data: { test: 'exact length' },
           description: exactDescription
         },
-        { metadata: { sessionId: 'conv_exact' } }
+        { metadata: { sessionId: 'exact' } }
       );
 
       expect(result.success).toBe(true);
@@ -275,7 +275,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
           data: { test: 'short' },
           description: shortDescription
         },
-        { metadata: { sessionId: 'conv_short' } }
+        { metadata: { sessionId: 'short' } }
       );
 
       expect(result.success).toBe(true);
@@ -290,7 +290,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
 
     it('should retrieve items sequentially without context accumulation', async () => {
-      const sessionId = 'conv_sequential';
+      const sessionId = 'sequential';
 
       // Cache 5 items
       const keys = [];
@@ -339,7 +339,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
 
     it('should retrieve 5KB item with full content for downstream processing', async () => {
-      const sessionId = 'conv_5kb';
+      const sessionId = '5kb';
 
       // Create 5KB item
       const largeItem = {
@@ -384,8 +384,8 @@ describe('Storage Tool Cache - Integration Tests', () => {
 
   describe('Session Isolation', () => {
     it('should isolate cache entries by session', async () => {
-      const sessionA = 'conv_session_a';
-      const sessionB = 'conv_session_b';
+      const sessionA = 'session_a';
+      const sessionB = 'session_b';
 
       // Create items in session A
       const keysA = [];
@@ -480,7 +480,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
 
   describe('End-to-End Cache Lifecycle', () => {
     it('should support full write-list-read-update-delete cycle', async () => {
-      const sessionId = 'conv_lifecycle';
+      const sessionId = 'lifecycle';
 
       // 1. Write initial data
       const writeResult = await tool.execute(
@@ -558,7 +558,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
 
   describe('Progressive Updates Integration', () => {
     it('should support progressive updates - cache partial then complete results', async () => {
-      const sessionId = 'conv_progressive';
+      const sessionId = 'progressive';
 
       // 1. Cache partial results (10 items)
       const partialData = {
@@ -635,7 +635,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
 
     it('should update metadata correctly - description, timestamp, dataSize', async () => {
-      const sessionId = 'conv_metadata_update';
+      const sessionId = 'metadata_update';
 
       // 1. Write initial item with small data
       const initialData = { version: 1, content: 'x'.repeat(1000) }; // ~1KB
@@ -716,7 +716,7 @@ describe('Storage Tool Cache - Integration Tests', () => {
     });
 
     it('should handle concurrent updates - last write wins', async () => {
-      const sessionId = 'conv_concurrent';
+      const sessionId = 'concurrent';
 
       // 1. Write initial item
       const writeResult = await tool.execute(

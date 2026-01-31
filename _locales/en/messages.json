@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "General in-browser AI agent for work tasks"
+  },
+  "API_Key_Configuration": {
+    "message": "API Key Configuration"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API keys are encrypted and stored locally in your browser. They are never sent to external servers except for API calls."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Access browser storage (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Action"
+  },
+  "Action_Details": {
+    "message": "Action Details"
+  },
+  "Add_Modification": {
+    "message": "Add Modification"
+  },
+  "Advanced_Configuration": {
+    "message": "Advanced Configuration"
+  },
+  "Advanced_Options": {
+    "message": "Advanced Options"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Agent Execution Tools"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Allow agent to execute system commands (use with caution)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Allow agent to read, write, and manage files (Coming in future update)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Allow content scripts to run on web pages"
+  },
+  "Allowed_Origins": {
+    "message": "Allowed Origins"
+  },
+  "Approval_History": {
+    "message": "Approval History"
+  },
+  "Approve": {
+    "message": "Approve"
+  },
+  "Approve_this_action": {
+    "message": "Approve this action"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Ask Browserx to extract structured data from any webpage"
+  },
+  "Available": {
+    "message": "Available:"
+  },
+  "Back": {
+    "message": "Back"
+  },
+  "Backend_Mode": {
+    "message": "Backend Mode"
+  },
+  "Backend_Mode_Active": {
+    "message": "Backend Mode Active"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Browser Tools"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Browser automation tool toggles"
+  },
+  "Cache_Settings": {
+    "message": "Cache Settings"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Cache TTL (seconds)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Cache behavior and data retention"
+  },
+  "Cancel": {
+    "message": "Cancel"
+  },
+  "Chat_History": {
+    "message": "Chat History"
+  },
+  "Choose_AI_Model": {
+    "message": "Choose AI Model"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Choose the visual style for the side panel interface"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Choose which update channel to follow"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Classic terminal style with green text on black background"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Clean, modern chat interface similar to ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Click the Browserx icon in your toolbar or press Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Click to select a model"
+  },
+  "Close_settings": {
+    "message": "Close settings"
+  },
+  "Command": {
+    "message": "Command"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Compress cached data to save storage space"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Configure AI model and API keys"
+  },
+  "Connected": {
+    "message": "Connected"
+  },
+  "Context": {
+    "message": "Context"
+  },
+  "Create_New_Tab": {
+    "message": "Create New Tab"
+  },
+  "Credit_Details": {
+    "message": "Credit Details"
+  },
+  "Current_Plan": {
+    "message": "Current Plan:"
+  },
+  "DOM_Tool": {
+    "message": "DOM Tool"
+  },
+  "Daily_Credits": {
+    "message": "Daily Credits"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Data Extraction Tool"
+  },
+  "Days_until_expiration": {
+    "message": "Days until expiration"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Developed and supported by AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Discard Changes"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Display token consumption (input/output tokens) when tasks complete"
+  },
+  "Enable_All_Tools": {
+    "message": "Enable All Tools"
+  },
+  "Enable_Cache": {
+    "message": "Enable Cache"
+  },
+  "Enable_Compression": {
+    "message": "Enable Compression"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Enable Content Scripts"
+  },
+  "Enable_Extension": {
+    "message": "Enable Extension"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Enable Model Context Protocol tools integration (Coming in future update)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Enable caching to improve performance by storing frequently accessed data"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Enable web search capabilities for the agent"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Enter your LLM API key"
+  },
+  "Execute_Commands": {
+    "message": "Execute Commands"
+  },
+  "Expire_after_days": {
+    "message": "Expire after days"
+  },
+  "Explain_your_decision": {
+    "message": "Explain your decision..."
+  },
+  "Extension_Permission": {
+    "message": "Extension & Permission"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Extension & Permission Settings"
+  },
+  "Extension_Configuration": {
+    "message": "Extension Configuration"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Extension configuration and permissions"
+  },
+  "Extra_Credits": {
+    "message": "Extra Credits"
+  },
+  "Extract_Data": {
+    "message": "Extract Data:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Extract specific data patterns from pages"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Extract structured data from web pages"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Failed to load preferences"
+  },
+  "Failed_to_save_settings": {
+    "message": "Failed to save settings"
+  },
+  "File_Operations_Not_Available": {
+    "message": "File Operations (Not Available)"
+  },
+  "File_Path": {
+    "message": "File Path"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Fill forms, submit data, interact with form elements"
+  },
+  "Form_Automation_Tool": {
+    "message": "Form Automation Tool"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Full Access (Dangerous)"
+  },
+  "General": {
+    "message": "General"
+  },
+  "General_Settings": {
+    "message": "General Settings"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General in-browser AI agent for work tasks"
+  },
+  "Get_Started": {
+    "message": "Get Started"
+  },
+  "Hello_NAME": {
+    "message": "Hello $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hello World"
+  },
+  "History": {
+    "message": "History"
+  },
+  "Impact": {
+    "message": "Impact"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Intercept and modify network requests/responses"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Keyboard Shortcuts"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM requests go directly to provider APIs"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM requests route through AI Republic backend"
+  },
+  "Language": {
+    "message": "Language"
+  },
+  "Learn_more": {
+    "message": "Learn more"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "List of allowed origins (one per line). Supports wildcards (*)."
+  },
+  "Loading_credits": {
+    "message": "Loading credits..."
+  },
+  "Loading_settings": {
+    "message": "Loading settings..."
+  },
+  "Login": {
+    "message": "Login"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Login to get free credits"
+  },
+  "Low_credits_remaining": {
+    "message": "Low credits remaining"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Tools (Not Available)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Manage browser tabs (open, close, switch, query)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Master toggle to enable or disable all browser and agent tools"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Master toggle to enable or disable the extension"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Max Cache Size (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Maximum cache size in megabytes (default: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Maximum time (in milliseconds) a tool can run before timeout (default: 30000)"
+  },
+  "Model_Config": {
+    "message": "Model Config"
+  },
+  "Model_Selection": {
+    "message": "Model Selection"
+  },
+  "Modern_Chat": {
+    "message": "Modern Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Modify parameters when requesting changes"
+  },
+  "Monthly_Credits": {
+    "message": "Monthly Credits"
+  },
+  "More_Config": {
+    "message": "More Config"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navigate pages, click links, handle browser navigation"
+  },
+  "Navigation_Tool": {
+    "message": "Navigation Tool"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Network Intercept Tool"
+  },
+  "Never_expire_permanent": {
+    "message": "Never expire (permanent)"
+  },
+  "New_Conversation": {
+    "message": "New Conversation"
+  },
+  "No_approval_history_yet": {
+    "message": "No approval history yet."
+  },
+  "No_tabs_available": {
+    "message": "No tabs available"
+  },
+  "Not_Connected": {
+    "message": "Not Connected"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Number of days before rollout data expires (default: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Open Side Panel:"
+  },
+  "Organization": {
+    "message": "Organization"
+  },
+  "Page_Action_Tool": {
+    "message": "Page Action Tool"
+  },
+  "Page_Vision_Tool": {
+    "message": "Page Vision Tool"
+  },
+  "Parameter_Modifications": {
+    "message": "Parameter Modifications"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Perform page actions (scroll, screenshot, wait)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Persist Cache to Storage"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Please input a valid API key."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Please type a valid command"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Priority tier provides faster response times with higher pricing."
+  },
+  "Provider": {
+    "message": "Provider"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Query and manipulate the DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Quick Start"
+  },
+  "Quick_action": {
+    "message": "Quick action"
+  },
+  "Read_only": {
+    "message": "Read-only"
+  },
+  "Reason_optional": {
+    "message": "Reason (optional)"
+  },
+  "Refreshes_in": {
+    "message": "Refreshes in"
+  },
+  "Reject": {
+    "message": "Reject"
+  },
+  "Reject_this_action": {
+    "message": "Reject this action"
+  },
+  "Remaining": {
+    "message": "Remaining:"
+  },
+  "Remove_API_Key": {
+    "message": "Remove API Key"
+  },
+  "Remove_modification": {
+    "message": "Remove modification"
+  },
+  "Request_Changes": {
+    "message": "Request Changes"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Request changes to this action"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Right-click on any text to explain or improve it with Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Rollout Expiration"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandbox Policy"
+  },
+  "Save_API_Key": {
+    "message": "Save API Key"
+  },
+  "Save_Settings": {
+    "message": "Save Settings"
+  },
+  "Saving": {
+    "message": "Saving..."
+  },
+  "Security_Privacy": {
+    "message": "Security & Privacy"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Security level for tool execution environment"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Select the AI model to use for conversations."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Select your preferred language for the interface"
+  },
+  "Send_the_message": {
+    "message": "Send the message"
+  },
+  "Service_Tier": {
+    "message": "Service Tier"
+  },
+  "Session": {
+    "message": "Session"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Set when rollout data should expire"
+  },
+  "Settings": {
+    "message": "Settings"
+  },
+  "Settings_saved_successfully": {
+    "message": "Settings saved successfully"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Show token usage in tasks"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Show warning when storage usage exceeds this percentage (default: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Sign in to your account"
+  },
+  "Stable": {
+    "message": "Stable"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Stop the current task run"
+  },
+  "Storage_Cache": {
+    "message": "Storage & Cache"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Storage & Cache Settings"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Storage Quota Warning (%)"
+  },
+  "Storage_Settings": {
+    "message": "Storage Settings"
+  },
+  "Storage_Tool": {
+    "message": "Storage Tool"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Store cache data persistently across browser sessions"
+  },
+  "Tab_Tool": {
+    "message": "Tab Tool"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Test Connection"
+  },
+  "Testing": {
+    "message": "Testing..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "The agent is currently using backend mode. LLM requests will route through AI Republic server. Your conversations are processed securely through our infrastructure."
+  },
+  "Time": {
+    "message": "Time"
+  },
+  "Time_remaining": {
+    "message": "Time remaining"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Time-to-live for cached items in seconds (default: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Toggle side panel"
+  },
+  "Tool": {
+    "message": "Tool"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Tool Timeout (ms)"
+  },
+  "Tools": {
+    "message": "Tools"
+  },
+  "Tools_Settings": {
+    "message": "Tools Settings"
+  },
+  "Turn": {
+    "message": "Turn"
+  },
+  "UI_Theme": {
+    "message": "UI Theme"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Unable to load credit information"
+  },
+  "Unsaved_Changes": {
+    "message": "Unsaved Changes"
+  },
+  "Update_Channel": {
+    "message": "Update Channel"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Upgrade My Plan"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Upgrade to Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Upgrade your subscription to explore world's most powerful models"
+  },
+  "Use_Context_Menu": {
+    "message": "Use Context Menu:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Use Own API Key"
+  },
+  "User_Center": {
+    "message": "User Center"
+  },
+  "User_approved_action": {
+    "message": "User approved action"
+  },
+  "User_decision": {
+    "message": "User decision"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "User preferences and interface settings"
+  },
+  "User_rejected_action": {
+    "message": "User rejected action"
+  },
+  "User_requested_modifications": {
+    "message": "User requested modifications"
+  },
+  "Using_extra_credits": {
+    "message": "Using extra credits"
+  },
+  "View_Chat_History": {
+    "message": "View Chat History"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Visual analysis of page content and layout"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Web Scraping Tool"
+  },
+  "Web_Search": {
+    "message": "Web Search"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Welcome to Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Workspace Write"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "You have unsaved changes. Do you want to discard them?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Your AI-powered browser assistant is ready to help you navigate, understand, and interact with web content."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Your API key is encrypted"
+  },
+  "Your_Decision": {
+    "message": "Your Decision"
+  }
+}

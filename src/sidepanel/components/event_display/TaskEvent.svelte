@@ -1,31 +1,69 @@
 <script lang="ts">
   /**
    * TaskEvent - Renders task lifecycle events
+   * Hides task completion card entirely when showTokenUsage setting is disabled
    */
-  import type { ProcessedEvent } from '../../../types/ui';
+  import type { ProcessedEvent } from '../../../../open_source/src/types/ui';
+  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { showTokenUsage } from '../../stores/tokenUsageStore';
 
   export let event: ProcessedEvent;
+
+  let currentTheme: UITheme = 'terminal';
+  uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
+
+  let shouldShowTokenUsage = false;
+  showTokenUsage.subscribe((show) => {
+    shouldShowTokenUsage = show;
+  });
+
+  // Hide all task cards (started, complete, etc.) when setting is disabled
+  $: shouldHideCard = !shouldShowTokenUsage;
 </script>
 
-<div class="task-event">
-  <div class={`text-sm ${event.style.textColor}`}>
-    {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
-  </div>
-
-  {#if event.metadata}
-    <div class="text-xs text-gray-500 mt-1">
-      {#if event.metadata.model}
-        <div>Model: {event.metadata.model}</div>
-      {/if}
-      {#if event.metadata.turnCount}
-        <div>Turns: {event.metadata.turnCount}</div>
-      {/if}
-      {#if event.metadata.tokenUsage}
-        <div>
-          Tokens: {event.metadata.tokenUsage.total.toLocaleString()}
-          (Input: {event.metadata.tokenUsage.input.toLocaleString()}, Output: {event.metadata.tokenUsage.output.toLocaleString()})
-        </div>
-      {/if}
+{#if !shouldHideCard}
+  <div class="task-event {currentTheme}">
+    <div class="task-content text-sm">
+      {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
     </div>
-  {/if}
-</div>
+
+    {#if event.metadata}
+      <div class="task-metadata text-xs mt-1">
+        {#if event.metadata.model}
+          <div>Model: {event.metadata.model}</div>
+        {/if}
+        {#if event.metadata.turnCount}
+          <div>Turns: {event.metadata.turnCount}</div>
+        {/if}
+        {#if event.metadata.tokenUsage}
+          <div>
+            Tokens: {event.metadata.tokenUsage.total.toLocaleString()}
+            (Input: {event.metadata.tokenUsage.input.toLocaleString()}, Output: {event.metadata.tokenUsage.output.toLocaleString()})
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  /* Terminal theme (default) */
+  .task-event.terminal .task-content {
+    color: #00ff00;
+  }
+
+  .task-event.terminal .task-metadata {
+    color: #6b7280;
+  }
+
+  /* ChatGPT theme */
+  .task-event.chatgpt .task-content {
+    color: var(--chat-text-secondary, #6e6e80);
+  }
+
+  .task-event.chatgpt .task-metadata {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+</style>

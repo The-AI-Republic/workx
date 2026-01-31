@@ -6,12 +6,15 @@
     "dev": "vite",
     "vite:build": "vite build",
     "build": "node scripts/build.js",
+    "extract-i18n": "node scripts/extract-i18n.js",
+    "translate": "node scripts/translate-i18n.js",
+    "translate-validate": "node scripts/translate-i18n.js validate",
     "build:watch": "vite build --watch",
-    "build:testtool": "vite build --config tests/tools/e2e/vite.config.ts",
+    "build:testtool": "vite build --config open_source/tests/tools/e2e/vite.config.ts",
     "test": "vitest",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.svelte",
-    "format": "prettier --write 'src/**/*.{ts,svelte,html,css}'"
+    "lint": "eslint open_source/src --ext .ts,.svelte",
+    "format": "prettier --write 'open_source/src/**/*.{ts,svelte,html,css}'"
   },
   "keywords": [],
   "author": "",
@@ -51,6 +54,8 @@
     "eventsource": "^2.0.2",
     "marked": "^17.0.0",
     "openai": "^6.6.0",
+    "svelte-spa-router": "^4.0.1",
+    "tippy.js": "^6.3.7",
     "uuid": "^13.0.0",
     "zod": "^3.23.8"
   }

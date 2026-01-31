@@ -11,9 +11,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        background: resolve(__dirname, 'src/background/service-worker.ts'),
+        background: resolve(__dirname, 'open_source/src/background/service-worker.ts'),
         sidepanel: resolve(__dirname, 'src/sidepanel/sidepanel.html'),
-        welcome: resolve(__dirname, 'src/welcome/welcome.html')
+        welcome: resolve(__dirname, 'open_source/src/welcome/welcome.html')
       },
       output: {
         entryFileNames: '[name].js',
@@ -29,7 +29,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'open_source/src')
     }
   }
 });

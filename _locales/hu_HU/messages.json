@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Általános, böngészőben futó AI-ügynök munkafeladatokhoz"
+  },
+  "API_Key_Configuration": {
+    "message": "API-kulcs beállítása"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Az API-kulcsok titkosítva vannak és helyileg tárolódnak a böngészőben. Soha nem küldődnek külső szerverekre, kivéve az API-hívásokat."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Böngészőtároló elérése (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Művelet"
+  },
+  "Action_Details": {
+    "message": "Művelet részletei"
+  },
+  "Add_Modification": {
+    "message": "Módosítás hozzáadása"
+  },
+  "Advanced_Configuration": {
+    "message": "Speciális beállítások"
+  },
+  "Advanced_Options": {
+    "message": "Haladó beállítások"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Ügynök végrehajtási eszközök"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Az ügynök engedélyezése rendszerparancsok végrehajtására (használja óvatosan!)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Az ügynök engedélyezése fájlok olvasására, írására és kezelésére (jövőbeni frissítésben érkezik)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Tartalomszkriptek futtatásának engedélyezése weboldalakon"
+  },
+  "Allowed_Origins": {
+    "message": "Engedélyezett források"
+  },
+  "Approval_History": {
+    "message": "Jóváhagyási előzmények"
+  },
+  "Approve": {
+    "message": "Jóváhagy"
+  },
+  "Approve_this_action": {
+    "message": "Művelet jóváhagyása"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "A Browserx képes strukturált adatot kinyerni bármely weboldalról"
+  },
+  "Available": {
+    "message": "Elérhető:"
+  },
+  "Back": {
+    "message": "Vissza"
+  },
+  "Backend_Mode": {
+    "message": "Háttérszolgáltatás mód"
+  },
+  "Backend_Mode_Active": {
+    "message": "Háttér mód aktív"
+  },
+  "Beta": {
+    "message": "Béta"
+  },
+  "Browser_Tools": {
+    "message": "Böngésző eszközök"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Böngészőautomatizálási eszközök kapcsolói"
+  },
+  "Cache_Settings": {
+    "message": "Gyorsítótár beállítások"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Gyorsítótár TTL (másodperc)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Gyorsítótár működése és adatmegőrzése"
+  },
+  "Cancel": {
+    "message": "Mégse"
+  },
+  "Chat_History": {
+    "message": "Csevegési előzmények"
+  },
+  "Choose_AI_Model": {
+    "message": "Válasszon mesterséges intelligencia modellt"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Válassza ki az oldalsó panel vizuális megjelenését"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Válassza ki, melyik frissítési csatornát kövesse"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Klasszikus terminálstílus fekete háttérrel és zöld szöveggel"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Tiszta, modern csevegőfelület, hasonló a ChatGPThez"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Kattintson a Browserx ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
+  },
+  "Click_to_select_a_model": {
+    "message": "Kattintson a modell kiválasztásához"
+  },
+  "Close_settings": {
+    "message": "Beállítások bezárása"
+  },
+  "Command": {
+    "message": "Parancs"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Gyorsítótárazott adatok tömörítése a tárhely megtakarítása érdekében"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "AI modell és API kulcsok konfigurálása"
+  },
+  "Connected": {
+    "message": "Csatlakoztatva"
+  },
+  "Context": {
+    "message": "Kontextus"
+  },
+  "Create_New_Tab": {
+    "message": "Új lap létrehozása"
+  },
+  "Credit_Details": {
+    "message": "Kredit részletei"
+  },
+  "Current_Plan": {
+    "message": "Jelenlegi csomag:"
+  },
+  "DOM_Tool": {
+    "message": "DOM-eszköz"
+  },
+  "Daily_Credits": {
+    "message": "Napi kreditek"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Adatkinyerő eszköz"
+  },
+  "Days_until_expiration": {
+    "message": "Lejáratig hátralévő napok száma"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Az AI Republic fejlesztette és támogatja"
+  },
+  "Discard_Changes": {
+    "message": "Módosítások elvetése"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Token-fogyasztás megjelenítése (bemeneti/kimeneti tokenek) a feladatok befejezésekor"
+  },
+  "Enable_All_Tools": {
+    "message": "Minden eszköz engedélyezése"
+  },
+  "Enable_Cache": {
+    "message": "Gyorsítótár engedélyezése"
+  },
+  "Enable_Compression": {
+    "message": "Tömörítés engedélyezése"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Tartalomszkriptek engedélyezése"
+  },
+  "Enable_Extension": {
+    "message": "Bővítmény engedélyezése"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Model Context Protocol (MCP) eszközök integrációjának engedélyezése (jövőbeli frissítés)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Engedélyezze a gyorsítótárazást a teljesítmény javításához, amely a gyakran használt adatokat tárolja."
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Webkeresési képességek engedélyezése az ügynök számára"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Adja meg az LLM API kulcsát"
+  },
+  "Execute_Commands": {
+    "message": "Parancsok végrehajtása"
+  },
+  "Expire_after_days": {
+    "message": "Lejárat napok után"
+  },
+  "Explain_your_decision": {
+    "message": "Magyarázza meg döntését..."
+  },
+  "Extension_Permission": {
+    "message": "Bővítmény és engedély"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Bővítmény és engedély beállításai"
+  },
+  "Extension_Configuration": {
+    "message": "Bővítmény konfigurációja"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Bővítmény konfigurációja és engedélyei"
+  },
+  "Extra_Credits": {
+    "message": "További kreditek"
+  },
+  "Extract_Data": {
+    "message": "Adatok kinyerése:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Specifikus adatminták kinyerése az oldalakról"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Strukturált adatok kinyerése weboldalakról"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Nem sikerült betölteni a beállításokat"
+  },
+  "Failed_to_save_settings": {
+    "message": "Nem sikerült menteni a beállításokat"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Fájlműveletek (Nem érhető el)"
+  },
+  "File_Path": {
+    "message": "Fájl útvonal"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Űrlapok kitöltése, adatok beküldése, űrlapelemekkel való interakció"
+  },
+  "Form_Automation_Tool": {
+    "message": "Űrlap-automatizálási eszköz"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Teljes hozzáférés (Veszélyes)"
+  },
+  "General": {
+    "message": "Általános"
+  },
+  "General_Settings": {
+    "message": "Általános beállítások"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Első lépések"
+  },
+  "Hello_NAME": {
+    "message": "Üdv, $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Helló Világ"
+  },
+  "History": {
+    "message": "Előzmények"
+  },
+  "Impact": {
+    "message": "Hatás"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Hálózati kérések/válaszok elfogása és módosítása"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Gyorsbillentyűk"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Az LLM kérések közvetlenül a szolgáltató API-khoz kerülnek"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Az LLM kérések az AI Republic háttérrendszerén keresztül haladnak"
+  },
+  "Language": {
+    "message": "Nyelv"
+  },
+  "Learn_more": {
+    "message": "További információ"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Engedélyezett források listája (soronként egy). Támogatja a helyettesítő karaktereket (*)"
+  },
+  "Loading_credits": {
+    "message": "Kreditek betöltése..."
+  },
+  "Loading_settings": {
+    "message": "Beállítások betöltése..."
+  },
+  "Login": {
+    "message": "Bejelentkezés"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Bejelentkezés az ingyenes kreditekért"
+  },
+  "Low_credits_remaining": {
+    "message": "Kevés kredit maradt"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Eszközök (Nem elérhető)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Böngészőlapok kezelése (nyitás, bezárás, váltás, lekérdezés)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Főkapcsoló az összes böngésző- és ügynök eszköz be/ki kapcsolásához"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Főkapcsoló a kiegészítő engedélyezéséhez vagy letiltásához"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Maximális gyorsítótár méret (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "A gyorsítótár maximális mérete megabájtban (alapértelmezett: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Maximum idő (ezredmásodpercben), ameddig egy eszköz futhat időtúllépés nélkül (alapértelmezett: 30000)"
+  },
+  "Model_Config": {
+    "message": "Modell beállítások"
+  },
+  "Model_Selection": {
+    "message": "Modell kiválasztása"
+  },
+  "Modern_Chat": {
+    "message": "Modern csevegés"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Paraméterek módosítása változtatás kérésénél"
+  },
+  "Monthly_Credits": {
+    "message": "Havi kreditek"
+  },
+  "More_Config": {
+    "message": "További beállítások"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Oldalak navigálása, linkek kattintása, böngésző navigáció kezelése"
+  },
+  "Navigation_Tool": {
+    "message": "Navigációs eszköz"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Hálózati elfogó eszköz"
+  },
+  "Never_expire_permanent": {
+    "message": "Soha nem jár le (állandó)"
+  },
+  "New_Conversation": {
+    "message": "Új beszélgetés"
+  },
+  "No_approval_history_yet": {
+    "message": "Még nincs jóváhagyási előzmény."
+  },
+  "No_tabs_available": {
+    "message": "Nincs elérhető lap"
+  },
+  "Not_Connected": {
+    "message": "Nincs csatlakozva"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "A bevezetési adatok érvényességi ideje napokban (alapértelmezett: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Oldalsó panel megnyitása:"
+  },
+  "Organization": {
+    "message": "Szervezet"
+  },
+  "Page_Action_Tool": {
+    "message": "Oldalművelet eszköz"
+  },
+  "Page_Vision_Tool": {
+    "message": "Oldalelemző eszköz"
+  },
+  "Parameter_Modifications": {
+    "message": "Paraméter módosítások"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Oldalműveletek végrehajtása (görgetés, képernyőkép, várakozás)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Gyorsítótár tartós tárolása"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Kérjük, adjon meg egy érvényes API kulcsot."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Kérjük, írjon be egy érvényes parancsot"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "A prioritási szint gyorsabb válaszidőket biztosít magasabb árral."
+  },
+  "Provider": {
+    "message": "Szolgáltató"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "A DOM (Document Object Model) lekérdezése és módosítása"
+  },
+  "Quick_Start": {
+    "message": "Gyors indítás"
+  },
+  "Quick_action": {
+    "message": "Gyors művelet"
+  },
+  "Read_only": {
+    "message": "Csak olvasható"
+  },
+  "Reason_optional": {
+    "message": "Indok (opcionális)"
+  },
+  "Refreshes_in": {
+    "message": "Frissítés: $1"
+  },
+  "Reject": {
+    "message": "Elutasít"
+  },
+  "Reject_this_action": {
+    "message": "Művelet elutasítása"
+  },
+  "Remaining": {
+    "message": "Hátralévő:"
+  },
+  "Remove_API_Key": {
+    "message": "API kulcs eltávolítása"
+  },
+  "Remove_modification": {
+    "message": "Módosítás eltávolítása"
+  },
+  "Request_Changes": {
+    "message": "Változtatás kérése"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Változtatás kérése ehhez a művelethez"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Kattintson jobb gombbal bármely szövegre, hogy a Browserx-szel magyarázzon vagy javítson rajta"
+  },
+  "Rollout_Expiration": {
+    "message": "Kihelyezés lejárata"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandbox szabályzat"
+  },
+  "Save_API_Key": {
+    "message": "API kulcs mentése"
+  },
+  "Save_Settings": {
+    "message": "Beállítások mentése"
+  },
+  "Saving": {
+    "message": "Mentés..."
+  },
+  "Security_Privacy": {
+    "message": "Biztonság és adatvédelem"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Eszközvégrehajtási környezet biztonsági szintje"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Válassza ki a beszélgetésekhez használandó AI modellt."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Válassza ki a felület preferált nyelvét"
+  },
+  "Send_the_message": {
+    "message": "Üzenet küldése"
+  },
+  "Service_Tier": {
+    "message": "Szolgáltatás szintje"
+  },
+  "Session": {
+    "message": "Munkamenet"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Állítsa be, hogy mikor járjon le a bevezetés adata"
+  },
+  "Settings": {
+    "message": "Beállítások"
+  },
+  "Settings_saved_successfully": {
+    "message": "Beállítások sikeresen mentve"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Token-felhasználás megjelenítése a feladatokban"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Figyelmeztetés megjelenítése, ha a tárhelyhasználat meghaladja ezt a százalékot (alapértelmezett: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Jelentkezzen be a fiókjába"
+  },
+  "Stable": {
+    "message": "Stabil"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Állítsa le az aktuális feladatot"
+  },
+  "Storage_Cache": {
+    "message": "Tárolás és gyorsítótár"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Tárolás és gyorsítótár beállításai"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Tárolókvóta figyelmeztetés (%)"
+  },
+  "Storage_Settings": {
+    "message": "Tárolási beállítások"
+  },
+  "Storage_Tool": {
+    "message": "Tárolóeszköz"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Gyorsítótár adatok tartós tárolása a böngésző munkamenetek között"
+  },
+  "Tab_Tool": {
+    "message": "Lap eszköz"
+  },
+  "Terminal": {
+    "message": "Terminál"
+  },
+  "Test_Connection": {
+    "message": "Kapcsolat tesztelése"
+  },
+  "Testing": {
+    "message": "Tesztelés..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Az ügynök jelenleg backend módban működik. Az LLM kérések az AI Republic szerveren keresztül irányítódnak. Beszélgetéseit biztonságosan dolgozzuk fel infrastruktúránk segítségével."
+  },
+  "Time": {
+    "message": "Idő"
+  },
+  "Time_remaining": {
+    "message": "Hátralévő idő"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "A gyorsítótárazott elemek élettartama másodpercben (alapértelmezett: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Oldalsáv ki-/bekapcsolása"
+  },
+  "Tool": {
+    "message": "Eszköz"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Eszköz időkorlát (ms)"
+  },
+  "Tools": {
+    "message": "Eszközök"
+  },
+  "Tools_Settings": {
+    "message": "Eszközök beállításai"
+  },
+  "Turn": {
+    "message": "Bekapcsolás"
+  },
+  "UI_Theme": {
+    "message": "Felhasználói felület témája"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Nem sikerült betölteni a kreditinformációkat"
+  },
+  "Unsaved_Changes": {
+    "message": "Mentetlen módosítások"
+  },
+  "Update_Channel": {
+    "message": "Frissítési csatorna"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Csomagom frissítése"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Frissítés Prémiumra"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Frissítsd előfizetésedet, hogy felfedezhesd a világ legfejlettebb modelljeit"
+  },
+  "Use_Context_Menu": {
+    "message": "Kontextusmenü használata:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Saját API kulcs használata"
+  },
+  "User_Center": {
+    "message": "Felhasználói központ"
+  },
+  "User_approved_action": {
+    "message": "Felhasználó által jóváhagyott művelet"
+  },
+  "User_decision": {
+    "message": "Felhasználói döntés"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Felhasználói beállítások és felületi beállítások"
+  },
+  "User_rejected_action": {
+    "message": "Felhasználó által elutasított művelet"
+  },
+  "User_requested_modifications": {
+    "message": "Felhasználó által kért módosítások"
+  },
+  "Using_extra_credits": {
+    "message": "Extra kreditek használata"
+  },
+  "View_Chat_History": {
+    "message": "Csevegési előzmények megtekintése"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Az oldal tartalmának és elrendezésének vizuális elemzése"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Webkaparó eszköz"
+  },
+  "Web_Search": {
+    "message": "Webkeresés"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Üdvözöljük a Browserx-nél"
+  },
+  "Workspace_Write": {
+    "message": "Írás a munkaterületen"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Nem mentett módosításai vannak. El szeretné vetni őket?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Az AI által vezérelt böngészőasszisztens készen áll, hogy segítsen navigálni, megérteni és interakcióba lépni a webes tartalmakkal."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Az API kulcsa titkosítva van"
+  },
+  "Your_Decision": {
+    "message": "Az Ön döntése"
+  }
+}

@@ -6,7 +6,7 @@
    * User Story 2: Model Information Display
    */
   import { createEventDispatcher } from 'svelte';
-  import type { ModelMetadata, ConfiguredFeatures } from '../../config/types.js';
+  import type { ModelMetadata, ConfiguredFeatures } from '../../../../open_source/src/config/types.js';
   import ModelInfoTooltip from './ModelInfoTooltip.svelte';
 
   export let model: ModelMetadata;

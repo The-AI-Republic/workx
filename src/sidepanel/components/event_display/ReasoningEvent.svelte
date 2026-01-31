@@ -2,7 +2,7 @@
   /**
    * ReasoningEvent - Renders agent reasoning/thinking process
    */
-  import type { ProcessedEvent } from '../../../types/ui';
+  import type { ProcessedEvent } from '../../../../open_source/src/types/ui';
 
   export let event: ProcessedEvent;
 </script>

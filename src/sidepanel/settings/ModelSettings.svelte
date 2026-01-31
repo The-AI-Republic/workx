@@ -5,17 +5,24 @@
 
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { AgentConfig } from '../../config/AgentConfig';
-  import type { ConfiguredFeatures } from '../../config/types';
-  import { AuthMode } from '../../models/types/index.js';
+  import type { AgentConfig } from '../../../open_source/src/config/AgentConfig';
+  import type { ConfiguredFeatures } from '../../../open_source/src/config/types';
   import ModelSelector from './components/ModelSelector.svelte';
+  import { userStore } from '../stores/userStore';
+  import { MessageType } from '../../../open_source/src/core/MessageRouter';
+  import { LLM_API_URL } from '../lib/constants';
+  import { t } from '../lib/i18n';
+
+  // Default compound key for free users (Fireworks Kimi K2 Thinking)
+  // Format: providerId:modelKey (compound key, not a raw model key)
+  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
 
   export let settingsConfig: AgentConfig | null;
 
   const dispatch = createEventDispatcher<{
     back: void;
     saved: { success: boolean; error?: string };
-    authUpdated: { isAuthenticated: boolean; mode: AuthMode | null };
+    authUpdated: { isAuthenticated: boolean; mode: 'login' | 'api_key' | null };
     navigateToAdvanced: { modelId: string; providerId: string };
   }>();
 
@@ -36,8 +43,8 @@
   let testResult: { valid: boolean; error?: string } | null = null;
   let isAuthenticated = false;
 
-  // Model configuration state
-  let selectedModelId = '';
+  // Model configuration state - uses composite key format: "providerId:modelKey"
+  let selectedModelKey = '';
   let configuredFeatures: ConfiguredFeatures = {};
   let modelValidationError = '';
   let serviceTier: 'default' | 'flex' | 'priority' | undefined;
@@ -47,9 +54,20 @@
   let currentProviderName = 'OpenAI';
   let currentProviderOrganization: string | null = null;
 
+  // Backend mode toggle
+  let useOwnApiKey = false;
+  let isUserLoggedIn = false;
+
+  // API key validation warning (only show after save attempt)
+  let showApiKeyWarning = false;
+
+  // Subscribe to user store
+  $: isUserLoggedIn = $userStore.isLoggedIn;
+  $: isFreeUser = $userStore.userType === 0;
+
   // Model selection array
   interface ModelSelectionItem {
-    modelId: string;
+    modelId: string; // Composite key: "providerId:modelKey"
     modelName: string;
     modelKey: string;
     providerId: string;
@@ -69,11 +87,19 @@
       outputToken: string;
       link: string;
     };
+    supportBackendMode?: number;
   }
   let modelSelectionItems: ModelSelectionItem[] = [];
 
-  onMount(async () => {
-    await loadSettings();
+  // Filtered model items based on backend mode
+  // supportBackendMode > 0 means the model supports backend routing
+  $: filteredModelItems = isUserLoggedIn && !useOwnApiKey
+    ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0)
+    : modelSelectionItems;
+
+  // Load settings on mount
+  onMount(() => {
+    loadSettings();
   });
 
   /**
@@ -89,7 +115,11 @@
       isInitializing = true;
 
       const config = settingsConfig.getConfig();
-      selectedModelId = config.selectedModelId;
+      selectedModelKey = config.selectedModelKey;
+      console.log('[ModelSettings] loadSettings - selectedModelKey from config:', selectedModelKey);
+
+      // Load useOwnApiKey preference (default false for logged-in users)
+      useOwnApiKey = config.preferences?.useOwnApiKey ?? false;
 
       // Build model selection array
       const tempModelItems: ModelSelectionItem[] = [];
@@ -108,8 +138,11 @@
             modelServiceTier = 'default';
           }
 
+          // Create composite key for model identification
+          const compositeKey = `${providerId}:${model.modelKey}`;
+
           tempModelItems.push({
-            modelId: model.id,
+            modelId: compositeKey, // Use composite key as modelId
             modelName: model.name,
             modelKey: model.modelKey,
             providerId: provider.id,
@@ -120,22 +153,37 @@
             maxOutputTokens: model.maxOutputTokens,
             baseUrl: provider.baseUrl || '',
             supportsImage: model.supportsImage !== false,
-            selected: model.id === selectedModelId,
+            selected: compositeKey === selectedModelKey,
             serviceTier: modelServiceTier,
             supportsReasoning: model.supportsReasoning,
             reasoningEfforts: model.reasoningEfforts,
-            pricing: model.pricing
+            pricing: model.pricing,
+            supportBackendMode: model.supportBackendMode,
           });
         }
       }
 
       modelSelectionItems = tempModelItems;
+      console.log(
+        '[ModelSettings] Available model IDs:',
+        modelSelectionItems.map((m) => m.modelId)
+      );
 
-      // Validate selectedModelId
-      if (!selectedModelId || selectedModelId === '') {
+      // Validate selectedModelKey
+      if (!selectedModelKey || selectedModelKey === '') {
+        console.log('[ModelSettings] selectedModelKey is empty, selecting default model');
         if (modelSelectionItems.length > 0) {
-          selectedModelId = modelSelectionItems[0].modelId;
-          await settingsConfig.setSelectedModel(selectedModelId);
+          // For free users or when no model is selected, try to use the free user default model
+          const freeUserDefault = modelSelectionItems.find(m => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY);
+          if (freeUserDefault) {
+            selectedModelKey = FREE_USER_DEFAULT_COMPOUND_KEY;
+            console.log('[ModelSettings] Using free user default model:', selectedModelKey);
+          } else {
+            // Fallback to first available model if kimi-k2-thinking not found
+            selectedModelKey = modelSelectionItems[0].modelId;
+            console.log('[ModelSettings] Free user default not found, using first model:', selectedModelKey);
+          }
+          await settingsConfig.setSelectedModel(selectedModelKey);
         } else {
           showMessage('No models available. Please check configuration.', 'error');
           return;
@@ -143,12 +191,21 @@
       }
 
       // Load data for selected model
-      const selectedItem = modelSelectionItems.find(item => item.modelId === selectedModelId);
+      const selectedItem = modelSelectionItems.find((item) => item.modelId === selectedModelKey);
+      console.log(
+        '[ModelSettings] Looking for selectedModelKey:',
+        selectedModelKey,
+        'Found:',
+        !!selectedItem
+      );
       if (selectedItem) {
         loadModelData(selectedItem);
       } else if (modelSelectionItems.length > 0) {
-        selectedModelId = modelSelectionItems[0].modelId;
-        await settingsConfig.setSelectedModel(selectedModelId);
+        console.log(
+          '[ModelSettings] selectedModelKey not found in items, falling back to first model!'
+        );
+        selectedModelKey = modelSelectionItems[0].modelId;
+        await settingsConfig.setSelectedModel(selectedModelKey);
         loadModelData(modelSelectionItems[0]);
       }
     } catch (error) {
@@ -168,16 +225,15 @@
     isAuthenticated = !!item.apiKey;
     serviceTier = item.serviceTier;
 
-    const defaultReasoningEffort = item.supportsReasoning && item.reasoningEfforts?.length
-      ? 'medium'
-      : null;
+    const defaultReasoningEffort =
+      item.supportsReasoning && item.reasoningEfforts?.length ? 'medium' : null;
 
     configuredFeatures = {
       reasoningEffort: defaultReasoningEffort,
       reasoningSummary: undefined,
       verbosity: null,
       contextWindow: item.contextWindow,
-      maxOutputTokens: item.maxOutputTokens
+      maxOutputTokens: item.maxOutputTokens,
     };
   }
 
@@ -192,6 +248,7 @@
     maskedApiKey = maskApiKey(apiKey);
     clearMessage();
     testResult = null;
+    showApiKeyWarning = false; // Reset warning when user starts typing
   }
 
   function toggleApiKeyVisibility() {
@@ -199,7 +256,12 @@
   }
 
   async function saveApiKey() {
-    if (isSaving || !apiKey.trim() || !settingsConfig) return;
+    // Show warning if API key is empty when user clicks save
+    if (!apiKey.trim()) {
+      showApiKeyWarning = true;
+      return;
+    }
+    if (isSaving || !settingsConfig) return;
 
     try {
       isSaving = true;
@@ -218,7 +280,7 @@
 
       chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
 
-      dispatch('authUpdated', { isAuthenticated: true, mode: AuthMode.ApiKey });
+      dispatch('authUpdated', { isAuthenticated: true, mode: 'api_key' });
     } catch (error) {
       console.error('[ModelSettings] Failed to save API key:', error);
       showMessage('Failed to save API key', 'error');
@@ -237,7 +299,7 @@
       isTesting = true;
       testResult = null;
 
-      const selectedItem = modelSelectionItems.find(item => item.modelId === selectedModelId);
+      const selectedItem = modelSelectionItems.find((item) => item.modelId === selectedModelKey);
       if (!selectedItem) {
         testResult = { valid: false, error: 'Selected model configuration missing' };
         showMessage('Connection failed: selected model configuration missing', 'error');
@@ -245,7 +307,7 @@
       }
 
       const providerId = selectedItem.providerId;
-      const modelKey = selectedItem.modelKey ?? selectedItem.modelId;
+      const modelKey = selectedItem.modelKey;
       const baseUrl = selectedItem.baseUrl;
       const organization = selectedItem.organization;
 
@@ -273,7 +335,7 @@
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
+      'anthropic-version': '2023-06-01',
     };
 
     const response = await fetch(baseUrl, {
@@ -282,8 +344,8 @@
       body: JSON.stringify({
         model: modelKey,
         max_tokens: 1,
-        messages: [{ role: 'user', content: 'test' }]
-      })
+        messages: [{ role: 'user', content: 'test' }],
+      }),
     });
 
     if (response.ok || response.status === 400) {
@@ -298,7 +360,11 @@
     }
   }
 
-  async function testOpenAICompatibleConnection(baseUrl: string, modelKey: string, organization: string | null) {
+  async function testOpenAICompatibleConnection(
+    baseUrl: string,
+    modelKey: string,
+    organization: string | null
+  ) {
     const { default: OpenAI } = await import('openai');
 
     const client = new OpenAI({
@@ -307,14 +373,14 @@
       organization: organization || undefined,
       timeout: 30000,
       maxRetries: 0,
-      dangerouslyAllowBrowser: true
+      dangerouslyAllowBrowser: true,
     });
 
     try {
       await client.chat.completions.create({
         model: modelKey,
         messages: [{ role: 'user', content: 'test' }],
-        max_tokens: 1
+        max_tokens: 1,
       });
       testResult = { valid: true };
       showMessage('Connection test successful!', 'success');
@@ -334,12 +400,18 @@
   }
 
   async function clearAuth() {
-    const providerName = currentProvider === 'openai' ? 'OpenAI'
-      : currentProvider === 'xai' ? 'xAI'
-      : currentProvider === 'anthropic' ? 'Anthropic'
-      : currentProvider === 'google-ai-studio' ? 'Google AI Studio'
-      : currentProvider === 'groq' ? 'Groq'
-      : currentProvider;
+    const providerName =
+      currentProvider === 'openai'
+        ? 'OpenAI'
+        : currentProvider === 'xai'
+          ? 'xAI'
+          : currentProvider === 'anthropic'
+            ? 'Anthropic'
+            : currentProvider === 'google-ai-studio'
+              ? 'Google AI Studio'
+              : currentProvider === 'groq'
+                ? 'Groq'
+                : currentProvider;
 
     if (!confirm(`Are you sure you want to remove your ${providerName} API key?`)) return;
     if (!settingsConfig) return;
@@ -384,8 +456,61 @@
     dispatch('back');
   }
 
+  async function handleUseOwnApiKeyToggle() {
+    if (!settingsConfig || !isUserLoggedIn) return;
+
+    try {
+      const newValue = !useOwnApiKey;
+      useOwnApiKey = newValue;
+      showApiKeyWarning = false; // Reset warning when switching modes
+
+      // Update config preferences
+      const config = settingsConfig.getConfig();
+      await settingsConfig.updateConfig({
+        preferences: {
+          ...config.preferences,
+          useOwnApiKey: newValue,
+        },
+      });
+
+      // Send updated auth state to service worker
+      // useOwnApiKey=false means route through backend
+      const authPayload = {
+        backendBaseUrl: newValue ? null : LLM_API_URL, // null when using own API key
+        useOwnApiKey: newValue,
+      };
+
+      await chrome.runtime.sendMessage({
+        type: MessageType.INIT_AUTH,
+        payload: authPayload,
+      });
+
+      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+
+      const message = newValue
+        ? 'Switched to direct API mode. Please configure your API key.'
+        : 'Switched to backend mode. LLM requests will route through AI Republic server.';
+      showMessage(message, 'success');
+
+      dispatch('authUpdated', {
+        isAuthenticated: isAuthenticated,
+        mode: newValue ? 'api_key' : 'login',
+      });
+    } catch (error) {
+      console.error('[ModelSettings] Failed to toggle useOwnApiKey:', error);
+      useOwnApiKey = !useOwnApiKey; // Revert on error
+      showMessage('Failed to update API mode', 'error');
+    }
+  }
+
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !isSaving && !isModelSwitching && !isClearingAuth && !isInitializing) {
+    if (
+      event.key === 'Enter' &&
+      !isSaving &&
+      !isModelSwitching &&
+      !isClearingAuth &&
+      !isInitializing
+    ) {
       saveApiKey();
     }
   }
@@ -397,33 +522,37 @@
       isModelSwitching = true;
       const { modelId } = event.detail;
 
-      const selectedItem = modelSelectionItems.find(item => item.modelId === modelId);
+      const selectedItem = modelSelectionItems.find((item) => item.modelId === modelId);
       if (!selectedItem) throw new Error('Model not found');
 
-      const previousModelId = selectedModelId;
+      const previousModelKey = selectedModelKey;
 
-      if (!confirm('The model switch will clear the current conversation. Do you want to continue?')) {
-        modelSelectionItems = modelSelectionItems.map(item => ({
+      if (
+        !confirm('The model switch will clear the current conversation. Do you want to continue?')
+      ) {
+        modelSelectionItems = modelSelectionItems.map((item) => ({
           ...item,
-          selected: item.modelId === previousModelId
+          selected: item.modelId === previousModelKey,
         }));
         isModelSwitching = false;
         return;
       }
 
       if (selectedItem.supportsImage === false) {
-        alert(`Model "${selectedItem.modelName}" does not support image input. Some tools will be disabled.`);
+        alert(
+          `Model "${selectedItem.modelName}" does not support image input. Some tools will be disabled.`
+        );
       }
 
-      selectedModelId = modelId;
+      selectedModelKey = modelId;
       loadModelData(selectedItem);
       modelValidationError = '';
       testResult = null;
       clearMessage();
 
-      modelSelectionItems = modelSelectionItems.map(item => ({
+      modelSelectionItems = modelSelectionItems.map((item) => ({
         ...item,
-        selected: item.modelId === modelId
+        selected: item.modelId === modelId,
       }));
 
       await settingsConfig.setSelectedModel(modelId);
@@ -456,14 +585,16 @@
       const newServiceTier = target.value as 'default' | 'flex' | 'priority' | '';
       serviceTier = newServiceTier === '' ? undefined : newServiceTier;
 
-      const modelData = settingsConfig.getModelById(selectedModelId);
+      const modelData = settingsConfig.getModelByKey(selectedModelKey);
       if (modelData?.model) {
-        const provider = settingsConfig.getProvider(modelData.providerId);
+        const provider = settingsConfig.getProvider(modelData.provider.id);
         if (provider) {
-          const modelIndex = provider.models.findIndex(m => m.id === selectedModelId);
+          const modelIndex = provider.models.findIndex(
+            (m) => m.modelKey === modelData.model.modelKey
+          );
           if (modelIndex !== -1) {
             provider.models[modelIndex].serviceTier = serviceTier;
-            await settingsConfig.updateProvider(modelData.providerId, { models: provider.models });
+            settingsConfig.updateProvider(modelData.provider.id, { models: provider.models });
             chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
             showMessage(`Service tier updated to ${serviceTier || 'default'}`, 'success');
           }
@@ -476,28 +607,26 @@
   }
 
   function navigateToAdvancedConfig() {
-    dispatch('navigateToAdvanced', { modelId: selectedModelId, providerId: currentProvider });
+    dispatch('navigateToAdvanced', { modelId: selectedModelKey, providerId: currentProvider });
   }
 </script>
 
 <div class="model-settings">
-  <button class="back-button" on:click={handleBack}>← Back</button>
+  <button class="back-button" on:click={handleBack}>← {t("Back")}</button>
 
   <!-- Model Selection -->
-  <div class="settings-section">
-    <h3 class="section-title">Model Selection</h3>
+  <div class="settings-section settings-card">
+    <h3 class="section-title">{t("Model Selection")}</h3>
     <div class="form-group">
-      <label class="form-label">Choose AI Model</label>
+      <label class="form-label">{t("Choose AI Model")}</label>
       <ModelSelector
-        selectedModel={selectedModelId}
-        {modelSelectionItems}
+        selectedModel={selectedModelKey}
+        modelSelectionItems={filteredModelItems}
         disabled={isInitializing || isSaving}
         on:modelChange={handleModelChange}
         on:validationError={handleValidationError}
       />
-      <div class="help-text">
-        Select the AI model to use for conversations.
-      </div>
+      <div class="help-text">{t("Select the AI model to use for conversations.")}</div>
 
       {#if modelValidationError}
         <div class="message error">
@@ -514,17 +643,17 @@
       <div class="provider-info-container">
         <div class="provider-info-row">
           <span class="provider-info-left">
-            <span class="provider-info-label">Provider:</span>
+            <span class="provider-info-label">{t("Provider")}:</span>
             <span class="provider-info-value">{currentProviderName}</span>
           </span>
           <button class="more-config-btn" on:click={navigateToAdvancedConfig}>
-            More Config >>
+            {t("More Config")} >>
           </button>
         </div>
         {#if currentProviderOrganization}
           <div class="provider-info-row">
             <span class="provider-info-left">
-              <span class="provider-info-label">Organization:</span>
+              <span class="provider-info-label">{t("Organization")}:</span>
               <span class="provider-info-value">{currentProviderOrganization}</span>
             </span>
           </div>
@@ -533,16 +662,46 @@
     </div>
   </div>
 
+  <!-- Use Own API Key Toggle (only shown when logged in) -->
+  {#if isUserLoggedIn}
+    <div class="settings-section settings-card">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-label">{t("Use Own API Key")}</span>
+          <span class="toggle-description">
+            {useOwnApiKey
+              ? t('LLM requests go directly to provider APIs')
+              : t('LLM requests route through AI Republic backend')}
+          </span>
+        </div>
+        <button
+          class="toggle-switch {useOwnApiKey ? 'active' : ''}"
+          on:click={handleUseOwnApiKeyToggle}
+          aria-label="Toggle use own API key"
+        >
+          <span class="toggle-slider"></span>
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <!-- API Key Section -->
-  <div class="settings-section">
+  <div class="settings-section settings-card {!isUserLoggedIn || useOwnApiKey ? '' : 'disabled-section'}">
     <div class="section-header">
-      <h3 class="section-title">API Key Configuration</h3>
-      {#if isAuthenticated}
+      <h3 class="section-title">{t("API Key Configuration")}</h3>
+      {#if isUserLoggedIn && !useOwnApiKey}
+        <span class="auth-status backend-mode">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          {t("Backend Mode")}
+        </span>
+      {:else if isAuthenticated}
         <span class="auth-status authenticated">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <polyline points="20,6 9,17 4,12"></polyline>
           </svg>
-          Connected
+          {t("Connected")}
         </span>
       {:else}
         <span class="auth-status not-authenticated">
@@ -551,7 +710,7 @@
             <line x1="15" y1="9" x2="9" y2="15"></line>
             <line x1="9" y1="9" x2="15" y2="15"></line>
           </svg>
-          Not Connected
+          {t("Not Connected")}
         </span>
       {/if}
     </div>
@@ -560,7 +719,11 @@
       <label for="api-key" class="form-label">
         {currentProviderName} API Key
       </label>
-      <div class="input-group">
+      <div
+        class="input-group"
+        class:disabled-input={isUserLoggedIn && !useOwnApiKey}
+        title={isUserLoggedIn && !useOwnApiKey ? 'API key editing is disabled in backend mode' : ''}
+      >
         {#if showApiKey}
           <input
             id="api-key"
@@ -568,9 +731,17 @@
             bind:value={apiKey}
             on:input={handleApiKeyInput}
             on:keydown={handleKeydown}
-            placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : currentProvider === 'groq' ? 'gsk_...' : 'sk-...')}
+            placeholder={isAuthenticated
+              ? maskedApiKey
+              : currentProvider === 'xai'
+                ? 'xai-...'
+                : currentProvider === 'anthropic'
+                  ? 'sk-ant-...'
+                  : currentProvider === 'groq'
+                    ? 'gsk_...'
+                    : 'sk-...'}
             class="api-key-input"
-            disabled={isInitializing || isSaving}
+            disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
             autocomplete="off"
             spellcheck="false"
           />
@@ -581,9 +752,17 @@
             bind:value={apiKey}
             on:input={handleApiKeyInput}
             on:keydown={handleKeydown}
-            placeholder={isAuthenticated ? maskedApiKey : (currentProvider === 'xai' ? 'xai-...' : currentProvider === 'anthropic' ? 'sk-ant-...' : currentProvider === 'groq' ? 'gsk_...' : 'sk-...')}
+            placeholder={isAuthenticated
+              ? maskedApiKey
+              : currentProvider === 'xai'
+                ? 'xai-...'
+                : currentProvider === 'anthropic'
+                  ? 'sk-ant-...'
+                  : currentProvider === 'groq'
+                    ? 'gsk_...'
+                    : 'sk-...'}
             class="api-key-input"
-            disabled={isInitializing || isSaving}
+            disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
             autocomplete="off"
             spellcheck="false"
           />
@@ -596,7 +775,9 @@
         >
           {#if showApiKey}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <path
+                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+              ></path>
               <line x1="1" y1="1" x2="23" y2="23"></line>
             </svg>
           {:else}
@@ -607,18 +788,16 @@
           {/if}
         </button>
       </div>
-      <div class="help-text">
-          Enter your LLM API key
-      </div>
+      <div class="help-text">{t("Enter your LLM API key")}</div>
 
-      {#if !apiKey.trim()}
+      {#if showApiKeyWarning && !apiKey.trim()}
         <div class="message warning">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
-          Please input a valid API key.
+          {t("Please input a valid API key.")}
         </div>
       {/if}
     </div>
@@ -626,20 +805,20 @@
     <!-- Service Tier Selection (OpenAI only) -->
     {#if currentProvider === 'openai'}
       <div class="form-group">
-        <label for="service-tier" class="form-label">Service Tier</label>
+        <label for="service-tier" class="form-label">{t("Service Tier")}</label>
         <select
           id="service-tier"
           bind:value={serviceTier}
           on:change={handleServiceTierChange}
           class="form-select"
-          disabled={isInitializing || isSaving}
+          disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
         >
           <option value="default">Default</option>
           <option value="flex">Flex</option>
           <option value="priority">Priority</option>
         </select>
         <div class="help-text">
-          Priority tier provides faster response times with higher pricing.
+          {t("Priority tier provides faster response times with higher pricing.")}
         </div>
       </div>
     {/if}
@@ -649,46 +828,86 @@
       <button
         class="btn btn-primary"
         on:click={saveApiKey}
-        disabled={isInitializing || isSaving || !apiKey.trim()}
+        disabled={isInitializing || isSaving || !apiKey.trim() || (isUserLoggedIn && !useOwnApiKey)}
       >
         {#if isSaving}
           <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="31.416">
-              <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
-              <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-dasharray="31.416"
+              stroke-dashoffset="31.416"
+            >
+              <animate
+                attributeName="stroke-dasharray"
+                dur="2s"
+                values="0 31.416;15.708 15.708;0 31.416"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="stroke-dashoffset"
+                dur="2s"
+                values="0;-15.708;-31.416"
+                repeatCount="indefinite"
+              />
             </circle>
           </svg>
-          Saving...
+          {t("Saving...")}
         {:else}
-          Save API Key
+          {t("Save API Key")}
         {/if}
       </button>
 
       <button
         class="btn btn-secondary"
         on:click={testConnection}
-        disabled={isTesting || !apiKey.trim()}
+        disabled={isTesting || !apiKey.trim() || (isUserLoggedIn && !useOwnApiKey)}
       >
         {#if isTesting}
           <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="31.416">
-              <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
-              <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-dasharray="31.416"
+              stroke-dashoffset="31.416"
+            >
+              <animate
+                attributeName="stroke-dasharray"
+                dur="2s"
+                values="0 31.416;15.708 15.708;0 31.416"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="stroke-dashoffset"
+                dur="2s"
+                values="0;-15.708;-31.416"
+                repeatCount="indefinite"
+              />
             </circle>
           </svg>
-          Testing...
+          {t("Testing...")}
         {:else}
-          Test Connection
+          {t("Test Connection")}
         {/if}
       </button>
 
-      {#if isAuthenticated}
+      {#if isAuthenticated && (!isUserLoggedIn || useOwnApiKey)}
         <button
           class="btn btn-danger"
           on:click={clearAuth}
-          disabled={isInitializing || isSaving}
+          disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
         >
-          Remove API Key
+          {t("Remove API Key")}
         </button>
       {/if}
     </div>
@@ -731,26 +950,42 @@
   </div>
 
   <!-- Security Notice -->
-  <div class="settings-section">
-    <h3 class="section-title">Security & Privacy</h3>
-    <div class="security-notice">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-      </svg>
-      <div>
-        <div class="security-title">Your API key is encrypted</div>
-        <div class="security-text">
-          API keys are encrypted and stored locally in your browser.
-          They are never sent to external servers except for API calls.
+  <div class="settings-section settings-card">
+    <h3 class="section-title">{t("Security & Privacy")}</h3>
+    {#if isUserLoggedIn && !useOwnApiKey}
+      <div class="security-notice backend-notice">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <div>
+          <div class="security-title">{t("Backend Mode Active")}</div>
+          <div class="security-text">
+            {t("The agent is currently using backend mode. LLM requests will route through AI Republic server. Your conversations are processed securely through our infrastructure.")}
+          </div>
         </div>
       </div>
-    </div>
+    {:else}
+      <div class="security-notice">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <div>
+          <div class="security-title">{t("Your API key is encrypted")}</div>
+          <div class="security-text">
+            {t("API keys are encrypted and stored locally in your browser. They are never sent to external servers except for API calls.")}
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
 </div>
 
 <style>
   .model-settings {
     padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .back-button {
@@ -761,7 +996,6 @@
     font-size: 0.9375rem;
     font-weight: 500;
     padding: 0.5rem 0;
-    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -773,7 +1007,14 @@
   }
 
   .settings-section {
-    margin-bottom: 2rem;
+    margin-bottom: 0;
+  }
+
+  .settings-card {
+    background: var(--browserx-surface);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--browserx-border);
   }
 
   .section-header {
@@ -920,7 +1161,9 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    border: none;
+    border: 1px solid var(--browserx-primary);
+    background: transparent;
+    color: var(--browserx-primary);
   }
 
   .btn:disabled {
@@ -928,13 +1171,19 @@
     cursor: not-allowed;
   }
 
-  .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
+  .btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 90%, black);
+  /* ChatGPT theme - filled buttons */
+  :global(.settings-modal-container.chatgpt) .btn-primary {
+    background: var(--browserx-primary);
+    color: white;
+    border: none;
+  }
+
+  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
   .btn-secondary {
@@ -961,11 +1210,16 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
-  .test-result, .message {
+  .test-result,
+  .message {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -975,12 +1229,14 @@
     margin-top: 1rem;
   }
 
-  .test-result.success, .message.success {
+  .test-result.success,
+  .message.success {
     color: var(--browserx-success);
     background: color-mix(in srgb, var(--browserx-success) 10%, transparent);
   }
 
-  .test-result.error, .message.error {
+  .test-result.error,
+  .message.error {
     color: var(--browserx-error);
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
   }
@@ -1081,5 +1337,100 @@
 
   .more-config-btn:hover {
     background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+  }
+
+  /* Toggle Switch Styles */
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--browserx-surface);
+    border: 1px solid var(--browserx-border);
+    border-radius: 0.5rem;
+  }
+
+  .toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .toggle-label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--browserx-text);
+  }
+
+  .toggle-description {
+    font-size: 0.75rem;
+    color: var(--browserx-text-secondary);
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--browserx-border);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    padding: 0;
+  }
+
+  .toggle-switch.active {
+    background: var(--browserx-primary);
+  }
+
+  .toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .toggle-switch.active .toggle-slider {
+    transform: translateX(20px);
+  }
+
+  /* Disabled Section Styles */
+  .disabled-section {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .disabled-section .section-header,
+  .disabled-section .form-group {
+    pointer-events: auto;
+  }
+
+  .disabled-input {
+    cursor: not-allowed;
+  }
+
+  .disabled-input input {
+    cursor: not-allowed;
+    background: var(--browserx-background);
+  }
+
+  /* Backend Mode Status */
+  .auth-status.backend-mode {
+    color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
+  }
+
+  .security-notice.backend-notice {
+    border-color: var(--browserx-primary);
+    background: color-mix(in srgb, var(--browserx-primary) 5%, var(--browserx-surface));
+  }
+
+  .security-notice.backend-notice svg {
+    color: var(--browserx-primary);
   }
 </style>

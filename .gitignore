@@ -1,53 +1,78 @@
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# IDE and tools
-.claude/
-.specify/
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# Node.js
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.pnpm-store/
 
-# Build outputs
+# Build output
 dist/
 build/
 .vite/
-*.tsbuildinfo
 
 # Testing
 coverage/
 .nyc_output/
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.claude/
+.specify/
+specs/
+CLAUDE.md
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
 # Logs
-*.log
 logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# TypeScript
+*.tsbuildinfo
 
 # Temporary files
 *.tmp
-.cache/
+.temp/
+tmp/
 
-# Chrome extension development
+# Claude Code
+.claude/
+.specify/
+specs/
+
+# Chrome extension specific
 *.crx
 *.pem
 *.zip
 
-# vibe coding related files
-CLAUDE.md
-specs/
-AGENTS.md
-.codex/
-.debug/
-.gemini/
+# Vitest
+.vitest/
+
+# Source maps (uncomment if you don't want to commit them)
+# *.map
+
+# Lock files (keep package-lock.json but ignore others if needed)
+# package-lock.json
+yarn.lock
+pnpm-lock.yaml
+

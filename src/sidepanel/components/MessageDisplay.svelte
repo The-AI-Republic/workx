@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { marked } from 'marked';
-  import type { UIUpdate } from '../../core/StreamProcessor';
+  import type { UIUpdate } from '../../../open_source/src/core/StreamProcessor';
 
   export let message: {
     role: 'user' | 'assistant' | 'system';
@@ -261,6 +261,7 @@
     border-radius: 3px;
     font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
     font-size: 0.9em;
+    word-break: break-word;
   }
 
   .content-text :global(pre) {
@@ -268,9 +269,11 @@
     color: #abb2bf;
     padding: 1em;
     border-radius: 4px;
-    overflow: auto;
     margin: 0.5em 0;
     max-width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: visible;
   }
 
   .content-text :global(pre code) {
@@ -278,6 +281,9 @@
     padding: 0;
     color: inherit;
     font-size: 0.9em;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow: visible;
   }
 
   .content-text :global(blockquote) {

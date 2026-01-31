@@ -7,7 +7,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { fade, scale } from 'svelte/transition';
-  import type { ModelMetadata } from '../../config/types.js';
+  import type { ModelMetadata } from '../../../../open_source/src/config/types.js';
 
   export let model: ModelMetadata;
   export let anchorElement: HTMLElement | null = null;

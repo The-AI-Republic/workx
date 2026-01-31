@@ -8,9 +8,9 @@
    * - • (dimmed) for Pending steps
    */
 
-  import type { ProcessedEvent } from '../../../types/ui';
-  import type { UpdatePlanArgs, PlanItemArg } from '../../../protocol/events';
-  import { StepStatus } from '../../../protocol/events';
+  import type { ProcessedEvent } from '../../../../open_source/src/types/ui';
+  import type { UpdatePlanArgs, PlanItemArg } from '../../../../open_source/src/protocol/events';
+  import { StepStatus } from '../../../../open_source/src/protocol/events';
 
   export let event: ProcessedEvent;
 

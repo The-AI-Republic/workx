@@ -14,14 +14,13 @@
     "types": ["chrome", "vite/client", "svelte"],
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": "src",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/storage/rollout": ["src/storage/rollout/index.ts"],
-      "@/storage/rollout/*": ["src/storage/rollout/*"]
+      "@/*": ["open_source/src/*"],
+      "@/storage/rollout": ["open_source/src/storage/rollout/index.ts"],
+      "@/storage/rollout/*": ["open_source/src/storage/rollout/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["open_source/src/**/*", "src/**/*", "svelte.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

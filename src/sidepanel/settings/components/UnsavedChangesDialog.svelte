@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
+  import { t } from '../../lib/i18n';
 
   export let isOpen = false;
 
@@ -52,16 +53,16 @@
       bind:this={dialogElement}
       tabindex="-1"
     >
-      <h3 id="dialog-title">Unsaved Changes</h3>
+      <h3 id="dialog-title">{t("Unsaved Changes")}</h3>
       <p class="dialog-message">
-        You have unsaved changes. Do you want to discard them?
+        {t("You have unsaved changes. Do you want to discard them?")}
       </p>
       <div class="dialog-actions">
         <button class="btn btn-danger" on:click={handleConfirm}>
-          Discard Changes
+          {t("Discard Changes")}
         </button>
         <button class="btn btn-secondary" on:click={handleCancel}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </div>

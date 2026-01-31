@@ -6,8 +6,10 @@
    * and handles common event behaviors (collapsing, selection, interactions).
    */
 
-  import type { ProcessedEvent } from '../../../types/ui';
-  import { formatTime } from '../../../utils/formatters';
+  import type { ProcessedEvent } from '../../../../open_source/src/types/ui';
+  import { formatTime } from '../../../../open_source/src/utils/formatters';
+  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import Tooltip from '../common/Tooltip.svelte';
   import MessageEvent from './MessageEvent.svelte';
   import ErrorEvent from './ErrorEvent.svelte';
   import TaskEvent from './TaskEvent.svelte';
@@ -28,6 +30,11 @@
 
   // Local state
   let collapsed = event.collapsed ?? false;
+  let currentTheme: UITheme = 'terminal';
+
+  uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
 
   // Update collapsed state when event changes
   $: collapsed = event.collapsed ?? false;
@@ -64,7 +71,7 @@
   function getContainerClasses(): string {
     // For chat messages, use different layout
     if (event.category === 'message') {
-      const classes = ['event-display', 'message-bubble-container', 'mb-3'];
+      const classes = ['event-display', 'message-bubble-container', 'mb-3', currentTheme];
 
       if (event.title === 'user') {
         classes.push('user-message');
@@ -88,6 +95,7 @@
       'hover:bg-gray-800/50',
       'transition-colors',
       'cursor-pointer',
+      currentTheme,
     ];
 
     if (selected) {
@@ -133,11 +141,12 @@
 {#if event.category === 'message'}
   <!-- Simple left/right aligned messages with sender labels -->
   <div class={getContainerClasses()}>
+    <!-- Header outside bubble for user messages in chatgpt theme -->
+    <div class="message-header">
+      <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}:</span>
+      <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
+    </div>
     <div class="message-container">
-      <div class="message-header">
-        <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}:</span>
-        <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
-      </div>
       <div class="message-content">
         <MessageEvent {event} />
         {#if event.streaming}
@@ -160,12 +169,12 @@
     on:keydown={handleKeyDown}
   >
     <!-- Event Header -->
-    <div class="flex items-center justify-between mb-1">
+    <div class="event-header flex items-center justify-between mb-1">
       <div class="flex items-center gap-2">
         <!-- Collapse indicator -->
         {#if event.collapsible}
           <button
-            class="text-gray-400 hover:text-gray-200 transition-colors"
+            class="collapse-button transition-colors"
             on:click|stopPropagation={handleToggle}
             aria-label={collapsed ? 'Expand' : 'Collapse'}
           >
@@ -179,7 +188,7 @@
 
         <!-- Icon -->
         {#if event.style.icon}
-          <span class={`icon-${event.style.icon} ${event.style.iconColor || event.style.textColor}`}>
+          <span class="event-icon">
             {#if event.style.icon === 'error'}
               ⚠
             {:else if event.style.icon === 'success'}
@@ -197,23 +206,24 @@
         {/if}
 
         <!-- Timestamp -->
-        <span class="text-gray-500 text-xs" title={formatTime(event.timestamp, 'absolute')}>
-          {formatTime(event.timestamp, 'relative')}
-        </span>
+        <Tooltip content={formatTime(event.timestamp, 'absolute')}>
+          <span class="event-timestamp text-xs">
+            {formatTime(event.timestamp, 'relative')}
+          </span>
+        </Tooltip>
 
         <!-- Title -->
-        <span class={getTitleClasses()}>
+        <span class="event-title text-sm">
           {event.title}
         </span>
 
         <!-- Status indicator -->
         {#if event.status}
           <span
-            class="text-xs px-1.5 py-0.5 rounded {event.status === 'running'
-              ? 'bg-cyan-500/20 text-cyan-400'
-              : event.status === 'success'
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-red-500/20 text-red-400'}"
+            class="event-status text-xs px-1.5 py-0.5 rounded"
+            class:status-running={event.status === 'running'}
+            class:status-success={event.status === 'success'}
+            class:status-error={event.status !== 'running' && event.status !== 'success'}
           >
             {event.status}
           </span>
@@ -221,7 +231,7 @@
 
         <!-- Streaming indicator -->
         {#if event.streaming}
-          <span class="text-cyan-400 text-xs animate-pulse" role="status" aria-live="polite">
+          <span class="streaming-indicator text-xs animate-pulse" role="status" aria-live="polite">
             streaming...
           </span>
         {/if}
@@ -266,18 +276,19 @@
   /* Simple left/right message alignment */
   .message-bubble-container {
     display: flex;
+    flex-direction: column;
     width: 100%;
     margin-bottom: 0.75rem;
   }
 
   .message-bubble-container.agent-message {
     /* Agent messages: full width, left-aligned */
-    justify-content: flex-start;
+    align-items: flex-start;
   }
 
   .message-bubble-container.user-message {
-    /* User messages: 70% width, right-aligned */
-    justify-content: flex-end;
+    /* User messages: right-aligned */
+    align-items: flex-end;
   }
 
   .message-bubble-container.agent-message .message-container {
@@ -289,10 +300,16 @@
     max-width: 80%;
   }
 
+  .message-bubble-container.user-message .message-header {
+    /* Right-align header for user messages */
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
   .message-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
     margin-bottom: 0.25rem;
     font-size: 0.75rem;
   }
@@ -356,5 +373,164 @@
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* ============================================
+     ChatGPT Theme Overrides
+     ============================================ */
+
+  .event-display.chatgpt {
+    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  }
+
+  /* ChatGPT theme message styling */
+  .message-bubble-container.chatgpt .message-sender {
+    font-weight: 500;
+  }
+
+  /* Agent messages: dark text color */
+  .message-bubble-container.chatgpt.agent-message .message-sender {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .message-bubble-container.chatgpt.agent-message .message-content {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .message-bubble-container.chatgpt .message-time {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  /* User messages: header outside bubble with blue color */
+  .message-bubble-container.chatgpt.user-message .message-header {
+    margin-bottom: 0.375rem;
+  }
+
+  .message-bubble-container.chatgpt.user-message .message-sender {
+    color: var(--chat-primary, #60a5fa);
+  }
+
+  .message-bubble-container.chatgpt.user-message .message-time {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  /* User messages: blue bubble with white text */
+  .message-bubble-container.chatgpt.user-message .message-container {
+    background: var(--chat-primary, #60a5fa);
+    border-radius: 1.25rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .message-bubble-container.chatgpt.user-message .message-content {
+    color: #ffffff;
+  }
+
+  /* Remove paragraph margins inside user bubble */
+  .message-bubble-container.chatgpt.user-message .message-content :global(p) {
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .message-bubble-container.chatgpt.user-message .message-content :global(p:not(:last-child)) {
+    margin-bottom: 0.25em;
+  }
+
+  /* ChatGPT theme for non-message events - light grey text */
+  .event-display.chatgpt:not(.message-bubble-container) {
+    background: var(--chat-card-bg, #f7f7f8);
+    border-color: var(--chat-border, #e5e5e5);
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .event-display.chatgpt:not(.message-bubble-container):hover {
+    background: var(--chat-card-hover, #ececec);
+  }
+
+  /* ============================================
+     Event Header Styles - Terminal (default)
+     ============================================ */
+
+  .collapse-button {
+    color: #9ca3af;
+  }
+
+  .collapse-button:hover {
+    color: #e5e7eb;
+  }
+
+  .event-timestamp {
+    color: #6b7280;
+  }
+
+  .event-title {
+    color: #00ff00;
+  }
+
+  .event-icon {
+    color: #00ff00;
+  }
+
+  .status-running {
+    background: rgba(34, 211, 238, 0.2);
+    color: #22d3ee;
+  }
+
+  .status-success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+  }
+
+  .status-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+  }
+
+  .streaming-indicator {
+    color: #22d3ee;
+  }
+
+  /* ============================================
+     Event Header Styles - ChatGPT Theme
+     ============================================ */
+
+  .event-display.chatgpt .collapse-button {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .event-display.chatgpt .collapse-button:hover {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .event-display.chatgpt .event-timestamp {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .event-display.chatgpt .event-title {
+    color: var(--chat-text-secondary, #6e6e80);
+  }
+
+  .event-display.chatgpt .event-icon {
+    color: var(--chat-text-secondary, #6e6e80);
+  }
+
+  .event-display.chatgpt .status-running {
+    background: var(--chat-status-running-bg, rgba(96, 165, 250, 0.1));
+    color: var(--chat-status-running, #60a5fa);
+  }
+
+  .event-display.chatgpt .status-success {
+    background: var(--chat-status-success-bg, rgba(16, 185, 129, 0.1));
+    color: var(--chat-status-success, #10b981);
+  }
+
+  .event-display.chatgpt .status-error {
+    background: var(--chat-status-error-bg, rgba(239, 68, 68, 0.1));
+    color: var(--chat-status-error, #ef4444);
+  }
+
+  .event-display.chatgpt .streaming-indicator {
+    color: var(--chat-primary, #60a5fa);
   }
 </style>

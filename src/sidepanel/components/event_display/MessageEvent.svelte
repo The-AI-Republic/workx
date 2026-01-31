@@ -3,9 +3,15 @@
    * MessageEvent - Renders agent and user messages
    */
   import { marked } from 'marked';
-  import type { ProcessedEvent } from '../../../types/ui';
+  import type { ProcessedEvent } from '../../../../open_source/src/types/ui';
+  import { uiTheme, type UITheme } from '../../stores/themeStore';
 
   export let event: ProcessedEvent;
+
+  let currentTheme: UITheme = 'terminal';
+  uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
 
   // Parse markdown content
   function parseMarkdown(text: string): string {
@@ -20,9 +26,11 @@
   $: contentHtml = typeof event.content === 'string'
     ? parseMarkdown(event.content)
     : JSON.stringify(event.content);
+
+  $: isUserMessage = event.title === 'user';
 </script>
 
-<div class="message-event">
+<div class="message-event {currentTheme}" class:user-message={isUserMessage}>
   <div class={`text-base markdown-content ${event.style.textColor}`} style="min-width: 0; overflow: hidden;">
     {@html contentHtml}
   </div>
@@ -82,6 +90,7 @@
     border-radius: 3px;
     font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
     font-size: 0.9em;
+    word-break: break-word;
   }
 
   .markdown-content :global(pre) {
@@ -89,9 +98,11 @@
     color: #abb2bf;
     padding: 1em;
     border-radius: 4px;
-    overflow: auto;
     margin: 0.5em 0;
     max-width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: visible;
   }
 
   .markdown-content :global(pre code) {
@@ -99,6 +110,9 @@
     padding: 0;
     color: inherit;
     font-size: 0.9em;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow: visible;
   }
 
   .markdown-content :global(blockquote) {
@@ -199,5 +213,51 @@
     .markdown-content :global(hr) {
       border-top-color: #444;
     }
+  }
+
+  /* ============================================
+     ChatGPT Theme Overrides
+     ============================================ */
+
+  /* ChatGPT theme - agent messages use dark text */
+  .message-event.chatgpt .markdown-content {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .message-event.chatgpt .markdown-content :global(a) {
+    color: var(--chat-primary, #60a5fa);
+  }
+
+  .message-event.chatgpt .markdown-content :global(code) {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .message-event.chatgpt .markdown-content :global(blockquote) {
+    color: var(--chat-text-secondary, #6e6e80);
+  }
+
+  /* ChatGPT theme - user messages use white text */
+  .message-event.chatgpt.user-message .markdown-content {
+    color: #ffffff;
+  }
+
+  .message-event.chatgpt.user-message .markdown-content :global(a) {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
+  }
+
+  .message-event.chatgpt.user-message .markdown-content :global(code) {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
+  .message-event.chatgpt.user-message .markdown-content :global(blockquote) {
+    border-left-color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .message-event.chatgpt.user-message .streaming-cursor {
+    color: #ffffff;
   }
 </style>

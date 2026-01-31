@@ -11,6 +11,7 @@ import { GroqClient } from './client/GroqClient';
 import { FireworksChatCompletionClient } from './client/FireworksChatCompletionClient';
 import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
 import { AgentConfig } from '../config/AgentConfig';
+import type { IAuthManager } from './types/Auth';
 
 /**
  * Supported model providers
@@ -51,24 +52,54 @@ const DEFAULT_MODEL = 'gpt-5';
 export class ModelClientFactory {
   private clientCache: Map<string, ModelClient>;
   private config?: AgentConfig;
+  private authManager: IAuthManager | null = null;
 
   constructor() {
     this.clientCache = new Map();
   }
 
   /**
+   * Set the auth manager for routing decisions
+   * Clears client cache when auth changes to ensure fresh clients
+   * @param authManager - AuthManager instance or null
+   */
+  setAuthManager(authManager: IAuthManager | null): void {
+    this.authManager = authManager;
+    // Clear cache when auth changes to ensure new clients use correct routing
+    this.clientCache.clear();
+  }
+
+  /**
+   * Get current auth manager
+   * @returns Current auth manager or null
+   */
+  getAuthManager(): IAuthManager | null {
+    return this.authManager;
+  }
+
+  /**
+   * Check if using backend routing (useOwnApiKey=false)
+   * @returns true if requests should route through backend
+   */
+  isBackendRouting(): boolean {
+    return this.authManager?.shouldUseBackend() ?? false;
+  }
+
+  /**
    * Create a model client for the currently selected model
-   * Uses AgentConfig's selectedModelId to determine provider
+   * Uses the config passed during initialize() to determine provider
    * @returns Promise resolving to a model client
    */
   async createClientForCurrentModel(): Promise<ModelClient> {
-    const agentConfig = await AgentConfig.getInstance();
+    if (!this.config) {
+      throw new ModelClientError('ModelClientFactory not initialized - call initialize() first');
+    }
 
-    const config = agentConfig.getConfig();
-    const modelData = agentConfig.getModelById(config.selectedModelId);
+    const config = this.config.getConfig();
+    const modelData = this.config.getModelByKey(config.selectedModelKey);
 
     if (!modelData) {
-      throw new ModelClientError(`Selected model ${config.selectedModelId} not found in registry`);
+      throw new ModelClientError(`Selected model ${config.selectedModelKey} not found`);
     }
 
     const providerId = modelData.provider.id;
@@ -96,10 +127,13 @@ export class ModelClientFactory {
    * @returns Promise resolving to a model client
    */
   async createClient(provider: ModelProvider): Promise<ModelClient> {
-    // Include model ID in cache key to prevent reusing clients with wrong config
+    // Include model key in cache key to prevent reusing clients with wrong config
     // (e.g., switching from Qwen with reasoning to Kimi K2 without reasoning)
-    const selectedModelId = this.config?.getConfig().selectedModelId || 'unknown';
-    const cacheKey = `${provider}-${selectedModelId}`;
+    const selectedModelKey = this.config?.getConfig().selectedModelKey || 'unknown';
+
+    // Add routing type to cache key to separate backend vs direct clients
+    const routingType = this.isBackendRouting() ? 'backend' : 'direct';
+    const cacheKey = `${provider}-${selectedModelKey}-${routingType}`;
 
     // Check cache first
     const cached = this.clientCache.get(cacheKey);
@@ -107,6 +141,14 @@ export class ModelClientFactory {
       return cached;
     }
 
+    // If using backend routing (logged in), create backend-routed client
+    if (this.isBackendRouting()) {
+      const client = await this.createBackendRoutedClient(provider);
+      this.clientCache.set(cacheKey, client);
+      return client;
+    }
+
+    // Fall through to existing provider-specific logic for API key mode
     const config = await this.loadConfigForProvider(provider);
     const client = this.instantiateClient(config);
 
@@ -114,6 +156,116 @@ export class ModelClientFactory {
     this.clientCache.set(cacheKey, client);
 
     return client;
+  }
+
+  /**
+   * Create a client that routes through the backend service
+   * Used when user is logged in
+   * @param provider The provider (used for model metadata)
+   * @returns Model client configured for backend routing
+   */
+  private async createBackendRoutedClient(provider: ModelProvider): Promise<ModelClient> {
+    const backendUrl = this.authManager?.getBackendBaseUrl();
+    if (!backendUrl) {
+      throw new ModelClientError('Backend URL not available for backend routing');
+    }
+
+    // Get model metadata for configuration
+    let modelConfig: any = undefined;
+    let supportsReasoning = false;
+    let supportsReasoningSummaries = false;
+    let selectedModel = 'gpt-5';
+    let supportBackendMode = 0;
+
+    if (this.config) {
+      const configData = this.config.getConfig();
+      const modelData = this.config.getModelByKey(configData.selectedModelKey);
+      if (modelData?.model) {
+        modelConfig = modelData.model;
+        supportsReasoning = modelData.model.supportsReasoning ?? false;
+        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
+        selectedModel = modelData.model.modelKey;
+        supportBackendMode = modelData.model.supportBackendMode ?? 0;
+      }
+    }
+
+    // Build model family configuration
+    const modelFamily = {
+      family: selectedModel,
+      base_instructions: 'You are a helpful coding assistant.',
+      supports_reasoning: supportsReasoning,
+      supports_reasoning_summaries: supportsReasoningSummaries,
+      needs_special_apply_patch_instructions: false,
+    };
+
+    // Build provider configuration for backend
+    const backendProvider = {
+      name: 'Backend',
+      base_url: backendUrl,
+      wire_api: 'Responses' as const,
+      requires_openai_auth: false, // Backend handles auth via cookies
+    };
+
+    // Generate conversation ID
+    const conversationId = this.generateConversationId();
+
+    // Get reasoning effort if supported
+    let reasoningEffort: string | undefined;
+    if (supportsReasoning) {
+      reasoningEffort = 'medium';
+    }
+
+    // Select client based on supportBackendMode value:
+    // 0 = not supported (should not reach here)
+    // 1 = OpenAI Responses API
+    // 2 = OpenAI Chat Completions API
+    // 3 = Google API
+    const geminiApiBaseUrl = backendUrl + '/gemini';
+
+    if (supportBackendMode === 3) {
+      // Google API
+      const googleProvider = {
+        name: 'Google AI Studio',
+        base_url: geminiApiBaseUrl,
+        wire_api: 'Chat' as const,
+        requires_openai_auth: false,
+      };
+
+      return new GoogleCompletionClient({
+        apiKey: 'backend-routed', // Dummy key - backend uses cookies for auth
+        baseUrl: geminiApiBaseUrl,
+        provider: googleProvider,
+        modelFamily,
+        useCredentials: true,
+      });
+    }
+
+    const openAIClientBackendBaseUrl = backendUrl + '/openai';
+    if (supportBackendMode === 1) {
+      // OpenAI Responses API
+      return new OpenAIResponsesClient({
+        apiKey: 'backend-routed', // Dummy key - backend uses cookies for auth
+        baseUrl: openAIClientBackendBaseUrl,
+        conversationId,
+        modelFamily,
+        provider: backendProvider,
+        modelConfig,
+        reasoningEffort: reasoningEffort as any,
+        reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
+        useCredentials: true,
+      });
+    }
+
+    // supportBackendMode === 2 or fallback: OpenAI Chat Completions API
+    return new OpenAIChatCompletionClient({
+      apiKey: 'backend-routed', // Dummy key - backend uses cookies for auth
+      baseUrl: openAIClientBackendBaseUrl,
+      conversationId,
+      modelFamily,
+      provider: backendProvider,
+      modelConfig,
+      useCredentials: true,
+    });
   }
 
   /**
@@ -159,19 +311,17 @@ export class ModelClientFactory {
   }
 
   /**
-   * Load API key for a provider from AgentConfig
+   * Load API key for a provider from config
    * @param provider The provider
    * @returns Promise resolving to the API key or null if not found
    */
   async loadApiKey(provider: ModelProvider): Promise<string | null> {
     try {
-      if (this.config) {
-        return await this.config.getProviderApiKey(provider);
+      if (!this.config) {
+        console.warn(`[ModelClientFactory] loadApiKey called before initialization`);
+        return null;
       }
-
-      const agentConfig = AgentConfig.getInstance();
-      await agentConfig.initialize();
-      return await agentConfig.getProviderApiKey(provider);
+      return await this.config.getProviderApiKey(provider);
     } catch (error) {
       console.warn(`[ModelClientFactory] Failed to load API key for provider ${provider}:`, error);
       return null;
@@ -300,31 +450,31 @@ export class ModelClientFactory {
   }
 
   /**
-   * Load configuration for a provider from AgentConfig
+   * Load configuration for a provider from config
    * @param provider The provider
    * @returns Promise resolving to the client configuration
    * Note: API key can be null - validation happens when making API requests
    */
   private async loadConfigForProvider(provider: ModelProvider): Promise<ModelClientConfig> {
-    // Get provider-specific API key from AgentConfig
+    // Get provider-specific API key from config
     let apiKey: string | null = null;
     let providerConfig: any = null;
 
-    try {
-      const agentConfig = await AgentConfig.getInstance();
+    if (!this.config) {
+      console.warn(`[ModelClientFactory] loadConfigForProvider called before initialization`);
+    } else {
+      try {
+        // Get API key for this specific provider
+        apiKey = await this.config.getProviderApiKey(provider);
 
-      // Get API key for this specific provider
-      apiKey = await agentConfig.getProviderApiKey(provider);
-
-      // Get provider configuration for base URL, organization, etc.
-      const providerData = agentConfig.getProvider(provider);
-      if (providerData) {
-        providerConfig = providerData;
+        // Get provider configuration for base URL, organization, etc.
+        const providerData = this.config.getProvider(provider);
+        if (providerData) {
+          providerConfig = providerData;
+        }
+      } catch (error) {
+        console.warn(`[ModelClientFactory] Failed to load config for provider ${provider}: ${error}`);
       }
-    } catch (error) {
-      console.warn(`[ModelClientFactory] Failed to load config from AgentConfig: ${error}`);
-      // Fall back to legacy method
-      apiKey = await this.loadApiKey(provider);
     }
 
     // Don't throw error if API key is missing - allow model client to be created
@@ -398,7 +548,7 @@ export class ModelClientFactory {
     let modelConfig: any = undefined;
     if (this.config) {
       const configData = this.config.getConfig();
-      const modelData = this.config.getModelById(configData.selectedModelId);
+      const modelData = this.config.getModelByKey(configData.selectedModelKey);
       if (modelData?.model) {
         modelConfig = modelData.model;
         supportsReasoning = modelData.model.supportsReasoning ?? false;
@@ -424,7 +574,7 @@ export class ModelClientFactory {
 
     // Build provider configuration
     // Map internal provider IDs to display names
-    let displayName = providerName;
+    let displayName: string = providerName;
     if (providerName === 'google-ai-studio') {
       displayName = 'Google AI Studio';
     } else if (providerName === 'fireworks') {
@@ -436,8 +586,8 @@ export class ModelClientFactory {
     const provider = {
       name: displayName,
       base_url: resolvedBaseUrl,
-      wire_api: 'Responses' as 'Responses' | 'Chat', // Kept for backward compatibility
-      requires_openai_auth: true,
+      wire_api: providerName === 'google-ai-studio' ? 'Chat' as const : 'Responses' as const,
+      requires_openai_auth: providerName !== 'google-ai-studio',
       ...(providerName === 'google-ai-studio' && {
         env_key: 'GOOGLE_AI_STUDIO_API_KEY',
         env_key_instructions: 'Set a Google AI Studio key in Settings to enable Gemini.',
@@ -568,12 +718,12 @@ export class ModelClientFactory {
    */
   getSelectedModel(): string {
     if (this.config) {
-      // Get selectedModelId from config
+      // Get selectedModelKey from config
       const configData = this.config.getConfig();
-      const selectedModelId = configData.selectedModelId;
+      const selectedModelKey = configData.selectedModelKey;
 
-      // Look up the model in the registry
-      const modelData = this.config.getModelById(selectedModelId);
+      // Look up the model by composite key
+      const modelData = this.config.getModelByKey(selectedModelKey);
       if (modelData) {
         return modelData.model.modelKey;
       }
@@ -588,7 +738,7 @@ export class ModelClientFactory {
     if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
       return (crypto as any).randomUUID();
     }
-    return `conv_${Math.random().toString(36).slice(2)}`;
+    return Math.random().toString(36).slice(2);
   }
 
   /**

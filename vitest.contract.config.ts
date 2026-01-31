@@ -16,7 +16,7 @@ export default defineConfig({
 
     // Contract tests only
     include: [
-      'tests/contract/**/*.{test,spec}.{ts,tsx}'
+      'open_source/tests/contract/**/*.{test,spec}.{ts,tsx}'
     ],
 
     // Ensure clean test environment
@@ -30,11 +30,11 @@ export default defineConfig({
     // Coverage for contract tests (optional)
     coverage: {
       reporter: ['text', 'json'],
-      include: ['src/models/**/*.ts'],
+      include: ['open_source/src/models/**/*.ts'],
       exclude: [
-        'src/models/**/*.d.ts',
-        'src/models/**/__tests__/**',
-        'src/models/types/**', // Types covered by TypeScript
+        'open_source/src/models/**/*.d.ts',
+        'open_source/src/models/**/__tests__/**',
+        'open_source/src/models/types/**', // Types covered by TypeScript
       ],
     },
   },
@@ -42,14 +42,14 @@ export default defineConfig({
   // Resolve aliases to match main config
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@config': resolve(__dirname, 'src/config'),
-      '@storage': resolve(__dirname, 'src/storage'),
-      '@models': resolve(__dirname, 'src/models'),
-      '@core': resolve(__dirname, 'src/core'),
-      '@tools': resolve(__dirname, 'src/tools'),
-      '@protocol': resolve(__dirname, 'src/protocol'),
-      '@types': resolve(__dirname, 'src/types')
+      '@': resolve(__dirname, 'open_source/src'),
+      '@config': resolve(__dirname, 'open_source/src/config'),
+      '@storage': resolve(__dirname, 'open_source/src/storage'),
+      '@models': resolve(__dirname, 'open_source/src/models'),
+      '@core': resolve(__dirname, 'open_source/src/core'),
+      '@tools': resolve(__dirname, 'open_source/src/tools'),
+      '@protocol': resolve(__dirname, 'open_source/src/protocol'),
+      '@types': resolve(__dirname, 'open_source/src/types')
     }
   }
 });

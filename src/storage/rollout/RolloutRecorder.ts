@@ -4,19 +4,23 @@
  * Stores conversation history in IndexedDB with TTL support and pagination.
  */
 
-import type {
-  RolloutRecorderParams,
-  ConversationId,
-  RolloutItem,
-  SessionMeta,
-  SessionMetaLine,
-  InitialHistory,
-  ResumedHistory,
-  ConversationsPage,
-  Cursor,
-  IAgentConfigWithStorage,
-  RolloutMetadataRecord,
-  RolloutItemRecord,
+import {
+  DB_NAME,
+  DB_VERSION,
+  STORE_ROLLOUTS,
+  STORE_ROLLOUT_ITEMS,
+  type RolloutRecorderParams,
+  type ConversationId,
+  type RolloutItem,
+  type SessionMeta,
+  type SessionMetaLine,
+  type InitialHistory,
+  type ResumedHistory,
+  type ConversationsPage,
+  type Cursor,
+  type IAgentConfigWithStorage,
+  type RolloutMetadataRecord,
+  type RolloutItemRecord,
 } from './types';
 import { RolloutWriter } from './RolloutWriter';
 import { filterPersistedItems } from './policy';
@@ -30,15 +34,7 @@ import {
   calculateExpiresAt,
   getCurrentTimestamp,
 } from './helpers';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const DB_NAME = 'BrowserxRollouts';
-const DB_VERSION = 2;
-const STORE_ROLLOUTS = 'rollouts';
-const STORE_ROLLOUT_ITEMS = 'rollout_items';
+import { generatePlaceholderTitle } from '../../core/title';
 
 // ============================================================================
 // RolloutRecorder Class
@@ -52,10 +48,15 @@ export class RolloutRecorder {
   private writer: RolloutWriter;
   private rolloutId: ConversationId;
   private isShutdown = false;
+  private initialized = false;
+  private initializingPromise: Promise<void> | null = null;
+  private pendingMetadata: RolloutMetadataRecord | null = null;
+  private pendingSessionMeta: RolloutItem | null = null;
 
-  private constructor(writer: RolloutWriter, rolloutId: ConversationId) {
+  private constructor(writer: RolloutWriter, rolloutId: ConversationId, initialized = false) {
     this.writer = writer;
     this.rolloutId = rolloutId;
+    this.initialized = initialized;
   }
 
   // ==========================================================================
@@ -99,7 +100,7 @@ export class RolloutRecorder {
     // Initialize writer
     const writer = await RolloutWriter.create(conversationId, 0);
 
-    // Create metadata record
+    // Create metadata record with placeholder title
     const now = Date.now();
     const metadata: RolloutMetadataRecord = {
       id: conversationId,
@@ -109,27 +110,25 @@ export class RolloutRecorder {
       sessionMeta: {
         id: conversationId,
         timestamp: getCurrentTimestamp(),
-        cwd: typeof process !== 'undefined' ? process.cwd() : '/',
+        cwd: '/',
         originator: 'chrome-extension',
         cliVersion: '1.0.0', // TODO: Load from package.json or config
         instructions,
+        title: generatePlaceholderTitle(), // Placeholder title: "YYYY-MM-DD_HH-mm_chat"
       },
       itemCount: 0,
       status: 'active',
     };
 
-    // Write metadata to IndexedDB
-    await RolloutRecorder.writeMetadata(metadata);
-
-    // Write SessionMeta as first item (sequence 0)
-    const sessionMetaItem: RolloutItem = {
+    // Lazy initialization: don't write metadata or sessionMetaItem yet
+    const recorder = new RolloutRecorder(writer, conversationId, false);
+    recorder.pendingMetadata = metadata;
+    recorder.pendingSessionMeta = {
       type: 'session_meta',
       payload: metadata.sessionMeta,
     };
-    await writer.addItems(conversationId, [sessionMetaItem]);
-    await writer.flush();
 
-    return new RolloutRecorder(writer, conversationId);
+    return recorder;
   }
 
   /**
@@ -152,7 +151,7 @@ export class RolloutRecorder {
     // Initialize writer with correct sequence
     const writer = await RolloutWriter.create(rolloutId, lastSequence + 1);
 
-    return new RolloutRecorder(writer, rolloutId);
+    return new RolloutRecorder(writer, rolloutId, true);
   }
 
   /**
@@ -162,18 +161,19 @@ export class RolloutRecorder {
     const db = await RolloutRecorder.openDatabase();
 
     try {
-      return new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(STORE_ROLLOUTS, 'readwrite');
         const store = tx.objectStore(STORE_ROLLOUTS);
 
-        const request = store.put(metadata);
+        store.put(metadata);
 
-        request.onsuccess = () => resolve();
-        request.onerror = () =>
-          reject(createDatabaseError('writeMetadata', request.error?.message || 'unknown error'));
-
+        tx.oncomplete = () => {
+          resolve();
+        };
         tx.onerror = () =>
           reject(createDatabaseError('writeMetadata', tx.error?.message || 'unknown error'));
+        tx.onabort = () =>
+          reject(createDatabaseError('writeMetadata', 'Transaction aborted'));
       });
     } finally {
       db.close();
@@ -189,7 +189,7 @@ export class RolloutRecorder {
     const db = await RolloutRecorder.openDatabase();
 
     try {
-      return new Promise((resolve, reject) => {
+      return await new Promise<RolloutMetadataRecord | null>((resolve, reject) => {
         const tx = db.transaction(STORE_ROLLOUTS, 'readonly');
         const store = tx.objectStore(STORE_ROLLOUTS);
 
@@ -211,7 +211,7 @@ export class RolloutRecorder {
     const db = await RolloutRecorder.openDatabase();
 
     try {
-      return new Promise((resolve, reject) => {
+      return await new Promise<number>((resolve, reject) => {
         const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
         const store = tx.objectStore(STORE_ROLLOUT_ITEMS);
         const index = store.index('rolloutId_sequence');
@@ -260,6 +260,7 @@ export class RolloutRecorder {
           rolloutsStore.createIndex('created', 'created', { unique: false });
           rolloutsStore.createIndex('updated', 'updated', { unique: false });
           rolloutsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
+          rolloutsStore.createIndex('status', 'status', { unique: false });
         }
 
         // Create rollout_items object store (conversation data)
@@ -269,10 +270,10 @@ export class RolloutRecorder {
             autoIncrement: true,
           });
           itemsStore.createIndex('rolloutId', 'rolloutId', { unique: false });
+          itemsStore.createIndex('timestamp', 'timestamp', { unique: false });
           itemsStore.createIndex('rolloutId_sequence', ['rolloutId', 'sequence'], {
             unique: true,
           });
-          itemsStore.createIndex('timestamp', 'timestamp', { unique: false });
         }
       };
 
@@ -296,6 +297,9 @@ export class RolloutRecorder {
       throw new Error('Recorder is shut down');
     }
 
+    // Ensure metadata is written
+    await this.ensureInitialized();
+
     if (items.length === 0) {
       return;
     }
@@ -312,10 +316,72 @@ export class RolloutRecorder {
   }
 
   /**
+   * Record a turn completion event.
+   * @param turnId - ID of the turn
+   * @param stats - Statistics for the turn
+   */
+  async recordTurnCompletion(turnId: string, stats: any): Promise<void> {
+    if (this.isShutdown) {
+      throw new Error('Recorder is shut down');
+    }
+
+    // Ensure metadata is written
+    await this.ensureInitialized();
+
+    const completionItem: RolloutItem = {
+      type: 'turn_completion',
+      payload: {
+        turnId,
+        stats,
+      },
+    };
+
+    await this.writer.addItems(this.rolloutId, [completionItem]);
+  }
+
+  /**
    * Flush all pending writes to IndexedDB.
    */
   async flush(): Promise<void> {
     await this.writer.flush();
+  }
+
+  /**
+   * Ensure the rollout is initialized in IndexedDB.
+   * Writes metadata and session_meta item if not already done.
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    if (this.initializingPromise) {
+      return this.initializingPromise;
+    }
+
+    this.initializingPromise = (async () => {
+      if (this.pendingMetadata && this.pendingSessionMeta) {
+        try {
+          // Write metadata to IndexedDB
+          await RolloutRecorder.writeMetadata(this.pendingMetadata);
+
+          // Write SessionMeta as first item (sequence 0)
+          await this.writer.addItems(this.rolloutId, [this.pendingSessionMeta]);
+          await this.writer.flush();
+
+          this.initialized = true;
+          this.pendingMetadata = null;
+          this.pendingSessionMeta = null;
+        } catch (error) {
+          console.error('Lazy initialization failed:', error);
+          throw error;
+        } finally {
+          this.initializingPromise = null;
+        }
+      }
+    })();
+
+    return this.initializingPromise;
   }
 
   /**
@@ -338,6 +404,31 @@ export class RolloutRecorder {
     await this.writer.flush();
     await this.writer.close();
     this.isShutdown = true;
+  }
+
+  /**
+   * Update the session title in metadata.
+   * @param title - New title to set
+   */
+  async updateTitle(title: string): Promise<void> {
+    if (this.isShutdown) {
+      throw new Error('Recorder is shut down');
+    }
+
+    if (this.initialized) {
+      const metadata = await RolloutRecorder.loadMetadata(this.rolloutId);
+      if (!metadata) {
+        throw createRolloutNotFoundError(this.rolloutId);
+      }
+
+      metadata.sessionMeta.title = title;
+      metadata.updated = Date.now();
+      await RolloutRecorder.writeMetadata(metadata);
+    } else if (this.pendingMetadata) {
+      // If not initialized yet, just update the pending metadata
+      this.pendingMetadata.sessionMeta.title = title;
+      this.pendingMetadata.updated = Date.now();
+    }
   }
 
   // ==========================================================================
@@ -397,7 +488,7 @@ export class RolloutRecorder {
     const db = await RolloutRecorder.openDatabase();
 
     try {
-      return new Promise((resolve, reject) => {
+      return await new Promise<RolloutItem[]>((resolve, reject) => {
         const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
         const store = tx.objectStore(STORE_ROLLOUT_ITEMS);
         const index = store.index('rolloutId_sequence');
@@ -445,7 +536,7 @@ export class RolloutRecorder {
     itemBytes: number;
   }> {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME);
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(createDatabaseError('openDB', request.error?.message || 'unknown error'));
     });

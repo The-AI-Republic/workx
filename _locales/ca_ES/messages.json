@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Agent d'IA general al navegador per a tasques de treball"
+  },
+  "API_Key_Configuration": {
+    "message": "Configuració de la clau API"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Les claus API s’encripten i s’emmagatzemen localment al teu navegador. Mai s’envien a servidors externs, excepte per a trucades API."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Accedir a l'emmagatzematge del navegador (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Acció"
+  },
+  "Action_Details": {
+    "message": "Detalls de l'acció"
+  },
+  "Add_Modification": {
+    "message": "Afegir modificació"
+  },
+  "Advanced_Configuration": {
+    "message": "Configuració avançada"
+  },
+  "Advanced_Options": {
+    "message": "Opcions avançades"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Eines d'execució de l'agent"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Permetre que l'agent executi ordres del sistema (utilitzar amb precaució)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Permetre que l'agent llegeixi, escrigui i gestioni fitxers (Arribarà en una actualització futura)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Permetre que els scripts de contingut s'executin a les pàgines web"
+  },
+  "Allowed_Origins": {
+    "message": "Orígens permesos"
+  },
+  "Approval_History": {
+    "message": "Historial d'aprovacions"
+  },
+  "Approve": {
+    "message": "Aprovar"
+  },
+  "Approve_this_action": {
+    "message": "Aprovar aquesta acció"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Demaneu a Browserx que extregui dades estructurades de qualsevol pàgina web"
+  },
+  "Available": {
+    "message": "Disponible:"
+  },
+  "Back": {
+    "message": "Enrere"
+  },
+  "Backend_Mode": {
+    "message": "Mode de backend"
+  },
+  "Backend_Mode_Active": {
+    "message": "Mode de backend actiu"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Eines del navegador"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Commutadors d'eines d'automatització del navegador"
+  },
+  "Cache_Settings": {
+    "message": "Configuració de la memòria cau"
+  },
+  "Cache_TTL_seconds": {
+    "message": "TTL de la memòria cau (segons)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Comportament de la memòria cau i retenció de dades"
+  },
+  "Cancel": {
+    "message": "Cancel·lar"
+  },
+  "Chat_History": {
+    "message": "Historial de xat"
+  },
+  "Choose_AI_Model": {
+    "message": "Trieu el model d'IA"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Trieu l'estil visual per a la interfície del panell lateral"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Trieu quin canal d'actualització seguir"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Estil clàssic de terminal amb text verd sobre fons negre"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Interfície de xat neta i moderna, similar a ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Feu clic a la icona de Browserx a la barra d'eines o premeu Alt+Maj+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Feu clic per seleccionar un model"
+  },
+  "Close_settings": {
+    "message": "Tancar configuració"
+  },
+  "Command": {
+    "message": "Comanda"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Comprimeix les dades de la memòria cau per estalviar espai"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Configureu el model d'IA i les claus API"
+  },
+  "Connected": {
+    "message": "Connectat"
+  },
+  "Context": {
+    "message": "Context"
+  },
+  "Create_New_Tab": {
+    "message": "Crea una pestanya nova"
+  },
+  "Credit_Details": {
+    "message": "Detalls del crèdit"
+  },
+  "Current_Plan": {
+    "message": "Pla actual:"
+  },
+  "DOM_Tool": {
+    "message": "Eina DOM"
+  },
+  "Daily_Credits": {
+    "message": "Crèdits diaris"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Eina d'extracció de dades"
+  },
+  "Days_until_expiration": {
+    "message": "Dies fins a l'expiració"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Desenvolupat i mantingut per AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Descartar canvis"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Mostra el consum de tokens (tokens d'entrada/sortida) en completar les tasques"
+  },
+  "Enable_All_Tools": {
+    "message": "Activa totes les eines"
+  },
+  "Enable_Cache": {
+    "message": "Activa la memòria cau"
+  },
+  "Enable_Compression": {
+    "message": "Activa la compressió"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Activa els scripts de contingut"
+  },
+  "Enable_Extension": {
+    "message": "Activa l'extensió"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Activa la integració d'eines del Model Context Protocol (Arribarà en una futura actualització)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Activa la memòria cau per millorar el rendiment emmagatzemant dades d'accés freqüent"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Activa les capacitats de cerca web per a l'agent"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Introdueix la teva clau API LLM"
+  },
+  "Execute_Commands": {
+    "message": "Executa ordres"
+  },
+  "Expire_after_days": {
+    "message": "Caduca després de dies"
+  },
+  "Explain_your_decision": {
+    "message": "Explica la teva decisió..."
+  },
+  "Extension_Permission": {
+    "message": "Extensió i permisos"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Configuració d'extensió i permisos"
+  },
+  "Extension_Configuration": {
+    "message": "Configuració de l'extensió"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Configuració de l'extensió i permisos"
+  },
+  "Extra_Credits": {
+    "message": "Crèdits addicionals"
+  },
+  "Extract_Data": {
+    "message": "Extreu dades:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Extreu patrons de dades específics de les pàgines"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Extreu dades estructurades de pàgines web"
+  },
+  "Failed_to_load_preferences": {
+    "message": "No s'ha pogut carregar les preferències"
+  },
+  "Failed_to_save_settings": {
+    "message": "No s'ha pogut desar la configuració"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Operacions de fitxer (No disponible)"
+  },
+  "File_Path": {
+    "message": "Camí del fitxer"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Omple formularis, envia dades, interactua amb elements del formulari"
+  },
+  "Form_Automation_Tool": {
+    "message": "Eina d'automatització de formularis"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Accés complet (Perillós)"
+  },
+  "General": {
+    "message": "General"
+  },
+  "General_Settings": {
+    "message": "Configuració general"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "Agent d'IA general al navegador per a tasques de treball"
+  },
+  "Get_Started": {
+    "message": "Comença"
+  },
+  "Hello_NAME": {
+    "message": "Hola $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hola món"
+  },
+  "History": {
+    "message": "Historial"
+  },
+  "Impact": {
+    "message": "Impacte"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Intercepta i modifica sol·licituds/respostes de xarxa"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Dreceres de teclat"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Les sol·licituds LLM van directament a les API del proveïdor"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Les sol·licituds LLM passen pel backend d'AI Republic"
+  },
+  "Language": {
+    "message": "Idioma"
+  },
+  "Learn_more": {
+    "message": "Més informació"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Llista d’orígens permesos (un per línia). Admet comodins (*)."
+  },
+  "Loading_credits": {
+    "message": "Carregant crèdits..."
+  },
+  "Loading_settings": {
+    "message": "Carregant configuració..."
+  },
+  "Login": {
+    "message": "Iniciar sessió"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Inicia sessió per obtenir crèdits gratuïts"
+  },
+  "Low_credits_remaining": {
+    "message": "Queden pocs crèdits"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "Eines MCP (No disponible)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Gestió de pestanyes del navegador (obrir, tancar, canviar, consultar)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Interruptor principal per activar o desactivar totes les eines del navegador i de l'agent"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Interruptor principal per activar o desactivar l'extensió"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Mida màxima de la cache (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Mida màxima de la cache en megabytes (per defecte: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Temps màxim (en mil·lisegons) que una eina pot executar-se abans del límit de temps (per defecte: 30000)"
+  },
+  "Model_Config": {
+    "message": "Configuració del model"
+  },
+  "Model_Selection": {
+    "message": "Selecció del model"
+  },
+  "Modern_Chat": {
+    "message": "Xat modern"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Modifica els paràmetres en sol·licitar canvis"
+  },
+  "Monthly_Credits": {
+    "message": "Crèdits mensuals"
+  },
+  "More_Config": {
+    "message": "Més configuració"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navegar pàgines, fer clic en enllaços, gestionar la navegació del navegador"
+  },
+  "Navigation_Tool": {
+    "message": "Eina de navegació"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Eina d'intercepció de xarxa"
+  },
+  "Never_expire_permanent": {
+    "message": "Mai caduca (permanent)"
+  },
+  "New_Conversation": {
+    "message": "Nova conversa"
+  },
+  "No_approval_history_yet": {
+    "message": "Encara no hi ha historial d'aprovacions."
+  },
+  "No_tabs_available": {
+    "message": "No hi ha pestanyes disponibles"
+  },
+  "Not_Connected": {
+    "message": "No connectat"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Nombre de dies abans que les dades de llançament caduquin (per defecte: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Obrir el panell lateral:"
+  },
+  "Organization": {
+    "message": "Organització"
+  },
+  "Page_Action_Tool": {
+    "message": "Eina d'acció de pàgina"
+  },
+  "Page_Vision_Tool": {
+    "message": "Eina de visió de pàgina"
+  },
+  "Parameter_Modifications": {
+    "message": "Modificacions de paràmetres"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Executar accions de pàgina (desplaçament, captura de pantalla, espera)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Persistir la memòria cau a l'emmagatzematge"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Introduïu una clau API vàlida."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Escriviu una ordre vàlida"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "El nivell prioritari ofereix temps de resposta més ràpids amb preus més alts."
+  },
+  "Provider": {
+    "message": "Proveïdor"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Consultar i manipular el DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Inici ràpid"
+  },
+  "Quick_action": {
+    "message": "Acció ràpida"
+  },
+  "Read_only": {
+    "message": "Només lectura"
+  },
+  "Reason_optional": {
+    "message": "Motiu (opcional)"
+  },
+  "Refreshes_in": {
+    "message": "S'actualitza en"
+  },
+  "Reject": {
+    "message": "Rebutjar"
+  },
+  "Reject_this_action": {
+    "message": "Rebutja aquesta acció"
+  },
+  "Remaining": {
+    "message": "Restant:"
+  },
+  "Remove_API_Key": {
+    "message": "Eliminar clau API"
+  },
+  "Remove_modification": {
+    "message": "Eliminar modificació"
+  },
+  "Request_Changes": {
+    "message": "Sol·licitar canvis"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Sol·licitar canvis per a aquesta acció"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Fes clic dret a qualsevol text per explicar-lo o millorar-lo amb Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Venciment del desplegament"
+  },
+  "Sandbox_Policy": {
+    "message": "Política de Sandbox"
+  },
+  "Save_API_Key": {
+    "message": "Desar clau API"
+  },
+  "Save_Settings": {
+    "message": "Desar configuració"
+  },
+  "Saving": {
+    "message": "Desant..."
+  },
+  "Security_Privacy": {
+    "message": "Seguretat i privacitat"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Nivell de seguretat per a l'entorn d'execució d'eines"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Selecciona el model d'IA a utilitzar per a les converses."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Selecciona l'idioma preferit per a la interfície"
+  },
+  "Send_the_message": {
+    "message": "Envia el missatge"
+  },
+  "Service_Tier": {
+    "message": "Nivell de servei"
+  },
+  "Session": {
+    "message": "Sessió"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Estableix quan han de caducar les dades del desplegament"
+  },
+  "Settings": {
+    "message": "Configuració"
+  },
+  "Settings_saved_successfully": {
+    "message": "Configuració desada correctament"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Mostra l'ús de tokens a les tasques"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Mostra avís quan l'ús d'emmagatzematge superi aquest percentatge (per defecte: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Inicia sessió al teu compte"
+  },
+  "Stable": {
+    "message": "Estable"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Atura l'execució de la tasca actual"
+  },
+  "Storage_Cache": {
+    "message": "Emmagatzematge i memòria cau"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Configuració d'emmagatzematge i memòria cau"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Avís de quota d'emmagatzematge (%)"
+  },
+  "Storage_Settings": {
+    "message": "Configuració d'emmagatzematge"
+  },
+  "Storage_Tool": {
+    "message": "Eina d'emmagatzematge"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Emmagatzema dades de memòria cau de manera persistent entre sessions del navegador"
+  },
+  "Tab_Tool": {
+    "message": "Eina de pestanya"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Prova la connexió"
+  },
+  "Testing": {
+    "message": "Provant..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "L'agent està utilitzant el mode de backend. Les sol·licituds LLM es dirigiran a través del servidor d'AI Republic. Les teves converses es processen de forma segura a través de la nostra infraestructura."
+  },
+  "Time": {
+    "message": "Temps"
+  },
+  "Time_remaining": {
+    "message": "Temps restant"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Temps de vida per a elements en memòria cau en segons (per defecte: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Panell lateral"
+  },
+  "Tool": {
+    "message": "Eina"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Temps d'espera de l'eina (ms)"
+  },
+  "Tools": {
+    "message": "Eines"
+  },
+  "Tools_Settings": {
+    "message": "Configuració d'eines"
+  },
+  "Turn": {
+    "message": "Torn"
+  },
+  "UI_Theme": {
+    "message": "Tema de la interfície d'usuari"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "No s'ha pogut carregar la informació de crèdit"
+  },
+  "Unsaved_Changes": {
+    "message": "Canvis no desats"
+  },
+  "Update_Channel": {
+    "message": "Canal d'actualitzacions"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Actualitza el pla"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Actualitza a Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Actualitza la teva subscripció per explorar els models més potents del món"
+  },
+  "Use_Context_Menu": {
+    "message": "Menú contextual:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Utilitza la teva clau API"
+  },
+  "User_Center": {
+    "message": "Centre d'usuari"
+  },
+  "User_approved_action": {
+    "message": "Acció aprovada per l'usuari"
+  },
+  "User_decision": {
+    "message": "Decisió de l'usuari"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Preferències d'usuari i configuració de la interfície"
+  },
+  "User_rejected_action": {
+    "message": "Acció rebutjada per l'usuari"
+  },
+  "User_requested_modifications": {
+    "message": "Modificacions sol·licitades per l'usuari"
+  },
+  "Using_extra_credits": {
+    "message": "Utilitzant crèdits addicionals"
+  },
+  "View_Chat_History": {
+    "message": "Veure l'historial del xat"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Anàlisi visual del contingut i disseny de la pàgina"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Eina d'extracció web"
+  },
+  "Web_Search": {
+    "message": "Cerca web"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Benvingut a Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Escriptura de l'espai de treball"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Tens canvis sense desar. Vols descartar-los?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "El teu assistent de navegador impulsat per IA està llest per ajudar-te a navegar, entendre i interactuar amb el contingut web."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "La teva clau API està encriptada"
+  },
+  "Your_Decision": {
+    "message": "La teva decisió"
+  }
+}

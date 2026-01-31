@@ -134,7 +134,7 @@ export interface ConfigureSession {
  */
 export type InitialHistory =
   | { mode: 'new' }
-  | { mode: 'resumed'; rolloutItems: any[] } // RolloutItem[] from rollout
+  | { mode: 'resumed'; conversationId: string; rolloutItems: any[] } // RolloutItem[] from rollout
   | { mode: 'forked'; rolloutItems: any[]; sourceConversationId: string };
 
 /**
@@ -144,7 +144,7 @@ export function isNewHistory(history: InitialHistory): history is { mode: 'new' 
   return history.mode === 'new';
 }
 
-export function isResumedHistory(history: InitialHistory): history is { mode: 'resumed'; rolloutItems: any[] } {
+export function isResumedHistory(history: InitialHistory): history is { mode: 'resumed'; conversationId: string; rolloutItems: any[] } {
   return history.mode === 'resumed';
 }
 

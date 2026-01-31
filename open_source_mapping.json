@@ -1,0 +1,8 @@
+{
+  "_comment": "Files and directories to exclude from syncing to the public open source repository",
+  "sync_exclude": [
+    ".env",
+    ".env.local",
+    ".claude/"
+  ]
+}

@@ -24,7 +24,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/content/content-script.ts'),
+      entry: resolve(__dirname, 'open_source/src/content/content-script.ts'),
       name: 'BrowserxContentScript',
       formats: ['iife'],
       fileName: () => 'content.js'
@@ -45,7 +45,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'open_source/src')
     }
   }
 });

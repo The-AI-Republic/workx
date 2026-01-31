@@ -92,17 +92,13 @@ export class FireworksClient extends OpenAIResponsesClient {
       return [];
     }
 
-    console.log('[FireworksClient] Received SDK event type:', sdkEvent.type);
-
     const events: ResponseEvent[] = [];
 
     // Handle response.completed specially for Fireworks
     if (sdkEvent.type === 'response.completed' || sdkEvent.type === 'response.done') {
-      console.log('[FireworksClient] Response completed event:', JSON.stringify(sdkEvent, null, 2));
 
       // Extract output items from response
       if (sdkEvent.response?.output && Array.isArray(sdkEvent.response.output)) {
-        console.log('[FireworksClient] Processing output items:', sdkEvent.response.output.length);
 
         for (const outputItem of sdkEvent.response.output) {
           if (outputItem && outputItem.type) {
@@ -126,16 +122,11 @@ export class FireworksClient extends OpenAIResponsesClient {
         tokenUsage: sdkEvent.usage ? this.convertTokenUsage(sdkEvent.usage) : undefined,
       });
 
-      console.log('[FireworksClient] Emitting events:', events.map(e => e.type).join(', '));
       return events;
     }
 
     // For all other events, use parent class conversion
     const parentEvents = super.convertSDKEventToResponseEvent(sdkEvent);
-
-    if (parentEvents.length > 0) {
-      console.log('[FireworksClient] Converted to events:', parentEvents.map(e => e.type).join(', '));
-    }
 
     return parentEvents;
   }
@@ -145,15 +136,12 @@ export class FireworksClient extends OpenAIResponsesClient {
    * Fireworks uses 'reasoning_content' field (string) instead of 'content' array
    */
   private transformFireworksReasoningItem(outputItem: any): void {
-    console.log('[FireworksClient] Transforming reasoning item:', JSON.stringify(outputItem, null, 2));
 
     if (outputItem.reasoning_content && typeof outputItem.reasoning_content === 'string') {
       // Convert Fireworks's reasoning_content string to standard content array format
       outputItem.content = [
         { type: 'reasoning_text', text: outputItem.reasoning_content }
       ];
-
-      console.log('[FireworksClient] Transformed Fireworks reasoning content to standard format');
 
       // Remove the Fireworks-specific field to avoid confusion
       delete outputItem.reasoning_content;
@@ -163,7 +151,7 @@ export class FireworksClient extends OpenAIResponsesClient {
   /**
    * Helper to convert token usage (exposed from parent class)
    */
-  private convertTokenUsage(usage: any): any {
+  protected convertTokenUsage(usage: any): any {
     return {
       inputTokens: usage.prompt_tokens || 0,
       outputTokens: usage.completion_tokens || 0,

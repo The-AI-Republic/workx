@@ -2,8 +2,8 @@
   /**
    * ToolCallEvent - Renders tool call operations with metadata
    */
-  import type { ProcessedEvent } from '../../../types/ui';
-  import { formatDuration } from '../../../utils/formatters';
+  import type { ProcessedEvent } from '../../../../open_source/src/types/ui';
+  import { formatDuration } from '../../../../open_source/src/utils/formatters';
 
   export let event: ProcessedEvent;
 </script>

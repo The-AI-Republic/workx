@@ -19,23 +19,23 @@ export default defineConfig({
       ]
     },
     include: [
-      'tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-      'src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-      'src/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+      'open_source/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'open_source/src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'open_source/src/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
     ],
     mockReset: true,
     restoreMocks: true
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@config': resolve(__dirname, 'src/config'),
-      '@storage': resolve(__dirname, 'src/storage'),
-      '@models': resolve(__dirname, 'src/models'),
-      '@core': resolve(__dirname, 'src/core'),
-      '@tools': resolve(__dirname, 'src/tools'),
-      '@protocol': resolve(__dirname, 'src/protocol'),
-      '@types': resolve(__dirname, 'src/types')
+      '@': resolve(__dirname, 'open_source/src'),
+      '@config': resolve(__dirname, 'open_source/src/config'),
+      '@storage': resolve(__dirname, 'open_source/src/storage'),
+      '@models': resolve(__dirname, 'open_source/src/models'),
+      '@core': resolve(__dirname, 'open_source/src/core'),
+      '@tools': resolve(__dirname, 'open_source/src/tools'),
+      '@protocol': resolve(__dirname, 'open_source/src/protocol'),
+      '@types': resolve(__dirname, 'open_source/src/types')
     }
   }
 });

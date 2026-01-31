@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Browserx: General AI Agent For Work Tasks Automation",
-  "version": "0.0.5",
-  "description": "Privacy Preserving And Open Source AI agent With Browser Automation Capabilities",
+  "name": "__MSG_extension_name__",
+  "version": "0.0.36",
+  "description": "__MSG_extension_description__",
+  "default_locale": "en",
   "permissions": [
     "tabs",
     "tabGroups",
@@ -15,13 +16,25 @@
     "contextMenus",
     "alarms",
     "debugger",
-    "downloads"
+    "downloads",
+    "cookies"
   ],
-  "host_permissions": ["<all_urls>"],
-  "web_accessible_resources": [{
-    "resources": ["prompts/agent_prompt.md", "prompts/user_instruction.md", "*.map", "content.js.map"],
-    "matches": ["<all_urls>"]
-  }],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "prompts/agent_prompt.md",
+        "prompts/user_instruction.md",
+        "*.map",
+        "content.js.map"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -37,12 +50,18 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["content.js"],
-    "all_frames": false,
-    "run_at": "document_idle"
-  }],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": false,
+      "run_at": "document_idle"
+    }
+  ],
   "icons": {
     "16": "static/AI RepublicLOGO01.png",
     "48": "static/AI RepublicLOGO01.png",
