@@ -14,7 +14,6 @@ import { OpenAIChatCompletionClient } from './OpenAIChatCompletionClient';
 import type { OpenAIChatCompletionConfig } from './OpenAIChatCompletionClient';
 import type { ResponseEvent } from '../types/ResponsesAPI';
 import type { RetryConfig } from '../ModelClient';
-import { GeminiLogger } from '../../utils/logger';
 
 /**
  * Together AI Chat Completion client
@@ -38,7 +37,6 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
     const pendingEvents = (this as any).pendingEvents;
     if (pendingEvents && pendingEvents.length > 0) {
       const pendingEvent = pendingEvents.shift()!;
-      GeminiLogger.debug('Returning pending event', { type: pendingEvent.type, remaining: pendingEvents.length });
       return pendingEvent;
     }
 
@@ -63,9 +61,6 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
     if (delta?.content) {
       // Access parent's chatCompletionTextContent
       (this as any).chatCompletionTextContent += delta.content;
-
-      GeminiLogger.textAccumulated(delta.content, (this as any).chatCompletionTextContent.length);
-      GeminiLogger.textDelta(delta.content, (this as any).chatCompletionTextContent.length);
 
       if (!finishReason) {
         return {
@@ -129,8 +124,6 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
       const hasStandardToolCalls = toolCalls.size > 0;
       const hasParsedToolCalls = parsedToolCalls.length > 0;
 
-      GeminiLogger.finishReason(finishReason, hasContent, hasStandardToolCalls || hasParsedToolCalls);
-
       // If we have any content, create a unified message item
       if (hasReasoning || hasContent || hasStandardToolCalls || hasParsedToolCalls) {
         const contentArray: any[] = [];
@@ -161,19 +154,12 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
           const cleanedReasoning = this.cleanReasoningContent(this.togetherReasoningContent);
           if (cleanedReasoning.trim()) {
             messageItem.reasoning_content = cleanedReasoning;
-            GeminiLogger.debug('Including reasoning_content in message item', {
-              reasoningLength: cleanedReasoning.length
-            });
           }
         }
 
         // Add tool_calls if present
         if (toolCallsArray && toolCallsArray.length > 0) {
           messageItem.tool_calls = toolCallsArray;
-          GeminiLogger.debug('Including tool_calls in message item', {
-            count: toolCallsArray.length,
-            names: toolCallsArray.map(tc => tc.function.name)
-          });
         }
 
         // Clear all accumulated state for next request
@@ -183,7 +169,6 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
 
         // Queue Completed event
         pendingEvents.push(completedEvent);
-        GeminiLogger.debug('Queued Completed event', { pendingCount: pendingEvents.length });
 
         return {
           type: 'OutputItemDone',
@@ -192,17 +177,12 @@ export class TogetherChatCompletionClient extends OpenAIChatCompletionClient {
       }
 
       // Empty response
-      GeminiLogger.validationWarning(
-        'Empty response detected at finish_reason',
-        { finishReason, responseId: chatEvent.id }
-      );
 
       // Clear state
       (this as any).chatCompletionTextContent = '';
       this.togetherReasoningContent = '';
       toolCalls.clear();
 
-      GeminiLogger.completedEmitted(completedEvent.tokenUsage);
       return completedEvent;
     }
 

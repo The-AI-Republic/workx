@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "وكيل ذكاء اصطناعي عام داخل المتصفح لمهام العمل"
+  },
+  "API_Key_Configuration": {
+    "message": "تكوين مفتاح API"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "يتم تشفير مفاتيح API وتخزينها محليًا في متصفحك. لا تُرسل هذه المفاتيح أبدًا إلى خوادم خارجية إلا عند إجراء استدعاءات API."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "الوصول إلى تخزين المتصفح (localStorage، sessionStorage، cookies)"
+  },
+  "Action": {
+    "message": "إجراء"
+  },
+  "Action_Details": {
+    "message": "تفاصيل الإجراء"
+  },
+  "Add_Modification": {
+    "message": "إضافة تعديل"
+  },
+  "Advanced_Configuration": {
+    "message": "تكوين متقدم"
+  },
+  "Advanced_Options": {
+    "message": "خيارات متقدمة"
+  },
+  "Agent_Execution_Tools": {
+    "message": "أدوات تنفيذ المهام للوكيل"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "السماح للوكيل بتنفيذ أوامر النظام (استخدم بحذر)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "السماح للوكيل بقراءة، كتابة وإدارة الملفات (قريبًا في تحديث مستقبلي)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "السماح للنصوص البرمجية للمحتوى بالتشغيل على صفحات الويب"
+  },
+  "Allowed_Origins": {
+    "message": "النطاقات المسموح بها"
+  },
+  "Approval_History": {
+    "message": "سجل الموافقات"
+  },
+  "Approve": {
+    "message": "الموافقة"
+  },
+  "Approve_this_action": {
+    "message": "الموافقة على هذا الإجراء"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "اطلب من Browserx استخراج بيانات مُهيكلة من أي صفحة ويب"
+  },
+  "Available": {
+    "message": "متاح:"
+  },
+  "Back": {
+    "message": "رجوع"
+  },
+  "Backend_Mode": {
+    "message": "وضع الخلفية"
+  },
+  "Backend_Mode_Active": {
+    "message": "وضع الخلفية مفعّل"
+  },
+  "Beta": {
+    "message": "تجريبي"
+  },
+  "Browser_Tools": {
+    "message": "أدوات المتصفح"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "مفاتيح أتمتة المتصفح"
+  },
+  "Cache_Settings": {
+    "message": "إعدادات التخزين المؤقت"
+  },
+  "Cache_TTL_seconds": {
+    "message": "مدة التخزين المؤقت (ثوانٍ)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "سلوك التخزين المؤقت واحتفاظ البيانات"
+  },
+  "Cancel": {
+    "message": "إلغاء"
+  },
+  "Chat_History": {
+    "message": "سجل الدردشة"
+  },
+  "Choose_AI_Model": {
+    "message": "اختر نموذج الذكاء الاصطناعي"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "اختر النمط البصري لواجهة اللوحة الجانبية"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "اختر قناة التحديث التي تريد اتباعها"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "نمط الترمينال الكلاسيكي بنص أخضر على خلفية سوداء"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "واجهة دردشة نظيفة وعصرية تشبه ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "انقر على أيقونة Browserx في شريط الأدوات أو اضغط Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "انقر لتحديد نموذج"
+  },
+  "Close_settings": {
+    "message": "إغلاق الإعدادات"
+  },
+  "Command": {
+    "message": "أمر"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "ضغط البيانات المخزنة لتوفير مساحة التخزين"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "تكوين نموذج الذكاء الاصطناعي ومفاتيح API"
+  },
+  "Connected": {
+    "message": "متصل"
+  },
+  "Context": {
+    "message": "السياق"
+  },
+  "Create_New_Tab": {
+    "message": "إنشاء علامة تبويب جديدة"
+  },
+  "Credit_Details": {
+    "message": "تفاصيل الرصيد"
+  },
+  "Current_Plan": {
+    "message": "الخطة الحالية:"
+  },
+  "DOM_Tool": {
+    "message": "أداة DOM"
+  },
+  "Daily_Credits": {
+    "message": "الأرصدة اليومية"
+  },
+  "Data_Extraction_Tool": {
+    "message": "أداة استخراج البيانات"
+  },
+  "Days_until_expiration": {
+    "message": "الأيام المتبقية حتى انتهاء الصلاحية"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "تم تطويره ودعمه من قبل AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "تجاهل التغييرات"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "عرض استهلاك الرموز (الرموز المدخلة/المخرجة) عند إكمال المهام"
+  },
+  "Enable_All_Tools": {
+    "message": "تمكين جميع الأدوات"
+  },
+  "Enable_Cache": {
+    "message": "تمكين التخزين المؤقت"
+  },
+  "Enable_Compression": {
+    "message": "تمكين الضغط"
+  },
+  "Enable_Content_Scripts": {
+    "message": "تمكين سكريبتات المحتوى"
+  },
+  "Enable_Extension": {
+    "message": "تمكين الامتداد"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "تمكين دمج أدوات بروتوكول سياق النموذج (قريبًا في تحديث مستقبلي)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "تمكين التخزين المؤقت لتحسين الأداء عن طريق تخزين البيانات التي يتم الوصول إليها بشكل متكرر"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "تمكين قدرات البحث على الويب للوكيل"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "أدخل مفتاح API الخاص بـ LLM"
+  },
+  "Execute_Commands": {
+    "message": "تنفيذ الأوامر"
+  },
+  "Expire_after_days": {
+    "message": "انتهاء الصلاحية بعد أيام"
+  },
+  "Explain_your_decision": {
+    "message": "اشرح قرارك..."
+  },
+  "Extension_Permission": {
+    "message": "الامتداد والإذن"
+  },
+  "Extension_Permission_Settings": {
+    "message": "إعدادات الامتداد والأذونات"
+  },
+  "Extension_Configuration": {
+    "message": "تكوين الامتداد"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "تكوين الامتداد والأذونات"
+  },
+  "Extra_Credits": {
+    "message": "رصيد إضافي"
+  },
+  "Extract_Data": {
+    "message": "استخراج البيانات:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "استخراج أنماط بيانات محددة من الصفحات"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "استخراج بيانات منظمة من صفحات الويب"
+  },
+  "Failed_to_load_preferences": {
+    "message": "فشل في تحميل التفضيلات"
+  },
+  "Failed_to_save_settings": {
+    "message": "فشل في حفظ الإعدادات"
+  },
+  "File_Operations_Not_Available": {
+    "message": "عمليات الملفات (غير متاحة)"
+  },
+  "File_Path": {
+    "message": "مسار الملف"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "ملء النماذج، إرسال البيانات، التفاعل مع عناصر النموذج"
+  },
+  "Form_Automation_Tool": {
+    "message": "أداة أتمتة النماذج"
+  },
+  "Full_Access_Dangerous": {
+    "message": "وصول كامل (خطير)"
+  },
+  "General": {
+    "message": "عام"
+  },
+  "General_Settings": {
+    "message": "الإعدادات العامة"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "ابدأ"
+  },
+  "Hello_NAME": {
+    "message": "مرحبًا $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "مرحبًا بالعالم"
+  },
+  "History": {
+    "message": "السجل"
+  },
+  "Impact": {
+    "message": "التأثير"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "اعتراض وتعديل طلبات/استجابات الشبكة"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "اختصارات لوحة المفاتيح"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "طلبات LLM تذهب مباشرة إلى APIs المزود"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "طلبات LLM تمر عبر الخادم الخلفي لـ AI Republic"
+  },
+  "Language": {
+    "message": "اللغة"
+  },
+  "Learn_more": {
+    "message": "اعرف المزيد"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "قائمة المصادر المسموح بها (مصدر واحد في كل سطر). يدعم الأحرف العامة (*)"
+  },
+  "Loading_credits": {
+    "message": "جارٍ تحميل الرصيد..."
+  },
+  "Loading_settings": {
+    "message": "جارٍ تحميل الإعدادات..."
+  },
+  "Login": {
+    "message": "تسجيل الدخول"
+  },
+  "Login_to_get_free_credits": {
+    "message": "سجّل الدخول للحصول على رصيد مجاني"
+  },
+  "Low_credits_remaining": {
+    "message": "الرصيد المتبقي منخفض"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "أدوات MCP (غير متاحة)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "إدارة علامات تبويب المتصفح (فتح، إغلاق، تبديل، استعلام)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "المفتاح الرئيسي لتفعيل أو تعطيل جميع أدوات المتصفح والوكيل"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "المفتاح الرئيسي لتفعيل أو تعطيل الامتداد"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "الحد الأقصى لحجم الذاكرة المؤقتة (ميغابايت)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "الحد الأقصى لحجم الذاكرة المؤقتة بالميغابايت (الإعداد الافتراضي: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "الحد الأقصى للوقت (بالمليثانية) الذي يمكن للأداة أن تعمل قبل انتهاء المهلة (الإعداد الافتراضي: 30000)"
+  },
+  "Model_Config": {
+    "message": "إعداد النموذج"
+  },
+  "Model_Selection": {
+    "message": "اختيار النموذج"
+  },
+  "Modern_Chat": {
+    "message": "الدردشة الحديثة"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "تعديل المعلمات عند طلب التغييرات"
+  },
+  "Monthly_Credits": {
+    "message": "الرصيد الشهري"
+  },
+  "More_Config": {
+    "message": "مزيد من الإعدادات"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "تصفح الصفحات، والنقر على الروابط، والتحكم في تنقل المتصفح"
+  },
+  "Navigation_Tool": {
+    "message": "أداة التنقل"
+  },
+  "Network_Intercept_Tool": {
+    "message": "أداة اعتراض الشبكة"
+  },
+  "Never_expire_permanent": {
+    "message": "لا ينتهي أبداً (دائم)"
+  },
+  "New_Conversation": {
+    "message": "محادثة جديدة"
+  },
+  "No_approval_history_yet": {
+    "message": "لا توجد سجلات موافقة بعد."
+  },
+  "No_tabs_available": {
+    "message": "لا توجد علامات تبويب متاحة"
+  },
+  "Not_Connected": {
+    "message": "غير متصل"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "عدد الأيام قبل انتهاء صلاحية بيانات النشر (الافتراضي: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "فتح اللوحة الجانبية:"
+  },
+  "Organization": {
+    "message": "المؤسسة"
+  },
+  "Page_Action_Tool": {
+    "message": "أداة إجراءات الصفحة"
+  },
+  "Page_Vision_Tool": {
+    "message": "أداة رؤية الصفحة"
+  },
+  "Parameter_Modifications": {
+    "message": "تعديلات Parameter"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "تنفيذ إجراءات الصفحة (تمرير، لقطة شاشة، انتظار)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "حفظ الذاكرة المؤقتة إلى التخزين"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "الرجاء إدخال مفتاح API صالح."
+  },
+  "Please_type_a_valid_command": {
+    "message": "الرجاء كتابة أمر صالح"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "الفئة ذات الأولوية توفر أوقات استجابة أسرع مع أسعار أعلى."
+  },
+  "Provider": {
+    "message": "المزود"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "استعلام وتعديل DOM"
+  },
+  "Quick_Start": {
+    "message": "بدء سريع"
+  },
+  "Quick_action": {
+    "message": "إجراء سريع"
+  },
+  "Read_only": {
+    "message": "للقراءة فقط"
+  },
+  "Reason_optional": {
+    "message": "السبب (اختياري)"
+  },
+  "Refreshes_in": {
+    "message": "تحديث خلال"
+  },
+  "Reject": {
+    "message": "رفض"
+  },
+  "Reject_this_action": {
+    "message": "رفض هذا الإجراء"
+  },
+  "Remaining": {
+    "message": "المتبقي:"
+  },
+  "Remove_API_Key": {
+    "message": "إزالة مفتاح API"
+  },
+  "Remove_modification": {
+    "message": "إزالة التعديل"
+  },
+  "Request_Changes": {
+    "message": "طلب تغييرات"
+  },
+  "Request_changes_to_this_action": {
+    "message": "طلب تغييرات لهذا الإجراء"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "انقر بزر الفأرة الأيمن على أي نص لتوضيحه أو تحسينه باستخدام Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "انتهاء صلاحية النشر"
+  },
+  "Sandbox_Policy": {
+    "message": "سياسة Sandbox"
+  },
+  "Save_API_Key": {
+    "message": "حفظ مفتاح API"
+  },
+  "Save_Settings": {
+    "message": "حفظ الإعدادات"
+  },
+  "Saving": {
+    "message": "جارٍ الحفظ..."
+  },
+  "Security_Privacy": {
+    "message": "الأمان والخصوصية"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "مستوى الأمان لبيئة تنفيذ الأدوات"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "اختر نموذج AI لاستخدامه في المحادثات."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "اختر لغتك المفضلة للواجهة"
+  },
+  "Send_the_message": {
+    "message": "إرسال الرسالة"
+  },
+  "Service_Tier": {
+    "message": "فئة الخدمة"
+  },
+  "Session": {
+    "message": "الجلسة"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "حدد متى يجب أن تنتهي صلاحية بيانات النشر"
+  },
+  "Settings": {
+    "message": "الإعدادات"
+  },
+  "Settings_saved_successfully": {
+    "message": "تم حفظ الإعدادات بنجاح"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "عرض استخدام الرموز في المهام"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "إظهار تحذير عندما يتجاوز استخدام التخزين هذه النسبة (الافتراضي: 90٪)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "سجّل الدخول إلى حسابك"
+  },
+  "Stable": {
+    "message": "مستقر"
+  },
+  "Stop_the_current_task_run": {
+    "message": "إيقاف تشغيل المهمة الحالية"
+  },
+  "Storage_Cache": {
+    "message": "التخزين والذاكرة المؤقتة"
+  },
+  "Storage_Cache_Settings": {
+    "message": "إعدادات التخزين والذاكرة المؤقتة"
+  },
+  "Storage_Quota_Warning": {
+    "message": "تحذير حصة التخزين (%)"
+  },
+  "Storage_Settings": {
+    "message": "إعدادات التخزين"
+  },
+  "Storage_Tool": {
+    "message": "أداة التخزين"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "تخزين بيانات الذاكرة المؤقتة بشكل دائم عبر جلسات المتصفح"
+  },
+  "Tab_Tool": {
+    "message": "أداة التبويب"
+  },
+  "Terminal": {
+    "message": "المحطة الطرفية"
+  },
+  "Test_Connection": {
+    "message": "اختبار الاتصال"
+  },
+  "Testing": {
+    "message": "جارٍ الاختبار..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "الوكيل يستخدم حاليًا وضع الخلفية. سيتم توجيه طلبات LLM عبر خادم AI Republic. تُعالج محادثاتك بأمان عبر بنيتنا التحتية."
+  },
+  "Time": {
+    "message": "الوقت"
+  },
+  "Time_remaining": {
+    "message": "الوقت المتبقي"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "مدة الصلاحية للعناصر المخزنة مؤقتًا بالثواني (الافتراضي: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "تبديل اللوحة الجانبية"
+  },
+  "Tool": {
+    "message": "أداة"
+  },
+  "Tool_Timeout_ms": {
+    "message": "مهلة الأداة (مللي ثانية)"
+  },
+  "Tools": {
+    "message": "الأدوات"
+  },
+  "Tools_Settings": {
+    "message": "إعدادات الأدوات"
+  },
+  "Turn": {
+    "message": "دورة"
+  },
+  "UI_Theme": {
+    "message": "سمة واجهة المستخدم"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "تعذر تحميل معلومات الرصيد"
+  },
+  "Unsaved_Changes": {
+    "message": "تغييرات غير محفوظة"
+  },
+  "Update_Channel": {
+    "message": "قناة التحديث"
+  },
+  "Upgrade_My_Plan": {
+    "message": "ترقية خطتي"
+  },
+  "Upgrade_to_Premium": {
+    "message": "الترقية إلى النسخة المميزة"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "قم بترقية اشتراكك لاستكشاف أقوى النماذج في العالم"
+  },
+  "Use_Context_Menu": {
+    "message": "استخدام قائمة السياق"
+  },
+  "Use_Own_API_Key": {
+    "message": "استخدام مفتاح API الخاص"
+  },
+  "User_Center": {
+    "message": "مركز المستخدم"
+  },
+  "User_approved_action": {
+    "message": "إجراء موافق عليه من المستخدم"
+  },
+  "User_decision": {
+    "message": "قرار المستخدم"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "تفضيلات المستخدم وإعدادات الواجهة"
+  },
+  "User_rejected_action": {
+    "message": "إجراء مرفوض من المستخدم"
+  },
+  "User_requested_modifications": {
+    "message": "تعديلات طلبها المستخدم"
+  },
+  "Using_extra_credits": {
+    "message": "استخدام أرصدة إضافية"
+  },
+  "View_Chat_History": {
+    "message": "عرض سجل الدردشة"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "تحليل بصري لمحتوى الصفحة وتخطيطها"
+  },
+  "Web_Scraping_Tool": {
+    "message": "أداة استخراج الويب"
+  },
+  "Web_Search": {
+    "message": "بحث الويب"
+  },
+  "Welcome_to_Browserx": {
+    "message": "مرحبًا بك في Browserx"
+  },
+  "Workspace_Write": {
+    "message": "كتابة مساحة العمل"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "لديك تغييرات غير محفوظة. هل تريد تجاهلها؟"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "مساعد المتصفح المدعوم بالذكاء الاصطناعي جاهز لمساعدتك في التصفح، والفهم، والتفاعل مع محتوى الويب."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "مفتاح API الخاص بك مشفر"
+  },
+  "Your_Decision": {
+    "message": "قرارك"
+  }
+}

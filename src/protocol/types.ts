@@ -30,75 +30,75 @@ export interface Submission {
 export type Op =
   | { type: 'Interrupt' }
   | {
-      type: 'UserInput';
-      /** User input items */
-      items: InputItem[];
-    }
+    type: 'UserInput';
+    /** User input items */
+    items: InputItem[];
+  }
   | {
-      type: 'UserTurn';
-      /** User input items */
-      items: InputItem[];
-      /** Replaced cwd with tabId - browser tab ID for tool execution context */
-      tabId: number;
-      /** Policy to use for command approval */
-      approval_policy: AskForApproval;
-      /** Policy to use for tool calls */
-      sandbox_policy: SandboxPolicy;
-      /** Must be a valid model slug */
-      model: string;
-      /** Will only be honored if the model is configured to use reasoning */
-      effort?: ReasoningEffortConfig;
-      /** Will only be honored if the model is configured to use reasoning */
-      summary: ReasoningSummaryConfig;
-    }
+    type: 'UserTurn';
+    /** User input items */
+    items: InputItem[];
+    /** Replaced cwd with tabId - browser tab ID for tool execution context */
+    tabId: number;
+    /** Policy to use for command approval */
+    approval_policy: AskForApproval;
+    /** Policy to use for tool calls */
+    sandbox_policy: SandboxPolicy;
+    /** Must be a valid model slug */
+    model: string;
+    /** Will only be honored if the model is configured to use reasoning */
+    effort?: ReasoningEffortConfig;
+    /** Will only be honored if the model is configured to use reasoning */
+    summary: ReasoningSummaryConfig;
+  }
   | {
-      type: 'OverrideTurnContext';
-      /** Replaced cwd with tabId - updated browser tab ID for tool execution */
-      tabId?: number;
-      /** Updated command approval policy */
-      approval_policy?: AskForApproval;
-      /** Updated sandbox policy for tool calls */
-      sandbox_policy?: SandboxPolicy;
-      /** Updated model slug */
-      model?: string;
-      /** Updated reasoning effort */
-      effort?: ReasoningEffortConfig | null;
-      /** Updated reasoning summary preference */
-      summary?: ReasoningSummaryConfig;
-    }
+    type: 'OverrideTurnContext';
+    /** Replaced cwd with tabId - updated browser tab ID for tool execution */
+    tabId?: number;
+    /** Updated command approval policy */
+    approval_policy?: AskForApproval;
+    /** Updated sandbox policy for tool calls */
+    sandbox_policy?: SandboxPolicy;
+    /** Updated model slug */
+    model?: string;
+    /** Updated reasoning effort */
+    effort?: ReasoningEffortConfig | null;
+    /** Updated reasoning summary preference */
+    summary?: ReasoningSummaryConfig;
+  }
   | {
-      type: 'ExecApproval';
-      /** The id of the submission we are approving */
-      id: string;
-      /** The user's decision in response to the request */
-      decision: ReviewDecision;
-    }
+    type: 'ExecApproval';
+    /** The id of the submission we are approving */
+    id: string;
+    /** The user's decision in response to the request */
+    decision: ReviewDecision;
+  }
   | {
-      type: 'PatchApproval';
-      /** The id of the submission we are approving */
-      id: string;
-      /** The user's decision in response to the request */
-      decision: ReviewDecision;
-    }
+    type: 'PatchApproval';
+    /** The id of the submission we are approving */
+    id: string;
+    /** The user's decision in response to the request */
+    decision: ReviewDecision;
+  }
   | {
-      type: 'AddToHistory';
-      /** The message text to be stored */
-      text: string;
-    }
+    type: 'AddToHistory';
+    /** The message text to be stored */
+    text: string;
+  }
   | {
-      type: 'GetHistoryEntryRequest';
-      offset: number;
-      log_id: number;
-    }
+    type: 'GetHistoryEntryRequest';
+    offset: number;
+    log_id: number;
+  }
   | { type: 'GetPath' }
   | { type: 'ListMcpTools' }
   | { type: 'ListCustomPrompts' }
   | { type: 'Compact' }
   | { type: 'ManualCompact' } // Manual compaction trigger from UI
   | {
-      type: 'Review';
-      review_request: ReviewRequest;
-    }
+    type: 'Review';
+    review_request: ReviewRequest;
+  }
   | { type: 'Shutdown' };
 
 /**
@@ -119,14 +119,14 @@ export type SandboxPolicy =
   | { mode: 'danger-full-access' }
   | { mode: 'read-only' }
   | {
-      mode: 'workspace-write';
-      /** Additional folders that should be writable (adapted for browser storage) */
-      writable_roots?: string[];
-      /** When true, network access is allowed */
-      network_access?: boolean;
-      exclude_tmpdir_env_var?: boolean;
-      exclude_slash_tmp?: boolean;
-    };
+    mode: 'workspace-write';
+    /** Additional folders that should be writable (adapted for browser storage) */
+    writable_roots?: string[];
+    /** When true, network access is allowed */
+    network_access?: boolean;
+    exclude_tmpdir_env_var?: boolean;
+    exclude_slash_tmp?: boolean;
+  };
 
 /**
  * Protocol model types for structured data from API responses
@@ -187,69 +187,69 @@ export type LocalShellAction = {
  */
 export type ResponseItem =
   | {
-      type: 'message';
-      id?: string;
-      role: string;
-      content: ContentItem[];
-      /** Reasoning/thinking content from models like Kimi K2, o1, o3 */
-      reasoning_content?: string;
-      /** Tool calls for this assistant message (Chat Completions API format) */
-      tool_calls?: Array<{
-        id: string;
-        type: string;
-        function: {
-          name: string;
-          arguments: string;
-        };
-        /** Gemini thought signature for maintaining reasoning context across turns */
-        thoughtSignature?: string;
-      }>;
-    }
+    type: 'message';
+    id?: string;
+    role: string;
+    content: ContentItem[];
+    /** Reasoning/thinking content from models like Kimi K2, o1, o3 */
+    reasoning_content?: string;
+    /** Tool calls for this assistant message (Chat Completions API format) */
+    tool_calls?: Array<{
+      id: string;
+      type: string;
+      function: {
+        name: string;
+        arguments: string;
+      };
+      /** Gemini thought signature for maintaining reasoning context across turns */
+      thoughtSignature?: string;
+    }>;
+  }
   | {
-      type: 'reasoning';
-      id?: string;
-      summary: ReasoningItemReasoningSummary[];
-      content?: ReasoningItemContent[];
-      encrypted_content?: string;
-    }
+    type: 'reasoning';
+    id?: string;
+    summary: ReasoningItemReasoningSummary[];
+    content?: ReasoningItemContent[];
+    encrypted_content?: string;
+  }
   | {
-      type: 'web_search_call';
-      id?: string;
-      status?: string;
-      action: WebSearchAction;
-    }
+    type: 'web_search_call';
+    id?: string;
+    status?: string;
+    action: WebSearchAction;
+  }
   | {
-      type: 'function_call';
-      id?: string;
-      name: string;
-      arguments: string;
-      call_id: string;
-    }
+    type: 'function_call';
+    id?: string;
+    name: string;
+    arguments: string;
+    call_id: string;
+  }
   | {
-      type: 'function_call_output';
-      call_id: string;
-      output: string;
-    }
+    type: 'function_call_output';
+    call_id: string;
+    output: string;
+  }
   | {
-      type: 'local_shell_call';
-      id?: string;
-      call_id?: string;
-      status: LocalShellStatus;
-      action: LocalShellAction;
-    }
+    type: 'local_shell_call';
+    id?: string;
+    call_id?: string;
+    status: LocalShellStatus;
+    action: LocalShellAction;
+  }
   | {
-      type: 'custom_tool_call';
-      id?: string;
-      status?: string;
-      call_id: string;
-      name: string;
-      input: string;
-    }
+    type: 'custom_tool_call';
+    id?: string;
+    status?: string;
+    call_id: string;
+    name: string;
+    input: string;
+  }
   | {
-      type: 'custom_tool_call_output';
-      call_id: string;
-      output: string;
-    }
+    type: 'custom_tool_call_output';
+    call_id: string;
+    output: string;
+  }
   | { type: 'other' };
 
 /**
@@ -320,24 +320,24 @@ export interface ConversationHistory {
  */
 export type InputItem =
   | {
-      type: 'text';
-      text: string;
-    }
+    type: 'text';
+    text: string;
+  }
   | {
-      type: 'image';
-      /** Pre-encoded data: URI image */
-      image_url: string;
-    }
+    type: 'image';
+    /** Pre-encoded data: URI image */
+    image_url: string;
+  }
   | {
-      type: 'clipboard';
-      /** Only available in browser context */
-      content?: string;
-    }
+    type: 'clipboard';
+    /** Only available in browser context */
+    content?: string;
+  }
   | {
-      type: 'context';
-      /** Path or identifier for context */
-      path?: string;
-    };
+    type: 'context';
+    /** Path or identifier for context */
+    path?: string;
+  };
 
 /**
  * Review decision types
@@ -364,5 +364,5 @@ export interface ReviewRequest {
   type?: 'code' | 'document' | 'general';
 }
 
-// Re-export EventMsg from events.ts
-export type { EventMsg } from './events';
+// Re-export Event types from events.ts
+export type { Event, EventMsg } from './events';

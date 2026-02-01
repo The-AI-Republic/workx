@@ -3,8 +3,8 @@
  * Common functions for testing async operations and Chrome extension components
  */
 
-import { expect } from 'vitest';
-import { Event, EventMsg, Submission, Op } from '../../protocol/types';
+import { expect, vi } from 'vitest';
+import type { Event, EventMsg, Submission, Op } from '../../protocol/types';
 
 /**
  * Wait for a condition to be true
@@ -53,7 +53,7 @@ export function createMockEvent(msg: EventMsg, id = 'evt_1'): Event {
 export function createMockUserInput(content: string): Op {
   return {
     type: 'UserInput',
-    items: [{ type: 'text', content }],
+    items: [{ type: 'text', text: content }],
   };
 }
 
@@ -63,10 +63,10 @@ export function createMockUserInput(content: string): Op {
 export function createMockUserTurn(content: string, model = 'gpt-4'): Op {
   return {
     type: 'UserTurn',
-    items: [{ type: 'text', content }],
-    cwd: '/mock/path',
-    approval_policy: 'OnChange',
-    sandbox_policy: 'TabWrite',
+    items: [{ type: 'text', text: content }],
+    tabId: -1,
+    approval_policy: 'on-request',
+    sandbox_policy: { mode: 'workspace-write' },
     model,
     summary: { enabled: false },
   };

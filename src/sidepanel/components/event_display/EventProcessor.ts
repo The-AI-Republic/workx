@@ -7,8 +7,8 @@
  * - Event categorization and styling
  */
 
-import type { Event } from '../../../protocol/types';
-import type { EventMsg } from '../../../protocol/events';
+import type { Event } from '@/protocol/types';
+import type { EventMsg } from '@/protocol/events';
 import type {
   ProcessedEvent,
   EventDisplayCategory,
@@ -16,8 +16,8 @@ import type {
   StreamingState,
   EventStyle,
   EventMetadata,
-} from '../../../types/ui';
-import { STYLE_PRESETS } from '../../../types/ui';
+} from '@/types/ui';
+import { STYLE_PRESETS } from '@/types/ui';
 
 /**
  * EventProcessor Implementation

@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "業務タスク向けの汎用ブラウザ内 AI エージェント"
+  },
+  "API_Key_Configuration": {
+    "message": "APIキー設定"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "APIキーは暗号化され、ブラウザにローカル保存されます。API呼び出し以外で外部サーバーに送信されることはありません。"
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "ブラウザストレージへのアクセス（localStorage、sessionStorage、クッキー）"
+  },
+  "Action": {
+    "message": "アクション"
+  },
+  "Action_Details": {
+    "message": "アクション詳細"
+  },
+  "Add_Modification": {
+    "message": "変更を追加"
+  },
+  "Advanced_Configuration": {
+    "message": "高度な設定"
+  },
+  "Advanced_Options": {
+    "message": "高度なオプション"
+  },
+  "Agent_Execution_Tools": {
+    "message": "エージェント実行ツール"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "エージェントにシステムコマンドの実行を許可（注意して使用）"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "エージェントにファイルの読み書き・管理を許可（今後のアップデートで提供）"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "コンテンツスクリプトのページ上での実行を許可"
+  },
+  "Allowed_Origins": {
+    "message": "許可されたオリジン"
+  },
+  "Approval_History": {
+    "message": "承認履歴"
+  },
+  "Approve": {
+    "message": "承認"
+  },
+  "Approve_this_action": {
+    "message": "このアクションを承認"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "任意のウェブページからBrowserxに構造化データを抽出させる"
+  },
+  "Available": {
+    "message": "利用可能："
+  },
+  "Back": {
+    "message": "戻る"
+  },
+  "Backend_Mode": {
+    "message": "バックエンドモード"
+  },
+  "Backend_Mode_Active": {
+    "message": "バックエンドモード有効"
+  },
+  "Beta": {
+    "message": "ベータ"
+  },
+  "Browser_Tools": {
+    "message": "ブラウザツール"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "ブラウザ自動化ツールの切替"
+  },
+  "Cache_Settings": {
+    "message": "キャッシュ設定"
+  },
+  "Cache_TTL_seconds": {
+    "message": "キャッシュTTL（秒）"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "キャッシュの動作とデータ保持"
+  },
+  "Cancel": {
+    "message": "キャンセル"
+  },
+  "Chat_History": {
+    "message": "チャット履歴"
+  },
+  "Choose_AI_Model": {
+    "message": "AIモデルを選択"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "サイドパネルの表示スタイルを選択"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "使用するアップデートチャンネルを選択"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "黒背景に緑文字のクラシックターミナルスタイル"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "ChatGPTに似た、すっきりしたモダンなチャットインターフェース"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "ツールバーのBrowserxアイコンをクリックするか、Alt+Shift+C を押してください"
+  },
+  "Click_to_select_a_model": {
+    "message": "クリックしてモデルを選択"
+  },
+  "Close_settings": {
+    "message": "設定を閉じる"
+  },
+  "Command": {
+    "message": "コマンド"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "キャッシュデータを圧縮してストレージ容量を節約"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "AIモデルとAPIキーを設定"
+  },
+  "Connected": {
+    "message": "接続済み"
+  },
+  "Context": {
+    "message": "文脈"
+  },
+  "Create_New_Tab": {
+    "message": "新しいタブを作成"
+  },
+  "Credit_Details": {
+    "message": "クレジットの詳細"
+  },
+  "Current_Plan": {
+    "message": "現在のプラン："
+  },
+  "DOM_Tool": {
+    "message": "DOMツール"
+  },
+  "Daily_Credits": {
+    "message": "1日あたりのクレジット"
+  },
+  "Data_Extraction_Tool": {
+    "message": "データ抽出ツール"
+  },
+  "Days_until_expiration": {
+    "message": "期限までの日数"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "開発・サポート: AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "変更を破棄"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "タスク完了時にトークン消費量（入力/出力トークン）を表示"
+  },
+  "Enable_All_Tools": {
+    "message": "すべてのツールを有効化"
+  },
+  "Enable_Cache": {
+    "message": "キャッシュを有効化"
+  },
+  "Enable_Compression": {
+    "message": "圧縮を有効化"
+  },
+  "Enable_Content_Scripts": {
+    "message": "コンテンツスクリプトを有効化"
+  },
+  "Enable_Extension": {
+    "message": "拡張機能を有効化"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "モデルコンテキストプロトコル統合を有効化（今後のアップデートで提供予定）"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "頻繁にアクセスされるデータを保存し、パフォーマンスを向上させるにはキャッシュを有効化"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "エージェントのウェブ検索機能を有効化"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "LLM API キーを入力"
+  },
+  "Execute_Commands": {
+    "message": "コマンドを実行"
+  },
+  "Expire_after_days": {
+    "message": "有効期限（日数指定）"
+  },
+  "Explain_your_decision": {
+    "message": "決定理由を説明…"
+  },
+  "Extension_Permission": {
+    "message": "拡張機能と権限"
+  },
+  "Extension_Permission_Settings": {
+    "message": "拡張機能と権限の設定"
+  },
+  "Extension_Configuration": {
+    "message": "拡張機能の設定"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "拡張機能の設定と権限"
+  },
+  "Extra_Credits": {
+    "message": "追加クレジット"
+  },
+  "Extract_Data": {
+    "message": "データ抽出:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "ページから特定のデータパターンを抽出"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "ウェブページから構造化データを抽出"
+  },
+  "Failed_to_load_preferences": {
+    "message": "設定の読み込みに失敗しました"
+  },
+  "Failed_to_save_settings": {
+    "message": "設定の保存に失敗しました"
+  },
+  "File_Operations_Not_Available": {
+    "message": "ファイル操作（利用不可）"
+  },
+  "File_Path": {
+    "message": "ファイルパス"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "フォーム入力、データ送信、フォーム要素操作"
+  },
+  "Form_Automation_Tool": {
+    "message": "フォーム自動化ツール"
+  },
+  "Full_Access_Dangerous": {
+    "message": "フルアクセス（高リスク）"
+  },
+  "General": {
+    "message": "全般"
+  },
+  "General_Settings": {
+    "message": "全般設定"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "開始する"
+  },
+  "Hello_NAME": {
+    "message": "こんにちは $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "こんにちは世界"
+  },
+  "History": {
+    "message": "履歴"
+  },
+  "Impact": {
+    "message": "影響"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "ネットワークリクエストとレスポンスを傍受・改変"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "キーボードショートカット"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM リクエストはプロバイダー API に直接送信"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM リクエストは AI Republic のバックエンドを経由"
+  },
+  "Language": {
+    "message": "言語"
+  },
+  "Learn_more": {
+    "message": "詳細を見る"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "許可されたオリジンのリスト（1 行につき 1 つ）。ワイルドカード (*) をサポート"
+  },
+  "Loading_credits": {
+    "message": "クレジットを読み込み中..."
+  },
+  "Loading_settings": {
+    "message": "設定を読み込み中..."
+  },
+  "Login": {
+    "message": "ログイン"
+  },
+  "Login_to_get_free_credits": {
+    "message": "ログインして無料クレジットを取得"
+  },
+  "Low_credits_remaining": {
+    "message": "クレジット残量が少ない"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP ツール（利用不可）"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "ブラウザタブの管理（開く、閉じる、切り替え、検索）"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "すべてのブラウザおよびエージェントツールを有効化または無効化するマスタートグル"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "拡張機能を有効化または無効化するマスタートグル"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "最大キャッシュサイズ (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "キャッシュサイズの最大値（単位: MB、デフォルト: 100）"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "ツールがタイムアウトになるまでの最大時間（ミリ秒、デフォルト: 30000）"
+  },
+  "Model_Config": {
+    "message": "モデル設定"
+  },
+  "Model_Selection": {
+    "message": "モデル選択"
+  },
+  "Modern_Chat": {
+    "message": "モダンチャット"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "変更要求時にパラメータを調整"
+  },
+  "Monthly_Credits": {
+    "message": "月間クレジット"
+  },
+  "More_Config": {
+    "message": "詳細設定"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "ページの移動、リンクのクリック、ブラウザナビゲーションの処理"
+  },
+  "Navigation_Tool": {
+    "message": "ナビゲーションツール"
+  },
+  "Network_Intercept_Tool": {
+    "message": "ネットワークインターセプトツール"
+  },
+  "Never_expire_permanent": {
+    "message": "期限なし（永久）"
+  },
+  "New_Conversation": {
+    "message": "新しい会話"
+  },
+  "No_approval_history_yet": {
+    "message": "承認履歴はまだありません。"
+  },
+  "No_tabs_available": {
+    "message": "利用可能なタブがありません"
+  },
+  "Not_Connected": {
+    "message": "未接続"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "ロールアウトデータの有効期限までの日数（デフォルト: 60）"
+  },
+  "Open_Side_Panel": {
+    "message": "サイドパネルを開く:"
+  },
+  "Organization": {
+    "message": "組織"
+  },
+  "Page_Action_Tool": {
+    "message": "ページアクションツール"
+  },
+  "Page_Vision_Tool": {
+    "message": "ページビジョンツール"
+  },
+  "Parameter_Modifications": {
+    "message": "パラメータ変更"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "ページ操作を実行（スクロール、スクリーンショット、待機）"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "キャッシュをストレージに永続化"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "有効なAPIキーを入力してください。"
+  },
+  "Please_type_a_valid_command": {
+    "message": "有効なコマンドを入力してください"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "優先ティアは、価格が高くなる代わりに応答速度が速くなります。"
+  },
+  "Provider": {
+    "message": "プロバイダー"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "DOM（Document Object Model）をクエリおよび操作"
+  },
+  "Quick_Start": {
+    "message": "クイックスタート"
+  },
+  "Quick_action": {
+    "message": "クイックアクション"
+  },
+  "Read_only": {
+    "message": "読み取り専用"
+  },
+  "Reason_optional": {
+    "message": "理由（任意）"
+  },
+  "Refreshes_in": {
+    "message": "更新まで"
+  },
+  "Reject": {
+    "message": "拒否"
+  },
+  "Reject_this_action": {
+    "message": "この操作を拒否する"
+  },
+  "Remaining": {
+    "message": "残り："
+  },
+  "Remove_API_Key": {
+    "message": "APIキーを削除"
+  },
+  "Remove_modification": {
+    "message": "変更を削除"
+  },
+  "Request_Changes": {
+    "message": "変更を依頼する"
+  },
+  "Request_changes_to_this_action": {
+    "message": "この操作の変更を依頼する"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "テキストを右クリックすると、ブラウザーXで説明や改善ができます。"
+  },
+  "Rollout_Expiration": {
+    "message": "ロールアウト期限"
+  },
+  "Sandbox_Policy": {
+    "message": "サンドボックスポリシー"
+  },
+  "Save_API_Key": {
+    "message": "APIキーを保存"
+  },
+  "Save_Settings": {
+    "message": "設定を保存"
+  },
+  "Saving": {
+    "message": "保存中..."
+  },
+  "Security_Privacy": {
+    "message": "セキュリティとプライバシー"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "ツール実行環境のセキュリティレベル"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "会話に使用するAIモデルを選択してください。"
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "インターフェースの使用言語を選択"
+  },
+  "Send_the_message": {
+    "message": "メッセージを送信"
+  },
+  "Service_Tier": {
+    "message": "サービス階層"
+  },
+  "Session": {
+    "message": "セッション"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "段階的展開データの有効期限を設定"
+  },
+  "Settings": {
+    "message": "設定"
+  },
+  "Settings_saved_successfully": {
+    "message": "設定が正常に保存されました"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "タスクでのトークン使用量を表示"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "ストレージ使用率がこの割合を超えたときに警告を表示 (デフォルト: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "アカウントにサインイン"
+  },
+  "Stable": {
+    "message": "安定版"
+  },
+  "Stop_the_current_task_run": {
+    "message": "現在のタスク実行を停止"
+  },
+  "Storage_Cache": {
+    "message": "ストレージ & キャッシュ"
+  },
+  "Storage_Cache_Settings": {
+    "message": "ストレージ & キャッシュ設定"
+  },
+  "Storage_Quota_Warning": {
+    "message": "ストレージクォータ警告 (%)"
+  },
+  "Storage_Settings": {
+    "message": "ストレージ設定"
+  },
+  "Storage_Tool": {
+    "message": "ストレージツール"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "ブラウザセッション間でキャッシュデータを永続的に保存"
+  },
+  "Tab_Tool": {
+    "message": "タブツール"
+  },
+  "Terminal": {
+    "message": "ターミナル"
+  },
+  "Test_Connection": {
+    "message": "接続テスト"
+  },
+  "Testing": {
+    "message": "テスト中..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "エージェントは現在バックエンドモードを使用しています。LLM リクエストは AI Republic サーバーを経由してルーティングされます。会話は当社のインフラストラクチャを通じて安全に処理されます。"
+  },
+  "Time": {
+    "message": "時刻"
+  },
+  "Time_remaining": {
+    "message": "残り時間"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "キャッシュ項目の有効期限（秒） (デフォルト: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "サイドパネルの切り替え"
+  },
+  "Tool": {
+    "message": "ツール"
+  },
+  "Tool_Timeout_ms": {
+    "message": "ツールのタイムアウト (ms)"
+  },
+  "Tools": {
+    "message": "ツール"
+  },
+  "Tools_Settings": {
+    "message": "ツール設定"
+  },
+  "Turn": {
+    "message": "切り替え"
+  },
+  "UI_Theme": {
+    "message": "UIテーマ"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "クレジット情報を読み込めません"
+  },
+  "Unsaved_Changes": {
+    "message": "未保存の変更"
+  },
+  "Update_Channel": {
+    "message": "アップデートチャンネル"
+  },
+  "Upgrade_My_Plan": {
+    "message": "プランをアップグレード"
+  },
+  "Upgrade_to_Premium": {
+    "message": "プレミアムへアップグレード"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "最も強力なモデルを利用するにはプランをアップグレードしてください"
+  },
+  "Use_Context_Menu": {
+    "message": "コンテキストメニューを使用:"
+  },
+  "Use_Own_API_Key": {
+    "message": "独自のAPIキーを使用"
+  },
+  "User_Center": {
+    "message": "ユーザーセンター"
+  },
+  "User_approved_action": {
+    "message": "ユーザーが承認した操作"
+  },
+  "User_decision": {
+    "message": "ユーザーの決定"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "ユーザー設定とインターフェース設定"
+  },
+  "User_rejected_action": {
+    "message": "ユーザーが拒否した操作"
+  },
+  "User_requested_modifications": {
+    "message": "ユーザーが修正を要求"
+  },
+  "Using_extra_credits": {
+    "message": "追加クレジットを使用中"
+  },
+  "View_Chat_History": {
+    "message": "チャット履歴を表示"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "ページ内容とレイアウトのビジュアル分析"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Webスクレイピングツール"
+  },
+  "Web_Search": {
+    "message": "Web検索"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Browserxへようこそ"
+  },
+  "Workspace_Write": {
+    "message": "ワークスペース書き込み"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "未保存の変更があります。破棄しますか？"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "AI搭載のブラウザアシスタントが、Webコンテンツのナビゲート、理解、操作を支援します。"
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "APIキーは暗号化されています"
+  },
+  "Your_Decision": {
+    "message": "あなたの決定"
+  }
+}

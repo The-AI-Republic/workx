@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "업무 작업을 위한 일반적인 브라우저 내 AI 에이전트"
+  },
+  "API_Key_Configuration": {
+    "message": "API 키 구성"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API 키는 암호화되어 브라우저에 로컬로 저장됩니다. API 호출을 제외하고 외부 서버로 전송되지 않습니다."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "브라우저 저장소에 접근 (localStorage, sessionStorage, 쿠키)"
+  },
+  "Action": {
+    "message": "작업"
+  },
+  "Action_Details": {
+    "message": "작업 상세"
+  },
+  "Add_Modification": {
+    "message": "수정 추가"
+  },
+  "Advanced_Configuration": {
+    "message": "고급 구성"
+  },
+  "Advanced_Options": {
+    "message": "고급 옵션"
+  },
+  "Agent_Execution_Tools": {
+    "message": "에이전트 실행 도구"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "에이전트가 시스템 명령을 실행하도록 허용 (주의해서 사용하세요)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "에이전트가 파일을 읽고, 쓰고, 관리하도록 허용 (향후 업데이트 예정)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "콘텐츠 스크립트가 웹 페이지에서 실행되도록 허용"
+  },
+  "Allowed_Origins": {
+    "message": "허용된 출처"
+  },
+  "Approval_History": {
+    "message": "승인 내역"
+  },
+  "Approve": {
+    "message": "승인"
+  },
+  "Approve_this_action": {
+    "message": "이 작업 승인"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Browserx에 웹 페이지에서 구조화된 데이터를 추출하도록 요청"
+  },
+  "Available": {
+    "message": "사용 가능:"
+  },
+  "Back": {
+    "message": "뒤로"
+  },
+  "Backend_Mode": {
+    "message": "백엔드 모드"
+  },
+  "Backend_Mode_Active": {
+    "message": "백엔드 모드 활성화"
+  },
+  "Beta": {
+    "message": "베타"
+  },
+  "Browser_Tools": {
+    "message": "브라우저 도구"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "브라우저 자동화 도구 토글"
+  },
+  "Cache_Settings": {
+    "message": "캐시 설정"
+  },
+  "Cache_TTL_seconds": {
+    "message": "캐시 TTL (초)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "캐시 동작 및 데이터 보존"
+  },
+  "Cancel": {
+    "message": "취소"
+  },
+  "Chat_History": {
+    "message": "채팅 기록"
+  },
+  "Choose_AI_Model": {
+    "message": "AI 모델 선택"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "사이드 패널 인터페이스의 시각 스타일 선택"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "따라야 할 업데이트 채널 선택"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "검은 배경에 초록색 텍스트가 있는 클래식 터미널 스타일"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "ChatGPT와 유사한 깔끔하고 현대적인 채팅 인터페이스"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "도구 모음의 Browserx 아이콘을 클릭하거나 Alt+Shift+C를 누르세요"
+  },
+  "Click_to_select_a_model": {
+    "message": "모델을 선택하려면 클릭하세요"
+  },
+  "Close_settings": {
+    "message": "설정 닫기"
+  },
+  "Command": {
+    "message": "명령"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "저장 공간 절약을 위해 캐시 데이터를 압축합니다"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "AI 모델 및 API 키 구성"
+  },
+  "Connected": {
+    "message": "연결됨"
+  },
+  "Context": {
+    "message": "컨텍스트"
+  },
+  "Create_New_Tab": {
+    "message": "새 탭 만들기"
+  },
+  "Credit_Details": {
+    "message": "크레딧 세부 정보"
+  },
+  "Current_Plan": {
+    "message": "현재 플랜:"
+  },
+  "DOM_Tool": {
+    "message": "DOM 도구"
+  },
+  "Daily_Credits": {
+    "message": "일일 크레딧"
+  },
+  "Data_Extraction_Tool": {
+    "message": "데이터 추출 도구"
+  },
+  "Days_until_expiration": {
+    "message": "만료까지 남은 일수"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "AI Republic에서 개발 및 지원함"
+  },
+  "Discard_Changes": {
+    "message": "변경 사항 폐기"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "작업 완료 시 토큰 사용량(입력/출력 토큰) 표시"
+  },
+  "Enable_All_Tools": {
+    "message": "모든 도구 활성화"
+  },
+  "Enable_Cache": {
+    "message": "캐시 활성화"
+  },
+  "Enable_Compression": {
+    "message": "압축 활성화"
+  },
+  "Enable_Content_Scripts": {
+    "message": "콘텐츠 스크립트 활성화"
+  },
+  "Enable_Extension": {
+    "message": "확장 프로그램 활성화"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "모델 컨텍스트 프로토콜 도구 통합 활성화 (향후 업데이트 예정)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "자주 접근하는 데이터를 저장하여 성능을 개선하는 캐싱 활성화"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "에이전트의 웹 검색 기능을 활성화하십시오"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "LLM API 키를 입력하십시오"
+  },
+  "Execute_Commands": {
+    "message": "명령 실행"
+  },
+  "Expire_after_days": {
+    "message": "일 후 만료됨"
+  },
+  "Explain_your_decision": {
+    "message": "결정을 설명하십시오..."
+  },
+  "Extension_Permission": {
+    "message": "확장 프로그램 및 권한"
+  },
+  "Extension_Permission_Settings": {
+    "message": "확장 프로그램 및 권한 설정"
+  },
+  "Extension_Configuration": {
+    "message": "확장 프로그램 구성"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "확장 프로그램 구성 및 권한"
+  },
+  "Extra_Credits": {
+    "message": "추가 크레딧"
+  },
+  "Extract_Data": {
+    "message": "데이터 추출:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "페이지에서 특정 데이터 패턴 추출"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "웹 페이지에서 구조화된 데이터 추출"
+  },
+  "Failed_to_load_preferences": {
+    "message": "설정을 불러오지 못했습니다"
+  },
+  "Failed_to_save_settings": {
+    "message": "설정을 저장하지 못했습니다"
+  },
+  "File_Operations_Not_Available": {
+    "message": "파일 작업 (사용할 수 없음)"
+  },
+  "File_Path": {
+    "message": "파일 경로"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "양식 작성, 데이터 제출, 양식 요소 상호 작용"
+  },
+  "Form_Automation_Tool": {
+    "message": "양식 자동화 도구"
+  },
+  "Full_Access_Dangerous": {
+    "message": "전체 접근 (위험)"
+  },
+  "General": {
+    "message": "일반"
+  },
+  "General_Settings": {
+    "message": "일반 설정"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "시작하기"
+  },
+  "Hello_NAME": {
+    "message": "안녕하세요 $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hello World"
+  },
+  "History": {
+    "message": "기록"
+  },
+  "Impact": {
+    "message": "임팩트"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "네트워크 요청/응답을 가로채고 수정"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "키보드 단축키"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM 요청이 제공자 API로 직접 전송"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM 요청이 AI Republic 백엔드를 통해 라우팅"
+  },
+  "Language": {
+    "message": "언어"
+  },
+  "Learn_more": {
+    "message": "자세히 알아보기"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "허용된 출처 목록(한 줄에 하나씩). 와일드카드(*)를 지원합니다."
+  },
+  "Loading_credits": {
+    "message": "크레딧을 불러오는 중..."
+  },
+  "Loading_settings": {
+    "message": "설정을 불러오는 중..."
+  },
+  "Login": {
+    "message": "로그인"
+  },
+  "Login_to_get_free_credits": {
+    "message": "로그인하여 무료 크레딧을 받으세요"
+  },
+  "Low_credits_remaining": {
+    "message": "크레딧이 거의 남지 않았습니다"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP 도구(사용 불가)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "브라우저 탭 관리(열기, 닫기, 전환, 조회)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "모든 브라우저 및 에이전트 도구 마스터 토글"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "확장 프로그램 제어 마스터 토글"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "최대 캐시 크기(MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "최대 캐시 크기(메가바이트) (기본값: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "도구 실행 제한 시간(밀리초, 기본값: 30000)"
+  },
+  "Model_Config": {
+    "message": "모델 설정"
+  },
+  "Model_Selection": {
+    "message": "모델 선택"
+  },
+  "Modern_Chat": {
+    "message": "Modern Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "변경 요청 시 매개변수 수정"
+  },
+  "Monthly_Credits": {
+    "message": "월간 크레딧"
+  },
+  "More_Config": {
+    "message": "추가 설정"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "페이지 탐색, 링크 클릭, 브라우저 탐색 처리"
+  },
+  "Navigation_Tool": {
+    "message": "탐색 도구"
+  },
+  "Network_Intercept_Tool": {
+    "message": "네트워크 인터셉트 도구"
+  },
+  "Never_expire_permanent": {
+    "message": "만료 없음(영구적)"
+  },
+  "New_Conversation": {
+    "message": "새 대화"
+  },
+  "No_approval_history_yet": {
+    "message": "아직 승인 기록이 없습니다."
+  },
+  "No_tabs_available": {
+    "message": "사용 가능한 탭이 없습니다"
+  },
+  "Not_Connected": {
+    "message": "연결되지 않음"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "배포 데이터가 만료되기까지의 일수 (기본값: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "사이드 패널 열기:"
+  },
+  "Organization": {
+    "message": "조직"
+  },
+  "Page_Action_Tool": {
+    "message": "페이지 액션 도구"
+  },
+  "Page_Vision_Tool": {
+    "message": "페이지 비전 도구"
+  },
+  "Parameter_Modifications": {
+    "message": "매개변수 수정"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "페이지 액션 수행 (스크롤, 스크린샷, 대기)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "캐시를 저장소에 영구 보관"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "유효한 API 키를 입력해 주세요."
+  },
+  "Please_type_a_valid_command": {
+    "message": "유효한 명령을 입력해 주세요."
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "우선 순위 티어는 높은 가격으로 더 빠른 응답 시간을 제공합니다."
+  },
+  "Provider": {
+    "message": "제공자"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "DOM(문서 객체 모델) 조회 및 조작"
+  },
+  "Quick_Start": {
+    "message": "빠른 시작"
+  },
+  "Quick_action": {
+    "message": "빠른 액션"
+  },
+  "Read_only": {
+    "message": "읽기 전용"
+  },
+  "Reason_optional": {
+    "message": "사유 (선택 사항)"
+  },
+  "Refreshes_in": {
+    "message": "새로 고침까지"
+  },
+  "Reject": {
+    "message": "거부"
+  },
+  "Reject_this_action": {
+    "message": "이 작업을 거부하십시오"
+  },
+  "Remaining": {
+    "message": "남은:"
+  },
+  "Remove_API_Key": {
+    "message": "API 키 삭제"
+  },
+  "Remove_modification": {
+    "message": "수정 사항 삭제"
+  },
+  "Request_Changes": {
+    "message": "변경 요청"
+  },
+  "Request_changes_to_this_action": {
+    "message": "이 작업에 대한 변경 요청"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "텍스트를 오른쪽 클릭하여 Browserx로 설명하거나 개선하십시오"
+  },
+  "Rollout_Expiration": {
+    "message": "배포 만료"
+  },
+  "Sandbox_Policy": {
+    "message": "샌드박스 정책"
+  },
+  "Save_API_Key": {
+    "message": "API 키 저장"
+  },
+  "Save_Settings": {
+    "message": "설정 저장"
+  },
+  "Saving": {
+    "message": "저장 중..."
+  },
+  "Security_Privacy": {
+    "message": "보안 및 개인정보"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "도구 실행 환경의 보안 등급"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "대화에 사용할 AI 모델을 선택하세요."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "인터페이스에 사용할 언어를 선택하세요."
+  },
+  "Send_the_message": {
+    "message": "메시지 전송"
+  },
+  "Service_Tier": {
+    "message": "서비스 등급"
+  },
+  "Session": {
+    "message": "세션"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "롤아웃 데이터가 만료되는 시점을 설정합니다"
+  },
+  "Settings": {
+    "message": "설정"
+  },
+  "Settings_saved_successfully": {
+    "message": "설정이 성공적으로 저장되었습니다"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "작업에서 토큰 사용량 표시하기"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "스토리지 사용량이 이 비율을 초과하면 경고 표시 (기본값: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "계정에 로그인하세요"
+  },
+  "Stable": {
+    "message": "안정"
+  },
+  "Stop_the_current_task_run": {
+    "message": "현재 작업 실행을 중지합니다"
+  },
+  "Storage_Cache": {
+    "message": "스토리지 및 캐시"
+  },
+  "Storage_Cache_Settings": {
+    "message": "스토리지 및 캐시 설정"
+  },
+  "Storage_Quota_Warning": {
+    "message": "스토리지 할당량 경고 (%)"
+  },
+  "Storage_Settings": {
+    "message": "스토리지 설정"
+  },
+  "Storage_Tool": {
+    "message": "스토리지 도구"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "브라우저 세션 간에 캐시 데이터를 영구 저장합니다"
+  },
+  "Tab_Tool": {
+    "message": "탭 도구"
+  },
+  "Terminal": {
+    "message": "터미널"
+  },
+  "Test_Connection": {
+    "message": "연결 테스트"
+  },
+  "Testing": {
+    "message": "테스트 중..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "에이전트가 현재 백엔드 모드를 사용 중입니다. LLM 요청은 AI Republic 서버를 통해 라우팅됩니다. 대화 내용은 당사 인프라를 통해 안전하게 처리됩니다."
+  },
+  "Time": {
+    "message": "시간"
+  },
+  "Time_remaining": {
+    "message": "남은 시간"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "캐시 항목의 TTL(초) (기본값: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "사이드 패널 표시/숨기기"
+  },
+  "Tool": {
+    "message": "도구"
+  },
+  "Tool_Timeout_ms": {
+    "message": "도구 제한 시간 (ms)"
+  },
+  "Tools": {
+    "message": "도구"
+  },
+  "Tools_Settings": {
+    "message": "도구 설정"
+  },
+  "Turn": {
+    "message": "차례"
+  },
+  "UI_Theme": {
+    "message": "UI 테마"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "크레딧 정보를 불러올 수 없습니다"
+  },
+  "Unsaved_Changes": {
+    "message": "저장되지 않은 변경 사항"
+  },
+  "Update_Channel": {
+    "message": "업데이트 채널"
+  },
+  "Upgrade_My_Plan": {
+    "message": "플랜 업그레이드"
+  },
+  "Upgrade_to_Premium": {
+    "message": "프리미엄으로 업그레이드"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "전 세계에서 가장 강력한 모델을 사용하려면 구독을 업그레이드하세요"
+  },
+  "Use_Context_Menu": {
+    "message": "컨텍스트 메뉴 사용:"
+  },
+  "Use_Own_API_Key": {
+    "message": "내 API 키 사용"
+  },
+  "User_Center": {
+    "message": "사용자 센터"
+  },
+  "User_approved_action": {
+    "message": "사용자가 승인한 작업"
+  },
+  "User_decision": {
+    "message": "사용자 결정"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "사용자 환경설정 및 인터페이스 설정"
+  },
+  "User_rejected_action": {
+    "message": "사용자가 거부한 작업"
+  },
+  "User_requested_modifications": {
+    "message": "사용자가 요청한 수정 사항"
+  },
+  "Using_extra_credits": {
+    "message": "추가 크레딧 사용 중"
+  },
+  "View_Chat_History": {
+    "message": "채팅 기록 보기"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "페이지 내용 및 레이아웃 시각 분석"
+  },
+  "Web_Scraping_Tool": {
+    "message": "웹 스크래핑 도구"
+  },
+  "Web_Search": {
+    "message": "웹 검색"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Browserx에 오신 것을 환영합니다"
+  },
+  "Workspace_Write": {
+    "message": "작업 공간 쓰기"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "저장되지 않은 변경 사항이 있습니다. 삭제하시겠습니까?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "AI 기반 브라우저 어시스턴트가 웹 콘텐츠를 탐색하고, 이해하며, 상호 작용하도록 도와드릴 준비가 되었습니다."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "API 키가 암호화되었습니다"
+  },
+  "Your_Decision": {
+    "message": "귀하의 결정"
+  }
+}

@@ -1,0 +1,118 @@
+/**
+ * Agent Store for Side Panel UI
+ *
+ * Stores agent ready state and authentication mode information.
+ * Used to reactively display warnings and status in the UI.
+ */
+
+import { writable, type Writable } from 'svelte/store';
+
+/**
+ * Agent state interface
+ */
+export interface AgentState {
+  /** Whether the agent is ready to process requests */
+  ready: boolean;
+  /** Current authentication mode */
+  authMode: 'login' | 'api_key' | 'none';
+  /** Status message for the user */
+  message?: string;
+  /** Current provider name */
+  provider?: string;
+  /** Current model name */
+  model?: string;
+}
+
+const DEFAULT_STATE: AgentState = {
+  ready: false,
+  authMode: 'none',
+  message: 'Checking agent status...',
+};
+
+/**
+ * Create the agent store
+ */
+function createAgentStore() {
+  const { subscribe, set, update }: Writable<AgentState> = writable(DEFAULT_STATE);
+
+  return {
+    subscribe,
+
+    /**
+     * Set agent as ready with login mode
+     */
+    setLoggedIn: (provider?: string, model?: string) => {
+      set({
+        ready: true,
+        authMode: 'login',
+        message: undefined,
+        provider,
+        model,
+      });
+    },
+
+    /**
+     * Set agent as ready with API key mode
+     */
+    setApiKeyMode: (provider?: string, model?: string) => {
+      set({
+        ready: true,
+        authMode: 'api_key',
+        message: undefined,
+        provider,
+        model,
+      });
+    },
+
+    /**
+     * Set agent as not ready with no access
+     */
+    setNoAccess: (message?: string, provider?: string, model?: string) => {
+      set({
+        ready: false,
+        authMode: 'none',
+        message: message || 'No access configured. Please log in or configure an API key.',
+        provider,
+        model,
+      });
+    },
+
+    /**
+     * Update state from health check response
+     */
+    updateFromHealthCheck: (response: {
+      ready: boolean;
+      message?: string;
+      provider?: string;
+      model?: string;
+      authMode?: 'login' | 'api_key' | 'none';
+    }) => {
+      set({
+        ready: response.ready,
+        authMode: response.authMode || 'none',
+        message: response.message,
+        provider: response.provider,
+        model: response.model,
+      });
+    },
+
+    /**
+     * Set loading state
+     */
+    setLoading: () => {
+      update((state) => ({
+        ...state,
+        message: 'Checking agent status...',
+      }));
+    },
+
+    /**
+     * Reset to default state
+     */
+    reset: () => {
+      set(DEFAULT_STATE);
+    },
+  };
+}
+
+export const agentStore = createAgentStore();

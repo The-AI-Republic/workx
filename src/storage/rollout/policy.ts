@@ -41,15 +41,16 @@ export function shouldPersistResponseItem(item: any): boolean {
     return false;
   }
 
+  // Types must match ResponseItem.type from protocol/types.ts (lowercase/snake_case)
   const persistedTypes = new Set([
-    'Message',
-    'Reasoning',
-    'LocalShellCall',
-    'FunctionCall',
-    'FunctionCallOutput',
-    'CustomToolCall',
-    'CustomToolCallOutput',
-    'WebSearchCall',
+    'message',
+    'reasoning',
+    'local_shell_call',
+    'function_call',
+    'function_call_output',
+    'custom_tool_call',
+    'custom_tool_call_output',
+    'web_search_call',
   ]);
 
   return persistedTypes.has(item.type);

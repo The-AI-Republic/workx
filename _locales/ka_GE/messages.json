@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "საერთო AI აგენტი ბრაუზერში სამუშაო დავალებებისთვის"
+  },
+  "API_Key_Configuration": {
+    "message": "API გასაღების კონფიგურაცია"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API გასაღებები დაშიფრულია და ლოკალურად ინახება თქვენს ბრაუზერში. ისინი არასოდეს გადაეცემა გარე სერვერებს, API მოთხოვნების გარდა."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "ბრაუზერის მონაცემთა შენახვაზე წვდომა (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "მოქმედება"
+  },
+  "Action_Details": {
+    "message": "მოქმედების დეტალები"
+  },
+  "Add_Modification": {
+    "message": "ცვლილების დამატება"
+  },
+  "Advanced_Configuration": {
+    "message": "მოწინავე კონფიგურაცია"
+  },
+  "Advanced_Options": {
+    "message": "მოწინავე პარამეტრები"
+  },
+  "Agent_Execution_Tools": {
+    "message": "აგენტის შესრულების ხელსაწყოები"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "მიეცით აგენტს სისტემური ბრძანებების შესრულების უფლება (გამოიყენეთ ფრთხილით)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "დაუშვით აგენტს ფაილების წაკითხვა, ჩაწერა და მართვა (მომავალ განახლებაში დაემატება)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "დაუშვით შინაარსის სკრიპტების გაშვება ვებგვერდებზე"
+  },
+  "Allowed_Origins": {
+    "message": "დაშვებული წყაროები"
+  },
+  "Approval_History": {
+    "message": "დამტკიცების ისტორია"
+  },
+  "Approve": {
+    "message": "დამტკიცება"
+  },
+  "Approve_this_action": {
+    "message": "დამტკიცეთ ეს მოქმედება"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "ვთხოვოთ Browserx-ს, რომ სტრუქტურირებული მონაცემები ნებისმიერი ვებგვერდიდან გამოვიყვანოს"
+  },
+  "Available": {
+    "message": "ხელმისაწვდომია:"
+  },
+  "Back": {
+    "message": "უკან"
+  },
+  "Backend_Mode": {
+    "message": "სერვერული რეჟიმი"
+  },
+  "Backend_Mode_Active": {
+    "message": "სერვერული რეჟიმი აქტიურია"
+  },
+  "Beta": {
+    "message": "ბეტა"
+  },
+  "Browser_Tools": {
+    "message": "ბრაუზერის ხელსაწყოები"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "ბრაუზერის ავტომატიზაციის ხელსაწყოების გადამრთველები"
+  },
+  "Cache_Settings": {
+    "message": "ქეშის პარამეტრები"
+  },
+  "Cache_TTL_seconds": {
+    "message": "ქეშის TTL (წამი)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "ქეშის ქცევა და მონაცემთა შენარჩუნება"
+  },
+  "Cancel": {
+    "message": "გაუქმება"
+  },
+  "Chat_History": {
+    "message": "საუბრის ისტორია"
+  },
+  "Choose_AI_Model": {
+    "message": "აირჩიეთ AI-ის მოდელი"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "აირჩიეთ გვერდითი პანელის ინტერფეისის ვიზუალური სტილი"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "აირჩიეთ, რომელი განახლების არხი უნდა მიჰყევით"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "კლასიკური ტერმინალის სტილი - მწვანე ტექსტი შავ ფონზე"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "სუფთა, თანამედროვე ჩატის ინტერფეისი, ChatGPT-ს მსგავსია"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "დააჭირეთ Browserx-ის ხატულას თქვენი ხელსაწყოთა პანელში ან დააჭირეთ Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "დააწკაპუნეთ მოდელის ასარჩევად"
+  },
+  "Close_settings": {
+    "message": "პარამეტრების დახურვა"
+  },
+  "Command": {
+    "message": "ბრძანება"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "ქეშირებული მონაცემების შეკუმშვა საცავის სივრცის დასაზოგად"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "კონფიგურირეთ AI მოდელი და API გასაღებები"
+  },
+  "Connected": {
+    "message": "დაკავშირებულია"
+  },
+  "Context": {
+    "message": "კონტექსტი"
+  },
+  "Create_New_Tab": {
+    "message": "ახალი ჩანართის შექმნა"
+  },
+  "Credit_Details": {
+    "message": "კრედიტის დეტალები"
+  },
+  "Current_Plan": {
+    "message": "მიმდინარე გეგმა:"
+  },
+  "DOM_Tool": {
+    "message": "DOM ხელსაწყო"
+  },
+  "Daily_Credits": {
+    "message": "დღიური კრედიტები"
+  },
+  "Data_Extraction_Tool": {
+    "message": "მონაცემთა გამოღების ხელსაწყო"
+  },
+  "Days_until_expiration": {
+    "message": "დღეები ვადის გასვლამდე"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "განვითარებულია და მხარდაჭერილია AI Republic-ის მიერ"
+  },
+  "Discard_Changes": {
+    "message": "ცვლილებების გაუქმება"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "დავალებების დასრულებისას ტოკენების მოხმარების ჩვენება (შემომავალი/გამომავალი ტოკენები)"
+  },
+  "Enable_All_Tools": {
+    "message": "ყველა ხელსაწყოს ჩართვა"
+  },
+  "Enable_Cache": {
+    "message": "ქეშის ჩართვა"
+  },
+  "Enable_Compression": {
+    "message": "შეკუმშვის ჩართვა"
+  },
+  "Enable_Content_Scripts": {
+    "message": "კონტენტის სკრიპტების ჩართვა"
+  },
+  "Enable_Extension": {
+    "message": "გაფართოების ჩართვა"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "MCP ხელსაწყოების ინტეგრაციის ჩართვა (მომავალ განახლებაში)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "ქეშის ჩართვა წარმადობის გასაუმჯობესებლად ხშირად გამოყენებული მონაცემების შენახვით"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "აგენტისთვის ვებ-ძიების ფუნქციის ჩართვა"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "შეიყვანეთ თქვენი LLM API გასაღები"
+  },
+  "Execute_Commands": {
+    "message": "ბრძანებების შესრულება"
+  },
+  "Expire_after_days": {
+    "message": "ვადის გასვლა დღეებში"
+  },
+  "Explain_your_decision": {
+    "message": "განმარტეთ თქვენი გადაწყვეტილება..."
+  },
+  "Extension_Permission": {
+    "message": "გაფართოება და ნებართვა"
+  },
+  "Extension_Permission_Settings": {
+    "message": "გაფართოების და ნებართვების პარამეტრები"
+  },
+  "Extension_Configuration": {
+    "message": "გაფართოების კონფიგურაცია"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "გაფართოების კონფიგურაცია და ნებართვები"
+  },
+  "Extra_Credits": {
+    "message": "დამატებითი კრედიტები"
+  },
+  "Extract_Data": {
+    "message": "მონაცემების ამოღება:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "გვერდებიდან კონკრეტული მონაცემთა შაბლონების ამოღება"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "სტრუქტურირებული მონაცემების ამოღება ვებ-გვერდებიდან"
+  },
+  "Failed_to_load_preferences": {
+    "message": "პარამეტრების ჩატვირთვა ვერ მოხერხდა"
+  },
+  "Failed_to_save_settings": {
+    "message": "პარამეტრების შენახვა ვერ მოხერხდა"
+  },
+  "File_Operations_Not_Available": {
+    "message": "ფაილური ოპერაციები (მიუწვდომელია)"
+  },
+  "File_Path": {
+    "message": "ფაილის ბილიკი"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "ფორმების შევსება, მონაცემების გადაგზავნა, ფორმის ელემენტებთან ურთიერთქმედება"
+  },
+  "Form_Automation_Tool": {
+    "message": "ფორმის ავტომატიზაციის ინსტრუმენტი"
+  },
+  "Full_Access_Dangerous": {
+    "message": "სრული წვდომა (საშიში)"
+  },
+  "General": {
+    "message": "ზოგადი"
+  },
+  "General_Settings": {
+    "message": "ზოგადი პარამეტრები"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "დაიწყეთ"
+  },
+  "Hello_NAME": {
+    "message": "გამარჯობა $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hello World"
+  },
+  "History": {
+    "message": "ისტორია"
+  },
+  "Impact": {
+    "message": "გავლენა"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "ქსელის მოთხოვნების/პასუხების დაჭერა და შეცვლა"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "კლავიატურის მალსახმობები"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM მოთხოვნები პირდაპირ გადადის პროვაიდერის API-ებზე"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM მოთხოვნები გადადის AI Republic-ის ბექენდის გავლით"
+  },
+  "Language": {
+    "message": "ენა"
+  },
+  "Learn_more": {
+    "message": "ვრცლად"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "დაშვებული წყაროების სია (თითო ხაზზე ერთი). მხარდაჭერილია ვაილდქარდები (*)"
+  },
+  "Loading_credits": {
+    "message": "კრედიტები იტვირთება..."
+  },
+  "Loading_settings": {
+    "message": "პარამეტრები იტვირთება..."
+  },
+  "Login": {
+    "message": "შესვლა"
+  },
+  "Login_to_get_free_credits": {
+    "message": "შედით უფასო კრედიტების მისაღებად"
+  },
+  "Low_credits_remaining": {
+    "message": "კრედიტების დაბალი ბალანსი"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP ინსტრუმენტები (მიუწვდომელია)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "ბრაუზერის ჩანართების მართვა (გახსნა, დახურვა, გადართვა, მოთხოვნა)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "მთავარი გადამრთველი ყველა ბრაუზერისა და აგენტის ხელსაწყოს ჩასართავად ან გასამრთავად"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "მთავარი გადამრთველი გაფართოების ჩასართავად ან გასამრთავად"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "მაქს. ქეშის ზომა (მბ)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "ქეშის მაქსიმალური ზომა მეგაბაიტებში (ნაგულისხმევი: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "ხელსაწყოს მუშაობის მაქსიმალური დრო (მილიწამებში) დროის ამოწურვამდე (ნაგულისხმევი: 30000)"
+  },
+  "Model_Config": {
+    "message": "მოდელის კონფიგურაცია"
+  },
+  "Model_Selection": {
+    "message": "მოდელის არჩევანი"
+  },
+  "Modern_Chat": {
+    "message": "თანამედროვე ჩატი"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "პარამეტრების შეცვლა ცვლილებების მოთხოვნისას"
+  },
+  "Monthly_Credits": {
+    "message": "თვიური კრედიტები"
+  },
+  "More_Config": {
+    "message": "დამატებითი კონფიგურაცია"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "გვერდებზე ნავიგაცია, ბმულებზე დაწკაპება, ბრაუზერის ნავიგაციის მართვა"
+  },
+  "Navigation_Tool": {
+    "message": "ნავიგაციის ხელსაწყო"
+  },
+  "Network_Intercept_Tool": {
+    "message": "ქსელის ინტერსეპციის ხელსაწყო"
+  },
+  "Never_expire_permanent": {
+    "message": "ვადა არასოდეს ამოიწურება (მუდმივი)"
+  },
+  "New_Conversation": {
+    "message": "ახალი საუბარი"
+  },
+  "No_approval_history_yet": {
+    "message": "დამტკიცების ისტორია ჯერ არ არსებობს."
+  },
+  "No_tabs_available": {
+    "message": "ჩანართები ხელმისაწვდომი არაა"
+  },
+  "Not_Connected": {
+    "message": "არ არის დაკავშირებული"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "დღეების რაოდენობა, სანამ დანერგვის მონაცემების ვადა ამოიწურება (ნაგულისხმევი: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "გვერდითი პანელის გახსნა:"
+  },
+  "Organization": {
+    "message": "ორგანიზაცია"
+  },
+  "Page_Action_Tool": {
+    "message": "გვერდის მოქმედებების ხელსაწყო"
+  },
+  "Page_Vision_Tool": {
+    "message": "გვერდის ხედის ხელსაწყო"
+  },
+  "Parameter_Modifications": {
+    "message": "პარამეტრების შეცვლები"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "გააკეთეთ გვერდის მოქმედებები (გადახვევა, ეკრანის სურათი, დაყოვნება)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "ქეშის მუდმივი შენახვა საცავში"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "გთხოვთ, შეიყვანოთ სწორი API გასაღები."
+  },
+  "Please_type_a_valid_command": {
+    "message": "გთხოვთ, აკრიფოთ სწორი ბრძანება"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "პრიორიტეტის დონე იძლევა უფრო სწრაფ პასუხებს, თუმცა უფრო მაღალი ფასით."
+  },
+  "Provider": {
+    "message": "მომწოდებელი"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "მოთხოვნა და მანიპულაცია DOM‑ზე (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "სწრაფი დაწყება"
+  },
+  "Quick_action": {
+    "message": "სწრაფი მოქმედება"
+  },
+  "Read_only": {
+    "message": "მხოლოდ კითხვის"
+  },
+  "Reason_optional": {
+    "message": "მიზეზი (არასავალდებულო)"
+  },
+  "Refreshes_in": {
+    "message": "განახლდება"
+  },
+  "Reject": {
+    "message": "უარყოფა"
+  },
+  "Reject_this_action": {
+    "message": "ამ ქმედების უარყოფა"
+  },
+  "Remaining": {
+    "message": "დარჩენილი:"
+  },
+  "Remove_API_Key": {
+    "message": "API გასაღების წაშლა"
+  },
+  "Remove_modification": {
+    "message": "მოდიფიკაციის წაშლა"
+  },
+  "Request_Changes": {
+    "message": "ცვლილებების მოთხოვნა"
+  },
+  "Request_changes_to_this_action": {
+    "message": "ამ ქმედების შეცვლის მოთხოვნა"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "ნებისმიერ ტექსტზე მარჯვენა ღილაკით დააწკაპუნეთ, რომ Browserx-ით განმარტოთ ან გააუმჯობესოთ იგი."
+  },
+  "Rollout_Expiration": {
+    "message": "განაწილების ვადის გასვლა"
+  },
+  "Sandbox_Policy": {
+    "message": "სენდბოქსის პოლიტიკა"
+  },
+  "Save_API_Key": {
+    "message": "API გასაღების შენახვა"
+  },
+  "Save_Settings": {
+    "message": "პარამეტრების შენახვა"
+  },
+  "Saving": {
+    "message": "მიმდინარეობს შენახვა..."
+  },
+  "Security_Privacy": {
+    "message": "უსაფრთხოება & კონფიდენციალურობა"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "ხელსაწყოს შესრულების გარემოს უსაფრთხოების დონე"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "აირჩიეთ AI მოდელი, რომელიც გამოიყენება საუბრებში."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "აირჩიეთ ინტერფეისის სასურველი ენა"
+  },
+  "Send_the_message": {
+    "message": "შეტყობინების გაგზავნა"
+  },
+  "Service_Tier": {
+    "message": "სერვისის დონე"
+  },
+  "Session": {
+    "message": "სესია"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "დააყენეთ, როდის უნდა ამოიწუროს განაწილების მონაცემების ვადა"
+  },
+  "Settings": {
+    "message": "პარამეტრები"
+  },
+  "Settings_saved_successfully": {
+    "message": "პარამეტრები წარმატებით შენახულია"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "დავალებებში ტოკენების გამოყენების ჩვენება"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "გაფრთხილების ჩვენება, როდესაც შენახვის გამოყენება ამ პროცენტს აღემატება (ნაგულისხმევი: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "შედით თქვენს ანგარიშში"
+  },
+  "Stable": {
+    "message": "სტაბილური"
+  },
+  "Stop_the_current_task_run": {
+    "message": "მიმდინარე დავალების შესრულების შეჩერება"
+  },
+  "Storage_Cache": {
+    "message": "შენახვა & ქეში"
+  },
+  "Storage_Cache_Settings": {
+    "message": "შენახვა & ქეშის პარამეტრები"
+  },
+  "Storage_Quota_Warning": {
+    "message": "შენახვის კვოტის გაფრთხილება (%)"
+  },
+  "Storage_Settings": {
+    "message": "შენახვის პარამეტრები"
+  },
+  "Storage_Tool": {
+    "message": "შენახვის ინსტრუმენტი"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "ქეშის მონაცემების მუდმივი შენახვა ბრაუზერის სესიების განმავლობაში"
+  },
+  "Tab_Tool": {
+    "message": "ტაბის ინსტრუმენტი"
+  },
+  "Terminal": {
+    "message": "ტერმინალი"
+  },
+  "Test_Connection": {
+    "message": "კავშირის ტესტირება"
+  },
+  "Testing": {
+    "message": "ტესტირება..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "აგენტი ამჟამად იყენებს ბექენდის რეჟიმს. LLM მოთხოვნები AI Republic-ის სერვერზე გაიგზავნება. თქვენი საუბრები უსაფრთხოდ პროცესდება ჩვენი ინფრასტრუქტურის მეშვეობით."
+  },
+  "Time": {
+    "message": "დრო"
+  },
+  "Time_remaining": {
+    "message": "დარჩენილი დრო"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "ქეშის ელემენტების სიცოცხლის დრო წამებში (ნაგულისხმევი: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "გვერდითი პანელის გადართვა"
+  },
+  "Tool": {
+    "message": "ხელსაწყო"
+  },
+  "Tool_Timeout_ms": {
+    "message": "ხელსაწყოს დროის ამოწურვა (ms)"
+  },
+  "Tools": {
+    "message": "ხელსაწყოები"
+  },
+  "Tools_Settings": {
+    "message": "ხელსაწყოების პარამეტრები"
+  },
+  "Turn": {
+    "message": "ტური"
+  },
+  "UI_Theme": {
+    "message": "ინტერფეისის თემა"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "კრედიტის ინფორმაციის ჩატვირთვა ვერ მოხერხდა"
+  },
+  "Unsaved_Changes": {
+    "message": "შეუნახავი ცვლილებები"
+  },
+  "Update_Channel": {
+    "message": "განახლების არხი"
+  },
+  "Upgrade_My_Plan": {
+    "message": "გეგმის გაუმჯობესება"
+  },
+  "Upgrade_to_Premium": {
+    "message": "პრემიუმზე გადასვლა"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "განახლეთ თქვენი გამოწერა, რომ გამოიკვლიოთ მსოფლიოს ყველაზე ძლიერი მოდელები"
+  },
+  "Use_Context_Menu": {
+    "message": "გამოიყენეთ კონტექსტური მენიუ:"
+  },
+  "Use_Own_API_Key": {
+    "message": "გამოიყენეთ თქვენი API გასაღები"
+  },
+  "User_Center": {
+    "message": "მომხმარებლის ცენტრი"
+  },
+  "User_approved_action": {
+    "message": "მომხმარებლის დამტკიცებული ქმედება"
+  },
+  "User_decision": {
+    "message": "მომხმარებლის გადაწყვეტილება"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "მომხმარებლის პრეფერენციები და ინტერფეისის პარამეტრები"
+  },
+  "User_rejected_action": {
+    "message": "მომხმარებლის უარყოფილი ქმედება"
+  },
+  "User_requested_modifications": {
+    "message": "მომხმარებლის მოთხოვნილი ცვლილებები"
+  },
+  "Using_extra_credits": {
+    "message": "დამატებითი კრედიტების გამოყენება"
+  },
+  "View_Chat_History": {
+    "message": "საუბრის ისტორიის ნახვა"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "გვერდის შინაარსის და განლაგების ვიზუალური ანალიზი"
+  },
+  "Web_Scraping_Tool": {
+    "message": "ვებ-სკრაპინგის ინსტრუმენტი"
+  },
+  "Web_Search": {
+    "message": "ვებ‑ძიება"
+  },
+  "Welcome_to_Browserx": {
+    "message": "მოგესალმებით Browserx-ში"
+  },
+  "Workspace_Write": {
+    "message": "სამუშაო სივრცის ჩაწერა"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "თქვენ გაქვთ შეუნახავი ცვლილებები. გსურთ მათი გაუქმება?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "თქვენი AI‑ით გაძლიერებული ბრაუზერის ასისტენტი მზადაა, რომ დაგეხმაროთ ვებ-გვერდებზე ნავიგაციაში, მათი გაგებაში და მათთან ურთიერთქმედებაში."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "თქვენი API გასაღები დაშიფრულია"
+  },
+  "Your_Decision": {
+    "message": "თქვენი გადაწყვეტილება"
+  }
+}

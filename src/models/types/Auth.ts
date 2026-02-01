@@ -3,89 +3,69 @@
  */
 
 /**
- * Authentication modes supported by the extension
+ * Agent ready state with authentication mode information
  */
-export enum AuthMode {
-  ChatGPT = 'chatgpt',
-  ApiKey = 'api_key',
-  Local = 'local'
+export interface AgentReadyState {
+  ready: boolean;
+  message?: string;
+  provider?: string;
+  model?: string;
+  /** Current authentication mode */
+  authMode: 'login' | 'api_key' | 'none';
 }
 
 /**
- * Plan types for user accounts
+ * Auth manager interface for LLM routing decisions
  */
-export type KnownPlan = 'free' | 'pro' | 'team' | 'enterprise';
-
-export type PlanType =
-  | { type: 'known'; plan: KnownPlan }
-  | { type: 'unknown'; plan: string };
-
-/**
- * Authentication information structure
- */
-export interface BrowserxAuth {
-  mode: AuthMode;
-  token?: string;
-  refresh_token?: string;
-  account_id?: string;
-  plan_type?: PlanType;
-  expires_at?: number;
-}
-
-/**
- * Authentication management interface
- * Provides methods for managing authentication state and tokens
- */
-export interface AuthManager {
+export interface IAuthManager {
   /**
-   * Get current authentication data
+   * Check if requests should be routed through backend
+   * This is determined by useOwnApiKey setting (false = use backend)
+   * @returns true if requests should route through backend
    */
-  auth(): Promise<BrowserxAuth | null>;
+  shouldUseBackend(): boolean;
 
   /**
-   * Refresh the authentication token
+   * Get backend LLM API URL
+   * @returns Backend URL or null if not using backend routing
    */
-  refresh_token(): Promise<void>;
+  getBackendBaseUrl(): string | null;
+}
+
+/**
+ * Auth manager implementation for LLM routing decisions
+ *
+ * Routing is determined by useOwnApiKey setting:
+ * - useOwnApiKey=false → route through backend (shouldUseBackend=true)
+ * - useOwnApiKey=true → use direct API with user's own key (shouldUseBackend=false)
+ */
+export class AuthManager implements IAuthManager {
+  private _shouldUseBackend: boolean;
+  private _backendBaseUrl: string | null;
 
   /**
-   * Get account ID if available
+   * Create an AuthManager
+   * @param shouldUseBackend - Whether to route through backend (derived from !useOwnApiKey)
+   * @param backendBaseUrl - Backend URL to use when routing through backend
    */
-  get_account_id(): Promise<string | null>;
+  constructor(shouldUseBackend: boolean, backendBaseUrl: string | null) {
+    this._shouldUseBackend = shouldUseBackend;
+    // Only set backend URL if using backend routing
+    this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
+  }
 
   /**
-   * Get plan type if available
+   * Check if requests should be routed through backend
    */
-  get_plan_type(): Promise<PlanType | null>;
+  shouldUseBackend(): boolean {
+    return this._shouldUseBackend;
+  }
+
+  /**
+   * Get backend LLM API URL
+   */
+  getBackendBaseUrl(): string | null {
+    return this._backendBaseUrl;
+  }
 }
 
-/**
- * Token data structure for OAuth flows
- */
-export interface TokenData {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-  account_id?: string;
-  plan_type?: PlanType;
-}
-
-/**
- * Authentication configuration
- */
-export interface AuthConfig {
-  mode: AuthMode;
-  apiKey?: string;
-  oauthClientId?: string;
-  oauthRedirectUri?: string;
-}
-
-/**
- * Authentication status
- */
-export interface AuthStatus {
-  isAuthenticated: boolean;
-  mode?: AuthMode;
-  accountId?: string;
-  planType?: PlanType;
-  expiresAt?: number;
-}

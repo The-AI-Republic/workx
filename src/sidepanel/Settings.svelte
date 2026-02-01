@@ -5,8 +5,7 @@
 
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { AgentConfig } from '../config/AgentConfig.js';
-  import { AuthMode } from '../models/types/index.js';
+  import { AgentConfig } from '@/config/AgentConfig.js';
   import SettingsMenu from './settings/components/SettingsMenu.svelte';
   import UnsavedChangesDialog from './settings/components/UnsavedChangesDialog.svelte';
   import ModelSettings from './settings/ModelSettings.svelte';
@@ -15,6 +14,7 @@
   import StorageSettings from './settings/StorageSettings.svelte';
   import ToolsSettings from './settings/ToolsSettings.svelte';
   import ExtensionSettings from './settings/ExtensionSettings.svelte';
+  import { t } from './lib/i18n';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
   type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'extension';
@@ -33,7 +33,7 @@
 
   // Event dispatcher for parent components
   const dispatch = createEventDispatcher<{
-    authUpdated: { isAuthenticated: boolean; mode: AuthMode | null };
+    authUpdated: { isAuthenticated: boolean; mode: 'login' | 'api_key' | null };
     close: void;
   }>();
 
@@ -47,13 +47,20 @@
    */
   async function loadSettings() {
     try {
-      isInitializing = true;
-      settingsConfig = new (AgentConfig as any)();
+    isInitializing = true;
+    const configInstance = new (AgentConfig as any)();
 
-      if (!settingsConfig) {
-        throw new Error('Failed to initialize AgentConfig');
-      }
-      await settingsConfig.initialize();
+    if (!configInstance) {
+      throw new Error('Failed to initialize AgentConfig');
+    }
+    await configInstance.initialize();
+
+    // Only expose the instance to children once it is fully initialized
+    settingsConfig = configInstance;
+
+    // Debug: log loaded selectedModelKey
+    const config = configInstance.getConfig();
+      console.log('[Settings] Loaded config, selectedModelKey:', config.selectedModelKey);
     } catch (error) {
       console.error('[Settings] Failed to load settings:', error);
     } finally {
@@ -99,7 +106,7 @@
     navigateTo('advanced-model-config');
   }
 
-  function handleAuthUpdated(event: CustomEvent<{ isAuthenticated: boolean; mode: AuthMode | null }>) {
+  function handleAuthUpdated(event: CustomEvent<{ isAuthenticated: boolean; mode: 'login' | 'api_key' | null }>) {
     dispatch('authUpdated', event.detail);
   }
 
@@ -120,8 +127,8 @@
 
 <div class="settings-container">
   <div class="settings-header">
-    <h2 class="settings-title">Settings</h2>
-    <button class="close-button" on:click={closeSettings} aria-label="Close settings">
+    <h2 class="settings-title">{t("Settings")}</h2>
+    <button class="close-button" on:click={closeSettings} aria-label={t("Close settings")}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -132,6 +139,12 @@
   <div class="settings-content">
     {#if currentView === 'menu'}
       <SettingsMenu on:categorySelected={handleCategorySelected} />
+    {:else if isInitializing || !settingsConfig}
+      <!-- Wait for AgentConfig to be fully initialized before rendering settings components -->
+      <div class="settings-loading">
+        <div class="loading-spinner"></div>
+        <span>{t("Loading settings...")}</span>
+      </div>
     {:else if currentView === 'model-config'}
       <ModelSettings
         {settingsConfig}
@@ -234,5 +247,30 @@
   .settings-content {
     flex: 1;
     overflow-y: auto;
+  }
+
+  .settings-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem;
+    color: var(--browserx-text-secondary);
+  }
+
+  .loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--browserx-border);
+    border-top-color: var(--browserx-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

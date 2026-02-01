@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Универсален AI агент в браузъра за работни задачи"
+  },
+  "API_Key_Configuration": {
+    "message": "Конфигурация на API ключ"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API ключовете са криптирани и съхранявани локално в браузъра ви. Никога не се изпращат към външни сървъри, освен при API заявки."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Достъп до съхранение в браузъра (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Действие"
+  },
+  "Action_Details": {
+    "message": "Подробности за действието"
+  },
+  "Add_Modification": {
+    "message": "Добавяне на модификация"
+  },
+  "Advanced_Configuration": {
+    "message": "Разширена конфигурация"
+  },
+  "Advanced_Options": {
+    "message": "Разширени опции"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Инструменти за изпълнение на агент"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Позволяване на агента да изпълнява системни команди (използвайте внимателно)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Позволяване на агента да чете, записва и управлява файлове (Очаква се в бъдеща актуализация)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Позволяване на скриптове за съдържание да се изпълняват на уеб страници"
+  },
+  "Allowed_Origins": {
+    "message": "Разрешени източници"
+  },
+  "Approval_History": {
+    "message": "История на одобренията"
+  },
+  "Approve": {
+    "message": "Одобри"
+  },
+  "Approve_this_action": {
+    "message": "Одобрете това действие"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Помолете Browserx да извлече структурирани данни от всяка уеб страница"
+  },
+  "Available": {
+    "message": "Налично:"
+  },
+  "Back": {
+    "message": "Назад"
+  },
+  "Backend_Mode": {
+    "message": "Режим на бекенд"
+  },
+  "Backend_Mode_Active": {
+    "message": "Активен режим на бекенд"
+  },
+  "Beta": {
+    "message": "Бета"
+  },
+  "Browser_Tools": {
+    "message": "Инструменти за браузъра"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Превключватели за инструменти за автоматизация на браузъра"
+  },
+  "Cache_Settings": {
+    "message": "Настройки на кеша"
+  },
+  "Cache_TTL_seconds": {
+    "message": "TTL на кеша (секунди)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Поведение на кеша и запазване на данни"
+  },
+  "Cancel": {
+    "message": "Отмени"
+  },
+  "Chat_History": {
+    "message": "История на чата"
+  },
+  "Choose_AI_Model": {
+    "message": "Изберете модел на изкуствен интелект"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Изберете визуалния стил за интерфейса на страничния панел"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Изберете кой канал за актуализации да следвате"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Класически терминален стил със зелен текст на черен фон"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Чист, модерен чат интерфейс, подобен на ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Щракнете върху иконата Browserx в лентата с инструменти или натиснете Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Щракнете, за да изберете модел"
+  },
+  "Close_settings": {
+    "message": "Затвори настройките"
+  },
+  "Command": {
+    "message": "Команда"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Компресиране на кешираните данни за спестяване на дисково пространство"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Конфигурирайте AI модел и API ключове"
+  },
+  "Connected": {
+    "message": "Свързано"
+  },
+  "Context": {
+    "message": "Контекст"
+  },
+  "Create_New_Tab": {
+    "message": "Създаване на нов таб"
+  },
+  "Credit_Details": {
+    "message": "Детайли за кредитите"
+  },
+  "Current_Plan": {
+    "message": "Текущ план:"
+  },
+  "DOM_Tool": {
+    "message": "DOM инструмент"
+  },
+  "Daily_Credits": {
+    "message": "Дневни кредити"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Инструмент за извличане на данни"
+  },
+  "Days_until_expiration": {
+    "message": "Дни до изтичане"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Разработено и поддържано от AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Отхвърляне на промените"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Показване на консумацията на токени (входни/изходни токени) при завършване на задачите"
+  },
+  "Enable_All_Tools": {
+    "message": "Активиране на всички инструменти"
+  },
+  "Enable_Cache": {
+    "message": "Активиране на кеша"
+  },
+  "Enable_Compression": {
+    "message": "Активиране на компресията"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Активиране на скриптовете за съдържание"
+  },
+  "Enable_Extension": {
+    "message": "Активиране на разширението"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Активиране на интеграцията на инструменти за Model Context Protocol (Ще бъде добавена в бъдеща актуализация)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Активиране на кеширане за подобряване на производителността чрез съхранение на често достъпвани данни"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Активиране на възможностите за уеб търсене за агента"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Въведете вашия LLM API ключ"
+  },
+  "Execute_Commands": {
+    "message": "Изпълняване на команди"
+  },
+  "Expire_after_days": {
+    "message": "Изтича след дни"
+  },
+  "Explain_your_decision": {
+    "message": "Обяснете решението..."
+  },
+  "Extension_Permission": {
+    "message": "Разширение и разрешение"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Настройки за разширение и разрешения"
+  },
+  "Extension_Configuration": {
+    "message": "Конфигурация на разширението"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Конфигурация и разрешения за разширението"
+  },
+  "Extra_Credits": {
+    "message": "Допълнителни кредити"
+  },
+  "Extract_Data": {
+    "message": "Извличане на данни:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Извличане на конкретни модели данни от страници"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Извличане на структурирани данни от уеб страници"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Неуспешно зареждане на предпочитанията"
+  },
+  "Failed_to_save_settings": {
+    "message": "Неуспешно запазване на настройките"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Файлови операции (недостъпни)"
+  },
+  "File_Path": {
+    "message": "Път до файл"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Попълване на форми, изпращане на данни, взаимодействие с елементи на формата"
+  },
+  "Form_Automation_Tool": {
+    "message": "Инструмент за автоматизация на форми"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Пълен достъп (опасно)"
+  },
+  "General": {
+    "message": "Общи"
+  },
+  "General_Settings": {
+    "message": "Общи настройки"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Започнете"
+  },
+  "Hello_NAME": {
+    "message": "Здравей $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Здравей свят"
+  },
+  "History": {
+    "message": "История"
+  },
+  "Impact": {
+    "message": "Въздействие"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Прехващане и модифициране на мрежови заявки/отговори"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Клавишни комбинации"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM заявките се изпращат директно към API‑тата на доставчика"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM заявките се пренасочват през бекенда на AI Republic"
+  },
+  "Language": {
+    "message": "Език"
+  },
+  "Learn_more": {
+    "message": "Научете повече"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Списък с разрешени източници (по един на ред). Поддържа шаблони (*)."
+  },
+  "Loading_credits": {
+    "message": "Зареждане на кредити..."
+  },
+  "Loading_settings": {
+    "message": "Зареждане на настройките..."
+  },
+  "Login": {
+    "message": "Вход"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Влезте, за да получите безплатни кредити"
+  },
+  "Low_credits_remaining": {
+    "message": "Остават малко кредити"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP инструменти (Не са налични)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Управление на раздели в браузъра (отваряне, затваряне, превключване, търсене)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Главен превключвател за включване/изключване на всички браузърни и агентски инструменти"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Главен превключвател за включване/изключване на разширението"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Максимален размер на кеша (МБ)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Максимален размер на кеша в мегабайти (по подразбиране: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Максимално време (в милисекунди), за което инструментът може да работи преди таймаут (по подразбиране: 30000)"
+  },
+  "Model_Config": {
+    "message": "Конфигурация на модела"
+  },
+  "Model_Selection": {
+    "message": "Избор на модел"
+  },
+  "Modern_Chat": {
+    "message": "Модерен чат"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Промяна на параметрите при поискване на промени"
+  },
+  "Monthly_Credits": {
+    "message": "Месечни кредити"
+  },
+  "More_Config": {
+    "message": "Още настройки"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Навигиране в страници, кликване върху връзки, обработка на браузърната навигация"
+  },
+  "Navigation_Tool": {
+    "message": "Навигационен инструмент"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Инструмент за прихващане на мрежа"
+  },
+  "Never_expire_permanent": {
+    "message": "Никога не изтича (постоянно)"
+  },
+  "New_Conversation": {
+    "message": "Нов разговор"
+  },
+  "No_approval_history_yet": {
+    "message": "Все още няма история на одобрения."
+  },
+  "No_tabs_available": {
+    "message": "Няма налични раздели"
+  },
+  "Not_Connected": {
+    "message": "Не е свързан"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Брой дни преди данните за разгръщане да изтече срокът им (по подразбиране: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Отвори страничен панел:"
+  },
+  "Organization": {
+    "message": "Организация"
+  },
+  "Page_Action_Tool": {
+    "message": "Инструмент за действия на страница"
+  },
+  "Page_Vision_Tool": {
+    "message": "Инструмент за визуален анализ на страница"
+  },
+  "Parameter_Modifications": {
+    "message": "Модификации на параметри"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Изпълнение на действия върху страница (превъртане, екранна снимка, изчакване)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Запазване на кеша в хранилище"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Моля, въведете валиден API ключ."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Моля, въведете валидна команда"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Приоритетният слой осигурява по-бързи времена за отговор при по-висока цена."
+  },
+  "Provider": {
+    "message": "Доставчик"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Запитване и манипулиране на DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Бърз старт"
+  },
+  "Quick_action": {
+    "message": "Бързо действие"
+  },
+  "Read_only": {
+    "message": "Само за четене"
+  },
+  "Reason_optional": {
+    "message": "Причина (по избор)"
+  },
+  "Refreshes_in": {
+    "message": "Обновява след:"
+  },
+  "Reject": {
+    "message": "Отхвърли"
+  },
+  "Reject_this_action": {
+    "message": "Отхвърли това действие"
+  },
+  "Remaining": {
+    "message": "Остава:"
+  },
+  "Remove_API_Key": {
+    "message": "Премахни API ключ"
+  },
+  "Remove_modification": {
+    "message": "Премахни промяна"
+  },
+  "Request_Changes": {
+    "message": "Поискай промени"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Поискай промени в това действие"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Щракнете с десния бутон върху всеки текст, за да го обясните или подобрите с Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Изтичане на разгръщането"
+  },
+  "Sandbox_Policy": {
+    "message": "Политика за сигурна среда (Sandbox)"
+  },
+  "Save_API_Key": {
+    "message": "Запази API ключ"
+  },
+  "Save_Settings": {
+    "message": "Запази настройките"
+  },
+  "Saving": {
+    "message": "Записване..."
+  },
+  "Security_Privacy": {
+    "message": "Сигурност и поверителност"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Ниво на сигурност на средата за инструменти"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Изберете AI модел за разговори."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Изберете предпочитания език за интерфейса"
+  },
+  "Send_the_message": {
+    "message": "Изпрати съобщението"
+  },
+  "Service_Tier": {
+    "message": "Ниво на услугата"
+  },
+  "Session": {
+    "message": "Сесия"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Задайте кога данните от разгръщането трябва да изтекат"
+  },
+  "Settings": {
+    "message": "Настройки"
+  },
+  "Settings_saved_successfully": {
+    "message": "Настройките са запазени успешно"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Показване на използваните токени в задачи"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Показвай предупреждение, когато използването на хранилището надвиши този процент (по подразбиране: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Влезте в профила си"
+  },
+  "Stable": {
+    "message": "Стабилна"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Спри текущото изпълнение на задачата"
+  },
+  "Storage_Cache": {
+    "message": "Хранилище и кеш"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Настройки за хранилище и кеш"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Предупреждение за квота на хранилището (%)"
+  },
+  "Storage_Settings": {
+    "message": "Настройки за хранилище"
+  },
+  "Storage_Tool": {
+    "message": "Инструмент за управление на хранилище"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Постоянно съхраняване на кешовите данни между сесиите на браузъра"
+  },
+  "Tab_Tool": {
+    "message": "Инструмент за раздели"
+  },
+  "Terminal": {
+    "message": "Терминал"
+  },
+  "Test_Connection": {
+    "message": "Тествай връзката"
+  },
+  "Testing": {
+    "message": "Тестване..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Агентът в момента използва бекенд режим. Заявките към LLM ще се маршрутизират през сървъра на AI Republic. Вашите разговори се обработват сигурно чрез нашата инфраструктура."
+  },
+  "Time": {
+    "message": "Време"
+  },
+  "Time_remaining": {
+    "message": "Оставащо време"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Време за живеене (TTL) на кешираните елементи в секунди (по подразбиране: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Превключи страничния панел"
+  },
+  "Tool": {
+    "message": "Инструмент"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Време за изчакване на инструмента (ms)"
+  },
+  "Tools": {
+    "message": "Инструменти"
+  },
+  "Tools_Settings": {
+    "message": "Настройки на инструментите"
+  },
+  "Turn": {
+    "message": "Превключване"
+  },
+  "UI_Theme": {
+    "message": "Тема на интерфейса"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Не може да се зареди кредитната информация"
+  },
+  "Unsaved_Changes": {
+    "message": "Незаписани промени"
+  },
+  "Update_Channel": {
+    "message": "Канал за актуализации"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Надстройте плана си"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Надстройте до Премиум"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Надстройте абонамента си, за да изследвате най-мощните модели в света"
+  },
+  "Use_Context_Menu": {
+    "message": "Използвайте контекстно меню:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Използвайте собствен API ключ"
+  },
+  "User_Center": {
+    "message": "Потребителски център"
+  },
+  "User_approved_action": {
+    "message": "Действие, одобрено от потребителя"
+  },
+  "User_decision": {
+    "message": "Решение на потребителя"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Потребителски предпочитания и настройки на интерфейса"
+  },
+  "User_rejected_action": {
+    "message": "Потребителят отхвърли действието"
+  },
+  "User_requested_modifications": {
+    "message": "Промени, поискани от потребителя"
+  },
+  "Using_extra_credits": {
+    "message": "Използване на допълнителни кредити"
+  },
+  "View_Chat_History": {
+    "message": "Преглед на историята на чата"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Визуален анализ на съдържанието и оформлението на страницата"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Инструмент за уеб скрейпинг"
+  },
+  "Web_Search": {
+    "message": "Уеб търсене"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Добре дошъл в Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Запис в работно пространство"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Имате незапазени промени. Искате ли да ги отхвърлите?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Вашият AI‑подкрепен браузърен асистент е готов да ви помогне да навигирате, разберете и взаимодействате с уеб съдържание."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Вашият API ключ е криптиран"
+  },
+  "Your_Decision": {
+    "message": "Вашето решение"
+  }
+}

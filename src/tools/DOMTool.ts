@@ -144,7 +144,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
       },
       text: {
         type: 'string',
-        description: 'Text to type into element (required for type action). Use options.commit to control finalization: "change" (default, fires change event) or "enter" (appends Enter keystroke for search/chat inputs).',
+        description: 'Text to type into element (required for type action, can be empty "" for deletion). For text-based editing: with options.insertAfter/insertBefore, text is inserted at that location. With options.replace, text replaces the matched string (use empty "" to delete). Use options.commit to control finalization: "change" (default, fires change event) or "enter" (appends Enter keystroke for search/chat inputs).',
       },
       key: {
         type: 'string',
@@ -152,7 +152,46 @@ Snapshots only return elements visible in the current viewport (inViewport: true
       },
       options: {
         type: 'object',
-        description: 'Action-specific options. For scroll: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas, not absolute positions). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px, {scrollY: -300} scrolls up 300px. For type: { clearFirst?: boolean, speed?: number, method?: "auto"|"instant"|"char-by-char"|"paste", commit?: "change"|"enter", blur?: boolean }. The method option controls typing strategy: "auto" (default, auto-detects based on element type AND content length - for content ≤300 chars uses char-by-char for contenteditable or instant for inputs; for content >300 chars uses paste method for efficiency), "instant" (fast, works for <input>/<textarea>), "char-by-char" (simulates human typing character-by-character, best for rich text editors like Quill/Slate/Draft.js, configurable speed in ms per character - AVOID for long content as it\'s slow), "paste" (simulates Ctrl+V paste, fast for rich editors - RECOMMENDED for content >300 characters). **IMPORTANT**: For text longer than 300 characters, use method: "paste" to avoid slow character-by-character typing. For click: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }. For keypress: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }. For snapshot: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.',
+        description: `Action-specific options.
+
+**For type action**: { clearFirst?: boolean, insertAfter?: string, insertBefore?: string, replace?: string, replaceAll?: string, occurrence?: number, format?: {...}, lineBreak?: "before"|"after"|"both", speed?: number, method?: "auto"|"instant"|"char-by-char"|"paste", commit?: "change"|"enter", blur?: boolean }.
+
+- **Default behavior** (no options): Text is typed/appended at the current cursor position. Works for empty fields or appending to existing content. Example: just use text="Hello" without options to append.
+
+- **Text-based editing** (optional, for editing within existing content - robust for rich text editors):
+  - \`insertAfter\`: Insert text after the first occurrence of this string. Example: {insertAfter: "hello world"} finds "hello world" and inserts text after it.
+  - \`insertBefore\`: Insert text before the first occurrence of this string. Example: {insertBefore: "hello world"} finds "hello world" and inserts text before it.
+  - \`replace\`: Find and replace this text with the provided text. Example: {replace: "teh"} with text="the" fixes the typo. Use empty text "" to delete.
+  - \`replaceAll\`: Replace ALL occurrences of this text. Example: {replaceAll: "foo"} with text="bar" replaces every "foo".
+  - \`occurrence\`: Which occurrence to target (0-indexed, default 0). Only for insertAfter/insertBefore/replace. Example: {insertAfter: "item", occurrence: 2} inserts after the 3rd "item".
+
+- **format** (for rich text editors, default: empty/undefined = plain text):
+  - \`{ bold: true }\`: Apply bold formatting (Ctrl+B)
+  - \`{ italic: true }\`: Apply italic formatting (Ctrl+I)
+  - \`{ underline: true }\`: Apply underline formatting (Ctrl+U)
+  - \`{ strikethrough: true }\`: Apply strikethrough (Ctrl+Shift+S)
+  - \`{ code: true }\`: Apply inline code formatting (Ctrl+E)
+  - Can combine multiple: \`{ bold: true, italic: true }\`
+  - Only works with contenteditable elements (rich text editors). For editors supporting Markdown, you can alternatively type Markdown syntax directly (e.g., "**bold**").
+
+- **lineBreak**: Insert line break(s) around text. Default: empty/undefined = no line breaks.
+  - \`"before"\`: Insert Enter before typing
+  - \`"after"\`: Insert Enter after typing
+  - \`"both"\`: Insert Enter before and after
+
+- **clearFirst**: Clear all existing content before typing (mutually exclusive with text-based options).
+
+- **method**: Typing strategy - "auto" (default, auto-detects based on element type AND content length), "instant" (fast, for <input>/<textarea>), "char-by-char" (human-like, for rich text editors - AVOID for long content), "paste" (fast, RECOMMENDED for content >300 characters).
+
+- **commit**: "change" (default, fires change event) or "enter" (appends Enter keystroke for search/chat inputs).
+
+**For scroll**: { scrollX?: number, scrollY?: number } - RELATIVE pixel offsets (deltas). scrollY: positive=down, negative=up. scrollX: positive=right, negative=left. Examples: {scrollY: 500} scrolls down 500px.
+
+**For click**: { button?: "left"|"right"|"middle", scrollIntoView?: boolean }.
+
+**For keypress**: { modifiers?: { ctrl?: boolean, shift?: boolean, alt?: boolean, meta?: boolean } }.
+
+**For snapshot**: { includeValues?: boolean, metadata?: { includeAriaLabel?: boolean, includeText?: boolean, includeValue?: boolean, includeInputType?: boolean, includeHint?: boolean, includeBbox?: boolean, includeStates?: boolean, includeHref?: boolean } }.`,
       },
     },
     {
@@ -341,7 +380,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
    */
   private async executeScroll(
     tabId: number,
-    nodeId: number,
+    nodeId: number | string,
     options?: { scrollX?: number; scrollY?: number }
   ): Promise<ActionResult> {
 
@@ -415,8 +454,9 @@ Snapshots only return elements visible in the current viewport (inViewport: true
       case 'type':
         const typeNodeIdError = validateNodeId('type');
         if (typeNodeIdError) return typeNodeIdError;
-        if (!req.text || typeof req.text !== 'string') {
-          return 'text is required for type action';
+        // Allow empty string for deletion cases (with replace option)
+        if (req.text === undefined || req.text === null || typeof req.text !== 'string') {
+          return 'text is required for type action (can be empty string for deletion)';
         }
         return null;
 

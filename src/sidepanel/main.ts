@@ -5,12 +5,29 @@
 import './sidepanel.css';
 import './styles.css';
 import App from './App.svelte';
+import { initLocale } from './lib/i18n';
+import { AgentConfig } from '@/config/AgentConfig';
 
 // Add terminal-mode class to body for terminal styling
 document.body.classList.add('terminal-mode');
 
-const app = new App({
-  target: document.getElementById('app')!,
-});
+// Initialize locale before mounting app
+async function init() {
+  try {
+    const config = await AgentConfig.getInstance();
+    const agentConfig = config.getConfig();
+    initLocale(agentConfig.preferences?.language);
+  } catch (error) {
+    console.warn('[main] Failed to load locale, using default:', error);
+    initLocale();
+  }
 
-export default app;
+  // Mount app after locale is initialized
+  const app = new App({
+    target: document.getElementById('app')!,
+  });
+
+  return app;
+}
+
+export default init();

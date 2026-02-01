@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Ejen AI dalam pelayar untuk tugasan"
+  },
+  "API_Key_Configuration": {
+    "message": "Konfigurasi Kunci API"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Kunci API dienkripsi dan disimpan secara tempatan dalam pelayar anda. Ia tidak pernah dihantar ke pelayan luar kecuali untuk panggilan API."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Akses storan pelayar (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Tindakan"
+  },
+  "Action_Details": {
+    "message": "Butiran Tindakan"
+  },
+  "Add_Modification": {
+    "message": "Tambah Pengubahsuaian"
+  },
+  "Advanced_Configuration": {
+    "message": "Konfigurasi Lanjutan"
+  },
+  "Advanced_Options": {
+    "message": "Pilihan Lanjutan"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Alat Pelaksanaan Ejen"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Benarkan ejen melaksanakan arahan sistem (gunakan dengan berhati-hati)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Benarkan ejen membaca, menulis, dan mengurus fail (Akan datang dalam kemas kini)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Benarkan skrip kandungan dijalankan pada halaman web"
+  },
+  "Allowed_Origins": {
+    "message": "Asal yang Dibenarkan"
+  },
+  "Approval_History": {
+    "message": "Sejarah Kelulusan"
+  },
+  "Approve": {
+    "message": "Lulus"
+  },
+  "Approve_this_action": {
+    "message": "Luluskan tindakan ini"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Minta Browserx mengekstrak data berstruktur daripada mana-mana halaman web"
+  },
+  "Available": {
+    "message": "Tersedia:"
+  },
+  "Back": {
+    "message": "Kembali"
+  },
+  "Backend_Mode": {
+    "message": "Mod Backend"
+  },
+  "Backend_Mode_Active": {
+    "message": "Mod Backend Aktif"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Alat Pelayar"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Togol alat automasi pelayar"
+  },
+  "Cache_Settings": {
+    "message": "Tetapan Cache"
+  },
+  "Cache_TTL_seconds": {
+    "message": "TTL Cache (saat)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Tingkah laku cache dan pengekalan data"
+  },
+  "Cancel": {
+    "message": "Batal"
+  },
+  "Chat_History": {
+    "message": "Sejarah Percakapan"
+  },
+  "Choose_AI_Model": {
+    "message": "Pilih Model AI"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Pilih gaya visual untuk antara muka panel sisi"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Pilih saluran kemas kini yang diikuti"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Gaya terminal klasik dengan teks hijau pada latar belakang hitam"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Antara muka sembang bersih dan moden serupa ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Klik ikon Browserx dalam bar alat anda atau tekan Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Klik untuk memilih model"
+  },
+  "Close_settings": {
+    "message": "Tutup tetapan"
+  },
+  "Command": {
+    "message": "Perintah"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Mampatkan data cache untuk menjimatkan ruang simpanan"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Konfigur model AI dan kunci API"
+  },
+  "Connected": {
+    "message": "Bersambung"
+  },
+  "Context": {
+    "message": "Konteks"
+  },
+  "Create_New_Tab": {
+    "message": "Buka Tab Baharu"
+  },
+  "Credit_Details": {
+    "message": "Butiran Kredit"
+  },
+  "Current_Plan": {
+    "message": "Pelan Semasa:"
+  },
+  "DOM_Tool": {
+    "message": "Alat DOM"
+  },
+  "Daily_Credits": {
+    "message": "Kredit Harian"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Alat Pengekstrak Data"
+  },
+  "Days_until_expiration": {
+    "message": "Hari sehingga tamat"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Dibangunkan dan disokong oleh AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Batalkan Perubahan"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Paparkan penggunaan token (token input/output) apabila tugas selesai"
+  },
+  "Enable_All_Tools": {
+    "message": "Aktifkan Semua Alat"
+  },
+  "Enable_Cache": {
+    "message": "Aktifkan Cache"
+  },
+  "Enable_Compression": {
+    "message": "Aktifkan Pemampatan"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Aktifkan Skrip Kandungan"
+  },
+  "Enable_Extension": {
+    "message": "Aktifkan Sambungan"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Aktifkan integrasi alat Protokol Konteks Model (Akan datang dalam kemas kini masa depan)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Aktifkan cache untuk meningkatkan prestasi dengan menyimpan data yang sering diakses"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Dayakan keupayaan carian web untuk ejen"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Masukkan kunci API LLM anda"
+  },
+  "Execute_Commands": {
+    "message": "Laksanakan Perintah"
+  },
+  "Expire_after_days": {
+    "message": "Luput selepas hari"
+  },
+  "Explain_your_decision": {
+    "message": "Jelaskan keputusan anda..."
+  },
+  "Extension_Permission": {
+    "message": "Sambungan & Kebenaran"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Tetapan Sambungan & Kebenaran"
+  },
+  "Extension_Configuration": {
+    "message": "Konfigurasi Sambungan"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Konfigurasi sambungan dan kebenaran"
+  },
+  "Extra_Credits": {
+    "message": "Kredit Tambahan"
+  },
+  "Extract_Data": {
+    "message": "Ekstrak Data:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Ekstrak corak data khusus daripada halaman"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Ekstrak data berstruktur daripada halaman web"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Gagal memuatkan keutamaan"
+  },
+  "Failed_to_save_settings": {
+    "message": "Gagal menyimpan tetapan"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Operasi Fail (Tidak Tersedia)"
+  },
+  "File_Path": {
+    "message": "Laluan Fail"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Isi borang, hantar data, berinteraksi dengan elemen borang"
+  },
+  "Form_Automation_Tool": {
+    "message": "Alat Automasi Borang"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Akses Penuh (Berbahaya)"
+  },
+  "General": {
+    "message": "Umum"
+  },
+  "General_Settings": {
+    "message": "Tetapan Umum"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Mulakan"
+  },
+  "Hello_NAME": {
+    "message": "Hai $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hai Dunia"
+  },
+  "History": {
+    "message": "Sejarah"
+  },
+  "Impact": {
+    "message": "Kesan"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Sekat dan ubahsuai permintaan/respons rangkaian"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Pintasan Papan Kekunci"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Permintaan LLM dihantar terus ke API penyedia"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Permintaan LLM dirutkan melalui backend AI Republic"
+  },
+  "Language": {
+    "message": "Bahasa"
+  },
+  "Learn_more": {
+    "message": "Ketahui lebih lanjut"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Senarai asal-usul yang dibenarkan (satu per baris). Menyokong wildcards (*)."
+  },
+  "Loading_credits": {
+    "message": "Memuatkan kredit..."
+  },
+  "Loading_settings": {
+    "message": "Memuatkan tetapan..."
+  },
+  "Login": {
+    "message": "Log masuk"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Log masuk untuk mendapatkan kredit percuma"
+  },
+  "Low_credits_remaining": {
+    "message": "Baki kredit rendah"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "Alat MCP (Tidak Tersedia)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Urus tab pelayar (buka, tutup, tukar, semak)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Suis utama untuk mengaktifkan atau menyahaktifkan semua alat pelayar dan ejen"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Suis utama untuk mengaktifkan atau menyahaktifkan sambungan"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Saiz Cache Maksimum (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Saiz cache maksimum dalam megabait (lalai: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Masa maksimum (dalam milisaat) alat boleh dijalankan sebelum timeout (lalai: 30000)"
+  },
+  "Model_Config": {
+    "message": "Konfigurasi Model"
+  },
+  "Model_Selection": {
+    "message": "Pemilihan Model"
+  },
+  "Modern_Chat": {
+    "message": "Chat Moden"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Ubah suai parameter semasa meminta perubahan"
+  },
+  "Monthly_Credits": {
+    "message": "Kredit Bulanan"
+  },
+  "More_Config": {
+    "message": "Konfigurasi Lanjut"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navigasi halaman, klik pautan, kawal navigasi pelayar"
+  },
+  "Navigation_Tool": {
+    "message": "Alat Navigasi"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Alat Sekatan Rangkaian"
+  },
+  "Never_expire_permanent": {
+    "message": "Tidak pernah luput (kekal)"
+  },
+  "New_Conversation": {
+    "message": "Perbualan Baru"
+  },
+  "No_approval_history_yet": {
+    "message": "Tiada sejarah kelulusan lagi."
+  },
+  "No_tabs_available": {
+    "message": "Tiada tab tersedia"
+  },
+  "Not_Connected": {
+    "message": "Tidak Bersambung"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Bilangan hari sebelum data pelancaran luput (lalai: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Buka Panel Sisi:"
+  },
+  "Organization": {
+    "message": "Organisasi"
+  },
+  "Page_Action_Tool": {
+    "message": "Alat Tindakan Halaman"
+  },
+  "Page_Vision_Tool": {
+    "message": "Page Vision Tool"
+  },
+  "Parameter_Modifications": {
+    "message": "Pengubahsuaian Parameter"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Lakukan tindakan halaman (tatal, tangkapan skrin, tunggu)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Simpan Cache ke Storan"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Sila masukkan kunci API yang sah."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Sila taip perintah yang sah"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Tahap keutamaan memberikan masa respons lebih cepat dengan harga lebih tinggi."
+  },
+  "Provider": {
+    "message": "Pembekal"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Kueri dan ubah suai DOM (Model Objek Dokumen)"
+  },
+  "Quick_Start": {
+    "message": "Mula Cepat"
+  },
+  "Quick_action": {
+    "message": "Tindakan cepat"
+  },
+  "Read_only": {
+    "message": "Baca sahaja"
+  },
+  "Reason_optional": {
+    "message": "Sebab (pilihan)"
+  },
+  "Refreshes_in": {
+    "message": "Muat semula dalam"
+  },
+  "Reject": {
+    "message": "Tolak"
+  },
+  "Reject_this_action": {
+    "message": "Tolak tindakan ini"
+  },
+  "Remaining": {
+    "message": "Baki:"
+  },
+  "Remove_API_Key": {
+    "message": "Padam Kunci API"
+  },
+  "Remove_modification": {
+    "message": "Buang pengubahsuaian"
+  },
+  "Request_Changes": {
+    "message": "Minta Perubahan"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Minta perubahan pada tindakan ini"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Klik kanan pada mana-mana teks untuk menjelaskan atau memperbaikinya dengan Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Tarikh Luput Pelancaran"
+  },
+  "Sandbox_Policy": {
+    "message": "Dasar Sandbox"
+  },
+  "Save_API_Key": {
+    "message": "Simpan Kunci API"
+  },
+  "Save_Settings": {
+    "message": "Simpan Tetapan"
+  },
+  "Saving": {
+    "message": "Menyimpan..."
+  },
+  "Security_Privacy": {
+    "message": "Keselamatan & Privasi"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Tahap keselamatan persekitaran pelaksanaan alat"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Pilih model AI untuk digunakan dalam perbualan."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Pilih bahasa pilihan anda untuk antara muka pengguna"
+  },
+  "Send_the_message": {
+    "message": "Hantar mesej"
+  },
+  "Service_Tier": {
+    "message": "Tahap Perkhidmatan"
+  },
+  "Session": {
+    "message": "Sesi"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Tetapkan bila data pelancaran harus luput"
+  },
+  "Settings": {
+    "message": "Tetapan"
+  },
+  "Settings_saved_successfully": {
+    "message": "Tetapan berjaya disimpan"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Tunjukkan penggunaan token dalam tugas"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Tunjukkan amaran apabila penggunaan storan melebihi peratusan ini (lalai: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Log masuk ke akaun anda"
+  },
+  "Stable": {
+    "message": "Stabil"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Hentikan pelaksanaan tugas semasa"
+  },
+  "Storage_Cache": {
+    "message": "Storan & Cache"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Tetapan Storan & Cache"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Amaran Kuota Storan (%)"
+  },
+  "Storage_Settings": {
+    "message": "Tetapan Storan"
+  },
+  "Storage_Tool": {
+    "message": "Alat Storan"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Simpan data cache secara berterusan merentasi sesi pelayar"
+  },
+  "Tab_Tool": {
+    "message": "Alat Tab"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Uji Sambungan"
+  },
+  "Testing": {
+    "message": "Menguji..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Ejen kini menggunakan mod backend. Permintaan LLM akan dihantar melalui pelayan AI Republic. Perbualan anda diproses dengan selamat melalui infrastruktur kami."
+  },
+  "Time": {
+    "message": "Masa"
+  },
+  "Time_remaining": {
+    "message": "Masa berbaki"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Tempoh sah untuk item cache dalam saat (lalai: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Togol panel sisi"
+  },
+  "Tool": {
+    "message": "Alat"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Masa Tamat Alat (ms)"
+  },
+  "Tools": {
+    "message": "Alat-alat"
+  },
+  "Tools_Settings": {
+    "message": "Tetapan Alat"
+  },
+  "Turn": {
+    "message": "Hidup/Matikan"
+  },
+  "UI_Theme": {
+    "message": "Tema UI"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Tidak dapat memuatkan maklumat kredit"
+  },
+  "Unsaved_Changes": {
+    "message": "Perubahan Tidak Disimpan"
+  },
+  "Update_Channel": {
+    "message": "Saluran Kemaskini"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Naik Taraf Pelan Saya"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Naik Taraf ke Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Naik taraf langganan anda untuk menerokai model paling berkuasa di dunia"
+  },
+  "Use_Context_Menu": {
+    "message": "Gunakan Menu Konteks:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Gunakan Kunci API Sendiri"
+  },
+  "User_Center": {
+    "message": "Pusat Pengguna"
+  },
+  "User_approved_action": {
+    "message": "Tindakan Diluluskan Pengguna"
+  },
+  "User_decision": {
+    "message": "Keputusan Pengguna"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Keutamaan Pengguna dan Tetapan Antaramuka"
+  },
+  "User_rejected_action": {
+    "message": "Tindakan Ditolak oleh Pengguna"
+  },
+  "User_requested_modifications": {
+    "message": "Pengubahsuaian Diminta oleh Pengguna"
+  },
+  "Using_extra_credits": {
+    "message": "Menggunakan kredit tambahan"
+  },
+  "View_Chat_History": {
+    "message": "Lihat Log Sembang"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Analisis visual kandungan dan susun atur halaman"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Alat Web Scraping"
+  },
+  "Web_Search": {
+    "message": "Carian Web"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Selamat datang ke Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Tulis Ruang Kerja"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Anda mempunyai perubahan yang belum disimpan. Adakah anda mahu buang perubahan tersebut?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Pembantu pelayar berkuasa AI anda sedia membantu anda melayari, memahami, dan berinteraksi dengan kandungan web."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Kunci API anda dienkripsi"
+  },
+  "Your_Decision": {
+    "message": "Keputusan Anda"
+  }
+}

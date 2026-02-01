@@ -1,0 +1,657 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "పని పనుల కోసం సాధారణ బ్రౌజర్-లోపలి AI ఏజెంట్"
+  },
+  "API_Key_Configuration": {
+    "message": "API కీ కాన్ఫిగరేషన్"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API కీలు ఎన్‌క్రిప్ట్ చేయబడి మీ బ్రౌజర్‌లో స్థానికంగా నిల్వ చేయబడతాయి. API కాల్స్ తప్ప, అవి బాహ్య సర్వర్లకు ఎప్పుడూ పంపబడవు."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "బ్రౌజర్ నిల్వను యాక్సెస్ చేయండి (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "చర్య"
+  },
+  "Action_Details": {
+    "message": "చర్య వివరాలు"
+  },
+  "Add_Modification": {
+    "message": "సవరణను జోడించండి"
+  },
+  "Advanced_Configuration": {
+    "message": "అధునాతన కాన్ఫిగరేషన్"
+  },
+  "Advanced_Options": {
+    "message": "అధునాతన ఎంపికలు"
+  },
+  "Agent_Execution_Tools": {
+    "message": "ఏజెంట్ అమలు సాధనాలు"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "ఏజెంట్‌కు సిస్టమ్ కమాండ్లను అమలు చేయడానికి అనుమతించండి (జాగ్రత్తగా ఉపయోగించండి)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "ఏజెంట్‌కు ఫైళ్లను చదవడం, రాయడం, నిర్వహించడం అనుమతించండి (భవిష్యత్ నవీకరణలో రాబోతుంది)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "వెబ్ పేజీలపై కంటెంట్ స్క్రిప్టులను అమలు చేయడానికి అనుమతించండి"
+  },
+  "Allowed_Origins": {
+    "message": "అనుమతించబడిన మూలాలు"
+  },
+  "Approval_History": {
+    "message": "అనుమతి చరిత్ర"
+  },
+  "Approve": {
+    "message": "ఆమోదించండి"
+  },
+  "Approve_this_action": {
+    "message": "ఈ చర్యను ఆమోదించండి"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "ఏదైనా వెబ్‌పేజీ నుండి నిర్మాణాత్మక డేటాను వెలికితీయడానికి $1$ ని అడగండి",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Available": {
+    "message": "లభ్యం:"
+  },
+  "Back": {
+    "message": "వెనుకకు"
+  },
+  "Backend_Mode": {
+    "message": "బ్యాక్‌ఎండ్ మోడ్"
+  },
+  "Backend_Mode_Active": {
+    "message": "బ్యాక్‌ఎండ్ మోడ్ సక్రియంగా ఉంది"
+  },
+  "Beta": {
+    "message": "బీటా"
+  },
+  "Browser_Tools": {
+    "message": "బ్రౌజర్ సాధనాలు"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "బ్రౌజర్ ఆటోమేషన్ సాధనాల టాగుల్‌లు"
+  },
+  "Cache_Settings": {
+    "message": "క్యాష్ సెట్టింగ్స్"
+  },
+  "Cache_TTL_seconds": {
+    "message": "క్యాష్ TTL (సెకన్లు)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "క్యాష్ ప్రవర్తన మరియు డేటా నిల్వ"
+  },
+  "Cancel": {
+    "message": "రద్దు"
+  },
+  "Chat_History": {
+    "message": "చాట్ చరిత్ర"
+  },
+  "Choose_AI_Model": {
+    "message": "AI మోడల్‌ను ఎంచుకోండి"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "సైడ్ ప్యానెల్ ఇంటర్‌ఫేస్‌కు విజువల్ స్టైల్‌ను ఎంచుకోండి"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "ఏ అప్‌డేట్ ఛానెల్‌ను అనుసరించాలో ఎంచుకోండి"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "నల్ల బ్యాక్‌గ్రౌండ్‌లో పచ్చ టెక్స్ట్‌తో క్లాసిక్ టెర్మినల్ స్టైల్"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "చాట్‌జీపీటీకి సమానమైన శుభ్రమైన, ఆధునిక చాట్ ఇంటర్‌ఫేస్"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "మీ టూల్‌బార్‌లోని Browserx ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
+  },
+  "Click_to_select_a_model": {
+    "message": "మోడల్‌ను ఎంచుకోవడానికి క్లిక్ చేయండి"
+  },
+  "Close_settings": {
+    "message": "సెట్టింగ్స్‌ను మూసివేయండి"
+  },
+  "Command": {
+    "message": "Command"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "సంగ్రహణ స్థలాన్ని సేవ్ చేయడానికి క్యాష్ చేసిన డేటాను సంకోచించండి"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "AI మోడల్ మరియు API కీలను కాన్ఫిగర్ చేయండి"
+  },
+  "Connected": {
+    "message": "కనెక్ట్ అయ్యింది"
+  },
+  "Context": {
+    "message": "సందర్భం"
+  },
+  "Create_New_Tab": {
+    "message": "కొత్త ట్యాబ్ సృష్టించండి"
+  },
+  "Credit_Details": {
+    "message": "క్రెడిట్ వివరాలు"
+  },
+  "Current_Plan": {
+    "message": "ప్రస్తుత ప్లాన్:"
+  },
+  "DOM_Tool": {
+    "message": "DOM టూల్"
+  },
+  "Daily_Credits": {
+    "message": "రోజువారీ క్రెడిట్లు"
+  },
+  "Data_Extraction_Tool": {
+    "message": "డేటా ఎక్స్‌ట్రాక్షన్ టూల్"
+  },
+  "Days_until_expiration": {
+    "message": "గడువు ముగిసే వరకు రోజులు"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "AI Republic ద్వారా అభివృద్ధి చేయబడింది మరియు మద్దతు పొందింది"
+  },
+  "Discard_Changes": {
+    "message": "మార్పులను విస్మరించండి"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "పనులు పూర్తయ్యినప్పుడు టోకెన్ వినియోగాన్ని (ఇన్‌పుట్/అవుట్‌పుట్ టోకెన్లు) చూపించండి"
+  },
+  "Enable_All_Tools": {
+    "message": "అన్ని సాధనాలను సక్రియం చేయండి"
+  },
+  "Enable_Cache": {
+    "message": "క్యాష్‌ను సక్రియం చేయండి"
+  },
+  "Enable_Compression": {
+    "message": "కంప్రెషన్‌ను సక్రియం చేయండి"
+  },
+  "Enable_Content_Scripts": {
+    "message": "కంటెంట్ స్క్రిప్టులను సక్రియం చేయండి"
+  },
+  "Enable_Extension": {
+    "message": "విస్తరణను సక్రియం చేయండి"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "మోడల్ కాంటెక్స్ట్ ప్రోటోకాల్ సాధనాల సమీకరణను సక్రియం చేయండి (భవిష్యత్ నవీకరణలో రాబోతోంది)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "తరచుగా యాక్సెస్ చేసే డేటాను నిల్వ చేయడం ద్వారా పనితీరును మెరుగుపరచడానికి క్యాషింగ్‌ను సక్రియం చేయండి"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "ఏజెంట్ కోసం వెబ్ శోధన సామర్థ్యాలను సక్రియం చేయండి"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "మీ LLM API కీని నమోదు చేయండి"
+  },
+  "Execute_Commands": {
+    "message": "ఆదేశాలను అమలు చేయండి"
+  },
+  "Expire_after_days": {
+    "message": "రోజుల తర్వాత గడువు"
+  },
+  "Explain_your_decision": {
+    "message": "మీ నిర్ణయాన్ని వివరించండి..."
+  },
+  "Extension_Permission": {
+    "message": "విస్తరణ & అనుమతి"
+  },
+  "Extension_Permission_Settings": {
+    "message": "విస్తరణ & అనుమతి సెట్టింగులు"
+  },
+  "Extension_Configuration": {
+    "message": "విస్తరణ కాన్ఫిగరేషన్"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "విస్తరణ కాన్ఫిగరేషన్ మరియు అనుమతులు"
+  },
+  "Extra_Credits": {
+    "message": "అదనపు క్రెడిట్లు"
+  },
+  "Extract_Data": {
+    "message": "డేటాను వెలికితీయండి:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "పేజీల నుండి నిర్దిష్ట డేటా నమూనాలను వెలికితీయండి"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "వెబ్ పేజీల నుండి నిర్మాణాత్మక డేటాను వెలికితీయండి"
+  },
+  "Failed_to_load_preferences": {
+    "message": "ప్రాధాన్యతలను లోడ్ చేయడంలో విఫలమైంది"
+  },
+  "Failed_to_save_settings": {
+    "message": "సెట్టింగులను సేవ్ చేయడంలో విఫలమైంది"
+  },
+  "File_Operations_Not_Available": {
+    "message": "ఫైల్ ఆపరేషన్లు (లభ్యం కాదు)"
+  },
+  "File_Path": {
+    "message": "ఫైల్ మార్గం"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "ఫార్మ్‌లను నింపండి, డేటాను సమర్పించండి, ఫార్మ్ అంశాలతో పరస్పర చర్య చేయండి"
+  },
+  "Form_Automation_Tool": {
+    "message": "ఫార్మ్ ఆటోమేషన్ టూల్"
+  },
+  "Full_Access_Dangerous": {
+    "message": "పూర్తి యాక్సెస్ (అపాయకరమైనది)"
+  },
+  "General": {
+    "message": "సాధారణ"
+  },
+  "General_Settings": {
+    "message": "సాధారణ సెట్టింగులు"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "సాధారణ_బ్రౌజర్_లోపలి_AI_ఏజెంట్_పని_కోసం_2753"
+  },
+  "Get_Started": {
+    "message": "ప్రారంభించండి"
+  },
+  "Hello_NAME": {
+    "message": "హలో $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hello World"
+  },
+  "History": {
+    "message": "చరిత్ర"
+  },
+  "Impact": {
+    "message": "ప్రభావం"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "నెట్‌వర్క్ అభ్యర్థనలు/ప్రతిస్పందనలను అంతరాయం చేసి మార్చండి"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "కీబోర్డ్ షార్ట్‌కట్లు"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM అభ్యర్థనలు నేరుగా ప్రొవైడర్ APIలకు పంపబడతాయి"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM అభ్యర్థనలు AI Republic బ్యాక్‌ఎండ్ ద్వారా రూట్ చేయబడతాయి"
+  },
+  "Language": {
+    "message": "భాష"
+  },
+  "Learn_more": {
+    "message": "మరింత తెలుసుకోండి"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "అనుమతించబడిన మూలాల జాబితా (ప్రతి పంక్తిలో ఒకటి). వైల్డ్‌కార్డ్స్ (*) ను మద్దతు ఇస్తుంది."
+  },
+  "Loading_credits": {
+    "message": "క్రెడిట్లు లోడ్ అవుతున్నాయి..."
+  },
+  "Loading_settings": {
+    "message": "సెట్టింగ్స్ లోడ్ అవుతున్నాయి..."
+  },
+  "Login": {
+    "message": "ప్రవేశించండి"
+  },
+  "Login_to_get_free_credits": {
+    "message": "ఉచిత క్రెడిట్లు పొందడానికి లాగిన్ చేయండి"
+  },
+  "Low_credits_remaining": {
+    "message": "మిగిలిన క్రెడిట్లు తక్కువగా ఉన్నాయి"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP సాధనాలు (లభ్యం కాదు)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "బ్రౌజర్ ట్యాబ్‌లను నిర్వహించండి (తెరవండి, మూసివేయండి, మార్చండి, వెతకండి)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "అన్ని బ్రౌజర్ మరియు ఏజెంట్ సాధనాలను ఆన్/ఆఫ్ చేయు ప్రధాన స్విచ్"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "ఎక్స్టెన్షన్‌ను ఆన్/ఆఫ్ చేయు ప్రధాన స్విచ్"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "గరిష్ట క్యాష్ పరిమాణం (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "మెగాబైట్లలో గరిష్ట క్యాష్ పరిమాణం (డిఫాల్ట్: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "సాధనం పనిచేయగల గరిష్ట సమయం (మిల్లీసెకన్లలో), టైమౌట్ ముందు (డిఫాల్ట్: 30000)"
+  },
+  "Model_Config": {
+    "message": "మోడల్ కాన్ఫిగ్"
+  },
+  "Model_Selection": {
+    "message": "మోడల్ ఎంపిక"
+  },
+  "Modern_Chat": {
+    "message": "మోడర్న్ చాట్"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "మార్పులు అభ్యర్థించేటప్పుడు పరామితులను సవరించండి"
+  },
+  "Monthly_Credits": {
+    "message": "మాసిక క్రెడిట్లు"
+  },
+  "More_Config": {
+    "message": "మరిన్ని కాన్ఫిగ్"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "పేజీలను నావిగేట్ చేయండి, లింక్‌లను క్లిక్ చేయండి, బ్రౌజర్ నావిగేషన్‌ను నిర్వహించండి"
+  },
+  "Navigation_Tool": {
+    "message": "నావిగేషన్ సాధనం"
+  },
+  "Network_Intercept_Tool": {
+    "message": "నెట్‌వర్క్ ఇంటర్సెప్ట్ సాధనం"
+  },
+  "Never_expire_permanent": {
+    "message": "ఎప్పటికీ గడువు ముగియదు (శాశ్వత)"
+  },
+  "New_Conversation": {
+    "message": "కొత్త సంభాషణ"
+  },
+  "No_approval_history_yet": {
+    "message": "ఇంకా ఆమోద చరిత్ర లేదు."
+  },
+  "No_tabs_available": {
+    "message": "ట్యాబ్‌లు అందుబాటులో లేవు"
+  },
+  "Not_Connected": {
+    "message": "సంపర్కం లేదు"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "రోలౌట్ డేటా గడువు ముగియడానికి ముందు ఉన్న రోజుల సంఖ్య (డిఫాల్ట్: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "సైడ్ ప్యానెల్‌ను తెరవండి:"
+  },
+  "Organization": {
+    "message": "సంస్థ"
+  },
+  "Page_Action_Tool": {
+    "message": "పేజీ చర్య టూల్"
+  },
+  "Page_Vision_Tool": {
+    "message": "పేజీ విజన్ టూల్"
+  },
+  "Parameter_Modifications": {
+    "message": "పారామీటర్ సవరణలు"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "పేజీ చర్యలను అమలు చేయండి (స్క్రోల్, స్క్రీన్‌షాట్, వేచివుండటం)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "క్యాష్‌ను స్టోరేజ్‌లో శాశ్వతంగా నిల్వ చేయండి"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "దయచేసి సరైన API కీని నమోదు చేయండి."
+  },
+  "Please_type_a_valid_command": {
+    "message": "దయచేసి సరైన కమాండ్‌ను టైప్ చేయండి"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "ప్రాధాన్యత స్థాయి ఎక్కువ ధరతో వేగవంతమైన ప్రతిస్పందన సమయాన్ని అందిస్తుంది."
+  },
+  "Provider": {
+    "message": "ప్రొవైడర్"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "DOM (డాక్యుమెంట్ ఆబ్జెక్ట్ మోడల్) ను ప్రశ్నించండి మరియు మార్చండి"
+  },
+  "Quick_Start": {
+    "message": "త్వరిత ప్రారంభం"
+  },
+  "Quick_action": {
+    "message": "త్వరిత చర్య"
+  },
+  "Read_only": {
+    "message": "వాచన‑మాత్రం"
+  },
+  "Reason_optional": {
+    "message": "కారణం (ఐచ్ఛికం)"
+  },
+  "Refreshes_in": {
+    "message": "రిఫ్రెష్ అవుతుంది"
+  },
+  "Reject": {
+    "message": "నిరాకరించు"
+  },
+  "Reject_this_action": {
+    "message": "ఈ చర్యను తిరస్కరించండి"
+  },
+  "Remaining": {
+    "message": "మిగిలినవి:"
+  },
+  "Remove_API_Key": {
+    "message": "API కీని తీసివేయండి"
+  },
+  "Remove_modification": {
+    "message": "సవరణను తీసివేయండి"
+  },
+  "Request_Changes": {
+    "message": "మార్పులను అభ్యర్థించండి"
+  },
+  "Request_changes_to_this_action": {
+    "message": "ఈ చర్యకు మార్పులను అభ్యర్థించండి"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి Browserx ద్వారా వివరణ లేదా మెరుగుపరచండి"
+  },
+  "Rollout_Expiration": {
+    "message": "రోలౌట్ గడువు"
+  },
+  "Sandbox_Policy": {
+    "message": "సాండ్‌బాక్స్ విధానం"
+  },
+  "Save_API_Key": {
+    "message": "API కీని భద్రపరచండి"
+  },
+  "Save_Settings": {
+    "message": "సెట్టింగులను భద్రపరచండి"
+  },
+  "Saving": {
+    "message": "భద్రపరుస్తోంది..."
+  },
+  "Security_Privacy": {
+    "message": "భద్రత & గోప్యత"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "టూల్ అమలు వాతావరణానికి భద్రత స్థాయి"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "సంభాషణల కోసం ఉపయోగించాల్సిన AI మోడల్‌ను ఎంచుకోండి."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "ఇంటర్ఫేస్ కోసం మీ ఇష్టమైన భాషను ఎంచుకోండి."
+  },
+  "Send_the_message": {
+    "message": "సందేశాన్ని పంపండి"
+  },
+  "Service_Tier": {
+    "message": "సేవా స్థాయి"
+  },
+  "Session": {
+    "message": "సెషన్"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "రోలౌట్ డేటా గడువు ముగింపు సమయాన్ని సెట్ చేయండి"
+  },
+  "Settings": {
+    "message": "సెట్టింగ్‌లు"
+  },
+  "Settings_saved_successfully": {
+    "message": "సెట్టింగ్‌లు విజయవంతంగా భద్రపరచబడ్డాయి"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "పనులలో టోకెన్ వినియోగాన్ని ప్రదర్శించండి"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "స్టోరేజ్ వినియోగం ఈ శాతం మించితే హెచ్చరికను చూపించండి (డిఫాల్ట్: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "మీ ఖాతాలోకి ప్రవేశించండి"
+  },
+  "Stable": {
+    "message": "స్థిర"
+  },
+  "Stop_the_current_task_run": {
+    "message": "ప్రస్తుత పని రన్‌ను ఆపండి"
+  },
+  "Storage_Cache": {
+    "message": "స్టోరేజ్ & క్యాష్"
+  },
+  "Storage_Cache_Settings": {
+    "message": "స్టోరేజ్ & క్యాష్ సెట్టింగ్‌లు"
+  },
+  "Storage_Quota_Warning": {
+    "message": "స్టోరేజ్ కోటా హెచ్చరిక (%)"
+  },
+  "Storage_Settings": {
+    "message": "స్టోరేజ్ సెట్టింగ్‌లు"
+  },
+  "Storage_Tool": {
+    "message": "స్టోరేజ్ టూల్"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "బ్రౌజర్ సెషన్ల మధ్య క్యాష్ డేటాను స్థిరంగా నిల్వ చేయండి"
+  },
+  "Tab_Tool": {
+    "message": "ట్యాబ్ టూల్"
+  },
+  "Terminal": {
+    "message": "టెర్మినల్"
+  },
+  "Test_Connection": {
+    "message": "కనెక్షన్‌ను పరీక్షించండి"
+  },
+  "Testing": {
+    "message": "పరీక్షిస్తోంది..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "ఏజెంట్ ప్రస్తుతం బ్యాక్‌ఎండ్ మోడ్‌ను ఉపయోగిస్తోంది. LLM అభ్యర్థనలు AI Republic సర్వర్ ద్వారా రూట్ చేయబడతాయి. మీ సంభాషణలు మా మౌలిక సదుపాయాల ద్వారా సురక్షితంగా ప్రాసెస్ చేయబడతాయి."
+  },
+  "Time": {
+    "message": "సమయం"
+  },
+  "Time_remaining": {
+    "message": "మిగిలిన సమయం"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "క్యాష్ ఐటెమ్స్‌కు సెకన్లలో జీవితకాలం (డిఫాల్ట్: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "సైడ్ ప్యానెల్‌ను టోగుల్ చేయండి"
+  },
+  "Tool": {
+    "message": "సాధనం"
+  },
+  "Tool_Timeout_ms": {
+    "message": "సాధనం కోసం టైమౌట్ (ms)"
+  },
+  "Tools": {
+    "message": "సాధనాలు"
+  },
+  "Tools_Settings": {
+    "message": "సాధనాల సెట్టింగ్స్"
+  },
+  "Turn": {
+    "message": "మార్చండి"
+  },
+  "UI_Theme": {
+    "message": "UI థీమ్"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "క్రెడిట్ సమాచారం లోడ్ చేయలేకపోయింది"
+  },
+  "Unsaved_Changes": {
+    "message": "సేవ్ చేయని మార్పులు"
+  },
+  "Update_Channel": {
+    "message": "అప్‌డేట్ ఛానెల్"
+  },
+  "Upgrade_My_Plan": {
+    "message": "నా ప్లాన్‌ను అప్‌గ్రేడ్ చేయండి"
+  },
+  "Upgrade_to_Premium": {
+    "message": "ప్రీమియంకు అప్‌గ్రేడ్ చేయండి"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "ప్రపంచంలో అత్యంత శక్తివంతమైన మోడల్స్‌ను అన్వేషించడానికి మీ సబ్‌స్క్రిప్షన్‌ను అప్‌గ్రేడ్ చేయండి"
+  },
+  "Use_Context_Menu": {
+    "message": "కాంటెక్స్ట్ మెనూను ఉపయోగించండి:"
+  },
+  "Use_Own_API_Key": {
+    "message": "స్వంత API కీని ఉపయోగించండి"
+  },
+  "User_Center": {
+    "message": "యూజర్ సెంటర్"
+  },
+  "User_approved_action": {
+    "message": "వాడుకరి ఆమోదించిన చర్య"
+  },
+  "User_decision": {
+    "message": "వాడుకరి నిర్ణయం"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "వినియోగదారు అభిరుచులు మరియు ఇంటర్‌ఫేస్ సెట్టింగ్స్"
+  },
+  "User_rejected_action": {
+    "message": "వినియోగదారు తిరస్కరించిన చర్య"
+  },
+  "User_requested_modifications": {
+    "message": "వినియోగదారు అభ్యర్థించిన మార్పులు"
+  },
+  "Using_extra_credits": {
+    "message": "అదనపు క్రెడిట్స్‌ను ఉపయోగించడం"
+  },
+  "View_Chat_History": {
+    "message": "చాట్ చరిత్రను చూడండి"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "పేజీ కంటెంట్ మరియు లేఅవుట్ యొక్క విజువల్ విశ్లేషణ"
+  },
+  "Web_Scraping_Tool": {
+    "message": "వెబ్ స్క్రేపింగ్ టూల్"
+  },
+  "Web_Search": {
+    "message": "వెబ్ శోధన"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Browserx కు స్వాగతం"
+  },
+  "Workspace_Write": {
+    "message": "వర్క్‌స్పేస్ రాయండి"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "మీకు సేవ్ చేయని మార్పులు ఉన్నాయి. మీరు వాటిని విస్మరించాలనుకుంటున్నారా?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "మీ AI-శక్తితో నడిచే బ్రౌజర్ సహాయకుడు వెబ్ కంటెంట్‌ను నావిగేట్ చేయడానికి, అర్థం చేసుకోవడానికి, పరస్పర చర్య చేయడానికి సిద్ధంగా ఉన్నాడు."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "మీ API కీ ఎన్క్రిప్ట్ చేయబడింది"
+  },
+  "Your_Decision": {
+    "message": "మీ నిర్ణయం"
+  }
+}

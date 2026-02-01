@@ -335,6 +335,88 @@ export interface TypeOptions {
 
   /** Blur element after typing */
   blur?: boolean; // default: false
+
+  // ==========================================================================
+  // Text-based editing options (robust for rich text editors)
+  // These use content matching instead of character positions, which works
+  // reliably across all editor types including those with invisible HTML tags
+  // ==========================================================================
+
+  /**
+   * Insert text after the first occurrence of this string.
+   * Mutually exclusive with `insertBefore`, `replace`, `replaceAll`, and `clearFirst`.
+   * Uses visual text matching (ignores invisible HTML structure).
+   */
+  insertAfter?: string;
+
+  /**
+   * Insert text before the first occurrence of this string.
+   * Mutually exclusive with `insertAfter`, `replace`, `replaceAll`, and `clearFirst`.
+   * Uses visual text matching (ignores invisible HTML structure).
+   */
+  insertBefore?: string;
+
+  /**
+   * Find and replace this text with the provided `text` parameter.
+   * Only replaces the first occurrence (use `replaceAll` for all occurrences).
+   * Mutually exclusive with `insertAfter`, `insertBefore`, `replaceAll`, and `clearFirst`.
+   * Uses visual text matching (ignores invisible HTML structure).
+   */
+  replace?: string;
+
+  /**
+   * Find and replace ALL occurrences of this text with the provided `text` parameter.
+   * Mutually exclusive with `insertAfter`, `insertBefore`, `replace`, and `clearFirst`.
+   * Uses visual text matching (ignores invisible HTML structure).
+   */
+  replaceAll?: string;
+
+  /**
+   * Which occurrence to target when multiple matches exist.
+   * 0-indexed. Default: 0 (first occurrence).
+   * Only applies to `insertAfter`, `insertBefore`, and `replace`.
+   * Ignored for `replaceAll`.
+   */
+  occurrence?: number;
+
+  // ==========================================================================
+  // Formatting options (for rich text editors)
+  // Uses keyboard shortcuts internally (Ctrl+B, Ctrl+I, etc.)
+  // ==========================================================================
+
+  /**
+   * Apply formatting/styling to the typed text.
+   * Default: undefined (no formatting, regular plain text).
+   *
+   * When specified, the text is typed first, then selected, then formatting
+   * shortcuts are applied. Works with most rich text editors that support
+   * standard keyboard shortcuts.
+   *
+   * Note: For editors that support Markdown (Notion, Slack, GitHub), you can
+   * alternatively just type Markdown syntax directly (e.g., "**bold**").
+   */
+  format?: {
+    /** Apply bold formatting (Ctrl+B) */
+    bold?: boolean;
+    /** Apply italic formatting (Ctrl+I) */
+    italic?: boolean;
+    /** Apply underline formatting (Ctrl+U) */
+    underline?: boolean;
+    /** Apply strikethrough formatting (Ctrl+Shift+S or Alt+Shift+5) */
+    strikethrough?: boolean;
+    /** Apply inline code formatting (Ctrl+` or Ctrl+E) */
+    code?: boolean;
+  };
+
+  /**
+   * Insert line break(s) relative to the typed text.
+   * Default: undefined (no line breaks added).
+   *
+   * - "before": Insert Enter key before typing
+   * - "after": Insert Enter key after typing
+   * - "both": Insert Enter key before and after typing
+   */
+  lineBreak?: "before" | "after" | "both";
 }
 
 /**
@@ -400,10 +482,19 @@ export interface ActionResult {
 
     /** New value if changed */
     newValue?: string;
+
+    /** Text that was deleted (for text-based deletion) */
+    deletedText?: string;
+
+    /** Text that was replaced (for text-based replacement) */
+    replacedText?: string;
+
+    /** Number of replacements made (for replaceAll) */
+    replacementCount?: number;
   };
 
   /** Node ID that was acted upon */
-  nodeId: number;
+  nodeId: number | string;
 
   /** Action type */
   actionType: "click" | "type" | "keypress" | "scroll";

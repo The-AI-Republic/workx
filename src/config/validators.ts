@@ -42,36 +42,36 @@ export function validateConfig(config: any): ValidationResult {
     };
   }
 
-  // Validate selectedModelId (new system)
-  if (config.selectedModelId) {
-    if (!isValidModelId(config.selectedModelId)) {
+  // Validate selectedModelKey (composite key format: "providerId:modelKey")
+  if (config.selectedModelKey) {
+    if (!config.selectedModelKey.includes(':')) {
       return {
         valid: false,
-        field: 'selectedModelId',
-        value: config.selectedModelId,
-        error: 'Invalid model ID format, expected 6-digit numeric string'
+        field: 'selectedModelKey',
+        value: config.selectedModelKey,
+        error: 'Invalid model key format, expected "providerId:modelKey"'
       };
     }
 
-    // Verify selectedModelId exists in registry
-    if (config.modelRegistry && !config.modelRegistry[config.selectedModelId]) {
-      return {
-        valid: false,
-        field: 'selectedModelId',
-        value: config.selectedModelId,
-        error: 'Selected model ID not found in model registry'
-      };
-    }
-
-    // Verify the provider referenced in registry exists
-    if (config.modelRegistry && config.providers) {
-      const entry = config.modelRegistry[config.selectedModelId];
-      if (entry && !config.providers[entry.providerId]) {
+    // Verify the provider and model exist
+    if (config.providers) {
+      const [providerId, modelKey] = config.selectedModelKey.split(':');
+      const provider = config.providers[providerId];
+      if (!provider) {
         return {
           valid: false,
-          field: 'selectedModelId',
-          value: config.selectedModelId,
-          error: `Provider ${entry.providerId} not found for selected model`
+          field: 'selectedModelKey',
+          value: config.selectedModelKey,
+          error: `Provider ${providerId} not found for selected model`
+        };
+      }
+      const modelExists = provider.models?.some((m: any) => m.modelKey === modelKey);
+      if (!modelExists) {
+        return {
+          valid: false,
+          field: 'selectedModelKey',
+          value: config.selectedModelKey,
+          error: `Model ${modelKey} not found in provider ${providerId}`
         };
       }
     }
@@ -446,21 +446,26 @@ export function validateExtensionSettings(ext: any): ValidationResult {
 // ModelRegistry has been removed - validation now handled by AgentConfig
 
 /**
- * Get default model ID
+ * Get default model key
  *
  * @param config Agent configuration
- * @returns Default model ID
+ * @returns Default model key (format: "providerId:modelKey")
  */
 export function getDefaultModel(config: any): string {
-  const selectedModelId = config?.selectedModelId;
+  const selectedModelKey = config?.selectedModelKey;
 
-  if (!selectedModelId || selectedModelId.trim() === '') {
-    // Return first available model ID from registry if available
-    const firstModelId = Object.keys(config?.modelRegistry || {})[0];
-    return firstModelId || ''; // Return empty if no models available
+  if (!selectedModelKey || selectedModelKey.trim() === '') {
+    // Return first available model key from providers if available
+    for (const [providerId, provider] of Object.entries(config?.providers || {})) {
+      const models = (provider as any)?.models;
+      if (models && models.length > 0) {
+        return `${providerId}:${models[0].modelKey}`;
+      }
+    }
+    return ''; // Return empty if no models available
   }
 
-  return selectedModelId;
+  return selectedModelKey;
 }
 
 
@@ -529,39 +534,40 @@ export function isValidModelId(id: string): boolean {
 }
 
 /**
- * Validate model ID uniqueness across all providers
- * Ensures no duplicate model IDs exist in the configuration
+ * Validate model key uniqueness across all providers
+ * Ensures no duplicate composite model keys (providerId:modelKey) exist in the configuration
  * @param config - Agent configuration to validate
- * @returns Validation result with duplicate IDs if found
+ * @returns Validation result with duplicate keys if found
  * @example
- * const result = validateModelIdUniqueness(config);
+ * const result = validateModelKeyUniqueness(config);
  * if (!result.valid) {
- *   console.error('Duplicate model IDs:', result.duplicates);
+ *   console.error('Duplicate model keys:', result.duplicates);
  * }
  */
-export function validateModelIdUniqueness(config: IAgentConfig): {
+export function validateModelKeyUniqueness(config: IAgentConfig): {
   valid: boolean;
   duplicates: string[];
   error?: string;
 } {
-  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
   const duplicates: string[] = [];
 
   // Check all models across all providers
-  for (const provider of Object.values(config.providers)) {
+  for (const [providerId, provider] of Object.entries(config.providers)) {
     if (!provider.models || !Array.isArray(provider.models)) {
       continue;
     }
 
     for (const model of provider.models) {
-      if (!model.id) {
-        continue; // Skip models without IDs (will be auto-generated)
+      if (!model.modelKey) {
+        continue; // Skip models without modelKey
       }
 
-      if (seenIds.has(model.id)) {
-        duplicates.push(model.id);
+      const compositeKey = `${providerId}:${model.modelKey}`;
+      if (seenKeys.has(compositeKey)) {
+        duplicates.push(compositeKey);
       } else {
-        seenIds.add(model.id);
+        seenKeys.add(compositeKey);
       }
     }
   }
@@ -570,7 +576,7 @@ export function validateModelIdUniqueness(config: IAgentConfig): {
     return {
       valid: false,
       duplicates,
-      error: `Duplicate model IDs found: ${duplicates.join(', ')}`
+      error: `Duplicate model keys found: ${duplicates.join(', ')}`
     };
   }
 
@@ -579,3 +585,8 @@ export function validateModelIdUniqueness(config: IAgentConfig): {
     duplicates: []
   };
 }
+
+/**
+ * @deprecated Use validateModelKeyUniqueness instead
+ */
+export const validateModelIdUniqueness = validateModelKeyUniqueness;

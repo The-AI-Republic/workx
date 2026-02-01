@@ -2,8 +2,8 @@
   /**
    * OutputEvent - Renders terminal-style command output
    */
-  import type { ProcessedEvent } from '../../../types/ui';
-  import { truncateOutput } from '../../../utils/formatters';
+  import type { ProcessedEvent } from '@/types/ui';
+  import { truncateOutput } from '@/utils/formatters';
 
   export let event: ProcessedEvent;
   export let maxLines: number = 20;

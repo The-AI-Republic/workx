@@ -17,36 +17,110 @@ export interface GoogleGenAIConfig {
   baseUrl?: string;
   provider: ModelProviderInfo;
   modelFamily: any;
+  /** Whether to include credentials (cookies) in requests - used for backend routing */
+  useCredentials?: boolean;
 }
 
 /**
  * Google AI Studio (Gemini) client using native SDK
  */
 export class GoogleCompletionClient extends ModelClient {
-  private client: GoogleGenAI;
-  private apiKey: string;
+  private client: GoogleGenAI | null = null;
+  private apiKey: string | null;
+  private baseUrl?: string;
   private provider: ModelProviderInfo;
   private modelFamily: any;
   private currentModel: string = 'gemini-2.0-flash-exp'; // Default
+  private useCredentials: boolean;
 
   constructor(config: GoogleGenAIConfig, retryConfig?: Partial<RetryConfig>) {
     super(retryConfig);
 
-    if (!config.apiKey) {
-      throw new Error('API key is required for GoogleCompletionClient');
-    }
-
+    // Store API key but don't require it at construction time
+    // Validation happens when making actual API requests
     this.apiKey = config.apiKey;
+    this.baseUrl = config.baseUrl;
     this.provider = config.provider;
     this.modelFamily = config.modelFamily;
+    this.useCredentials = config.useCredentials ?? false;
 
     // Set model from family config if available
     if (this.modelFamily && this.modelFamily.family) {
       this.currentModel = this.modelFamily.family;
     }
 
-    // Initialize Google GenAI client
-    this.client = new GoogleGenAI({ apiKey: this.apiKey });
+    // Initialize Google GenAI client only if API key is available
+    if (this.apiKey) {
+      this.client = this.createClient();
+    }
+  }
+
+  /**
+   * Create a GoogleGenAI client with appropriate configuration
+   */
+  private createClient(): GoogleGenAI {
+    const options: any = { apiKey: this.apiKey || 'backend-routed' };
+
+    // If baseUrl is provided (backend routing or custom proxy), use httpOptions
+    if (this.baseUrl) {
+      // Safeguard: The native @google/genai SDK appends its own path segments (e.g., v1beta/models/...).
+      // If the provided baseUrl includes the OpenAI compatibility suffix, we must strip it 
+      // otherwise the SDK will produce a double-pathed broken URL.
+      let finalBaseUrl = this.baseUrl;
+      if (finalBaseUrl.includes('/v1beta/openai')) {
+        finalBaseUrl = finalBaseUrl.split('/v1beta/openai')[0];
+      }
+
+      // Ensure no trailing slash as the SDK might add its own
+      if (finalBaseUrl.endsWith('/')) {
+        finalBaseUrl = finalBaseUrl.slice(0, -1);
+      }
+
+      options.httpOptions = {
+        baseUrl: finalBaseUrl,
+      };
+
+      // If using backend routing (useCredentials=true), include cookies in requests
+      if (this.useCredentials) {
+        options.httpOptions.fetch = async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+          const fetchInit = {
+            ...init,
+            credentials: 'include' as RequestCredentials
+          };
+
+          // Use global fetch with credentials: 'include'
+          const response = await fetch(url, fetchInit);
+
+          // Optional: Transform FastAPI error records to Gemini error format if needed
+          // For now we rely on the SDK's default error handling as it's more robust for streaming
+
+          return response;
+        };
+      }
+    }
+
+    return new GoogleGenAI(options);
+  }
+
+  /**
+   * Get or create the Google GenAI client
+   * Throws error only when client is actually needed
+   */
+  private getClient(): GoogleGenAI {
+    if (!this.client) {
+      if (!this.apiKey) {
+        throw new ModelClientError('API key is required. Please configure your Google AI Studio API key in Settings.');
+      }
+      this.client = this.createClient();
+    }
+    return this.client;
+  }
+
+  /**
+   * Check if using backend routing (credentials mode)
+   */
+  isBackendRouting(): boolean {
+    return this.useCredentials;
   }
 
   getProvider(): ModelProviderInfo {
@@ -155,7 +229,7 @@ export class GoogleCompletionClient extends ModelClient {
     while (true) {
       try {
         // Use the models namespace from the new SDK
-        const result = await this.client.models.generateContentStream({
+        const result = await this.getClient().models.generateContentStream({
           model: this.currentModel,
           contents,
           config
@@ -184,12 +258,14 @@ export class GoogleCompletionClient extends ModelClient {
               if (part.functionCall) {
                 // Gemini returns full function call in the part usually
                 // Capture thoughtSignature for Gemini 2.0+/3.0 models (required for function calling)
+                // Ensure args is always a valid object (never undefined) to prevent invalid JSON
+                const args = part.functionCall.args ?? {};
                 const toolCall: any = {
                   id: part.functionCall.id || `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   type: 'function',
                   function: {
                     name: part.functionCall.name,
-                    arguments: JSON.stringify(part.functionCall.args)
+                    arguments: JSON.stringify(args)
                   }
                 };
 
@@ -209,10 +285,22 @@ export class GoogleCompletionClient extends ModelClient {
 
       } catch (error: any) {
         // Check for rate limit error (429)
-        if (error.status === 429 || error.code === 429 || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        // Also handle case where backend returns 500 but body contains 429/RESOURCE_EXHAUSTED
+        const errorMessage = error.message || '';
+        const isRateLimit = error.status === 429 ||
+          error.code === 429 ||
+          errorMessage.includes('429') ||
+          errorMessage.includes('RESOURCE_EXHAUSTED');
+
+        if (isRateLimit) {
           retryCount++;
           if (retryCount > maxRetries) {
-            throw error;
+            // Propagate the error clearly
+            throw new ModelClientError(
+              `Rate limit exceeded: ${errorMessage}`,
+              429,
+              this.provider.name
+            );
           }
 
           console.warn(`[GoogleCompletionClient] Rate limit hit. Retrying (${retryCount}/${maxRetries})...`);
@@ -223,9 +311,16 @@ export class GoogleCompletionClient extends ModelClient {
           // Try to parse retry delay from error details if available
           // Error format: { error: { details: [ { retryDelay: "45s" } ] } }
           try {
-            if (error.message) {
-              const messageJson = JSON.parse(error.message);
-              const details = messageJson.error?.details;
+            if (errorMessage) {
+              // Try to find JSON in the message if it's a stringified error
+              const jsonMatch = errorMessage.match(/\{.*\}/s);
+              const jsonStr = jsonMatch ? jsonMatch[0] : errorMessage;
+
+              const messageJson = JSON.parse(jsonStr);
+
+              // Check for nested error structure from backend
+              const details = messageJson.error?.details || messageJson.details;
+
               if (Array.isArray(details)) {
                 const retryInfo = details.find((d: any) => d.retryDelay);
                 if (retryInfo && retryInfo.retryDelay) {

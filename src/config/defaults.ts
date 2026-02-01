@@ -2,13 +2,14 @@
  * Default centralized agent configuration values
  */
 
-import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig } from './types';
+import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig } from './types';
 import defaultProviders from '../models/providers/default.json';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
   telemetryEnabled: false,
   theme: 'system',
+  uiTheme: 'chatgpt',
   shortcuts: {},
   experimental: {}
 };
@@ -144,8 +145,7 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
 export function getDefaultAgentConfig(): IAgentConfig {
   return {
     version: '2.1.0',
-    selectedModelId: '', // Will be set to first available model during initialization
-    modelRegistry: {}, // Will be populated during initialization
+    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2-thinking', // Default to Kimi K2 on Fireworks for fresh install
     providers: getDefaultProviders(),
     profiles: {},
     activeProfile: null,
@@ -212,8 +212,7 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
             // Stored values take precedence (preserves user customizations)
             mergedModels.push({
               ...defaultModel,      // Default fields (includes new fields like serviceTier)
-              ...storedModel,       // Stored values (preserves user customizations)
-              id: storedModel.id || defaultModel.id  // Preserve existing ID
+              ...storedModel        // Stored values (preserves user customizations)
             });
           } else {
             // Model only exists in defaults - add it as new
@@ -223,13 +222,9 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
 
         // Add any models that exist in stored config but not in defaults
         // (e.g., user manually added models)
-        // Also check by model ID to prevent duplicates from migration issues
         for (const storedModel of storedModels) {
           const existsInDefaults = defaultModels.some((m: any) => m.modelKey === storedModel.modelKey);
-          const alreadyMerged = mergedModels.some((m: any) =>
-            m.modelKey === storedModel.modelKey ||
-            (m.id && storedModel.id && m.id === storedModel.id)
-          );
+          const alreadyMerged = mergedModels.some((m: any) => m.modelKey === storedModel.modelKey);
           if (!existsInDefaults && !alreadyMerged) {
             mergedModels.push({ ...storedModel });
           }
@@ -285,6 +280,7 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
       ...DEFAULT_TOOLS_CONFIG,
       ...(partial.tools || {}),
       sandboxPolicy: {
+        mode: DEFAULT_TOOLS_CONFIG.sandboxPolicy!.mode,
         ...DEFAULT_TOOLS_CONFIG.sandboxPolicy,
         ...(partial.tools?.sandboxPolicy || {})
       },
@@ -305,7 +301,146 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
  * Multi-provider support with models arrays
  * Loaded from JSON configuration file
  */
-export function getDefaultProviders(): Record<string, any> {
+export function getDefaultProviders(): Record<string, IProviderConfig> {
   // Return a deep copy to avoid mutation of the imported JSON
   return JSON.parse(JSON.stringify(defaultProviders));
+}
+
+/**
+ * Get default stored config (minimal data for chrome.storage.local)
+ */
+export function getDefaultStoredConfig(): IStoredConfig {
+  return {
+    version: '2.1.0',
+    selectedModelKey: 'fireworks:accounts/fireworks/models/kimi-k2-thinking', // Default to Kimi K2 on Fireworks for fresh install
+    providerKeys: {}, // Empty - no API keys configured by default
+    preferences: { ...DEFAULT_USER_PREFERENCES },
+    cache: { ...DEFAULT_CACHE_SETTINGS },
+    extension: { ...DEFAULT_EXTENSION_SETTINGS },
+    profiles: {},
+    activeProfile: null,
+    tools: { ...DEFAULT_TOOLS_CONFIG },
+    storage: { ...DEFAULT_STORAGE_CONFIG }
+  };
+}
+
+/**
+ * Build full runtime config by merging stored config with default providers/models
+ * @param stored - Minimal stored config from chrome.storage.local
+ * @returns Full IAgentConfig with providers/models from default.json and API keys from storage
+ */
+export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
+  const defaults = getDefaultAgentConfig();
+
+  if (!stored) {
+    return defaults;
+  }
+
+  // Get fresh providers from default.json
+  const providers = getDefaultProviders();
+
+  // Apply stored API keys to providers
+  for (const [providerId, storedProvider] of Object.entries(stored.providerKeys)) {
+    if (providers[providerId]) {
+      providers[providerId].apiKey = storedProvider.apiKey;
+      if (storedProvider.organization !== undefined) {
+        providers[providerId].organization = storedProvider.organization;
+      }
+    }
+  }
+
+  // Validate stored selectedModelKey exists in providers, fallback to default if not
+  let selectedModelKey = stored.selectedModelKey || '';
+  if (selectedModelKey) {
+    const colonIndex = selectedModelKey.indexOf(':');
+    if (colonIndex > 0) {
+      const providerId = selectedModelKey.slice(0, colonIndex);
+      const modelKey = selectedModelKey.slice(colonIndex + 1);
+      const provider = providers[providerId];
+      const modelExists = provider?.models?.some((m: { modelKey: string }) => m.modelKey === modelKey);
+      if (!modelExists) {
+        console.warn(`[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`);
+        selectedModelKey = defaults.selectedModelKey;
+      }
+    } else {
+      // Invalid format (no colon), use default
+      console.warn(`[buildRuntimeConfig] Invalid selectedModelKey format "${selectedModelKey}", falling back to default`);
+      selectedModelKey = defaults.selectedModelKey;
+    }
+  }
+
+  return {
+    version: stored.version || defaults.version,
+    selectedModelKey,
+    providers,
+    profiles: stored.profiles || {},
+    activeProfile: stored.activeProfile || null,
+    preferences: {
+      ...DEFAULT_USER_PREFERENCES,
+      ...(stored.preferences || {})
+    },
+    cache: {
+      ...DEFAULT_CACHE_SETTINGS,
+      ...(stored.cache || {})
+    },
+    extension: {
+      ...DEFAULT_EXTENSION_SETTINGS,
+      ...(stored.extension || {}),
+      permissions: {
+        ...DEFAULT_PERMISSION_SETTINGS,
+        ...(stored.extension?.permissions || {})
+      }
+    },
+    tools: {
+      ...DEFAULT_TOOLS_CONFIG,
+      ...(stored.tools || {}),
+      sandboxPolicy: {
+        mode: DEFAULT_TOOLS_CONFIG.sandboxPolicy!.mode,
+        ...DEFAULT_TOOLS_CONFIG.sandboxPolicy,
+        ...(stored.tools?.sandboxPolicy || {})
+      },
+      perToolConfig: {
+        ...DEFAULT_TOOLS_CONFIG.perToolConfig,
+        ...(stored.tools?.perToolConfig || {})
+      }
+    },
+    storage: {
+      ...DEFAULT_STORAGE_CONFIG,
+      ...(stored.storage || {})
+    }
+  };
+}
+
+/**
+ * Extract minimal stored config from full runtime config
+ * @param config - Full runtime IAgentConfig
+ * @returns Minimal IStoredConfig for chrome.storage.local
+ */
+export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
+  // Extract only id, API keys and organization from providers
+  const providerKeys: Record<string, { id: string; apiKey: string; organization?: string | null }> = {};
+
+  for (const [providerId, provider] of Object.entries(config.providers)) {
+    // Only store if there's an API key configured
+    if (provider.apiKey) {
+      providerKeys[providerId] = {
+        id: providerId,
+        apiKey: provider.apiKey,
+        organization: provider.organization
+      };
+    }
+  }
+
+  return {
+    version: config.version,
+    selectedModelKey: config.selectedModelKey,
+    providerKeys,
+    preferences: config.preferences,
+    cache: config.cache,
+    extension: config.extension,
+    profiles: config.profiles,
+    activeProfile: config.activeProfile,
+    tools: config.tools,
+    storage: config.storage
+  };
 }

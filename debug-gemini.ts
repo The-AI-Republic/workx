@@ -3,14 +3,12 @@
  *
  * Usage:
  *   export GOOGLE_AI_STUDIO_API_KEY=your_key
- *   export GEMINI_DEBUG=true
  *   npx tsx debug-gemini.ts
  *
- * This script tests the Gemini integration in isolation and provides
- * detailed diagnostic output to identify where the issue occurs.
+ * This script tests the Gemini integration in isolation using the native Google SDK.
  */
 
-import { OpenAIResponsesClient } from './src/models/OpenAIResponsesClient';
+import { GoogleCompletionClient } from './src/models/client/GoogleCompletionClient';
 
 // Color output for better readability
 const colors = {
@@ -45,66 +43,55 @@ async function testGeminiIntegration() {
   }
 
   log('green', '✅ API Key found (length:', apiKey.length + ')');
-  log('green', '✅ Debug mode:', process.env.GEMINI_DEBUG === 'true' ? 'ENABLED' : 'DISABLED');
 
   // Create client
-  section('Step 1: Creating OpenAIResponsesClient');
+  section('Step 1: Creating GoogleCompletionClient');
 
   const config = {
     apiKey: apiKey,
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    conversationId: 'debug-test-' + Date.now(),
-    modelFamily: {
-      family: 'gemini-2.5-pro',
-      base_instructions: 'You are a helpful assistant.',
-      supports_reasoning_summaries: false,
-      needs_special_apply_patch_instructions: false,
-    },
+    baseUrl: 'https://generativelanguage.googleapis.com',
     provider: {
-      name: 'Google AI Studio',
-      base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      wire_api: 'ChatCompletions',
-      requires_openai_auth: true,
-      env_key: 'GOOGLE_AI_STUDIO_API_KEY',
-    },
+      name: 'google-ai-studio',
+      id: 'google-ai-studio',
+    } as any,
+    modelFamily: {
+      family: 'gemini-3-pro-preview',
+    } as any,
   };
 
   log('blue', 'Configuration:');
   console.log(JSON.stringify(config, null, 2));
 
-  let client: any;
+  let client: GoogleCompletionClient;
   try {
-    client = new OpenAIResponsesClient(config);
+    client = new GoogleCompletionClient(config);
     log('green', '✅ Client created successfully');
   } catch (error) {
     log('red', '❌ Failed to create client:', error);
     process.exit(1);
+    return;
   }
 
-  // Check private properties
+  // Check state
   section('Step 2: Verifying Client State');
 
-  log('blue', 'Checking private properties:');
-  console.log('  - chatCompletionTextContent:', client['chatCompletionTextContent']);
-  console.log('  - chatCompletionToolCalls size:', client['chatCompletionToolCalls']?.size);
-  console.log('  - pendingEvents length:', client['pendingEvents']?.length);
-
-  if (client['chatCompletionTextContent'] === undefined) {
-    log('red', '❌ CRITICAL: chatCompletionTextContent property not found!');
-    log('yellow', '   This means the fix is not present in the code.');
-  } else {
-    log('green', '✅ chatCompletionTextContent property exists');
-  }
+  log('blue', 'Checking properties:');
+  console.log('  - model:', client.getModel());
+  console.log('  - provider:', client.getProvider().name);
 
   // Test streaming
   section('Step 3: Testing Stream with "hi" message');
 
-  const requestData = {
-    role: 'user' as const,
-    content: 'hi',
+  const prompt = {
+    input: [{
+      type: 'message' as const,
+      role: 'user' as const,
+      content: 'hi',
+    }],
+    tools: [],
   };
 
-  log('blue', 'Sending request:', requestData);
+  log('blue', 'Sending prompt:', JSON.stringify(prompt, null, 2));
 
   const events: any[] = [];
   let textDeltas: string[] = [];
@@ -113,10 +100,11 @@ async function testGeminiIntegration() {
   try {
     log('yellow', 'Starting stream...');
 
-    const stream = client.streamCompletion(requestData);
+    const responseStream = await client.stream(prompt as any);
 
     let eventCount = 0;
-    for await (const event of stream) {
+    // The ResponseStream has an iterator() method
+    for await (const event of responseStream.iterator()) {
       eventCount++;
       events.push(event);
 
@@ -133,7 +121,7 @@ async function testGeminiIntegration() {
       } else if (event.type === 'Completed') {
         log('cyan', `  Event ${eventCount}: Completed`);
         if (event.tokenUsage) {
-          log('blue', '    Token usage:', event.tokenUsage);
+          log('blue', '    Token usage:', JSON.stringify(event.tokenUsage));
         }
       } else {
         log('cyan', `  Event ${eventCount}: ${event.type}`);
@@ -174,7 +162,6 @@ async function testGeminiIntegration() {
     log('blue', 'Accumulated text:', textDeltas.join(''));
   } else {
     log('red', '❌ No text deltas received');
-    log('yellow', '   This suggests Gemini is not returning text content');
   }
 
   // Check for message items
@@ -187,20 +174,6 @@ async function testGeminiIntegration() {
     });
   } else {
     log('red', '❌ No message items found');
-    log('yellow', '   This is the ROOT CAUSE of the bug!');
-  }
-
-  // Check client state after stream
-  section('Step 7: Post-Stream State Check');
-
-  log('blue', 'Client state after stream:');
-  console.log('  - chatCompletionTextContent:', client['chatCompletionTextContent']);
-  console.log('  - chatCompletionToolCalls size:', client['chatCompletionToolCalls']?.size);
-  console.log('  - pendingEvents length:', client['pendingEvents']?.length);
-
-  if (client['chatCompletionTextContent']?.length > 0) {
-    log('red', '❌ WARNING: Text content not cleared after stream');
-    log('yellow', '   Text:', client['chatCompletionTextContent']);
   }
 
   // Final diagnosis
@@ -214,40 +187,17 @@ async function testGeminiIntegration() {
     log('green', '✅✅✅ SUCCESS: Everything working correctly!');
     log('green', 'Response text:', textContent);
     log('green', 'Message items created:', messageItems.length);
-  } else if (hasTextDeltas && !hasMessageItems) {
-    log('red', '❌ PROBLEM IDENTIFIED:');
-    log('red', '   - Text deltas ARE being received');
-    log('red', '   - But message items ARE NOT being created');
-    log('yellow', '\nLikely causes:');
-    log('yellow', '   1. Text accumulation is happening but message item creation is failing');
-    log('yellow', '   2. finish_reason="stop" handler not executing');
-    log('yellow', '   3. Message item created but not yielded from generator');
-    log('yellow', '\nCheck:');
-    log('yellow', '   - convertChatCompletionEventToResponseEvent() finish_reason handler');
-    log('yellow', '   - Message item creation logic (lines 774-816)');
-    log('yellow', '   - Generator yield statements');
-  } else if (!hasTextDeltas && !hasMessageItems) {
-    log('red', '❌ PROBLEM IDENTIFIED:');
-    log('red', '   - No text deltas received from Gemini API');
-    log('yellow', '\nLikely causes:');
-    log('yellow', '   1. Gemini API not returning delta.content in chunks');
-    log('yellow', '   2. API response format different than expected');
-    log('yellow', '   3. Network/authentication issue');
-    log('yellow', '\nCheck:');
-    log('yellow', '   - Raw API response format');
-    log('yellow', '   - convertChatCompletionEventToResponseEvent() chunk parsing');
-    log('yellow', '   - Gemini API documentation for response format');
   } else {
-    log('yellow', '⚠️  Unexpected state - investigate further');
+    log('red', '❌ PROBLEM IDENTIFIED: Gemini integration is not behaving as expected with the native SDK.');
   }
 
   // Summary
   section('SUMMARY');
 
   console.log('Test parameters:');
-  console.log('  - Model: gemini-2.5-pro');
-  console.log('  - Provider: Google AI Studio');
-  console.log('  - API: ChatCompletions');
+  console.log('  - Model: gemini-3-pro-preview');
+  console.log('  - Provider: google-ai-studio');
+  console.log('  - API: Native Google SDK');
   console.log('  - Request: "hi"');
   console.log('\nResults:');
   console.log('  - Events received:', events.length);

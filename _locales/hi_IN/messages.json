@@ -1,0 +1,657 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "काम के कार्यों के लिए सामान्य इन-ब्राउज़र AI एजेंट"
+  },
+  "API_Key_Configuration": {
+    "message": "API Key कॉन्फ़िगरेशन"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API keys एन्क्रिप्टेड हैं और आपके ब्राउज़र में स्थानीय रूप से संग्रहीत होते हैं। इन्हें बाहरी सर्वरों को कभी नहीं भेजा जाता सिवाय API कॉल्स के।"
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "ब्राउज़र स्टोरेज (localStorage, sessionStorage, cookies) तक पहुँचें"
+  },
+  "Action": {
+    "message": "कार्रवाई"
+  },
+  "Action_Details": {
+    "message": "कार्रवाई विवरण"
+  },
+  "Add_Modification": {
+    "message": "संशोधन जोड़ें"
+  },
+  "Advanced_Configuration": {
+    "message": "उन्नत कॉन्फ़िगरेशन"
+  },
+  "Advanced_Options": {
+    "message": "उन्नत विकल्प"
+  },
+  "Agent_Execution_Tools": {
+    "message": "एजेंट निष्पादन टूल्स"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "एजेंट को सिस्टम कमांड्स चलाने की अनुमति दें (सावधानी से उपयोग करें)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "एजेंट को फ़ाइलें पढ़ने, लिखने और प्रबंधित करने की अनुमति दें (भविष्य के अपडेट में आ रहा है)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "वेब पेजों पर कंटेंट स्क्रिप्ट्स चलाने की अनुमति दें"
+  },
+  "Allowed_Origins": {
+    "message": "अनुमत स्रोत (Origins)"
+  },
+  "Approval_History": {
+    "message": "स्वीकृति इतिहास"
+  },
+  "Approve": {
+    "message": "स्वीकृत करें"
+  },
+  "Approve_this_action": {
+    "message": "इस कार्रवाई को स्वीकृत करें"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Browserx को किसी भी वेबपेज से संरचित डेटा निकालने के लिए कहें"
+  },
+  "Available": {
+    "message": "उपलब्ध:"
+  },
+  "Back": {
+    "message": "वापस"
+  },
+  "Backend_Mode": {
+    "message": "बैकएंड मोड"
+  },
+  "Backend_Mode_Active": {
+    "message": "बैकएंड मोड सक्रिय"
+  },
+  "Beta": {
+    "message": "बीटा"
+  },
+  "Browser_Tools": {
+    "message": "ब्राउज़र टूल्स"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "ब्राउज़र ऑटोमेशन टूल चालू/बंद करने के विकल्प"
+  },
+  "Cache_Settings": {
+    "message": "कैश सेटिंग्स"
+  },
+  "Cache_TTL_seconds": {
+    "message": "कैश TTL (सेकंडों में)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "कैश व्यवहार और डेटा प्रतिधारण"
+  },
+  "Cancel": {
+    "message": "रद्द करें"
+  },
+  "Chat_History": {
+    "message": "चैट इतिहास"
+  },
+  "Choose_AI_Model": {
+    "message": "AI मॉडल चुनें"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "साइड पैनल इंटरफ़ेस की दृश्य शैली चुनें"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "कौन सा अपडेट चैनल फॉलो करना है चुनें"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "क्लासिक टर्मिनल शैली, काली पृष्ठभूमि पर हरा टेक्स्ट"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "साफ़, आधुनिक चैट इंटरफ़ेस (ChatGPT की तरह)"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "टूलबार में Browserx आइकन पर क्लिक करें या Alt+Shift+C दबाएँ"
+  },
+  "Click_to_select_a_model": {
+    "message": "मॉडल चुनने के लिए क्लिक करें"
+  },
+  "Close_settings": {
+    "message": "सेटिंग्स बंद करें"
+  },
+  "Command": {
+    "message": "कमांड"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "स्टोरेज स्पेस बचाने के लिए कैश्ड डेटा को संपीड़ित करें"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "AI मॉडल और API कुंजियों को कॉन्फ़िगर करें"
+  },
+  "Connected": {
+    "message": "जुड़ा हुआ"
+  },
+  "Context": {
+    "message": "संदर्भ"
+  },
+  "Create_New_Tab": {
+    "message": "नया टैब बनाएं"
+  },
+  "Credit_Details": {
+    "message": "क्रेडिट विवरण"
+  },
+  "Current_Plan": {
+    "message": "वर्तमान योजना:"
+  },
+  "DOM_Tool": {
+    "message": "DOM टूल"
+  },
+  "Daily_Credits": {
+    "message": "दैनिक क्रेडिट"
+  },
+  "Data_Extraction_Tool": {
+    "message": "डेटा एक्सट्रैक्शन टूल"
+  },
+  "Days_until_expiration": {
+    "message": "समाप्ति तक के दिन"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "AI Republic द्वारा विकसित और समर्थित"
+  },
+  "Discard_Changes": {
+    "message": "परिवर्तनों को त्यागें"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "कार्य पूर्ण होने पर टोकन उपभोग (इनपुट/आउटपुट टोकन) दिखाएँ"
+  },
+  "Enable_All_Tools": {
+    "message": "सभी टूल्स सक्षम करें"
+  },
+  "Enable_Cache": {
+    "message": "कैश सक्षम करें"
+  },
+  "Enable_Compression": {
+    "message": "संपीड़न सक्षम करें"
+  },
+  "Enable_Content_Scripts": {
+    "message": "कंटेंट स्क्रिप्ट्स सक्षम करें"
+  },
+  "Enable_Extension": {
+    "message": "एक्सटेंशन सक्षम करें"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "मॉडल कॉन्टेक्स्ट प्रोटोकॉल टूल्स इंटीग्रेशन सक्षम करें (भविष्य के अपडेट में आएगा)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "बार-बार एक्सेस किए जाने वाले डेटा को संग्रहीत करके प्रदर्शन सुधारने के लिए कैशिंग सक्षम करें"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "एजेंट के लिए वेब खोज क्षमता सक्षम करें"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "अपनी LLM API कुंजी दर्ज करें"
+  },
+  "Execute_Commands": {
+    "message": "कमांड निष्पादित करें"
+  },
+  "Expire_after_days": {
+    "message": "$1$ दिनों के बाद समाप्त हो",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Explain_your_decision": {
+    "message": "अपना निर्णय समझाएँ..."
+  },
+  "Extension_Permission": {
+    "message": "एक्सटेंशन और अनुमति"
+  },
+  "Extension_Permission_Settings": {
+    "message": "एक्सटेंशन और अनुमति सेटिंग्स"
+  },
+  "Extension_Configuration": {
+    "message": "एक्सटेंशन कॉन्फ़िगरेशन"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "एक्सटेंशन कॉन्फ़िगरेशन और अनुमतियाँ"
+  },
+  "Extra_Credits": {
+    "message": "अतिरिक्त क्रेडिट्स"
+  },
+  "Extract_Data": {
+    "message": "डेटा निकालें:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "पृष्ठों से विशिष्ट डेटा पैटर्न निकालें"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "वेब पृष्ठों से संरचित डेटा निकालें"
+  },
+  "Failed_to_load_preferences": {
+    "message": "प्राथमिकताएँ लोड करने में विफल रहा"
+  },
+  "Failed_to_save_settings": {
+    "message": "सेटिंग्स सहेजने में विफल रहा"
+  },
+  "File_Operations_Not_Available": {
+    "message": "फ़ाइल संचालन (उपलब्ध नहीं)"
+  },
+  "File_Path": {
+    "message": "फ़ाइल पथ"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "फ़ॉर्म भरें, डेटा सबमिट करें, फ़ॉर्म तत्वों के साथ इंटरैक्ट करें"
+  },
+  "Form_Automation_Tool": {
+    "message": "फ़ॉर्म ऑटोमेशन टूल"
+  },
+  "Full_Access_Dangerous": {
+    "message": "पूर्ण पहुँच (खतरनाक)"
+  },
+  "General": {
+    "message": "सामान्य"
+  },
+  "General_Settings": {
+    "message": "सामान्य सेटिंग्स"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "काम के कार्यों के लिए सामान्य इन-ब्राउज़र AI एजेंट"
+  },
+  "Get_Started": {
+    "message": "शुरू करें"
+  },
+  "Hello_NAME": {
+    "message": "नमस्ते $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "हैलो वर्ल्ड"
+  },
+  "History": {
+    "message": "इतिहास"
+  },
+  "Impact": {
+    "message": "प्रभाव"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "नेटवर्क अनुरोध/प्रतिक्रिया को इंटरसेप्ट और संशोधित करना"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "कीबोर्ड शॉर्टकट्स"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM अनुरोध सीधे प्रदाता APIs पर जाते हैं"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM अनुरोध AI Republic बैकएंड के माध्यम से रूट किए जाते हैं"
+  },
+  "Language": {
+    "message": "भाषा"
+  },
+  "Learn_more": {
+    "message": "और जानें"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "अनुमत ओरिजिन्स की सूची (एक प्रति पंक्ति)। वाइल्डकार्ड (*) सपोर्टेड हैं।"
+  },
+  "Loading_credits": {
+    "message": "क्रेडिट लोड हो रहे हैं..."
+  },
+  "Loading_settings": {
+    "message": "सेटिंग्स लोड हो रही हैं..."
+  },
+  "Login": {
+    "message": "लॉगिन"
+  },
+  "Login_to_get_free_credits": {
+    "message": "नि:शुल्क क्रेडिट पाने के लिए लॉगिन करें"
+  },
+  "Low_credits_remaining": {
+    "message": "शेष क्रेडिट कम है"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP टूल्स (उपलब्ध नहीं)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "ब्राउज़र टैब प्रबंधन (खोलें, बंद करें, स्विच करें, खोजें)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "सभी ब्राउज़र और एजेंट टूल्स को सक्षम/अक्षम करने हेतु मास्टर टॉगल"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "एक्सटेंशन को सक्षम/अक्षम करने हेतु मास्टर टॉगल"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "अधिकतम कैश आकार (एमबी)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "मेगाबाइट में अधिकतम कैश आकार (डिफ़ॉल्ट: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "टूल के टाइमआउट से पहले चलने का अधिकतम समय (मिलीसेकंड में) (डिफ़ॉल्ट: 30000)"
+  },
+  "Model_Config": {
+    "message": "मॉडल कॉन्फ़िग"
+  },
+  "Model_Selection": {
+    "message": "मॉडल चयन"
+  },
+  "Modern_Chat": {
+    "message": "आधुनिक चैट"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "परिवर्तनों का अनुरोध करते समय पैरामीटर संशोधित करें"
+  },
+  "Monthly_Credits": {
+    "message": "मासिक क्रेडिट"
+  },
+  "More_Config": {
+    "message": "अधिक कॉन्फ़िग"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "पृष्ठ नेविगेट करें, लिंक क्लिक करें, ब्राउज़र नेविगेशन संभालें"
+  },
+  "Navigation_Tool": {
+    "message": "नेविगेशन टूल"
+  },
+  "Network_Intercept_Tool": {
+    "message": "नेटवर्क इंटरसेप्ट टूल"
+  },
+  "Never_expire_permanent": {
+    "message": "कभी समाप्त नहीं (स्थायी)"
+  },
+  "New_Conversation": {
+    "message": "नई बातचीत"
+  },
+  "No_approval_history_yet": {
+    "message": "अभी तक कोई अनुमोदन इतिहास नहीं है।"
+  },
+  "No_tabs_available": {
+    "message": "कोई टैब उपलब्ध नहीं हैं"
+  },
+  "Not_Connected": {
+    "message": "संपर्क स्थापित नहीं"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "रोलआउट डेटा के समाप्त होने से पहले दिनों की संख्या (डिफ़ॉल्ट: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "साइड पैनल खोलें:"
+  },
+  "Organization": {
+    "message": "संगठन"
+  },
+  "Page_Action_Tool": {
+    "message": "पेज एक्शन टूल"
+  },
+  "Page_Vision_Tool": {
+    "message": "पेज विज़न टूल"
+  },
+  "Parameter_Modifications": {
+    "message": "पैरामीटर संशोधन"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "पेज एक्शन करें (स्क्रॉल, स्क्रीनशॉट, प्रतीक्षा)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "कैश को स्टोरेज में सहेजें"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "कृपया एक वैध API कुंजी दर्ज करें।"
+  },
+  "Please_type_a_valid_command": {
+    "message": "कृपया एक वैध कमांड दर्ज करें।"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "प्रायोरिटी टियर तेज़ प्रतिक्रिया समय प्रदान करता है, लेकिन कीमत अधिक होती है।"
+  },
+  "Provider": {
+    "message": "प्रदाता"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "DOM (डॉक्यूमेंट ऑब्जेक्ट मॉडल) को क्वेरी और संशोधित करें।"
+  },
+  "Quick_Start": {
+    "message": "त्वरित प्रारंभ"
+  },
+  "Quick_action": {
+    "message": "त्वरित कार्रवाई"
+  },
+  "Read_only": {
+    "message": "केवल पढ़ने योग्य"
+  },
+  "Reason_optional": {
+    "message": "कारण (वैकल्पिक)"
+  },
+  "Refreshes_in": {
+    "message": "रिफ्रेश होगा:"
+  },
+  "Reject": {
+    "message": "अस्वीकार करें"
+  },
+  "Reject_this_action": {
+    "message": "इस कार्रवाई को अस्वीकार करें"
+  },
+  "Remaining": {
+    "message": "शेष:"
+  },
+  "Remove_API_Key": {
+    "message": "API कुंजी हटाएँ"
+  },
+  "Remove_modification": {
+    "message": "परिवर्तन हटाएँ"
+  },
+  "Request_Changes": {
+    "message": "परिवर्तन का अनुरोध"
+  },
+  "Request_changes_to_this_action": {
+    "message": "इस कार्रवाई में बदलाव का अनुरोध करें"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "किसी भी टेक्स्ट पर राइट‑क्लिक करके Browserx से समझाएँ या सुधारें"
+  },
+  "Rollout_Expiration": {
+    "message": "रोलआउट समाप्ति"
+  },
+  "Sandbox_Policy": {
+    "message": "सैंडबॉक्स नीति"
+  },
+  "Save_API_Key": {
+    "message": "API कुंजी सहेजें"
+  },
+  "Save_Settings": {
+    "message": "सेटिंग्स सहेजें"
+  },
+  "Saving": {
+    "message": "सहेजा जा रहा है..."
+  },
+  "Security_Privacy": {
+    "message": "सुरक्षा और गोपनीयता"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "टूल निष्पादन वातावरण के लिए सुरक्षा स्तर"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "संवादों के लिए उपयोग करने वाला AI मॉडल चुनें।"
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "इंटरफ़ेस के लिए अपनी पसंदीदा भाषा चुनें"
+  },
+  "Send_the_message": {
+    "message": "संदेश भेजें"
+  },
+  "Service_Tier": {
+    "message": "सेवा स्तर"
+  },
+  "Session": {
+    "message": "सत्र"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "रोलआउट डेटा के समाप्त होने का समय निर्धारित करें"
+  },
+  "Settings": {
+    "message": "सेटिंग्स"
+  },
+  "Settings_saved_successfully": {
+    "message": "सेटिंग्स सफलतापूर्वक सहेजी गई"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "टास्क में टोकन उपयोग दिखाएँ"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "जब स्टोरेज उपयोग इस प्रतिशत से अधिक हो तो चेतावनी दिखाएँ (डिफ़ॉल्ट: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "अपने खाते में साइन इन करें"
+  },
+  "Stable": {
+    "message": "स्थिर"
+  },
+  "Stop_the_current_task_run": {
+    "message": "वर्तमान टास्क को रोकें"
+  },
+  "Storage_Cache": {
+    "message": "स्टोरेज और कैश"
+  },
+  "Storage_Cache_Settings": {
+    "message": "स्टोरेज और कैश सेटिंग्स"
+  },
+  "Storage_Quota_Warning": {
+    "message": "स्टोरेज कोटा चेतावनी (%)"
+  },
+  "Storage_Settings": {
+    "message": "स्टोरेज सेटिंग्स"
+  },
+  "Storage_Tool": {
+    "message": "स्टोरेज टूल"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "ब्राउज़र सत्रों में कैश डेटा को स्थायी रूप से संग्रहीत करें"
+  },
+  "Tab_Tool": {
+    "message": "टैब टूल"
+  },
+  "Terminal": {
+    "message": "टर्मिनल"
+  },
+  "Test_Connection": {
+    "message": "कनेक्शन परीक्षण करें"
+  },
+  "Testing": {
+    "message": "परीक्षण चल रहा है..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "एजेंट वर्तमान में बैकएंड मोड का उपयोग कर रहा है। LLM अनुरोध AI Republic सर्वर के माध्यम से रूट किए जाएंगे। आपकी बातचीत हमारे इन्फ्रास्ट्रक्चर के माध्यम से सुरक्षित रूप से प्रोसेस की जाती है।"
+  },
+  "Time": {
+    "message": "समय"
+  },
+  "Time_remaining": {
+    "message": "शेष समय"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "कैश किए गए आइटमों के लिए सेकंड में टाइम-टू-लाइव (डिफ़ॉल्ट: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "साइड पैनल टॉगल करें"
+  },
+  "Tool": {
+    "message": "टूल"
+  },
+  "Tool_Timeout_ms": {
+    "message": "टूल टाइमआउट (ms)"
+  },
+  "Tools": {
+    "message": "टूल्स"
+  },
+  "Tools_Settings": {
+    "message": "टूल सेटिंग्स"
+  },
+  "Turn": {
+    "message": "टर्न"
+  },
+  "UI_Theme": {
+    "message": "UI थीम"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "क्रेडिट जानकारी लोड करने में असमर्थ"
+  },
+  "Unsaved_Changes": {
+    "message": "असहेजे परिवर्तन"
+  },
+  "Update_Channel": {
+    "message": "अपडेट चैनल"
+  },
+  "Upgrade_My_Plan": {
+    "message": "मेरी योजना अपग्रेड करें"
+  },
+  "Upgrade_to_Premium": {
+    "message": "प्रीमियम में अपग्रेड करें"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "दुनिया के सबसे शक्तिशाली मॉडलों का अन्वेषण करने के लिए अपनी सदस्यता अपग्रेड करें"
+  },
+  "Use_Context_Menu": {
+    "message": "कॉन्टेक्स्ट मेनू का उपयोग करें:"
+  },
+  "Use_Own_API_Key": {
+    "message": "अपनी API कुंजी का उपयोग करें"
+  },
+  "User_Center": {
+    "message": "उपयोगकर्ता केंद्र"
+  },
+  "User_approved_action": {
+    "message": "उपयोगकर्ता द्वारा स्वीकृत कार्रवाई"
+  },
+  "User_decision": {
+    "message": "उपयोगकर्ता निर्णय"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "उपयोगकर्ता प्राथमिकताएँ और इंटरफ़ेस सेटिंग्स"
+  },
+  "User_rejected_action": {
+    "message": "उपयोगकर्ता द्वारा अस्वीकृत कार्रवाई"
+  },
+  "User_requested_modifications": {
+    "message": "उपयोगकर्ता ने संशोधन का अनुरोध किया"
+  },
+  "Using_extra_credits": {
+    "message": "अतिरिक्त क्रेडिट का उपयोग"
+  },
+  "View_Chat_History": {
+    "message": "चैट इतिहास देखें"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "पृष्ठ सामग्री और लेआउट का दृश्य विश्लेषण"
+  },
+  "Web_Scraping_Tool": {
+    "message": "वेब स्क्रैपिंग टूल"
+  },
+  "Web_Search": {
+    "message": "वेब सर्च"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Browserx में आपका स्वागत है"
+  },
+  "Workspace_Write": {
+    "message": "वर्कस्पेस लिखें"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "आपके पास बिना सहेजे बदलाव हैं। क्या आप उन्हें हटाना चाहते हैं?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "आपका AI-संचालित ब्राउज़र सहायक वेब सामग्री को नेविगेट, समझने और इंटरैक्ट करने में मदद करने के लिए तैयार है।"
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "आपकी API कुंजी एन्क्रिप्टेड है"
+  },
+  "Your_Decision": {
+    "message": "आपका निर्णय"
+  }
+}

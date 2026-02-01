@@ -48,7 +48,7 @@ describe('Cache-Rollout Compatibility', () => {
   it('should store and retrieve rollout data with IndexedDB backend', async () => {
     // Simulate rollout data structure
     const rolloutData = {
-      conversationId: 'conv_test123',
+      conversationId: 'test123',
       turnNumber: 1,
       toolCalls: [
         { toolName: 'dom_snapshot', result: { html: '<html>...</html>' } }
@@ -56,9 +56,9 @@ describe('Cache-Rollout Compatibility', () => {
       timestamp: Date.now()
     };
 
-    await cache.set('rollout_conv_test123_turn_1', rolloutData);
+    await cache.set('rollout_test123_turn_1', rolloutData);
 
-    const retrieved = await cache.get('rollout_conv_test123_turn_1');
+    const retrieved = await cache.get('rollout_test123_turn_1');
     expect(retrieved).toEqual(rolloutData);
   });
 
@@ -66,9 +66,9 @@ describe('Cache-Rollout Compatibility', () => {
     const entries = [];
     for (let i = 0; i < 10; i++) {
       entries.push({
-        key: `rollout_conv_multi_turn_${i}`,
+        key: `rollout_multi_turn_${i}`,
         data: {
-          conversationId: 'conv_multi',
+          conversationId: 'multi',
           turnNumber: i,
           timestamp: Date.now() + i
         }
@@ -92,7 +92,7 @@ describe('Cache-Rollout Compatibility', () => {
 
   it('should persist rollout data across cache manager instances', async () => {
     const testData = {
-      conversationId: 'conv_persist',
+      conversationId: 'persist',
       data: 'persistent rollout data'
     };
 
@@ -134,7 +134,7 @@ describe('Cache-Rollout Compatibility', () => {
 
   it('should handle large rollout data with compression', async () => {
     const largeRolloutData = {
-      conversationId: 'conv_large',
+      conversationId: 'large',
       domSnapshot: {
         html: '<html>' + 'x'.repeat(5000) + '</html>',
         css: 'body { margin: 0; }',

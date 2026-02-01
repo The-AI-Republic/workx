@@ -1,8 +1,10 @@
 /**
  * Chrome storage-based configuration storage
+ * Only stores user-changeable data (API keys, selectedModelKey, preferences)
+ * Static model/provider metadata is loaded from default.json at runtime
  */
 
-import type { IAgentConfig, IConfigStorage, IStorageInfo } from '../config/types';
+import type { IStoredConfig, IConfigStorage, IStorageInfo } from '../config/types';
 import { ConfigStorageError } from '../config/types';
 import { STORAGE_KEYS, CONFIG_LIMITS } from '../config/defaults';
 import type { LLMCacheConfig } from '../types/storage';
@@ -17,9 +19,10 @@ export class ConfigStorage implements IConfigStorage {
   }
 
   /**
-   * Get configuration from chrome.storage.local
+   * Get stored configuration from chrome.storage.local
+   * Returns only user-changeable data (API keys, selectedModelKey, preferences)
    */
-  async get(): Promise<IAgentConfig | null> {
+  async get(): Promise<IStoredConfig | null> {
     try {
       const result = await chrome.storage.local.get(this.configKey);
       return result[this.configKey] || null;
@@ -30,9 +33,10 @@ export class ConfigStorage implements IConfigStorage {
   }
 
   /**
-   * Set configuration in chrome.storage.local
+   * Set stored configuration in chrome.storage.local
+   * Only persists user-changeable data (API keys, selectedModelKey, preferences)
    */
-  async set(config: IAgentConfig): Promise<void> {
+  async set(config: IStoredConfig): Promise<void> {
     try {
       await chrome.storage.local.set({ [this.configKey]: config });
     } catch (error) {

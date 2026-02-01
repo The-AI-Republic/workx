@@ -3,9 +3,11 @@
  * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
  */
 
-import type { Submission, Op, Event, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
-import type { EventMsg } from '../protocol/events';
+import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
+import type { Event, EventMsg } from '../protocol/events';
 import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
+import type { AgentReadyState } from '../models/types/Auth';
+import type { InitialHistory } from './session/state/types';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
@@ -39,7 +41,7 @@ export class BrowserxAgent {
   private userNotifier: UserNotifier;
   private messageRouter: MessageRouter;
 
-  constructor(config: AgentConfig, router: MessageRouter) {
+  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory) {
     // Config must be provided (use await AgentConfig.getInstance() if needed)
     this.config = config;
     this.messageRouter = router;
@@ -52,7 +54,7 @@ export class BrowserxAgent {
     this.userNotifier = new UserNotifier();
 
     // Initialize session with config and toolRegistry
-    this.session = new Session(this.config, true, undefined, this.toolRegistry);
+    this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
     // Wire up session event emitter to BrowserxAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
 
@@ -68,36 +70,40 @@ export class BrowserxAgent {
    * Creates model client during initialization with nullable API key
    */
   async initialize(): Promise<void> {
-
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
 
-    // Validate API key for selected model's provider
+    // Validate API key for selected model's provider (only if not using backend routing)
     const configData = this.config.getConfig();
-    const selectedModelId = configData.selectedModelId;
-    const modelData = this.config.getModelById(selectedModelId);
+    const selectedModelKey = configData.selectedModelKey;
+    const modelData = this.config.getModelByKey(selectedModelKey);
 
     if (!modelData) {
-      const errorMsg = `Selected model ${selectedModelId} not found in registry`;
+      const errorMsg = `Selected model ${selectedModelKey} not found`;
       console.error('[BrowserxAgent]', errorMsg);
       throw new Error(errorMsg);
     }
 
-    const providerId = modelData.provider.id;
-    const apiKey = await this.config.getProviderApiKey(providerId);
+    // Skip API key validation if using backend routing (user is logged in)
+    if (!this.modelClientFactory.isBackendRouting()) {
+      const providerId = modelData.provider.id;
+      const apiKey = await this.config.getProviderApiKey(providerId);
 
-    if (!apiKey || !apiKey.trim()) {
-      const warningMsg = `No API key configured for provider: ${modelData.provider.name}. Please configure API key in Settings.`;
-      console.warn('[BrowserxAgent]', warningMsg);
+      if (!apiKey || !apiKey.trim()) {
+        const warningMsg = `No API key configured for provider: ${modelData.provider.name}. Please configure API key in Settings.`;
+        console.warn('[BrowserxAgent]', warningMsg);
 
-      // Emit warning event for UI
-      this.emitEvent({
-        type: 'BackgroundEvent',
-        data: {
-          message: warningMsg,
-          level: 'warning',
-        },
-      });
+        // Emit warning event for UI
+        this.emitEvent({
+          type: 'BackgroundEvent',
+          data: {
+            message: warningMsg,
+            level: 'warning',
+          },
+        });
+      }
+    } else {
+      console.log('[BrowserxAgent] Using backend routing - skipping API key validation');
     }
 
     // Register browser automation tools (pass model data for feature filtering)
@@ -108,11 +114,13 @@ export class BrowserxAgent {
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
-    // Use createClientForCurrentModel() to properly use selectedModelId from config
+    // Use createClientForCurrentModel() to properly use selectedModelKey from config
     const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
     // Create initial TurnContext with the model client
-    const taskContext = new TurnContext(modelClient, {});
+    const taskContext = new TurnContext(modelClient, {
+      sessionId: this.session.conversationId
+    });
 
     // Load and set instructions
     const userInstructions = await loadUserInstructions();
@@ -210,11 +218,37 @@ export class BrowserxAgent {
   }
 
   /**
+   * Refresh the model client when auth state changes
+   * Called when INIT_AUTH is received to update the client with new routing
+   */
+  async refreshModelClient(): Promise<void> {
+    try {
+      console.log('[BrowserxAgent] Refreshing model client for auth change');
+
+      // Create new model client with current auth state
+      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+
+      // Create new TurnContext with updated model client
+      const taskContext = new TurnContext(modelClient, {});
+      const userInstructions = await loadUserInstructions();
+      taskContext.setUserInstructions(userInstructions);
+      const baseInstructions = await loadPrompt();
+      taskContext.setBaseInstructions(baseInstructions);
+
+      // Update session with new turn context
+      this.session.setTurnContext(taskContext);
+
+      console.log('[BrowserxAgent] Model client refreshed successfully');
+    } catch (error) {
+      console.error('[BrowserxAgent] Failed to refresh model client:', error);
+    }
+  }
+
+  /**
    * Submit an operation to the agent
    * Returns the submission ID
    */
   async submitOperation(op: Op, context?: { tabId?: number }): Promise<string> {
-
     const id = `sub_${this.nextId++}`;
     const submission: Submission = { id, op, context };
 
@@ -569,7 +603,6 @@ export class BrowserxAgent {
       // Generate submission ID
       const submissionId = uuidv4();
 
-
       // Delegate to Session.spawnTask() (Feature 012: Session task management)
       // Session will manage task lifecycle, emit events, and handle abortion
       await this.session.spawnTask(task, taskContext, submissionId, inputItems);
@@ -590,7 +623,7 @@ export class BrowserxAgent {
       let providerName = 'the selected provider';
       try {
         const configData = this.config.getConfig();
-        const modelData = this.config.getModelById(configData.selectedModelId);
+        const modelData = this.config.getModelByKey(configData.selectedModelKey);
         if (modelData) {
           providerName = modelData.provider.name;
         }
@@ -606,7 +639,6 @@ export class BrowserxAgent {
         type: 'Error',
         data: {
           message: userFriendlyMessage,
-          code: isApiKeyError ? 'API_KEY_REQUIRED' : undefined,
         },
       });
 
@@ -637,13 +669,12 @@ export class BrowserxAgent {
     context?: { tabId?: number }
   ): Promise<void> {
     await this.processUserInputWithTask(op.items, {
-      tabId: op.tabId, // Replaced cwd with tabId
       approval_policy: op.approval_policy,
       sandbox_policy: op.sandbox_policy,
       model: op.model,
       effort: op.effort,
       summary: op.summary,
-    }, false, context);
+    }, true, { tabId: op.tabId });
   }
 
   /**
@@ -818,14 +849,14 @@ export class BrowserxAgent {
     op: Extract<Op, { type: 'GetHistoryEntryRequest' }>
   ): Promise<void> {
     try {
-      const entry = this.session.getHistoryEntry(op.index);
+      const entry = this.session.getHistoryEntry(op.offset);
 
       if (entry) {
         // Emit event with the history entry
         this.emitEvent({
           type: 'BackgroundEvent',
           data: {
-            message: `History entry ${op.index}: ${JSON.stringify(entry).substring(0, 100)}...`,
+            message: `History entry ${op.offset}: ${JSON.stringify(entry).substring(0, 100)}...`,
             level: 'info',
           },
         });
@@ -834,7 +865,7 @@ export class BrowserxAgent {
         this.emitEvent({
           type: 'Error',
           data: {
-            message: `History entry ${op.index} not found`,
+            message: `History entry ${op.offset} not found`,
           },
         });
       }
@@ -961,15 +992,15 @@ export class BrowserxAgent {
 
     const op: Op = approval.type === 'command'
       ? {
-          type: 'ExecApproval',
-          id: approvalId,
-          decision: reviewDecision,
-        }
+        type: 'ExecApproval',
+        id: approvalId,
+        decision: reviewDecision,
+      }
       : {
-          type: 'PatchApproval',
-          id: approvalId,
-          decision: reviewDecision,
-        };
+        type: 'PatchApproval',
+        id: approvalId,
+        decision: reviewDecision,
+      };
 
     await this.submitOperation(op);
   }
@@ -983,22 +1014,35 @@ export class BrowserxAgent {
 
   /**
    * Check if agent is ready to accept commands
-   * Returns true if API key is configured for the selected model's provider
+   * Returns true if user is logged in (backend routing) OR API key is configured
    */
-  async isReady(): Promise<{ ready: boolean; message?: string; provider?: string; model?: string }> {
+  async isReady(): Promise<AgentReadyState> {
     try {
       const configData = this.config.getConfig();
-      const selectedModelId = configData.selectedModelId;
-      const modelData = this.config.getModelById(selectedModelId);
+      const selectedModelKey = configData.selectedModelKey;
+      const modelData = this.config.getModelByKey(selectedModelKey);
 
       if (!modelData) {
         return {
           ready: false,
-          message: `Selected model ${selectedModelId} not found in registry`,
+          message: `Selected model ${selectedModelKey} not found`,
+          authMode: 'none',
         };
       }
 
       const providerId = modelData.provider.id;
+
+      // Check if using backend routing (user is logged in)
+      if (this.modelClientFactory.isBackendRouting()) {
+        return {
+          ready: true,
+          provider: modelData.provider.name,
+          model: modelData.model.name,
+          authMode: 'login',
+        };
+      }
+
+      // Fall back to API key mode
       const apiKey = await this.config.getProviderApiKey(providerId);
 
       if (!apiKey || !apiKey.trim()) {
@@ -1007,6 +1051,7 @@ export class BrowserxAgent {
           message: `No API key configured for ${modelData.provider.name}`,
           provider: modelData.provider.name,
           model: modelData.model.name,
+          authMode: 'none',
         };
       }
 
@@ -1014,11 +1059,13 @@ export class BrowserxAgent {
         ready: true,
         provider: modelData.provider.name,
         model: modelData.model.name,
+        authMode: 'api_key',
       };
     } catch (error) {
       return {
         ready: false,
         message: error instanceof Error ? error.message : 'Unknown error checking agent status',
+        authMode: 'none',
       };
     }
   }

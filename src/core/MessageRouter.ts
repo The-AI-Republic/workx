@@ -64,10 +64,15 @@ export enum MessageType {
   // Session management
   SESSION_RESET = 'SESSION_RESET',
   SESSION_RESET_COMPLETE = 'SESSION_RESET_COMPLETE',
+  RESUME_SESSION = 'RESUME_SESSION',
+  RESUME_SESSION_COMPLETE = 'RESUME_SESSION_COMPLETE',
 
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
   AGENT_REINITIALIZED = 'AGENT_REINITIALIZED',
+
+  // Authentication management
+  INIT_AUTH = 'INIT_AUTH',
 }
 
 /**
@@ -174,9 +179,9 @@ export class MessageRouter {
           sendResponse({ success: true });
         }
       } else {
-        sendResponse({ 
-          success: false, 
-          error: `No handler for message type: ${message.type}` 
+        sendResponse({
+          success: false,
+          error: `No handler for message type: ${message.type}`
         });
       }
     } catch (error) {
@@ -192,7 +197,7 @@ export class MessageRouter {
    */
   private handleConnection(port: chrome.runtime.Port): void {
     console.log(`Connection established: ${port.name}`);
-    
+
     port.onMessage.addListener((message) => {
       this.handlePortMessage(port, message);
     });
@@ -242,7 +247,7 @@ export class MessageRouter {
     if (!this.handlers.has(type)) {
       this.handlers.set(type, new Set());
     }
-    
+
     this.handlers.get(type)!.add(handler);
 
     // Return unsubscribe function
@@ -332,7 +337,7 @@ export class MessageRouter {
         });
       }
     });
-    
+
     await Promise.all(promises);
   }
 

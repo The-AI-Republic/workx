@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { t } from '../../lib/i18n';
 
   const dispatch = createEventDispatcher<{
     categorySelected: { categoryId: string };
@@ -15,8 +16,8 @@
   const categories: Category[] = [
     {
       id: 'model-config',
-      label: 'Model Config',
-      description: 'Configure AI model and API keys',
+      label: t('Model Config'),
+      description: t('Configure AI model and API keys'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
         <path d="M2 17l10 5 10-5"></path>
@@ -25,8 +26,8 @@
     },
     {
       id: 'general',
-      label: 'General',
-      description: 'User preferences and interface settings',
+      label: t('General'),
+      description: t('User preferences and interface settings'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"></circle>
         <path d="M12 1v6m0 6v6m5.66-17.66l-3 3m-3.46 3.46l-3 3m17.66 5.66l-6 0m-6 0l-6 0m17.66-5.66l-3 3m-3.46 3.46l-3 3"></path>
@@ -34,8 +35,8 @@
     },
     {
       id: 'storage',
-      label: 'Storage & Cache',
-      description: 'Cache behavior and data retention',
+      label: t('Storage & Cache'),
+      description: t('Cache behavior and data retention'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
@@ -44,16 +45,16 @@
     },
     {
       id: 'tools',
-      label: 'Tools',
-      description: 'Browser automation tool toggles',
+      label: t('Tools'),
+      description: t('Browser automation tool toggles'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
       </svg>`
     },
     {
       id: 'extension',
-      label: 'Extension & Permission',
-      description: 'Extension configuration and permissions',
+      label: t('Extension & Permission'),
+      description: t('Extension configuration and permissions'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -67,7 +68,7 @@
 </script>
 
 <div class="settings-menu">
-  <h2 class="menu-title">Settings</h2>
+  <h2 class="menu-title">{t("Settings")}</h2>
   <div class="categories-grid">
     {#each categories as category}
       <button

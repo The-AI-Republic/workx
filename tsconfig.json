@@ -14,7 +14,6 @@
     "types": ["chrome", "vite/client", "svelte"],
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": "src",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
@@ -22,6 +21,6 @@
       "@/storage/rollout/*": ["src/storage/rollout/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "svelte.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

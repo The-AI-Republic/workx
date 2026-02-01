@@ -138,10 +138,6 @@ export class DomService {
     // 2. Body: Convert SerializedNode tree to HTML string representation
     const htmlContent = serializedNodeToHtml(rawDom.page.body);
 
-    // test>>
-    console.log("$$$ Serialized HTML Content: ", htmlContent);
-    // <<test
-
     const serializedDom = {
       page: {
         context: {
@@ -1208,6 +1204,373 @@ export class DomService {
   }
 
   /**
+   * Set cursor position or select a range in input/textarea elements.
+   * Uses selectionStart/selectionEnd properties.
+   * @param backendNodeId - The backend node ID of the input/textarea
+   * @param start - Start position (cursor position if end equals start)
+   * @param end - End position (same as start for cursor positioning)
+   */
+  private async setSelectionForInput(
+    backendNodeId: number,
+    start: number,
+    end: number
+  ): Promise<void> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for selection');
+    }
+
+    try {
+      await this.sendCommand('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function(start, end) {
+          // Ensure element is focused
+          this.focus();
+
+          // Clamp values to valid range
+          const len = this.value ? this.value.length : 0;
+          const clampedStart = Math.max(0, Math.min(start, len));
+          const clampedEnd = Math.max(0, Math.min(end, len));
+
+          // Set selection range
+          this.setSelectionRange(clampedStart, clampedEnd);
+
+          return { start: clampedStart, end: clampedEnd, length: len };
+        }`,
+        arguments: [
+          { value: start },
+          { value: end }
+        ],
+        returnByValue: true
+      });
+
+      // Wait for selection to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
+    }
+  }
+
+  /**
+   * Set cursor position or select a range in contenteditable elements.
+   * Uses the Selection API with text node traversal.
+   * @param backendNodeId - The backend node ID of the contenteditable element
+   * @param start - Start character position (cursor position if end equals start)
+   * @param end - End character position (same as start for cursor positioning)
+   */
+  private async setSelectionForContentEditable(
+    backendNodeId: number,
+    start: number,
+    end: number
+  ): Promise<void> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for selection');
+    }
+
+    try {
+      await this.sendCommand('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function(start, end) {
+          // Focus the element
+          this.focus();
+
+          // Helper to find text node and offset for a character position
+          function findPositionInNode(root, targetOffset) {
+            const walker = document.createTreeWalker(
+              root,
+              NodeFilter.SHOW_TEXT,
+              null,
+              false
+            );
+
+            let currentOffset = 0;
+            let node = walker.nextNode();
+
+            while (node) {
+              const nodeLength = node.textContent.length;
+              if (currentOffset + nodeLength >= targetOffset) {
+                return {
+                  node: node,
+                  offset: targetOffset - currentOffset
+                };
+              }
+              currentOffset += nodeLength;
+              node = walker.nextNode();
+            }
+
+            // If position exceeds content, return last position
+            // Find last text node
+            const allTextNodes = [];
+            const walker2 = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+            let n;
+            while (n = walker2.nextNode()) allTextNodes.push(n);
+
+            if (allTextNodes.length > 0) {
+              const lastNode = allTextNodes[allTextNodes.length - 1];
+              return { node: lastNode, offset: lastNode.textContent.length };
+            }
+
+            // No text nodes, return the element itself
+            return { node: root, offset: 0 };
+          }
+
+          // Get total text length for clamping
+          const totalLength = this.textContent ? this.textContent.length : 0;
+          const clampedStart = Math.max(0, Math.min(start, totalLength));
+          const clampedEnd = Math.max(0, Math.min(end, totalLength));
+
+          const startPos = findPositionInNode(this, clampedStart);
+          const endPos = findPositionInNode(this, clampedEnd);
+
+          // Create range and set selection
+          const range = document.createRange();
+          range.setStart(startPos.node, startPos.offset);
+          range.setEnd(endPos.node, endPos.offset);
+
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+
+          return { start: clampedStart, end: clampedEnd, totalLength };
+        }`,
+        arguments: [
+          { value: start },
+          { value: end }
+        ],
+        returnByValue: true
+      });
+
+      // Wait for selection to settle
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
+    }
+  }
+
+  // ==========================================================================
+  // Text-based editing helper methods
+  // These methods work with visual text content, ignoring invisible HTML structure
+  // ==========================================================================
+
+  /**
+   * Find text in an element and return the visual character offsets.
+   * Works for both input/textarea and contenteditable elements.
+   * Uses the visible text content (ignoring HTML tags/structure).
+   *
+   * @param backendNodeId - The backend node ID of the element
+   * @param searchText - The text to find
+   * @param occurrence - Which occurrence to find (0-indexed)
+   * @param elementType - The type of element ('input', 'textarea', 'contenteditable')
+   * @returns Object with found status and start/end offsets
+   */
+  private async findTextInElement(
+    backendNodeId: number,
+    searchText: string,
+    occurrence: number,
+    elementType: string
+  ): Promise<{ found: boolean; startOffset: number; endOffset: number }> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for text search');
+    }
+
+    try {
+      const result = await this.sendCommand<any>('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function(searchText, occurrence) {
+          // Get the visible text content
+          let visibleText;
+          if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
+            visibleText = this.value || '';
+          } else {
+            // For contenteditable, use textContent which gives us visible text
+            visibleText = this.textContent || '';
+          }
+
+          // Find all occurrences
+          let index = -1;
+          let currentOccurrence = -1;
+
+          while (currentOccurrence < occurrence) {
+            index = visibleText.indexOf(searchText, index + 1);
+            if (index === -1) {
+              break;
+            }
+            currentOccurrence++;
+          }
+
+          if (index === -1) {
+            return { found: false, startOffset: -1, endOffset: -1 };
+          }
+
+          return {
+            found: true,
+            startOffset: index,
+            endOffset: index + searchText.length
+          };
+        }`,
+        arguments: [
+          { value: searchText },
+          { value: occurrence }
+        ],
+        returnByValue: true
+      });
+
+      return result?.result?.value || { found: false, startOffset: -1, endOffset: -1 };
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
+    }
+  }
+
+  /**
+   * Set selection in an element by visual text offsets.
+   * Routes to the appropriate method based on element type.
+   *
+   * @param backendNodeId - The backend node ID of the element
+   * @param start - Start offset in visible text
+   * @param end - End offset in visible text
+   * @param elementType - The type of element ('input', 'textarea', 'contenteditable')
+   */
+  private async setSelectionByTextMatch(
+    backendNodeId: number,
+    start: number,
+    end: number,
+    elementType: string
+  ): Promise<void> {
+    if (elementType === 'contenteditable') {
+      await this.setSelectionForContentEditable(backendNodeId, start, end);
+    } else {
+      await this.setSelectionForInput(backendNodeId, start, end);
+    }
+  }
+
+  /**
+   * Find and replace all occurrences of text in an element.
+   * Uses visual text matching and handles both input/textarea and contenteditable.
+   *
+   * @param backendNodeId - The backend node ID of the element
+   * @param searchText - The text to find and replace
+   * @param replaceText - The replacement text
+   * @param elementType - The type of element ('input', 'textarea', 'contenteditable')
+   * @returns Object with success status and replacement count
+   */
+  private async findAndReplaceAllText(
+    backendNodeId: number,
+    searchText: string,
+    replaceText: string,
+    elementType: string
+  ): Promise<{ success: boolean; replacementCount: number }> {
+    const resolveResult = await this.sendCommand<any>('DOM.resolveNode', { backendNodeId });
+    if (!resolveResult?.object?.objectId) {
+      throw new Error('Could not resolve node for text replacement');
+    }
+
+    try {
+      const result = await this.sendCommand<any>('Runtime.callFunctionOn', {
+        objectId: resolveResult.object.objectId,
+        functionDeclaration: `function(searchText, replaceText, isContentEditable) {
+          // Get the current text
+          let originalText;
+          if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
+            originalText = this.value || '';
+          } else {
+            originalText = this.textContent || '';
+          }
+
+          // Count occurrences
+          let count = 0;
+          let idx = 0;
+          while ((idx = originalText.indexOf(searchText, idx)) !== -1) {
+            count++;
+            idx += searchText.length;
+          }
+
+          if (count === 0) {
+            return { success: false, replacementCount: 0 };
+          }
+
+          // Perform replacement
+          const newText = originalText.split(searchText).join(replaceText);
+
+          if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
+            // For input/textarea, set value directly
+            this.value = newText;
+
+            // Fire input and change events for React/framework compatibility
+            const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+            this.dispatchEvent(inputEvent);
+            const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+            this.dispatchEvent(changeEvent);
+          } else {
+            // For contenteditable, we need to preserve structure as much as possible
+            // Use execCommand for better rich text support
+            this.focus();
+
+            // Select all content
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(this);
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            // Use insertText which preserves some formatting
+            document.execCommand('insertText', false, newText);
+
+            // Fire input event
+            const inputEvent = new InputEvent('input', {
+              bubbles: true,
+              cancelable: true,
+              inputType: 'insertText',
+              data: newText
+            });
+            this.dispatchEvent(inputEvent);
+          }
+
+          return { success: true, replacementCount: count };
+        }`,
+        arguments: [
+          { value: searchText },
+          { value: replaceText },
+          { value: elementType === 'contenteditable' }
+        ],
+        returnByValue: true
+      });
+
+      return result?.result?.value || { success: false, replacementCount: 0 };
+    } finally {
+      await this.sendCommand('Runtime.releaseObject', { objectId: resolveResult.object.objectId }).catch(() => { });
+    }
+  }
+
+  /**
+   * Apply a formatting keyboard shortcut (e.g., Ctrl+B for bold).
+   * Uses CDP modifiers: 1=Alt, 2=Ctrl, 4=Meta, 8=Shift
+   *
+   * @param key - The key to press (e.g., 'b', 'i', 'u')
+   * @param modifiers - CDP modifier bits (default 2 for Ctrl)
+   */
+  private async applyFormattingShortcut(key: string, modifiers: number = 2): Promise<void> {
+    const code = `Key${key.toUpperCase()}`;
+
+    await this.sendCommand('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: key,
+      code: code,
+      modifiers: modifiers
+    });
+    await this.sendCommand('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: key,
+      code: code,
+      modifiers: modifiers
+    });
+
+    // Small delay to let the editor process the formatting
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+
+  /**
    * Type text character-by-character (simulates human typing)
    * Works well for rich text editors (Quill, Slate, Draft.js, ProseMirror)
    */
@@ -1353,6 +1716,47 @@ export class DomService {
     }
 
     try {
+      // Validate mutual exclusivity of text-based editing options
+      const hasInsertAfter = options?.insertAfter !== undefined;
+      const hasInsertBefore = options?.insertBefore !== undefined;
+      const hasReplace = options?.replace !== undefined;
+      const hasReplaceAll = options?.replaceAll !== undefined;
+      const hasClearFirst = options?.clearFirst === true;
+
+      const textBasedOptions = [hasInsertAfter, hasInsertBefore, hasReplace, hasReplaceAll].filter(Boolean);
+
+      if (textBasedOptions.length > 1) {
+        throw new Error('VALIDATION_ERROR: Options "insertAfter", "insertBefore", "replace", and "replaceAll" are mutually exclusive');
+      }
+
+      if (textBasedOptions.length > 0 && hasClearFirst) {
+        throw new Error('VALIDATION_ERROR: Text-based editing options cannot be used with "clearFirst"');
+      }
+
+      // Validate string values for text-based options
+      if (hasInsertAfter && typeof options!.insertAfter !== 'string') {
+        throw new Error('VALIDATION_ERROR: "insertAfter" must be a string');
+      }
+      if (hasInsertBefore && typeof options!.insertBefore !== 'string') {
+        throw new Error('VALIDATION_ERROR: "insertBefore" must be a string');
+      }
+      if (hasReplace && typeof options!.replace !== 'string') {
+        throw new Error('VALIDATION_ERROR: "replace" must be a string');
+      }
+      if (hasReplaceAll && typeof options!.replaceAll !== 'string') {
+        throw new Error('VALIDATION_ERROR: "replaceAll" must be a string');
+      }
+
+      // Validate occurrence if provided
+      if (options?.occurrence !== undefined) {
+        if (typeof options.occurrence !== 'number' || options.occurrence < 0 || !Number.isInteger(options.occurrence)) {
+          throw new Error('VALIDATION_ERROR: "occurrence" must be a non-negative integer');
+        }
+        if (hasReplaceAll) {
+          console.warn('[DomService] "occurrence" is ignored when using "replaceAll"');
+        }
+      }
+
       if (!this.currentSnapshot) {
         throw new Error('NODE_NOT_FOUND: No snapshot available');
       }
@@ -1438,7 +1842,101 @@ export class DomService {
       // Wait a bit for focus to settle
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // 2. Clear if requested
+      // 2. Handle text-based editing options (insertAfter, insertBefore, replace, replaceAll)
+      const hasTextBasedEdit = hasInsertAfter || hasInsertBefore || hasReplace || hasReplaceAll;
+
+      if (hasTextBasedEdit) {
+        const searchText = options!.insertAfter || options!.insertBefore || options!.replace || options!.replaceAll;
+        const occurrence = options?.occurrence ?? 0;
+
+        console.log(`[DomService] Text-based editing: searching for "${searchText}", occurrence=${occurrence}`);
+
+        if (hasReplaceAll) {
+          // Replace all occurrences - handled specially
+          const replaceResult = await this.findAndReplaceAllText(resolvedBackendNodeId, searchText!, text, elementType);
+
+          if (!replaceResult.success) {
+            throw new Error(`TEXT_NOT_FOUND: Could not find "${searchText}" in element`);
+          }
+
+          // Invalidate snapshot and return
+          this.invalidateSnapshot();
+
+          const duration = Date.now() - start;
+          this.trackActionMetrics('type', duration, true);
+
+          return {
+            success: true,
+            duration,
+            changes: {
+              navigationOccurred: false,
+              domMutations: replaceResult.replacementCount,
+              scrollChanged: false,
+              valueChanged: true,
+              replacedText: searchText,
+              replacementCount: replaceResult.replacementCount
+            },
+            nodeId: nodeId,
+            actionType: 'type',
+            timestamp: new Date().toISOString()
+          };
+        } else {
+          // Find and position cursor for insertAfter/insertBefore/replace
+          const findResult = await this.findTextInElement(resolvedBackendNodeId, searchText!, occurrence, elementType);
+
+          if (!findResult.found) {
+            throw new Error(`TEXT_NOT_FOUND: Could not find "${searchText}" (occurrence ${occurrence}) in element`);
+          }
+
+          if (hasInsertAfter) {
+            // Position cursor after the found text
+            await this.setSelectionByTextMatch(resolvedBackendNodeId, findResult.endOffset, findResult.endOffset, elementType);
+          } else if (hasInsertBefore) {
+            // Position cursor before the found text
+            await this.setSelectionByTextMatch(resolvedBackendNodeId, findResult.startOffset, findResult.startOffset, elementType);
+          } else if (hasReplace) {
+            // Select the found text (typing will replace it)
+            await this.setSelectionByTextMatch(resolvedBackendNodeId, findResult.startOffset, findResult.endOffset, elementType);
+
+            // If text is empty (deletion case), delete and return early
+            if (text === '') {
+              console.log('[DomService] Empty text with replace - deleting selection');
+              await this.sendCommand('Input.dispatchKeyEvent', {
+                type: 'keyDown',
+                key: 'Backspace',
+                code: 'Backspace'
+              });
+              await this.sendCommand('Input.dispatchKeyEvent', {
+                type: 'keyUp',
+                key: 'Backspace',
+                code: 'Backspace'
+              });
+
+              this.invalidateSnapshot();
+
+              const duration = Date.now() - start;
+              this.trackActionMetrics('type', duration, true);
+
+              return {
+                success: true,
+                duration,
+                changes: {
+                  navigationOccurred: false,
+                  domMutations: 1,
+                  scrollChanged: false,
+                  valueChanged: true,
+                  deletedText: searchText
+                },
+                nodeId: nodeId,
+                actionType: 'type',
+                timestamp: new Date().toISOString()
+              };
+            }
+          }
+        }
+      }
+
+      // 3. Clear if requested
       if (options?.clearFirst) {
         if (elementType === 'contenteditable') {
           // Use special clearing for contenteditable elements
@@ -1504,7 +2002,29 @@ export class DomService {
         }
       }
 
-      // 3. Type text using the appropriate method
+      // 3a. Insert line break before typing if requested
+      if (options?.lineBreak === 'before' || options?.lineBreak === 'both') {
+        console.log('[DomService] Inserting line break before text');
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyDown',
+          key: 'Enter',
+          code: 'Enter',
+          windowsVirtualKeyCode: 13,
+          nativeVirtualKeyCode: 13,
+          text: '\r'
+        });
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyUp',
+          key: 'Enter',
+          code: 'Enter',
+          windowsVirtualKeyCode: 13,
+          nativeVirtualKeyCode: 13
+        });
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // 3b. Type text using the appropriate method
+      const textLength = text.length;
       if (method === 'char-by-char') {
         // Character-by-character typing (best for rich text editors)
         const speed = options?.speed !== undefined ? options.speed : 50; // Default 50ms between chars
@@ -1540,6 +2060,81 @@ export class DomService {
             console.debug('[DomService] Could not fire additional events after typing');
           }
         }
+      }
+
+      // 3c. Apply formatting if requested (only for rich text editors)
+      if (options?.format && textLength > 0 && elementType === 'contenteditable') {
+        console.log('[DomService] Applying formatting to typed text', options.format);
+
+        // Select the just-typed text by pressing Shift+Left Arrow for each character
+        // This is more reliable than trying to calculate positions
+        for (let i = 0; i < textLength; i++) {
+          await this.sendCommand('Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key: 'ArrowLeft',
+            code: 'ArrowLeft',
+            modifiers: 8 // Shift
+          });
+          await this.sendCommand('Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: 'ArrowLeft',
+            code: 'ArrowLeft',
+            modifiers: 8
+          });
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Apply each formatting option
+        if (options.format.bold) {
+          await this.applyFormattingShortcut('b', 2); // Ctrl+B
+        }
+        if (options.format.italic) {
+          await this.applyFormattingShortcut('i', 2); // Ctrl+I
+        }
+        if (options.format.underline) {
+          await this.applyFormattingShortcut('u', 2); // Ctrl+U
+        }
+        if (options.format.strikethrough) {
+          // Most editors use Ctrl+Shift+S or Alt+Shift+5
+          await this.applyFormattingShortcut('s', 10); // Ctrl+Shift+S (2+8)
+        }
+        if (options.format.code) {
+          // Most editors use Ctrl+` or Ctrl+E for inline code
+          await this.applyFormattingShortcut('e', 2); // Ctrl+E
+        }
+
+        // Move cursor to end of selection (right arrow)
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyDown',
+          key: 'ArrowRight',
+          code: 'ArrowRight'
+        });
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyUp',
+          key: 'ArrowRight',
+          code: 'ArrowRight'
+        });
+      }
+
+      // 3d. Insert line break after typing if requested
+      if (options?.lineBreak === 'after' || options?.lineBreak === 'both') {
+        console.log('[DomService] Inserting line break after text');
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyDown',
+          key: 'Enter',
+          code: 'Enter',
+          windowsVirtualKeyCode: 13,
+          nativeVirtualKeyCode: 13,
+          text: '\r'
+        });
+        await this.sendCommand('Input.dispatchKeyEvent', {
+          type: 'keyUp',
+          key: 'Enter',
+          code: 'Enter',
+          windowsVirtualKeyCode: 13,
+          nativeVirtualKeyCode: 13
+        });
       }
 
       // 4. Commit (Enter) if explicitly requested

@@ -13,10 +13,12 @@
 - **Media support**: Accepts images and screenshots as inline data parts. For BrowserX this makes screenshot-to-action workflows more reliable compared to text-only reasoning.
 
 ### Implementation Notes for BrowserX
-- Base URL: `https://generativelanguage.googleapis.com/v1beta/openai/` with standard `Authorization: Bearer <API_KEY>` headers. No project ID is required when using AI Studio keys.
-- **Endpoint**: Gemini's OpenAI compatibility layer supports `/chat/completions` (NOT `/responses`). BrowserX automatically uses Chat Completions API when Gemini is detected.
-- **Text Accumulation**: Chat Completions API emits text as `delta.content` chunks but does NOT auto-create message items like Responses API. BrowserX's `OpenAIResponsesClient` manually accumulates text in `chatCompletionTextContent` and creates message items at `finish_reason='stop'` to ensure responses appear in conversation history. Without this, only text deltas would be displayed (and then disappear), causing TurnManager to show "Task completed" without visible output.
-- Model ID: `gemini-2.5-pro`. Older previews (e.g., `-exp`) remain accessible but lack long-term guarantees; prefer the stable alias for production.
+- **Base URL**: `https://generativelanguage.googleapis.com` (for native SDK usage). 
+- **Client**: BrowserX uses the native `@google/genai` SDK for Gemini 2.5/3.0 to support advanced features like thought signatures and large context windows.
+- **Endpoint**: The native SDK automatically handles endpoint construction (e.g., `v1beta/models/...:streamGenerateContent`).
+- **Authorization**: Standard `Authorization: Bearer <API_KEY>` or API key passed via SDK options. No project ID is required when using AI Studio keys.
+- **Text Accumulation**: BrowserX's `GoogleCompletionClient` manually accumulates text and tool calls to ensure responses appear correctly in conversation history.
+- Model ID: `gemini-2.0-flash-exp`, `gemini-2.5-pro`, `gemini-3-pro-preview`. 
 - Rate limits: AI Studio keys default to 60 RPM / 6 RPS. BrowserX's queue should respect these values until elevated quotas are granted.
 - Prompting tips:
   - Keep system instructions concise (~2-3 paragraphs) and explicitly describe available BrowserX tools so Gemini can plan tool calls.

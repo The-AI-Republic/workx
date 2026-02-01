@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Yleinen selaimen tekoälyagentti työtehtäviin"
+  },
+  "API_Key_Configuration": {
+    "message": "API-avaimen määritys"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API-avaimet on salattu ja tallennettu paikallisesti selaimeesi. Niitä ei koskaan lähetetä ulkoisille palvelimille, paitsi API‑kutsujen yhteydessä."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Pääsy selaimen tallennustilaan (localStorage, sessionStorage, evästeet)"
+  },
+  "Action": {
+    "message": "Toiminto"
+  },
+  "Action_Details": {
+    "message": "Toiminnon tiedot"
+  },
+  "Add_Modification": {
+    "message": "Lisää muokkaus"
+  },
+  "Advanced_Configuration": {
+    "message": "Lisäasetukset"
+  },
+  "Advanced_Options": {
+    "message": "Edistyneet valinnat"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Agentin suoritustyökalut"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Salli agentin suorittaa järjestelmäkomentoja (käytä varoen)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Salli agentin lukea, kirjoittaa ja hallita tiedostoja (tuleva päivitys)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Salli sisältöskriptien suorittaminen verkkosivuilla"
+  },
+  "Allowed_Origins": {
+    "message": "Sallitut domainit"
+  },
+  "Approval_History": {
+    "message": "Hyväksymishistoria"
+  },
+  "Approve": {
+    "message": "Hyväksy"
+  },
+  "Approve_this_action": {
+    "message": "Hyväksy tämä toiminto"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Pyydä Browserx:ia poimimaan jäsenneltyä dataa mistä tahansa verkkosivusta"
+  },
+  "Available": {
+    "message": "Saatavilla:"
+  },
+  "Back": {
+    "message": "Takaisin"
+  },
+  "Backend_Mode": {
+    "message": "Taustatila"
+  },
+  "Backend_Mode_Active": {
+    "message": "Taustatila käytössä"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Selaintyökalut"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Selainautomaatiotyökalujen kytkimet"
+  },
+  "Cache_Settings": {
+    "message": "Välimuistin asetukset"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Välimuistin elinikä (TTL, sekuntia)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Välimuistin toiminta ja tietojen säilytys"
+  },
+  "Cancel": {
+    "message": "Peruuta"
+  },
+  "Chat_History": {
+    "message": "Keskusteluhistoria"
+  },
+  "Choose_AI_Model": {
+    "message": "Valitse tekoälymalli"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Valitse sivupaneelin käyttöliittymän visuaalinen tyyli"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Valitse, mitä päivityskanavaa seurata"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Klassinen terminaalityyli, jossa vihreä teksti mustalla taustalla"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Selkeä, moderni chat-käyttöliittymä, joka muistuttaa ChatGPT:tä"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Napsauta Browserx-kuvaketta työkalupalkissa tai paina Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Napsauta valitaksesi mallin"
+  },
+  "Close_settings": {
+    "message": "Sulje asetukset"
+  },
+  "Command": {
+    "message": "Komento"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Pakkaa välimuistitiedot tallennustilan säästämiseksi"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Määritä AI-malli ja API-avaimet"
+  },
+  "Connected": {
+    "message": "Yhdistetty"
+  },
+  "Context": {
+    "message": "Konteksti"
+  },
+  "Create_New_Tab": {
+    "message": "Luo uusi välilehti"
+  },
+  "Credit_Details": {
+    "message": "Krediittitiedot"
+  },
+  "Current_Plan": {
+    "message": "Nykyinen suunnitelma:"
+  },
+  "DOM_Tool": {
+    "message": "DOM-työkalu"
+  },
+  "Daily_Credits": {
+    "message": "Päivittäiset krediitit"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Tietojen poimintatyökalu"
+  },
+  "Days_until_expiration": {
+    "message": "Päiviä erääntymiseen"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "AI Republicin kehittämä ja tukema"
+  },
+  "Discard_Changes": {
+    "message": "Hylkää muutokset"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Näytä tokenien kulutus (syöte-/tulostokenit) kun tehtävät valmistuvat"
+  },
+  "Enable_All_Tools": {
+    "message": "Ota kaikki työkalut käyttöön"
+  },
+  "Enable_Cache": {
+    "message": "Ota välimuisti käyttöön"
+  },
+  "Enable_Compression": {
+    "message": "Ota pakkaus käyttöön"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Ota sisältöskriptit käyttöön"
+  },
+  "Enable_Extension": {
+    "message": "Ota laajennus käyttöön"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Ota Model Context Protocol -työkalujen integrointi käyttöön (Tulossa tulevassa päivityksessä)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Ota välimuisti käyttöön suorituskyvyn parantamiseksi tallentamalla usein käytettyä dataa"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Ota verkkohaku käyttöön agentille"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Syötä LLM API -avaimesi"
+  },
+  "Execute_Commands": {
+    "message": "Suorita komennot"
+  },
+  "Expire_after_days": {
+    "message": "Vanhenemisaika (päivissä)"
+  },
+  "Explain_your_decision": {
+    "message": "Selitä päätöksesi..."
+  },
+  "Extension_Permission": {
+    "message": "Laajennus ja oikeudet"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Laajennuksen ja oikeuksien asetukset"
+  },
+  "Extension_Configuration": {
+    "message": "Laajennuksen asetukset"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Laajennuksen asetukset ja oikeudet"
+  },
+  "Extra_Credits": {
+    "message": "Lisäkrediitit"
+  },
+  "Extract_Data": {
+    "message": "Poimi tietoja:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Poimi sivuilta erityisiä tietomalleja"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Poimi rakenteellisia tietoja verkkosivuilta"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Asetusten lataaminen epäonnistui"
+  },
+  "Failed_to_save_settings": {
+    "message": "Asetusten tallentaminen epäonnistui"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Tiedostotoiminnot (Ei saatavilla)"
+  },
+  "File_Path": {
+    "message": "Tiedostopolku"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Täytä lomakkeita, lähetä tietoja, käsittele lomake-elementtejä"
+  },
+  "Form_Automation_Tool": {
+    "message": "Lomakeautomatisointityökalu"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Täysi pääsy (Vaarallinen)"
+  },
+  "General": {
+    "message": "Yleinen"
+  },
+  "General_Settings": {
+    "message": "Yleiset asetukset"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Aloita"
+  },
+  "Hello_NAME": {
+    "message": "Hei $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hei maailma"
+  },
+  "History": {
+    "message": "Historia"
+  },
+  "Impact": {
+    "message": "Vaikutus"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Kaappaa ja muokkaa verkkopyyntöjä/vastauksia"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Pikanäppäimet"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-pyynnöt menevät suoraan tarjoajan API:in"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-pyynnöt reititetään AI Republic -backendin kautta"
+  },
+  "Language": {
+    "message": "Kieli"
+  },
+  "Learn_more": {
+    "message": "Lue lisää"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Sallitut origin-alueet (yksi per rivi). Tukee jokerimerkkejä (*)."
+  },
+  "Loading_credits": {
+    "message": "Ladataan krediittejä..."
+  },
+  "Loading_settings": {
+    "message": "Ladataan asetuksia..."
+  },
+  "Login": {
+    "message": "Kirjaudu sisään"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Kirjaudu sisään saadaksesi ilmaisia krediittejä"
+  },
+  "Low_credits_remaining": {
+    "message": "Krediittejä vähissä"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP-työkalut (Ei saatavilla)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Hallitse selaimen välilehtiä (avaa, sulje, vaihda, hae)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Pääkytkin kaikkien selaimen ja agentin työkalujen käyttöön ottamiseen tai poistamiseen"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Pääkytkin laajennuksen käyttöön ottamiseen tai poistamiseen"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Suurin välimuistin koko (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Suurin välimuistin koko megatavuina (oletus: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Suurin aika (millisekunteina), jonka työkalu voi toimia ennen aikakatkaisua (oletus: 30000)"
+  },
+  "Model_Config": {
+    "message": "Mallin asetukset"
+  },
+  "Model_Selection": {
+    "message": "Mallin valinta"
+  },
+  "Modern_Chat": {
+    "message": "Moderni keskustelu"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Muokkaa parametreja, kun pyydetään muutoksia"
+  },
+  "Monthly_Credits": {
+    "message": "Kuukausikrediitit"
+  },
+  "More_Config": {
+    "message": "Lisää asetuksia"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Selaa sivuja, napsauta linkkejä, hallitse selaimen navigointia"
+  },
+  "Navigation_Tool": {
+    "message": "Navigointityökalu"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Verkon sieppäystyökalu"
+  },
+  "Never_expire_permanent": {
+    "message": "Ei koskaan vanhene (pysyvä)"
+  },
+  "New_Conversation": {
+    "message": "Uusi keskustelu"
+  },
+  "No_approval_history_yet": {
+    "message": "Hyväksymishistoriaa ei vielä ole."
+  },
+  "No_tabs_available": {
+    "message": "Välilehtiä ei ole saatavilla"
+  },
+  "Not_Connected": {
+    "message": "Ei yhteyttä"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Päivien määrä ennen käyttöönoton tietojen vanhentumista (oletus: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Avaa sivupaneeli:"
+  },
+  "Organization": {
+    "message": "Organisaatio"
+  },
+  "Page_Action_Tool": {
+    "message": "Sivun toimintotyökalu"
+  },
+  "Page_Vision_Tool": {
+    "message": "Sivun Vision-työkalu"
+  },
+  "Parameter_Modifications": {
+    "message": "Parametrimuokkaukset"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Suorita sivutoiminnot (vieritys, kuvakaappaus, odotus)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Tallenna välimuisti pysyvästi"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Syötä kelvollinen API-avain."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Kirjoita kelvollinen komento"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Prioriteettitaso tarjoaa nopeammat vasteajat korkeammalla hinnalla."
+  },
+  "Provider": {
+    "message": "Tarjoaja"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Kysy ja muokkaa DOM:ia (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Pika-aloitus"
+  },
+  "Quick_action": {
+    "message": "Pikatoiminto"
+  },
+  "Read_only": {
+    "message": "Vain luku"
+  },
+  "Reason_optional": {
+    "message": "Syy (valinnainen)"
+  },
+  "Refreshes_in": {
+    "message": "Päivittyy pian"
+  },
+  "Reject": {
+    "message": "Hylkää"
+  },
+  "Reject_this_action": {
+    "message": "Hylkää tämä toiminto"
+  },
+  "Remaining": {
+    "message": "Jäljellä:"
+  },
+  "Remove_API_Key": {
+    "message": "Poista API-avain"
+  },
+  "Remove_modification": {
+    "message": "Poista muokkaus"
+  },
+  "Request_Changes": {
+    "message": "Pyydä muutoksia"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Pyydä muutoksia tähän toimintaan"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Napsauta tekstiä hiiren oikealla painikkeella selittääksesi tai parantaaksesi sitä Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Jakelun päättyminen"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandbox-käytäntö"
+  },
+  "Save_API_Key": {
+    "message": "Tallenna API-avain"
+  },
+  "Save_Settings": {
+    "message": "Tallenna asetukset"
+  },
+  "Saving": {
+    "message": "Tallennetaan..."
+  },
+  "Security_Privacy": {
+    "message": "Turvallisuus ja yksityisyys"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Työkalun suoritusympäristön turvallisuustaso"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Valitse keskusteluihin käytettävä AI-malli."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Valitse käyttöliittymälle haluamasi kieli"
+  },
+  "Send_the_message": {
+    "message": "Lähetä viesti"
+  },
+  "Service_Tier": {
+    "message": "Palvelutaso"
+  },
+  "Session": {
+    "message": "Istunto"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Aseta, milloin jakeludata vanhenee"
+  },
+  "Settings": {
+    "message": "Asetukset"
+  },
+  "Settings_saved_successfully": {
+    "message": "Asetukset tallennettu onnistuneesti"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Näytä tokenin käyttö tehtävissä"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Näytä varoitus, kun tallennustilan käyttö ylittää tämän prosenttiosuuden (oletus: 90 %)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Kirjaudu sisään tilillesi"
+  },
+  "Stable": {
+    "message": "Vakaa"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Pysäytä nykyinen tehtävän suoritus"
+  },
+  "Storage_Cache": {
+    "message": "Tallennus ja välimuisti"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Tallennus- ja välimuistiasetukset"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Tallennuskiintiön varoitus (%)"
+  },
+  "Storage_Settings": {
+    "message": "Tallennusasetukset"
+  },
+  "Storage_Tool": {
+    "message": "Tallennustyökalu"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Tallenna välimuistitiedot pysyvästi selaimen istuntojen välillä"
+  },
+  "Tab_Tool": {
+    "message": "Välilehtityökalu"
+  },
+  "Terminal": {
+    "message": "Pääte"
+  },
+  "Test_Connection": {
+    "message": "Testaa yhteys"
+  },
+  "Testing": {
+    "message": "Testataan..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Agentti käyttää tällä hetkellä taustapalvelutilaa. LLM-pyynnöt reititetään AI Republic -palvelimen kautta. Keskustelusi käsitellään turvallisesti infrastruktuurimme kautta."
+  },
+  "Time": {
+    "message": "Aika"
+  },
+  "Time_remaining": {
+    "message": "Aikaa jäljellä"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Välimuistissa olevien kohteiden elinikä sekunteina (oletus: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Näytä/piilota sivupaneeli"
+  },
+  "Tool": {
+    "message": "Työkalu"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Työkalun aikakatkaisu (ms)"
+  },
+  "Tools": {
+    "message": "Työkalut"
+  },
+  "Tools_Settings": {
+    "message": "Työkalujen asetukset"
+  },
+  "Turn": {
+    "message": "Käännä"
+  },
+  "UI_Theme": {
+    "message": "Käyttöliittymän teema"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Luottotietoja ei voida ladata"
+  },
+  "Unsaved_Changes": {
+    "message": "Tallentamattomat muutokset"
+  },
+  "Update_Channel": {
+    "message": "Päivityskanava"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Päivitä tilauspakettini"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Päivitä Premium-tilaukseen"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Päivitä tilauksesi tutkiaksesi maailman tehokkaimpia malleja"
+  },
+  "Use_Context_Menu": {
+    "message": "Käytä kontekstivalikkoa:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Käytä omaa API-avainta"
+  },
+  "User_Center": {
+    "message": "Käyttäjäkeskus"
+  },
+  "User_approved_action": {
+    "message": "Käyttäjän hyväksymä toiminto"
+  },
+  "User_decision": {
+    "message": "Käyttäjän päätös"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Käyttäjän asetukset ja käyttöliittymän asetukset"
+  },
+  "User_rejected_action": {
+    "message": "Käyttäjän hylkäämä toiminto"
+  },
+  "User_requested_modifications": {
+    "message": "Käyttäjän pyytämät muutokset"
+  },
+  "Using_extra_credits": {
+    "message": "Käytetään lisäluottoja"
+  },
+  "View_Chat_History": {
+    "message": "Näytä keskusteluhistoria"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Sivun sisällön ja asettelun visuaalinen analyysi"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Web-scraping-työkalu"
+  },
+  "Web_Search": {
+    "message": "Verkkohaku"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Tervetuloa Browserxiin"
+  },
+  "Workspace_Write": {
+    "message": "Työtilan kirjoitus"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Sinulla on tallentamattomia muutoksia. Haluatko hylätä ne?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "AI-pohjainen selausavustajasi on valmis auttamaan sinua navigoimaan, ymmärtämään ja vuorovaikuttamaan verkkosisällön kanssa."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "API-avaimesi on salattu"
+  },
+  "Your_Decision": {
+    "message": "Päätöksesi"
+  }
+}

@@ -1,8 +1,0 @@
-# Build output
-dist/
-
-# Node modules (if any)
-node_modules/
-
-# Source maps
-*.map

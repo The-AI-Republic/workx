@@ -23,7 +23,7 @@ describe('Session Integration (Refactored)', () => {
       await newSession.initialize();
 
       expect(newSession.getSessionId()).toBeDefined();
-      expect(newSession.getSessionId()).toMatch(/^conv_/);
+      expect(newSession.getSessionId().length).toBeGreaterThan(0);
       expect(newSession.isEmpty()).toBe(true);
       expect(newSession.getMessageCount()).toBe(0);
     });

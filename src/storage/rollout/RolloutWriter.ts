@@ -3,17 +3,16 @@
  * Handles async write operations with batching and sequence management
  */
 
-import type { ConversationId, RolloutItem, RolloutMetadataRecord } from './types';
+import {
+  DB_NAME,
+  DB_VERSION,
+  STORE_ROLLOUTS,
+  STORE_ROLLOUT_ITEMS,
+  type ConversationId,
+  type RolloutItem,
+  type RolloutMetadataRecord,
+} from './types';
 import { formatTimestamp } from './helpers';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const DB_NAME = 'BrowserxRollouts';
-const DB_VERSION = 1;
-const STORE_ROLLOUTS = 'rollouts';
-const STORE_ROLLOUT_ITEMS = 'rollout_items';
 
 // ============================================================================
 // RolloutWriter Class
@@ -98,65 +97,58 @@ export class RolloutWriter {
    * @param items - Array of rollout items to persist
    */
   async addItems(rolloutId: ConversationId, items: RolloutItem[]): Promise<void> {
-    if (this.closed) {
-      throw new Error('Writer is closed');
-    }
+    if (this.closed) return;
 
-    if (items.length === 0) {
-      return;
-    }
+    if (items.length === 0) return;
 
-    // Chain this write operation to the queue
+    // Add write operation to the serialization queue
     this.writeQueue = this.writeQueue.then(async () => {
-      await this.writeItemsBatch(rolloutId, items);
+      if (!this.db || this.closed) return;
+
+      return new Promise<void>((resolve, reject) => {
+        try {
+          const transaction = this.db!.transaction([STORE_ROLLOUT_ITEMS, STORE_ROLLOUTS], 'readwrite');
+          const itemsStore = transaction.objectStore(STORE_ROLLOUT_ITEMS);
+          const rolloutsStore = transaction.objectStore(STORE_ROLLOUTS);
+
+          transaction.oncomplete = () => {
+            resolve();
+          };
+          transaction.onerror = () => {
+            reject(new Error(`Transaction failed: ${transaction.error?.message}`));
+          };
+          transaction.onabort = () => {
+            reject(new Error('Transaction aborted'));
+          };
+
+          for (const item of items) {
+            const record = {
+              rolloutId,
+              timestamp: formatTimestamp(new Date()),
+              sequence: this.currentSequence++,
+              type: item.type,
+              payload: item.payload,
+            };
+            itemsStore.add(record);
+          }
+
+          // Update rollout metadata
+          const getRequest = rolloutsStore.get(rolloutId);
+          getRequest.onsuccess = () => {
+            const metadata = getRequest.result as RolloutMetadataRecord | undefined;
+            if (metadata) {
+              metadata.itemCount += items.length;
+              metadata.updated = Date.now();
+              rolloutsStore.put(metadata);
+            }
+          };
+        } catch (error) {
+          reject(error);
+        }
+      });
     });
 
     return this.writeQueue;
-  }
-
-  /**
-   * Write a batch of items to IndexedDB.
-   * @param rolloutId - Conversation ID
-   * @param items - Array of items to write
-   */
-  private async writeItemsBatch(rolloutId: ConversationId, items: RolloutItem[]): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    return new Promise((resolve, reject) => {
-      const tx = this.db!.transaction([STORE_ROLLOUT_ITEMS, STORE_ROLLOUTS], 'readwrite');
-      const itemsStore = tx.objectStore(STORE_ROLLOUT_ITEMS);
-      const rolloutsStore = tx.objectStore(STORE_ROLLOUTS);
-
-      // Write each item with sequential sequence number
-      for (const item of items) {
-        const record = {
-          rolloutId,
-          timestamp: formatTimestamp(),
-          sequence: this.currentSequence++,
-          type: item.type,
-          payload: item.payload,
-        };
-
-        itemsStore.add(record);
-      }
-
-      // Update rollout metadata
-      const getRequest = rolloutsStore.get(rolloutId);
-      getRequest.onsuccess = () => {
-        const metadata = getRequest.result as RolloutMetadataRecord | undefined;
-        if (metadata) {
-          metadata.itemCount += items.length;
-          metadata.updated = Date.now();
-          rolloutsStore.put(metadata);
-        }
-      };
-
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(new Error(`Transaction failed: ${tx.error?.message}`));
-      tx.onabort = () => reject(new Error('Transaction aborted'));
-    });
   }
 
   /**

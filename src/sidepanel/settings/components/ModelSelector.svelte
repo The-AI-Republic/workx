@@ -5,7 +5,9 @@
    * Now uses pre-built modelSelectionItems from parent
    */
   import { createEventDispatcher } from 'svelte';
-  import type { ConfiguredFeatures } from '../../config/types';
+  import type { ConfiguredFeatures } from '@/config/types';
+  import { userStore } from '../../stores/userStore';
+  import Tooltip from '../../components/common/Tooltip.svelte';
 
   // Props
   export let selectedModel: string;
@@ -29,6 +31,21 @@
   }> = [];
   export let disabled = false;
 
+  // Free user model restriction
+  // FREE_USER_DEFAULT_MODEL: Simple model name pattern for matching
+  // FREE_USER_DEFAULT_COMPOUND_KEY: Format providerId:modelKey (not a raw model key)
+  const FREE_USER_DEFAULT_MODEL = 'kimi-k2-thinking';
+  const FREE_USER_DEFAULT_COMPOUND_KEY = 'fireworks:fireworks/models/kimi-k2-thinking';
+
+  // Subscribe to user store
+  $: isUserLoggedIn = $userStore.isLoggedIn;
+  $: isFreeUser = $userStore.userType === 0;
+
+  // Check if a model is available for free users
+  function isModelAvailableForFreeUser(modelKey: string): boolean {
+    return modelKey.toLowerCase().includes(FREE_USER_DEFAULT_MODEL);
+  }
+
   const dispatch = createEventDispatcher();
 
   let isOpen = false;
@@ -42,6 +59,7 @@
   // Group models by model name for UI display
   interface GroupedModel {
     modelName: string;
+    modelKey: string; // First provider's modelKey, used for free user check
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -66,9 +84,14 @@
       const existing = groups.get(item.modelName);
       if (existing) {
         // Check for duplicate provider before adding
-        const isDuplicate = existing.providers.some(p => p.providerId === item.providerId);
+        const isDuplicate = existing.providers.some((p) => p.providerId === item.providerId);
         if (isDuplicate) {
-          console.warn('[ModelSelector] Skipping duplicate provider:', item.providerName, 'for model:', item.modelName);
+          console.warn(
+            '[ModelSelector] Skipping duplicate provider:',
+            item.providerName,
+            'for model:',
+            item.modelName
+          );
           continue;
         }
         existing.providers.push({
@@ -79,21 +102,24 @@
           apiKey: item.apiKey,
           contextWindow: item.contextWindow,
           maxOutputTokens: item.maxOutputTokens,
-          pricing: item.pricing
+          pricing: item.pricing,
         });
       } else {
         groups.set(item.modelName, {
           modelName: item.modelName,
-          providers: [{
-            modelId: item.modelId,
-            modelKey: item.modelKey,
-            providerId: item.providerId,
-            providerName: item.providerName,
-            apiKey: item.apiKey,
-            contextWindow: item.contextWindow,
-            maxOutputTokens: item.maxOutputTokens,
-            pricing: item.pricing
-          }]
+          modelKey: item.modelKey, // Store modelKey for free user check
+          providers: [
+            {
+              modelId: item.modelId,
+              modelKey: item.modelKey,
+              providerId: item.providerId,
+              providerName: item.providerName,
+              apiKey: item.apiKey,
+              contextWindow: item.contextWindow,
+              maxOutputTokens: item.maxOutputTokens,
+              pricing: item.pricing,
+            },
+          ],
         });
       }
     }
@@ -102,7 +128,7 @@
   })();
 
   // Get selected model's name and provider
-  $: selectedModelData = modelSelectionItems.find(m => m.modelId === selectedModel);
+  $: selectedModelData = modelSelectionItems.find((m) => m.modelId === selectedModel);
   $: selectedModelName = selectedModelData?.modelName || '';
   $: selectedProviderId = selectedModelData?.providerId || '';
 
@@ -110,7 +136,7 @@
     if (disabled) return;
     isOpen = !isOpen;
     if (isOpen) {
-      focusedIndex = groupedModels.findIndex(g => g.modelName === selectedModelName);
+      focusedIndex = groupedModels.findIndex((g) => g.modelName === selectedModelName);
       // Clear pending selections when opening dropdown
       pendingSelectionModelName = null;
       pendingProviderErrors.clear();
@@ -119,6 +145,12 @@
 
   function handleModelRowClick(group: GroupedModel) {
     if (disabled) return;
+
+    // Block selection for free users trying to select premium models
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)) {
+      // Model is locked for free users - don't allow selection
+      return;
+    }
 
     // If only one provider, select it directly
     if (group.providers.length === 1) {
@@ -139,9 +171,25 @@
     pendingProviderErrors = pendingProviderErrors; // Trigger reactivity
   }
 
-  function handleProviderClick(event: MouseEvent, modelId: string, modelName: string) {
+  function handleProviderClick(
+    event: MouseEvent,
+    modelId: string,
+    modelName: string,
+    modelKey: string
+  ) {
+    if (disabled) {
+      event.stopPropagation();
+      return;
+    }
+
+    // Block selection for free users trying to select premium models
+    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey)) {
+      // Model is locked for free users - don't allow selection
+      // We don't stop propagation here so parent tooltip can catch the click
+      return;
+    }
+
     event.stopPropagation();
-    if (disabled) return;
 
     // Clear error for this model name
     pendingProviderErrors.delete(modelName);
@@ -167,7 +215,7 @@
         event.preventDefault();
         if (!isOpen) {
           isOpen = true;
-          focusedIndex = groupedModels.findIndex(g => g.modelName === selectedModelName);
+          focusedIndex = groupedModels.findIndex((g) => g.modelName === selectedModelName);
         } else {
           focusedIndex = Math.min(focusedIndex + 1, groupedModels.length - 1);
         }
@@ -217,7 +265,7 @@
   }
 
   // Get current model with provider name for display
-  $: currentModelData = modelSelectionItems.find(m => m.modelId === selectedModel);
+  $: currentModelData = modelSelectionItems.find((m) => m.modelId === selectedModel);
   $: currentModelDisplay = currentModelData
     ? `${currentModelData.modelName} - ${currentModelData.providerName}`
     : disabled && modelSelectionItems.length === 0
@@ -256,7 +304,7 @@
     class:ring-2={isOpen}
     class:ring-cyan-400={isOpen}
     on:click={toggleDropdown}
-    disabled={disabled}
+    {disabled}
   >
     <span class="flex items-center gap-2">
       <span class="font-medium text-gray-100">
@@ -284,138 +332,230 @@
         {@const hasMultipleProviders = group.providers.length > 1}
         {@const hasError = pendingProviderErrors.get(group.modelName)}
         {@const firstProvider = group.providers[0]}
+        {@const isLockedForFreeUser =
+          isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
 
-        <div
-          class="model-row w-full px-4 py-3 text-left transition-colors border-b border-gray-700 last:border-b-0"
-          class:bg-gray-700={isSelectedModelName}
-          class:bg-gray-750={index === focusedIndex && !isSelectedModelName}
-          class:hover:bg-gray-700={!isSelectedModelName}
-          class:cursor-pointer={!hasMultipleProviders}
-          role="option"
-          aria-selected={isSelectedModelName}
-          on:click={() => handleModelRowClick(group)}
-          on:keydown={(e) => e.key === 'Enter' && handleModelRowClick(group)}
-          tabindex={0}
+        <Tooltip
+          content="Please upgrade the plan to unblock world's most advanced models"
+          disabled={!isLockedForFreeUser}
+          placement="top"
+          trigger="mouseenter click"
+          hideOnClick={false}
+          fill={true}
+          style="display: block;"
         >
-          <!-- Model name with providers: "<Model Name> - <provider1> <provider2> ..." format -->
-          <div class="model-name-row flex items-start flex-wrap gap-x-2 gap-y-1">
-            <span class="font-medium text-gray-100 flex-shrink-0">
-              {group.modelName}
-            </span>
-
-            {#if hasMultipleProviders}
-              <!-- Multiple providers: show dash then capsule buttons inline -->
-              <span class="text-gray-500 flex-shrink-0">-</span>
-              <div class="provider-buttons flex flex-wrap gap-1.5 items-center">
-                {#each group.providers as provider (provider.modelId)}
-                  {@const isProviderSelected = provider.modelId === selectedModel}
-                  {@const tooltipText = provider.pricing
-                    ? `Input: ${provider.pricing.inputToken}\nOutput: ${provider.pricing.outputToken}`
-                    : `${provider.contextWindow.toLocaleString()} tokens context`}
-                  <div class="provider-tooltip-wrapper">
-                    <button
-                      type="button"
-                      class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
-                      class:provider-selected={isProviderSelected}
-                      class:provider-unselected={!isProviderSelected}
-                      on:click={(e) => handleProviderClick(e, provider.modelId, group.modelName)}
-                    >
-                      <span class="provider-name">{provider.providerName}</span>
-                      {#if provider.apiKey}
-                        <span class="ml-1 text-xs opacity-70">✓</span>
-                      {/if}
-                    </button>
-                    <div class="provider-tooltip">
-                      {#if provider.pricing}
-                        <div class="tooltip-line">In: {provider.pricing.inputToken}</div>
-                        <div class="tooltip-line">Out: {provider.pricing.outputToken}</div>
-                      {:else}
-                        <div class="tooltip-line">{provider.contextWindow.toLocaleString()} tokens</div>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <!-- Single provider: show provider name and configured badge -->
-              <span class="text-gray-500 flex-shrink-0">-</span>
-              <span class="text-sm text-gray-400">
-                {firstProvider.providerName}
-              </span>
-              {#if firstProvider.apiKey}
-                <span class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
-                  Configured
+          <div class="model-row-wrapper relative">
+            <div
+              class="model-row w-full px-4 py-3 text-left transition-colors border-b border-gray-700 last:border-b-0"
+              class:bg-gray-700={isSelectedModelName && !isLockedForFreeUser}
+              class:bg-gray-750={index === focusedIndex &&
+                !isSelectedModelName &&
+                !isLockedForFreeUser}
+              class:hover:bg-gray-700={!isSelectedModelName && !isLockedForFreeUser}
+              class:cursor-pointer={!hasMultipleProviders && !isLockedForFreeUser}
+              class:locked-model={isLockedForFreeUser}
+              role="option"
+              aria-selected={isSelectedModelName}
+              aria-disabled={isLockedForFreeUser}
+              on:click={() => handleModelRowClick(group)}
+              on:keydown={(e) => e.key === 'Enter' && handleModelRowClick(group)}
+              tabindex={isLockedForFreeUser ? -1 : 0}
+            >
+              <!-- Model name with providers: "<Model Name> - <provider1> <provider2> ..." format -->
+              <div class="model-name-row flex items-start flex-wrap gap-x-2 gap-y-1">
+                <span
+                  class="font-medium flex-shrink-0"
+                  class:text-gray-100={!isLockedForFreeUser}
+                  class:text-gray-500={isLockedForFreeUser}
+                >
+                  {group.modelName}
                 </span>
+                {#if isLockedForFreeUser}
+                  <svg
+                    class="lock-icon w-4 h-4 text-gray-500 flex-shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                {/if}
+
+                {#if hasMultipleProviders}
+                  <!-- Multiple providers: show dash then capsule buttons inline -->
+                  <span
+                    class="flex-shrink-0"
+                    class:text-gray-500={!isLockedForFreeUser}
+                    class:text-gray-600={isLockedForFreeUser}>-</span
+                  >
+                  <div class="provider-buttons flex flex-wrap gap-1.5 items-center">
+                    {#each group.providers as provider (provider.modelId)}
+                      {@const isProviderSelected = provider.modelId === selectedModel}
+                      {@const tooltipText = provider.pricing
+                        ? `Input: ${provider.pricing.inputToken}\nOutput: ${provider.pricing.outputToken}`
+                        : `${provider.contextWindow.toLocaleString()} tokens context`}
+                      <div class="provider-tooltip-wrapper">
+                        <button
+                          type="button"
+                          class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
+                          class:provider-selected={isProviderSelected && !isLockedForFreeUser}
+                          class:provider-unselected={!isProviderSelected && !isLockedForFreeUser}
+                          class:provider-locked={isLockedForFreeUser}
+                          aria-disabled={isLockedForFreeUser}
+                          on:click={(e) =>
+                            handleProviderClick(
+                              e,
+                              provider.modelId,
+                              group.modelName,
+                              provider.modelKey
+                            )}
+                        >
+                          <span class="provider-name">{provider.providerName}</span>
+                          {#if provider.apiKey && !isLockedForFreeUser}
+                            <span class="ml-1 text-xs opacity-70">✓</span>
+                          {/if}
+                        </button>
+                        {#if !isLockedForFreeUser}
+                          <div class="provider-tooltip">
+                            {#if provider.pricing}
+                              <div class="tooltip-line">In: {provider.pricing.inputToken}</div>
+                              <div class="tooltip-line">Out: {provider.pricing.outputToken}</div>
+                            {:else}
+                              <div class="tooltip-line">
+                                {provider.contextWindow.toLocaleString()} tokens
+                              </div>
+                            {/if}
+                          </div>
+                        {/if}
+                      </div>
+                    {/each}
+                    {#if isSelectedModelName && !isLockedForFreeUser}
+                      <span
+                        class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
+                      >
+                        Selected
+                      </span>
+                    {/if}
+                  </div>
+                {:else}
+                  <!-- Single provider: show provider name, configured badge, and selected indicator -->
+                  <span
+                    class="flex-shrink-0"
+                    class:text-gray-500={!isLockedForFreeUser}
+                    class:text-gray-600={isLockedForFreeUser}>-</span
+                  >
+                  <span
+                    class="text-sm"
+                    class:text-gray-400={!isLockedForFreeUser}
+                    class:text-gray-600={isLockedForFreeUser}
+                  >
+                    {firstProvider.providerName}
+                  </span>
+                  {#if firstProvider.apiKey && !isLockedForFreeUser}
+                    <span class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
+                      Configured
+                    </span>
+                  {/if}
+                  {#if isSelectedModelName && !isLockedForFreeUser}
+                    <span
+                      class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
+                    >
+                      Selected
+                    </span>
+                  {/if}
+                {/if}
+              </div>
+
+              <!-- Error message when no provider selected (for multi-provider models) -->
+              {#if hasMultipleProviders && hasError && !isLockedForFreeUser}
+                <div class="provider-error mt-2 text-xs text-red-400 flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  Please select a provider
+                </div>
               {/if}
+
+              <!-- Pricing info (show from first provider or selected provider) - hide for locked models -->
+              {#if !isLockedForFreeUser}
+                {#if hasMultipleProviders}
+                  {@const displayProvider =
+                    group.providers.find((p) => p.modelId === selectedModel) || firstProvider}
+                  {#if displayProvider.pricing}
+                    <div class="mt-2 flex items-center justify-between gap-2">
+                      <div class="text-xs text-gray-400">
+                        <div>Input: {displayProvider.pricing.inputToken}</div>
+                        <div>Output: {displayProvider.pricing.outputToken}</div>
+                      </div>
+                      <a
+                        href={displayProvider.pricing.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
+                        on:click={(e) => e.stopPropagation()}
+                        aria-label="View pricing details"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  {:else}
+                    <div class="mt-1 text-xs text-gray-400">
+                      {displayProvider.contextWindow.toLocaleString()} tokens
+                    </div>
+                  {/if}
+                {:else if firstProvider.pricing}
+                  <div class="mt-2 flex items-center justify-between gap-2">
+                    <div class="text-xs text-gray-400">
+                      <div>Input: {firstProvider.pricing.inputToken}</div>
+                      <div>Output: {firstProvider.pricing.outputToken}</div>
+                    </div>
+                    <a
+                      href={firstProvider.pricing.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
+                      on:click={(e) => e.stopPropagation()}
+                      aria-label="View pricing details"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                {:else}
+                  <div class="mt-1 text-xs text-gray-400">
+                    {firstProvider.contextWindow.toLocaleString()} tokens
+                  </div>
+                {/if}
+              {/if}
+            </div>
+
+            {#if isLockedForFreeUser}
+              <!-- High-priority overlay to capture all interactions and propagate to Tooltip wrapper -->
+              <div
+                class="absolute inset-0 z-50 cursor-not-allowed bg-transparent"
+                style="pointer-events: all; display: block;"
+              ></div>
             {/if}
           </div>
-
-          <!-- Error message when no provider selected (for multi-provider models) -->
-          {#if hasMultipleProviders && hasError}
-            <div class="provider-error mt-2 text-xs text-red-400 flex items-center gap-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-              Please select a provider
-            </div>
-          {/if}
-
-          <!-- Pricing info (show from first provider or selected provider) -->
-          {#if hasMultipleProviders}
-            {@const displayProvider = group.providers.find(p => p.modelId === selectedModel) || firstProvider}
-            {#if displayProvider.pricing}
-              <div class="mt-2 flex items-center justify-between gap-2">
-                <div class="text-xs text-gray-400">
-                  <div>Input: {displayProvider.pricing.inputToken}</div>
-                  <div>Output: {displayProvider.pricing.outputToken}</div>
-                </div>
-                <a
-                  href={displayProvider.pricing.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
-                  on:click={(e) => e.stopPropagation()}
-                  aria-label="View pricing details"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            {:else}
-              <div class="mt-1 text-xs text-gray-400">
-                {displayProvider.contextWindow.toLocaleString()} tokens
-              </div>
-            {/if}
-          {:else}
-            {#if firstProvider.pricing}
-              <div class="mt-2 flex items-center justify-between gap-2">
-                <div class="text-xs text-gray-400">
-                  <div>Input: {firstProvider.pricing.inputToken}</div>
-                  <div>Output: {firstProvider.pricing.outputToken}</div>
-                </div>
-                <a
-                  href={firstProvider.pricing.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
-                  on:click={(e) => e.stopPropagation()}
-                  aria-label="View pricing details"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            {:else}
-              <div class="mt-1 text-xs text-gray-400">
-                {firstProvider.contextWindow.toLocaleString()} tokens
-              </div>
-            {/if}
-          {/if}
-        </div>
+        </Tooltip>
       {/each}
     </div>
   {/if}
@@ -497,9 +637,13 @@
     z-index: 100;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.2s, visibility 0.2s;
+    transition:
+      opacity 0.2s,
+      visibility 0.2s;
     pointer-events: none;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2);
     max-width: 200px;
     width: max-content;
   }
@@ -549,8 +693,46 @@
   }
 
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    75% {
+      transform: translateX(4px);
+    }
+  }
+
+  /* Locked model styles for free users */
+  .locked-model {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .locked-model:hover {
+    background-color: transparent !important;
+  }
+
+  .lock-icon {
+    margin-top: 0.125rem;
+  }
+
+  /* Ensure tooltip wrapper takes full width for model rows in dropdown */
+
+  /* Locked provider capsule button */
+  .provider-locked {
+    border-color: rgb(75, 85, 99);
+    background-color: transparent;
+    color: rgb(107, 114, 128);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .provider-locked:hover {
+    border-color: rgb(75, 85, 99);
+    background-color: transparent;
+    color: rgb(107, 114, 128);
   }
 </style>

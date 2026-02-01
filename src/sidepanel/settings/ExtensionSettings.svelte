@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { AgentConfig } from '../../config/AgentConfig';
-  import type { IExtensionSettings, IPermissionSettings } from '../../config/types';
+  import type { AgentConfig } from '@/config/AgentConfig';
+  import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
+  import { _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
 
@@ -113,14 +114,14 @@
 </script>
 
 <div class="extension-settings">
-  <button class="back-button" on:click={handleBack}>← Back</button>
+  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
 
-  <h2 class="settings-title">Extension & Permission Settings</h2>
+  <h2 class="settings-title">{$_t("Extension & Permission Settings")}</h2>
 
   <div class="settings-form">
     <!-- Extension Configuration Section -->
-    <div class="section">
-      <h3 class="section-title">Extension Configuration</h3>
+    <div class="section settings-card">
+      <h3 class="section-title">{$_t("Extension Configuration")}</h3>
 
       <!-- Extension Enabled -->
       <div class="form-group">
@@ -131,9 +132,9 @@
             on:input={handleInput}
             class="form-checkbox"
           />
-          <span>Enable Extension</span>
+          <span>{$_t("Enable Extension")}</span>
         </label>
-        <div class="help-text">Master toggle to enable or disable the extension</div>
+        <div class="help-text">{$_t("Master toggle to enable or disable the extension")}</div>
       </div>
 
       <!-- Content Script Enabled -->
@@ -145,29 +146,29 @@
             on:input={handleInput}
             class="form-checkbox"
           />
-          <span>Enable Content Scripts</span>
+          <span>{$_t("Enable Content Scripts")}</span>
         </label>
-        <div class="help-text">Allow content scripts to run on web pages</div>
+        <div class="help-text">{$_t("Allow content scripts to run on web pages")}</div>
       </div>
 
       <!-- Update Channel -->
       <div class="form-group">
-        <label for="update-channel" class="form-label">Update Channel</label>
+        <label for="update-channel" class="form-label">{$_t("Update Channel")}</label>
         <select
           id="update-channel"
           bind:value={currentExtension.updateChannel}
           on:input={handleInput}
           class="form-select"
         >
-          <option value="stable">Stable</option>
-          <option value="beta">Beta</option>
+          <option value="stable">{$_t("Stable")}</option>
+          <option value="beta">{$_t("Beta")}</option>
         </select>
-        <div class="help-text">Choose which update channel to follow</div>
+        <div class="help-text">{$_t("Choose which update channel to follow")}</div>
       </div>
 
       <!-- Storage Quota Warning -->
       <div class="form-group">
-        <label for="storage-quota" class="form-label">Storage Quota Warning (%)</label>
+        <label for="storage-quota" class="form-label">{$_t("Storage Quota Warning (%)")}</label>
         <input
           id="storage-quota"
           type="number"
@@ -178,12 +179,12 @@
           class="form-input"
           placeholder="90"
         />
-        <div class="help-text">Show warning when storage usage exceeds this percentage (default: 90%)</div>
+        <div class="help-text">{$_t("Show warning when storage usage exceeds this percentage (default: 90%)")}</div>
       </div>
 
       <!-- Allowed Origins -->
       <div class="form-group">
-        <label for="allowed-origins" class="form-label">Allowed Origins</label>
+        <label for="allowed-origins" class="form-label">{$_t("Allowed Origins")}</label>
         <textarea
           id="allowed-origins"
           bind:value={allowedOriginsText}
@@ -192,7 +193,7 @@
           rows="5"
           placeholder="https://example.com&#10;https://api.example.com&#10;https://*.example.org"
         ></textarea>
-        <div class="help-text">List of allowed origins (one per line). Supports wildcards (*).</div>
+        <div class="help-text">{$_t("List of allowed origins (one per line). Supports wildcards (*).")}</div>
       </div>
     </div>
 
@@ -203,7 +204,7 @@
         on:click={handleSave}
         disabled={!isDirty || isSaving}
       >
-        {isSaving ? 'Saving...' : 'Save Settings'}
+        {isSaving ? $_t('Saving...') : $_t('Save Settings')}
       </button>
     </div>
 
@@ -260,16 +261,22 @@
 
   .settings-form {
     max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid var(--browserx-border);
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
   }
 
-  .section:last-of-type {
-    border-bottom: none;
+  .settings-card {
+    background: var(--browserx-surface);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--browserx-border);
   }
 
   .section-title {
@@ -378,7 +385,9 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    border: none;
+    border: 1px solid var(--browserx-primary);
+    background: transparent;
+    color: var(--browserx-primary);
   }
 
   .btn:disabled {
@@ -386,13 +395,19 @@
     cursor: not-allowed;
   }
 
-  .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
+  .btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 90%, black);
+  /* ChatGPT theme - filled buttons */
+  :global(.settings-modal-container.chatgpt) .btn-primary {
+    background: var(--browserx-primary);
+    color: white;
+    border: none;
+  }
+
+  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
   .message {

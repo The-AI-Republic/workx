@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "適用於工作任務的通用瀏覽器內 AI 助理"
+  },
+  "API_Key_Configuration": {
+    "message": "API 金鑰設定"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API 金鑰會在瀏覽器本機加密儲存，除 API 請求外不會傳送至外部伺服器。"
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "存取瀏覽器儲存 (localStorage、sessionStorage、cookies)"
+  },
+  "Action": {
+    "message": "操作"
+  },
+  "Action_Details": {
+    "message": "操作細節"
+  },
+  "Add_Modification": {
+    "message": "新增修改"
+  },
+  "Advanced_Configuration": {
+    "message": "進階設定"
+  },
+  "Advanced_Options": {
+    "message": "進階選項"
+  },
+  "Agent_Execution_Tools": {
+    "message": "代理執行工具"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "允許代理執行系統指令（請謹慎使用）"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "允許代理讀寫與管理檔案（未來更新即將推出）"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "允許內容腳本在網頁上執行"
+  },
+  "Allowed_Origins": {
+    "message": "允許的來源"
+  },
+  "Approval_History": {
+    "message": "批准紀錄"
+  },
+  "Approve": {
+    "message": "核准"
+  },
+  "Approve_this_action": {
+    "message": "批准此操作"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "請求 Browserx 從任何網頁提取結構化資料"
+  },
+  "Available": {
+    "message": "可用："
+  },
+  "Back": {
+    "message": "返回"
+  },
+  "Backend_Mode": {
+    "message": "後端模式"
+  },
+  "Backend_Mode_Active": {
+    "message": "後端模式已啟用"
+  },
+  "Beta": {
+    "message": "測試版"
+  },
+  "Browser_Tools": {
+    "message": "瀏覽器工具"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "瀏覽器自動化工具切換"
+  },
+  "Cache_Settings": {
+    "message": "快取設定"
+  },
+  "Cache_TTL_seconds": {
+    "message": "快取 TTL（秒）"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "快取行為與資料保留"
+  },
+  "Cancel": {
+    "message": "取消"
+  },
+  "Chat_History": {
+    "message": "聊天記錄"
+  },
+  "Choose_AI_Model": {
+    "message": "選擇 AI 模型"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "選擇側邊面板的視覺樣式"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "選擇要追蹤的更新頻道"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "經典終端機樣式（綠字黑底）"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "簡潔、現代的聊天介面（類似 ChatGPT）"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "點擊工具列中的 Browserx 圖示或按 Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "點擊以選取模型"
+  },
+  "Close_settings": {
+    "message": "關閉設定"
+  },
+  "Command": {
+    "message": "指令"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "壓縮快取資料以節省儲存空間"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "設定 AI 模型與 API 金鑰"
+  },
+  "Connected": {
+    "message": "已連線"
+  },
+  "Context": {
+    "message": "上下文"
+  },
+  "Create_New_Tab": {
+    "message": "建立新分頁"
+  },
+  "Credit_Details": {
+    "message": "點數明細"
+  },
+  "Current_Plan": {
+    "message": "目前方案："
+  },
+  "DOM_Tool": {
+    "message": "DOM 工具"
+  },
+  "Daily_Credits": {
+    "message": "每日點數"
+  },
+  "Data_Extraction_Tool": {
+    "message": "資料擷取工具"
+  },
+  "Days_until_expiration": {
+    "message": "距到期天數"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "由 AI Republic 開發與支援"
+  },
+  "Discard_Changes": {
+    "message": "放棄變更"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "任務完成時顯示代幣消耗（輸入/輸出代幣）"
+  },
+  "Enable_All_Tools": {
+    "message": "啟用所有工具"
+  },
+  "Enable_Cache": {
+    "message": "啟用快取"
+  },
+  "Enable_Compression": {
+    "message": "啟用壓縮"
+  },
+  "Enable_Content_Scripts": {
+    "message": "啟用內容腳本"
+  },
+  "Enable_Extension": {
+    "message": "啟用擴充功能"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "啟用模型上下文協議工具整合（將於未來更新中推出）"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "啟用快取以儲存常用資料，提升效能"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "為代理啟用網路搜尋功能"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "輸入您的 LLM API 金鑰"
+  },
+  "Execute_Commands": {
+    "message": "執行指令"
+  },
+  "Expire_after_days": {
+    "message": "過期天數"
+  },
+  "Explain_your_decision": {
+    "message": "說明您的決定…"
+  },
+  "Extension_Permission": {
+    "message": "擴充功能與權限"
+  },
+  "Extension_Permission_Settings": {
+    "message": "擴充功能與權限設定"
+  },
+  "Extension_Configuration": {
+    "message": "擴充功能設定"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "擴充功能設定與權限"
+  },
+  "Extra_Credits": {
+    "message": "額外點數"
+  },
+  "Extract_Data": {
+    "message": "提取資料："
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "從頁面中提取特定資料模式"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "從網頁提取結構化資料"
+  },
+  "Failed_to_load_preferences": {
+    "message": "載入偏好設定失敗"
+  },
+  "Failed_to_save_settings": {
+    "message": "儲存設定失敗"
+  },
+  "File_Operations_Not_Available": {
+    "message": "檔案操作（不可用）"
+  },
+  "File_Path": {
+    "message": "檔案路徑"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "填寫表單、提交資料、與表單元件互動"
+  },
+  "Form_Automation_Tool": {
+    "message": "表單自動化工具"
+  },
+  "Full_Access_Dangerous": {
+    "message": "完整存取（危險）"
+  },
+  "General": {
+    "message": "一般"
+  },
+  "General_Settings": {
+    "message": "一般設定"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "適用於工作任務的瀏覽器內 AI 代理"
+  },
+  "Get_Started": {
+    "message": "開始使用"
+  },
+  "Hello_NAME": {
+    "message": "你好，$NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "你好，世界"
+  },
+  "History": {
+    "message": "歷史記錄"
+  },
+  "Impact": {
+    "message": "影響"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "攔截並修改網路請求/回應"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "鍵盤快捷鍵"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM 請求直接發送至提供者 API"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM 請求會透過 AI Republic 後端傳送"
+  },
+  "Language": {
+    "message": "語言"
+  },
+  "Learn_more": {
+    "message": "了解更多"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "允許來源清單（每行一個）。支援萬用字元 (*)。"
+  },
+  "Loading_credits": {
+    "message": "載入點數中..."
+  },
+  "Loading_settings": {
+    "message": "載入設定中..."
+  },
+  "Login": {
+    "message": "登入"
+  },
+  "Login_to_get_free_credits": {
+    "message": "登入以獲取免費點數"
+  },
+  "Low_credits_remaining": {
+    "message": "剩餘點數偏低"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP 工具（不可用）"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "管理瀏覽器分頁（開啟、關閉、切換、查詢）"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "主開關：啟用或停用所有瀏覽器與代理工具"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "主開關：啟用或停用擴充功能"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "最大快取大小（MB）"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "最大快取大小（單位：MB，預設值：100）"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "工具執行逾時前的最大時間（毫秒）（預設值：30000）"
+  },
+  "Model_Config": {
+    "message": "模型設定"
+  },
+  "Model_Selection": {
+    "message": "模型選擇"
+  },
+  "Modern_Chat": {
+    "message": "Modern Chat (保留原文)"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "在請求變更時修改參數"
+  },
+  "Monthly_Credits": {
+    "message": "每月點數"
+  },
+  "More_Config": {
+    "message": "更多設定"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "導覽頁面、點擊連結、處理瀏覽器導覽"
+  },
+  "Navigation_Tool": {
+    "message": "導覽工具"
+  },
+  "Network_Intercept_Tool": {
+    "message": "網路攔截工具"
+  },
+  "Never_expire_permanent": {
+    "message": "永不過期（永久）"
+  },
+  "New_Conversation": {
+    "message": "新對話"
+  },
+  "No_approval_history_yet": {
+    "message": "尚無批准歷史"
+  },
+  "No_tabs_available": {
+    "message": "沒有可用的分頁"
+  },
+  "Not_Connected": {
+    "message": "未連線"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "資料過期前的天數（預設：60）"
+  },
+  "Open_Side_Panel": {
+    "message": "開啟側邊面板："
+  },
+  "Organization": {
+    "message": "組織"
+  },
+  "Page_Action_Tool": {
+    "message": "頁面操作工具"
+  },
+  "Page_Vision_Tool": {
+    "message": "頁面視覺工具"
+  },
+  "Parameter_Modifications": {
+    "message": "參數修改"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "執行頁面操作（捲動、截圖、等待）"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "將快取持久化至儲存"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "請輸入有效的 API 金鑰。"
+  },
+  "Please_type_a_valid_command": {
+    "message": "請輸入有效的指令"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "優先等級提供更快的回應時間，但價格較高。"
+  },
+  "Provider": {
+    "message": "提供者"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "查詢與操作 DOM（文件物件模型）"
+  },
+  "Quick_Start": {
+    "message": "快速開始"
+  },
+  "Quick_action": {
+    "message": "快速操作"
+  },
+  "Read_only": {
+    "message": "唯讀"
+  },
+  "Reason_optional": {
+    "message": "原因（選填）"
+  },
+  "Refreshes_in": {
+    "message": "刷新於"
+  },
+  "Reject": {
+    "message": "拒絕"
+  },
+  "Reject_this_action": {
+    "message": "拒絕此操作"
+  },
+  "Remaining": {
+    "message": "剩餘："
+  },
+  "Remove_API_Key": {
+    "message": "移除 API 金鑰"
+  },
+  "Remove_modification": {
+    "message": "移除修改"
+  },
+  "Request_Changes": {
+    "message": "請求變更"
+  },
+  "Request_changes_to_this_action": {
+    "message": "請求對此操作進行變更"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "右鍵點擊任意文字，即可使用 Browserx 進行說明或改進"
+  },
+  "Rollout_Expiration": {
+    "message": "部署到期時間"
+  },
+  "Sandbox_Policy": {
+    "message": "沙盒政策"
+  },
+  "Save_API_Key": {
+    "message": "儲存 API 金鑰"
+  },
+  "Save_Settings": {
+    "message": "儲存設定"
+  },
+  "Saving": {
+    "message": "儲存中..."
+  },
+  "Security_Privacy": {
+    "message": "安全與隱私"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "工具執行環境的安全等級"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "選擇對話使用的 AI 模型。"
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "選擇介面偏好的語言"
+  },
+  "Send_the_message": {
+    "message": "發送訊息"
+  },
+  "Service_Tier": {
+    "message": "服務等級"
+  },
+  "Session": {
+    "message": "工作階段"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "設定推出資料的過期時間"
+  },
+  "Settings": {
+    "message": "設定"
+  },
+  "Settings_saved_successfully": {
+    "message": "設定已成功儲存"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "在任務中顯示代幣使用情況"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "當儲存使用量超過此百分比時顯示警告（預設：90%）"
+  },
+  "Sign_in_to_your_account": {
+    "message": "登入您的帳戶"
+  },
+  "Stable": {
+    "message": "穩定"
+  },
+  "Stop_the_current_task_run": {
+    "message": "停止目前的任務執行"
+  },
+  "Storage_Cache": {
+    "message": "儲存與快取"
+  },
+  "Storage_Cache_Settings": {
+    "message": "儲存與快取設定"
+  },
+  "Storage_Quota_Warning": {
+    "message": "儲存配額警告（%）"
+  },
+  "Storage_Settings": {
+    "message": "儲存設定"
+  },
+  "Storage_Tool": {
+    "message": "儲存工具"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "在瀏覽器會話之間持久儲存快取資料"
+  },
+  "Tab_Tool": {
+    "message": "分頁工具"
+  },
+  "Terminal": {
+    "message": "終端機"
+  },
+  "Test_Connection": {
+    "message": "測試連線"
+  },
+  "Testing": {
+    "message": "測試中..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "代理目前使用後端模式。LLM 請求將透過 AI Republic 伺服器路由。您的對話將透過我們的基礎設施安全處理。"
+  },
+  "Time": {
+    "message": "時間"
+  },
+  "Time_remaining": {
+    "message": "剩餘時間"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "快取項目的存活時間（秒）（預設：3600）"
+  },
+  "Toggle_side_panel": {
+    "message": "切換側邊面板"
+  },
+  "Tool": {
+    "message": "工具"
+  },
+  "Tool_Timeout_ms": {
+    "message": "工具逾時 (毫秒)"
+  },
+  "Tools": {
+    "message": "工具"
+  },
+  "Tools_Settings": {
+    "message": "工具設定"
+  },
+  "Turn": {
+    "message": "開啟/關閉"
+  },
+  "UI_Theme": {
+    "message": "介面主題"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "無法載入信用資訊"
+  },
+  "Unsaved_Changes": {
+    "message": "未儲存的變更"
+  },
+  "Update_Channel": {
+    "message": "更新頻道"
+  },
+  "Upgrade_My_Plan": {
+    "message": "升級我的方案"
+  },
+  "Upgrade_to_Premium": {
+    "message": "升級至 Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "升級您的訂閱以探索全球最強大的模型"
+  },
+  "Use_Context_Menu": {
+    "message": "使用右鍵功能表："
+  },
+  "Use_Own_API_Key": {
+    "message": "使用自訂 API 金鑰"
+  },
+  "User_Center": {
+    "message": "使用者中心"
+  },
+  "User_approved_action": {
+    "message": "使用者已批准的操作"
+  },
+  "User_decision": {
+    "message": "使用者決策"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "使用者偏好與介面設定"
+  },
+  "User_rejected_action": {
+    "message": "使用者拒絕的操作"
+  },
+  "User_requested_modifications": {
+    "message": "使用者請求的修改"
+  },
+  "Using_extra_credits": {
+    "message": "使用額外信用"
+  },
+  "View_Chat_History": {
+    "message": "檢視聊天記錄"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "頁面內容與版面配置的視覺分析"
+  },
+  "Web_Scraping_Tool": {
+    "message": "網頁擷取工具"
+  },
+  "Web_Search": {
+    "message": "網路搜尋"
+  },
+  "Welcome_to_Browserx": {
+    "message": "歡迎使用 Browserx"
+  },
+  "Workspace_Write": {
+    "message": "工作區寫入"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "您有未儲存的變更。是否要放棄它們？"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "您的 AI 驅動瀏覽器助理已準備好協助您瀏覽、理解並與網頁內容互動。"
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "您的 API 金鑰已加密"
+  },
+  "Your_Decision": {
+    "message": "您的決定"
+  }
+}

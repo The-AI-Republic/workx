@@ -28,6 +28,9 @@ import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
 import type { ModelClient } from '../models/ModelClient';
 
+// Title generation imports
+import { TitleGenerator } from './title';
+
 /**
  * Execution state of the session
  */
@@ -49,15 +52,20 @@ export class Session {
   private services: SessionServices | null = null; // Service collection
   private activeTurn: ActiveTurn | null = null; // Active turn management
   private turnContext: TurnContext;
+  private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
   private toolRegistry: ToolRegistry | null = null; // Tool registry from BrowserxAgent
 
   // Runtime state (not persisted, lives in Session only)
   private toolUsageStats: Map<string, number> = new Map();
-  private errorHistory: Array<{timestamp: number, error: string, context?: any}> = [];
+  private errorHistory: Array<{ timestamp: number, error: string, context?: any }> = [];
   private interruptRequested: boolean = false;
   private compactService: CompactService;
+  private titleGenerator: TitleGenerator;
+  // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
+  private titleGenerationStage: number = 0;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor(
     configOrIsPersistent?: AgentConfig | boolean,
@@ -66,7 +74,15 @@ export class Session {
     toolRegistry?: ToolRegistry,
     initialHistory?: InitialHistory
   ) {
-    this.conversationId = `conv_${uuidv4()}`;
+    // For resumed mode, use the provided conversationId; otherwise generate a new one
+    if (initialHistory?.mode === 'resumed' && initialHistory.conversationId) {
+      this.conversationId = initialHistory.conversationId;
+    } else {
+      this.conversationId = uuidv4();
+      if (!this.conversationId) {
+        this.conversationId = `session-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      }
+    }
 
     // Handle both new and old signatures for backward compatibility
     if (typeof configOrIsPersistent === 'boolean') {
@@ -83,20 +99,32 @@ export class Session {
     this.sessionState = new SessionState(); // Pure data state
     this.toolRegistry = toolRegistry ?? null; // Tool registry from BrowserxAgent
     this.compactService = new CompactService(); // Initialize compaction service
+    this.titleGenerator = new TitleGenerator(); // Initialize title generation service
 
     // Initialize services (merged from initialize() method)
     if (services) {
       this.services = services;
     } else {
-      // Services will be created asynchronously if needed
       // For synchronous construction, set to null and create on-demand
       this.services = null;
     }
 
     // Initialize with default turn context, using config values if available
-    // Note: TurnContext requires a ModelClient, which will be set later
-    // For now, create a minimal context that will be replaced
-    this.turnContext = {} as TurnContext;
+    // Initialize with a dummy context for immediate access (will be properly initialized in initializeSession)
+    const dummyClient = {
+      _model: 'gpt-4',
+      getModel: function () { return (this as any)._model; },
+      setModel: function (m: string) { (this as any)._model = m; },
+      getReasoningEffort: () => undefined,
+      setReasoningEffort: () => { },
+      getReasoningSummary: () => undefined,
+      setReasoningSummary: () => { },
+    } as any;
+    this.turnContext = new TurnContext(dummyClient, {
+      sessionId: this.conversationId,
+      approvalPolicy: 'on-request',
+      sandboxPolicy: { mode: 'workspace-write' },
+    });
 
     this.activeTurn = new ActiveTurn();
 
@@ -107,14 +135,14 @@ export class Session {
     // Handle initial history
     const historyMode = initialHistory ?? { mode: 'new' as const };
 
- 
+
     // For 'new' mode, SessionState is already initialized with empty history
     // Initialize session with RolloutRecorder based on history mode (asynchronous)
     // Note: We call initializeSession without await since constructor must be synchronous
     // The initialization happens in the background
-    if (historyMode.mode === 'new' || historyMode.mode === 'forked') {
+    if (this.isPersistent && (historyMode.mode === 'new' || historyMode.mode === 'forked')) {
       // Create new rollout
-      this.initializeSession('create', this.conversationId, this.config).then(() => {
+      this.initializationPromise = this.initializeSession('create', this.conversationId, this.config).then(() => {
         // For forked mode, persist the forked history after rollout is created
         if (historyMode.mode === 'forked') {
           const history = this.sessionState.historySnapshot();
@@ -123,9 +151,9 @@ export class Session {
       }).catch(err => {
         console.error('Failed to initialize session:', err);
       });
-    } else if (historyMode.mode === 'resumed') {
+    } else if (this.isPersistent && historyMode.mode === 'resumed') {
       // Resume from existing rollout (note: initializeSession will also reconstruct history)
-      this.initializeSession('resume', this.conversationId, this.config).catch(err => {
+      this.initializationPromise = this.initializeSession('resume', this.conversationId, this.config).catch(err => {
         console.error('Failed to resume session:', err);
       });
     }
@@ -174,6 +202,10 @@ export class Session {
    * Set the turn context (replaces the existing context)
    */
   setTurnContext(context: TurnContext): void {
+    // Ensure the turn context has the correct session ID
+    if (context.getSessionId() !== this.conversationId) {
+      context.update({ sessionId: this.conversationId });
+    }
     this.turnContext = context;
   }
 
@@ -183,6 +215,9 @@ export class Session {
   updateTurnContext(updates: any): void {
     if (this.turnContext && typeof this.turnContext.update === 'function') {
       this.turnContext.update(updates);
+      if (updates.cwd) {
+        this._mockCwd = updates.cwd;
+      }
     }
   }
 
@@ -255,6 +290,7 @@ export class Session {
     metadata: {
       created: number;
       lastAccessed: number;
+      messageCount: number;
     };
   } {
     return {
@@ -263,6 +299,7 @@ export class Session {
       metadata: {
         created: this.sessionState.getConversationHistory().metadata?.startTime || Date.now(),
         lastAccessed: Date.now(),
+        messageCount: this.getMessageCount(),
       },
     };
   }
@@ -270,7 +307,7 @@ export class Session {
   /**
    * Import session from persistence
    */
-  static async import(data: {
+  static import(data: {
     id: string;
     state: SessionStateExport;
     metadata: {
@@ -278,7 +315,7 @@ export class Session {
       lastAccessed: number;
       messageCount?: number; // Optional for backward compatibility
     };
-  }, services?: SessionServices, toolRegistry?: ToolRegistry): Promise<Session> {
+  }, services?: SessionServices, toolRegistry?: ToolRegistry): Session {
     // Create session with resumed history mode (no rollout items since we're importing directly)
     const initialHistory: InitialHistory = { mode: 'new' }; // Use 'new' mode since we're setting state directly
     const session = new Session(undefined, true, services, toolRegistry, initialHistory);
@@ -339,6 +376,44 @@ export class Session {
    */
   getSessionId(): string {
     return this.conversationId;
+  }
+
+  /**
+   * Compatibility: Initialize session components
+   * Note: Refactored Session initializes in constructor, this is for backward compatibility
+   */
+  async initialize(): Promise<void> {
+    // Wait for background initialization if it's in progress
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+    }
+    return Promise.resolve();
+  }
+
+  /**
+   * Compatibility: Get current turn items
+   */
+  getCurrentTurnItems(): InputItem[] {
+    return this.activeTurn?.takePendingInput() || [];
+  }
+
+  /**
+   * Compatibility: Set current turn items
+   */
+  setCurrentTurnItems(items: InputItem[]): void {
+    if (this.activeTurn) {
+      this.activeTurn.clearPending();
+      for (const item of items) {
+        this.activeTurn.pushPendingInput(item);
+      }
+    }
+  }
+
+  /**
+   * Compatibility: Clear current turn items
+   */
+  clearCurrentTurn(): void {
+    this.activeTurn?.clearPending();
   }
 
   /**
@@ -445,13 +520,6 @@ export class Session {
     return [...historyItems, ...newItems];
   }
 
-  /**
-   * Record turn context for rollout/history
-   */
-  async recordTurnContext(contextItem: any): Promise<void> {
-    // In a full implementation, this would persist turn context
-    console.log('Recording turn context:', contextItem);
-  }
 
   /**
    * Compact conversation history using LLM-based summarization
@@ -592,39 +660,29 @@ export class Session {
    * Reset session to initial state (for new conversation) using RolloutRecorder
    */
   async reset(): Promise<void> {
+    // Shutdown old RolloutRecorder if it exists
+    if (this.services?.rollout) {
+      try {
+        await this.services.rollout.shutdown();
+      } catch (error) {
+        console.error('Failed to shutdown old rollout recorder:', error);
+      }
+    }
+
     // Clear conversation history
     this.clearHistory();
 
     // Create new conversation ID
-    Object.assign(this, { conversationId: `conv_${uuidv4()}` });
+    Object.assign(this, { conversationId: uuidv4() });
 
     // Reset tab binding to -1 (unbound)
     // Tab will be auto-bound by UI when side panel reopens
     this.sessionState.setTabId(-1);
 
-    // Reinitialize with RolloutRecorder if enabled
-    if (this.isPersistent && this.services?.rollout) {
-      try {
-        // Record session reset event
-        const resetEvent: EventMsg = {
-          type: 'BackgroundEvent',
-          data: {
-            message: `Session reset: new conversation ${this.conversationId}`
-          }
-        };
-
-        const rolloutItems: RolloutItem[] = [{
-          type: 'event_msg',
-          payload: resetEvent
-        }];
-
-        await this.services.rollout.recordItems(rolloutItems);
-      } catch (error) {
-        console.error('Failed to record session reset to rollout:', error);
-      }
+    // Initialize new RolloutRecorder for the new conversation
+    if (this.isPersistent) {
+      await this.initializeSession('create', this.conversationId, this.config);
     }
-
-    console.log('Session reset complete:', this.conversationId);
   }
 
   /**
@@ -647,7 +705,7 @@ export class Session {
         }];
 
         await this.services.rollout.recordItems(rolloutItems);
-        
+
         // Flush and close rollout recorder
         await this.services.rollout.flush();
       } catch (error) {
@@ -836,10 +894,7 @@ export class Session {
     config?: AgentConfig
   ): Promise<void> {
     try {
-      // Strip conv_ prefix if present - RolloutRecorder expects plain UUID
-      const uuid = conversationId.startsWith('conv_')
-        ? conversationId.slice(5)
-        : conversationId;
+      const uuid = conversationId;
 
       if (mode === 'create') {
         // Create new rollout
@@ -851,9 +906,32 @@ export class Session {
           config as any
         );
 
-        if (this.services) {
-          this.services.rollout = rollout;
+        // Ensure services object exists
+        if (!this.services) {
+          // Initialize minimal services
+          // Note: Since we're inside Session, we can't easily use createSessionServices async factory
+          // without significant refactoring or awaiting imports.
+          // For now, we create a minimal compatible object.
+          // Ideally should use createSessionServices but that requires async module loading or circular deps?
+          // Actually createSessionServices is imported in Session.ts.
+          // But we can't await it nicely if we want to keep this simple?
+          // Let's just create the object directly as it is simple.
+          // But wait, createSessionServices is imported. Let's try to use it? 
+          // Issue is createSessionServices might not be available if not passed.
+          // Let's just instantiate a minimal services implementation.
+          this.services = {
+            rollout: null,
+            notifier: {
+              notify: () => { },
+              error: () => { },
+              success: () => { },
+              warning: () => { }
+            },
+            showRawAgentReasoning: false
+          };
         }
+
+        this.services.rollout = rollout;
       } else {
         // Resume from existing rollout
         const rollout = await RolloutRecorder.create(
@@ -864,9 +942,21 @@ export class Session {
           config as any
         );
 
-        if (this.services) {
-          this.services.rollout = rollout;
+        // Ensure services object exists
+        if (!this.services) {
+          this.services = {
+            rollout: null,
+            notifier: {
+              notify: () => { },
+              error: () => { },
+              success: () => { },
+              warning: () => { }
+            },
+            showRawAgentReasoning: false
+          };
         }
+
+        this.services.rollout = rollout;
 
         // Reconstruct history from rollout
         const initialHistory = await RolloutRecorder.getRolloutHistory(uuid);
@@ -959,6 +1049,22 @@ export class Session {
    *
    * @param event Event to send
    */
+  async recordTurnContext(contextItem: any): Promise<void> {
+    // SessionState doesn't have recordTurnContext, we only persist to rollout
+
+    // Persist to rollout
+    if (this.services?.rollout) {
+      const rolloutItem: RolloutItem = {
+        type: 'turn_context',
+        payload: contextItem,
+      };
+      try {
+        await this.services.rollout.recordItems([rolloutItem]);
+      } catch (error) {
+        console.error('Failed to persist turn context:', error);
+      }
+    }
+  }
   async sendEvent(event: Event): Promise<void> {
     // Persist event to rollout as EventMsg
     if (this.services?.rollout) {
@@ -1014,10 +1120,9 @@ export class Session {
     const event: Event = {
       id: subId,
       msg: {
-        type: 'StreamError',
+        type: 'Error',
         data: {
-          error: message,
-          retrying: false,
+          message: message,
         },
       } as EventMsg,
     };
@@ -1132,7 +1237,7 @@ export class Session {
       msg: {
         type: 'TurnAborted',
         data: {
-          reason,
+          reason: reason === 'UserInterrupt' ? 'user_interrupt' : 'error',
           submission_id: subId,
           turn_count: 0,
         },
@@ -1279,11 +1384,14 @@ export class Session {
       payload: item,
     }));
 
+    if (!this.services?.rollout) {
+      return;
+    }
+
     try {
       await this.services.rollout.recordItems(rolloutItems);
     } catch (error) {
-      console.error('Failed to persist response items to rollout:', error);
-      // Non-fatal: rollout persistence failures should not break session
+      console.error('Failed to persist rollout items:', error);
     }
   }
 
@@ -1292,17 +1400,12 @@ export class Session {
    *
    * Records ResponseItems to both SessionState (in-memory history) and
    * RolloutRecorder (persistent storage).
-   *
-   * Enhanced with inline compression logic for DOM snapshots
-   *
-   * @param items Response items to record
    */
   async recordConversationItemsDual(items: ResponseItem[]): Promise<void> {
-    // SessionState (in-memory)
-    // If incoming items contain any DOM snapshot output, compress previous snapshot in history
+    // If incoming items contain any DOM snapshot output, compress previous snapshots in history first
     // This keeps the latest snapshot fresh for LLM reasoning
     if (items.some(item => isDOMSnapshotOutput(item))) {
-      // Compress the previous DOM snapshot before recording the new one
+      // Compress previous DOM snapshots BEFORE recording new items
       this.sessionState.compressPreviousDomSnapshot();
     }
 
@@ -1339,7 +1442,7 @@ export class Session {
     }));
 
     // Record to SessionState history
-    this.recordConversationItemsDual(responseItems);
+    await this.recordConversationItemsDual(responseItems);
 
     // Derive user message events using event mapping
     // This ensures proper handling of user_instructions and environment_context tags
@@ -1359,10 +1462,104 @@ export class Session {
         try {
           await this.services.rollout.recordItems(rolloutItems);
         } catch (error) {
-          console.error('Failed to persist user message to rollout:', error);
+          // Failure to persist to rollout is non-fatal
         }
       }
+
+      // Check if we should generate a title (after 3 user messages)
+      this.maybeGenerateTitle();
     }
+  }
+
+  /**
+   * Check if title generation should be triggered and execute if needed.
+   * Two-stage title generation:
+   * - Stage 1: Generate title after 2 user messages (initial title)
+   * - Stage 2: Regenerate title after 5 user messages (final title with more context)
+   * @private
+   */
+  private maybeGenerateTitle(): void {
+    // Skip if title generation is complete (stage 2) or no rollout service
+    if (this.titleGenerationStage >= 2 || !this.services?.rollout) {
+      return;
+    }
+
+    // Count user messages in history
+    const history = this.sessionState.historySnapshot();
+    const userMessageCount = this.titleGenerator.countUserMessages(history);
+
+    // Stage 0 → 1: Generate title after 2 user messages
+    if (this.titleGenerationStage === 0 && userMessageCount >= 2) {
+      this.titleGenerationStage = 1;
+
+      // Run title generation asynchronously with first 2 messages
+      this.generateAndUpdateTitle(history, 2).catch((error) => {
+        console.error('[Session] Failed to generate title (stage 1):', error);
+        // Reset to allow retry
+        this.titleGenerationStage = 0;
+      });
+    }
+    // Stage 1 → 2: Regenerate title after 5 user messages (final)
+    else if (this.titleGenerationStage === 1 && userMessageCount >= 5) {
+      this.titleGenerationStage = 2;
+
+      // Run title generation asynchronously with all 5 messages
+      this.generateAndUpdateTitle(history, 5).catch((error) => {
+        console.error('[Session] Failed to generate title (stage 2):', error);
+        // Reset to stage 1 to allow retry
+        this.titleGenerationStage = 1;
+      });
+    }
+  }
+
+  /**
+   * Generate title using LLM and update rollout metadata.
+   * @param history - Current conversation history
+   * @param maxMessages - Maximum number of user messages to use for title generation
+   * @private
+   */
+  private async generateAndUpdateTitle(history: ResponseItem[], maxMessages: number): Promise<void> {
+    // Get model client for title generation
+    const modelClient = this.getModelClientForTitle();
+    if (!modelClient) {
+      console.warn('[Session] No model client available for title generation');
+      return;
+    }
+
+    // Extract user messages up to maxMessages
+    const userMessages = this.titleGenerator.extractUserMessages(history, maxMessages);
+    if (userMessages.length === 0) {
+      console.warn('[Session] No user messages found for title generation');
+      return;
+    }
+
+    // Generate title
+    const result = await this.titleGenerator.generateTitle(userMessages, modelClient);
+
+    if (result.success && result.title && this.services?.rollout) {
+      try {
+        await this.services.rollout.updateTitle(result.title);
+        console.debug('[Session] Title updated (using %d messages):', maxMessages, result.title);
+      } catch (error) {
+        console.error('[Session] Failed to update title in storage:', error);
+      }
+    } else if (!result.success) {
+      console.warn('[Session] Title generation failed:', result.error);
+    }
+  }
+
+  /**
+   * Get model client for title generation.
+   * Uses modelForTitleGenerate from config if set, otherwise uses main model.
+   * @private
+   */
+  private getModelClientForTitle(): ModelClient | null {
+    // For now, return the turn context's model client
+    // TODO: Support separate model for title generation via config.modelForTitleGenerate
+    if (this.turnContext && typeof this.turnContext.getModelClient === 'function') {
+      return this.turnContext.getModelClient();
+    }
+    return null;
   }
 
   /**
@@ -1605,7 +1802,7 @@ export class Session {
     }
 
     // Determine abort reason from error
-    const reason: TurnAbortReason = error?.name === 'AbortError' ? 'user_interrupt' : 'error';
+    const reason: any = error?.name === 'AbortError' ? 'user_interrupt' : 'error';
 
     // Emit TurnAborted event (if eventEmitter is set)
     if (this.eventEmitter) {

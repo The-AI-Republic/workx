@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "much general in-browser AI agent for work tasks wow"
+  },
+  "API_Key_Configuration": {
+    "message": "much API key configuration wow"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "much API keys encrypted and stored locally in browser. never sent to external servers except for API calls wow"
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "much access browser storage (localStorage, sessionStorage, cookies) wow"
+  },
+  "Action": {
+    "message": "much action wow"
+  },
+  "Action_Details": {
+    "message": "much action details wow"
+  },
+  "Add_Modification": {
+    "message": "much add modification wow"
+  },
+  "Advanced_Configuration": {
+    "message": "much advanced configuration wow"
+  },
+  "Advanced_Options": {
+    "message": "much advanced options wow"
+  },
+  "Agent_Execution_Tools": {
+    "message": "much agent execution tools wow"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "much allow agent to execute system commands (use with caution) wow"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "much allow agent to read, write, and manage files (coming in future update) wow"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "much allow content scripts to run on web pages wow"
+  },
+  "Allowed_Origins": {
+    "message": "much allowed origins wow"
+  },
+  "Approval_History": {
+    "message": "much approval history wow"
+  },
+  "Approve": {
+    "message": "much approve wow"
+  },
+  "Approve_this_action": {
+    "message": "much approve this action wow"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "much ask Browserx to extract structured data from any webpage wow"
+  },
+  "Available": {
+    "message": "much available: wow"
+  },
+  "Back": {
+    "message": "much back wow"
+  },
+  "Backend_Mode": {
+    "message": "much backend mode wow"
+  },
+  "Backend_Mode_Active": {
+    "message": "much backend mode active wow"
+  },
+  "Beta": {
+    "message": "much beta wow"
+  },
+  "Browser_Tools": {
+    "message": "much browser tools wow"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "much browser automation tool toggles wow"
+  },
+  "Cache_Settings": {
+    "message": "much cache settings wow"
+  },
+  "Cache_TTL_seconds": {
+    "message": "very cache ttl (seconds) wow"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "such cache behavior and data retention wow"
+  },
+  "Cancel": {
+    "message": "such cancel wow"
+  },
+  "Chat_History": {
+    "message": "much chat history wow"
+  },
+  "Choose_AI_Model": {
+    "message": "much choose AI model wow"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "such choose visual style for side panel interface wow"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "very choose which update channel to follow wow"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "such classic terminal style with green text on black background wow"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "so clean modern chat interface similar to ChatGPT wow"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "much click the Browserx icon in your toolbar or press Alt+Shift+C wow"
+  },
+  "Click_to_select_a_model": {
+    "message": "very click to select a model wow"
+  },
+  "Close_settings": {
+    "message": "such close settings wow"
+  },
+  "Command": {
+    "message": "such command wow"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "much compress cached data to save storage space wow"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "such configure AI model and API keys wow"
+  },
+  "Connected": {
+    "message": "such connected wow"
+  },
+  "Context": {
+    "message": "such context wow"
+  },
+  "Create_New_Tab": {
+    "message": "much create new tab wow"
+  },
+  "Credit_Details": {
+    "message": "such credit details wow"
+  },
+  "Current_Plan": {
+    "message": "very current plan: wow"
+  },
+  "DOM_Tool": {
+    "message": "such DOM tool wow"
+  },
+  "Daily_Credits": {
+    "message": "very daily credits wow"
+  },
+  "Data_Extraction_Tool": {
+    "message": "much data extraction tool wow"
+  },
+  "Days_until_expiration": {
+    "message": "much days until expiration wow"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "such developed and supported by AI Republic wow"
+  },
+  "Discard_Changes": {
+    "message": "much discard changes wow"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "much display token consumption (input/output tokens) when tasks complete wow"
+  },
+  "Enable_All_Tools": {
+    "message": "much enable all tools wow"
+  },
+  "Enable_Cache": {
+    "message": "much enable cache wow"
+  },
+  "Enable_Compression": {
+    "message": "very enable compression wow"
+  },
+  "Enable_Content_Scripts": {
+    "message": "much enable content scripts wow"
+  },
+  "Enable_Extension": {
+    "message": "much enable extension wow"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "such enable Model Context Protocol tools integration (Coming in future update) wow"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "much enable caching to improve performance by storing frequently accessed data wow"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "very enable web search for agent wow"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "much enter LLM API key wow"
+  },
+  "Execute_Commands": {
+    "message": "such execute commands wow"
+  },
+  "Expire_after_days": {
+    "message": "much expire after days wow"
+  },
+  "Explain_your_decision": {
+    "message": "very explain decision wow..."
+  },
+  "Extension_Permission": {
+    "message": "such extension & permission wow"
+  },
+  "Extension_Permission_Settings": {
+    "message": "very extension & permission settings wow"
+  },
+  "Extension_Configuration": {
+    "message": "much extension configuration wow"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "very extension config and permissions wow"
+  },
+  "Extra_Credits": {
+    "message": "such extra credits wow, many bonus"
+  },
+  "Extract_Data": {
+    "message": "much extract data: wow"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "such extract specific data patterns wow, from pages"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "very extract structured data wow, from web pages"
+  },
+  "Failed_to_load_preferences": {
+    "message": "so failed to load preferences wow, very sad"
+  },
+  "Failed_to_save_settings": {
+    "message": "so failed to save settings wow, much oops"
+  },
+  "File_Operations_Not_Available": {
+    "message": "such file operations wow (not available), very sad"
+  },
+  "File_Path": {
+    "message": "such file path wow"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "such fill forms, submit data, interact with form elements wow"
+  },
+  "Form_Automation_Tool": {
+    "message": "such form automation tool wow"
+  },
+  "Full_Access_Dangerous": {
+    "message": "such full access (dangerous) wow"
+  },
+  "General": {
+    "message": "such general wow"
+  },
+  "General_Settings": {
+    "message": "much general settings wow"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "much get started wow"
+  },
+  "Hello_NAME": {
+    "message": "Hello $NAME$ wow",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "hello world wow"
+  },
+  "History": {
+    "message": "much history wow"
+  },
+  "Impact": {
+    "message": "such impact wow"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "much intercept and modify network stuff wow"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "much keyboard shortcuts wow"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "such LLM go direct to APIs wow"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "such LLM go through AI Republic wow"
+  },
+  "Language": {
+    "message": "such language wow"
+  },
+  "Learn_more": {
+    "message": "much learn more wow"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "such list of allowed origins (one per line). supports wildcards (*) wow"
+  },
+  "Loading_credits": {
+    "message": "much loading credits... wow"
+  },
+  "Loading_settings": {
+    "message": "much loading settings... wow"
+  },
+  "Login": {
+    "message": "such login wow"
+  },
+  "Login_to_get_free_credits": {
+    "message": "such login to get free credits wow"
+  },
+  "Low_credits_remaining": {
+    "message": "very low credits remaining wow"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Tools (not available) such wow"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "such manage browser tabs (open, close, switch, query) wow"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "such master toggle to enable or disable all browser and agent tools wow"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "such master toggle to enable or disable the extension wow"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "such max cache size (MB) wow"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "such maximum cache size in megabytes (default: 100) wow"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "such maximum time (in milliseconds) a tool can run before timeout (default: 30000) wow"
+  },
+  "Model_Config": {
+    "message": "such model config wow"
+  },
+  "Model_Selection": {
+    "message": "such model selection wow"
+  },
+  "Modern_Chat": {
+    "message": "such modern chat wow"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "such modify parameters when requesting changes wow"
+  },
+  "Monthly_Credits": {
+    "message": "such monthly credits wow"
+  },
+  "More_Config": {
+    "message": "such more config wow"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "such navigate pages, click links, handle browser navigation wow"
+  },
+  "Navigation_Tool": {
+    "message": "much navigation tool wow"
+  },
+  "Network_Intercept_Tool": {
+    "message": "very network intercept tool wow"
+  },
+  "Never_expire_permanent": {
+    "message": "such never expire (permanent) wow"
+  },
+  "New_Conversation": {
+    "message": "much new conversation wow"
+  },
+  "No_approval_history_yet": {
+    "message": "such no approval history yet wow."
+  },
+  "No_tabs_available": {
+    "message": "no tabs available wow"
+  },
+  "Not_Connected": {
+    "message": "such not connected wow"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "many days before rollout data expires (default: 60) wow"
+  },
+  "Open_Side_Panel": {
+    "message": "open side panel wow:"
+  },
+  "Organization": {
+    "message": "such organization wow"
+  },
+  "Page_Action_Tool": {
+    "message": "much page action tool wow"
+  },
+  "Page_Vision_Tool": {
+    "message": "very page vision tool wow"
+  },
+  "Parameter_Modifications": {
+    "message": "such parameter modifications wow"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "do page actions (scroll, screenshot, wait) wow"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "much persist cache to storage wow"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "pls input valid API key wow"
+  },
+  "Please_type_a_valid_command": {
+    "message": "pls type valid command wow"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "priority tier so fast, much price wow"
+  },
+  "Provider": {
+    "message": "such provider wow"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "query and manipulate DOM (Document Object Model) wow"
+  },
+  "Quick_Start": {
+    "message": "much quick start wow"
+  },
+  "Quick_action": {
+    "message": "very quick action wow"
+  },
+  "Read_only": {
+    "message": "much read-only wow"
+  },
+  "Reason_optional": {
+    "message": "such reason (optional) wow"
+  },
+  "Refreshes_in": {
+    "message": "refreshes in, so soon wow"
+  },
+  "Reject": {
+    "message": "such reject wow"
+  },
+  "Reject_this_action": {
+    "message": "such reject this action wow"
+  },
+  "Remaining": {
+    "message": "much remaining wow"
+  },
+  "Remove_API_Key": {
+    "message": "much remove API Key wow"
+  },
+  "Remove_modification": {
+    "message": "much remove modification wow"
+  },
+  "Request_Changes": {
+    "message": "much request changes wow"
+  },
+  "Request_changes_to_this_action": {
+    "message": "much request changes to this action wow"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "so right-click on any text to explain or improve it with Browserx wow"
+  },
+  "Rollout_Expiration": {
+    "message": "much rollout expiration wow"
+  },
+  "Sandbox_Policy": {
+    "message": "much sandbox policy wow"
+  },
+  "Save_API_Key": {
+    "message": "much save API Key wow"
+  },
+  "Save_Settings": {
+    "message": "much save settings wow"
+  },
+  "Saving": {
+    "message": "much saving... wow"
+  },
+  "Security_Privacy": {
+    "message": "much security & privacy wow"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "so security level for tool execution environment wow"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "so select the AI model to use for conversations. wow"
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "so select your preferred language for the interface wow"
+  },
+  "Send_the_message": {
+    "message": "such send the message wow"
+  },
+  "Service_Tier": {
+    "message": "much service tier wow"
+  },
+  "Session": {
+    "message": "much session wow"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "much set when rollout data should expire wow"
+  },
+  "Settings": {
+    "message": "much settings wow"
+  },
+  "Settings_saved_successfully": {
+    "message": "Settings saved, much success wow"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "show token usage in tasks wow"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "much show warning when storage usage exceeds this percentage (default: 90%) wow"
+  },
+  "Sign_in_to_your_account": {
+    "message": "sign in to your account, much sign in wow"
+  },
+  "Stable": {
+    "message": "such stable wow"
+  },
+  "Stop_the_current_task_run": {
+    "message": "stop the current task run, much stop wow"
+  },
+  "Storage_Cache": {
+    "message": "Storage & Cache, such storage wow"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Storage & Cache Settings, much settings wow"
+  },
+  "Storage_Quota_Warning": {
+    "message": "such Storage Quota Warning (%) wow"
+  },
+  "Storage_Settings": {
+    "message": "Storage Settings, much settings wow"
+  },
+  "Storage_Tool": {
+    "message": "Storage Tool, such tool wow"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "store cache data persistently across browser sessions, such persistence wow"
+  },
+  "Tab_Tool": {
+    "message": "such tab tool wow"
+  },
+  "Terminal": {
+    "message": "such terminal wow"
+  },
+  "Test_Connection": {
+    "message": "much test connection wow"
+  },
+  "Testing": {
+    "message": "such testing wow"
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "the agent is currently using backend mode wow. llm requests will route through ai republic server very secure wow. your conversations are processed securely through our infrastructure much wow"
+  },
+  "Time": {
+    "message": "such time wow"
+  },
+  "Time_remaining": {
+    "message": "time remaining wow"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "time-to-live for cached items in seconds (default: 3600) wow"
+  },
+  "Toggle_side_panel": {
+    "message": "toggle side panel wow"
+  },
+  "Tool": {
+    "message": "very tool wow"
+  },
+  "Tool_Timeout_ms": {
+    "message": "much tool timeout (ms) wow"
+  },
+  "Tools": {
+    "message": "much tools wow"
+  },
+  "Tools_Settings": {
+    "message": "much tools settings wow"
+  },
+  "Turn": {
+    "message": "very turn wow"
+  },
+  "UI_Theme": {
+    "message": "much UI theme wow"
+  },
+  "URL": {
+    "message": "such URL wow"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "so unable to load credit information wow"
+  },
+  "Unsaved_Changes": {
+    "message": "such unsaved changes wow"
+  },
+  "Update_Channel": {
+    "message": "such update channel wow"
+  },
+  "Upgrade_My_Plan": {
+    "message": "such upgrade my plan wow"
+  },
+  "Upgrade_to_Premium": {
+    "message": "such upgrade to premium wow"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "so upgrade your subscription to explore world's most powerful models wow"
+  },
+  "Use_Context_Menu": {
+    "message": "much use context menu: wow"
+  },
+  "Use_Own_API_Key": {
+    "message": "very use own API key wow"
+  },
+  "User_Center": {
+    "message": "much user center wow"
+  },
+  "User_approved_action": {
+    "message": "such user approved action wow"
+  },
+  "User_decision": {
+    "message": "much user decision wow"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "so user preferences and interface settings wow"
+  },
+  "User_rejected_action": {
+    "message": "very user rejected action wow"
+  },
+  "User_requested_modifications": {
+    "message": "much user requested modifications wow"
+  },
+  "Using_extra_credits": {
+    "message": "so using extra credits wow"
+  },
+  "View_Chat_History": {
+    "message": "much view chat history wow"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "very visual analysis of page content and layout wow"
+  },
+  "Web_Scraping_Tool": {
+    "message": "much web scraping tool wow"
+  },
+  "Web_Search": {
+    "message": "much web search wow"
+  },
+  "Welcome_to_Browserx": {
+    "message": "such welcome to Browserx wow"
+  },
+  "Workspace_Write": {
+    "message": "much workspace write wow"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "you have unsaved changes wow. do you want to discard them? very yes or no wow"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "your AI-powered browser assistant is ready to help you navigate, understand, and interact with web content wow"
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "your API key is such encrypted wow"
+  },
+  "Your_Decision": {
+    "message": "such your decision wow"
+  }
+}
