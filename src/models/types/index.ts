@@ -7,4 +7,5 @@ export * from './ResponsesAPI';
 export * from './StreamAttemptError';
 
 // Ensure these are explicitly exported for build
-export type { AuthManager, BrowserxAuth, KnownPlan, PlanType } from './Auth';
+export type { IAuthManager, AgentReadyState } from './Auth';
+export { AuthManager } from './Auth';

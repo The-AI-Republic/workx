@@ -1,7 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { AgentConfig } from '../../config/AgentConfig';
-  import type { IUserPreferences } from '../../config/types';
+  import type { AgentConfig } from '@/config/AgentConfig';
+  import type { IUserPreferences } from '@/config/types';
+  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { showTokenUsage } from '../stores/tokenUsageStore';
+  import Switch from '../components/common/Switch.svelte';
+  import { _t, getCurrentLocale, setLocale } from '../lib/i18n';
+  import supportedLanguages from '../../../_locales/supported_languages.json';
 
   export let settingsConfig: AgentConfig;
 
@@ -13,10 +18,27 @@
   // Form state
   let originalPreferences: IUserPreferences = {};
   let currentPreferences: IUserPreferences = {};
-  let isDirty = false;
   let isSaving = false;
   let saveMessage = '';
   let saveMessageType: 'success' | 'error' | '' = '';
+
+  // Language state
+  let selectedLanguage = getCurrentLocale();
+  let browserLanguage = getCurrentLocale();
+
+  // Theme options - reactive to locale changes
+  $: themeOptions = [
+    {
+      value: 'terminal' as UITheme,
+      label: $_t('Terminal'),
+      description: $_t('Classic terminal style with green text on black background')
+    },
+    {
+      value: 'chatgpt' as UITheme,
+      label: $_t('Modern Chat'),
+      description: $_t('Clean, modern chat interface similar to ChatGPT')
+    }
+  ];
 
   onMount(async () => {
     await loadPreferences();
@@ -27,23 +49,23 @@
       const config = settingsConfig.getConfig();
       originalPreferences = { ...config.preferences };
       currentPreferences = { ...config.preferences };
+
+      // Load language preference or use browser language as default
+      selectedLanguage = currentPreferences.language || browserLanguage;
+
+      // Initialize locale from saved preference
+      if (currentPreferences.language) {
+        setLocale(currentPreferences.language);
+      }
     } catch (error) {
       console.error('[GeneralSettings] Failed to load preferences:', error);
-      saveMessage = 'Failed to load preferences';
+      saveMessage = t('Failed to load preferences');
       saveMessageType = 'error';
     }
   }
 
-  function handleInput() {
-    isDirty = true;
-  }
-
-  function handleBack() {
-    dispatch('back');
-  }
-
-  async function handleSave() {
-    if (!isDirty) return;
+  async function autoSave() {
+    if (isSaving) return;
 
     try {
       isSaving = true;
@@ -55,8 +77,7 @@
       });
 
       originalPreferences = { ...currentPreferences };
-      isDirty = false;
-      saveMessage = 'Settings saved successfully';
+      saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
 
       dispatch('saved', { success: true });
@@ -69,7 +90,7 @@
     } catch (error) {
       console.error('[GeneralSettings] Failed to save preferences:', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      saveMessage = `Failed to save settings: ${errorMsg}`;
+      saveMessage = t('Failed to save settings') + `: ${errorMsg}`;
       saveMessageType = 'error';
 
       dispatch('saved', { success: false, error: errorMsg });
@@ -77,17 +98,128 @@
       isSaving = false;
     }
   }
+
+  function handleThemeChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    const newTheme = target.value as UITheme;
+    currentPreferences.uiTheme = newTheme;
+
+    // Apply theme immediately
+    uiTheme.setTheme(newTheme);
+
+    autoSave();
+  }
+
+  function handleShowTokenUsageChange(event: CustomEvent<boolean>) {
+    const show = event.detail;
+    currentPreferences.showTokenUsage = show;
+
+    // Apply immediately
+    showTokenUsage.setShowTokenUsage(show);
+
+    autoSave();
+  }
+
+  function handleLanguageChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    selectedLanguage = target.value;
+    currentPreferences.language = selectedLanguage;
+
+    // Apply language change immediately
+    setLocale(selectedLanguage);
+
+    autoSave();
+  }
+
+  function handleBack() {
+    dispatch('back');
+  }
 </script>
 
 <div class="general-settings">
-  <button class="back-button" on:click={handleBack}>← Back</button>
+  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
 
-  <h2 class="settings-title">General Settings</h2>
+  <h2 class="settings-title">{$_t("General Settings")}</h2>
 
   <div class="settings-form">
-    <!-- Theme Selection - DISABLED (not currently supported) -->
+    <!-- UI Theme Selection -->
+    <div class="settings-card">
+      <div class="form-group">
+        <label for="uiTheme" class="form-label">{$_t("UI Theme")}</label>
+        <div class="theme-options">
+          {#each themeOptions as option}
+            <label class="theme-option" class:selected={currentPreferences.uiTheme === option.value}>
+              <input
+                type="radio"
+                name="uiTheme"
+                value={option.value}
+                checked={currentPreferences.uiTheme === option.value}
+                on:change={handleThemeChange}
+                class="theme-radio"
+              />
+              <div class="theme-option-content">
+                <div class="theme-option-preview {option.value}">
+                  {#if option.value === 'terminal'}
+                    <div class="preview-terminal">
+                      <span class="preview-prompt">&gt;&gt;</span>
+                      <span class="preview-text">_</span>
+                    </div>
+                  {:else}
+                    <div class="preview-chat">
+                      <div class="preview-bubble user"></div>
+                      <div class="preview-bubble agent"></div>
+                    </div>
+                  {/if}
+                </div>
+                <div class="theme-option-info">
+                  <span class="theme-option-label">{option.label}</span>
+                  <span class="theme-option-desc">{option.description}</span>
+                </div>
+              </div>
+            </label>
+          {/each}
+        </div>
+        <div class="help-text">{$_t("Choose the visual style for the side panel interface")}</div>
+      </div>
+    </div>
+
+    <!-- Show Token Usage Toggle -->
+    <div class="settings-card">
+      <div class="form-group">
+        <div class="switch-row">
+          <div class="switch-label">
+            <span class="switch-title">{$_t("Show token usage in tasks")}</span>
+            <span class="switch-description">{$_t("Display token consumption (input/output tokens) when tasks complete")}</span>
+          </div>
+          <Switch
+            state={currentPreferences.showTokenUsage ?? false}
+            on:change={handleShowTokenUsageChange}
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Language Selection -->
+    <div class="settings-card">
+      <div class="form-group">
+        <label for="language" class="form-label">{$_t("Language")}</label>
+        <select
+          id="language"
+          value={selectedLanguage}
+          on:change={handleLanguageChange}
+          class="form-select"
+        >
+          {#each supportedLanguages as lang}
+            <option value={lang.code}>{lang.title}</option>
+          {/each}
+        </select>
+        <div class="help-text">{$_t("Select your preferred language for the interface")}</div>
+      </div>
+    </div>
+
+    <!-- Color Theme Selection - DISABLED (future feature) -->
     <!-- <div class="form-group">
-      <label for="theme" class="form-label">Theme</label>
+      <label for="theme" class="form-label">Color Theme</label>
       <select
         id="theme"
         bind:value={currentPreferences.theme}
@@ -101,53 +233,8 @@
       <div class="help-text">Choose your preferred color theme</div>
     </div> -->
 
-    <!-- Telemetry Toggle - DISABLED (not currently supported) -->
-    <!-- <div class="form-group">
-      <label class="checkbox-label">
-        <input
-          type="checkbox"
-          bind:checked={currentPreferences.telemetryEnabled}
-          on:input={handleInput}
-          class="form-checkbox"
-        />
-        <span>Enable Telemetry</span>
-      </label>
-      <div class="help-text">Help improve the extension by sending anonymous usage data</div>
-    </div> -->
-
-    <!-- Auto-sync Toggle - DISABLED (not currently supported) -->
-    <!-- <div class="form-group">
-      <label class="checkbox-label">
-        <input
-          type="checkbox"
-          bind:checked={currentPreferences.autoSync}
-          on:input={handleInput}
-          class="form-checkbox"
-        />
-        <span>Auto-sync Settings</span>
-      </label>
-      <div class="help-text">Automatically sync settings across devices (when available)</div>
-    </div> -->
-
-    <!-- No settings currently available - placeholder message -->
-    <div class="placeholder-message">
-      <p>General preferences will be available in a future update.</p>
-      <p class="placeholder-note">This section is reserved for user preferences such as theme, telemetry, and cross-device sync.</p>
-    </div>
-
-    <!-- Save Button - HIDDEN (no settings to save) -->
-    <!-- <div class="button-group">
-      <button
-        class="btn btn-primary"
-        on:click={handleSave}
-        disabled={!isDirty || isSaving}
-      >
-        {isSaving ? 'Saving...' : 'Save Settings'}
-      </button>
-    </div> -->
-
-    <!-- Save Message - HIDDEN (no settings to save) -->
-    <!-- {#if saveMessage}
+    <!-- Save Message -->
+    {#if saveMessage}
       <div class="message {saveMessageType}">
         {#if saveMessageType === 'success'}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -162,7 +249,7 @@
         {/if}
         {saveMessage}
       </div>
-    {/if} -->
+    {/if}
   </div>
 </div>
 
@@ -199,9 +286,23 @@
 
   .settings-form {
     max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .settings-card {
+    background: var(--browserx-surface);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--browserx-border);
   }
 
   .form-group {
+    margin-bottom: 0;
+  }
+
+  .form-group:not(:last-child) {
     margin-bottom: 1.5rem;
   }
 
@@ -253,32 +354,47 @@
     line-height: 1.4;
   }
 
-  .button-group {
-    margin-top: 2rem;
+  .language-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--browserx-text-secondary);
+    background: color-mix(in srgb, var(--browserx-primary) 5%, transparent);
+    border-radius: 0.375rem;
+    border-left: 3px solid var(--browserx-primary);
   }
 
-  .btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
+  .language-note svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .switch-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .switch-title {
+    font-size: 0.9375rem;
     font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
+    color: var(--browserx-text);
   }
 
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 90%, black);
+  .switch-description {
+    font-size: 0.8125rem;
+    color: var(--browserx-text-secondary);
+    line-height: 1.4;
   }
 
   .message {
@@ -319,5 +435,123 @@
   .placeholder-note {
     color: var(--browserx-text-secondary);
     font-size: 0.8125rem;
+  }
+
+  /* Theme Option Styles */
+  .theme-options {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .theme-option {
+    flex: 1;
+    position: relative;
+    cursor: pointer;
+    border: 2px solid var(--browserx-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .theme-option:hover {
+    border-color: var(--browserx-primary);
+  }
+
+  .theme-option.selected {
+    border-color: var(--browserx-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 20%, transparent);
+  }
+
+  .theme-radio {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .theme-option-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .theme-option-preview {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+  }
+
+  .theme-option-preview.terminal {
+    background-color: #000000;
+  }
+
+  .theme-option-preview.chatgpt {
+    background-color: #f7f7f8;
+  }
+
+  .preview-terminal {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    color: #00ff00;
+  }
+
+  .preview-prompt {
+    margin-right: 0.25rem;
+  }
+
+  .preview-text {
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  .preview-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+
+  .preview-bubble {
+    height: 12px;
+    border-radius: 0.75rem;
+  }
+
+  .preview-bubble.user {
+    width: 60%;
+    align-self: flex-end;
+    background-color: #60a5fa;
+  }
+
+  .preview-bubble.agent {
+    width: 80%;
+    align-self: flex-start;
+    background-color: #e5e5e5;
+  }
+
+  .theme-option-info {
+    padding: 0.75rem;
+    background: var(--browserx-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .theme-option-label {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--browserx-text);
+  }
+
+  .theme-option-desc {
+    font-size: 0.75rem;
+    color: var(--browserx-text-secondary);
+    line-height: 1.4;
   }
 </style>

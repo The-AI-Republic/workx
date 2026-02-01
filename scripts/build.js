@@ -119,6 +119,34 @@ function build() {
       log('  ✓ Copied prompts directory', colors.green);
     }
 
+    // Extract i18n translation keys
+    log('\n🌐 Extracting i18n translations...', colors.yellow);
+    const { extractI18n } = require('./extract-i18n.js');
+    extractI18n();
+
+    // Copy _locales directory (required for i18n)
+    const localesPath = path.join(__dirname, '..', '_locales');
+    if (fs.existsSync(localesPath)) {
+      log('\n🌍 Copying locale files...', colors.yellow);
+      const localesDest = path.join(distPath, '_locales');
+
+      function copyRecursive(src, dest) {
+        fs.mkdirSync(dest, { recursive: true });
+        fs.readdirSync(src, { withFileTypes: true }).forEach(entry => {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+          if (entry.isDirectory()) {
+            copyRecursive(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        });
+      }
+
+      copyRecursive(localesPath, localesDest);
+      log('  ✓ Copied _locales directory', colors.green);
+    }
+
     // Create placeholder icons if they don't exist
     const iconsDest = path.join(distPath, 'icons');
     if (!fs.existsSync(iconsDest)) {

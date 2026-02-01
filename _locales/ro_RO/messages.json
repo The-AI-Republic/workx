@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Agent AI general în browser pentru sarcini de lucru"
+  },
+  "API_Key_Configuration": {
+    "message": "Configurare cheie API"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Cheile API sunt criptate și stocate local în browserul tău. Nu sunt niciodată trimise către servere externe, cu excepția apelurilor API."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Acces la stocarea browserului (localStorage, sessionStorage, cookie-uri)"
+  },
+  "Action": {
+    "message": "Acțiune"
+  },
+  "Action_Details": {
+    "message": "Detalii acțiune"
+  },
+  "Add_Modification": {
+    "message": "Adaugă modificare"
+  },
+  "Advanced_Configuration": {
+    "message": "Configurare avansată"
+  },
+  "Advanced_Options": {
+    "message": "Opțiuni avansate"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Instrumente de execuție pentru agent"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Permite agentului să execute comenzi de sistem (folosiți cu prudență)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Permite agentului să citească, să scrie și să gestioneze fișiere (va veni în viitoarea actualizare)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Permite rularea scripturilor de conținut pe paginile web"
+  },
+  "Allowed_Origins": {
+    "message": "Origini autorizate"
+  },
+  "Approval_History": {
+    "message": "Istoric aprobare"
+  },
+  "Approve": {
+    "message": "Aprobă"
+  },
+  "Approve_this_action": {
+    "message": "Aprobă această acțiune"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Solicită Browserx să extragă date structurate din orice pagină web"
+  },
+  "Available": {
+    "message": "Disponibil:"
+  },
+  "Back": {
+    "message": "Înapoi"
+  },
+  "Backend_Mode": {
+    "message": "Mod backend"
+  },
+  "Backend_Mode_Active": {
+    "message": "Mod backend activ"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Instrumente browser"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Comutatoare pentru automatizarea browserului"
+  },
+  "Cache_Settings": {
+    "message": "Setări cache"
+  },
+  "Cache_TTL_seconds": {
+    "message": "TTL cache (secunde)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Comportamentul cache și reținerea datelor"
+  },
+  "Cancel": {
+    "message": "Anulare"
+  },
+  "Chat_History": {
+    "message": "Istoric chat"
+  },
+  "Choose_AI_Model": {
+    "message": "Alege modelul AI"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Alege stilul vizual pentru interfața panoului lateral"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Alege canalul de actualizare de urmat"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Stil clasic de terminal cu text verde pe fundal negru"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Interfață de chat curată și modernă, similară cu ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Fă clic pe pictograma Browserx din bara de instrumente sau apasă Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Fă clic pentru a selecta un model"
+  },
+  "Close_settings": {
+    "message": "Închide setările"
+  },
+  "Command": {
+    "message": "Comandă"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Comprimă datele în cache pentru a economisi spațiu de stocare"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Configurează modelul AI și cheile API"
+  },
+  "Connected": {
+    "message": "Conectat"
+  },
+  "Context": {
+    "message": "Context"
+  },
+  "Create_New_Tab": {
+    "message": "Creează filă nouă"
+  },
+  "Credit_Details": {
+    "message": "Detalii credit"
+  },
+  "Current_Plan": {
+    "message": "Plan curent:"
+  },
+  "DOM_Tool": {
+    "message": "Instrument DOM"
+  },
+  "Daily_Credits": {
+    "message": "Credite zilnice"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Instrument de extragere a datelor"
+  },
+  "Days_until_expiration": {
+    "message": "Zile până la expirare"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Dezvoltat și susținut de AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Renunță la modificări"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Afișează consumul de tokeni (tokeni de intrare/ieșire) la finalizarea sarcinilor"
+  },
+  "Enable_All_Tools": {
+    "message": "Activează toate instrumentele"
+  },
+  "Enable_Cache": {
+    "message": "Activează cache-ul"
+  },
+  "Enable_Compression": {
+    "message": "Activează compresia"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Activează scripturile de conținut"
+  },
+  "Enable_Extension": {
+    "message": "Activează extensia"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Activează integrarea instrumentelor Model Context Protocol (va veni în viitoarea actualizare)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Activează caching-ul pentru a îmbunătăți performanța prin stocarea datelor accesate frecvent"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Activează căutarea web pentru agent"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Introduceți cheia API LLM"
+  },
+  "Execute_Commands": {
+    "message": "Execută comenzi"
+  },
+  "Expire_after_days": {
+    "message": "Expiră după zile"
+  },
+  "Explain_your_decision": {
+    "message": "Explicați decizia..."
+  },
+  "Extension_Permission": {
+    "message": "Extensie și permisiuni"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Setări pentru extensie și permisiuni"
+  },
+  "Extension_Configuration": {
+    "message": "Configurare extensie"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Configurarea extensiei și permisiunile"
+  },
+  "Extra_Credits": {
+    "message": "Credite suplimentare"
+  },
+  "Extract_Data": {
+    "message": "Extrage date:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Extrage modele specifice de date din pagini"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Extrage date structurate din pagini web"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Încărcarea preferințelor a eșuat"
+  },
+  "Failed_to_save_settings": {
+    "message": "Salvarea setărilor a eșuat"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Operații cu fișiere (Indisponibil)"
+  },
+  "File_Path": {
+    "message": "Cale fișier"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Completează formulare, trimite date, interacționează cu elementele formularului"
+  },
+  "Form_Automation_Tool": {
+    "message": "Instrument de automatizare a formularelor"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Acces complet (Periculos)"
+  },
+  "General": {
+    "message": "General"
+  },
+  "General_Settings": {
+    "message": "Setări generale"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Începeți"
+  },
+  "Hello_NAME": {
+    "message": "Salut $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Salut lume"
+  },
+  "History": {
+    "message": "Istoric"
+  },
+  "Impact": {
+    "message": "Impact"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Interceptă și modifică cererile/răspunsurile de rețea"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Scurtături de tastatură"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Cererile LLM merg direct la API-urile furnizorului"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Cererile LLM trec prin backend-ul AI Republic"
+  },
+  "Language": {
+    "message": "Limba"
+  },
+  "Learn_more": {
+    "message": "Află mai multe"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Listă de origini permise (câte una pe linie). Suportă wildcard-uri (*)"
+  },
+  "Loading_credits": {
+    "message": "Se încarcă creditele..."
+  },
+  "Loading_settings": {
+    "message": "Se încarcă setările..."
+  },
+  "Login": {
+    "message": "Autentificare"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Autentificați-vă pentru a obține credite gratuite"
+  },
+  "Low_credits_remaining": {
+    "message": "Credite aproape epuizate"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "Instrumente MCP (Indisponibile)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Gestionare file de browser (deschidere, închidere, comutare, interogare)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Comutator principal pentru a activa sau dezactiva toate instrumentele browserului și ale agentului"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Comutator principal pentru a activa sau dezactiva extensia"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Dimensiune maximă a cache-ului (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Dimensiunea maximă a cache-ului în megabytes (implicit: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Timp maxim (în milisecunde) în care un instrument poate rula înainte de timeout (implicit: 30000)"
+  },
+  "Model_Config": {
+    "message": "Configurare model"
+  },
+  "Model_Selection": {
+    "message": "Selectare model"
+  },
+  "Modern_Chat": {
+    "message": "Chat modern"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Modifică parametrii la solicitarea de modificări"
+  },
+  "Monthly_Credits": {
+    "message": "Credite lunare"
+  },
+  "More_Config": {
+    "message": "Configurare suplimentară"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navigare pagini, clic pe linkuri, gestionare navigare în browser"
+  },
+  "Navigation_Tool": {
+    "message": "Instrument de navigare"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Instrument de interceptare a rețelei"
+  },
+  "Never_expire_permanent": {
+    "message": "Nu expiră niciodată (permanent)"
+  },
+  "New_Conversation": {
+    "message": "Conversație nouă"
+  },
+  "No_approval_history_yet": {
+    "message": "Încă nu există istoric de aprobare."
+  },
+  "No_tabs_available": {
+    "message": "Nu există file disponibile"
+  },
+  "Not_Connected": {
+    "message": "Neconectat"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Număr de zile înainte ca datele de lansare să expire (implicit: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Deschide panoul lateral:"
+  },
+  "Organization": {
+    "message": "Organizație"
+  },
+  "Page_Action_Tool": {
+    "message": "Instrument de acțiune pe pagină"
+  },
+  "Page_Vision_Tool": {
+    "message": "Instrument de viziune a paginii"
+  },
+  "Parameter_Modifications": {
+    "message": "Modificări de parametri"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Execută acțiuni pe pagină (derulare, captură de ecran, așteptare)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Persistă cache-ul în stocare"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Introduceți o cheie API validă."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Introduceți o comandă validă"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Nivelul prioritar oferă timpi de răspuns mai rapizi, cu prețuri mai mari."
+  },
+  "Provider": {
+    "message": "Furnizor"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Interoghează și manipulează DOM-ul (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Start rapid"
+  },
+  "Quick_action": {
+    "message": "Acțiune rapidă"
+  },
+  "Read_only": {
+    "message": "Doar citire"
+  },
+  "Reason_optional": {
+    "message": "Motiv (opțional)"
+  },
+  "Refreshes_in": {
+    "message": "Se reîmprospătează în"
+  },
+  "Reject": {
+    "message": "Respinge"
+  },
+  "Reject_this_action": {
+    "message": "Respinge această acțiune"
+  },
+  "Remaining": {
+    "message": "Rămase:"
+  },
+  "Remove_API_Key": {
+    "message": "Elimină cheia API"
+  },
+  "Remove_modification": {
+    "message": "Elimină modificarea"
+  },
+  "Request_Changes": {
+    "message": "Solicită modificări"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Solicită modificări pentru această acțiune"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Fă clic dreapta pe orice text pentru a-l explica sau îmbunătăți cu Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Expirarea fazei de lansare"
+  },
+  "Sandbox_Policy": {
+    "message": "Politica Sandbox"
+  },
+  "Save_API_Key": {
+    "message": "Salvează cheia API"
+  },
+  "Save_Settings": {
+    "message": "Salvează setările"
+  },
+  "Saving": {
+    "message": "Se salvează..."
+  },
+  "Security_Privacy": {
+    "message": "Securitate și confidențialitate"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Nivel de securitate pentru mediul de execuție al unui instrument"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Selectați modelul AI de utilizat pentru conversații."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Selectați limba preferată pentru interfață"
+  },
+  "Send_the_message": {
+    "message": "Trimite mesajul"
+  },
+  "Service_Tier": {
+    "message": "Nivel de serviciu"
+  },
+  "Session": {
+    "message": "Sesiune"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Stabilește când datele din faza de lansare ar trebui să expire"
+  },
+  "Settings": {
+    "message": "Setări"
+  },
+  "Settings_saved_successfully": {
+    "message": "Setările au fost salvate cu succes"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Afișează utilizarea token-urilor în sarcini"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Afișează avertisment când utilizarea stocării depășește acest procent (implicit: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Conectează-te la contul tău"
+  },
+  "Stable": {
+    "message": "Stabil"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Oprește rularea curentă a sarcinii"
+  },
+  "Storage_Cache": {
+    "message": "Stocare și Cache"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Setări de Stocare și Cache"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Avertisment pentru cotă de stocare (%)"
+  },
+  "Storage_Settings": {
+    "message": "Setări de stocare"
+  },
+  "Storage_Tool": {
+    "message": "Unealtă de Stocare"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Stochează datele cache în mod persistent între sesiunile browserului"
+  },
+  "Tab_Tool": {
+    "message": "Instrument de file"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Testează conexiunea"
+  },
+  "Testing": {
+    "message": "Se testează..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Agentul folosește în prezent modul backend. Cererile LLM vor fi direcționate prin serverul AI Republic. Conversațiile tale sunt procesate în mod securizat prin infrastructura noastră."
+  },
+  "Time": {
+    "message": "Timp"
+  },
+  "Time_remaining": {
+    "message": "Timp rămas"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Timpul de viață pentru elementele cache, în secunde (implicit: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Comută panoul lateral"
+  },
+  "Tool": {
+    "message": "Instrument"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Timeout instrument (ms)"
+  },
+  "Tools": {
+    "message": "Instrumente"
+  },
+  "Tools_Settings": {
+    "message": "Setări instrumente"
+  },
+  "Turn": {
+    "message": "Întoarce"
+  },
+  "UI_Theme": {
+    "message": "Temă UI"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Nu s-a putut încărca informațiile despre credit"
+  },
+  "Unsaved_Changes": {
+    "message": "Modificări nesalvate"
+  },
+  "Update_Channel": {
+    "message": "Canal de actualizare"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Actualizează planul meu"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Actualizează la Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Actualizează abonamentul pentru a explora cele mai puternice modele din lume"
+  },
+  "Use_Context_Menu": {
+    "message": "Folosește meniul contextual:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Folosește propria cheie API"
+  },
+  "User_Center": {
+    "message": "Centru utilizator"
+  },
+  "User_approved_action": {
+    "message": "Acțiune aprobată de utilizator"
+  },
+  "User_decision": {
+    "message": "Decizia utilizatorului"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Preferințele utilizatorului și setările interfeței"
+  },
+  "User_rejected_action": {
+    "message": "Acțiune respinsă de utilizator"
+  },
+  "User_requested_modifications": {
+    "message": "Modificări solicitate de utilizator"
+  },
+  "Using_extra_credits": {
+    "message": "Utilizarea creditelor suplimentare"
+  },
+  "View_Chat_History": {
+    "message": "Vizualizează istoricul conversațiilor"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Analiză vizuală a conținutului și aspectului paginii"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Instrument de scraping web"
+  },
+  "Web_Search": {
+    "message": "Căutare pe web"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Bine ați venit la Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Scriere în spațiul de lucru"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Aveți modificări nesalvate. Doriți să le renunțați?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Asistentul dumneavoastră de browser, alimentat de AI, este gata să vă ajute să navigați, să înțelegeți și să interacționați cu conținutul web."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Cheia dvs. API este criptată"
+  },
+  "Your_Decision": {
+    "message": "Decizia dvs."
+  }
+}

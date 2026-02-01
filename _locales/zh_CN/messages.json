@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "用于工作任务的通用浏览器内 AI 智能体"
+  },
+  "API_Key_Configuration": {
+    "message": "API 密钥配置"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API 密钥在浏览器中加密并本地存储。除 API 调用外，它们绝不会发送到外部服务器。"
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "访问浏览器存储（localStorage、sessionStorage、cookies）"
+  },
+  "Action": {
+    "message": "操作"
+  },
+  "Action_Details": {
+    "message": "操作详情"
+  },
+  "Add_Modification": {
+    "message": "添加修改"
+  },
+  "Advanced_Configuration": {
+    "message": "高级设置"
+  },
+  "Advanced_Options": {
+    "message": "高级选项"
+  },
+  "Agent_Execution_Tools": {
+    "message": "智能体执行工具"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "允许代理执行系统命令（请谨慎使用）"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "允许代理读取、写入和管理文件（将在后续更新中提供）"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "允许内容脚本在网页上运行"
+  },
+  "Allowed_Origins": {
+    "message": "允许的来源"
+  },
+  "Approval_History": {
+    "message": "审批历史"
+  },
+  "Approve": {
+    "message": "批准"
+  },
+  "Approve_this_action": {
+    "message": "批准此操作"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "请求 Browserx 从任意网页提取结构化数据"
+  },
+  "Available": {
+    "message": "可用："
+  },
+  "Back": {
+    "message": "返回"
+  },
+  "Backend_Mode": {
+    "message": "后端模式"
+  },
+  "Backend_Mode_Active": {
+    "message": "后端模式已激活"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "浏览器工具"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "浏览器自动化工具切换"
+  },
+  "Cache_Settings": {
+    "message": "缓存设置"
+  },
+  "Cache_TTL_seconds": {
+    "message": "缓存 TTL（秒）"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "缓存行为和数据保留"
+  },
+  "Cancel": {
+    "message": "取消"
+  },
+  "Chat_History": {
+    "message": "聊天记录"
+  },
+  "Choose_AI_Model": {
+    "message": "选择 AI 模型"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "选择侧边面板界面的视觉风格"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "选择要跟随的更新渠道"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "经典终端风格，绿色文字黑色背景"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "简洁、现代的聊天界面，类似 ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "点击工具栏中的 Browserx 图标或按 Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "点击以选择模型"
+  },
+  "Close_settings": {
+    "message": "关闭设置"
+  },
+  "Command": {
+    "message": "命令"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "压缩缓存数据以节省存储空间"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "配置 AI 模型和 API 密钥"
+  },
+  "Connected": {
+    "message": "已连接"
+  },
+  "Context": {
+    "message": "上下文"
+  },
+  "Create_New_Tab": {
+    "message": "新建标签页"
+  },
+  "Credit_Details": {
+    "message": "积分详情"
+  },
+  "Current_Plan": {
+    "message": "当前套餐："
+  },
+  "DOM_Tool": {
+    "message": "DOM 工具"
+  },
+  "Daily_Credits": {
+    "message": "每日积分"
+  },
+  "Data_Extraction_Tool": {
+    "message": "数据提取工具"
+  },
+  "Days_until_expiration": {
+    "message": "距到期天数"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "由 AI Republic 开发并提供支持"
+  },
+  "Discard_Changes": {
+    "message": "放弃更改"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "任务完成时显示令牌消耗（输入/输出令牌）"
+  },
+  "Enable_All_Tools": {
+    "message": "启用所有工具"
+  },
+  "Enable_Cache": {
+    "message": "启用缓存"
+  },
+  "Enable_Compression": {
+    "message": "启用压缩"
+  },
+  "Enable_Content_Scripts": {
+    "message": "启用内容脚本"
+  },
+  "Enable_Extension": {
+    "message": "启用扩展"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "启用模型上下文协议工具集成（将在后续更新中提供）"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "启用缓存，通过存储常访问数据提升性能"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "为代理启用网络搜索功能"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "输入您的 LLM API 密钥"
+  },
+  "Execute_Commands": {
+    "message": "执行命令"
+  },
+  "Expire_after_days": {
+    "message": "过期天数"
+  },
+  "Explain_your_decision": {
+    "message": "解释您的决定..."
+  },
+  "Extension_Permission": {
+    "message": "扩展与权限"
+  },
+  "Extension_Permission_Settings": {
+    "message": "扩展与权限设置"
+  },
+  "Extension_Configuration": {
+    "message": "扩展配置"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "扩展配置和权限"
+  },
+  "Extra_Credits": {
+    "message": "额外积分"
+  },
+  "Extract_Data": {
+    "message": "提取数据："
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "从页面中提取特定数据模式"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "从网页中提取结构化数据"
+  },
+  "Failed_to_load_preferences": {
+    "message": "加载首选项失败"
+  },
+  "Failed_to_save_settings": {
+    "message": "保存设置失败"
+  },
+  "File_Operations_Not_Available": {
+    "message": "文件操作（不可用）"
+  },
+  "File_Path": {
+    "message": "文件路径"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "填写表单、提交数据、与表单元素交互"
+  },
+  "Form_Automation_Tool": {
+    "message": "表单自动化工具"
+  },
+  "Full_Access_Dangerous": {
+    "message": "完全访问（危险）"
+  },
+  "General": {
+    "message": "通用"
+  },
+  "General_Settings": {
+    "message": "通用设置"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "开始使用"
+  },
+  "Hello_NAME": {
+    "message": "你好 $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "你好，世界"
+  },
+  "History": {
+    "message": "历史"
+  },
+  "Impact": {
+    "message": "影响"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "拦截并修改网络请求/响应"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "键盘快捷键"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM 请求直接发送至提供商 API"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM 请求通过 AI Republic 后端路由"
+  },
+  "Language": {
+    "message": "语言"
+  },
+  "Learn_more": {
+    "message": "了解更多"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "允许的来源列表（每行一个）。支持通配符 (*)。"
+  },
+  "Loading_credits": {
+    "message": "加载积分..."
+  },
+  "Loading_settings": {
+    "message": "加载设置..."
+  },
+  "Login": {
+    "message": "登录"
+  },
+  "Login_to_get_free_credits": {
+    "message": "登录获取免费积分"
+  },
+  "Low_credits_remaining": {
+    "message": "剩余积分较少"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP 工具（不可用）"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "管理浏览器标签页（打开、关闭、切换、查询）"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "主开关：启用或禁用所有浏览器和代理工具"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "主开关：启用或禁用扩展"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "最大缓存大小（MB）"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "最大缓存大小（单位：兆字节，默认：100）"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "工具运行超时的最长时间（单位：毫秒，默认：30000）"
+  },
+  "Model_Config": {
+    "message": "模型配置"
+  },
+  "Model_Selection": {
+    "message": "模型选择"
+  },
+  "Modern_Chat": {
+    "message": "现代聊天"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "请求更改时，修改相关参数"
+  },
+  "Monthly_Credits": {
+    "message": "每月积分"
+  },
+  "More_Config": {
+    "message": "更多配置"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "页面导航，点击链接，处理导航"
+  },
+  "Navigation_Tool": {
+    "message": "导航工具"
+  },
+  "Network_Intercept_Tool": {
+    "message": "网络拦截工具"
+  },
+  "Never_expire_permanent": {
+    "message": "永不过期（永久）"
+  },
+  "New_Conversation": {
+    "message": "新会话"
+  },
+  "No_approval_history_yet": {
+    "message": "暂无审批记录。"
+  },
+  "No_tabs_available": {
+    "message": "暂无可用标签页"
+  },
+  "Not_Connected": {
+    "message": "未连接"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "数据过期前的天数（默认：60）"
+  },
+  "Open_Side_Panel": {
+    "message": "打开侧边栏："
+  },
+  "Organization": {
+    "message": "组织"
+  },
+  "Page_Action_Tool": {
+    "message": "页面操作工具"
+  },
+  "Page_Vision_Tool": {
+    "message": "页面视觉工具"
+  },
+  "Parameter_Modifications": {
+    "message": "参数修改"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "执行页面操作（滚动、截图、等待）"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "将缓存持久化到存储"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "请输入有效的 API 密钥。"
+  },
+  "Please_type_a_valid_command": {
+    "message": "请输入有效的命令"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "优先级层提供更快的响应时间，但价格更高。"
+  },
+  "Provider": {
+    "message": "提供商"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "查询并操作 DOM（文档对象模型）"
+  },
+  "Quick_Start": {
+    "message": "快速入门"
+  },
+  "Quick_action": {
+    "message": "快速操作"
+  },
+  "Read_only": {
+    "message": "只读"
+  },
+  "Reason_optional": {
+    "message": "原因（可选）"
+  },
+  "Refreshes_in": {
+    "message": "刷新于"
+  },
+  "Reject": {
+    "message": "拒绝"
+  },
+  "Reject_this_action": {
+    "message": "拒绝此操作"
+  },
+  "Remaining": {
+    "message": "剩余："
+  },
+  "Remove_API_Key": {
+    "message": "移除 API Key"
+  },
+  "Remove_modification": {
+    "message": "移除修改"
+  },
+  "Request_Changes": {
+    "message": "请求更改"
+  },
+  "Request_changes_to_this_action": {
+    "message": "请求对该操作进行更改"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "右键单击任意文本，以使用 Browserx 进行解释或改进"
+  },
+  "Rollout_Expiration": {
+    "message": "设置发布过期时间"
+  },
+  "Sandbox_Policy": {
+    "message": "沙盒策略"
+  },
+  "Save_API_Key": {
+    "message": "保存 API Key"
+  },
+  "Save_Settings": {
+    "message": "保存设置"
+  },
+  "Saving": {
+    "message": "保存中..."
+  },
+  "Security_Privacy": {
+    "message": "安全与隐私"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "工具执行环境的安全级别"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "选择用于对话的 AI 模型。"
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "选择界面的首选语言"
+  },
+  "Send_the_message": {
+    "message": "发送消息"
+  },
+  "Service_Tier": {
+    "message": "服务级别"
+  },
+  "Session": {
+    "message": "会话"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "设置发布数据的过期时间"
+  },
+  "Settings": {
+    "message": "设置"
+  },
+  "Settings_saved_successfully": {
+    "message": "设置已成功保存"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "在任务中显示令牌使用情况"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "当存储使用量超过此百分比时显示警告（默认：90%）"
+  },
+  "Sign_in_to_your_account": {
+    "message": "登录您的账户"
+  },
+  "Stable": {
+    "message": "稳定"
+  },
+  "Stop_the_current_task_run": {
+    "message": "停止当前任务运行"
+  },
+  "Storage_Cache": {
+    "message": "存储与缓存"
+  },
+  "Storage_Cache_Settings": {
+    "message": "存储与缓存设置"
+  },
+  "Storage_Quota_Warning": {
+    "message": "存储配额警告（%）"
+  },
+  "Storage_Settings": {
+    "message": "存储设置"
+  },
+  "Storage_Tool": {
+    "message": "存储工具"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "在浏览器会话之间持久存储缓存数据"
+  },
+  "Tab_Tool": {
+    "message": "标签页工具"
+  },
+  "Terminal": {
+    "message": "终端"
+  },
+  "Test_Connection": {
+    "message": "测试连接"
+  },
+  "Testing": {
+    "message": "测试中…"
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "代理当前正使用后端模式。LLM 请求将通过 AI Republic 服务器路由。您的对话将通过我们的基础设施安全处理。"
+  },
+  "Time": {
+    "message": "时间"
+  },
+  "Time_remaining": {
+    "message": "剩余时间"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "缓存项的生存时间（秒）（默认：3600）"
+  },
+  "Toggle_side_panel": {
+    "message": "切换侧边栏"
+  },
+  "Tool": {
+    "message": "工具"
+  },
+  "Tool_Timeout_ms": {
+    "message": "工具超时（ms）"
+  },
+  "Tools": {
+    "message": "工具"
+  },
+  "Tools_Settings": {
+    "message": "工具设置"
+  },
+  "Turn": {
+    "message": "切换"
+  },
+  "UI_Theme": {
+    "message": "UI 主题"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "无法加载信用信息"
+  },
+  "Unsaved_Changes": {
+    "message": "未保存的更改"
+  },
+  "Update_Channel": {
+    "message": "更新渠道"
+  },
+  "Upgrade_My_Plan": {
+    "message": "升级我的套餐"
+  },
+  "Upgrade_to_Premium": {
+    "message": "升级至高级版"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "升级订阅以探索全球最强大的模型"
+  },
+  "Use_Context_Menu": {
+    "message": "使用上下文菜单:"
+  },
+  "Use_Own_API_Key": {
+    "message": "使用自定义 API 密钥"
+  },
+  "User_Center": {
+    "message": "用户中心"
+  },
+  "User_approved_action": {
+    "message": "用户已批准的操作"
+  },
+  "User_decision": {
+    "message": "用户决定"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "用户偏好和界面设置"
+  },
+  "User_rejected_action": {
+    "message": "用户已拒绝的操作"
+  },
+  "User_requested_modifications": {
+    "message": "用户请求的修改"
+  },
+  "Using_extra_credits": {
+    "message": "使用额外额度"
+  },
+  "View_Chat_History": {
+    "message": "查看聊天记录"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "页面内容和布局的可视化分析"
+  },
+  "Web_Scraping_Tool": {
+    "message": "网页抓取工具"
+  },
+  "Web_Search": {
+    "message": "网页搜索"
+  },
+  "Welcome_to_Browserx": {
+    "message": "欢迎使用 Browserx"
+  },
+  "Workspace_Write": {
+    "message": "工作区写入"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "您有未保存的更改。是否要放弃它们？"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "您的 AI 驱动的浏览器助手已准备好帮助您浏览、理解并与网页内容交互。"
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "您的 API 密钥已加密"
+  },
+  "Your_Decision": {
+    "message": "您的决定"
+  }
+}

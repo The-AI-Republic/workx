@@ -1,6 +1,6 @@
 /**
  * OpenAI Chat Completion API client implementation for browserx-chrome
- * Uses official OpenAI SDK for Chat Completions API calls (supports OpenAI-compatible providers)
+ * Uses official OpenAI SDK for Chat Completions API calls (supports compatible providers)
  */
 
 import OpenAI from 'openai';
@@ -18,7 +18,6 @@ import type {
 } from '../types/ResponsesAPI';
 import type { TokenUsage } from '../types/TokenUsage';
 import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
-import { GeminiLogger } from '../../utils/logger';
 import { OpenAIResponsesClient } from './OpenAIResponsesClient';
 
 import type { IModelConfig } from '../../config/types';
@@ -41,11 +40,13 @@ export interface OpenAIChatCompletionConfig {
   provider: ModelProviderInfo;
   /** Model configuration from AgentConfig */
   modelConfig?: IModelConfig;
+  /** Use credentials (cookies) for authentication - for backend routing */
+  useCredentials?: boolean;
 }
 
 /**
  * OpenAI Chat Completion API client using official OpenAI SDK
- * Supports OpenAI and OpenAI-compatible providers (e.g., Google AI Studio for Gemini)
+ * Supports OpenAI and compatible providers
  * Extends OpenAIResponsesClient to reuse common functionality
  */
 export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
@@ -59,8 +60,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       name: string;
       arguments: string;
     };
-    /** Gemini thought signature for maintaining reasoning context across turns */
-    thoughtSignature?: string;
   }> = new Map();
 
   // Text content accumulator for Chat Completions API
@@ -85,26 +84,64 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       modelFamily: config.modelFamily,
       provider: config.provider,
       modelConfig: config.modelConfig,
+      useCredentials: config.useCredentials,
     }, retryConfig);
 
-    // Gemini through Google AI Studio expects API key via `key` query param / X-Goog-Api-Key header.
-    // Re-initialize client with custom headers if needed
-    if (!config.provider.requires_openai_auth && config.apiKey) {
+    // Backend routing: rewrite /chat/completions to /completions
+    if (config.useCredentials) {
+      const customFetch = async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        let urlObj: URL;
+
+        // Robustly convert to URL object
+        if (url instanceof URL) {
+          urlObj = new URL(url.href);
+        } else if (typeof Request !== 'undefined' && url instanceof Request) {
+          urlObj = new URL(url.url);
+        } else {
+          urlObj = new URL(String(url));
+        }
+
+        // Remove the dummy API key that we injected
+        urlObj.searchParams.delete('key');
+
+        const fetchInit = { ...init, credentials: 'include' as RequestCredentials };
+        const response = await fetch(urlObj.toString(), fetchInit);
+
+        if (!response.ok) {
+          const clonedResponse = response.clone();
+          try {
+            const body = await clonedResponse.text();
+            if (body) {
+              const errorData = JSON.parse(body);
+              if (errorData.detail && !errorData.error) {
+                const transformedBody = JSON.stringify({
+                  error: {
+                    message: errorData.detail,
+                    type: 'api_error',
+                    code: response.status.toString(),
+                  },
+                });
+                return new Response(transformedBody, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers,
+                });
+              }
+            }
+          } catch {
+            // If we can't parse the body, let the original response through
+          }
+        }
+        return response;
+      };
+
       this.client = new OpenAI({
-        apiKey: config.apiKey || 'dummy-key',
-        baseURL: this.baseUrl,
-        organization: this.organization,
+        apiKey: 'backend-routed',
+        baseURL: this.baseUrl ? `${this.baseUrl.replace(/\/+$/, '')}` : this.baseUrl,
         dangerouslyAllowBrowser: true,
         timeout: 360000,
         maxRetries: 0,
-        defaultHeaders: {
-          ...(config.provider.http_headers || {}),
-          'X-Goog-Api-Key': config.apiKey,
-        },
-        defaultQuery: {
-          ...(config.provider.query_params || {}),
-          key: config.apiKey,
-        },
+        fetch: customFetch,
       });
     }
   }
@@ -335,14 +372,8 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
 
       // Flush any pending events after stream ends
       // (e.g., Completed event queued after OutputItemDone for tool calls)
-      const pendingCount = this.pendingEvents.length;
-      if (pendingCount > 0) {
-        GeminiLogger.debug('Flushing pending events', { count: pendingCount });
-      }
-
       while (this.pendingEvents.length > 0) {
         const pendingEvent = this.pendingEvents.shift()!;
-        GeminiLogger.debug('Flushing event', { type: pendingEvent.type });
         stream.addEvent(pendingEvent);
 
         // Track if we've emitted Completed
@@ -354,21 +385,13 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       // Safety check: ensure Completed event is always emitted
       // This prevents "stream closed before response.completed" errors
       if (!completedEmitted) {
-        // GEMINI BUG FIX: Gemini 2.5 Pro may send [DONE] without finish_reason
-        // If we have accumulated content or tool_calls, emit them as OutputItemDone
+        // Fallback: If we have accumulated content or tool_calls, emit them as OutputItemDone
         // before emitting the Completed event
         const hasAccumulatedContent = this.chatCompletionTextContent.length > 0;
         const hasAccumulatedToolCalls = this.chatCompletionToolCalls.size > 0;
         const hasAccumulatedReasoning = this.chatCompletionReasoningContent.length > 0;
 
         if (hasAccumulatedContent || hasAccumulatedToolCalls || hasAccumulatedReasoning) {
-          GeminiLogger.debug('Flushing accumulated content before fallback Completed', {
-            hasContent: hasAccumulatedContent,
-            hasToolCalls: hasAccumulatedToolCalls,
-            hasReasoning: hasAccumulatedReasoning,
-            toolCallCount: this.chatCompletionToolCalls.size,
-          });
-
           // Build content array
           const contentArray: any[] = [];
           if (hasAccumulatedContent) {
@@ -382,10 +405,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
           let toolCallsArray: any[] | undefined;
           if (hasAccumulatedToolCalls) {
             toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
-            GeminiLogger.functionCallItemEmitted(
-              toolCallsArray.length,
-              toolCallsArray.map(tc => tc.function.name)
-            );
           }
 
           // Create unified message item
@@ -417,7 +436,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
           });
         }
 
-        GeminiLogger.debug('Emitting fallback Completed event');
         stream.addEvent({
           type: 'Completed',
           responseId: 'fallback',
@@ -443,7 +461,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     // Check if we have pending events from previous chunk
     if (this.pendingEvents.length > 0) {
       const pendingEvent = this.pendingEvents.shift()!;
-      GeminiLogger.debug('Returning pending event', { type: pendingEvent.type, remaining: this.pendingEvents.length });
       return pendingEvent;
     }
 
@@ -473,10 +490,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
     if (delta?.content) {
       // Accumulate text content for message item creation
       this.chatCompletionTextContent += delta.content;
-
-      // Trace logging for text accumulation
-      GeminiLogger.textAccumulated(delta.content, this.chatCompletionTextContent.length);
-      GeminiLogger.textDelta(delta.content, this.chatCompletionTextContent.length);
 
       // CRITICAL FIX: Only return OutputTextDelta if there's NO finish_reason in this chunk
       // If finish_reason is present, we need to fall through to handle it below
@@ -529,7 +542,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       }
 
       // Don't emit event yet - fall through to check finish_reason in same chunk
-      // (Gemini sends both tool_calls and finish_reason in the same chunk)
       // If there's no finish_reason in this chunk, we'll return null at the end
     }
 
@@ -551,8 +563,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       const hasContent = this.chatCompletionTextContent.length > 0;
       const hasToolCalls = this.chatCompletionToolCalls.size > 0;
 
-      GeminiLogger.finishReason(finishReason, hasContent, hasToolCalls);
-
       // If we have any content (reasoning, text, or tool calls), create a unified message item
       if (hasReasoning || hasContent || hasToolCalls) {
         // Build content array (may be empty if only tool calls)
@@ -572,11 +582,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
           if (toolCallsArray.length > 1) {
             console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but BrowserX uses parallel_tool_calls=false:', toolCallsArray);
           }
-
-          GeminiLogger.functionCallItemEmitted(
-            toolCallsArray.length,
-            toolCallsArray.map(tc => tc.function.name)
-          );
         }
 
         // Create unified message item with all parts
@@ -589,9 +594,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         // Add reasoning_content if present (for Kimi K2, o1, o3)
         if (hasReasoning) {
           messageItem.reasoning_content = this.chatCompletionReasoningContent;
-          GeminiLogger.debug('Including reasoning_content in message item', {
-            reasoningLength: this.chatCompletionReasoningContent.length
-          });
         }
 
         // Add tool_calls if present
@@ -604,14 +606,8 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         this.chatCompletionReasoningContent = '';
         this.chatCompletionToolCalls.clear();
 
-        // Trace logging
-        if (hasContent) {
-          GeminiLogger.messageItemEmitted(this.chatCompletionTextContent.length);
-        }
-
         // Queue Completed event
         this.pendingEvents.push(completedEvent);
-        GeminiLogger.debug('Queued Completed event', { pendingCount: this.pendingEvents.length });
 
         // Return unified message item
         return {
@@ -620,19 +616,12 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         };
       }
 
-      // Empty response - no reasoning, content, or tool calls
-      GeminiLogger.validationWarning(
-        'Empty response detected at finish_reason',
-        { finishReason, responseId: chatEvent.id }
-      );
-
       // Clear state just in case
       this.chatCompletionTextContent = '';
       this.chatCompletionReasoningContent = '';
       this.chatCompletionToolCalls.clear();
 
       // Emit completion event
-      GeminiLogger.completedEmitted(completedEvent.tokenUsage);
       return completedEvent;
     }
 
@@ -654,8 +643,35 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
   }
 
   /**
+   * Normalize tool call arguments to ensure they're always a valid JSON string.
+   * Handles cases where arguments might be undefined, already an object, or invalid.
+   */
+  private normalizeToolCallArguments(args: any): string {
+    // If undefined or null, return empty object JSON
+    if (args === undefined || args === null) {
+      return '{}';
+    }
+    // If already a string, validate it's valid JSON
+    if (typeof args === 'string') {
+      try {
+        JSON.parse(args);
+        return args;
+      } catch {
+        // Invalid JSON string - wrap it as an object
+        console.warn('[OpenAIChatCompletionClient] Invalid JSON in tool call arguments, wrapping:', args);
+        return JSON.stringify({ _raw: args });
+      }
+    }
+    // If an object, stringify it
+    if (typeof args === 'object') {
+      return JSON.stringify(args);
+    }
+    // For any other type, wrap it
+    return JSON.stringify({ _value: args });
+  }
+
+  /**
    * Make streaming request to Chat Completions API
-   * Used for providers that support the OpenAI Chat Completions endpoint (Gemini, etc.)
    * Returns an async iterable stream converted to ResponseEvent format
    */
   protected async makeChatCompletionsRequest(prompt: Prompt): Promise<AsyncIterable<any>> {
@@ -669,8 +685,6 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       this.chatCompletionTextContent = '';
       this.chatCompletionReasoningContent = '';
       this.chatCompletionToolCalls.clear();
-      GeminiLogger.stateReset();
-      GeminiLogger.streamStart(this.currentModel, this.conversationId);
 
       // Convert Prompt to Chat Completions format
       const messages: any[] = [];
@@ -735,7 +749,14 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
             // Add tool_calls if present (unified format)
             // Tool calls are now part of message items, not separate items
             if (item.tool_calls && Array.isArray(item.tool_calls) && item.tool_calls.length > 0) {
-              message.tool_calls = item.tool_calls;
+              // Validate and normalize tool_call arguments to ensure they're valid JSON strings
+              message.tool_calls = item.tool_calls.map((tc: any) => ({
+                ...tc,
+                function: {
+                  ...tc.function,
+                  arguments: this.normalizeToolCallArguments(tc.function?.arguments)
+                }
+              }));
             }
 
             messages.push(message);
@@ -749,7 +770,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
                 type: 'function',
                 function: {
                   name: item.name,
-                  arguments: item.arguments
+                  arguments: this.normalizeToolCallArguments(item.arguments)
                 }
               }]
             });
@@ -804,16 +825,8 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       // The SDK returns a Stream object which is AsyncIterable
       return stream as any as AsyncIterable<any>;
     } catch (error: any) {
-      // Handle SDK errors and convert to ModelClientError
-      const statusCode = error.status || error.statusCode || 500;
-      const errorMessage = error.message || `${this.provider.name} Chat Completions API error`;
-
-      throw new ModelClientError(
-        errorMessage,
-        statusCode,
-        this.provider.name,
-        this.isRetryableHttpError(statusCode)
-      );
+      // Handle SDK errors and convert to ModelClientError with extracted details
+      throw this.toModelClientError(error, `${this.provider.name} Chat Completions API error`);
     }
   }
 

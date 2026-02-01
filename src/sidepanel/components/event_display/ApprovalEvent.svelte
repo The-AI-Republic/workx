@@ -2,7 +2,7 @@
   /**
    * ApprovalEvent - Renders interactive approval requests
    */
-  import type { ProcessedEvent } from '../../../types/ui';
+  import type { ProcessedEvent } from '@/types/ui';
 
   export let event: ProcessedEvent;
 

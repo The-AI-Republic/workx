@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "İş görevleri için genel tarayıcı içi AI ajanı"
+  },
+  "API_Key_Configuration": {
+    "message": "API Anahtar Yapılandırması"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API anahtarları şifrelenir ve tarayıcınızda yerel olarak saklanır. API istekleri dışındaki durumlarda dış sunuculara gönderilmez."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Tarayıcı depolamasına eriş (localStorage, sessionStorage, çerezler)"
+  },
+  "Action": {
+    "message": "Eylem"
+  },
+  "Action_Details": {
+    "message": "Eylem Ayrıntıları"
+  },
+  "Add_Modification": {
+    "message": "Değişiklik Ekle"
+  },
+  "Advanced_Configuration": {
+    "message": "Gelişmiş Yapılandırma"
+  },
+  "Advanced_Options": {
+    "message": "Gelişmiş Seçenekler"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Ajan Yürütme Araçları"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Ajanın sistem komutlarını çalıştırmasına izin ver (dikkatli kullanın)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Ajanın dosyaları okumasına, yazmasına ve yönetmesine izin ver (Gelecek güncellemede)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "İçerik betiklerinin web sayfalarında çalışmasına izin ver"
+  },
+  "Allowed_Origins": {
+    "message": "İzin Verilen Kaynaklar"
+  },
+  "Approval_History": {
+    "message": "Onay Geçmişi"
+  },
+  "Approve": {
+    "message": "Onayla"
+  },
+  "Approve_this_action": {
+    "message": "Bu eylemi onayla"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için Browserx'i kullanın"
+  },
+  "Available": {
+    "message": "Mevcut:"
+  },
+  "Back": {
+    "message": "Geri"
+  },
+  "Backend_Mode": {
+    "message": "Arka Uç Modu"
+  },
+  "Backend_Mode_Active": {
+    "message": "Arka Uç Modu Etkin"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Tarayıcı Araçları"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Tarayıcı otomasyon aracı anahtarları"
+  },
+  "Cache_Settings": {
+    "message": "Önbellek Ayarları"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Önbellek TTL (saniye)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Önbellek davranışı ve veri saklama"
+  },
+  "Cancel": {
+    "message": "İptal"
+  },
+  "Chat_History": {
+    "message": "Sohbet Geçmişi"
+  },
+  "Choose_AI_Model": {
+    "message": "AI Modelini Seç"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Yan panel arayüzü için görsel stili seç"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Takip edilecek güncelleme kanalını seç"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Siyah arka plan üzerinde yeşil metinli klasik terminal stili"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "ChatGPT'ye benzer temiz, modern sohbet arayüzü"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Araç çubuğunuzdaki Browserx simgesine tıklayın veya Alt+Shift+C tuşlarına basın"
+  },
+  "Click_to_select_a_model": {
+    "message": "Modeli seçmek için tıklayın"
+  },
+  "Close_settings": {
+    "message": "Ayarları kapat"
+  },
+  "Command": {
+    "message": "Komut"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Depolama alanından tasarruf etmek için önbellek verilerini sıkıştır"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Yapay Zeka modeli ve API anahtarlarını yapılandır"
+  },
+  "Connected": {
+    "message": "Bağlı"
+  },
+  "Context": {
+    "message": "Bağlam"
+  },
+  "Create_New_Tab": {
+    "message": "Yeni Sekme Oluştur"
+  },
+  "Credit_Details": {
+    "message": "Kredi Detayları"
+  },
+  "Current_Plan": {
+    "message": "Mevcut Plan:"
+  },
+  "DOM_Tool": {
+    "message": "DOM Aracı"
+  },
+  "Daily_Credits": {
+    "message": "Günlük Krediler"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Veri Çıkarma Aracı"
+  },
+  "Days_until_expiration": {
+    "message": "Son kullanma tarihine kalan gün"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "AI Republic geliştirir ve destekler"
+  },
+  "Discard_Changes": {
+    "message": "Değişikliklerden Vazgeç"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Görevler tamamlandığında token tüketimini (giriş/çıkış tokenları) göster"
+  },
+  "Enable_All_Tools": {
+    "message": "Tüm Araçları Etkinleştir"
+  },
+  "Enable_Cache": {
+    "message": "Önbelleği Etkinleştir"
+  },
+  "Enable_Compression": {
+    "message": "Sıkıştırmayı Etkinleştir"
+  },
+  "Enable_Content_Scripts": {
+    "message": "İçerik Betiklerini Etkinleştir"
+  },
+  "Enable_Extension": {
+    "message": "Eklentiyi Etkinleştir"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Model Context Protocol araç entegrasyonunu etkinleştir (Gelecek güncellemede)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Sık kullanılan verileri depolayarak performansı artırmak için önbelleği etkinleştir"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Ajan için web arama yeteneklerini etkinleştir"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "LLM API anahtarınızı girin"
+  },
+  "Execute_Commands": {
+    "message": "Komutları Çalıştır"
+  },
+  "Expire_after_days": {
+    "message": "Süresi şu kadar gün sonra dolsun"
+  },
+  "Explain_your_decision": {
+    "message": "Kararınızı açıklayın..."
+  },
+  "Extension_Permission": {
+    "message": "Eklenti ve İzin"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Eklenti ve İzin Ayarları"
+  },
+  "Extension_Configuration": {
+    "message": "Eklenti Yapılandırması"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Eklenti yapılandırması ve izinler"
+  },
+  "Extra_Credits": {
+    "message": "Ek Krediler"
+  },
+  "Extract_Data": {
+    "message": "Veri Çıkar:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Sayfalardan belirli veri kalıplarını çıkar"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Web sayfalarından yapılandırılmış veri çıkar"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Tercihler yüklenemedi"
+  },
+  "Failed_to_save_settings": {
+    "message": "Ayarlar kaydedilemedi"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Dosya İşlemleri (Kullanılamaz)"
+  },
+  "File_Path": {
+    "message": "Dosya Yolu"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Formları doldur, veri gönder, form öğeleriyle etkileşim kur"
+  },
+  "Form_Automation_Tool": {
+    "message": "Form Otomasyon Aracı"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Tam Erişim (Tehlikeli)"
+  },
+  "General": {
+    "message": "Genel"
+  },
+  "General_Settings": {
+    "message": "Genel Ayarlar"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "İş görevleri için genel tarayıcı içi AI ajanı"
+  },
+  "Get_Started": {
+    "message": "Başlayın"
+  },
+  "Hello_NAME": {
+    "message": "Merhaba $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Merhaba Dünya"
+  },
+  "History": {
+    "message": "Geçmiş"
+  },
+  "Impact": {
+    "message": "Etki"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Ağ isteklerini/yanıtlarını yakala ve değiştir"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Klavye Kısayolları"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM istekleri doğrudan sağlayıcı API'lerine gider"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM istekleri AI Republic arka ucundan yönlendirilir"
+  },
+  "Language": {
+    "message": "Dil"
+  },
+  "Learn_more": {
+    "message": "Daha fazla bilgi"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "İzin verilen kaynakların listesi (satır başına bir). Joker karakter (*) desteklenir."
+  },
+  "Loading_credits": {
+    "message": "Krediler yükleniyor..."
+  },
+  "Loading_settings": {
+    "message": "Ayarlar yükleniyor..."
+  },
+  "Login": {
+    "message": "Giriş"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Ücretsiz kredi almak için giriş yapın"
+  },
+  "Low_credits_remaining": {
+    "message": "Az Kredi Kaldı"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Araçları (Kullanılamıyor)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Tarayıcı sekmelerini yönet (aç, kapat, geçiş yap, sorgula)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Tüm tarayıcı ve ajan araçlarını etkinleştirmek veya devre dışı bırakmak için ana anahtar"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Eklentiyi etkinleştirmek veya devre dışı bırakmak için ana anahtar"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Maksimum Önbellek Boyutu (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Megabayt cinsinden maksimum önbellek boyutu (varsayılan: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Bir aracın zaman aşımına uğramadan çalışabileceği maksimum süre (milisaniye, varsayılan: 30000)"
+  },
+  "Model_Config": {
+    "message": "Model Yapılandırması"
+  },
+  "Model_Selection": {
+    "message": "Model Seçimi"
+  },
+  "Modern_Chat": {
+    "message": "Modern Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Değişiklik talep edilirken parametreleri düzenle"
+  },
+  "Monthly_Credits": {
+    "message": "Aylık Krediler"
+  },
+  "More_Config": {
+    "message": "Daha Fazla Yapılandırma"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Sayfalarda gezin, bağlantılara tıkla, tarayıcı gezintisini yönet"
+  },
+  "Navigation_Tool": {
+    "message": "Gezinti Aracı"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Ağ Yakalama Aracı"
+  },
+  "Never_expire_permanent": {
+    "message": "Asla süresi dolmaz (kalıcı)"
+  },
+  "New_Conversation": {
+    "message": "Yeni Konuşma"
+  },
+  "No_approval_history_yet": {
+    "message": "Henüz onay geçmişi yok."
+  },
+  "No_tabs_available": {
+    "message": "Kullanılabilir sekme yok"
+  },
+  "Not_Connected": {
+    "message": "Bağlı değil"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Dağıtım verilerinin geçerliliğinin bitmesinden önceki gün sayısı (varsayılan: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Yan Paneli Aç:"
+  },
+  "Organization": {
+    "message": "Kuruluş"
+  },
+  "Page_Action_Tool": {
+    "message": "Sayfa İşlem Aracı"
+  },
+  "Page_Vision_Tool": {
+    "message": "Sayfa Görselleştirme Aracı"
+  },
+  "Parameter_Modifications": {
+    "message": "Parametre Değişiklikleri"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Sayfa eylemlerini gerçekleştir (kaydır, ekran görüntüsü al, bekle)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Önbelleği Depolamada Sakla"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Lütfen geçerli bir API anahtarı girin."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Lütfen geçerli bir komut girin"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Öncelikli seviye, daha yüksek fiyatla daha hızlı yanıt süreleri sunar."
+  },
+  "Provider": {
+    "message": "Sağlayıcı"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "DOM'u (Document Object Model) sorgula ve değiştir"
+  },
+  "Quick_Start": {
+    "message": "Hızlı Başlangıç"
+  },
+  "Quick_action": {
+    "message": "Hızlı eylem"
+  },
+  "Read_only": {
+    "message": "Salt okunur"
+  },
+  "Reason_optional": {
+    "message": "Sebep (isteğe bağlı)"
+  },
+  "Refreshes_in": {
+    "message": "Yenilenme süresi"
+  },
+  "Reject": {
+    "message": "Reddet"
+  },
+  "Reject_this_action": {
+    "message": "Bu eylemi reddet"
+  },
+  "Remaining": {
+    "message": "Kalan:"
+  },
+  "Remove_API_Key": {
+    "message": "API Anahtarını Kaldır"
+  },
+  "Remove_modification": {
+    "message": "Değişikliği kaldır"
+  },
+  "Request_Changes": {
+    "message": "Değişiklik İste"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Bu eylem için değişiklik iste"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Herhangi bir metne sağ tıklayarak Browserx ile açıklama ekleyin veya geliştirin"
+  },
+  "Rollout_Expiration": {
+    "message": "Yayılım Sonu"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandbox Politikası"
+  },
+  "Save_API_Key": {
+    "message": "API Anahtarını Kaydet"
+  },
+  "Save_Settings": {
+    "message": "Ayarları Kaydet"
+  },
+  "Saving": {
+    "message": "Kaydediliyor..."
+  },
+  "Security_Privacy": {
+    "message": "Güvenlik ve Gizlilik"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Araç yürütme ortamı için güvenlik seviyesi"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Sohbetler için kullanılacak AI modelini seçin."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Arayüz için tercih ettiğiniz dili seçin"
+  },
+  "Send_the_message": {
+    "message": "Mesajı gönder"
+  },
+  "Service_Tier": {
+    "message": "Hizmet Seviyesi"
+  },
+  "Session": {
+    "message": "Oturum"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Yayılım verilerinin ne zaman sona ereceğini ayarla"
+  },
+  "Settings": {
+    "message": "Ayarlar"
+  },
+  "Settings_saved_successfully": {
+    "message": "Ayarlar başarıyla kaydedildi"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Görevlerde token kullanımını göster"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Depolama kullanımı bu yüzdeyi aştığında uyarı göster (varsayılan: %90)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Hesabınıza giriş yapın"
+  },
+  "Stable": {
+    "message": "Stable"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Mevcut görev çalışmasını durdur"
+  },
+  "Storage_Cache": {
+    "message": "Depolama ve Önbellek"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Depolama ve Önbellek Ayarları"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Depolama Kotası Uyarısı (%)"
+  },
+  "Storage_Settings": {
+    "message": "Depolama Ayarları"
+  },
+  "Storage_Tool": {
+    "message": "Depolama Aracı"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Önbellek verilerini tarayıcı oturumları arasında kalıcı olarak sakla"
+  },
+  "Tab_Tool": {
+    "message": "Sekme Aracı"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Bağlantıyı Test Et"
+  },
+  "Testing": {
+    "message": "Test ediliyor..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Aracı şu anda arka uç modunda kullanıyor. LLM istekleri AI Republic sunucusu üzerinden yönlendirilecek. Konuşmalarınız altyapımız üzerinden güvenli bir şekilde işlenir."
+  },
+  "Time": {
+    "message": "Zaman"
+  },
+  "Time_remaining": {
+    "message": "Kalan süre"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Önbellek öğelerinin saniye cinsinden yaşam süresi (varsayılan: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Yan paneli aç/kapat"
+  },
+  "Tool": {
+    "message": "Araç"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Araç Zaman Aşımı (ms)"
+  },
+  "Tools": {
+    "message": "Araçlar"
+  },
+  "Tools_Settings": {
+    "message": "Araç Ayarları"
+  },
+  "Turn": {
+    "message": "Döndür"
+  },
+  "UI_Theme": {
+    "message": "Arayüz Teması"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Kredi bilgileri yüklenemedi"
+  },
+  "Unsaved_Changes": {
+    "message": "Kaydedilmemiş Değişiklikler"
+  },
+  "Update_Channel": {
+    "message": "Güncelleme Kanalı"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Planımı Yükselt"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Premium'a Yükselt"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Dünyanın en güçlü modellerini keşfetmek için aboneliğinizi yükseltin"
+  },
+  "Use_Context_Menu": {
+    "message": "Bağlam Menüsünü Kullan:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Kendi API Anahtarını Kullan"
+  },
+  "User_Center": {
+    "message": "Kullanıcı Merkezi"
+  },
+  "User_approved_action": {
+    "message": "Kullanıcı Onaylı Eylem"
+  },
+  "User_decision": {
+    "message": "Kullanıcı Kararı"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Kullanıcı tercihleri ve arayüz ayarları"
+  },
+  "User_rejected_action": {
+    "message": "Kullanıcı eylemi reddetti"
+  },
+  "User_requested_modifications": {
+    "message": "Kullanıcı değişiklik talep etti"
+  },
+  "Using_extra_credits": {
+    "message": "Ekstra Kredi Kullanma"
+  },
+  "View_Chat_History": {
+    "message": "Sohbet Geçmişini Görüntüle"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Sayfa içeriği ve düzeninin görsel analizi"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Web Kazıma Aracı"
+  },
+  "Web_Search": {
+    "message": "Web Arama"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Browserx'e Hoş Geldiniz"
+  },
+  "Workspace_Write": {
+    "message": "Çalışma Alanında Yaz"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Kaydedilmemiş değişiklikleriniz var. Bunları yok saymak istiyor musunuz?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Yapay zeka destekli tarayıcı asistanınız, web içeriğinde gezinmenize, anlamanıza ve etkileşime girmenize yardımcı olmaya hazır."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "API anahtarınız şifrelenmiştir"
+  },
+  "Your_Decision": {
+    "message": "Kararınız"
+  }
+}

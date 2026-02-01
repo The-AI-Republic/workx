@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { AgentConfig } from '../../config/AgentConfig';
-  import type { ICacheSettings, IStorageConfig } from '../../config/types';
+  import type { AgentConfig } from '@/config/AgentConfig';
+  import type { ICacheSettings, IStorageConfig } from '@/config/types';
+  import { _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
 
@@ -127,14 +128,14 @@
 </script>
 
 <div class="storage-settings">
-  <button class="back-button" on:click={handleBack}>← Back</button>
+  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
 
-  <h2 class="settings-title">Storage & Cache Settings</h2>
+  <h2 class="settings-title">{$_t("Storage & Cache Settings")}</h2>
 
   <div class="settings-form">
     <!-- Cache Section -->
-    <div class="section">
-      <h3 class="section-title">Cache Settings</h3>
+    <div class="section settings-card">
+      <h3 class="section-title">{$_t("Cache Settings")}</h3>
 
       <!-- Cache Enabled Toggle -->
       <div class="form-group">
@@ -145,14 +146,14 @@
             on:input={handleInput}
             class="form-checkbox"
           />
-          <span>Enable Cache</span>
+          <span>{$_t("Enable Cache")}</span>
         </label>
-        <div class="help-text">Enable caching to improve performance by storing frequently accessed data</div>
+        <div class="help-text">{$_t("Enable caching to improve performance by storing frequently accessed data")}</div>
       </div>
 
       <!-- Cache TTL -->
       <div class="form-group">
-        <label for="cache-ttl" class="form-label">Cache TTL (seconds)</label>
+        <label for="cache-ttl" class="form-label">{$_t("Cache TTL (seconds)")}</label>
         <input
           id="cache-ttl"
           type="number"
@@ -163,12 +164,12 @@
           class="form-input"
           placeholder="3600"
         />
-        <div class="help-text">Time-to-live for cached items in seconds (default: 3600)</div>
+        <div class="help-text">{$_t("Time-to-live for cached items in seconds (default: 3600)")}</div>
       </div>
 
       <!-- Cache Max Size -->
       <div class="form-group">
-        <label for="cache-maxsize" class="form-label">Max Cache Size (MB)</label>
+        <label for="cache-maxsize" class="form-label">{$_t("Max Cache Size (MB)")}</label>
         <input
           id="cache-maxsize"
           type="number"
@@ -179,7 +180,7 @@
           class="form-input"
           placeholder="100"
         />
-        <div class="help-text">Maximum cache size in megabytes (default: 100)</div>
+        <div class="help-text">{$_t("Maximum cache size in megabytes (default: 100)")}</div>
       </div>
 
       <!-- Compression Enabled -->
@@ -192,9 +193,9 @@
             disabled={cacheFieldsDisabled}
             class="form-checkbox"
           />
-          <span>Enable Compression</span>
+          <span>{$_t("Enable Compression")}</span>
         </label>
-        <div class="help-text">Compress cached data to save storage space</div>
+        <div class="help-text">{$_t("Compress cached data to save storage space")}</div>
       </div>
 
       <!-- Persist to Storage -->
@@ -207,34 +208,34 @@
             disabled={cacheFieldsDisabled}
             class="form-checkbox"
           />
-          <span>Persist Cache to Storage</span>
+          <span>{$_t("Persist Cache to Storage")}</span>
         </label>
-        <div class="help-text">Store cache data persistently across browser sessions</div>
+        <div class="help-text">{$_t("Store cache data persistently across browser sessions")}</div>
       </div>
     </div>
 
     <!-- Storage Section -->
-    <div class="section">
-      <h3 class="section-title">Storage Settings</h3>
+    <div class="section settings-card">
+      <h3 class="section-title">{$_t("Storage Settings")}</h3>
 
       <!-- Rollout TTL -->
       <div class="form-group">
-        <label for="rollout-ttl-unit" class="form-label">Rollout Expiration</label>
+        <label for="rollout-ttl-unit" class="form-label">{$_t("Rollout Expiration")}</label>
         <select
           id="rollout-ttl-unit"
           bind:value={rolloutTTLUnit}
           on:change={handleRolloutTTLChange}
           class="form-select"
         >
-          <option value="days">Expire after days</option>
-          <option value="permanent">Never expire (permanent)</option>
+          <option value="days">{$_t("Expire after days")}</option>
+          <option value="permanent">{$_t("Never expire (permanent)")}</option>
         </select>
-        <div class="help-text">Set when rollout data should expire</div>
+        <div class="help-text">{$_t("Set when rollout data should expire")}</div>
       </div>
 
       {#if rolloutTTLUnit === 'days'}
         <div class="form-group">
-          <label for="rollout-ttl-value" class="form-label">Days until expiration</label>
+          <label for="rollout-ttl-value" class="form-label">{$_t("Days until expiration")}</label>
           <input
             id="rollout-ttl-value"
             type="number"
@@ -244,7 +245,7 @@
             class="form-input"
             placeholder="60"
           />
-          <div class="help-text">Number of days before rollout data expires (default: 60)</div>
+          <div class="help-text">{$_t("Number of days before rollout data expires (default: 60)")}</div>
         </div>
       {/if}
     </div>
@@ -256,7 +257,7 @@
         on:click={handleSave}
         disabled={!isDirty || isSaving}
       >
-        {isSaving ? 'Saving...' : 'Save Settings'}
+        {isSaving ? $_t('Saving...') : $_t('Save Settings')}
       </button>
     </div>
 
@@ -313,16 +314,22 @@
 
   .settings-form {
     max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid var(--browserx-border);
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
   }
 
-  .section:last-of-type {
-    border-bottom: none;
+  .settings-card {
+    background: var(--browserx-surface);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--browserx-border);
   }
 
   .section-title {
@@ -427,7 +434,9 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    border: none;
+    border: 1px solid var(--browserx-primary);
+    background: transparent;
+    color: var(--browserx-primary);
   }
 
   .btn:disabled {
@@ -435,13 +444,19 @@
     cursor: not-allowed;
   }
 
-  .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
+  .btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 90%, black);
+  /* ChatGPT theme - filled buttons */
+  :global(.settings-modal-container.chatgpt) .btn-primary {
+    background: var(--browserx-primary);
+    color: white;
+    border: none;
+  }
+
+  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
   .message {

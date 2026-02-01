@@ -1,0 +1,657 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Kinatibuk-ang AI ahente sa browser para sa mga buluhaton sa trabaho"
+  },
+  "API_Key_Configuration": {
+    "message": "Pag-configure sa API Key"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Ang mga API key gi-encrypt ug gitipigan lokal sa imong browser. Dili kini ipadala sa mga gawas nga server gawas kung API call."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Pag-access sa storage sa browser (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Aksyon"
+  },
+  "Action_Details": {
+    "message": "Detalye sa Aksyon"
+  },
+  "Add_Modification": {
+    "message": "Pagdugang og Pag-usab"
+  },
+  "Advanced_Configuration": {
+    "message": "Abansadong Pag-configure"
+  },
+  "Advanced_Options": {
+    "message": "Abansadong mga Kapilian"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Mga Himan sa Ahente"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Tugoti ang ahente nga magpadagan og mga command sa sistema (gamiton nga may pag-amping)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Tugoti ang ahente nga mobasa, mosulat, ug magdumala og mga file (muabot sa sunod nga update)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Tugoti ang mga content script nga modagan sa mga web page"
+  },
+  "Allowed_Origins": {
+    "message": "Gitugot nga mga Origin"
+  },
+  "Approval_History": {
+    "message": "History sa Pag-apruba"
+  },
+  "Approve": {
+    "message": "Uyon"
+  },
+  "Approve_this_action": {
+    "message": "Uyoni kini nga aksyon"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Pangayoa ang Browserx nga mokuha og structured data gikan sa bisan unsang webpage"
+  },
+  "Available": {
+    "message": "Magamit:"
+  },
+  "Back": {
+    "message": "Balik"
+  },
+  "Backend_Mode": {
+    "message": "Mode sa Backend"
+  },
+  "Backend_Mode_Active": {
+    "message": "Mode sa Backend Aktibo"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Mga Himan sa Browser"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Mga toggle sa automation sa browser"
+  },
+  "Cache_Settings": {
+    "message": "Mga Pagpahimutang sa Cache"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Cache TTL (segundo)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Pamagiya sa Cache ug Pagtipig sa Data"
+  },
+  "Cancel": {
+    "message": "Kanselahon"
+  },
+  "Chat_History": {
+    "message": "Kasaysayan sa Chat"
+  },
+  "Choose_AI_Model": {
+    "message": "Pilia ang Modelo sa AI"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Pilia ang visual nga estilo para sa interface sa side panel"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Pilia kung unsang channel sa update ang sundon"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Klasikong estilo sa terminal nga adunay berde nga teksto sa itom nga background"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Limpyo, modernong interface sa chat nga susama sa ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "I-klik ang icon sa Browserx sa imong toolbar o pindota ang Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "I-klik aron mapili ang modelo"
+  },
+  "Close_settings": {
+    "message": "Isira ang mga Setting"
+  },
+  "Command": {
+    "message": "Komando"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Pag-compress sa cached nga datos aron makatipid sa espasyo sa storage"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "I-configure ang modelo sa AI ug mga API key"
+  },
+  "Connected": {
+    "message": "Konektado"
+  },
+  "Context": {
+    "message": "Konteksto"
+  },
+  "Create_New_Tab": {
+    "message": "Himoa ang Bag-ong Tab"
+  },
+  "Credit_Details": {
+    "message": "Detalye sa Kredito"
+  },
+  "Current_Plan": {
+    "message": "Karon nga Plano:"
+  },
+  "DOM_Tool": {
+    "message": "DOM Tool"
+  },
+  "Daily_Credits": {
+    "message": "Adlaw-adlaw nga Kredito"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Himan sa Pagkuha sa Data"
+  },
+  "Days_until_expiration": {
+    "message": "Adlaw nga nahibilin sa wala pa mag-expire"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Gihimo ug gisuportahan sa AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Isalikway ang mga Kausaban"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Ipakita ang konsumo sa token (input/output nga mga token) kung mahuman na ang mga buluhaton"
+  },
+  "Enable_All_Tools": {
+    "message": "Pag-aktibo sa tanang himan"
+  },
+  "Enable_Cache": {
+    "message": "Pag-aktibo sa cache"
+  },
+  "Enable_Compression": {
+    "message": "Pag-aktibo sa compression"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Pag-aktibo sa Content Scripts"
+  },
+  "Enable_Extension": {
+    "message": "Pag-aktibo sa Extension"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Pag-aktibo sa integrasyon sa Model Context Protocol nga mga himan (Mouabot sa umaabot nga update)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Pag-aktibo sa caching aron mapauswag ang paggana pinaagi sa pagtipig sa datos nga kanunay nga ma-access"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "I-enable ang kakayahan sa web search para sa ahente"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Ipasulod ang imong LLM API key"
+  },
+  "Execute_Commands": {
+    "message": "Pagpatuman sa mga sugo"
+  },
+  "Expire_after_days": {
+    "message": "Mawagtang human sa $1$ ka adlaw",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Explain_your_decision": {
+    "message": "Ipahayag ang imong desisyon..."
+  },
+  "Extension_Permission": {
+    "message": "Extension ug Permission"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Mga Setting sa Extension ug Permission"
+  },
+  "Extension_Configuration": {
+    "message": "Konpigurasyon sa Extension"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Konpigurasyon ug mga Permission sa Extension"
+  },
+  "Extra_Credits": {
+    "message": "Dugang nga Kredito"
+  },
+  "Extract_Data": {
+    "message": "Pagkuha sa Data:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Kuhaa ang espesipikong data patterns gikan sa mga panid"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Kuhaa ang datos nga may istruktura gikan sa mga web page"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Napakyas sa pag-load sa mga gusto"
+  },
+  "Failed_to_save_settings": {
+    "message": "Napakyas sa pag-tipig sa mga setting"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Mga Operasyon sa File (Dili Magamit)"
+  },
+  "File_Path": {
+    "message": "Dalan sa File"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Pun-i ang mga porma, isumite ang datos, ug pakig-uban sa mga elemento sa porma"
+  },
+  "Form_Automation_Tool": {
+    "message": "Kasangkapan sa Pag-automate sa Porma"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Kompletong Access (Delikado)"
+  },
+  "General": {
+    "message": "Pangkalahatan"
+  },
+  "General_Settings": {
+    "message": "Pangkalahatang Mga Setting"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Magsugod"
+  },
+  "Hello_NAME": {
+    "message": "Hello $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hello World"
+  },
+  "History": {
+    "message": "Kasaysayan"
+  },
+  "Impact": {
+    "message": "Epekto"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Sikwaya ug usba ang mga network request/response"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Mga Shortcut sa Keyboard"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Ang mga LLM request moagi direkta sa provider APIs"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Ang mga LLM request moagi sa AI Republic backend"
+  },
+  "Language": {
+    "message": "Pinulongan"
+  },
+  "Learn_more": {
+    "message": "Pagkat-on pa"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Lista sa gitugot nga gigikanan (usa kada linya). Gisuportahan ang mga wildcard (*)"
+  },
+  "Loading_credits": {
+    "message": "Nag-load sa mga kredito..."
+  },
+  "Loading_settings": {
+    "message": "Nag-load sa mga setting..."
+  },
+  "Login": {
+    "message": "Login"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Pag-login aron makakuha og libre nga kredito"
+  },
+  "Low_credits_remaining": {
+    "message": "Ubos na ang nabilin nga kredito"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Tools (Dili Magamit)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Pagdumala sa mga tab sa browser (abli, sirado, ilisi, query)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Pangunang switch aron pag-enable o pag-disable sa tanang browser ug agent nga mga himan"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Pangunang switch aron pag-enable o pag-disable sa extension"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Pinakadako nga kapasidad sa cache (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Pinakadako nga kapasidad sa cache nga megabytes (default: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Pinakataas nga oras (sa milisegundo) nga makadagan ang usa ka himan sa dili pa mag-timeout (default: 30000)"
+  },
+  "Model_Config": {
+    "message": "Konpigurasyon sa Modelo"
+  },
+  "Model_Selection": {
+    "message": "Pagpili sa Modelo"
+  },
+  "Modern_Chat": {
+    "message": "Modernong Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Usba ang mga parameter kung maghangyo og kausaban"
+  },
+  "Monthly_Credits": {
+    "message": "Kredito sa Buwan"
+  },
+  "More_Config": {
+    "message": "Dugang nga Konpigurasyon"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Pagnavigate sa mga pahina, pagklik sa mga link, pagdumala sa pagnavigate sa browser"
+  },
+  "Navigation_Tool": {
+    "message": "Kasangkapan sa Pagnavigate"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Kasangkapan sa Pagintercept sa Network"
+  },
+  "Never_expire_permanent": {
+    "message": "Dili gayud mo-expire (permanente)"
+  },
+  "New_Conversation": {
+    "message": "Bag-ong Panag-istorya"
+  },
+  "No_approval_history_yet": {
+    "message": "Wala pa’y kasaysayan sa pag-apruba."
+  },
+  "No_tabs_available": {
+    "message": "Wala’y tab nga magamit"
+  },
+  "Not_Connected": {
+    "message": "Wala Nakonekta"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Gidaghanon sa mga adlaw dili pa ma-expire ang data sa rollout (default: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Side Panel nga Abli:"
+  },
+  "Organization": {
+    "message": "Organisasyon"
+  },
+  "Page_Action_Tool": {
+    "message": "Kasangkapan sa Aksyon sa Pahina"
+  },
+  "Page_Vision_Tool": {
+    "message": "Kasangkapan sa Paglantaw sa Pahina"
+  },
+  "Parameter_Modifications": {
+    "message": "Mga Pag-usab sa Parameter"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Paghimog mga aksyon sa pahina (pag-scroll, screenshot, paghulat)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Ipadayon ang Cache ngadto sa Storage"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Palihug ipasulod ang balidong API key."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Palihug i-type ang balidong command"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Ang priority tier naghatag og mas paspas nga tubag apan mas mahal ang presyo."
+  },
+  "Provider": {
+    "message": "Provider"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Pag-query ug pag-manipula sa DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Dali nga Pagsugod"
+  },
+  "Quick_action": {
+    "message": "Dali nga aksyon"
+  },
+  "Read_only": {
+    "message": "Basahon ra"
+  },
+  "Reason_optional": {
+    "message": "Rason (opsyonal)"
+  },
+  "Refreshes_in": {
+    "message": "Mag-refresh sulod sa:"
+  },
+  "Reject": {
+    "message": "Balibad"
+  },
+  "Reject_this_action": {
+    "message": "Ibalibad kini nga aksyon"
+  },
+  "Remaining": {
+    "message": "Nabilin:"
+  },
+  "Remove_API_Key": {
+    "message": "Kuhaa ang API Key"
+  },
+  "Remove_modification": {
+    "message": "Kuhaa ang Modipikasyon"
+  },
+  "Request_Changes": {
+    "message": "Pangayo og mga Pagbag-o"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Pangayo og mga pagbag-o niini nga aksyon"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "I-right-click ang bisan unsang teksto aron ipasabot o mapauswag kini gamit ang Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Pag-expire sa Pagpalunsad"
+  },
+  "Sandbox_Policy": {
+    "message": "Palisiya sa Sandbox"
+  },
+  "Save_API_Key": {
+    "message": "I-save ang API Key"
+  },
+  "Save_Settings": {
+    "message": "I-save ang mga setting"
+  },
+  "Saving": {
+    "message": "Nagsave..."
+  },
+  "Security_Privacy": {
+    "message": "Seguridad & Pribasiya"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Lebel sa seguridad para sa palibot sa pagpadagan sa himan"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Pagpili sa AI model nga gamiton para sa mga pakigpulong."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Pagpili sa imong gustong pinulongan para sa interfeys"
+  },
+  "Send_the_message": {
+    "message": "Ipadala ang mensahe"
+  },
+  "Service_Tier": {
+    "message": "Tier sa Serbisyo"
+  },
+  "Session": {
+    "message": "Sesyon"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Itakda kung kanus-a mag-expire ang datos sa rollout"
+  },
+  "Settings": {
+    "message": "Settings"
+  },
+  "Settings_saved_successfully": {
+    "message": "Malampuson nga na-save ang mga setting"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Ipakita ang paggamit sa token sa mga task"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Ipakita ang pasidaan kung molabaw ang paggamit sa storage niini nga porsyento (default: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Pag-login sa imong account"
+  },
+  "Stable": {
+    "message": "Stable"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Hunonga ang kasamtangang task"
+  },
+  "Storage_Cache": {
+    "message": "Storage & Cache"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Storage & Cache Settings"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Pasidaan sa quota sa storage (%)"
+  },
+  "Storage_Settings": {
+    "message": "Storage Settings"
+  },
+  "Storage_Tool": {
+    "message": "Storage Tool"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Tipigi ang cache data sa tanan nga browser session"
+  },
+  "Tab_Tool": {
+    "message": "Tab Tool"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Test Connection"
+  },
+  "Testing": {
+    "message": "Gisulayan..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Ang ahente kasamtangang naggamit sa backend mode. Ang mga LLM request ipadala pinaagi sa AI Republic server. Ang imong mga pakigpulong gi-proseso nga luwas sa among imprastruktura."
+  },
+  "Time": {
+    "message": "Oras"
+  },
+  "Time_remaining": {
+    "message": "Oras nga nabilin"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Oras nga mabuhi para sa mga cached nga butang sa segundo (default: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "I-toggle ang side panel"
+  },
+  "Tool": {
+    "message": "Galamiton"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Timeout sa Tool (ms)"
+  },
+  "Tools": {
+    "message": "Mga Galamiton"
+  },
+  "Tools_Settings": {
+    "message": "Mga Setting sa Mga Galamiton"
+  },
+  "Turn": {
+    "message": "Turn"
+  },
+  "UI_Theme": {
+    "message": "Tema sa UI"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Dili ma-load ang impormasyon sa credit"
+  },
+  "Unsaved_Changes": {
+    "message": "Mga Kausaban nga Wala Ma-save"
+  },
+  "Update_Channel": {
+    "message": "Channel sa Pag-update"
+  },
+  "Upgrade_My_Plan": {
+    "message": "I-upgrade ang Akong Plano"
+  },
+  "Upgrade_to_Premium": {
+    "message": "I-upgrade sa Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "I-upgrade ang imong subscription aron masuhid ang labing gamhanan nga mga modelo sa kalibutan"
+  },
+  "Use_Context_Menu": {
+    "message": "Paggamit sa Context Menu:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Paggamit sa Imong Kaugalingong API Key"
+  },
+  "User_Center": {
+    "message": "User Center"
+  },
+  "User_approved_action": {
+    "message": "Aksyon nga gi-aprubahan sa user"
+  },
+  "User_decision": {
+    "message": "Desisyon sa user"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Mga preperensya sa tiggamit ug mga setting sa interface"
+  },
+  "User_rejected_action": {
+    "message": "Aksyon nga gisalikway sa user"
+  },
+  "User_requested_modifications": {
+    "message": "Mga pag-usab nga gipangayo sa user"
+  },
+  "Using_extra_credits": {
+    "message": "Paggamit og extra credits"
+  },
+  "View_Chat_History": {
+    "message": "Tan-awa ang Chat History"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Visual Analysis sa sulod ug layout sa pahina"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Web Scraping Tool"
+  },
+  "Web_Search": {
+    "message": "Web Search"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Maayong pag-abot sa Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Workspace Write"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Aduna kay mga wala pa ma-save nga pag-usab. Gusto ba nimo kini ibasura?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Andam na ang imong AI-powered nga browser assistant aron matabangan ka sa pag-navigate, pagsabot, ug pakig-uban sa web content."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Ang imong API key na-encrypt"
+  },
+  "Your_Decision": {
+    "message": "Imong desisyon"
+  }
+}

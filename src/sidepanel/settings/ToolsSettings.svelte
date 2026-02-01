@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { AgentConfig } from '../../config/AgentConfig';
-  import type { IToolsConfig } from '../../config/types';
+  import type { AgentConfig } from '@/config/AgentConfig';
+  import type { IToolsConfig } from '@/config/types';
+  import { _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
 
@@ -96,27 +97,29 @@
 </script>
 
 <div class="tools-settings">
-  <button class="back-button" on:click={handleBack}>← Back</button>
+  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
 
-  <h2 class="settings-title">Tools Settings</h2>
+  <h2 class="settings-title">{$_t("Tools Settings")}</h2>
 
   <div class="settings-form">
     <!-- Master Toggle -->
-    <div class="form-group">
-      <label class="checkbox-label master-toggle">
-        <input
-          type="checkbox"
-          bind:checked={currentTools.enable_all_tools}
-          on:input={handleInput}
-          class="form-checkbox"
-        />
-        <span>Enable All Tools</span>
-      </label>
-      <div class="help-text">Master toggle to enable or disable all browser and agent tools</div>
+    <div class="settings-card">
+      <div class="form-group">
+        <label class="checkbox-label master-toggle">
+          <input
+            type="checkbox"
+            bind:checked={currentTools.enable_all_tools}
+            on:input={handleInput}
+            class="form-checkbox"
+          />
+          <span>{$_t("Enable All Tools")}</span>
+        </label>
+        <div class="help-text">{$_t("Master toggle to enable or disable all browser and agent tools")}</div>
+      </div>
     </div>
 
     <!-- Browser Tools Section -->
-    <div class="collapsible-section">
+    <div class="collapsible-section settings-card">
       <button
         class="section-header"
         on:click={() => toggleSection('browser')}
@@ -133,7 +136,7 @@
         >
           <polyline points="6,9 12,15 18,9"></polyline>
         </svg>
-        <h3 class="section-title">Browser Tools</h3>
+        <h3 class="section-title">{$_t("Browser Tools")}</h3>
       </button>
 
       {#if browserToolsExpanded}
@@ -146,9 +149,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Storage Tool</span>
+              <span>{$_t("Storage Tool")}</span>
             </label>
-            <div class="help-text">Access browser storage (localStorage, sessionStorage, cookies)</div>
+            <div class="help-text">{$_t("Access browser storage (localStorage, sessionStorage, cookies)")}</div>
           </div>
 
           <div class="form-group">
@@ -159,9 +162,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Tab Tool</span>
+              <span>{$_t("Tab Tool")}</span>
             </label>
-            <div class="help-text">Manage browser tabs (open, close, switch, query)</div>
+            <div class="help-text">{$_t("Manage browser tabs (open, close, switch, query)")}</div>
           </div>
 
           <div class="form-group">
@@ -172,9 +175,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Web Scraping Tool</span>
+              <span>{$_t("Web Scraping Tool")}</span>
             </label>
-            <div class="help-text">Extract structured data from web pages</div>
+            <div class="help-text">{$_t("Extract structured data from web pages")}</div>
           </div>
 
           <div class="form-group">
@@ -185,9 +188,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>DOM Tool</span>
+              <span>{$_t("DOM Tool")}</span>
             </label>
-            <div class="help-text">Query and manipulate the DOM (Document Object Model)</div>
+            <div class="help-text">{$_t("Query and manipulate the DOM (Document Object Model)")}</div>
           </div>
 
           <div class="form-group">
@@ -198,9 +201,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Form Automation Tool</span>
+              <span>{$_t("Form Automation Tool")}</span>
             </label>
-            <div class="help-text">Fill forms, submit data, interact with form elements</div>
+            <div class="help-text">{$_t("Fill forms, submit data, interact with form elements")}</div>
           </div>
 
           <div class="form-group">
@@ -211,9 +214,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Navigation Tool</span>
+              <span>{$_t("Navigation Tool")}</span>
             </label>
-            <div class="help-text">Navigate pages, click links, handle browser navigation</div>
+            <div class="help-text">{$_t("Navigate pages, click links, handle browser navigation")}</div>
           </div>
 
           <div class="form-group">
@@ -224,9 +227,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Network Intercept Tool</span>
+              <span>{$_t("Network Intercept Tool")}</span>
             </label>
-            <div class="help-text">Intercept and modify network requests/responses</div>
+            <div class="help-text">{$_t("Intercept and modify network requests/responses")}</div>
           </div>
 
           <div class="form-group">
@@ -237,9 +240,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Data Extraction Tool</span>
+              <span>{$_t("Data Extraction Tool")}</span>
             </label>
-            <div class="help-text">Extract specific data patterns from pages</div>
+            <div class="help-text">{$_t("Extract specific data patterns from pages")}</div>
           </div>
 
           <div class="form-group">
@@ -250,9 +253,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Page Action Tool</span>
+              <span>{$_t("Page Action Tool")}</span>
             </label>
-            <div class="help-text">Perform page actions (scroll, screenshot, wait)</div>
+            <div class="help-text">{$_t("Perform page actions (scroll, screenshot, wait)")}</div>
           </div>
 
           <div class="form-group">
@@ -263,16 +266,16 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Page Vision Tool</span>
+              <span>{$_t("Page Vision Tool")}</span>
             </label>
-            <div class="help-text">Visual analysis of page content and layout</div>
+            <div class="help-text">{$_t("Visual analysis of page content and layout")}</div>
           </div>
         </div>
       {/if}
     </div>
 
     <!-- Agent Execution Tools Section -->
-    <div class="collapsible-section">
+    <div class="collapsible-section settings-card">
       <button
         class="section-header"
         on:click={() => toggleSection('agent')}
@@ -289,7 +292,7 @@
         >
           <polyline points="6,9 12,15 18,9"></polyline>
         </svg>
-        <h3 class="section-title">Agent Execution Tools</h3>
+        <h3 class="section-title">{$_t("Agent Execution Tools")}</h3>
       </button>
 
       {#if agentToolsExpanded}
@@ -302,9 +305,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Execute Commands</span>
+              <span>{$_t("Execute Commands")}</span>
             </label>
-            <div class="help-text">Allow agent to execute system commands (use with caution)</div>
+            <div class="help-text">{$_t("Allow agent to execute system commands (use with caution)")}</div>
           </div>
 
           <div class="form-group">
@@ -315,9 +318,9 @@
                 on:input={handleInput}
                 class="form-checkbox"
               />
-              <span>Web Search</span>
+              <span>{$_t("Web Search")}</span>
             </label>
-            <div class="help-text">Enable web search capabilities for the agent</div>
+            <div class="help-text">{$_t("Enable web search capabilities for the agent")}</div>
           </div>
 
           <div class="form-group">
@@ -329,9 +332,9 @@
                 disabled
                 class="form-checkbox"
               />
-              <span>File Operations (Not Available)</span>
+              <span>{$_t("File Operations (Not Available)")}</span>
             </label>
-            <div class="help-text">Allow agent to read, write, and manage files (Coming in future update)</div>
+            <div class="help-text">{$_t("Allow agent to read, write, and manage files (Coming in future update)")}</div>
           </div>
 
           <div class="form-group">
@@ -343,16 +346,16 @@
                 disabled
                 class="form-checkbox"
               />
-              <span>MCP Tools (Not Available)</span>
+              <span>{$_t("MCP Tools (Not Available)")}</span>
             </label>
-            <div class="help-text">Enable Model Context Protocol tools integration (Coming in future update)</div>
+            <div class="help-text">{$_t("Enable Model Context Protocol tools integration (Coming in future update)")}</div>
           </div>
         </div>
       {/if}
     </div>
 
     <!-- Advanced Configuration Section -->
-    <div class="collapsible-section">
+    <div class="collapsible-section settings-card">
       <button
         class="section-header"
         on:click={() => toggleSection('advanced')}
@@ -369,14 +372,14 @@
         >
           <polyline points="6,9 12,15 18,9"></polyline>
         </svg>
-        <h3 class="section-title">Advanced Configuration</h3>
+        <h3 class="section-title">{$_t("Advanced Configuration")}</h3>
       </button>
 
       {#if advancedExpanded}
         <div class="section-content">
           <!-- Timeout Configuration -->
           <div class="form-group">
-            <label for="tool-timeout" class="form-label">Tool Timeout (ms)</label>
+            <label for="tool-timeout" class="form-label">{$_t("Tool Timeout (ms)")}</label>
             <input
               id="tool-timeout"
               type="number"
@@ -386,23 +389,23 @@
               class="form-input"
               placeholder="30000"
             />
-            <div class="help-text">Maximum time (in milliseconds) a tool can run before timeout (default: 30000)</div>
+            <div class="help-text">{$_t("Maximum time (in milliseconds) a tool can run before timeout (default: 30000)")}</div>
           </div>
 
           <!-- Sandbox Policy -->
           <div class="form-group">
-            <label for="sandbox-mode" class="form-label">Sandbox Policy</label>
+            <label for="sandbox-mode" class="form-label">{$_t("Sandbox Policy")}</label>
             <select
               id="sandbox-mode"
               bind:value={currentTools.sandboxPolicy.mode}
               on:input={handleInput}
               class="form-select"
             >
-              <option value="read-only">Read-only</option>
-              <option value="workspace-write">Workspace Write</option>
-              <option value="danger-full-access">Full Access (Dangerous)</option>
+              <option value="read-only">{$_t("Read-only")}</option>
+              <option value="workspace-write">{$_t("Workspace Write")}</option>
+              <option value="danger-full-access">{$_t("Full Access (Dangerous)")}</option>
             </select>
-            <div class="help-text">Security level for tool execution environment</div>
+            <div class="help-text">{$_t("Security level for tool execution environment")}</div>
           </div>
         </div>
       {/if}
@@ -415,7 +418,7 @@
         on:click={handleSave}
         disabled={!isDirty || isSaving}
       >
-        {isSaving ? 'Saving...' : 'Save Settings'}
+        {isSaving ? $_t('Saving...') : $_t('Save Settings')}
       </button>
     </div>
 
@@ -472,9 +475,26 @@
 
   .settings-form {
     max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .settings-card {
+    background: var(--browserx-surface);
+    border-radius: 0.75rem;
+    border: 1px solid var(--browserx-border);
+  }
+
+  .settings-card:not(.collapsible-section) {
+    padding: 1rem 1.25rem;
   }
 
   .form-group {
+    margin-bottom: 0;
+  }
+
+  .form-group:not(:last-child) {
     margin-bottom: 1.5rem;
   }
 
@@ -559,10 +579,12 @@
   }
 
   .collapsible-section {
-    margin-bottom: 1.5rem;
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.5rem;
+    margin-bottom: 0;
     overflow: hidden;
+  }
+
+  .collapsible-section.settings-card {
+    border-radius: 0.75rem;
   }
 
   .section-header {
@@ -618,7 +640,9 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    border: none;
+    border: 1px solid var(--browserx-primary);
+    background: transparent;
+    color: var(--browserx-primary);
   }
 
   .btn:disabled {
@@ -626,13 +650,19 @@
     cursor: not-allowed;
   }
 
-  .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
+  .btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 90%, black);
+  /* ChatGPT theme - filled buttons */
+  :global(.settings-modal-container.chatgpt) .btn-primary {
+    background: var(--browserx-primary);
+    color: white;
+    border: none;
+  }
+
+  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
   .message {

@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Universalus AI agentas naršyklėje darbo užduotims"
+  },
+  "API_Key_Configuration": {
+    "message": "API raktų konfigūracija"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API raktai yra šifruojami ir saugomi lokaliai jūsų naršyklėje. Jie niekada nesiunčiami į išorinius serverius, išskyrus API užklausas."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Prieiga prie naršyklės saugyklos (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Veiksmas"
+  },
+  "Action_Details": {
+    "message": "Veiksmo informacija"
+  },
+  "Add_Modification": {
+    "message": "Pridėti pakeitimą"
+  },
+  "Advanced_Configuration": {
+    "message": "Išplėstinė konfigūracija"
+  },
+  "Advanced_Options": {
+    "message": "Išplėstiniai nustatymai"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Agentų vykdymo įrankiai"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Leisti agentui vykdyti sistemos komandas (naudokite atsargiai)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Leisti agentui skaityti, rašyti ir tvarkyti failus (bus ateities atnaujinime)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Leisti turinio skriptams vykdyti tinklalapiuose"
+  },
+  "Allowed_Origins": {
+    "message": "Leidžiamos kilmės"
+  },
+  "Approval_History": {
+    "message": "Patvirtinimų istorija"
+  },
+  "Approve": {
+    "message": "Patvirtinti"
+  },
+  "Approve_this_action": {
+    "message": "Patvirtinti šį veiksmą"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Paprašyti Browserx išgauti struktūruotus duomenis iš bet kurio tinklalapio"
+  },
+  "Available": {
+    "message": "Prieinama:"
+  },
+  "Back": {
+    "message": "Atgal"
+  },
+  "Backend_Mode": {
+    "message": "Backend režimas"
+  },
+  "Backend_Mode_Active": {
+    "message": "Backend režimas aktyvus"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Naršyklės įrankiai"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Naršyklės automatizacijos įrankių jungikliai"
+  },
+  "Cache_Settings": {
+    "message": "Talpyklos nustatymai"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Talpyklos TTL (sekundės)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Talpyklos elgsena ir duomenų saugojimas"
+  },
+  "Cancel": {
+    "message": "Atšaukti"
+  },
+  "Chat_History": {
+    "message": "Pokalbio istorija"
+  },
+  "Choose_AI_Model": {
+    "message": "Pasirinkti AI modelį"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Pasirinkti šoninio skydelio sąsajos vizualinį stilių"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Pasirinkti, kurį atnaujinimų kanalą sekti"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Klasikinis terminalo stilius su žaliu tekstu juodame fone"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Švari, moderni pokalbio sąsaja, panaši į ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Spustelėkite Browserx piktogramą įrankių juostoje arba paspauskite Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Spustelėkite, kad pasirinktumėte modelį"
+  },
+  "Close_settings": {
+    "message": "Uždaryti nustatymus"
+  },
+  "Command": {
+    "message": "Komanda"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Suspausti talpyklos duomenis, kad sutaupytumėte saugyklos vietos"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "AI modelio ir API raktų konfigūracija"
+  },
+  "Connected": {
+    "message": "Prisijungta"
+  },
+  "Context": {
+    "message": "Kontekstas"
+  },
+  "Create_New_Tab": {
+    "message": "Sukurti naują skirtuką"
+  },
+  "Credit_Details": {
+    "message": "Kredito informacija"
+  },
+  "Current_Plan": {
+    "message": "Dabartinis planas:"
+  },
+  "DOM_Tool": {
+    "message": "DOM įrankis"
+  },
+  "Daily_Credits": {
+    "message": "Dienos kreditai"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Duomenų ištraukimo įrankis"
+  },
+  "Days_until_expiration": {
+    "message": "Dienų iki galiojimo pabaigos"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Sukūrė ir palaiko AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Atmesti pakeitimus"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Rodyti žetonų suvartojimą (įvesties/išvesties žetonai) užduotims užbaigus"
+  },
+  "Enable_All_Tools": {
+    "message": "Įjungti visus įrankius"
+  },
+  "Enable_Cache": {
+    "message": "Įjungti talpyklą"
+  },
+  "Enable_Compression": {
+    "message": "Įjungti suspaudimą"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Įjungti turinio skriptus"
+  },
+  "Enable_Extension": {
+    "message": "Įjungti plėtinį"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Įjungti Model Context Protocol įrankių integraciją (planuojama ateities atnaujinime)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Įjungti talpyklą, kad pagerintumėte našumą saugant dažnai naudojamus duomenis"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Įjungti žiniatinklio paieškos funkcijas agentui"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Įveskite savo LLM API raktą"
+  },
+  "Execute_Commands": {
+    "message": "Vykdyti komandas"
+  },
+  "Expire_after_days": {
+    "message": "Galiojimas po dienų"
+  },
+  "Explain_your_decision": {
+    "message": "Paaiškinkite savo sprendimą..."
+  },
+  "Extension_Permission": {
+    "message": "Plėtinys ir teisės"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Plėtinio ir teisių nustatymai"
+  },
+  "Extension_Configuration": {
+    "message": "Plėtinio konfigūracija"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Plėtinio konfigūracija ir teisės"
+  },
+  "Extra_Credits": {
+    "message": "Papildomi kreditai"
+  },
+  "Extract_Data": {
+    "message": "Išgauti duomenis:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Išgauti konkrečius duomenų šablonus iš puslapių"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Išgauti struktūruotus duomenis iš interneto puslapių"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Nepavyko įkelti nuostatų"
+  },
+  "Failed_to_save_settings": {
+    "message": "Nepavyko išsaugoti nustatymų"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Failų operacijos (Neprieinama)"
+  },
+  "File_Path": {
+    "message": "Failo kelias"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Užpildyti formas, pateikti duomenis, bendrauti su formų elementais"
+  },
+  "Form_Automation_Tool": {
+    "message": "Formų automatizavimo įrankis"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Visas priėjimas (pavojinga)"
+  },
+  "General": {
+    "message": "Bendrieji"
+  },
+  "General_Settings": {
+    "message": "Bendrieji nustatymai"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "Bendrinis naršyklės AI agentas darbui"
+  },
+  "Get_Started": {
+    "message": "Pradėti"
+  },
+  "Hello_NAME": {
+    "message": "Sveiki $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Sveikas, pasauli"
+  },
+  "History": {
+    "message": "Istorija"
+  },
+  "Impact": {
+    "message": "Poveikis"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Perimti ir modifikuoti tinklo užklausas/atsakymus"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Spartieji klavišai"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM užklausos siunčiamos tiesiogiai į tiekėjo API"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM užklausos nukreipiamos per AI Republic backend'ą"
+  },
+  "Language": {
+    "message": "Kalba"
+  },
+  "Learn_more": {
+    "message": "Sužinoti daugiau"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Leidžiamų šaltinių sąrašas (po vieną eilutėje). Palaikomi pakaitos simboliai (*)."
+  },
+  "Loading_credits": {
+    "message": "Įkeliami kreditai..."
+  },
+  "Loading_settings": {
+    "message": "Įkeliami nustatymai..."
+  },
+  "Login": {
+    "message": "Prisijungti"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Prisijunkite, kad gautumėte nemokamus kreditus"
+  },
+  "Low_credits_remaining": {
+    "message": "Liko mažai kreditų"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP įrankiai (nepasiekiami)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Tvarkyti naršyklės skirtukus (atidaryti, uždaryti, perjungti, užklausoti)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Pagrindinis perjungiklis, leidžiantis įjungti arba išjungti visus naršyklės ir agento įrankius"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Pagrindinis perjungiklis plėtiniui įjungti/išjungti"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Maksimalus talpyklos dydis (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Maksimalus talpyklos dydis megabaitais (numatyta: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Maksimalus įrankio veikimo laikas (milisekundėmis) prieš laiko limitą (numatyta: 30000)"
+  },
+  "Model_Config": {
+    "message": "Modelio konfigūracija"
+  },
+  "Model_Selection": {
+    "message": "Modelio pasirinkimas"
+  },
+  "Modern_Chat": {
+    "message": "Modern Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Keisti parametrus prašant pakeitimų"
+  },
+  "Monthly_Credits": {
+    "message": "Mėnesiniai kreditai"
+  },
+  "More_Config": {
+    "message": "Papildoma konfigūracija"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Naršyti puslapius, spustelėti nuorodas, valdyti naršyklę"
+  },
+  "Navigation_Tool": {
+    "message": "Navigacijos įrankis"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Tinklo perėmimo įrankis"
+  },
+  "Never_expire_permanent": {
+    "message": "Niekada nesibaigia (amžinas)"
+  },
+  "New_Conversation": {
+    "message": "Naujas pokalbis"
+  },
+  "No_approval_history_yet": {
+    "message": "Patvirtinimų istorijos dar nėra."
+  },
+  "No_tabs_available": {
+    "message": "Nėra prieinamų skirtukų"
+  },
+  "Not_Connected": {
+    "message": "Neprisijungta"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Dienų skaičius iki išleidimo duomenų galiojimo pabaigos (numatyta: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Atverti šoninį skydelį:"
+  },
+  "Organization": {
+    "message": "Organizacija"
+  },
+  "Page_Action_Tool": {
+    "message": "Puslapio veiksmų įrankis"
+  },
+  "Page_Vision_Tool": {
+    "message": "Puslapio vizijos įrankis"
+  },
+  "Parameter_Modifications": {
+    "message": "Parametrų modifikacijos"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Vykdyti puslapio veiksmus (slinkti, screenshot, laukti)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Išsaugoti podėlį talpykloje"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Įveskite galiojantį API raktą."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Įveskite galiojančią komandą"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Prioritetinis lygis suteikia greitesnį atsakymo laiką su didesne kaina."
+  },
+  "Provider": {
+    "message": "Tiekėjas"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Užklausti ir manipuliuoti DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Greita pradžia"
+  },
+  "Quick_action": {
+    "message": "Greitas veiksmas"
+  },
+  "Read_only": {
+    "message": "Tik skaitoma"
+  },
+  "Reason_optional": {
+    "message": "Priežastis (neprivaloma)"
+  },
+  "Refreshes_in": {
+    "message": "Atnaujinama po"
+  },
+  "Reject": {
+    "message": "Atmesti"
+  },
+  "Reject_this_action": {
+    "message": "Atmesti šį veiksmą"
+  },
+  "Remaining": {
+    "message": "Liko:"
+  },
+  "Remove_API_Key": {
+    "message": "Pašalinti API raktą"
+  },
+  "Remove_modification": {
+    "message": "Pašalinti modifikaciją"
+  },
+  "Request_Changes": {
+    "message": "Prašyti pakeitimų"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Prašyti pakeisti šį veiksmą"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Spustelėkite dešiniuoju pelės mygtuku bet kurį tekstą, kad paaiškintumėte arba patobulintumėte jį su Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Diegimo galiojimo pabaiga"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandbox politika"
+  },
+  "Save_API_Key": {
+    "message": "Išsaugoti API raktą"
+  },
+  "Save_Settings": {
+    "message": "Išsaugoti nustatymus"
+  },
+  "Saving": {
+    "message": "Išsaugoma..."
+  },
+  "Security_Privacy": {
+    "message": "Saugumas ir privatumas"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Įrankio vykdymo aplinkos saugumo lygis"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Pasirinkite AI modelį, kurį naudoti pokalbiams."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Pasirinkite pageidaujamą sąsajos kalbą"
+  },
+  "Send_the_message": {
+    "message": "Siųsti žinutę"
+  },
+  "Service_Tier": {
+    "message": "Paslaugos lygis"
+  },
+  "Session": {
+    "message": "Sesija"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Nustatykite diegimo duomenų galiojimo pabaigą"
+  },
+  "Settings": {
+    "message": "Nustatymai"
+  },
+  "Settings_saved_successfully": {
+    "message": "Nustatymai sėkmingai išsaugoti"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Rodyti tokenų naudojimą užduotyse"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Rodyti įspėjimą, kai saugojimo naudojimas viršija šį procentą (numatyta: 90 %)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Prisijunkite prie savo paskyros"
+  },
+  "Stable": {
+    "message": "Stabili"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Sustabdyti dabartinį užduoties vykdymą"
+  },
+  "Storage_Cache": {
+    "message": "Saugojimas ir podėlis"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Saugojimo ir podėlio nustatymai"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Saugojimo kvotos įspėjimas (%)"
+  },
+  "Storage_Settings": {
+    "message": "Saugojimo nustatymai"
+  },
+  "Storage_Tool": {
+    "message": "Saugojimo priemonė"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Išsaugoti talpyklos duomenis nuolatiniu būdu tarp naršyklės sesijų"
+  },
+  "Tab_Tool": {
+    "message": "Skirtukų priemonė"
+  },
+  "Terminal": {
+    "message": "Terminalas"
+  },
+  "Test_Connection": {
+    "message": "Testuoti ryšį"
+  },
+  "Testing": {
+    "message": "Testuojama..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Agentas šiuo metu naudoja backend režimą. LLM užklausos bus nukreipiamos per AI Republic serverį. Jūsų pokalbiai yra saugiai apdorojami per mūsų infrastruktūrą."
+  },
+  "Time": {
+    "message": "Laikas"
+  },
+  "Time_remaining": {
+    "message": "Likęs laikas"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Talpyklos elementų galiojimo laikas sekundėmis (numatyta: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Perjungti šoninį skydelį"
+  },
+  "Tool": {
+    "message": "Įrankis"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Įrankio laiko limitas (ms)"
+  },
+  "Tools": {
+    "message": "Įrankiai"
+  },
+  "Tools_Settings": {
+    "message": "Įrankių nustatymai"
+  },
+  "Turn": {
+    "message": "Ėjimas"
+  },
+  "UI_Theme": {
+    "message": "Vartotojo sąsajos tema"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Negalima įkelti kreditų informacijos"
+  },
+  "Unsaved_Changes": {
+    "message": "Neišsaugoti pakeitimai"
+  },
+  "Update_Channel": {
+    "message": "Atnaujinimo kanalas"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Atnaujinti mano planą"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Perkelti į Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Atnaujinkite savo prenumeratą, kad galėtumėte išbandyti galingiausius pasaulio modelius"
+  },
+  "Use_Context_Menu": {
+    "message": "Naudoti kontekstinį meniu:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Naudoti savo API raktą"
+  },
+  "User_Center": {
+    "message": "Vartotojo centras"
+  },
+  "User_approved_action": {
+    "message": "Vartotojo patvirtinta operacija"
+  },
+  "User_decision": {
+    "message": "Vartotojo sprendimas"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Vartotojo nuostatos ir sąsajos nustatymai"
+  },
+  "User_rejected_action": {
+    "message": "Vartotojo atmestas veiksmas"
+  },
+  "User_requested_modifications": {
+    "message": "Vartotojo prašomi pakeitimai"
+  },
+  "Using_extra_credits": {
+    "message": "Naudojami papildomi kreditai"
+  },
+  "View_Chat_History": {
+    "message": "Peržiūrėti pokalbių istoriją"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Vizualinė puslapio turinio ir išdėstymo analizė"
+  },
+  "Web_Scraping_Tool": {
+    "message": "„Web Scraping“ įrankis"
+  },
+  "Web_Search": {
+    "message": "Web paieška"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Sveiki atvykę į Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Rašymo teisė darbo vietoje"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Yra neišsaugotų pakeitimų. Ar norite juos atmesti?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Jūsų AI varomas naršyklės asistentas pasiruošęs padėti jums naršyti, suprasti ir bendrauti su interneto turiniu."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Jūsų API raktas yra šifruotas"
+  },
+  "Your_Decision": {
+    "message": "Jūsų sprendimas"
+  }
+}

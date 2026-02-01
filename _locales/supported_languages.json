@@ -1,0 +1,233 @@
+[
+    {
+        "code": "en-US",
+        "title": "English (US)"
+    },
+    {
+        "code": "en-GB",
+        "title": "English (GB)",
+        "translate_instructions": "Use British English spelling (colour, organise, centre)."
+    },
+    {
+        "code": "ar-BH",
+        "title": "عربي (Arabic)",
+        "translate_instructions": "Use Modern Standard Arabic. Text direction is right-to-left."
+    },
+    {
+        "code": "bn-BD",
+        "title": "বাংলা (Bengali)",
+        "translate_instructions": "Use standard Bengali script."
+    },
+    {
+        "code": "bg-BG",
+        "title": "български (Bulgarian)",
+        "translate_instructions": "Use Cyrillic script."
+    },
+    {
+        "code": "ca-ES",
+        "title": "català (Catalan)"
+    },
+    {
+        "code": "ceb-PH",
+        "title": "Cebuano (Cebuano)"
+    },
+    {
+        "code": "cs-CZ",
+        "title": "Čeština (Czech)"
+    },
+    {
+        "code": "da-DK",
+        "title": "Dansk (Danish)"
+    },
+    {
+        "code": "de-DE",
+        "title": "Deutsch (German)",
+        "translate_instructions": "Use formal 'Sie' form for UI text. Capitalize all nouns."
+    },
+    {
+        "code": "el-GR",
+        "title": "Ελληνικά (Greek)",
+        "translate_instructions": "Use Modern Greek."
+    },
+    {
+        "code": "es-ES",
+        "title": "Español (Spanish)",
+        "translate_instructions": "Use formal 'usted' form for UI text. Use European Spanish."
+    },
+    {
+        "code": "fa-IR",
+        "title": "فارسی (Persian)",
+        "translate_instructions": "Use Persian script. Text direction is right-to-left."
+    },
+    {
+        "code": "fi-FI",
+        "title": "Suomi (Finnish)"
+    },
+    {
+        "code": "fr-CA",
+        "title": "Français (French Canada)",
+        "translate_instructions": "Use formal 'vous' form. Use Canadian French expressions and spelling."
+    },
+    {
+        "code": "fr-FR",
+        "title": "Français (French France)",
+        "translate_instructions": "Use formal 'vous' form. Use European French."
+    },
+    {
+        "code": "he-IL",
+        "title": "עברית (Hebrew)",
+        "translate_instructions": "Use Modern Hebrew. Text direction is right-to-left."
+    },
+    {
+        "code": "hi-IN",
+        "title": "हिंदी (Hindi)",
+        "translate_instructions": "Use Devanagari script. Keep technical terms in English when no Hindi equivalent exists."
+    },
+    {
+        "code": "hr-HR",
+        "title": "Hrvatski (Croatian)"
+    },
+    {
+        "code": "hu-HU",
+        "title": "Magyar (Hungarian)"
+    },
+    {
+        "code": "id-ID",
+        "title": "Bahasa Indonesia (Indonesian)"
+    },
+    {
+        "code": "it-IT",
+        "title": "Italiano (Italian)",
+        "translate_instructions": "Use formal 'Lei' form for UI text."
+    },
+    {
+        "code": "ja-JP",
+        "title": "日本語 (Japanese)",
+        "translate_instructions": "Use appropriate mix of Kanji, Hiragana, and Katakana. Use Katakana for foreign/technical terms."
+    },
+    {
+        "code": "ka-GE",
+        "title": "ქართული (Georgian)",
+        "translate_instructions": "Use Georgian script (Mkhedruli)."
+    },
+    {
+        "code": "ko-KR",
+        "title": "한국어 (Korean)",
+        "translate_instructions": "Use Hangul. Use formal polite speech level (합쇼체)."
+    },
+    {
+        "code": "lt-LT",
+        "title": "Lietuvių (Lithuanian)"
+    },
+    {
+        "code": "mr-IN",
+        "title": "मराठी (Marathi)",
+        "translate_instructions": "Use Devanagari script."
+    },
+    {
+        "code": "ms-MY",
+        "title": "Bahasa Melayu (Malay)"
+    },
+    {
+        "code": "nb-NO",
+        "title": "Norsk (Norwegian)",
+        "translate_instructions": "Use Bokmål."
+    },
+    {
+        "code": "nl-NL",
+        "title": "Nederlands (Dutch)"
+    },
+    {
+        "code": "pa-IN",
+        "title": "ਪੰਜਾਬੀ (Punjabi)",
+        "translate_instructions": "Use Gurmukhi script."
+    },
+    {
+        "code": "pl-PL",
+        "title": "Polski (Polish)"
+    },
+    {
+        "code": "pt-BR",
+        "title": "Português (Portuguese Brazil)",
+        "translate_instructions": "Use Brazilian Portuguese spelling and expressions."
+    },
+    {
+        "code": "pt-PT",
+        "title": "Português (Portuguese Portugal)",
+        "translate_instructions": "Use European Portuguese spelling and expressions."
+    },
+    {
+        "code": "ro-RO",
+        "title": "Română (Romanian)"
+    },
+    {
+        "code": "ru-RU",
+        "title": "Русский (Russian)",
+        "translate_instructions": "Use Cyrillic script. Use formal form for UI text."
+    },
+    {
+        "code": "sk-SK",
+        "title": "Slovenčina (Slovak)"
+    },
+    {
+        "code": "sl-SI",
+        "title": "Slovenščina (Slovenian)"
+    },
+    {
+        "code": "sr-RS",
+        "title": "Српски (Serbian)",
+        "translate_instructions": "Use Cyrillic script."
+    },
+    {
+        "code": "sv-SE",
+        "title": "Svenska (Swedish)"
+    },
+    {
+        "code": "sw-KE",
+        "title": "Kiswahili (Swahili)"
+    },
+    {
+        "code": "ta-IN",
+        "title": "தமிழ் (Tamil)",
+        "translate_instructions": "Use Tamil script."
+    },
+    {
+        "code": "te-IN",
+        "title": "తెలుగు (Telugu)",
+        "translate_instructions": "Use Telugu script."
+    },
+    {
+        "code": "th-TH",
+        "title": "ไทย (Thai)",
+        "translate_instructions": "Use Thai script. No spaces between words."
+    },
+    {
+        "code": "tr-TR",
+        "title": "Türkçe (Turkish)"
+    },
+    {
+        "code": "uk-UA",
+        "title": "Українська (Ukrainian)",
+        "translate_instructions": "Use Cyrillic script."
+    },
+    {
+        "code": "vi-VN",
+        "title": "Tiếng Việt (Vietnamese)",
+        "translate_instructions": "Use Vietnamese diacritics."
+    },
+    {
+        "code": "zh-CN",
+        "title": "简体中文 (Chinese Simplified)",
+        "translate_instructions": "Use Simplified Chinese characters."
+    },
+    {
+        "code": "zh-TW",
+        "title": "繁體中文 (Chinese Traditional)",
+        "translate_instructions": "Use Traditional Chinese characters."
+    },
+    {
+        "code": "dg-DG",
+        "title": "🐶 (Doge)",
+        "translate_instructions": "Use Doge meme speak: much, very, so, wow, such. Example: 'Settings' -> 'much settings wow'."
+    }
+]

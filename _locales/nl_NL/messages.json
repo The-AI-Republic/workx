@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Algemene in-browser AI-agent voor werktaken"
+  },
+  "API_Key_Configuration": {
+    "message": "API-sleutelconfiguratie"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API-sleutels worden versleuteld en lokaal in uw browser opgeslagen. Ze worden nooit naar externe servers verzonden, behalve voor API-aanroepen."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Toegang tot browseropslag (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Actie"
+  },
+  "Action_Details": {
+    "message": "Actiedetails"
+  },
+  "Add_Modification": {
+    "message": "Wijziging toevoegen"
+  },
+  "Advanced_Configuration": {
+    "message": "Geavanceerde configuratie"
+  },
+  "Advanced_Options": {
+    "message": "Geavanceerde opties"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Agent-uitvoeringshulpmiddelen"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Agent toestaan systeemopdrachten uit te voeren (met voorzichtigheid gebruiken)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Agent toestaan bestanden te lezen, te schrijven en te beheren (komt in een toekomstige update)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Toestaan dat inhoudsscripts op webpagina's worden uitgevoerd"
+  },
+  "Allowed_Origins": {
+    "message": "Toegestane origins"
+  },
+  "Approval_History": {
+    "message": "Goedkeuringsgeschiedenis"
+  },
+  "Approve": {
+    "message": "Goedkeuren"
+  },
+  "Approve_this_action": {
+    "message": "Deze actie goedkeuren"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
+  },
+  "Available": {
+    "message": "Beschikbaar:"
+  },
+  "Back": {
+    "message": "Terug"
+  },
+  "Backend_Mode": {
+    "message": "Backend-modus"
+  },
+  "Backend_Mode_Active": {
+    "message": "Backend-modus actief"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Browserhulpmiddelen"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Schakelaars voor browserautomatiseringstools"
+  },
+  "Cache_Settings": {
+    "message": "Cache-instellingen"
+  },
+  "Cache_TTL_seconds": {
+    "message": "Cache TTL (seconden)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Cachegedrag en gegevensbewaring"
+  },
+  "Cancel": {
+    "message": "Annuleren"
+  },
+  "Chat_History": {
+    "message": "Chatgeschiedenis"
+  },
+  "Choose_AI_Model": {
+    "message": "Kies AI-model"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Kies de visuele stijl voor de zijpaneelinterface"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Kies welk updatekanaal te volgen"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Klassieke terminalstijl met groene tekst op zwarte achtergrond"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Schone, moderne chatinterface vergelijkbaar met ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Klik om een model te selecteren"
+  },
+  "Close_settings": {
+    "message": "Instellingen sluiten"
+  },
+  "Command": {
+    "message": "Opdracht"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Cachegegevens comprimeren om opslagruimte te besparen"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Configureer AI-model en API-sleutels"
+  },
+  "Connected": {
+    "message": "Verbonden"
+  },
+  "Context": {
+    "message": "Context"
+  },
+  "Create_New_Tab": {
+    "message": "Nieuw tabblad maken"
+  },
+  "Credit_Details": {
+    "message": "Creditdetails"
+  },
+  "Current_Plan": {
+    "message": "Huidig plan:"
+  },
+  "DOM_Tool": {
+    "message": "DOM-tool"
+  },
+  "Daily_Credits": {
+    "message": "Dagelijkse credits"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Gegevens-extractietool"
+  },
+  "Days_until_expiration": {
+    "message": "Dagen tot vervaldatum"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Ontwikkeld en ondersteund door AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Wijzigingen negeren"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Toon tokenverbruik (invoer-/uitvoertokens) bij voltooiing van taken"
+  },
+  "Enable_All_Tools": {
+    "message": "Alle tools inschakelen"
+  },
+  "Enable_Cache": {
+    "message": "Cache inschakelen"
+  },
+  "Enable_Compression": {
+    "message": "Compressie inschakelen"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Inhoudsscripts inschakelen"
+  },
+  "Enable_Extension": {
+    "message": "Extensie inschakelen"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Integratie van Model Context Protocol-tools inschakelen (komt in een toekomstige update)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Webzoekfunctionaliteit voor de agent inschakelen"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Voer uw LLM API-sleutel in"
+  },
+  "Execute_Commands": {
+    "message": "Opdrachten uitvoeren"
+  },
+  "Expire_after_days": {
+    "message": "Verloopt na dagen"
+  },
+  "Explain_your_decision": {
+    "message": "Leg uw beslissing uit..."
+  },
+  "Extension_Permission": {
+    "message": "Extensie & toestemming"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Instellingen voor extensie en toestemming"
+  },
+  "Extension_Configuration": {
+    "message": "Extensieconfiguratie"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Extensieconfiguratie en toestemmingen"
+  },
+  "Extra_Credits": {
+    "message": "Extra Credits"
+  },
+  "Extract_Data": {
+    "message": "Gegevens extraheren:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Specifieke gegevenspatronen van pagina's extraheren"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Gestructureerde gegevens van webpagina's extraheren"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Kan voorkeuren niet laden"
+  },
+  "Failed_to_save_settings": {
+    "message": "Kan instellingen niet opslaan"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Bestandsbewerkingen (niet beschikbaar)"
+  },
+  "File_Path": {
+    "message": "Bestandspad"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Formulieren invullen, gegevens verzenden, interactie met formulierelementen"
+  },
+  "Form_Automation_Tool": {
+    "message": "Tool voor formulierautomatisering"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Volledige toegang (gevaarlijk)"
+  },
+  "General": {
+    "message": "Algemeen"
+  },
+  "General_Settings": {
+    "message": "Algemene instellingen"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "Algemene in-browser AI-agent voor werktaken"
+  },
+  "Get_Started": {
+    "message": "Aan de slag"
+  },
+  "Hello_NAME": {
+    "message": "Hallo $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hallo wereld"
+  },
+  "History": {
+    "message": "Geschiedenis"
+  },
+  "Impact": {
+    "message": "Impact"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Netwerkverzoeken en -reacties onderscheppen en aanpassen"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Sneltoetsen"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-verzoeken gaan rechtstreeks naar provider-API's"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-verzoeken worden via de AI Republic-backend geleid"
+  },
+  "Language": {
+    "message": "Taal"
+  },
+  "Learn_more": {
+    "message": "Meer info"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Lijst met toegestane origins (één per regel). Ondersteunt wildcards (*)."
+  },
+  "Loading_credits": {
+    "message": "Credits laden..."
+  },
+  "Loading_settings": {
+    "message": "Instellingen laden..."
+  },
+  "Login": {
+    "message": "Inloggen"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Log in om gratis credits te krijgen"
+  },
+  "Low_credits_remaining": {
+    "message": "Weinig credits over"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Tools (Niet beschikbaar)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Beheer browsertabbladen (openen, sluiten, wisselen, opvragen)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Hoofdschakelaar om alle browser- en agenttools in of uit te schakelen"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Hoofdschakelaar om de extensie in of uit te schakelen"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Maximale cachegrootte (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Maximale cachegrootte in megabytes (standaard: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Maximumtijd (in milliseconden) dat een tool kan draaien voordat er een time‑out optreedt (standaard: 30000)"
+  },
+  "Model_Config": {
+    "message": "Modelconfiguratie"
+  },
+  "Model_Selection": {
+    "message": "Modelselectie"
+  },
+  "Modern_Chat": {
+    "message": "Moderne chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Parameters aanpassen bij het aanvragen van wijzigingen"
+  },
+  "Monthly_Credits": {
+    "message": "Maandelijkse credits"
+  },
+  "More_Config": {
+    "message": "Meer configuratie"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navigeer door pagina's, klik op links, beheer browsernavigatie"
+  },
+  "Navigation_Tool": {
+    "message": "Navigatietool"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Netwerkinterceptietool"
+  },
+  "Never_expire_permanent": {
+    "message": "Nooit verlopen (permanent)"
+  },
+  "New_Conversation": {
+    "message": "Nieuw gesprek"
+  },
+  "No_approval_history_yet": {
+    "message": "Nog geen goedkeuringsgeschiedenis."
+  },
+  "No_tabs_available": {
+    "message": "Geen tabbladen beschikbaar"
+  },
+  "Not_Connected": {
+    "message": "Niet verbonden"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Aantal dagen voordat implementatiegegevens verlopen (standaard: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Open zijpaneel:"
+  },
+  "Organization": {
+    "message": "Organisatie"
+  },
+  "Page_Action_Tool": {
+    "message": "Pagina-actietool"
+  },
+  "Page_Vision_Tool": {
+    "message": "Pagina Vision Tool"
+  },
+  "Parameter_Modifications": {
+    "message": "Parameterwijzigingen"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Voer pagina-acties uit (scrollen, screenshot, wachten)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Cache persistent maken"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Voer een geldige API-sleutel in."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Typ een geldige opdracht"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Het prioriteitsniveau biedt snellere responstijden tegen hogere kosten."
+  },
+  "Provider": {
+    "message": "Provider"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Bevraag en bewerk de DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Snel starten"
+  },
+  "Quick_action": {
+    "message": "Snelle actie"
+  },
+  "Read_only": {
+    "message": "Alleen-lezen"
+  },
+  "Reason_optional": {
+    "message": "Reden (optioneel)"
+  },
+  "Refreshes_in": {
+    "message": "Vernieuwt over:"
+  },
+  "Reject": {
+    "message": "Afwijzen"
+  },
+  "Reject_this_action": {
+    "message": "Deze actie weigeren"
+  },
+  "Remaining": {
+    "message": "Resterend:"
+  },
+  "Remove_API_Key": {
+    "message": "API-sleutel verwijderen"
+  },
+  "Remove_modification": {
+    "message": "Wijziging verwijderen"
+  },
+  "Request_Changes": {
+    "message": "Wijzigingen aanvragen"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Wijzigingen voor deze actie aanvragen"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Uitrolvervaldatum"
+  },
+  "Sandbox_Policy": {
+    "message": "Sandboxbeleid"
+  },
+  "Save_API_Key": {
+    "message": "API-sleutel opslaan"
+  },
+  "Save_Settings": {
+    "message": "Instellingen opslaan"
+  },
+  "Saving": {
+    "message": "Opslaan..."
+  },
+  "Security_Privacy": {
+    "message": "Beveiliging & privacy"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Beveiligingsniveau voor tool-uitvoeringsomgeving"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Selecteer het AI-model voor gesprekken."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Selecteer uw voorkeurstaal voor de interface"
+  },
+  "Send_the_message": {
+    "message": "Bericht verzenden"
+  },
+  "Service_Tier": {
+    "message": "Serviceklasse"
+  },
+  "Session": {
+    "message": "Sessie"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Instellen wanneer rolloutgegevens moeten verlopen"
+  },
+  "Settings": {
+    "message": "Instellingen"
+  },
+  "Settings_saved_successfully": {
+    "message": "Instellingen succesvol opgeslagen"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Toon tokenverbruik in taken"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Toon waarschuwing wanneer opslaggebruik dit percentage overschrijdt (standaard: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Meld u aan bij uw account"
+  },
+  "Stable": {
+    "message": "Stabiel"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Stop de huidige taakuitvoering"
+  },
+  "Storage_Cache": {
+    "message": "Opslag & Cache"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Instellingen voor opslag & cache"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Waarschuwing opslagquotum (%)"
+  },
+  "Storage_Settings": {
+    "message": "Opslaginstellingen"
+  },
+  "Storage_Tool": {
+    "message": "Opslaghulpmiddel"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Cache‑gegevens permanent opslaan tussen browsersessies"
+  },
+  "Tab_Tool": {
+    "message": "Tabblad-hulpmiddel"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Verbinding testen"
+  },
+  "Testing": {
+    "message": "Testen..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "De agent gebruikt momenteel de backend‑modus. LLM‑verzoeken worden via de AI Republic‑server geleid. Uw gesprekken worden veilig verwerkt via onze infrastructuur."
+  },
+  "Time": {
+    "message": "Tijd"
+  },
+  "Time_remaining": {
+    "message": "Resterende tijd"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Time-to-live voor gecachte items in seconden (standaard: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Zijpaneel tonen/verbergen"
+  },
+  "Tool": {
+    "message": "Tool"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Tool-timeout (ms)"
+  },
+  "Tools": {
+    "message": "Tools"
+  },
+  "Tools_Settings": {
+    "message": "Tools-instellingen"
+  },
+  "Turn": {
+    "message": "Beurt"
+  },
+  "UI_Theme": {
+    "message": "UI-thema"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Kan creditinformatie niet laden"
+  },
+  "Unsaved_Changes": {
+    "message": "Niet-opgeslagen wijzigingen"
+  },
+  "Update_Channel": {
+    "message": "Updatekanaal"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Upgrade mijn plan"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Upgrade naar Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Upgrade je abonnement om de krachtigste modellen van de wereld te verkennen"
+  },
+  "Use_Context_Menu": {
+    "message": "Gebruik contextmenu:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Gebruik eigen API-sleutel"
+  },
+  "User_Center": {
+    "message": "Gebruikerscentrum"
+  },
+  "User_approved_action": {
+    "message": "Door gebruiker goedgekeurde actie"
+  },
+  "User_decision": {
+    "message": "Gebruikerskeuze"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Gebruikersvoorkeuren en interface-instellingen"
+  },
+  "User_rejected_action": {
+    "message": "Gebruiker heeft actie afgewezen"
+  },
+  "User_requested_modifications": {
+    "message": "Door gebruiker aangevraagde wijzigingen"
+  },
+  "Using_extra_credits": {
+    "message": "Extra credits gebruiken"
+  },
+  "View_Chat_History": {
+    "message": "Chatgeschiedenis bekijken"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Visuele analyse van paginainhoud en -indeling"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Webscraping-tool"
+  },
+  "Web_Search": {
+    "message": "Zoeken op het web"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Welkom bij Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Schrijven in werkruimte"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Je hebt niet-opgeslagen wijzigingen. Wil je ze verwijderen?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Je AI-aangedreven browserassistent staat klaar om je te helpen navigeren, begrijpen en te interacteren met webinhoud."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Je API-sleutel is versleuteld"
+  },
+  "Your_Decision": {
+    "message": "Je beslissing"
+  }
+}

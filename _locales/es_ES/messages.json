@@ -1,0 +1,657 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Agente de IA para el navegador que ayuda con tareas de trabajo"
+  },
+  "API_Key_Configuration": {
+    "message": "Configuración de la clave API"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Las claves API se encriptan y almacenan localmente en su navegador. Nunca se envían a servidores externos, salvo en llamadas API."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Acceder al almacenamiento del navegador (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Acción"
+  },
+  "Action_Details": {
+    "message": "Detalles de la acción"
+  },
+  "Add_Modification": {
+    "message": "Añadir cambio"
+  },
+  "Advanced_Configuration": {
+    "message": "Configuración avanzada"
+  },
+  "Advanced_Options": {
+    "message": "Opciones avanzadas"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Herramientas del agente"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Permitir que el agente ejecute comandos del sistema (utilícelo con precaución)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Permitir que el agente lea, escriba y gestione archivos (próximamente en una actualización)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Permitir que los scripts de contenido se ejecuten en páginas web"
+  },
+  "Allowed_Origins": {
+    "message": "Orígenes permitidos"
+  },
+  "Approval_History": {
+    "message": "Historial de aprobaciones"
+  },
+  "Approve": {
+    "message": "Aprobar"
+  },
+  "Approve_this_action": {
+    "message": "Aprobar esta acción"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Solicitar a Browserx que extraiga datos estructurados de cualquier página web"
+  },
+  "Available": {
+    "message": "Disponible:"
+  },
+  "Back": {
+    "message": "Volver"
+  },
+  "Backend_Mode": {
+    "message": "Modo backend"
+  },
+  "Backend_Mode_Active": {
+    "message": "Modo backend activo"
+  },
+  "Beta": {
+    "message": "Beta"
+  },
+  "Browser_Tools": {
+    "message": "Herramientas del navegador"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Alternar herramientas de automatización del navegador"
+  },
+  "Cache_Settings": {
+    "message": "Configuración de caché"
+  },
+  "Cache_TTL_seconds": {
+    "message": "TTL de caché (segundos)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Comportamiento de la caché y retención de datos"
+  },
+  "Cancel": {
+    "message": "Cancelar"
+  },
+  "Chat_History": {
+    "message": "Historial de chat"
+  },
+  "Choose_AI_Model": {
+    "message": "Seleccione el modelo de IA"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Seleccione el estilo visual para la interfaz del panel lateral"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Seleccione el canal de actualizaciones que desea seguir"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Estilo de terminal clásico con texto verde sobre fondo negro"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Interfaz de chat limpia y moderna, similar a ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Haga clic en el icono de Browserx en la barra de herramientas o pulse Alt+Mayús+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Haga clic para seleccionar un modelo"
+  },
+  "Close_settings": {
+    "message": "Cerrar configuración"
+  },
+  "Command": {
+    "message": "Comando"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Comprima los datos en caché para ahorrar espacio de almacenamiento"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Configure el modelo de IA y las claves API"
+  },
+  "Connected": {
+    "message": "Conectado"
+  },
+  "Context": {
+    "message": "Contexto"
+  },
+  "Create_New_Tab": {
+    "message": "Crear Nueva Pestaña"
+  },
+  "Credit_Details": {
+    "message": "Detalles de crédito"
+  },
+  "Current_Plan": {
+    "message": "Plan actual:"
+  },
+  "DOM_Tool": {
+    "message": "Herramienta DOM"
+  },
+  "Daily_Credits": {
+    "message": "Créditos diarios"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Herramienta de extracción de datos"
+  },
+  "Days_until_expiration": {
+    "message": "Días hasta la expiración"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Desarrollado y respaldado por AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Descartar cambios"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Mostrar consumo de tokens (tokens de entrada/salida) al completar las tareas"
+  },
+  "Enable_All_Tools": {
+    "message": "Activar todas las herramientas"
+  },
+  "Enable_Cache": {
+    "message": "Activar caché"
+  },
+  "Enable_Compression": {
+    "message": "Activar compresión"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Activar scripts de contenido"
+  },
+  "Enable_Extension": {
+    "message": "Activar extensión"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Activar la integración de herramientas del Protocolo de Contexto del Modelo (Disponible en una futura actualización)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Activar la caché para mejorar el rendimiento almacenando datos de acceso frecuente"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Activar la capacidad de búsqueda web para el agente"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Introduzca su clave API de LLM"
+  },
+  "Execute_Commands": {
+    "message": "Ejecutar comandos"
+  },
+  "Expire_after_days": {
+    "message": "Caducar tras $1$ días",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Explain_your_decision": {
+    "message": "Explique su decisión..."
+  },
+  "Extension_Permission": {
+    "message": "Extensión y permisos"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Configuración de extensión y permisos"
+  },
+  "Extension_Configuration": {
+    "message": "Configuración de la extensión"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Configuración de la extensión y permisos"
+  },
+  "Extra_Credits": {
+    "message": "Créditos adicionales"
+  },
+  "Extract_Data": {
+    "message": "Extraer datos:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Extraer patrones de datos específicos de las páginas"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Extraer datos estructurados de páginas web"
+  },
+  "Failed_to_load_preferences": {
+    "message": "No se pudieron cargar las preferencias"
+  },
+  "Failed_to_save_settings": {
+    "message": "No se pudieron guardar los ajustes"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Operaciones de archivo (No disponible)"
+  },
+  "File_Path": {
+    "message": "Ruta del archivo"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Rellenar formularios, enviar datos, interactuar con los elementos del formulario"
+  },
+  "Form_Automation_Tool": {
+    "message": "Herramienta de automatización de formularios"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Acceso total (Peligroso)"
+  },
+  "General": {
+    "message": "General"
+  },
+  "General_Settings": {
+    "message": "Ajustes generales"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "Agente de IA general en el navegador para tareas laborales"
+  },
+  "Get_Started": {
+    "message": "Comenzar"
+  },
+  "Hello_NAME": {
+    "message": "Hola $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Hola Mundo"
+  },
+  "History": {
+    "message": "Historial"
+  },
+  "Impact": {
+    "message": "Impacto"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Interceptar y modificar solicitudes/respuestas de red"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Atajos de teclado"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Las solicitudes LLM van directamente a las API del proveedor"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Las solicitudes LLM se enrutan a través del backend de AI Republic"
+  },
+  "Language": {
+    "message": "Idioma"
+  },
+  "Learn_more": {
+    "message": "Más información"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Lista de orígenes permitidos (uno por línea). Soporta comodines (*)."
+  },
+  "Loading_credits": {
+    "message": "Cargando créditos..."
+  },
+  "Loading_settings": {
+    "message": "Cargando ajustes..."
+  },
+  "Login": {
+    "message": "Iniciar sesión"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Inicie sesión para obtener créditos gratuitos"
+  },
+  "Low_credits_remaining": {
+    "message": "Quedan pocos créditos"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "Herramientas MCP (No disponible)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Gestionar pestañas del navegador (abrir, cerrar, cambiar, consultar)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Interruptor maestro para activar o desactivar todas las herramientas del navegador y del agente"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Interruptor maestro para activar o desactivar la extensión"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Tamaño máximo de caché (MB)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Tamaño máximo de caché en megabytes (por defecto: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Tiempo máximo (en milisegundos) que una herramienta puede ejecutarse antes de expirar (por defecto: 30000)"
+  },
+  "Model_Config": {
+    "message": "Configuración del modelo"
+  },
+  "Model_Selection": {
+    "message": "Selección de modelo"
+  },
+  "Modern_Chat": {
+    "message": "Chat moderno"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Modificar parámetros al solicitar cambios"
+  },
+  "Monthly_Credits": {
+    "message": "Créditos mensuales"
+  },
+  "More_Config": {
+    "message": "Más configuración"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Navegar por páginas, hacer clic en enlaces, gestionar la navegación del navegador"
+  },
+  "Navigation_Tool": {
+    "message": "Herramienta de navegación"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Herramienta de intercepción de red"
+  },
+  "Never_expire_permanent": {
+    "message": "Nunca expira (permanente)"
+  },
+  "New_Conversation": {
+    "message": "Nueva conversación"
+  },
+  "No_approval_history_yet": {
+    "message": "Aún no hay historial de aprobaciones."
+  },
+  "No_tabs_available": {
+    "message": "No hay pestañas disponibles"
+  },
+  "Not_Connected": {
+    "message": "No conectado"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Número de días antes de que los datos de despliegue expiren (por defecto: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Abrir panel lateral:"
+  },
+  "Organization": {
+    "message": "Organización"
+  },
+  "Page_Action_Tool": {
+    "message": "Herramienta de acción de página"
+  },
+  "Page_Vision_Tool": {
+    "message": "Herramienta de visión de página"
+  },
+  "Parameter_Modifications": {
+    "message": "Modificaciones de parámetros"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Ejecutar acciones de página (desplazamiento, captura de pantalla, espera)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Persistir caché en el almacenamiento"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Por favor, introduzca una clave API válida."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Por favor, escriba un comando válido"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "El nivel prioritario ofrece tiempos de respuesta más rápidos con precios más altos."
+  },
+  "Provider": {
+    "message": "Proveedor"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Consultar y manipular el DOM (Modelo de Objeto de Documento)"
+  },
+  "Quick_Start": {
+    "message": "Inicio rápido"
+  },
+  "Quick_action": {
+    "message": "Acción rápida"
+  },
+  "Read_only": {
+    "message": "Solo lectura"
+  },
+  "Reason_optional": {
+    "message": "Motivo (opcional)"
+  },
+  "Refreshes_in": {
+    "message": "Se actualiza en"
+  },
+  "Reject": {
+    "message": "Rechazar"
+  },
+  "Reject_this_action": {
+    "message": "Rechazar esta acción"
+  },
+  "Remaining": {
+    "message": "Restante:"
+  },
+  "Remove_API_Key": {
+    "message": "Eliminar clave API"
+  },
+  "Remove_modification": {
+    "message": "Eliminar modificación"
+  },
+  "Request_Changes": {
+    "message": "Solicitar cambios"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Solicitar cambios a esta acción"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Haga clic con el botón derecho sobre cualquier texto para explicarlo o mejorarlo con Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Expiración del despliegue"
+  },
+  "Sandbox_Policy": {
+    "message": "Política de sandbox"
+  },
+  "Save_API_Key": {
+    "message": "Guardar clave API"
+  },
+  "Save_Settings": {
+    "message": "Guardar configuración"
+  },
+  "Saving": {
+    "message": "Guardando..."
+  },
+  "Security_Privacy": {
+    "message": "Seguridad y privacidad"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Nivel de seguridad para el entorno de ejecución de la herramienta"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Seleccione el modelo de IA que se utilizará en las conversaciones."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Seleccione su idioma preferido para la interfaz"
+  },
+  "Send_the_message": {
+    "message": "Enviar el mensaje"
+  },
+  "Service_Tier": {
+    "message": "Nivel de servicio"
+  },
+  "Session": {
+    "message": "Sesión"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Establezca cuándo deben expirar los datos de despliegue"
+  },
+  "Settings": {
+    "message": "Configuración"
+  },
+  "Settings_saved_successfully": {
+    "message": "Configuración guardada correctamente"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Mostrar uso de tokens en tareas"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Mostrar advertencia cuando el uso de almacenamiento supere este porcentaje (por defecto: 90 %)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Inicie sesión en su cuenta"
+  },
+  "Stable": {
+    "message": "Estable"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Detener la ejecución actual de la tarea"
+  },
+  "Storage_Cache": {
+    "message": "Almacenamiento y caché"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Configuración de almacenamiento y caché"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Advertencia de cuota de almacenamiento (%)"
+  },
+  "Storage_Settings": {
+    "message": "Configuración de almacenamiento"
+  },
+  "Storage_Tool": {
+    "message": "Herramienta de almacenamiento"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Almacenar datos de caché de forma persistente entre sesiones del navegador"
+  },
+  "Tab_Tool": {
+    "message": "Herramienta de pestaña"
+  },
+  "Terminal": {
+    "message": "Terminal"
+  },
+  "Test_Connection": {
+    "message": "Probar conexión"
+  },
+  "Testing": {
+    "message": "Probando..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "El agente está utilizando actualmente el modo backend. Las solicitudes LLM se enrutarán a través del servidor de AI Republic. Sus conversaciones se procesan de forma segura a través de nuestra infraestructura."
+  },
+  "Time": {
+    "message": "Tiempo"
+  },
+  "Time_remaining": {
+    "message": "Tiempo restante"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Tiempo de vida (TTL) de los elementos en caché en segundos (por defecto: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Alternar panel lateral"
+  },
+  "Tool": {
+    "message": "Herramienta"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Tiempo de espera de la herramienta (ms)"
+  },
+  "Tools": {
+    "message": "Herramientas"
+  },
+  "Tools_Settings": {
+    "message": "Configuración de herramientas"
+  },
+  "Turn": {
+    "message": "Alternar"
+  },
+  "UI_Theme": {
+    "message": "Tema de la interfaz"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "No se pudo cargar la información de crédito"
+  },
+  "Unsaved_Changes": {
+    "message": "Cambios sin guardar"
+  },
+  "Update_Channel": {
+    "message": "Canal de actualización"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Mejorar su plan"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Actualizar a Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Actualice su suscripción para explorar los modelos más potentes del mundo"
+  },
+  "Use_Context_Menu": {
+    "message": "Usar menú contextual:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Usar su propia clave API"
+  },
+  "User_Center": {
+    "message": "Centro de usuarios"
+  },
+  "User_approved_action": {
+    "message": "Acción aprobada por el usuario"
+  },
+  "User_decision": {
+    "message": "Decisión del usuario"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Preferencias del usuario y configuraciones de la interfaz"
+  },
+  "User_rejected_action": {
+    "message": "Acción rechazada por el usuario"
+  },
+  "User_requested_modifications": {
+    "message": "Modificaciones solicitadas por el usuario"
+  },
+  "Using_extra_credits": {
+    "message": "Uso de créditos extra"
+  },
+  "View_Chat_History": {
+    "message": "Ver historial de chat"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Análisis visual del contenido y diseño de la página"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Herramienta de raspado web"
+  },
+  "Web_Search": {
+    "message": "Búsqueda web"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Le damos la bienvenida a Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Escribir en el área de trabajo"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "Tiene cambios sin guardar. ¿Desea descartarlos?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Su asistente de navegador impulsado por IA está listo para ayudarle a navegar, comprender e interactuar con el contenido web."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Su clave API está cifrada"
+  },
+  "Your_Decision": {
+    "message": "Su decisión"
+  }
+}

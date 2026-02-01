@@ -1,0 +1,652 @@
+{
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Общий AI‑агент в браузере для рабочих задач"
+  },
+  "API_Key_Configuration": {
+    "message": "Конфигурация API‑ключа"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API‑ключи шифруются и сохраняются локально в вашем браузере. Они никогда не отправляются на внешние серверы, за исключением вызовов API."
+  },
+  "Access_browser_storage_localStorage_sess_f762": {
+    "message": "Доступ к хранилищу браузера (localStorage, sessionStorage, cookies)"
+  },
+  "Action": {
+    "message": "Действие"
+  },
+  "Action_Details": {
+    "message": "Детали действия"
+  },
+  "Add_Modification": {
+    "message": "Добавить изменение"
+  },
+  "Advanced_Configuration": {
+    "message": "Расширенная конфигурация"
+  },
+  "Advanced_Options": {
+    "message": "Расширенные параметры"
+  },
+  "Agent_Execution_Tools": {
+    "message": "Инструменты выполнения агента"
+  },
+  "Allow_agent_to_execute_system_commands_u_1182": {
+    "message": "Разрешить агенту выполнять системные команды (используйте с осторожностью)"
+  },
+  "Allow_agent_to_read_write_and_manage_fil_f8ec": {
+    "message": "Разрешить агенту читать, записывать и управлять файлами (будет в будущих обновлениях)"
+  },
+  "Allow_content_scripts_to_run_on_web_page_33c2": {
+    "message": "Разрешить запуск скриптов содержимого на веб‑страницах"
+  },
+  "Allowed_Origins": {
+    "message": "Разрешённые источники"
+  },
+  "Approval_History": {
+    "message": "История одобрений"
+  },
+  "Approve": {
+    "message": "Одобрить"
+  },
+  "Approve_this_action": {
+    "message": "Одобрить это действие"
+  },
+  "Ask_Browserx_to_extract_structured_data__88fc": {
+    "message": "Попросить Browserx извлечь структурированные данные с любой веб‑страницы"
+  },
+  "Available": {
+    "message": "Доступно:"
+  },
+  "Back": {
+    "message": "Назад"
+  },
+  "Backend_Mode": {
+    "message": "Режим бэкенда"
+  },
+  "Backend_Mode_Active": {
+    "message": "Режим бэкенда активен"
+  },
+  "Beta": {
+    "message": "Бета"
+  },
+  "Browser_Tools": {
+    "message": "Инструменты браузера"
+  },
+  "Browser_automation_tool_toggles": {
+    "message": "Переключатели инструментов автоматизации браузера"
+  },
+  "Cache_Settings": {
+    "message": "Настройки кэша"
+  },
+  "Cache_TTL_seconds": {
+    "message": "TTL кэша (секунды)"
+  },
+  "Cache_behavior_and_data_retention": {
+    "message": "Поведение кэша и хранение данных"
+  },
+  "Cancel": {
+    "message": "Отмена"
+  },
+  "Chat_History": {
+    "message": "История чата"
+  },
+  "Choose_AI_Model": {
+    "message": "Выберите модель ИИ"
+  },
+  "Choose_the_visual_style_for_the_side_pan_99a0": {
+    "message": "Выберите визуальный стиль интерфейса боковой панели"
+  },
+  "Choose_which_update_channel_to_follow": {
+    "message": "Выберите канал обновлений"
+  },
+  "Classic_terminal_style_with_green_text_o_02cc": {
+    "message": "Классический стиль терминала с зелёным текстом на чёрном фоне"
+  },
+  "Clean_modern_chat_interface_similar_to_C_2401": {
+    "message": "Чистый современный чат‑интерфейс, похожий на ChatGPT"
+  },
+  "Click_the_Browserx_icon_in_your_toolbar__d881": {
+    "message": "Нажмите значок Browserx на панели инструментов или нажмите Alt+Shift+C"
+  },
+  "Click_to_select_a_model": {
+    "message": "Нажмите, чтобы выбрать модель"
+  },
+  "Close_settings": {
+    "message": "Закрыть настройки"
+  },
+  "Command": {
+    "message": "Команда"
+  },
+  "Compress_cached_data_to_save_storage_spa_6d03": {
+    "message": "Сжать кэшированные данные для экономии места"
+  },
+  "Configure_AI_model_and_API_keys": {
+    "message": "Настройте модель ИИ и ключи API"
+  },
+  "Connected": {
+    "message": "Подключено"
+  },
+  "Context": {
+    "message": "Контекст"
+  },
+  "Create_New_Tab": {
+    "message": "Создать новую вкладку"
+  },
+  "Credit_Details": {
+    "message": "Детали кредита"
+  },
+  "Current_Plan": {
+    "message": "Текущий план:"
+  },
+  "DOM_Tool": {
+    "message": "Инструмент DOM"
+  },
+  "Daily_Credits": {
+    "message": "Ежедневные кредиты"
+  },
+  "Data_Extraction_Tool": {
+    "message": "Инструмент извлечения данных"
+  },
+  "Days_until_expiration": {
+    "message": "Дней до истечения срока"
+  },
+  "Developed_and_supported_by_AI_Republic": {
+    "message": "Разработано и поддерживается AI Republic"
+  },
+  "Discard_Changes": {
+    "message": "Отменить изменения"
+  },
+  "Display_token_consumption_input_output_t_4979": {
+    "message": "Показывать потребление токенов (входные/выходные токены) при завершении задач"
+  },
+  "Enable_All_Tools": {
+    "message": "Включить все инструменты"
+  },
+  "Enable_Cache": {
+    "message": "Включить кэш"
+  },
+  "Enable_Compression": {
+    "message": "Включить сжатие"
+  },
+  "Enable_Content_Scripts": {
+    "message": "Включить скрипты контента"
+  },
+  "Enable_Extension": {
+    "message": "Включить расширение"
+  },
+  "Enable_Model_Context_Protocol_tools_inte_851c": {
+    "message": "Включить интеграцию инструментов Model Context Protocol (будет в будущих обновлениях)"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Включить кэширование для повышения производительности за счёт хранения часто используемых данных"
+  },
+  "Enable_web_search_capabilities_for_the_a_e8a0": {
+    "message": "Включить возможности веб‑поиска для агента"
+  },
+  "Enter_your_LLM_API_key": {
+    "message": "Введите ваш API‑ключ LLM"
+  },
+  "Execute_Commands": {
+    "message": "Выполнить команды"
+  },
+  "Expire_after_days": {
+    "message": "Истекает через дней"
+  },
+  "Explain_your_decision": {
+    "message": "Объясните ваше решение..."
+  },
+  "Extension_Permission": {
+    "message": "Расширение и разрешение"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Настройки расширения и разрешений"
+  },
+  "Extension_Configuration": {
+    "message": "Конфигурация расширения"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Конфигурация расширения и разрешений"
+  },
+  "Extra_Credits": {
+    "message": "Дополнительные кредиты"
+  },
+  "Extract_Data": {
+    "message": "Извлечь данные:"
+  },
+  "Extract_specific_data_patterns_from_page_4658": {
+    "message": "Извлекать определённые шаблоны данных со страниц"
+  },
+  "Extract_structured_data_from_web_pages": {
+    "message": "Извлекать структурированные данные с веб‑страниц"
+  },
+  "Failed_to_load_preferences": {
+    "message": "Не удалось загрузить настройки"
+  },
+  "Failed_to_save_settings": {
+    "message": "Не удалось сохранить настройки"
+  },
+  "File_Operations_Not_Available": {
+    "message": "Операции с файлами (Недоступно)"
+  },
+  "File_Path": {
+    "message": "Путь к файлу"
+  },
+  "Fill_forms_submit_data_interact_with_for_7a1b": {
+    "message": "Заполнять формы, отправлять данные, взаимодействовать с элементами формы"
+  },
+  "Form_Automation_Tool": {
+    "message": "Инструмент автоматизации форм"
+  },
+  "Full_Access_Dangerous": {
+    "message": "Полный доступ (Опасно)"
+  },
+  "General": {
+    "message": "Общие"
+  },
+  "General_Settings": {
+    "message": "Общие настройки"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "Get_Started": {
+    "message": "Начать"
+  },
+  "Hello_NAME": {
+    "message": "Здравствуйте, $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "Hello_World": {
+    "message": "Здравствуй, мир"
+  },
+  "History": {
+    "message": "История"
+  },
+  "Impact": {
+    "message": "Влияние"
+  },
+  "Intercept_and_modify_network_requests_re_e52d": {
+    "message": "Перехватывать и изменять сетевые запросы/ответы"
+  },
+  "Keyboard_Shortcuts": {
+    "message": "Комбинации клавиш"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Запросы к LLM отправляются напрямую к API провайдеров"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Запросы к LLM проходят через бэкенд AI Republic"
+  },
+  "Language": {
+    "message": "Язык"
+  },
+  "Learn_more": {
+    "message": "Подробнее"
+  },
+  "List_of_allowed_origins_one_per_line_Sup_394d": {
+    "message": "Список разрешённых источников (по одному в строке). Поддерживает подстановочные знаки (*)."
+  },
+  "Loading_credits": {
+    "message": "Загрузка кредитов..."
+  },
+  "Loading_settings": {
+    "message": "Загрузка настроек..."
+  },
+  "Login": {
+    "message": "Войти"
+  },
+  "Login_to_get_free_credits": {
+    "message": "Войдите, чтобы получить бесплатные кредиты"
+  },
+  "Low_credits_remaining": {
+    "message": "Осталось мало кредитов"
+  },
+  "MCP_Tools_Not_Available": {
+    "message": "MCP Tools (Недоступно)"
+  },
+  "Manage_browser_tabs_open_close_switch_qu_aedb": {
+    "message": "Управление вкладками браузера (открыть, закрыть, переключить, запросить)"
+  },
+  "Master_toggle_to_enable_or_disable_all_b_f402": {
+    "message": "Главный переключатель для включения или отключения всех инструментов браузера и агента"
+  },
+  "Master_toggle_to_enable_or_disable_the_e_2fef": {
+    "message": "Главный переключатель для включения или отключения расширения"
+  },
+  "Max_Cache_Size_MB": {
+    "message": "Максимальный размер кэша (МБ)"
+  },
+  "Maximum_cache_size_in_megabytes_default__2788": {
+    "message": "Максимальный размер кэша в мегабайтах (по умолчанию: 100)"
+  },
+  "Maximum_time_in_milliseconds_a_tool_can__00c0": {
+    "message": "Максимальное время (в миллисекундах), в течение которого инструмент может работать до тайм‑аута (по умолчанию: 30000)"
+  },
+  "Model_Config": {
+    "message": "Конфигурация модели"
+  },
+  "Model_Selection": {
+    "message": "Выбор модели"
+  },
+  "Modern_Chat": {
+    "message": "Современный чат"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Изменять параметры при запросе изменений"
+  },
+  "Monthly_Credits": {
+    "message": "Ежемесячные кредиты"
+  },
+  "More_Config": {
+    "message": "Дополнительные настройки"
+  },
+  "Navigate_pages_click_links_handle_browse_6066": {
+    "message": "Навигация по страницам, переход по ссылкам, управление навигацией браузера"
+  },
+  "Navigation_Tool": {
+    "message": "Инструмент навигации"
+  },
+  "Network_Intercept_Tool": {
+    "message": "Инструмент перехвата сети"
+  },
+  "Never_expire_permanent": {
+    "message": "Не истекает (постоянно)"
+  },
+  "New_Conversation": {
+    "message": "Новый разговор"
+  },
+  "No_approval_history_yet": {
+    "message": "История одобрений отсутствует."
+  },
+  "No_tabs_available": {
+    "message": "Нет доступных вкладок"
+  },
+  "Not_Connected": {
+    "message": "Не подключено"
+  },
+  "Number_of_days_before_rollout_data_expir_0673": {
+    "message": "Количество дней до истечения данных развертывания (по умолчанию: 60)"
+  },
+  "Open_Side_Panel": {
+    "message": "Открыть боковую панель:"
+  },
+  "Organization": {
+    "message": "Организация"
+  },
+  "Page_Action_Tool": {
+    "message": "Инструмент действий со страницей"
+  },
+  "Page_Vision_Tool": {
+    "message": "Инструмент Page Vision"
+  },
+  "Parameter_Modifications": {
+    "message": "Изменения параметров"
+  },
+  "Perform_page_actions_scroll_screenshot_w_6214": {
+    "message": "Выполнять действия на странице (прокрутка, скриншот, ожидание)"
+  },
+  "Persist_Cache_to_Storage": {
+    "message": "Сохранить кэш в хранилище"
+  },
+  "Please_input_a_valid_API_key": {
+    "message": "Введите действительный API‑ключ."
+  },
+  "Please_type_a_valid_command": {
+    "message": "Введите корректную команду"
+  },
+  "Priority_tier_provides_faster_response_t_155f": {
+    "message": "Приоритетный тариф обеспечивает более быстрое время ответа по более высокой цене."
+  },
+  "Provider": {
+    "message": "Поставщик"
+  },
+  "Query_and_manipulate_the_DOM_Document_Ob_b829": {
+    "message": "Запрашивать и изменять DOM (Document Object Model)"
+  },
+  "Quick_Start": {
+    "message": "Быстрый старт"
+  },
+  "Quick_action": {
+    "message": "Быстрое действие"
+  },
+  "Read_only": {
+    "message": "Только для чтения"
+  },
+  "Reason_optional": {
+    "message": "Причина (необязательно)"
+  },
+  "Refreshes_in": {
+    "message": "Обновление через"
+  },
+  "Reject": {
+    "message": "Отклонить"
+  },
+  "Reject_this_action": {
+    "message": "Отклонить это действие"
+  },
+  "Remaining": {
+    "message": "Осталось:"
+  },
+  "Remove_API_Key": {
+    "message": "Удалить API‑ключ"
+  },
+  "Remove_modification": {
+    "message": "Удалить изменение"
+  },
+  "Request_Changes": {
+    "message": "Запросить изменения"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Запросить изменения к этому действию"
+  },
+  "Right_click_on_any_text_to_explain_or_im_b2fb": {
+    "message": "Щёлкните правой кнопкой мыши любой текст, чтобы объяснить или улучшить его с помощью Browserx"
+  },
+  "Rollout_Expiration": {
+    "message": "Срок действия поэтапного выпуска"
+  },
+  "Sandbox_Policy": {
+    "message": "Политика песочницы"
+  },
+  "Save_API_Key": {
+    "message": "Сохранить API‑ключ"
+  },
+  "Save_Settings": {
+    "message": "Сохранить настройки"
+  },
+  "Saving": {
+    "message": "Сохранение..."
+  },
+  "Security_Privacy": {
+    "message": "Безопасность и конфиденциальность"
+  },
+  "Security_level_for_tool_execution_enviro_6e94": {
+    "message": "Уровень безопасности среды выполнения инструмента"
+  },
+  "Select_the_AI_model_to_use_for_conversat_1acc": {
+    "message": "Выберите модель ИИ для использования в диалогах."
+  },
+  "Select_your_preferred_language_for_the_i_c7cc": {
+    "message": "Выберите предпочтительный язык интерфейса"
+  },
+  "Send_the_message": {
+    "message": "Отправить сообщение"
+  },
+  "Service_Tier": {
+    "message": "Уровень сервиса"
+  },
+  "Session": {
+    "message": "Сессия"
+  },
+  "Set_when_rollout_data_should_expire": {
+    "message": "Установить срок действия данных поэтапного выпуска"
+  },
+  "Settings": {
+    "message": "Настройки"
+  },
+  "Settings_saved_successfully": {
+    "message": "Настройки успешно сохранены"
+  },
+  "Show_token_usage_in_tasks": {
+    "message": "Отображать использование токенов в задачах"
+  },
+  "Show_warning_when_storage_usage_exceeds__7c40": {
+    "message": "Показывать предупреждение, когда использование хранилища превышает этот процент (по умолчанию: 90%)"
+  },
+  "Sign_in_to_your_account": {
+    "message": "Войдите в свою учётную запись"
+  },
+  "Stable": {
+    "message": "Стабильный"
+  },
+  "Stop_the_current_task_run": {
+    "message": "Остановить текущий запуск задачи"
+  },
+  "Storage_Cache": {
+    "message": "Хранилище и кэш"
+  },
+  "Storage_Cache_Settings": {
+    "message": "Настройки хранилища и кэша"
+  },
+  "Storage_Quota_Warning": {
+    "message": "Предупреждение о квоте хранилища (%)"
+  },
+  "Storage_Settings": {
+    "message": "Настройки хранилища"
+  },
+  "Storage_Tool": {
+    "message": "Инструмент хранилища"
+  },
+  "Store_cache_data_persistently_across_bro_5356": {
+    "message": "Сохранять данные кэша постоянно между сеансами браузера"
+  },
+  "Tab_Tool": {
+    "message": "Инструмент вкладки"
+  },
+  "Terminal": {
+    "message": "Терминал"
+  },
+  "Test_Connection": {
+    "message": "Проверить соединение"
+  },
+  "Testing": {
+    "message": "Проверка..."
+  },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Агент в данный момент работает в режиме бэкенда. Запросы к LLM будут проходить через сервер AI Republic. Ваши диалоги обрабатываются безопасно через нашу инфраструктуру."
+  },
+  "Time": {
+    "message": "Время"
+  },
+  "Time_remaining": {
+    "message": "Оставшееся время"
+  },
+  "Time_to_live_for_cached_items_in_seconds_5107": {
+    "message": "Время жизни кэшированных элементов в секундах (по умолчанию: 3600)"
+  },
+  "Toggle_side_panel": {
+    "message": "Переключить боковую панель"
+  },
+  "Tool": {
+    "message": "Инструмент"
+  },
+  "Tool_Timeout_ms": {
+    "message": "Тайм-аут инструмента (мс)"
+  },
+  "Tools": {
+    "message": "Инструменты"
+  },
+  "Tools_Settings": {
+    "message": "Настройки инструментов"
+  },
+  "Turn": {
+    "message": "Переключить"
+  },
+  "UI_Theme": {
+    "message": "Тема интерфейса"
+  },
+  "URL": {
+    "message": "URL"
+  },
+  "Unable_to_load_credit_information": {
+    "message": "Не удалось загрузить информацию о кредитах"
+  },
+  "Unsaved_Changes": {
+    "message": "Несохранённые изменения"
+  },
+  "Update_Channel": {
+    "message": "Канал обновлений"
+  },
+  "Upgrade_My_Plan": {
+    "message": "Обновить мой план"
+  },
+  "Upgrade_to_Premium": {
+    "message": "Обновить до Premium"
+  },
+  "Upgrade_your_subscription_to_explore_wor_c5db": {
+    "message": "Обновите подписку, чтобы использовать самые мощные модели в мире"
+  },
+  "Use_Context_Menu": {
+    "message": "Использовать контекстное меню:"
+  },
+  "Use_Own_API_Key": {
+    "message": "Использовать собственный API‑ключ"
+  },
+  "User_Center": {
+    "message": "Личный кабинет"
+  },
+  "User_approved_action": {
+    "message": "Действие, одобренное пользователем"
+  },
+  "User_decision": {
+    "message": "Решение пользователя"
+  },
+  "User_preferences_and_interface_settings": {
+    "message": "Настройки предпочтений пользователя и интерфейса"
+  },
+  "User_rejected_action": {
+    "message": "Действие, отклонённое пользователем"
+  },
+  "User_requested_modifications": {
+    "message": "Запрошенные пользователем изменения"
+  },
+  "Using_extra_credits": {
+    "message": "Использование дополнительных кредитов"
+  },
+  "View_Chat_History": {
+    "message": "Просмотр истории чата"
+  },
+  "Visual_analysis_of_page_content_and_layo_2a93": {
+    "message": "Визуальный анализ содержимого и макета страницы"
+  },
+  "Web_Scraping_Tool": {
+    "message": "Инструмент веб‑скрейпинга"
+  },
+  "Web_Search": {
+    "message": "Веб‑поиск"
+  },
+  "Welcome_to_Browserx": {
+    "message": "Добро пожаловать в Browserx"
+  },
+  "Workspace_Write": {
+    "message": "Запись рабочего пространства"
+  },
+  "You_have_unsaved_changes_Do_you_want_to__0022": {
+    "message": "У вас есть несохранённые изменения. Хотите их отменить?"
+  },
+  "Your_AI_powered_browser_assistant_is_rea_b312": {
+    "message": "Ваш браузерный помощник с ИИ готов помочь вам ориентироваться, понимать и взаимодействовать с веб‑контентом."
+  },
+  "Your_API_key_is_encrypted": {
+    "message": "Ваш API‑ключ зашифрован"
+  },
+  "Your_Decision": {
+    "message": "Ваше решение"
+  }
+}

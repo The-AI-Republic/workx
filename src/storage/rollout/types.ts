@@ -3,6 +3,15 @@
  */
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+export const DB_NAME = 'BrowserxRollouts';
+export const DB_VERSION = 2;
+export const STORE_ROLLOUTS = 'rollouts';
+export const STORE_ROLLOUT_ITEMS = 'rollout_items';
+
+// ============================================================================
 // Core Types
 // ============================================================================
 
@@ -22,14 +31,14 @@ export type ConversationId = string;
  */
 export type RolloutRecorderParams =
   | {
-      type: 'create';
-      conversationId: ConversationId;
-      instructions?: string;
-    }
+    type: 'create';
+    conversationId: ConversationId;
+    instructions?: string;
+  }
   | {
-      type: 'resume';
-      rolloutId: ConversationId;
-    };
+    type: 'resume';
+    rolloutId: ConversationId;
+  };
 
 // ============================================================================
 // Rollout Data Structures
@@ -65,6 +74,12 @@ export interface SessionMeta {
   cliVersion: string;
   /** Optional user instructions for the session */
   instructions?: string;
+  /**
+   * Session title for display in chat history
+   * - Initially set to placeholder: "<datetime>_chat" (e.g., "2024-01-15_14-30_chat")
+   * - Updated to LLM-generated title after 3 user messages
+   */
+  title?: string;
 }
 
 /**
@@ -132,7 +147,8 @@ export type RolloutItem =
   | { type: 'response_item'; payload: ResponseItem }
   | { type: 'compacted'; payload: CompactedItem }
   | { type: 'turn_context'; payload: TurnContextItem }
-  | { type: 'event_msg'; payload: EventMsg };
+  | { type: 'event_msg'; payload: EventMsg }
+  | { type: 'turn_completion'; payload: { turnId: string; stats: any } };
 
 /**
  * A single line in the JSONL rollout format.
@@ -142,7 +158,7 @@ export interface RolloutLine {
   /** ISO 8601 timestamp with milliseconds */
   timestamp: string;
   /** Discriminator for the item type */
-  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg';
+  type: 'session_meta' | 'response_item' | 'compacted' | 'turn_context' | 'event_msg' | 'turn_completion';
   /** The actual rollout item data */
   payload: RolloutItem['payload'];
 }

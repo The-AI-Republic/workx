@@ -37,7 +37,7 @@ describe('Cache Performance Benchmarks', () => {
 
   describe('SC-002 - Write Performance', () => {
     it('should write 1MB data in <100ms', async () => {
-      const sessionId = 'conv_perf_write';
+      const sessionId = 'perf_write';
 
       // Create 1MB data
       const data = {
@@ -66,7 +66,7 @@ describe('Cache Performance Benchmarks', () => {
 
   describe('SC-003 - Metadata Size', () => {
     it('should return metadata <700 bytes', async () => {
-      const sessionId = 'conv_perf_metadata';
+      const sessionId = 'perf_metadata';
 
       // Write data with max-length description
       const description = 'x'.repeat(500); // Max description length
@@ -89,7 +89,7 @@ describe('Cache Performance Benchmarks', () => {
     });
 
     it('should keep metadata compact even with large data', async () => {
-      const sessionId = 'conv_perf_large_data';
+      const sessionId = 'perf_large_data';
 
       // Write large data (slightly under 5MB to account for JSON overhead)
       const largeData = {
@@ -114,7 +114,7 @@ describe('Cache Performance Benchmarks', () => {
 
   describe('List Performance', () => {
     it('should list 50 items in <50ms', async () => {
-      const sessionId = 'conv_perf_list';
+      const sessionId = 'perf_list';
 
       // Create 50 items
       for (let i = 1; i <= 50; i++) {
@@ -139,7 +139,7 @@ describe('Cache Performance Benchmarks', () => {
 
   describe('SC-004 - Session Cleanup Performance', () => {
     it('should cleanup 100 items in <5 minutes', async () => {
-      const sessionId = 'conv_perf_cleanup';
+      const sessionId = 'perf_cleanup';
 
       // Create 100 items
       for (let i = 1; i <= 100; i++) {
@@ -173,7 +173,7 @@ describe('Cache Performance Benchmarks', () => {
 
   describe('Stress Test - Auto-Eviction', () => {
     it('should handle items near 200MB quota with auto-eviction', { timeout: 30000 }, async () => {
-      const sessionId = 'conv_stress_eviction';
+      const sessionId = 'stress_eviction';
 
       // Use 1MB items to quickly approach 200MB quota
       // 200MB / 1MB = 200 items before eviction
@@ -230,7 +230,7 @@ describe('Cache Performance Benchmarks', () => {
     });
 
     it('should maintain performance during auto-eviction', async () => {
-      const sessionId = 'conv_stress_performance';
+      const sessionId = 'stress_performance';
 
       // Write items until eviction triggers, measure write times
       const itemSize = 500 * 1024; // 500KB per item
@@ -265,7 +265,7 @@ describe('Cache Performance Benchmarks', () => {
 
   describe('Stress Test - Concurrent Operations', () => {
     it('should handle concurrent writes without performance degradation', async () => {
-      const sessionId = 'conv_stress_concurrent';
+      const sessionId = 'stress_concurrent';
 
       // Trigger 50 concurrent writes
       const concurrentWrites = [];

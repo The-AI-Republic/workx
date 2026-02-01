@@ -157,8 +157,8 @@ describe('TurnManager Contract', () => {
         getConversationState(sessionId: string): ConversationState | null {
           return null;
         },
-        async updateTurnContext(): Promise<void> {},
-        async abortTurn(): Promise<void> {},
+        async updateTurnContext(): Promise<void> { },
+        async abortTurn(): Promise<void> { },
       };
 
       const request: TurnRequest = {
@@ -167,7 +167,7 @@ describe('TurnManager Contract', () => {
           createMockUserTurn('Test turn execution')
         ),
         context: {
-          conversationId: 'conv_1',
+          conversationId: '1',
           turnNumber: 1,
           model: 'gpt-4',
           cwd: '/home/user',
@@ -197,7 +197,7 @@ describe('TurnManager Contract', () => {
           totalTokens: expect.any(Number),
         }),
         context: expect.objectContaining({
-          conversationId: 'conv_1',
+          conversationId: '1',
           turnNumber: expect.any(Number),
           model: expect.any(String),
         }),
@@ -261,15 +261,15 @@ describe('TurnManager Contract', () => {
         getConversationState(): ConversationState | null {
           return null;
         },
-        async updateTurnContext(): Promise<void> {},
-        async abortTurn(): Promise<void> {},
+        async updateTurnContext(): Promise<void> { },
+        async abortTurn(): Promise<void> { },
       };
 
       const request: TurnRequest = {
         sessionId: 'session_1',
         submission: createMockSubmission(createMockUserTurn('Failing turn')),
         context: {
-          conversationId: 'conv_1',
+          conversationId: '1',
           turnNumber: 1,
           model: 'gpt-4',
           cwd: '/home/user',
@@ -292,7 +292,7 @@ describe('TurnManager Contract', () => {
   describe('Conversation State Management', () => {
     it('should track conversation state', () => {
       const mockConversationState: ConversationState = {
-        id: 'conv_1',
+        id: '1',
         turnCount: 3,
         totalTokenUsage: {
           promptTokens: 100,
@@ -302,7 +302,7 @@ describe('TurnManager Contract', () => {
         isActive: true,
         lastActivity: Date.now(),
         context: {
-          conversationId: 'conv_1',
+          conversationId: '1',
           turnNumber: 3,
           model: 'gpt-4',
           cwd: '/home/user',
@@ -321,14 +321,14 @@ describe('TurnManager Contract', () => {
         getConversationState(sessionId: string): ConversationState | null {
           return sessionId === 'session_1' ? mockConversationState : null;
         },
-        async updateTurnContext(): Promise<void> {},
-        async abortTurn(): Promise<void> {},
+        async updateTurnContext(): Promise<void> { },
+        async abortTurn(): Promise<void> { },
       };
 
       const state = mockTurnManager.getConversationState('session_1');
 
       expect(state).toMatchObject({
-        id: 'conv_1',
+        id: '1',
         turnCount: 3,
         totalTokenUsage: expect.objectContaining({
           promptTokens: expect.any(Number),
@@ -338,7 +338,7 @@ describe('TurnManager Contract', () => {
         isActive: true,
         lastActivity: expect.any(Number),
         context: expect.objectContaining({
-          conversationId: 'conv_1',
+          conversationId: '1',
           turnNumber: 3,
         }),
       });
@@ -349,7 +349,7 @@ describe('TurnManager Contract', () => {
 
     it('should support context updates', async () => {
       let currentContext: TurnContext = {
-        conversationId: 'conv_1',
+        conversationId: '1',
         turnNumber: 1,
         model: 'gpt-4',
         cwd: '/home/user',
@@ -366,7 +366,7 @@ describe('TurnManager Contract', () => {
         },
         getConversationState(sessionId: string): ConversationState | null {
           return {
-            id: 'conv_1',
+            id: '1',
             turnCount: 1,
             totalTokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
             isActive: true,
@@ -390,7 +390,7 @@ describe('TurnManager Contract', () => {
             });
           }
         },
-        async abortTurn(): Promise<void> {},
+        async abortTurn(): Promise<void> { },
       };
 
       const updates: Partial<TurnContext> = {
@@ -448,7 +448,7 @@ describe('TurnManager Contract', () => {
               totalTokens: 20,
             },
             context: {
-              conversationId: 'conv_1',
+              conversationId: '1',
               turnNumber: 2,
               model: newContext?.model || 'gpt-4',
               cwd: '/home/user',
@@ -461,8 +461,8 @@ describe('TurnManager Contract', () => {
         getConversationState(): ConversationState | null {
           return null;
         },
-        async updateTurnContext(): Promise<void> {},
-        async abortTurn(): Promise<void> {},
+        async updateTurnContext(): Promise<void> { },
+        async abortTurn(): Promise<void> { },
       };
 
       const retryContext = {
@@ -516,7 +516,7 @@ describe('TurnManager Contract', () => {
             toolCalls: [],
             tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
             context: {
-              conversationId: 'conv_1',
+              conversationId: '1',
               turnNumber: 1,
               model: 'gpt-4',
               cwd: '/home/user',
@@ -528,8 +528,8 @@ describe('TurnManager Contract', () => {
         getConversationState(): ConversationState | null {
           return null;
         },
-        async updateTurnContext(): Promise<void> {},
-        async abortTurn(): Promise<void> {},
+        async updateTurnContext(): Promise<void> { },
+        async abortTurn(): Promise<void> { },
       };
 
       // Simulate retry logic with exponential backoff
@@ -602,7 +602,7 @@ describe('TurnManager Contract', () => {
         getConversationState(): ConversationState | null {
           return null;
         },
-        async updateTurnContext(): Promise<void> {},
+        async updateTurnContext(): Promise<void> { },
         async abortTurn(turnId: string): Promise<void> {
           isAborted = true;
           eventCollector.collect({
@@ -622,7 +622,7 @@ describe('TurnManager Contract', () => {
         sessionId: 'session_1',
         submission: createMockSubmission(createMockUserTurn('Long running turn')),
         context: {
-          conversationId: 'conv_1',
+          conversationId: '1',
           turnNumber: 1,
           model: 'gpt-4',
           cwd: '/home/user',

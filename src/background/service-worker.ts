@@ -5,6 +5,7 @@
 
 import { BrowserxAgent } from '../core/BrowserxAgent';
 import { MessageRouter, MessageType } from '../core/MessageRouter';
+import { AuthManager } from '../models/types/Auth';
 import type { Submission } from '../protocol/types';
 import { validateSubmission } from '../protocol/schemas';
 import { CacheManager } from '../storage/CacheManager';
@@ -12,6 +13,7 @@ import { StorageQuotaManager } from '../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../storage/rollout';
 import { AgentConfig } from '../config/AgentConfig';
 import { TabManager } from '../core/TabManager';
+import { LLM_API_URL } from '../config/constants';
 
 // Global instances
 let agent: BrowserxAgent | null = null;
@@ -19,6 +21,7 @@ let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
+let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -65,6 +68,10 @@ async function doInitialize(): Promise<void> {
   agent = new BrowserxAgent(agentConfig!, router);
   await agent.initialize();
 
+  // Initialize auth manager from stored config preferences
+  // This ensures backend routing is set up correctly on service worker startup
+  await initializeAuthFromConfig();
+
   // Setup message handlers
   setupMessageHandlers();
 
@@ -79,37 +86,68 @@ async function doInitialize(): Promise<void> {
 }
 
 /**
+ * Initialize AuthManager from stored config preferences
+ * This ensures useOwnApiKey setting is respected on service worker startup
+ */
+async function initializeAuthFromConfig(): Promise<void> {
+  if (!agentConfig || !agent) return;
+
+  try {
+    const config = agentConfig.getConfig();
+
+    // Default useOwnApiKey=false (backend mode) if not explicitly set
+    const useOwnApiKey = config.preferences?.useOwnApiKey ?? true;
+
+    // useOwnApiKey=false means use backend routing
+    const shouldUseBackend = useOwnApiKey === false;
+    const backendBaseUrl = shouldUseBackend ? LLM_API_URL : null;
+
+    console.log('[ServiceWorker] Initializing auth from config:', {
+      useOwnApiKey,
+      shouldUseBackend,
+      backendBaseUrl
+    });
+
+    const authManager = new AuthManager(shouldUseBackend, backendBaseUrl);
+    currentAuthManager = authManager;
+
+    const factory = agent.getModelClientFactory();
+    factory.setAuthManager(authManager);
+
+    console.log('[ServiceWorker] Auth initialized, isBackendRouting:', factory.isBackendRouting());
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to initialize auth from config:', error);
+    // Continue without backend routing - will use direct API key mode
+  }
+}
+
+/**
  * Setup message handlers
  */
 function setupMessageHandlers(): void {
   if (!router || !agent) return;
-  
+
   // Handle submissions from UI
   router.on(MessageType.SUBMISSION, async (message) => {
     const submission = message.payload as Submission;
-
 
     if (!validateSubmission(submission)) {
       return;
     }
 
     const session = agent!.getSession();
-    const currentSessionTabId = session.getTabId();
 
     try {
       // Pass the submission context to the agent
       // The agent will handle tab binding/creation based on context.tabId
       const id = await agent!.submitOperation(submission.op, submission.context);
 
-      const sessionTabIdAfter = session.getTabId();
-
-
       return { submissionId: id };
     } catch (error) {
       throw error;
     }
   });
-  
+
   // Handle state queries
   router.on(MessageType.GET_STATE, async () => {
     if (!agent) return null;
@@ -119,13 +157,17 @@ function setupMessageHandlers(): void {
     // Get current tab ID from session (SessionState is the source of truth)
     const tabId = session.getTabId();
 
+    // Get conversation history to sync UI with backend state
+    const conversationHistory = session.getConversationHistory();
+
     return {
       sessionId: session.conversationId,
       isActiveTurn: session.isActiveTurn(), // Include active turn status
       tabId: tabId, // US3: Include current tab binding
+      history: conversationHistory.items, // Include history for UI sync on sidepanel reopen
     };
   });
-  
+
   // Handle ping/pong for connection testing
   router.on(MessageType.PING, async () => {
     return { type: MessageType.PONG, timestamp: Date.now() };
@@ -171,6 +213,66 @@ function setupMessageHandlers(): void {
     throw new Error('Agent not initialized');
   });
 
+  // Handle session resume from chat history
+  router.on(MessageType.RESUME_SESSION, async (message) => {
+    if (!agent) {
+      throw new Error('Agent not initialized');
+    }
+
+    const { conversationId } = message.payload as { conversationId: string };
+    console.log('[ServiceWorker] Resuming session:', conversationId);
+
+    // Get current session and abort any running tasks
+    const currentSession = agent.getSession();
+    await currentSession.abortAllTasks('UserInterrupt');
+
+    // Reset TabManager
+    const tabManager = TabManager.getInstance();
+    await tabManager.reset();
+
+    // Close current session
+    await currentSession.close();
+
+    // Load history from rollout storage
+    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+
+    if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
+      throw new Error('Conversation not found or has no history');
+    }
+
+    // Recreate agent with resumed session
+    agent = new BrowserxAgent(agentConfig!, router!, {
+      mode: 'resumed' as const,
+      conversationId,
+      rolloutItems: initialHistory.payload.history,
+    });
+
+    // Restore auth manager before initialization
+    if (currentAuthManager) {
+      const factory = agent.getModelClientFactory();
+      factory.setAuthManager(currentAuthManager);
+    }
+
+    await agent.initialize();
+
+    // Get the reconstructed history from the new session
+    const session = agent.getSession();
+
+    // Wait for session initialization to complete (history reconstruction is async)
+    await session.initialize();
+
+    const history = session.getConversationHistory();
+
+    console.log('[ServiceWorker] Session resumed with', history.items.length, 'items');
+
+    return {
+      type: MessageType.RESUME_SESSION_COMPLETE,
+      timestamp: Date.now(),
+      conversationId,
+      history: history.items,
+    };
+  });
+
   // Handle stop agent session (from visual effects Stop Agent button)
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'STOP_AGENT_SESSION') {
@@ -195,7 +297,7 @@ function setupMessageHandlers(): void {
       return true; // Keep channel open for async response
     }
   });
-  
+
   // Handle storage operations
   router.on(MessageType.STORAGE_GET, async (message) => {
     const { key } = message.payload;
@@ -257,7 +359,25 @@ function setupMessageHandlers(): void {
 
       // Create new agent with updated config
       agent = new BrowserxAgent(agentConfig, router!);
+
+      // Restore the auth manager if we have one preserved BEFORE initialization
+      // This ensures backend routing state is applied during agent.initialize() when initial client is created
+      if (currentAuthManager) {
+        const factory = agent.getModelClientFactory();
+        factory.setAuthManager(currentAuthManager);
+        console.log('[ServiceWorker] Restored auth manager BEFORE agent initialization, isBackendRouting:', factory.isBackendRouting());
+      }
+
+      // Initialize agent (creates model client and tools)
       await agent.initialize();
+
+      // If no auth manager was preserved, initialize it now from config
+      if (!currentAuthManager) {
+        await initializeAuthFromConfig();
+      } else {
+        // Just refresh the client if we restored auth state (to be safe)
+        await agent.refreshModelClient();
+      }
 
       // Notify all clients (sidepanel, etc.) that agent was reinitialized
       chrome.runtime.sendMessage({
@@ -276,6 +396,40 @@ function setupMessageHandlers(): void {
     }
   });
 
+  // Handle auth initialization from sidepanel
+  router.on(MessageType.INIT_AUTH, async (message) => {
+    const { backendBaseUrl, useOwnApiKey } = message.payload as {
+      isLoggedIn?: boolean; // deprecated, kept for backwards compatibility
+      backendBaseUrl: string | null;
+      useOwnApiKey?: boolean;
+    };
+
+    // useOwnApiKey determines routing:
+    // - false (or undefined) = use backend routing
+    // - true = use direct API with user's own key
+    const shouldUseBackend = useOwnApiKey === false;
+
+    console.log('[ServiceWorker] Received INIT_AUTH:', { useOwnApiKey, shouldUseBackend, backendBaseUrl });
+
+    // Create AuthManager based on useOwnApiKey setting
+    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null);
+
+    // Preserve the auth manager for agent recreation (e.g., after CONFIG_UPDATE)
+    currentAuthManager = authManager;
+
+    // Update the agent's model client factory with the auth manager
+    if (agent) {
+      const factory = agent.getModelClientFactory();
+      factory.setAuthManager(authManager);
+      console.log('[ServiceWorker] Auth manager updated, isBackendRouting:', factory.isBackendRouting(), 'useOwnApiKey:', useOwnApiKey);
+
+      // Refresh the model client to use the new auth routing
+      await agent.refreshModelClient();
+    }
+
+    return { success: true, isBackendRouting: authManager.shouldUseBackend() };
+  });
+
   // Handle diff events
   router.on(MessageType.DIFF_GENERATED, async (message) => {
     if (!agent) throw new Error('Agent not initialized');
@@ -288,7 +442,7 @@ function setupMessageHandlers(): void {
       await router.broadcast(MessageType.DIFF_GENERATED, message.payload);
     }
   });
-  
+
   // Handle tab commands
   router.on(MessageType.TAB_COMMAND, async (message) => {
     const { command, args } = message.payload;
@@ -319,21 +473,21 @@ function setupChromeListeners(): void {
         url: chrome.runtime.getURL('welcome.html'),
       });
     }
-    
+
     // Setup context menus
     setupContextMenus();
   });
-  
+
   // Handle side panel opening
   if (chrome.sidePanel) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   }
-  
+
   // Handle commands (keyboard shortcuts)
   chrome.commands.onCommand.addListener((command) => {
     handleCommand(command);
   });
-  
+
   // Handle context menu clicks
   chrome.contextMenus.onClicked.addListener((info, tab) => {
     handleContextMenuClick(info, tab);
@@ -349,13 +503,13 @@ function setupContextMenus(): void {
     title: 'Explain with Browserx',
     contexts: ['selection'],
   });
-  
+
   chrome.contextMenus.create({
     id: 'browserx-improve',
     title: 'Improve with Browserx',
     contexts: ['selection'],
   });
-  
+
   chrome.contextMenus.create({
     id: 'browserx-extract',
     title: 'Extract data with Browserx',
@@ -372,7 +526,7 @@ function handleCommand(command: string): void {
       // Toggle side panel
       chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT });
       break;
-      
+
     case 'quick-action':
       // Trigger quick action on current tab
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -392,7 +546,7 @@ async function handleContextMenuClick(
   tab?: chrome.tabs.Tab
 ): Promise<void> {
   if (!tab?.id || !agent) return;
-  
+
   const submission: Partial<Submission> = {
     id: `ctx_${Date.now()}`,
     op: {
@@ -400,7 +554,7 @@ async function handleContextMenuClick(
       items: [],
     },
   };
-  
+
   switch (info.menuItemId) {
     case 'browserx-explain':
       if (info.selectionText) {
@@ -415,7 +569,7 @@ async function handleContextMenuClick(
         };
       }
       break;
-      
+
     case 'browserx-improve':
       if (info.selectionText) {
         submission.op = {
@@ -429,7 +583,7 @@ async function handleContextMenuClick(
         };
       }
       break;
-      
+
     case 'browserx-extract':
       submission.op = {
         type: 'UserInput',
@@ -446,11 +600,11 @@ async function handleContextMenuClick(
       };
       break;
   }
-  
+
   // Submit to agent
   if (submission.op) {
     await agent.submitOperation(submission.op);
-    
+
     // Open side panel to show results
     chrome.sidePanel.open({ tabId: tab.id });
   }
@@ -471,31 +625,31 @@ async function executeTabCommand(
         func: (code: string) => eval(code),
         args: [args.code],
       });
-      
+
     case 'screenshot':
       return chrome.tabs.captureVisibleTab({ format: 'png' });
-      
+
     case 'get-html':
       return chrome.scripting.executeScript({
         target: { tabId },
         func: () => document.documentElement.outerHTML,
       });
-      
+
     case 'get-text':
       return chrome.scripting.executeScript({
         target: { tabId },
         func: () => document.body.innerText,
       });
-      
+
     case 'navigate':
       return chrome.tabs.update(tabId, { url: args.url });
-      
+
     case 'reload':
       return chrome.tabs.reload(tabId);
-      
+
     case 'close':
       return chrome.tabs.remove(tabId);
-      
+
     default:
       throw new Error(`Unknown tab command: ${command}`);
   }
@@ -580,53 +734,53 @@ function setupPeriodicTasks(): void {
   try {
     // Check if chrome.alarms API is available
     if (typeof chrome !== 'undefined' && chrome?.alarms?.create) {
-    chrome.alarms.create('rollout-cleanup', { periodInMinutes: 60 });
-    chrome.alarms.create('cache-cleanup', { periodInMinutes: 30 });
-    chrome.alarms.create('quota-check', { periodInMinutes: 10 });
+      chrome.alarms.create('rollout-cleanup', { periodInMinutes: 60 });
+      chrome.alarms.create('cache-cleanup', { periodInMinutes: 30 });
+      chrome.alarms.create('quota-check', { periodInMinutes: 10 });
 
-    // Handle alarms
-    chrome.alarms.onAlarm?.addListener(async (alarm) => {
-      switch (alarm.name) {
-        case 'rollout-cleanup':
-          await performRolloutCleanup();
-          break;
-        case 'cache-cleanup':
-          if (cacheManager) {
-            await cacheManager.cleanup();
-          }
-          break;
-        case 'quota-check':
-          if (storageQuotaManager) {
-            const shouldCleanup = await storageQuotaManager.shouldCleanup();
-            if (shouldCleanup) {
-              await storageQuotaManager.cleanup(70);
+      // Handle alarms
+      chrome.alarms.onAlarm?.addListener(async (alarm) => {
+        switch (alarm.name) {
+          case 'rollout-cleanup':
+            await performRolloutCleanup();
+            break;
+          case 'cache-cleanup':
+            if (cacheManager) {
+              await cacheManager.cleanup();
             }
-          }
-          break;
-      }
-    });
-  } else {
-    console.warn('chrome.alarms API not available, periodic cleanup disabled');
-    // Fallback: Use setInterval for cleanup tasks if alarms API is not available
-    setInterval(async () => {
-      await performRolloutCleanup();
-    }, 60 * 60 * 1000); // Every hour
-
-    setInterval(async () => {
-      if (cacheManager) {
-        await cacheManager.cleanup();
-      }
-    }, 30 * 60 * 1000); // Every 30 minutes
-
-    setInterval(async () => {
-      if (storageQuotaManager) {
-        const shouldCleanup = await storageQuotaManager.shouldCleanup();
-        if (shouldCleanup) {
-          await storageQuotaManager.cleanup(70);
+            break;
+          case 'quota-check':
+            if (storageQuotaManager) {
+              const shouldCleanup = await storageQuotaManager.shouldCleanup();
+              if (shouldCleanup) {
+                await storageQuotaManager.cleanup(70);
+              }
+            }
+            break;
         }
-      }
-    }, 10 * 60 * 1000); // Every 10 minutes
-  }
+      });
+    } else {
+      console.warn('chrome.alarms API not available, periodic cleanup disabled');
+      // Fallback: Use setInterval for cleanup tasks if alarms API is not available
+      setInterval(async () => {
+        await performRolloutCleanup();
+      }, 60 * 60 * 1000); // Every hour
+
+      setInterval(async () => {
+        if (cacheManager) {
+          await cacheManager.cleanup();
+        }
+      }, 30 * 60 * 1000); // Every 30 minutes
+
+      setInterval(async () => {
+        if (storageQuotaManager) {
+          const shouldCleanup = await storageQuotaManager.shouldCleanup();
+          if (shouldCleanup) {
+            await storageQuotaManager.cleanup(70);
+          }
+        }
+      }, 10 * 60 * 1000); // Every 10 minutes
+    }
   } catch (error) {
     console.error('Failed to setup Chrome alarms:', error);
     console.warn('Falling back to setInterval for periodic cleanup');
