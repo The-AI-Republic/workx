@@ -22,7 +22,6 @@ coverage/
 .idea/
 .claude/
 .specify/
-specs/
 CLAUDE.md
 *.suo
 *.ntvs*
@@ -58,7 +57,6 @@ tmp/
 # Claude Code
 .claude/
 .specify/
-specs/
 
 # Chrome extension specific
 *.crx
