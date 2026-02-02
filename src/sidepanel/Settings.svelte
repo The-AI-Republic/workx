@@ -14,10 +14,11 @@
   import StorageSettings from './settings/StorageSettings.svelte';
   import ToolsSettings from './settings/ToolsSettings.svelte';
   import ExtensionSettings from './settings/ExtensionSettings.svelte';
+  import MCPSettings from './settings/MCPSettings.svelte';
   import { t } from './lib/i18n';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
-  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'extension';
+  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension';
   let currentView: NavigationView = 'menu';
   let hasUnsavedChanges = false;
   let showUnsavedDialog = false;
@@ -179,6 +180,13 @@
       />
     {:else if currentView === 'tools'}
       <ToolsSettings
+        {settingsConfig}
+        on:back={handleBack}
+        on:saved={() => {}}
+        bind:isDirty={hasUnsavedChanges}
+      />
+    {:else if currentView === 'mcp-servers'}
+      <MCPSettings
         {settingsConfig}
         on:back={handleBack}
         on:saved={() => {}}

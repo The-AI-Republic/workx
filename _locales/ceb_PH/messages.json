@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Kinatibuk-ang AI ahente sa browser para sa mga buluhaton sa trabaho"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Pag-configure sa API Key"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Ang mga API key gi-encrypt ug gitipigan lokal sa imong browser. Dili kini ipadala sa mga gawas nga server gawas kung API call."
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "Detalye sa Aksyon"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Pagdugang og Pag-usab"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Abansadong Pag-configure"
   },
   "Advanced_Options": {
     "message": "Abansadong mga Kapilian"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Mga Himan sa Ahente"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "Gitugot nga mga Origin"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "History sa Pag-apruba"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Pangayoa ang Browserx nga mokuha og structured data gikan sa bisan unsang webpage"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Magamit:"
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "I-configure ang modelo sa AI ug mga API key"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Konektado"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Konteksto"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "Isalikway ang mga Kausaban"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Ipakita ang konsumo sa token (input/output nga mga token) kung mahuman na ang mga buluhaton"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Pag-aktibo sa tanang himan"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "Pag-aktibo sa Extension"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Pag-aktibo sa integrasyon sa Model Context Protocol nga mga himan (Mouabot sa umaabot nga update)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Pag-aktibo sa caching aron mapauswag ang paggana pinaagi sa pagtipig sa datos nga kanunay nga ma-access"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "I-enable ang kakayahan sa web search para sa ahente"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "Ipasulod ang imong LLM API key"
@@ -294,6 +357,9 @@
   "Learn_more": {
     "message": "Pagkat-on pa"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Lista sa gitugot nga gigikanan (usa kada linya). Gisuportahan ang mga wildcard (*)"
   },
@@ -302,6 +368,12 @@
   },
   "Loading_settings": {
     "message": "Nag-load sa mga setting..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "Login"
@@ -312,8 +384,11 @@
   "Low_credits_remaining": {
     "message": "Ubos na ang nabilin nga kredito"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP Tools (Dili Magamit)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Pagdumala sa mga tab sa browser (abli, sirado, ilisi, query)"
@@ -329,6 +404,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Pinakadako nga kapasidad sa cache nga megabytes (default: 100)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Pinakataas nga oras (sa milisegundo) nga makadagan ang usa ka himan sa dili pa mag-timeout (default: 30000)"
@@ -351,6 +429,9 @@
   "More_Config": {
     "message": "Dugang nga Konpigurasyon"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Pagnavigate sa mga pahina, pagklik sa mga link, pagdumala sa pagnavigate sa browser"
   },
@@ -366,11 +447,17 @@
   "New_Conversation": {
     "message": "Bag-ong Panag-istorya"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Wala pa’y kasaysayan sa pag-apruba."
   },
   "No_tabs_available": {
     "message": "Wala’y tab nga magamit"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Wala Nakonekta"
@@ -438,6 +525,9 @@
   "Remaining": {
     "message": "Nabilin:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Kuhaa ang API Key"
   },
@@ -449,6 +539,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "Pangayo og mga pagbag-o niini nga aksyon"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "I-right-click ang bisan unsang teksto aron ipasabot o mapauswag kini gamit ang Browserx"
@@ -543,6 +636,9 @@
   "Testing": {
     "message": "Gisulayan..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Ang ahente kasamtangang naggamit sa backend mode. Ang mga LLM request ipadala pinaagi sa AI Republic server. Ang imong mga pakigpulong gi-proseso nga luwas sa among imprastruktura."
   },
@@ -554,6 +650,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Oras nga mabuhi para sa mga cached nga butang sa segundo (default: 3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "I-toggle ang side panel"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "Mga Kausaban nga Wala Ma-save"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "Channel sa Pag-update"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "Imong desisyon"
+  },
+  "optional": {
+    "message": ""
   }
 }

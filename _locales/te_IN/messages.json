@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "పని పనుల కోసం సాధారణ బ్రౌజర్-లోపలి AI ఏజెంట్"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API కీ కాన్ఫిగరేషన్"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API కీలు ఎన్‌క్రిప్ట్ చేయబడి మీ బ్రౌజర్‌లో స్థానికంగా నిల్వ చేయబడతాయి. API కాల్స్ తప్ప, అవి బాహ్య సర్వర్లకు ఎప్పుడూ పంపబడవు."
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "చర్య వివరాలు"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "సవరణను జోడించండి"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "అధునాతన కాన్ఫిగరేషన్"
   },
   "Advanced_Options": {
     "message": "అధునాతన ఎంపికలు"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "ఏజెంట్ అమలు సాధనాలు"
@@ -43,6 +61,9 @@
   },
   "Allowed_Origins": {
     "message": "అనుమతించబడిన మూలాలు"
+  },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
   },
   "Approval_History": {
     "message": "అనుమతి చరిత్ర"
@@ -60,6 +81,9 @@
         "content": "$1"
       }
     }
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "లభ్యం:"
@@ -130,8 +154,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "AI మోడల్ మరియు API కీలను కాన్ఫిగర్ చేయండి"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "కనెక్ట్ అయ్యింది"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "సందర్భం"
@@ -163,8 +205,17 @@
   "Discard_Changes": {
     "message": "మార్పులను విస్మరించండి"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "పనులు పూర్తయ్యినప్పుడు టోకెన్ వినియోగాన్ని (ఇన్‌పుట్/అవుట్‌పుట్ టోకెన్లు) చూపించండి"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "అన్ని సాధనాలను సక్రియం చేయండి"
@@ -181,14 +232,26 @@
   "Enable_Extension": {
     "message": "విస్తరణను సక్రియం చేయండి"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "మోడల్ కాంటెక్స్ట్ ప్రోటోకాల్ సాధనాల సమీకరణను సక్రియం చేయండి (భవిష్యత్ నవీకరణలో రాబోతోంది)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "తరచుగా యాక్సెస్ చేసే డేటాను నిల్వ చేయడం ద్వారా పనితీరును మెరుగుపరచడానికి క్యాషింగ్‌ను సక్రియం చేయండి"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "ఏజెంట్ కోసం వెబ్ శోధన సామర్థ్యాలను సక్రియం చేయండి"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "మీ LLM API కీని నమోదు చేయండి"
@@ -294,6 +357,9 @@
   "Learn_more": {
     "message": "మరింత తెలుసుకోండి"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "అనుమతించబడిన మూలాల జాబితా (ప్రతి పంక్తిలో ఒకటి). వైల్డ్‌కార్డ్స్ (*) ను మద్దతు ఇస్తుంది."
   },
@@ -302,6 +368,12 @@
   },
   "Loading_settings": {
     "message": "సెట్టింగ్స్ లోడ్ అవుతున్నాయి..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "ప్రవేశించండి"
@@ -312,8 +384,11 @@
   "Low_credits_remaining": {
     "message": "మిగిలిన క్రెడిట్లు తక్కువగా ఉన్నాయి"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP సాధనాలు (లభ్యం కాదు)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "బ్రౌజర్ ట్యాబ్‌లను నిర్వహించండి (తెరవండి, మూసివేయండి, మార్చండి, వెతకండి)"
@@ -329,6 +404,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "మెగాబైట్లలో గరిష్ట క్యాష్ పరిమాణం (డిఫాల్ట్: 100)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "సాధనం పనిచేయగల గరిష్ట సమయం (మిల్లీసెకన్లలో), టైమౌట్ ముందు (డిఫాల్ట్: 30000)"
@@ -351,6 +429,9 @@
   "More_Config": {
     "message": "మరిన్ని కాన్ఫిగ్"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "పేజీలను నావిగేట్ చేయండి, లింక్‌లను క్లిక్ చేయండి, బ్రౌజర్ నావిగేషన్‌ను నిర్వహించండి"
   },
@@ -366,11 +447,17 @@
   "New_Conversation": {
     "message": "కొత్త సంభాషణ"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "ఇంకా ఆమోద చరిత్ర లేదు."
   },
   "No_tabs_available": {
     "message": "ట్యాబ్‌లు అందుబాటులో లేవు"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "సంపర్కం లేదు"
@@ -438,6 +525,9 @@
   "Remaining": {
     "message": "మిగిలినవి:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "API కీని తీసివేయండి"
   },
@@ -449,6 +539,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "ఈ చర్యకు మార్పులను అభ్యర్థించండి"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి Browserx ద్వారా వివరణ లేదా మెరుగుపరచండి"
@@ -543,6 +636,9 @@
   "Testing": {
     "message": "పరీక్షిస్తోంది..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ఏజెంట్ ప్రస్తుతం బ్యాక్‌ఎండ్ మోడ్‌ను ఉపయోగిస్తోంది. LLM అభ్యర్థనలు AI Republic సర్వర్ ద్వారా రూట్ చేయబడతాయి. మీ సంభాషణలు మా మౌలిక సదుపాయాల ద్వారా సురక్షితంగా ప్రాసెస్ చేయబడతాయి."
   },
@@ -554,6 +650,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "క్యాష్ ఐటెమ్స్‌కు సెకన్లలో జీవితకాలం (డిఫాల్ట్: 3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "సైడ్ ప్యానెల్‌ను టోగుల్ చేయండి"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "సేవ్ చేయని మార్పులు"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "అప్‌డేట్ ఛానెల్"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "మీ నిర్ణయం"
+  },
+  "optional": {
+    "message": ""
   }
 }

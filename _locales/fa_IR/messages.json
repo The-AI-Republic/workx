@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "عامل هوش مصنوعی عمومی درون مرورگر برای وظایف کاری"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "پیکربندی کلید API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "کلیدهای API رمزگذاری شده و به‌صورت محلی در مرورگر شما ذخیره می‌شوند. آن‌ها هرگز به سرورهای خارجی ارسال نمی‌شوند، به‌جز هنگام فراخوانی API."
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "جزئیات اقدام"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "افزودن تغییرات"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "پیکربندی پیشرفته"
   },
   "Advanced_Options": {
     "message": "گزینه‌های پیشرفته"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "ابزارهای اجرای عامل"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "مبداهای مجاز"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "تاریخچه تأیید"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "درخواست از Browserx برای استخراج داده‌های ساختاریافته از هر صفحه وب"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "در دسترس:"
@@ -130,8 +154,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "پیکربندی مدل هوش مصنوعی و کلیدهای API"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "متصل"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "متن"
@@ -163,8 +205,17 @@
   "Discard_Changes": {
     "message": "حذف تغییرات"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "نمایش مصرف توکن (توکن‌های ورودی/خروجی) هنگام تکمیل وظایف"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "فعال‌سازی همه ابزارها"
@@ -181,14 +232,26 @@
   "Enable_Extension": {
     "message": "فعال‌سازی افزونه"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "فعال‌سازی یکپارچه‌سازی با ابزارهای Model Context Protocol (در به‌روزرسانی‌های آینده)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "فعال‌سازی کش برای بهبود عملکرد با ذخیره‌سازی داده‌های پرکاربرد"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "فعال‌سازی قابلیت جستجوی وب برای عامل"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "کلید API LLM خود را وارد کنید"
@@ -294,6 +357,9 @@
   "Learn_more": {
     "message": "بیشتر بدانید"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "فهرست مبدأهای مجاز (هر کدام در یک خط). از کاراکترهای جایگزین (*) پشتیبانی می‌کند."
   },
@@ -302,6 +368,12 @@
   },
   "Loading_settings": {
     "message": "در حال بارگذاری تنظیمات..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "ورود"
@@ -312,8 +384,11 @@
   "Low_credits_remaining": {
     "message": "اعتبار باقیمانده کم"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "ابزارهای MCP (در دسترس نیست)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "مدیریت زبانه‌های مرورگر (باز کردن، بستن، جابجایی، پرس‌وجو)"
@@ -329,6 +404,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "حداکثر اندازهٔ کش بر حسب مگابایت (پیش‌فرض: ۱۰۰)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "حداکثر زمان (به میلی‌ثانیه) اجرای ابزار قبل از تایم‌اوت (پیش‌فرض: ۳۰۰۰۰)"
@@ -351,6 +429,9 @@
   "More_Config": {
     "message": "پیکربندی بیشتر"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "پیمایش صفحات، کلیک روی لینک‌ها، کنترل ناوبری مرورگر"
   },
@@ -366,11 +447,17 @@
   "New_Conversation": {
     "message": "گفتگوی جدید"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "هنوز تاریخچه‌ای از تأییدها ثبت نشده است."
   },
   "No_tabs_available": {
     "message": "هیچ زبانه‌ای موجود نیست"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "متصل نیست"
@@ -438,6 +525,9 @@
   "Remaining": {
     "message": "مانده:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "حذف کلید API"
   },
@@ -449,6 +539,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "درخواست تغییرات برای این عمل"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "روی هر متنی کلیک راست کنید تا با Browserx آن را توضیح یا بهبود دهید"
@@ -543,6 +636,9 @@
   "Testing": {
     "message": "در حال آزمایش..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "عامل در حال حاضر از حالت بک‌اند (Backend) استفاده می‌کند. درخواست‌های LLM از طریق سرور AI Republic مسیردهی می‌شوند. گفتگوهای شما به‌صورت ایمن از طریق زیرساخت ما پردازش می‌شوند."
   },
@@ -554,6 +650,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "زمان انقضای موارد کش بر حسب ثانیه (پیش‌فرض: 3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "تغییر وضعیت پنل کناری"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "تغییرات ذخیره‌نشده"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "کانال به‌روزرسانی"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "تصمیم شما"
+  },
+  "optional": {
+    "message": ""
   }
 }

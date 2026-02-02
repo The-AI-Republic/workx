@@ -338,17 +338,16 @@
           </div>
 
           <div class="form-group">
-            <label class="checkbox-label disabled-option">
+            <label class="checkbox-label">
               <input
                 type="checkbox"
                 bind:checked={currentTools.mcpTools}
                 on:input={handleInput}
-                disabled
                 class="form-checkbox"
               />
-              <span>{$_t("MCP Tools (Not Available)")}</span>
+              <span>{$_t("MCP Tools")}</span>
             </label>
-            <div class="help-text">{$_t("Enable Model Context Protocol tools integration (Coming in future update)")}</div>
+            <div class="help-text">{$_t("Enable Model Context Protocol tools from connected MCP servers")}</div>
           </div>
         </div>
       {/if}

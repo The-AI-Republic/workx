@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "用于工作任务的通用浏览器内 AI 智能体"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API 密钥配置"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API 密钥在浏览器中加密并本地存储。除 API 调用外，它们绝不会发送到外部服务器。"
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "操作详情"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "添加修改"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "高级设置"
   },
   "Advanced_Options": {
     "message": "高级选项"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "智能体执行工具"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "允许的来源"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "审批历史"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "请求 Browserx 从任意网页提取结构化数据"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "可用："
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "配置 AI 模型和 API 密钥"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "已连接"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "上下文"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "放弃更改"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "任务完成时显示令牌消耗（输入/输出令牌）"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "启用所有工具"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "启用扩展"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "启用模型上下文协议工具集成（将在后续更新中提供）"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "启用缓存，通过存储常访问数据提升性能"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "为代理启用网络搜索功能"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "输入您的 LLM API 密钥"
@@ -289,6 +352,9 @@
   "Learn_more": {
     "message": "了解更多"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "允许的来源列表（每行一个）。支持通配符 (*)。"
   },
@@ -297,6 +363,12 @@
   },
   "Loading_settings": {
     "message": "加载设置..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "登录"
@@ -307,8 +379,11 @@
   "Low_credits_remaining": {
     "message": "剩余积分较少"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP 工具（不可用）"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "管理浏览器标签页（打开、关闭、切换、查询）"
@@ -324,6 +399,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "最大缓存大小（单位：兆字节，默认：100）"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "工具运行超时的最长时间（单位：毫秒，默认：30000）"
@@ -346,6 +424,9 @@
   "More_Config": {
     "message": "更多配置"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "页面导航，点击链接，处理导航"
   },
@@ -361,11 +442,17 @@
   "New_Conversation": {
     "message": "新会话"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "暂无审批记录。"
   },
   "No_tabs_available": {
     "message": "暂无可用标签页"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "未连接"
@@ -433,6 +520,9 @@
   "Remaining": {
     "message": "剩余："
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "移除 API Key"
   },
@@ -444,6 +534,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "请求对该操作进行更改"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "右键单击任意文本，以使用 Browserx 进行解释或改进"
@@ -538,6 +631,9 @@
   "Testing": {
     "message": "测试中…"
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "代理当前正使用后端模式。LLM 请求将通过 AI Republic 服务器路由。您的对话将通过我们的基础设施安全处理。"
   },
@@ -549,6 +645,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "缓存项的生存时间（秒）（默认：3600）"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "切换侧边栏"
@@ -579,6 +678,9 @@
   },
   "Unsaved_Changes": {
     "message": "未保存的更改"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "更新渠道"
@@ -648,5 +750,8 @@
   },
   "Your_Decision": {
     "message": "您的决定"
+  },
+  "optional": {
+    "message": ""
   }
 }

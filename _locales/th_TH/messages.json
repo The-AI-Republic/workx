@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "เอเย่นต์ AI สำหรับงานทั่วไปในเบราว์เซอร์"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "การกำหนดค่า API Key"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API Key ถูกเข้ารหัสและจัดเก็บไว้ในเบราว์เซอร์ของคุณแบบท้องถิ่น จะไม่ถูกส่งไปยังเซิร์ฟเวอร์ภายนอกเลย ยกเว้นการเรียก API"
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "รายละเอียดการดำเนินการ"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "เพิ่มการแก้ไข"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "การกำหนดค่าขั้นสูง"
   },
   "Advanced_Options": {
     "message": "ตัวเลือกขั้นสูง"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "เครื่องมือดำเนินการเอเจนต์"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "แหล่งที่มาที่อนุญาต"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "ประวัติการอนุมัติ"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ขอให้บราวเซอร์เอ็กซ์ดึงข้อมูลที่มีโครงสร้างจากหน้าเว็บใดก็ได้"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "พร้อมใช้งาน:"
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "กำหนดค่าโมเดลเอไอและคีย์เอพีไอ"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "เชื่อมต่อแล้ว"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "บริบท"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "ละทิ้งการเปลี่ยนแปลง"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "แสดงการใช้โทเคน (อินพุต/เอาต์พุต) เมื่องานเสร็จสิ้น"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "เปิดใช้งานเครื่องมือทั้งหมด"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "เปิดใช้งานส่วนขยาย"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "เปิดใช้งานการรวมเครื่องมือ Model Context Protocol (จะมาในอัปเดตในอนาคต)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "เปิดใช้งานการแคชเพื่อปรับปรุงประสิทธิภาพโดยเก็บข้อมูลที่เข้าถึงบ่อย"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "เปิดใช้งานความสามารถการค้นหาเว็บสำหรับเอเจนท์"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "ป้อนคีย์ API ของ LLM ของคุณ"
@@ -294,6 +357,9 @@
   "Learn_more": {
     "message": "เรียนรู้เพิ่มเติม"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "รายการต้นทางที่อนุญาต (หนึ่งต่อบรรทัด) รองรับไวลด์การ์ด (*)"
   },
@@ -302,6 +368,12 @@
   },
   "Loading_settings": {
     "message": "กำลังโหลดการตั้งค่า..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "เข้าสู่ระบบ"
@@ -312,8 +384,11 @@
   "Low_credits_remaining": {
     "message": "เครดิตเหลือน้อย"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "เครื่องมือ MCP (ไม่พร้อมใช้งาน)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "จัดการแท็บเบราว์เซอร์ (เปิด, ปิด, สลับ, ค้นหา)"
@@ -329,6 +404,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "ขนาดแคชสูงสุดเป็นเมกะไบต์(ค่าเริ่มต้น:100)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "เวลาสูงสุด (มิลลิวินาที) ที่เครื่องมือทำงานก่อนหมดเวลา (ค่าเริ่มต้น: 30000)"
@@ -351,6 +429,9 @@
   "More_Config": {
     "message": "การกำหนดเพิ่มเติม"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "นำทางหน้า, คลิกลิงก์, จัดการการนำทางเบราว์เซอร์"
   },
@@ -366,11 +447,17 @@
   "New_Conversation": {
     "message": "การสนทนาใหม่"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "ยังไม่มีประวัติการอนุมัติ"
   },
   "No_tabs_available": {
     "message": "ไม่มีแท็บพร้อมใช้งาน"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "ไม่ได้เชื่อมต่อ"
@@ -438,6 +525,9 @@
   "Remaining": {
     "message": "คงเหลือ:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "ลบ API Key"
   },
@@ -449,6 +539,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "ขอเปลี่ยนแปลงการกระทำนี้"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "คลิกขวาที่ข้อความใดก็ได้เพื่ออธิบายหรือปรับปรุงด้วย Browserx"
@@ -543,6 +636,9 @@
   "Testing": {
     "message": "กำลังทดสอบ..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ตัวแทนกำลังใช้โหมดแบ็กเอนด์ คำขอ LLM จะถูกส่งผ่านเซิร์ฟเวอร์ AI Republic การสนทนาของคุณจะถูกประมวลผลอย่างปลอดภัยผ่านโครงสร้างพื้นฐานของเรา"
   },
@@ -554,6 +650,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "อายุการใช้งานของรายการแคชเป็นวินาที(ค่าเริ่มต้น:3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "สลับแถบด้านข้าง"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "ช่องทางอัปเดต"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "การตัดสินใจของคุณ"
+  },
+  "optional": {
+    "message": ""
   }
 }

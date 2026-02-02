@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Opći AI agent u pregledniku za radne zadatke"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Konfiguracija API ključa"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API ključevi su šifrirani i pohranjeni lokalno u vašem pregledniku. Nikada se ne šalju na vanjske poslužitelje, osim za API pozive."
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "Detalji akcije"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Dodaj izmjenu"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Napredna konfiguracija"
   },
   "Advanced_Options": {
     "message": "Napredne opcije"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Alati za izvršavanje agenta"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "Dozvoljeni izvori"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Povijest odobrenja"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Zatražite od Browserx da izvuče strukturirane podatke s bilo koje web stranice"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Dostupno:"
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Konfiguriraj AI model i API ključeve"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Povezano"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Kontekst"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "Odbaci promjene"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Prikaži potrošnju tokena (ulazni/izlazni tokeni) po završetku zadataka"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Omogući sve alate"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "Omogući proširenje"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Omogući integraciju alata Model Context Protocol (Dolazi u budućem ažuriranju)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Omogući predmemoriranje za poboljšanje performansi pohranom često pristupanih podataka"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Omogući agentu mogućnosti web pretraživanja"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "Unesite svoj LLM API ključ"
@@ -294,6 +357,9 @@
   "Learn_more": {
     "message": "Saznajte više"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Popis dopuštenih izvora (jedan po retku). Podržava zamjenske znakove (*)."
   },
@@ -302,6 +368,12 @@
   },
   "Loading_settings": {
     "message": "Učitavanje postavki..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "Prijava"
@@ -312,8 +384,11 @@
   "Low_credits_remaining": {
     "message": "Malo kredita"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP alati (nisu dostupni)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Upravljanje karticama preglednika (otvaranje, zatvaranje, prebacivanje, pretraživanje)"
@@ -329,6 +404,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maksimalna veličina predmemorije u megabajtima (zadano: 100)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maksimalno vrijeme (u milisekundama) koliko alat može raditi prije isteka (zadano: 30000)"
@@ -351,6 +429,9 @@
   "More_Config": {
     "message": "Više postavki"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigacija stranicama, klikanje poveznica, upravljanje navigacijom preglednika"
   },
@@ -366,11 +447,17 @@
   "New_Conversation": {
     "message": "Novi razgovor"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Još nema povijesti odobrenja."
   },
   "No_tabs_available": {
     "message": "Nema dostupnih kartica"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Nije povezano"
@@ -438,6 +525,9 @@
   "Remaining": {
     "message": "Preostalo:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Ukloni API ključ"
   },
@@ -449,6 +539,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "Zatraži promjene za ovu radnju"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Desnim klikom na bilo koji tekst možete ga objasniti ili poboljšati uz Browserx."
@@ -543,6 +636,9 @@
   "Testing": {
     "message": "Testiranje..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agent trenutno koristi backend način rada. LLM zahtjevi će se usmjeravati preko AI Republic poslužitelja. Vaši razgovori se sigurno obrađuju putem naše infrastrukture."
   },
@@ -554,6 +650,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Vrijeme trajanja (TTL) predmemoriranih stavki u sekundama (zadano: 3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "Uključi/isključi bočni panel"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "Nespremljene promjene"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "Kanal ažuriranja"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "Vaša odluka"
+  },
+  "optional": {
+    "message": ""
   }
 }

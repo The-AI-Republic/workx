@@ -14,6 +14,13 @@ import { RolloutRecorder } from '../storage/rollout';
 import { AgentConfig } from '../config/AgentConfig';
 import { TabManager } from '../core/TabManager';
 import { LLM_API_URL } from '../config/constants';
+import { MCPManager } from '../mcp/MCPManager';
+import { registerMCPTools, unregisterMCPTools } from '../mcp/MCPToolAdapter';
+import type {
+  IMCPServerConfigCreate,
+  IMCPServerConfigUpdate,
+  MCPManagerEvent,
+} from '../mcp/types';
 
 // Global instances
 let agent: BrowserxAgent | null = null;
@@ -21,6 +28,7 @@ let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
+let mcpManager: MCPManager | null = null; // MCP server connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
@@ -72,8 +80,20 @@ async function doInitialize(): Promise<void> {
   // This ensures backend routing is set up correctly on service worker startup
   await initializeAuthFromConfig();
 
+  // Initialize MCP manager
+  mcpManager = await MCPManager.getInstance();
+
+  // Subscribe to MCP events for tool registration/unregistration
+  setupMCPToolRegistration();
+
+  // Auto-connect enabled MCP servers (T064: service worker lifecycle handling)
+  await autoConnectEnabledMCPServers();
+
   // Setup message handlers
   setupMessageHandlers();
+
+  // Setup MCP message handlers
+  setupMCPMessageHandlers();
 
   // Setup Chrome event listeners
   setupChromeListeners();
@@ -459,6 +479,202 @@ function setupMessageHandlers(): void {
   // All PageAction tool execution now flows through:
   // TurnManager.executeBrowserTool() → ToolRegistry.execute() → PageActionTool.executeImpl()
   // See src/core/TurnManager.ts:774-822 for the execution entry point.
+}
+
+/**
+ * Auto-connect enabled MCP servers on service worker startup (T064)
+ * Attempts to connect to all servers with enabled: true
+ */
+async function autoConnectEnabledMCPServers(): Promise<void> {
+  if (!mcpManager) {
+    console.warn('[ServiceWorker] Cannot auto-connect MCP servers - manager not ready');
+    return;
+  }
+
+  const servers = mcpManager.getServers();
+  const enabledServers = servers.filter((s) => s.enabled);
+
+  if (enabledServers.length === 0) {
+    console.log('[ServiceWorker] No enabled MCP servers to auto-connect');
+    return;
+  }
+
+  console.log(`[ServiceWorker] Auto-connecting ${enabledServers.length} enabled MCP server(s)...`);
+
+  // Connect to each enabled server with exponential backoff on failure
+  for (const server of enabledServers) {
+    try {
+      console.log(`[ServiceWorker] Auto-connecting to MCP server: ${server.name}`);
+      await mcpManager.connect(server.id);
+      console.log(`[ServiceWorker] Auto-connected to MCP server: ${server.name}`);
+    } catch (error) {
+      // Log error but don't fail - other servers may still connect
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[ServiceWorker] Failed to auto-connect MCP server ${server.name}: ${errorMsg}`);
+    }
+  }
+}
+
+/**
+ * Setup MCP tool registration event handling
+ * Registers/unregisters MCP tools with ToolRegistry when connections change
+ */
+function setupMCPToolRegistration(): void {
+  if (!mcpManager || !agent) {
+    console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or agent not ready');
+    return;
+  }
+
+  const toolRegistry = agent.getToolRegistry();
+
+  // Track registered tools per server for cleanup
+  const registeredServerTools = new Map<string, string[]>();
+
+  mcpManager.on('event', async (event: MCPManagerEvent) => {
+    if (event.type === 'tools-updated') {
+      const { configId, tools } = event;
+      const server = mcpManager!.getServer(configId);
+      if (!server) return;
+
+      const serverName = server.name;
+      const connection = mcpManager!.getConnection(configId);
+
+      // If connected and tools available, register them
+      if (connection?.status === 'connected' && tools.length > 0) {
+        // First unregister any previously registered tools for this server
+        const previousTools = registeredServerTools.get(serverName);
+        if (previousTools) {
+          for (const toolName of previousTools) {
+            try {
+              await toolRegistry.unregister(toolName);
+            } catch (e) {
+              // Ignore - tool might not be registered
+            }
+          }
+        }
+
+        // Register new tools
+        try {
+          await registerMCPTools(mcpManager!, serverName, tools, toolRegistry);
+          // Track registered tool names
+          registeredServerTools.set(
+            serverName,
+            tools.map((t) => `${serverName}:${t.name}`)
+          );
+          console.log(`[ServiceWorker] Registered ${tools.length} MCP tools from ${serverName}`);
+        } catch (error) {
+          console.error(`[ServiceWorker] Failed to register MCP tools from ${serverName}:`, error);
+        }
+      }
+    } else if (event.type === 'connection-status-changed') {
+      const { configId, status } = event;
+      const server = mcpManager!.getServer(configId);
+      if (!server) return;
+
+      const serverName = server.name;
+
+      // If disconnecting or error, unregister tools
+      if (status === 'disconnected' || status === 'error') {
+        const previousTools = registeredServerTools.get(serverName);
+        if (previousTools) {
+          for (const toolName of previousTools) {
+            try {
+              await toolRegistry.unregister(toolName);
+            } catch (e) {
+              // Ignore - tool might not be registered
+            }
+          }
+          registeredServerTools.delete(serverName);
+          console.log(`[ServiceWorker] Unregistered MCP tools from ${serverName}`);
+        }
+      }
+    }
+  });
+
+  console.log('[ServiceWorker] MCP tool registration handler setup complete');
+}
+
+/**
+ * Setup MCP server integration message handlers
+ */
+function setupMCPMessageHandlers(): void {
+  if (!router || !mcpManager) return;
+
+  // Get all MCP server configurations
+  router.on(MessageType.MCP_GET_SERVERS, async () => {
+    return mcpManager!.getServers();
+  });
+
+  // Add a new MCP server
+  router.on(MessageType.MCP_ADD_SERVER, async (message) => {
+    const config = message.payload as IMCPServerConfigCreate;
+    return mcpManager!.addServer(config);
+  });
+
+  // Update an existing MCP server
+  router.on(MessageType.MCP_UPDATE_SERVER, async (message) => {
+    const { id, update } = message.payload as { id: string; update: IMCPServerConfigUpdate };
+    return mcpManager!.updateServer(id, update);
+  });
+
+  // Remove an MCP server
+  router.on(MessageType.MCP_REMOVE_SERVER, async (message) => {
+    const { id } = message.payload as { id: string };
+    await mcpManager!.removeServer(id);
+    return { success: true };
+  });
+
+  // Connect to an MCP server
+  router.on(MessageType.MCP_CONNECT, async (message) => {
+    const { id } = message.payload as { id: string };
+    await mcpManager!.connect(id);
+    return { success: true };
+  });
+
+  // Disconnect from an MCP server
+  router.on(MessageType.MCP_DISCONNECT, async (message) => {
+    const { id } = message.payload as { id: string };
+    await mcpManager!.disconnect(id);
+    return { success: true };
+  });
+
+  // Get connection state for a specific server
+  router.on(MessageType.MCP_GET_CONNECTION, async (message) => {
+    const { id } = message.payload as { id: string };
+    return mcpManager!.getConnection(id);
+  });
+
+  // Get all connections
+  router.on(MessageType.MCP_GET_CONNECTIONS, async () => {
+    return mcpManager!.getConnections();
+  });
+
+  // Get all available tools from all connected servers
+  router.on(MessageType.MCP_GET_ALL_TOOLS, async () => {
+    return mcpManager!.getAllTools();
+  });
+
+  // Execute an MCP tool
+  router.on(MessageType.MCP_EXECUTE_TOOL, async (message) => {
+    const { prefixedName, args } = message.payload as {
+      prefixedName: string;
+      args: Record<string, unknown>;
+    };
+    return mcpManager!.executeTool(prefixedName, args);
+  });
+
+  // Get all available resources from all connected servers
+  router.on(MessageType.MCP_GET_ALL_RESOURCES, async () => {
+    return mcpManager!.getAllResources();
+  });
+
+  // Read a resource from a server
+  router.on(MessageType.MCP_READ_RESOURCE, async (message) => {
+    const { serverName, uri } = message.payload as { serverName: string; uri: string };
+    return mcpManager!.readResource(serverName, uri);
+  });
+
+  console.log('[ServiceWorker] MCP message handlers registered');
 }
 
 /**

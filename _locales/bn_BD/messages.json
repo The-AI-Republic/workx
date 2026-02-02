@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "কাজের জন্য সাধারণ ব্রাউজার-ভিত্তিক AI এজেন্ট"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API কী কনফিগারেশন"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API কী গুলি এনক্রিপ্ট করা হয় এবং আপনার ব্রাউজারে লোকালভাবে সংরক্ষিত হয়। API কল ব্যতীত এগুলি কখনই বাহ্যিক সার্ভারে পাঠানো হয় না।"
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "অ্যাকশন বিবরণ"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "পরিবর্তন যোগ করুন"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "উন্নত কনফিগারেশন"
   },
   "Advanced_Options": {
     "message": "উন্নত বিকল্প"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "এজেন্ট এক্সিকিউশন সরঞ্জাম"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "অনুমোদিত উৎস"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "অনুমোদন ইতিহাস"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx-কে যেকোনো ওয়েবপেজ থেকে কাঠামোবদ্ধ ডেটা বের করতে বলুন"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "উপলব্ধ:"
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "AI মডেল এবং API কী কনফিগার করুন"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "সংযুক্ত"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "প্রসঙ্গ"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "পরিবর্তন বাতিল করুন"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "কাজ শেষ হলে টোকেন ব্যবহারের তথ্য (ইনপুট/আউটপুট টোকেন) প্রদর্শন করুন"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "সব টুল সক্রিয় করুন"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "এক্সটেনশন সক্রিয় করুন"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "মডেল কন্টেক্সট প্রোটোকল টুলস ইন্টিগ্রেশন সক্রিয় করুন (ভবিষ্যৎ আপডেটে আসছে)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "প্রায়ই ব্যবহৃত ডেটা সংরক্ষণ করে পারফরম্যান্স উন্নত করতে ক্যাশিং সক্রিয় করুন"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "এজেন্টের জন্য ওয়েব সার্চ ক্ষমতা সক্রিয় করুন"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "আপনার LLM API কী লিখুন"
@@ -289,6 +352,9 @@
   "Learn_more": {
     "message": "আরও জানুন"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "অনুমোদিত উত্সের তালিকা (প্রতি লাইনে একটি)। ওয়াইল্ডকার্ড (*) সমর্থন করে।"
   },
@@ -297,6 +363,12 @@
   },
   "Loading_settings": {
     "message": "সেটিংস লোড হচ্ছে..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "লগইন"
@@ -307,8 +379,11 @@
   "Low_credits_remaining": {
     "message": "কম ক্রেডিট বাকি আছে"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP টুলস (উপলব্ধ নয়)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ব্রাউজার ট্যাব পরিচালনা (খোলা, বন্ধ, পরিবর্তন, কোয়েরি)"
@@ -324,6 +399,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "মেগাবাইটে সর্বোচ্চ ক্যাশ সাইজ (ডিফল্ট: ১০০)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "টাইমআউটের আগে টুল চালানোর সর্বোচ্চ সময় (মিলিসেকেন্ডে) (ডিফল্ট: ৩০০০০)"
@@ -346,6 +424,9 @@
   "More_Config": {
     "message": "আরও কনফিগারেশন"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "পেজ নেভিগেট করুন, লিঙ্কে ক্লিক করুন, ব্রাউজার নেভিগেশন পরিচালনা করুন"
   },
@@ -361,11 +442,17 @@
   "New_Conversation": {
     "message": "নতুন কথোপকথন"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "এখনো কোনো অনুমোদন ইতিহাস নেই।"
   },
   "No_tabs_available": {
     "message": "কোনো ট্যাব উপলব্ধ নেই"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "সংযুক্ত নয়"
@@ -433,6 +520,9 @@
   "Remaining": {
     "message": "অবশিষ্ট:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "API কী সরান"
   },
@@ -444,6 +534,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "এই কাজের জন্য পরিবর্তনের অনুরোধ করুন"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "যেকোনো লেখার উপর রাইট-ক্লিক করে Browserx-এর সাহায্যে এটি ব্যাখ্যা বা উন্নত করুন"
@@ -538,6 +631,9 @@
   "Testing": {
     "message": "পরীক্ষা চলছে..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "এজেন্ট বর্তমানে ব্যাকএন্ড মোড ব্যবহার করছে। LLM অনুরোধগুলি AI Republic সার্ভারের মাধ্যমে রাউট করা হবে। আপনার কথোপকথনগুলি আমাদের অবকাঠামোর মাধ্যমে নিরাপদে প্রক্রিয়াকৃত হবে।"
   },
@@ -554,6 +650,9 @@
         "content": "$1"
       }
     }
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "সাইড প্যানেল টগল করুন"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "সংরক্ষণহীন পরিবর্তন"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "আপডেট চ্যানেল"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "আপনার সিদ্ধান্ত"
+  },
+  "optional": {
+    "message": ""
   }
 }

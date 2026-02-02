@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "업무 작업을 위한 일반적인 브라우저 내 AI 에이전트"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API 키 구성"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API 키는 암호화되어 브라우저에 로컬로 저장됩니다. API 호출을 제외하고 외부 서버로 전송되지 않습니다."
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "작업 상세"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "수정 추가"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "고급 구성"
   },
   "Advanced_Options": {
     "message": "고급 옵션"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "에이전트 실행 도구"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "허용된 출처"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "승인 내역"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx에 웹 페이지에서 구조화된 데이터를 추출하도록 요청"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "사용 가능:"
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "AI 모델 및 API 키 구성"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "연결됨"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "컨텍스트"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "변경 사항 폐기"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "작업 완료 시 토큰 사용량(입력/출력 토큰) 표시"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "모든 도구 활성화"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "확장 프로그램 활성화"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "모델 컨텍스트 프로토콜 도구 통합 활성화 (향후 업데이트 예정)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "자주 접근하는 데이터를 저장하여 성능을 개선하는 캐싱 활성화"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "에이전트의 웹 검색 기능을 활성화하십시오"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "LLM API 키를 입력하십시오"
@@ -289,6 +352,9 @@
   "Learn_more": {
     "message": "자세히 알아보기"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "허용된 출처 목록(한 줄에 하나씩). 와일드카드(*)를 지원합니다."
   },
@@ -297,6 +363,12 @@
   },
   "Loading_settings": {
     "message": "설정을 불러오는 중..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "로그인"
@@ -307,8 +379,11 @@
   "Low_credits_remaining": {
     "message": "크레딧이 거의 남지 않았습니다"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP 도구(사용 불가)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "브라우저 탭 관리(열기, 닫기, 전환, 조회)"
@@ -324,6 +399,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "최대 캐시 크기(메가바이트) (기본값: 100)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "도구 실행 제한 시간(밀리초, 기본값: 30000)"
@@ -346,6 +424,9 @@
   "More_Config": {
     "message": "추가 설정"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "페이지 탐색, 링크 클릭, 브라우저 탐색 처리"
   },
@@ -361,11 +442,17 @@
   "New_Conversation": {
     "message": "새 대화"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "아직 승인 기록이 없습니다."
   },
   "No_tabs_available": {
     "message": "사용 가능한 탭이 없습니다"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "연결되지 않음"
@@ -433,6 +520,9 @@
   "Remaining": {
     "message": "남은:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "API 키 삭제"
   },
@@ -444,6 +534,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "이 작업에 대한 변경 요청"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "텍스트를 오른쪽 클릭하여 Browserx로 설명하거나 개선하십시오"
@@ -538,6 +631,9 @@
   "Testing": {
     "message": "테스트 중..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "에이전트가 현재 백엔드 모드를 사용 중입니다. LLM 요청은 AI Republic 서버를 통해 라우팅됩니다. 대화 내용은 당사 인프라를 통해 안전하게 처리됩니다."
   },
@@ -549,6 +645,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "캐시 항목의 TTL(초) (기본값: 3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "사이드 패널 표시/숨기기"
@@ -579,6 +678,9 @@
   },
   "Unsaved_Changes": {
     "message": "저장되지 않은 변경 사항"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "업데이트 채널"
@@ -648,5 +750,8 @@
   },
   "Your_Decision": {
     "message": "귀하의 결정"
+  },
+  "optional": {
+    "message": ""
   }
 }

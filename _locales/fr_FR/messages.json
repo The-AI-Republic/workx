@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Agent IA général intégré au navigateur pour les tâches professionnelles"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Configuration de la clé API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Les clés API sont chiffrées et stockées localement dans votre navigateur. Elles ne sont jamais envoyées à des serveurs externes, sauf lors des appels API."
@@ -20,14 +26,26 @@
   "Action_Details": {
     "message": "Détails de l’action"
   },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Ajouter une modification"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Configuration avancée"
   },
   "Advanced_Options": {
     "message": "Options avancées"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Outils d’exécution de l’agent"
@@ -44,6 +62,9 @@
   "Allowed_Origins": {
     "message": "Origines autorisées"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Historique des approbations"
   },
@@ -55,6 +76,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Demander à Browserx d’extraire des données structurées depuis n’importe quelle page web"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Disponible :"
@@ -125,8 +149,26 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Configurer le modèle d'IA et les clés API"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Connecté"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Contexte"
@@ -158,8 +200,17 @@
   "Discard_Changes": {
     "message": "Abandonner les modifications"
   },
+  "Disconnect": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Afficher la consommation de jetons (jetons d'entrée/sortie) lorsque les tâches sont terminées"
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Activer tous les outils"
@@ -176,14 +227,26 @@
   "Enable_Extension": {
     "message": "Activer l'extension"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Activer l'intégration des outils du protocole de contexte du modèle (Prochainement)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activer la mise en cache pour améliorer les performances en stockant les données fréquemment consultées"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Activer les capacités de recherche web pour l'agent"
+  },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
   },
   "Enter_your_LLM_API_key": {
     "message": "Saisissez votre clé API LLM"
@@ -294,6 +357,9 @@
   "Learn_more": {
     "message": "En savoir plus"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Liste des origines autorisées (une par ligne). Prend en charge les caractères génériques (*)."
   },
@@ -302,6 +368,12 @@
   },
   "Loading_settings": {
     "message": "Chargement des paramètres..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
   },
   "Login": {
     "message": "Connexion"
@@ -312,8 +384,11 @@
   "Low_credits_remaining": {
     "message": "Crédits restants faibles"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "Outils MCP (Indisponibles)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Gérer les onglets du navigateur (ouvrir, fermer, basculer, interroger)"
@@ -329,6 +404,9 @@
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Taille maximale du cache en mégaoctets (par défaut : 100)"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Durée maximale (en millisecondes) pendant laquelle un outil peut s'exécuter avant le délai d'attente (par défaut : 30000)"
@@ -351,6 +429,9 @@
   "More_Config": {
     "message": "Plus de configuration"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Naviguer entre les pages, cliquer sur les liens, gérer la navigation du navigateur"
   },
@@ -366,11 +447,17 @@
   "New_Conversation": {
     "message": "Nouvelle conversation"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Aucun historique d’approbation pour le moment."
   },
   "No_tabs_available": {
     "message": "Aucun onglet disponible"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Non connecté"
@@ -438,6 +525,9 @@
   "Remaining": {
     "message": "Restant :"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Supprimer la clé API"
   },
@@ -449,6 +539,9 @@
   },
   "Request_changes_to_this_action": {
     "message": "Demander des modifications pour cette action"
+  },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Faites un clic droit sur n'importe quel texte pour l'expliquer ou l'améliorer avec Browserx"
@@ -543,6 +636,9 @@
   "Testing": {
     "message": "Test en cours..."
   },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "L’agent utilise actuellement le mode backend. Les requêtes LLM seront acheminées via le serveur AI Republic. Vos conversations sont traitées en toute sécurité par notre infrastructure."
   },
@@ -554,6 +650,9 @@
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Durée de vie des éléments en cache en secondes (par défaut : 3600)"
+  },
+  "Timeout_ms": {
+    "message": ""
   },
   "Toggle_side_panel": {
     "message": "Basculer le panneau latéral"
@@ -584,6 +683,9 @@
   },
   "Unsaved_Changes": {
     "message": "Modifications non enregistrées"
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "Canal de mise à jour"
@@ -653,5 +755,8 @@
   },
   "Your_Decision": {
     "message": "Décision de l’utilisateur"
+  },
+  "optional": {
+    "message": ""
   }
 }
