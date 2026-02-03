@@ -57,13 +57,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Replace singleton agent with AgentRegistry in src/background/service-worker.ts
-- [ ] T011 [US2] Implement session factory method in AgentRegistry.createSession() in src/core/registry/AgentRegistry.ts
-- [ ] T012 [US2] Add getSession(sessionId) retrieval method in src/core/registry/AgentRegistry.ts
-- [ ] T013 [US2] Add getPrimarySession() method for backward compatibility in src/core/registry/AgentRegistry.ts
-- [ ] T014 [US2] Implement session cleanup in removeSession(sessionId) in src/core/registry/AgentRegistry.ts
-- [ ] T015 [US2] Add session lifecycle event broadcasting (created, destroyed) in src/core/registry/AgentRegistry.ts
-- [ ] T016 [P] [US2] Create integration test for multi-session creation in tests/integration/multi-session.test.ts
+- [X] T010 [US2] Replace singleton agent with AgentRegistry in src/background/service-worker.ts
+- [X] T011 [US2] Implement session factory method in AgentRegistry.createSession() in src/core/registry/AgentRegistry.ts
+- [X] T012 [US2] Add getSession(sessionId) retrieval method in src/core/registry/AgentRegistry.ts
+- [X] T013 [US2] Add getPrimarySession() method for backward compatibility in src/core/registry/AgentRegistry.ts
+- [X] T014 [US2] Implement session cleanup in removeSession(sessionId) in src/core/registry/AgentRegistry.ts
+- [X] T015 [US2] Add session lifecycle event broadcasting (created, destroyed) in src/core/registry/AgentRegistry.ts
+- [X] T016 [P] [US2] Create integration test for multi-session creation in tests/integration/multi-session.test.ts
 
 **Checkpoint**: AgentRegistry manages multiple sessions with independent state. Can create, retrieve, and remove sessions.
 

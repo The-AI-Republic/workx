@@ -1,6 +1,11 @@
 /**
  * Chrome extension background service worker
  * Central coordinator for the Browserx agent
+ *
+ * Feature 015: Multi-agent instances
+ * - Replaced singleton agent with AgentRegistry
+ * - Supports parallel session execution
+ * - Session-aware message routing
  */
 
 import { BrowserxAgent } from '../core/BrowserxAgent';
@@ -37,8 +42,15 @@ import type {
 } from '../models/types/SchedulerContracts';
 import type { TaskResultRecord } from '../models/types/Scheduler';
 
+// Multi-agent registry imports (Feature 015)
+import { AgentRegistry } from '../core/registry';
+import type { SessionConfig } from '../core/registry/types';
+import { PRIMARY_SESSION_ALIAS } from '../models/types/SessionContracts';
+
 // Global instances
+// Feature 015: agent variable kept for backward compatibility but now accessed via registry
 let agent: BrowserxAgent | null = null;
+let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
 let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
@@ -90,9 +102,16 @@ async function doInitialize(): Promise<void> {
   // Create message router (must be created before agent)
   router = new MessageRouter('background');
 
-  // Create agent instance with config and router (agent will initialize ModelClientFactory and ToolRegistry)
-  agent = new BrowserxAgent(agentConfig!, router);
-  await agent.initialize();
+  // Feature 015: Initialize AgentRegistry instead of singleton agent
+  registry = AgentRegistry.getInstance();
+  registry.initialize(agentConfig!, router);
+
+  // Create primary session (replaces singleton agent creation)
+  // This maintains backward compatibility - agent variable points to primary session's agent
+  const primarySession = await registry.createSession({ type: 'primary' });
+  agent = primarySession.agent;
+
+  console.log(`[ServiceWorker] Primary session created: ${primarySession.sessionId}`);
 
   // Initialize auth manager from stored config preferences
   // This ensures backend routing is set up correctly on service worker startup
@@ -166,25 +185,57 @@ async function initializeAuthFromConfig(): Promise<void> {
 }
 
 /**
+ * Helper function to get agent for a message (Feature 015: session-aware routing)
+ * @param message The incoming message with optional sessionId
+ * @returns The agent to use for this message
+ */
+function getAgentForMessage(message: { payload?: { sessionId?: string } }): BrowserxAgent | null {
+  // Feature 015: Route by sessionId if provided, otherwise use primary session
+  const sessionId = message.payload?.sessionId;
+
+  if (sessionId && registry) {
+    const agentSession = registry.getSession(sessionId);
+    if (agentSession?.agent) {
+      return agentSession.agent;
+    }
+    // If specific session not found, fall back to primary
+    console.warn(`[ServiceWorker] Session ${sessionId} not found, using primary`);
+  }
+
+  // Default to primary session (backward compatibility)
+  if (registry) {
+    const primarySession = registry.getPrimarySession();
+    return primarySession?.agent ?? null;
+  }
+
+  // Legacy fallback to global agent variable
+  return agent;
+}
+
+/**
  * Setup message handlers
  */
 function setupMessageHandlers(): void {
-  if (!router || !agent) return;
+  if (!router || !registry) return;
 
-  // Handle submissions from UI
+  // Handle submissions from UI (Feature 015: session-aware routing)
   router.on(MessageType.SUBMISSION, async (message) => {
-    const submission = message.payload as Submission;
+    const submission = message.payload as Submission & { sessionId?: string };
 
     if (!validateSubmission(submission)) {
       return;
     }
 
-    const session = agent!.getSession();
+    // Feature 015: Route to correct agent based on sessionId
+    const targetAgent = getAgentForMessage(message);
+    if (!targetAgent) {
+      throw new Error('No agent available for submission');
+    }
 
     try {
       // Pass the submission context to the agent
       // The agent will handle tab binding/creation based on context.tabId
-      const id = await agent!.submitOperation(submission.op, submission.context);
+      const id = await targetAgent.submitOperation(submission.op, submission.context);
 
       return { submissionId: id };
     } catch (error) {
@@ -192,11 +243,13 @@ function setupMessageHandlers(): void {
     }
   });
 
-  // Handle state queries
-  router.on(MessageType.GET_STATE, async () => {
-    if (!agent) return null;
+  // Handle state queries (Feature 015: session-aware routing)
+  router.on(MessageType.GET_STATE, async (message) => {
+    // Feature 015: Route to correct agent based on sessionId
+    const targetAgent = getAgentForMessage(message);
+    if (!targetAgent) return null;
 
-    const session = agent.getSession();
+    const session = targetAgent.getSession();
 
     // Get current tab ID from session (SessionState is the source of truth)
     const tabId = session.getTabId();
@@ -209,6 +262,9 @@ function setupMessageHandlers(): void {
       isActiveTurn: session.isActiveTurn(), // Include active turn status
       tabId: tabId, // US3: Include current tab binding
       history: conversationHistory.items, // Include history for UI sync on sidepanel reopen
+      // Feature 015: Include registry info
+      activeSessionCount: registry?.getActiveCount() ?? 0,
+      maxConcurrentSessions: registry?.getMaxConcurrent() ?? 3,
     };
   });
 
@@ -218,8 +274,10 @@ function setupMessageHandlers(): void {
   });
 
   // Handle health check - validates agent is ready with API key
-  router.on(MessageType.HEALTH_CHECK, async () => {
-    if (!agent) {
+  router.on(MessageType.HEALTH_CHECK, async (message) => {
+    // Feature 015: Route to correct agent based on sessionId
+    const targetAgent = getAgentForMessage(message);
+    if (!targetAgent) {
       return {
         type: MessageType.HEALTH_STATUS,
         ready: false,
@@ -228,7 +286,7 @@ function setupMessageHandlers(): void {
       };
     }
 
-    const status = await agent.isReady();
+    const status = await targetAgent.isReady();
     return {
       type: MessageType.HEALTH_STATUS,
       ...status,
@@ -236,11 +294,13 @@ function setupMessageHandlers(): void {
     };
   });
 
-  // Handle session reset
-  router.on(MessageType.SESSION_RESET, async () => {
-    if (agent) {
+  // Handle session reset (Feature 015: session-aware routing)
+  router.on(MessageType.SESSION_RESET, async (message) => {
+    // Feature 015: Route to correct agent based on sessionId
+    const targetAgent = getAgentForMessage(message);
+    if (targetAgent) {
       // Get the current session
-      const session = agent.getSession();
+      const session = targetAgent.getSession();
 
       // Abort all running tasks before resetting
       await session.abortAllTasks('UserInterrupt');
@@ -318,12 +378,15 @@ function setupMessageHandlers(): void {
   });
 
   // Handle stop agent session (from visual effects Stop Agent button)
+  // Feature 015: session-aware routing
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'STOP_AGENT_SESSION') {
       (async () => {
         try {
-          if (agent) {
-            const session = agent.getSession();
+          // Feature 015: Route to correct agent based on sessionId
+          const targetAgent = getAgentForMessage(message);
+          if (targetAgent) {
+            const session = targetAgent.getSession();
 
             // Abort all running tasks
             await session.abortAllTasks('UserInterrupt');
@@ -355,12 +418,13 @@ function setupMessageHandlers(): void {
     return { success: true };
   });
 
-  // Handle tool execution messages
+  // Handle tool execution messages (Feature 015: session-aware routing)
   router.on(MessageType.TOOL_EXECUTE, async (message) => {
-    if (!agent) throw new Error('Agent not initialized');
+    const targetAgent = getAgentForMessage(message);
+    if (!targetAgent) throw new Error('Agent not initialized');
 
     const { toolName, args } = message.payload;
-    const toolRegistry = agent.getToolRegistry();
+    const toolRegistry = targetAgent.getToolRegistry();
     const tool = toolRegistry.getTool(toolName);
 
     if (!tool) {
@@ -371,18 +435,19 @@ function setupMessageHandlers(): void {
     return { success: true, message: `Tool ${toolName} executed` };
   });
 
-  // Handle approval requests
+  // Handle approval requests (Feature 015: session-aware routing)
   router.on(MessageType.APPROVAL_REQUEST, async (message) => {
-    if (!agent) throw new Error('Agent not initialized');
+    const targetAgent = getAgentForMessage(message);
+    if (!targetAgent) throw new Error('Agent not initialized');
 
     const { approvalId, type, details } = message.payload;
-    const approvalManager = agent.getApprovalManager();
+    const approvalManager = targetAgent.getApprovalManager();
 
     // For now, just return a placeholder approval response
     return { approved: false, message: 'Approval system not fully integrated yet' };
   });
 
-  // Handle configuration updates
+  // Handle configuration updates (Feature 015: registry-aware)
   router.on(MessageType.CONFIG_UPDATE, async () => {
     try {
       // Reload AgentConfig from storage
@@ -393,34 +458,43 @@ function setupMessageHandlers(): void {
         agentConfig = await AgentConfig.getInstance();
       }
 
-      // Recreate BrowserxAgent with updated configuration
-      if (agent) {
-        // Clean up old agent
-        const session = agent.getSession();
-        await session.close();
-        await agent.cleanup();
-      }
+      // Feature 015: Clean up all sessions and recreate primary
+      if (registry) {
+        await registry.cleanup();
+        registry.initialize(agentConfig, router!);
 
-      // Create new agent with updated config
-      agent = new BrowserxAgent(agentConfig, router!);
+        // Recreate primary session
+        const primarySession = await registry.createSession({ type: 'primary' });
+        agent = primarySession.agent;
 
-      // Restore the auth manager if we have one preserved BEFORE initialization
-      // This ensures backend routing state is applied during agent.initialize() when initial client is created
-      if (currentAuthManager) {
-        const factory = agent.getModelClientFactory();
-        factory.setAuthManager(currentAuthManager);
-        console.log('[ServiceWorker] Restored auth manager BEFORE agent initialization, isBackendRouting:', factory.isBackendRouting());
-      }
-
-      // Initialize agent (creates model client and tools)
-      await agent.initialize();
-
-      // If no auth manager was preserved, initialize it now from config
-      if (!currentAuthManager) {
-        await initializeAuthFromConfig();
+        // Restore auth manager if preserved
+        if (currentAuthManager && agent) {
+          const factory = agent.getModelClientFactory();
+          factory.setAuthManager(currentAuthManager);
+          console.log('[ServiceWorker] Restored auth manager after CONFIG_UPDATE');
+          await agent.refreshModelClient();
+        } else if (!currentAuthManager) {
+          await initializeAuthFromConfig();
+        }
       } else {
-        // Just refresh the client if we restored auth state (to be safe)
-        await agent.refreshModelClient();
+        // Legacy fallback: recreate singleton agent
+        if (agent) {
+          const session = agent.getSession();
+          await session.close();
+          await agent.cleanup();
+        }
+
+        agent = new BrowserxAgent(agentConfig, router!);
+        if (currentAuthManager) {
+          const factory = agent.getModelClientFactory();
+          factory.setAuthManager(currentAuthManager);
+        }
+        await agent.initialize();
+        if (!currentAuthManager) {
+          await initializeAuthFromConfig();
+        } else {
+          await agent.refreshModelClient();
+        }
       }
 
       // Notify all clients (sidepanel, etc.) that agent was reinitialized
@@ -461,25 +535,27 @@ function setupMessageHandlers(): void {
     // Preserve the auth manager for agent recreation (e.g., after CONFIG_UPDATE)
     currentAuthManager = authManager;
 
-    // Update the agent's model client factory with the auth manager
-    if (agent) {
-      const factory = agent.getModelClientFactory();
+    // Feature 015: Update auth manager for all sessions via primary agent
+    const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+    if (primaryAgent) {
+      const factory = primaryAgent.getModelClientFactory();
       factory.setAuthManager(authManager);
       console.log('[ServiceWorker] Auth manager updated, isBackendRouting:', factory.isBackendRouting(), 'useOwnApiKey:', useOwnApiKey);
 
       // Refresh the model client to use the new auth routing
-      await agent.refreshModelClient();
+      await primaryAgent.refreshModelClient();
     }
 
     return { success: true, isBackendRouting: authManager.shouldUseBackend() };
   });
 
-  // Handle diff events
+  // Handle diff events (Feature 015: session-aware routing)
   router.on(MessageType.DIFF_GENERATED, async (message) => {
-    if (!agent) throw new Error('Agent not initialized');
+    const targetAgent = getAgentForMessage(message);
+    if (!targetAgent) throw new Error('Agent not initialized');
 
     const { diffId, path, content } = message.payload;
-    const diffTracker = agent.getDiffTracker();
+    const diffTracker = targetAgent.getDiffTracker();
 
     // Broadcast diff to UI
     if (router) {
@@ -758,14 +834,17 @@ async function autoConnectEnabledMCPServers(): Promise<void> {
 /**
  * Setup MCP tool registration event handling
  * Registers/unregisters MCP tools with ToolRegistry when connections change
+ * Feature 015: Uses primary session's tool registry
  */
 function setupMCPToolRegistration(): void {
-  if (!mcpManager || !agent) {
+  // Feature 015: Get tool registry from primary session
+  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+  if (!mcpManager || !primaryAgent) {
     console.warn('[ServiceWorker] Cannot setup MCP tool registration - manager or agent not ready');
     return;
   }
 
-  const toolRegistry = agent.getToolRegistry();
+  const toolRegistry = primaryAgent.getToolRegistry();
 
   // Track registered tools per server for cleanup
   const registeredServerTools = new Map<string, string[]>();
@@ -996,12 +1075,15 @@ function handleCommand(command: string): void {
 
 /**
  * Handle context menu clicks
+ * Feature 015: Uses primary session
  */
 async function handleContextMenuClick(
   info: chrome.contextMenus.OnClickData,
   tab?: chrome.tabs.Tab
 ): Promise<void> {
-  if (!tab?.id || !agent) return;
+  // Feature 015: Get primary agent
+  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+  if (!tab?.id || !primaryAgent) return;
 
   const submission: Partial<Submission> = {
     id: `ctx_${Date.now()}`,
@@ -1057,9 +1139,9 @@ async function handleContextMenuClick(
       break;
   }
 
-  // Submit to agent
+  // Submit to agent (Feature 015: uses primary agent from above)
   if (submission.op) {
-    await agent.submitOperation(submission.op);
+    await primaryAgent.submitOperation(submission.op);
 
     // Open side panel to show results
     chrome.sidePanel.open({ tabId: tab.id });
@@ -1137,15 +1219,18 @@ async function initializeStorage(): Promise<void> {
 
 /**
  * Execute quick action on tab
+ * Feature 015: Uses primary session
  */
 async function executeQuickAction(tabId: number): Promise<void> {
   // Get current page context
   const tab = await chrome.tabs.get(tabId);
 
-  if (!agent) return;
+  // Feature 015: Get primary agent
+  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+  if (!primaryAgent) return;
 
   // Submit quick analysis request
-  await agent.submitOperation({
+  await primaryAgent.submitOperation({
     type: 'UserInput',
     items: [
       {
@@ -1173,15 +1258,27 @@ function setupPeriodicTasks(): void {
   // See App.svelte lines 54-87 for wake-up retry logic
   // TODO: Implement sophisticated keep-alive mechanism in the future
 
-  // Process event queue periodically
+  // Process event queue periodically (Feature 015: process all sessions)
   setInterval(async () => {
-    if (!agent || !router) return;
+    if (!router) return;
 
-    // Get next event from agent
-    const event = await agent.getNextEvent();
-    if (event) {
-      // Broadcast event to all connected clients
-      await router.broadcast(MessageType.EVENT, event);
+    // Feature 015: Process events from all sessions
+    if (registry) {
+      for (const sessionMeta of registry.listSessions()) {
+        const session = registry.getSession(sessionMeta.sessionId);
+        if (session?.agent) {
+          const event = await session.agent.getNextEvent();
+          if (event) {
+            await router.broadcast(MessageType.EVENT, event);
+          }
+        }
+      }
+    } else if (agent) {
+      // Legacy fallback
+      const event = await agent.getNextEvent();
+      if (event) {
+        await router.broadcast(MessageType.EVENT, event);
+      }
     }
   }, 100); // Check every 100ms
 
@@ -1317,10 +1414,14 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 /**
  * Handle service worker shutdown
+ * Feature 015: Clean up registry instead of singleton agent
  */
 chrome.runtime.onSuspend.addListener(async () => {
-  // Cleanup resources
-  if (agent) {
+  // Feature 015: Cleanup registry (which cleans up all sessions)
+  if (registry) {
+    await registry.cleanup();
+  } else if (agent) {
+    // Legacy fallback
     const session = agent.getSession();
     await session.close();
     await agent.cleanup();
@@ -1341,6 +1442,8 @@ chrome.runtime.onSuspend.addListener(async () => {
   // Reset initialization flag so it can be re-initialized if the service worker restarts
   isInitialized = false;
   initializationPromise = null;
+  registry = null;
+  agent = null;
 });
 
 // ============================================================================
@@ -1402,5 +1505,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Initialize on script load
 initialize();
 
-// Export for testing
-export { agent, router, initialize };
+// Export for testing (Feature 015: include registry)
+export { agent, router, registry, initialize };
