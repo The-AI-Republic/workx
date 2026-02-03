@@ -20,6 +20,14 @@ The current browserx architecture uses a **singleton BrowserxAgent pattern** in 
 - Scheduled tasks share context with active user conversation
 - Tab binding conflicts when switching between tasks
 
+## Clarifications
+
+### Session 2026-02-02
+
+- Q: What lifecycle states should a session have? → A: 4 states: `initializing` (session being created), `active` (task running), `idle` (awaiting input), `terminated` (session ended). Note: Tasks within a session have their own lifecycle; session states apply to the session container, not individual tasks.
+- Q: What happens when a session's bound tab is closed during execution? → A: Terminate session immediately and mark the task as failed.
+- Q: What is the default maximum concurrent session limit? → A: Default 3 (1 user session + 2 scheduled tasks or edge cases), configurable by user.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Scheduled Task Runs Without Interrupting Active Session (Priority: P1)
@@ -120,7 +128,7 @@ Users can see the status of all active sessions, including which ones are runnin
 
 ### Edge Cases
 
-- What happens when a session's bound tab is closed while the session is executing?
+- When a session's bound tab is closed while executing → Session terminates immediately, task marked as failed
 - How does the system handle service worker termination during active sessions?
 - What happens if two sessions try to bind to the same tab?
 - How are sessions cleaned up if they become orphaned (no client connected)?
@@ -154,7 +162,7 @@ Users can see the status of all active sessions, including which ones are runnin
 - **FR-015**: System MUST support resuming a session from persisted state
 
 **Resource Management**
-- **FR-016**: System MUST enforce a configurable maximum number of concurrent sessions
+- **FR-016**: System MUST enforce a configurable maximum number of concurrent sessions (default: 3)
 - **FR-017**: System MUST clean up session resources when sessions are removed
 - **FR-018**: System MUST handle service worker termination gracefully, preserving session state
 
@@ -162,12 +170,13 @@ Users can see the status of all active sessions, including which ones are runnin
 - **FR-019**: Scheduler MUST create a new session for each scheduled task execution
 - **FR-020**: Scheduler MUST NOT reuse the user's active session for scheduled tasks
 - **FR-021**: Scheduled task sessions MUST be independent and not affect user sessions
+- **FR-022**: When a session's bound tab is closed, the system MUST terminate that session immediately and mark any running task as failed
 
 ### Key Entities
 
 - **AgentRegistry**: Central registry managing all active agent sessions. Tracks sessions by ID, handles creation/destruction, enforces limits.
 
-- **AgentSession**: Wrapper around BrowserxAgent providing session isolation. Contains session ID, agent instance, tab binding, and lifecycle state.
+- **AgentSession**: Wrapper around BrowserxAgent providing session isolation. Contains session ID, agent instance, tab binding, and lifecycle state. Lifecycle states: `initializing` (session being created), `active` (task running), `idle` (awaiting input), `terminated` (session ended).
 
 - **SessionMetadata**: Persisted information about a session including ID, creation time, last activity, conversation ID, and resumption data.
 
