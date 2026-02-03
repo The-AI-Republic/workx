@@ -128,6 +128,20 @@ export class OpenAIResponsesClient extends ModelClient {
 
     this.apiKey = config.apiKey;
     this.baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+
+    // Validate baseUrl is a valid URL to catch configuration errors early
+    try {
+      new URL(this.baseUrl);
+    } catch {
+      console.error('[OpenAIResponsesClient] Invalid baseUrl:', this.baseUrl);
+      throw new ModelClientError(
+        `Invalid API base URL: "${this.baseUrl}". Please check the provider configuration.`,
+        400,
+        config.provider?.name || 'Unknown',
+        false
+      );
+    }
+
     this.organization = config.organization;
     this.conversationId = config.conversationId;
     this.modelFamily = config.modelFamily;
@@ -1023,6 +1037,10 @@ export class OpenAIResponsesClient extends ModelClient {
 
       return stream;
     } catch (error: any) {
+      // Log additional context for debugging URL construction errors
+      if (error.message?.includes('Invalid URL')) {
+        console.error('[OpenAIResponsesClient] URL construction error - baseUrl:', this.baseUrl);
+      }
       // Handle SDK errors and convert to ModelClientError with extracted details
       throw this.toModelClientError(error, `${this.provider.name} Responses API error`);
     }
