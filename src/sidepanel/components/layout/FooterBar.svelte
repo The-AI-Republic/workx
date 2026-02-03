@@ -5,10 +5,13 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
+  import SchedulerButton from '../scheduler/SchedulerButton.svelte';
+  import SchedulerPopup from '../scheduler/SchedulerPopup.svelte';
 
   const dispatch = createEventDispatcher();
 
   let currentTheme: UITheme = 'terminal';
+  let showSchedulerPopup = false;
 
   // Subscribe to theme store
   uiTheme.subscribe((theme) => {
@@ -18,11 +21,22 @@
   function handleOpenSettings() {
     dispatch('openSettings');
   }
+
+  function handleSchedulerClick() {
+    showSchedulerPopup = !showSchedulerPopup;
+  }
+
+  function handleCloseSchedulerPopup() {
+    showSchedulerPopup = false;
+  }
 </script>
 
 <div class="footer-bar {currentTheme}">
   <!-- User Login Status (includes Settings in menu when logged in) -->
   <UserLoginStatus on:openSettings={handleOpenSettings} />
+
+  <!-- Scheduler Button -->
+  <SchedulerButton on:click={handleSchedulerClick} />
 
   <!-- Spacer to push other buttons to the right -->
   <div class="flex-grow"></div>
@@ -44,6 +58,9 @@
     </Tooltip>
   {/if}
 </div>
+
+<!-- Scheduler Popup -->
+<SchedulerPopup show={showSchedulerPopup} onClose={handleCloseSchedulerPopup} />
 
 <style>
   .footer-bar {

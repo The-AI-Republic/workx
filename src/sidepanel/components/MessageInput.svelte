@@ -16,17 +16,26 @@
   export let tabId: number = -1;
   export let isProcessing: boolean = false;
 
-  const dispatch = createEventDispatcher();
+  const dispatch = createEventDispatcher<{
+    modelChanged: { modelId: string; modelName: string };
+    tabSelected: { tabId: number };
+    showScheduleModal: { input: string };
+  }>();
 
   let isFocused = false;
   let currentTheme: UITheme = 'terminal';
+
+  // Long-press detection for scheduling
+  const LONG_PRESS_DURATION = 500; // milliseconds
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  let isLongPress = false;
 
   // Reactive tooltip content based on state
   $: buttonTooltipContent = isProcessing
     ? $_t('Stop the current task run')
     : !value.trim()
       ? $_t('Please type a valid command')
-      : $_t('Send the message');
+      : $_t('Send (hold to schedule)');
 
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
@@ -53,10 +62,42 @@
   }
 
   function handleButtonClick() {
+    // If this was a long press, don't trigger normal click
+    if (isLongPress) {
+      isLongPress = false;
+      return;
+    }
+
     if (isProcessing) {
       onStop();
     } else if (value.trim()) {
       onSubmit(value);
+    }
+  }
+
+  function handlePointerDown(e: PointerEvent) {
+    // Only handle long press for send action (not stop)
+    if (isProcessing || !value.trim()) return;
+
+    isLongPress = false;
+    pressTimer = setTimeout(() => {
+      isLongPress = true;
+      // Dispatch event to show schedule modal
+      dispatch('showScheduleModal', { input: value });
+    }, LONG_PRESS_DURATION);
+  }
+
+  function handlePointerUp() {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  }
+
+  function handlePointerLeave() {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
     }
   }
 </script>
@@ -114,8 +155,11 @@
               class:stop={isProcessing}
               class:disabled={!isProcessing && !value.trim()}
               on:click={handleButtonClick}
+              on:pointerdown={handlePointerDown}
+              on:pointerup={handlePointerUp}
+              on:pointerleave={handlePointerLeave}
               disabled={!isProcessing && !value.trim()}
-              aria-label={isProcessing ? 'Stop the current task' : 'Send the message'}
+              aria-label={isProcessing ? 'Stop the current task' : 'Send the message (hold to schedule)'}
             >
               {#if isProcessing}
                 <!-- Stop Icon (Square) -->

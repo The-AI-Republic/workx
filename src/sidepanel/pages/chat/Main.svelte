@@ -23,6 +23,8 @@
   import { agentStore } from '../../stores/agentStore';
   // i18n
   import { _t } from '../../lib/i18n';
+  // Scheduler components
+  import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
 
   let router: MessageRouter;
   let eventProcessor: EventProcessor;
@@ -45,6 +47,13 @@
   };
   // Current UI theme (reactive from store)
   let currentTheme: UITheme = 'terminal';
+  // Scheduler modal state
+  let showScheduleModal = false;
+  let scheduleTaskInput = '';
+  // Scheduled task execution state (US3)
+  let scheduledTaskId: string | null = null;
+  let scheduledSessionId: string | null = null;
+  let isScheduledTaskMode = false;
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -151,6 +160,22 @@
 
     // Check connection
     checkConnection();
+
+    // Check if this is a scheduled task execution (US3: T022)
+    const urlParams = new URLSearchParams(window.location.search);
+    const taskIdParam = urlParams.get('scheduledTask');
+    const sessionIdParam = urlParams.get('sessionId');
+
+    if (taskIdParam && sessionIdParam) {
+      console.log('[App] Scheduled task mode detected:', taskIdParam);
+      scheduledTaskId = taskIdParam;
+      scheduledSessionId = sessionIdParam;
+      isScheduledTaskMode = true;
+
+      // Load and execute the scheduled task
+      await loadAndExecuteSchedulerTask(taskIdParam, sessionIdParam);
+      return; // Skip normal initialization for scheduled task mode
+    }
 
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
@@ -432,6 +457,11 @@
       // History is only cleared when user explicitly clicks "New Conversation"
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
+
+      // If this is a scheduled task execution, notify the scheduler (US3)
+      if (isScheduledTaskMode && scheduledTaskId) {
+        notifySchedulerTaskCompletion(msg.type === 'TaskComplete', msg);
+      }
     }
 
     // Keep legacy Error message handling for backward compatibility
@@ -588,6 +618,71 @@
     // Handle auth updates if needed
   }
 
+  /**
+   * Handle long-press on send button to show schedule modal
+   */
+  function handleShowScheduleModal(event: CustomEvent<{ input: string }>) {
+    scheduleTaskInput = event.detail.input;
+    showScheduleModal = true;
+  }
+
+  /**
+   * Handle schedule task from modal
+   */
+  async function handleScheduleTask(event: CustomEvent<{ input: string; scheduledTime: number }>) {
+    const { input, scheduledTime } = event.detail;
+    showScheduleModal = false;
+
+    try {
+      const response = await router.send(MessageType.SCHEDULER_SCHEDULE_TASK, {
+        input,
+        scheduledTime,
+      });
+
+      if (response?.success) {
+        // Clear the input since task was scheduled
+        inputText = '';
+
+        // Show confirmation notification
+        const scheduledDate = new Date(scheduledTime);
+        const formattedTime = scheduledDate.toLocaleString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        // Add system message to show task was scheduled
+        const scheduledEvent: ProcessedEvent = {
+          id: `scheduled_${Date.now()}`,
+          category: 'system',
+          timestamp: new Date(),
+          title: 'system',
+          content: `Task scheduled for ${formattedTime}`,
+          style: { textColor: 'text-green-400' },
+          streaming: false,
+          collapsible: false,
+        };
+        processedEvents = [...processedEvents, scheduledEvent];
+      } else {
+        throw new Error(response?.error || 'Failed to schedule task');
+      }
+    } catch (error) {
+      console.error('[App] Failed to schedule task:', error);
+      messages = [...messages, {
+        type: 'agent',
+        content: `Failed to schedule task: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+      }];
+    }
+  }
+
+  function handleCloseScheduleModal() {
+    showScheduleModal = false;
+    scheduleTaskInput = '';
+  }
+
   async function startNewConversation() {
     // Clear UI state
     messages = [];
@@ -708,6 +803,147 @@
         content: errorMessage,
         timestamp: Date.now(),
       }];
+    }
+  }
+
+  /**
+   * Notify scheduler of task completion (US3)
+   * Called when a scheduled task finishes executing
+   */
+  async function notifySchedulerTaskCompletion(success: boolean, msg: any) {
+    if (!scheduledTaskId) return;
+
+    try {
+      if (success) {
+        // Extract result summary from the processed events
+        const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
+        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Task completed';
+
+        await chrome.runtime.sendMessage({
+          type: MessageType.SCHEDULER_COMPLETE_TASK,
+          payload: {
+            taskId: scheduledTaskId,
+            result: {
+              summary: resultSummary,
+              completedAt: Date.now(),
+            },
+          },
+        });
+        console.log('[App] Notified scheduler of task completion:', scheduledTaskId);
+      } else {
+        const errorMessage = msg?.data?.message || 'Task failed';
+        await chrome.runtime.sendMessage({
+          type: MessageType.SCHEDULER_FAIL_TASK,
+          payload: {
+            taskId: scheduledTaskId,
+            error: errorMessage,
+          },
+        });
+        console.log('[App] Notified scheduler of task failure:', scheduledTaskId);
+      }
+    } catch (error) {
+      console.error('[App] Failed to notify scheduler of task completion:', error);
+    }
+  }
+
+  /**
+   * Load and execute a scheduled task (US3: T023)
+   * Called when the page is opened with scheduledTask URL parameter
+   */
+  async function loadAndExecuteSchedulerTask(taskId: string, sessionId: string) {
+    console.log('[App] Loading scheduled task:', taskId, 'with session:', sessionId);
+
+    try {
+      // Fetch task details from scheduler
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SCHEDULER_GET_TASK_DETAILS,
+        payload: { taskId },
+      });
+
+      const taskData = response?.data || response;
+      if (!taskData || !taskData.task) {
+        throw new Error('Task not found or invalid response');
+      }
+
+      const task = taskData.task;
+      console.log('[App] Scheduled task loaded:', task);
+
+      // Display task input as user message
+      const userEvent: ProcessedEvent = {
+        id: `scheduled_user_${Date.now()}`,
+        category: 'message',
+        timestamp: new Date(),
+        title: 'user',
+        content: task.input,
+        style: { textColor: 'text-cyan-400' },
+        streaming: false,
+        collapsible: false,
+      };
+      processedEvents = [userEvent];
+
+      // Add a system notification showing this is a scheduled task
+      const scheduleNotification: ProcessedEvent = {
+        id: `scheduled_notice_${Date.now()}`,
+        category: 'system',
+        timestamp: new Date(),
+        title: 'system',
+        content: `Executing scheduled task (${task.scheduledTime ? new Date(task.scheduledTime).toLocaleString() : 'manual trigger'})`,
+        style: { textColor: 'text-yellow-400' },
+        streaming: false,
+        collapsible: false,
+      };
+      processedEvents = [...processedEvents, scheduleNotification];
+
+      // Wait for agent to be ready
+      await checkConnection();
+      if (!agentReady) {
+        throw new Error('Agent is not ready. Please configure your API key.');
+      }
+
+      // Execute the task via the agent
+      isProcessing = true;
+      await router.sendSubmission({
+        id: `scheduled_${taskId}_${Date.now()}`,
+        op: {
+          type: 'UserInput',
+          items: [{ type: 'text', text: task.input }],
+        },
+        context: {
+          tabId: currentTabId,
+          scheduledTaskId: taskId,
+          scheduledSessionId: sessionId,
+        },
+      });
+
+    } catch (error) {
+      console.error('[App] Failed to execute scheduled task:', error);
+
+      // Notify scheduler of failure
+      try {
+        await chrome.runtime.sendMessage({
+          type: MessageType.SCHEDULER_FAIL_TASK,
+          payload: {
+            taskId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        });
+      } catch (notifyError) {
+        console.error('[App] Failed to notify scheduler of task failure:', notifyError);
+      }
+
+      // Show error in UI
+      const errorEvent: ProcessedEvent = {
+        id: `scheduled_error_${Date.now()}`,
+        category: 'message',
+        timestamp: new Date(),
+        title: 'browserx',
+        content: `Failed to execute scheduled task: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        style: STYLE_PRESETS.error,
+        streaming: false,
+        collapsible: false,
+      };
+      processedEvents = [...processedEvents, errorEvent];
+      isProcessing = false;
     }
   }
 </script>
@@ -832,6 +1068,7 @@
               {isProcessing}
               placeholder=">> Enter command..."
               on:tabSelected={handleTabSelected}
+              on:showScheduleModal={handleShowScheduleModal}
             />
           </div>
 
@@ -853,6 +1090,14 @@
     </div>
   </div>
 {/if}
+
+<!-- Schedule Task Modal -->
+<ScheduleTaskModal
+  show={showScheduleModal}
+  input={scheduleTaskInput}
+  on:close={handleCloseScheduleModal}
+  on:schedule={handleScheduleTask}
+/>
 
 <style>
   /* ============================================

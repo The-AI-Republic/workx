@@ -20,7 +20,7 @@ import type {
  * IndexedDB database constants
  */
 export const DB_NAME = 'browserx_cache';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /**
  * Object store names
@@ -33,7 +33,9 @@ export const STORE_NAMES = {
   /** Configuration for cache behavior */
   CONFIG: 'config',
   /** Rollout cache entries (for backward compatibility) */
-  ROLLOUT_CACHE: 'rollout_cache'
+  ROLLOUT_CACHE: 'rollout_cache',
+  /** Scheduler tasks */
+  SCHEDULER_TASKS: 'scheduler_tasks'
 } as const;
 
 /**
@@ -45,7 +47,12 @@ export const INDEX_NAMES = {
   /** Compound index on [sessionId, timestamp] for ordered session queries */
   BY_SESSION_TIMESTAMP: 'by_session_timestamp',
   /** Index on timestamp for global timestamp queries (outdated cleanup) */
-  BY_TIMESTAMP: 'by_timestamp'
+  BY_TIMESTAMP: 'by_timestamp',
+  /** Scheduler task indexes */
+  SCHEDULER_BY_STATUS: 'by_status',
+  SCHEDULER_BY_SCHEDULED_TIME: 'by_scheduled_time',
+  SCHEDULER_BY_STATUS_TIME: 'by_status_time',
+  SCHEDULER_BY_CREATED_AT: 'by_created_at'
 } as const;
 
 /**
@@ -132,6 +139,7 @@ export class IndexedDBAdapter {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
 
         // Create cache_items object store for LLM cache entries
         if (!db.objectStoreNames.contains(STORE_NAMES.CACHE_ITEMS)) {
@@ -180,6 +188,43 @@ export class IndexedDBAdapter {
           db.createObjectStore(STORE_NAMES.ROLLOUT_CACHE, {
             keyPath: 'key'
           });
+        }
+
+        // Version 2: Add scheduler_tasks object store
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULER_TASKS)) {
+            const schedulerStore = db.createObjectStore(STORE_NAMES.SCHEDULER_TASKS, {
+              keyPath: 'id'
+            });
+
+            // Index for querying tasks by status (draft, scheduled, waiting, running, etc.)
+            schedulerStore.createIndex(
+              INDEX_NAMES.SCHEDULER_BY_STATUS,
+              'status',
+              { unique: false }
+            );
+
+            // Index for querying tasks by scheduled time
+            schedulerStore.createIndex(
+              INDEX_NAMES.SCHEDULER_BY_SCHEDULED_TIME,
+              'scheduledTime',
+              { unique: false }
+            );
+
+            // Compound index for status + scheduledTime queries
+            schedulerStore.createIndex(
+              INDEX_NAMES.SCHEDULER_BY_STATUS_TIME,
+              ['status', 'scheduledTime'],
+              { unique: false }
+            );
+
+            // Index for querying tasks by creation time (FIFO ordering)
+            schedulerStore.createIndex(
+              INDEX_NAMES.SCHEDULER_BY_CREATED_AT,
+              'createdAt',
+              { unique: false }
+            );
+          }
         }
       };
     });
