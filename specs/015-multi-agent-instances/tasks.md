@@ -24,9 +24,9 @@
 
 **Purpose**: Create new registry module structure and type definitions
 
-- [ ] T001 Create registry module directory structure at src/core/registry/
-- [ ] T002 [P] Create session types in src/core/registry/types.ts (SessionState, SessionType, SessionConfig, SessionMetadata)
-- [ ] T003 [P] Add session lifecycle types to src/models/types/SessionContracts.ts
+- [X] T001 Create registry module directory structure at src/core/registry/
+- [X] T002 [P] Create session types in src/core/registry/types.ts (SessionState, SessionType, SessionConfig, SessionMetadata)
+- [X] T003 [P] Add session lifecycle types to src/models/types/SessionContracts.ts
 
 ---
 
@@ -36,12 +36,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Implement AgentSession class with lifecycle states in src/core/registry/AgentSession.ts
-- [ ] T005 Implement AgentRegistry class with Map storage in src/core/registry/AgentRegistry.ts (depends on T004)
-- [ ] T006 Add sessionId property to BrowserxAgent constructor in src/core/BrowserxAgent.ts
-- [ ] T007 [P] Create unit tests for AgentSession in tests/unit/registry/AgentSession.test.ts
-- [ ] T008 [P] Create unit tests for AgentRegistry in tests/unit/registry/AgentRegistry.test.ts
-- [ ] T009 Export registry module from src/core/registry/index.ts
+- [X] T004 Implement AgentSession class with lifecycle states in src/core/registry/AgentSession.ts
+- [X] T005 Implement AgentRegistry class with Map storage in src/core/registry/AgentRegistry.ts (depends on T004)
+- [X] T006 Add sessionId property to BrowserxAgent constructor in src/core/BrowserxAgent.ts
+- [X] T007 [P] Create unit tests for AgentSession in tests/unit/registry/AgentSession.test.ts
+- [X] T008 [P] Create unit tests for AgentRegistry in tests/unit/registry/AgentRegistry.test.ts
+- [X] T009 Export registry module from src/core/registry/index.ts
 
 **Checkpoint**: Foundation ready - AgentRegistry and AgentSession classes functional with unit tests passing
 
@@ -80,6 +80,7 @@
 - [ ] T017 [US1] Extend message types with sessionId field in src/models/types/messages.ts
 - [ ] T018 [US1] Update MessageRouter to route by sessionId in src/core/MessageRouter.ts
 - [ ] T019 [US1] Add default-to-primary-session fallback for backward compatibility in src/core/MessageRouter.ts
+- [ ] T019a [US1] Audit and update all message senders to include sessionId in payload (src/sidepanel/Main.svelte, src/sidepanel/App.svelte, src/core/scheduler/Scheduler.ts, src/background/service-worker.ts)
 - [ ] T020 [US1] Modify Scheduler to create AgentSession for each scheduled task in src/core/scheduler/Scheduler.ts
 - [ ] T021 [US1] Add scheduledTaskId to SessionConfig for task-session linking in src/core/registry/types.ts
 - [ ] T022 [US1] Implement session cleanup on task completion in Scheduler in src/core/scheduler/Scheduler.ts
@@ -291,15 +292,15 @@ Setup → Foundational → US2 (Registry) → US1 (Parallel) = MVP
 | 1 | Setup | - | 3 | 2 |
 | 2 | Foundational | - | 6 | 2 |
 | 3 | US2: Agent Registry | P1 | 7 | 1 |
-| 4 | US1: Parallel Execution | P1 | 8 | 1 |
+| 4 | US1: Parallel Execution | P1 | 9 | 1 |
 | 5 | US3: Tab Binding + Tab Groups | P2 | 10 | 1 |
 | 6 | US4: Persistence | P2 | 7 | 1 |
 | 7 | US5: Concurrent Limits | P3 | 6 | 1 |
 | 8 | US6: Status Visibility | P3 | 6 | 0 |
 | 9 | Polish | - | 5 | 2 |
 
-**Total**: 58 tasks
-**MVP Scope**: Phases 1-4 (24 tasks) - Registry + Parallel Execution
+**Total**: 59 tasks
+**MVP Scope**: Phases 1-4 (25 tasks) - Registry + Parallel Execution
 **Full Feature**: All phases (58 tasks)
 
 ---

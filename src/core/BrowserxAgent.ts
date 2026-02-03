@@ -26,8 +26,10 @@ import { TabManager } from './TabManager';
 /**
  * Main agent class managing the submission and event queues
  * Enhanced with AgentTask integration for coordinated task execution
+ * Feature 015: Now supports agentId for multi-agent instance tracking
  */
 export class BrowserxAgent {
+  private _agentId: string;
   private nextId: number = 1;
   private submissionQueue: Submission[] = [];
   private eventQueue: Event[] = [];
@@ -41,7 +43,10 @@ export class BrowserxAgent {
   private userNotifier: UserNotifier;
   private messageRouter: MessageRouter;
 
-  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory) {
+  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string) {
+    // Generate or use provided agentId for multi-instance tracking (Feature 015)
+    this._agentId = agentId ?? `agent_${uuidv4()}`;
+
     // Config must be provided (use await AgentConfig.getInstance() if needed)
     this.config = config;
     this.messageRouter = router;
@@ -63,6 +68,14 @@ export class BrowserxAgent {
 
     // Subscribe to config changes
     this.setupConfigSubscriptions();
+  }
+
+  /**
+   * Get the unique agent ID for this instance
+   * Used for multi-agent instance tracking (Feature 015)
+   */
+  get agentId(): string {
+    return this._agentId;
   }
 
   /**
