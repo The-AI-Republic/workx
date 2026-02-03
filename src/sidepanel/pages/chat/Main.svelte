@@ -953,6 +953,7 @@
       }
 
       // Execute the task via the agent
+      // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
       await router.sendSubmission({
         id: `scheduled_${taskId}_${Date.now()}`,
@@ -962,8 +963,8 @@
         },
         context: {
           tabId: currentTabId,
+          sessionId: sessionId, // Feature 015: Route to correct agent session
           scheduledTaskId: taskId,
-          scheduledSessionId: sessionId,
         },
       });
 

@@ -269,7 +269,8 @@ export class AgentSession {
     if (this._agent) {
       try {
         const session = this._agent.getSession();
-        await session.abortAllTasks('SessionTerminated');
+        // Use 'UserInterrupt' as the abort reason for session termination
+        await session.abortAllTasks('UserInterrupt');
         await session.close();
         await this._agent.cleanup();
       } catch (error) {

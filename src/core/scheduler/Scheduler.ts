@@ -3,6 +3,8 @@
  *
  * Main orchestrator class for the Task Scheduler feature.
  * Manages task lifecycle: creation, scheduling, execution, and completion.
+ *
+ * Feature 015: Integrates with AgentRegistry to create isolated sessions for scheduled tasks
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -25,6 +27,8 @@ import {
   parseAlarmName,
   DEFAULT_ALARM_CONFIG,
 } from '../../models/types/SchedulerContracts';
+import type { AgentRegistry } from '../registry/AgentRegistry';
+import type { AgentSession } from '../registry/AgentSession';
 
 /**
  * Event emitter type for scheduler events
@@ -35,14 +39,24 @@ export type SchedulerEventEmitter = (
 
 /**
  * Scheduler - main orchestrator for scheduled task execution
+ * Feature 015: Supports isolated AgentSession per scheduled task
  */
 export class Scheduler {
   private eventEmitter: SchedulerEventEmitter | null = null;
+  private registry: AgentRegistry | null = null;
+  private taskSessions: Map<string, string> = new Map(); // taskId → sessionId
 
   constructor(
     private storage: ISchedulerStorage,
     private alarms: ISchedulerAlarms
   ) {}
+
+  /**
+   * Feature 015: Set the AgentRegistry for creating isolated sessions
+   */
+  setRegistry(registry: AgentRegistry): void {
+    this.registry = registry;
+  }
 
   /**
    * Set event emitter for status change notifications
@@ -150,6 +164,7 @@ export class Scheduler {
 
   /**
    * Cancel a task
+   * Feature 015: Cleans up the isolated AgentSession if task was running
    */
   async cancelTask(taskId: string): Promise<void> {
     const task = await this.storage.getTask(taskId);
@@ -169,8 +184,10 @@ export class Scheduler {
       await this.alarms.clearTaskAlarm(taskId);
     }
 
-    // If task is running, need to abort execution
+    // If task is running, need to abort execution and clean up session
     if (task.status === 'running') {
+      // Feature 015: Clean up the AgentSession for this task
+      await this.cleanupTaskSession(taskId);
       // Clear current task from state
       await this.storage.setSchedulerState({ currentTaskId: null });
       this.emitStateChange();
@@ -192,6 +209,7 @@ export class Scheduler {
 
   /**
    * Execute a task
+   * Feature 015: Creates an isolated AgentSession for the task
    * Opens a new browser tab with the task for execution
    */
   async executeTask(taskId: string): Promise<void> {
@@ -202,8 +220,27 @@ export class Scheduler {
 
     const previousStatus = task.status;
 
-    // Generate a new session ID for this task
-    const sessionId = uuidv4();
+    // Feature 015: Create an isolated AgentSession for this scheduled task
+    let sessionId: string;
+    if (this.registry && this.registry.canCreateSession()) {
+      try {
+        const session = await this.registry.createSession({
+          type: 'scheduled',
+          scheduledTaskId: taskId,
+        });
+        sessionId = session.sessionId;
+        this.taskSessions.set(taskId, sessionId);
+        console.log(`[Scheduler] Created AgentSession ${sessionId} for task ${taskId}`);
+      } catch (error) {
+        console.error(`[Scheduler] Failed to create AgentSession for task ${taskId}:`, error);
+        // Fallback to legacy session ID
+        sessionId = `session_${uuidv4()}`;
+      }
+    } else {
+      // Legacy fallback when registry is not available
+      sessionId = `session_${uuidv4()}`;
+      console.log(`[Scheduler] Using legacy session ID ${sessionId} for task ${taskId}`);
+    }
 
     // Update task to running status
     await this.storage.updateTask(taskId, {
@@ -269,6 +306,7 @@ export class Scheduler {
   /**
    * Mark a task as completed
    * Called by the executing tab when task finishes successfully
+   * Feature 015: Cleans up the isolated AgentSession for this task
    */
   async completeTask(
     taskId: string,
@@ -284,6 +322,9 @@ export class Scheduler {
     }
 
     const previousStatus = task.status;
+
+    // Feature 015: Clean up the AgentSession for this task
+    await this.cleanupTaskSession(taskId);
 
     // Update task with completion info
     await this.storage.updateTask(taskId, {
@@ -305,6 +346,7 @@ export class Scheduler {
   /**
    * Mark a task as failed
    * Called by the executing tab when task encounters an error
+   * Feature 015: Cleans up the isolated AgentSession for this task
    */
   async failTask(taskId: string, error: string): Promise<void> {
     const task = await this.storage.getTask(taskId);
@@ -317,6 +359,9 @@ export class Scheduler {
     }
 
     const previousStatus = task.status;
+
+    // Feature 015: Clean up the AgentSession for this task
+    await this.cleanupTaskSession(taskId);
 
     // Update task with failure info
     await this.storage.updateTask(taskId, {
@@ -498,6 +543,23 @@ export class Scheduler {
         isPaused: state.isPaused,
         currentTaskId: state.currentTaskId,
       });
+    }
+  }
+
+  /**
+   * Feature 015: Clean up the AgentSession associated with a scheduled task
+   * Called when task completes, fails, or is cancelled
+   */
+  private async cleanupTaskSession(taskId: string): Promise<void> {
+    const sessionId = this.taskSessions.get(taskId);
+    if (sessionId && this.registry) {
+      try {
+        await this.registry.removeSession(sessionId);
+        this.taskSessions.delete(taskId);
+        console.log(`[Scheduler] Cleaned up AgentSession ${sessionId} for task ${taskId}`);
+      } catch (error) {
+        console.error(`[Scheduler] Failed to cleanup AgentSession ${sessionId} for task ${taskId}:`, error);
+      }
     }
   }
 }

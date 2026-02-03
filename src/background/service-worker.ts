@@ -189,9 +189,10 @@ async function initializeAuthFromConfig(): Promise<void> {
  * @param message The incoming message with optional sessionId
  * @returns The agent to use for this message
  */
-function getAgentForMessage(message: { payload?: { sessionId?: string } }): BrowserxAgent | null {
+function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): BrowserxAgent | null {
   // Feature 015: Route by sessionId if provided, otherwise use primary session
-  const sessionId = message.payload?.sessionId;
+  // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
+  const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
 
   if (sessionId && registry) {
     const agentSession = registry.getSession(sessionId);
@@ -594,6 +595,12 @@ async function initializeScheduler(): Promise<void> {
     schedulerStorage = new SchedulerStorage(indexedDBAdapter);
     schedulerAlarms = new SchedulerAlarms();
     scheduler = new Scheduler(schedulerStorage, schedulerAlarms);
+
+    // Feature 015: Connect scheduler to AgentRegistry for isolated session creation
+    if (registry) {
+      scheduler.setRegistry(registry);
+      console.log('[ServiceWorker] Scheduler connected to AgentRegistry');
+    }
 
     // Set up event emitter to broadcast scheduler events to all clients (T020)
     scheduler.setEventEmitter((event) => {

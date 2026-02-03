@@ -111,6 +111,7 @@ export enum MessageType {
 
 /**
  * Chrome extension message format
+ * Feature 015: Added sessionId for multi-agent routing
  */
 export interface ExtensionMessage {
   type: MessageType;
@@ -119,6 +120,8 @@ export interface ExtensionMessage {
   source?: 'background' | 'content' | 'sidepanel' | 'popup';
   tabId?: number;
   timestamp?: number;
+  /** Feature 015: Target session ID for routing (defaults to primary if omitted) */
+  sessionId?: string;
 }
 
 /**

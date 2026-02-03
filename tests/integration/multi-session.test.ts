@@ -9,18 +9,18 @@ import type { SessionConfig } from '../../src/core/registry/types';
 
 // Mock dependencies
 vi.mock('../../src/core/BrowserxAgent', () => ({
-  BrowserxAgent: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue(undefined),
-    getSession: vi.fn(() => ({
+  BrowserxAgent: class MockBrowserxAgent {
+    initialize = async () => undefined;
+    getSession = () => ({
       conversationId: 'conv_test_' + Math.random().toString(36).slice(2),
-      abortAllTasks: vi.fn(),
-      close: vi.fn(),
-      setTabId: vi.fn(),
-    })),
-    submitOperation: vi.fn().mockResolvedValue('sub_123'),
-    cleanup: vi.fn(),
-    agentId: 'agent_' + Math.random().toString(36).slice(2),
-  })),
+      abortAllTasks: () => {},
+      close: () => {},
+      setTabId: () => {},
+    });
+    submitOperation = async () => 'sub_123';
+    cleanup = () => {};
+    agentId = 'agent_mock';
+  },
 }));
 
 vi.mock('../../src/config/AgentConfig', () => ({
@@ -41,10 +41,11 @@ vi.mock('../../src/core/TabManager', () => ({
   },
 }));
 
-// Mock chrome API
+// Mock chrome API - must return a Promise with .catch method
+const mockSendMessage = vi.fn(() => Promise.resolve(undefined));
 global.chrome = {
   runtime: {
-    sendMessage: vi.fn().mockResolvedValue(undefined),
+    sendMessage: mockSendMessage,
   },
 } as any;
 

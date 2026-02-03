@@ -21,6 +21,10 @@ export interface Submission {
   context?: {
     /** Tab ID to execute this submission in */
     tabId?: number;
+    /** Feature 015: Session ID for multi-agent routing */
+    sessionId?: string;
+    /** Scheduled task ID (for scheduled task execution) */
+    scheduledTaskId?: string;
   };
 }
 

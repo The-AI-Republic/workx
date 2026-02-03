@@ -7,14 +7,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentSession } from '../../../src/core/registry/AgentSession';
 import type { SessionConfig } from '../../../src/core/registry/types';
 
+// Mock BrowserxAgent session - shared object so spies work correctly
+const mockSession = {
+  conversationId: 'conv_test_123',
+  abortAllTasks: vi.fn(),
+  close: vi.fn(),
+  setTabId: vi.fn(),
+};
+
 // Mock BrowserxAgent
 const mockAgent = {
-  getSession: vi.fn(() => ({
-    conversationId: 'conv_test_123',
-    abortAllTasks: vi.fn(),
-    close: vi.fn(),
-    setTabId: vi.fn(),
-  })),
+  getSession: vi.fn(() => mockSession),
   submitOperation: vi.fn(() => Promise.resolve('sub_123')),
   cleanup: vi.fn(),
 };

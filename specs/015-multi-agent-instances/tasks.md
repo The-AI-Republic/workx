@@ -77,15 +77,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Extend message types with sessionId field in src/models/types/messages.ts
-- [ ] T018 [US1] Update MessageRouter to route by sessionId in src/core/MessageRouter.ts
-- [ ] T019 [US1] Add default-to-primary-session fallback for backward compatibility in src/core/MessageRouter.ts
-- [ ] T019a [US1] Audit and update all message senders to include sessionId in payload (src/sidepanel/Main.svelte, src/sidepanel/App.svelte, src/core/scheduler/Scheduler.ts, src/background/service-worker.ts)
-- [ ] T020 [US1] Modify Scheduler to create AgentSession for each scheduled task in src/core/scheduler/Scheduler.ts
-- [ ] T021 [US1] Add scheduledTaskId to SessionConfig for task-session linking in src/core/registry/types.ts
-- [ ] T022 [US1] Implement session cleanup on task completion in Scheduler in src/core/scheduler/Scheduler.ts
-- [ ] T023 [US1] Update Main.svelte scheduled task detection to use session routing in src/sidepanel/Main.svelte
-- [ ] T024 [P] [US1] Create integration test for parallel user + scheduled task in tests/integration/parallel-execution.test.ts
+- [X] T017 [US1] Extend message types with sessionId field in src/models/types/messages.ts
+- [X] T018 [US1] Update MessageRouter to route by sessionId in src/core/MessageRouter.ts
+- [X] T019 [US1] Add default-to-primary-session fallback for backward compatibility in src/core/MessageRouter.ts
+- [X] T019a [US1] Audit and update all message senders to include sessionId in payload (src/sidepanel/Main.svelte, src/sidepanel/App.svelte, src/core/scheduler/Scheduler.ts, src/background/service-worker.ts)
+- [X] T020 [US1] Modify Scheduler to create AgentSession for each scheduled task in src/core/scheduler/Scheduler.ts
+- [X] T021 [US1] Add scheduledTaskId to SessionConfig for task-session linking in src/core/registry/types.ts
+- [X] T022 [US1] Implement session cleanup on task completion in Scheduler in src/core/scheduler/Scheduler.ts
+- [X] T023 [US1] Update Main.svelte scheduled task detection to use session routing in src/sidepanel/Main.svelte
+- [X] T024 [P] [US1] Create integration test for parallel user + scheduled task in tests/integration/parallel-execution.test.ts
 
 **Checkpoint**: User can have active conversation while scheduled tasks run in parallel without interference
 

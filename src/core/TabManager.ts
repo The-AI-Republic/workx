@@ -100,9 +100,17 @@ export class TabManager {
    * Register a callback for tab closure events
    * The callback receives the tabId that was closed/crashed
    * @param callback - Function to call when a tab closes
+   * @returns Unsubscribe function to remove the callback
    */
-  onTabClosure(callback: TabClosureCallback): void {
+  onTabClosure(callback: TabClosureCallback): () => void {
     this.tabClosureCallbacks.push(callback);
+    // Return unsubscribe function
+    return () => {
+      const index = this.tabClosureCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.tabClosureCallbacks.splice(index, 1);
+      }
+    };
   }
 
   /**
