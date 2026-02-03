@@ -204,14 +204,61 @@ export class AgentSession {
   }
 
   // ==========================================================================
-  // Tab Binding
+  // Tab Binding (T027, T028, T029)
   // ==========================================================================
 
   /**
-   * Bind session to a browser tab
-   * @param tabId The tab ID to bind to
+   * T027: Create a Chrome tab group for this session
+   * Creates a tab group with name browserx_s_<letter> and a distinct color
+   * @returns The created tab group ID, or null if creation failed
    */
-  bindTab(tabId: number): void {
+  async createTabGroup(): Promise<number | null> {
+    if (this._state === 'terminated') {
+      throw new Error(`Cannot create tab group: session ${this._sessionId} is terminated`);
+    }
+
+    // Need a tab to create a group
+    if (!this._metadata.tabId) {
+      console.warn(`[AgentSession] Cannot create tab group without a bound tab`);
+      return null;
+    }
+
+    try {
+      // Check if chrome.tabGroups API is available
+      if (typeof chrome === 'undefined' || !chrome.tabGroups) {
+        console.warn(`[AgentSession] chrome.tabGroups API not available`);
+        return null;
+      }
+
+      // Create tab group with this session's tab
+      const groupId = await chrome.tabs.group({ tabIds: this._metadata.tabId });
+      this._metadata.tabGroupId = groupId;
+
+      // Set group properties (name and color)
+      const colors: chrome.tabGroups.ColorEnum[] = ['blue', 'cyan', 'green', 'yellow', 'orange', 'pink', 'purple', 'red'];
+      const letterIndex = SESSION_LETTERS.indexOf(this._sessionLetter);
+      const color = colors[letterIndex % colors.length];
+
+      await chrome.tabGroups.update(groupId, {
+        title: this._metadata.tabGroupName,
+        color,
+        collapsed: false,
+      });
+
+      console.log(`[AgentSession] Created tab group ${this._metadata.tabGroupName} (ID: ${groupId})`);
+      return groupId;
+    } catch (error) {
+      console.error(`[AgentSession] Failed to create tab group:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * T028: Bind session to a browser tab and move it to the session's group
+   * @param tabId The tab ID to bind to
+   * @param createGroup Whether to create a tab group if one doesn't exist (default: true)
+   */
+  async bindTab(tabId: number, createGroup: boolean = true): Promise<void> {
     if (this._state === 'terminated') {
       throw new Error(`Cannot bind tab: session ${this._sessionId} is terminated`);
     }
@@ -223,18 +270,48 @@ export class AgentSession {
     if (this._agent) {
       this._agent.getSession().setTabId(tabId);
     }
+
+    // Move tab to session's group if group exists or create one
+    if (this._metadata.tabGroupId) {
+      try {
+        await chrome.tabs.group({
+          tabIds: tabId,
+          groupId: this._metadata.tabGroupId,
+        });
+      } catch (error) {
+        console.warn(`[AgentSession] Failed to add tab to existing group:`, error);
+        // Group might have been deleted, try creating a new one
+        if (createGroup) {
+          await this.createTabGroup();
+        }
+      }
+    } else if (createGroup) {
+      await this.createTabGroup();
+    }
   }
 
   /**
-   * Unbind session from current tab
+   * T029: Unbind session from current tab
+   * Removes the tab from the session's group but doesn't delete the group
    */
-  unbindTab(): void {
+  async unbindTab(): Promise<void> {
+    const tabId = this._metadata.tabId;
     this._metadata.tabId = null;
     this._updateActivity();
 
     // Update agent's session tabId if agent is attached
     if (this._agent) {
       this._agent.getSession().setTabId(-1);
+    }
+
+    // Remove tab from group if it was in one
+    if (tabId && typeof chrome !== 'undefined' && chrome.tabs) {
+      try {
+        await chrome.tabs.ungroup(tabId);
+      } catch (error) {
+        // Tab might already be closed or not in a group
+        console.debug(`[AgentSession] Could not ungroup tab ${tabId}:`, error);
+      }
     }
   }
 
@@ -246,12 +323,46 @@ export class AgentSession {
     this._metadata.tabGroupId = groupId;
   }
 
+  /**
+   * T032: Clean up the tab group for this session
+   * Called during session termination
+   */
+  private async cleanupTabGroup(): Promise<void> {
+    if (!this._metadata.tabGroupId) {
+      return;
+    }
+
+    try {
+      if (typeof chrome === 'undefined' || !chrome.tabGroups) {
+        return;
+      }
+
+      // Get all tabs in this group
+      const tabs = await chrome.tabs.query({ groupId: this._metadata.tabGroupId });
+
+      // Ungroup all tabs (this effectively removes the group when empty)
+      if (tabs.length > 0) {
+        const tabIds = tabs.map(t => t.id).filter((id): id is number => id !== undefined);
+        if (tabIds.length > 0) {
+          await chrome.tabs.ungroup(tabIds);
+        }
+      }
+
+      console.log(`[AgentSession] Cleaned up tab group ${this._metadata.tabGroupName}`);
+    } catch (error) {
+      console.warn(`[AgentSession] Failed to cleanup tab group:`, error);
+    } finally {
+      this._metadata.tabGroupId = null;
+    }
+  }
+
   // ==========================================================================
   // Termination
   // ==========================================================================
 
   /**
    * Terminate the session and release resources
+   * T031, T032: Handles tab closure and cleans up tab group
    * @param reason The reason for termination
    */
   async terminate(reason: 'completed' | 'error' | 'tabClosed' | 'manual' = 'manual'): Promise<void> {
@@ -264,6 +375,9 @@ export class AgentSession {
       this._tabClosureUnsubscribe();
       this._tabClosureUnsubscribe = null;
     }
+
+    // T032: Clean up the tab group
+    await this.cleanupTabGroup();
 
     // Abort any running tasks in the agent
     if (this._agent) {

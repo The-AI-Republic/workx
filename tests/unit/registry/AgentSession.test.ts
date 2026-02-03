@@ -22,6 +22,18 @@ const mockAgent = {
   cleanup: vi.fn(),
 };
 
+// Mock chrome API for tab group operations
+global.chrome = {
+  tabs: {
+    group: vi.fn(() => Promise.resolve(1)),
+    ungroup: vi.fn(() => Promise.resolve()),
+    query: vi.fn(() => Promise.resolve([])),
+  },
+  tabGroups: {
+    update: vi.fn(() => Promise.resolve({})),
+  },
+} as any;
+
 describe('AgentSession', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -189,34 +201,34 @@ describe('AgentSession', () => {
   });
 
   describe('tab binding', () => {
-    it('binds tab and updates metadata', () => {
+    it('binds tab and updates metadata', async () => {
       const session = new AgentSession({ type: 'primary' }, 0);
-      session.bindTab(42);
+      await session.bindTab(42, false); // false = don't create tab group
 
       expect(session.metadata.tabId).toBe(42);
     });
 
-    it('unbinds tab', () => {
+    it('unbinds tab', async () => {
       const session = new AgentSession({ type: 'primary', tabId: 42 }, 0);
-      session.unbindTab();
+      await session.unbindTab();
 
       expect(session.metadata.tabId).toBeNull();
     });
 
-    it('updates agent session tabId when bound', () => {
+    it('updates agent session tabId when bound', async () => {
       const session = new AgentSession({ type: 'primary' }, 0);
       session.attachAgent(mockAgent as any);
-      session.bindTab(42);
+      await session.bindTab(42, false);
 
-      expect(mockAgent.getSession().setTabId).toHaveBeenCalledWith(42);
+      expect(mockSession.setTabId).toHaveBeenCalledWith(42);
     });
 
-    it('throws when binding tab to terminated session', () => {
+    it('throws when binding tab to terminated session', async () => {
       const session = new AgentSession({ type: 'primary' }, 0);
       session.markReady();
       session.setState('terminated');
 
-      expect(() => session.bindTab(42)).toThrow('is terminated');
+      await expect(session.bindTab(42)).rejects.toThrow('is terminated');
     });
   });
 

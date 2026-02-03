@@ -99,16 +99,16 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Add sessionLetter allocation (a, b, c...) in AgentRegistry.createSession() in src/core/registry/AgentRegistry.ts
-- [ ] T026 [US3] Add tabId, tabGroupId, tabGroupName fields to AgentSession metadata in src/core/registry/AgentSession.ts
-- [ ] T027 [US3] Implement createTabGroup() to create Chrome tab group with name browserx_s_<letter> in src/core/registry/AgentSession.ts
-- [ ] T028 [US3] Implement bindTab(tabId) method that moves tab to session's group in src/core/registry/AgentSession.ts
-- [ ] T029 [US3] Implement unbindTab() method in AgentSession in src/core/registry/AgentSession.ts
-- [ ] T030 [US3] Add tab closure listener per session in AgentSession in src/core/registry/AgentSession.ts
-- [ ] T031 [US3] Implement session termination on tab closure (FR-022) in src/core/registry/AgentSession.ts
-- [ ] T032 [US3] Clean up tab group on session termination in src/core/registry/AgentSession.ts
-- [ ] T033 [US3] Update tool execution to use session's bound tab in src/core/BrowserxAgent.ts
-- [ ] T034 [P] [US3] Create test for independent tab binding and tab groups in tests/integration/tab-binding.test.ts
+- [X] T025 [US3] Add sessionLetter allocation (a, b, c...) in AgentRegistry.createSession() in src/core/registry/AgentRegistry.ts
+- [X] T026 [US3] Add tabId, tabGroupId, tabGroupName fields to AgentSession metadata in src/core/registry/AgentSession.ts
+- [X] T027 [US3] Implement createTabGroup() to create Chrome tab group with name browserx_s_<letter> in src/core/registry/AgentSession.ts
+- [X] T028 [US3] Implement bindTab(tabId) method that moves tab to session's group in src/core/registry/AgentSession.ts
+- [X] T029 [US3] Implement unbindTab() method in AgentSession in src/core/registry/AgentSession.ts
+- [X] T030 [US3] Add tab closure listener per session in AgentSession in src/core/registry/AgentSession.ts
+- [X] T031 [US3] Implement session termination on tab closure (FR-022) in src/core/registry/AgentSession.ts
+- [X] T032 [US3] Clean up tab group on session termination in src/core/registry/AgentSession.ts
+- [X] T033 [US3] Update tool execution to use session's bound tab in src/core/BrowserxAgent.ts
+- [X] T034 [P] [US3] Create test for independent tab binding and tab groups in tests/integration/tab-binding.test.ts
 
 **Checkpoint**: Multiple sessions have separate tab groups (browserx_s_a, browserx_s_b, etc.); tab closure terminates only that session
 
