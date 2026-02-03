@@ -28,7 +28,7 @@
 
   // Fetch data when popup opens
   $: if (show) {
-    fetchAllData();
+    fetchAllData(true); // Initial load shows loading state
   }
 
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
@@ -37,7 +37,7 @@
     // Refresh data periodically while popup is open
     refreshInterval = setInterval(() => {
       if (show) {
-        fetchAllData();
+        fetchAllData(false); // Background refresh - no loading state
       }
     }, 5000);
   });
@@ -48,8 +48,10 @@
     }
   });
 
-  async function fetchAllData() {
-    isLoading = true;
+  async function fetchAllData(showLoading: boolean = true) {
+    if (showLoading) {
+      isLoading = true;
+    }
     try {
       const [stateRes, missedRes, scheduledRes, queueRes] = await Promise.all([
         chrome.runtime.sendMessage({ type: MessageType.SCHEDULER_GET_STATE }),
