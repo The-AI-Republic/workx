@@ -120,6 +120,23 @@
     autoSave();
   }
 
+  // Feature 015: Handle max concurrent sessions change
+  function handleMaxSessionsChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    const value = parseInt(target.value, 10);
+    currentPreferences.maxConcurrentSessions = value;
+
+    // Notify service worker to update AgentRegistry limit
+    chrome.runtime.sendMessage({
+      type: 'SET_MAX_CONCURRENT_SESSIONS',
+      payload: { maxConcurrent: value }
+    }).catch(() => {
+      console.warn('[GeneralSettings] Failed to update max concurrent sessions');
+    });
+
+    autoSave();
+  }
+
   function handleLanguageChange(event: Event) {
     const target = event.target as HTMLSelectElement;
     selectedLanguage = target.value;
@@ -214,6 +231,24 @@
           {/each}
         </select>
         <div class="help-text">{$_t("Select your preferred language for the interface")}</div>
+      </div>
+    </div>
+
+    <!-- Max Concurrent Sessions (Feature 015) -->
+    <div class="settings-card">
+      <div class="form-group">
+        <label for="maxSessions" class="form-label">{$_t("Max Concurrent Sessions")}</label>
+        <select
+          id="maxSessions"
+          value={currentPreferences.maxConcurrentSessions ?? 3}
+          on:change={handleMaxSessionsChange}
+          class="form-select"
+        >
+          {#each [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as num}
+            <option value={num}>{num} {num === 1 ? $_t("session") : $_t("sessions")}</option>
+          {/each}
+        </select>
+        <div class="help-text">{$_t("Maximum number of parallel agent sessions, including scheduled tasks")}</div>
       </div>
     </div>
 

@@ -20,7 +20,7 @@ import type {
  * IndexedDB database constants
  */
 export const DB_NAME = 'browserx_cache';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 /**
  * Object store names
@@ -35,7 +35,9 @@ export const STORE_NAMES = {
   /** Rollout cache entries (for backward compatibility) */
   ROLLOUT_CACHE: 'rollout_cache',
   /** Scheduler tasks */
-  SCHEDULER_TASKS: 'scheduler_tasks'
+  SCHEDULER_TASKS: 'scheduler_tasks',
+  /** Feature 015: Agent session persistence */
+  AGENT_SESSIONS: 'agent_sessions'
 } as const;
 
 /**
@@ -222,6 +224,29 @@ export class IndexedDBAdapter {
             schedulerStore.createIndex(
               INDEX_NAMES.SCHEDULER_BY_CREATED_AT,
               'createdAt',
+              { unique: false }
+            );
+          }
+        }
+
+        // Version 3: Feature 015 - Add agent_sessions object store for session persistence
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.AGENT_SESSIONS)) {
+            const agentSessionsStore = db.createObjectStore(STORE_NAMES.AGENT_SESSIONS, {
+              keyPath: 'sessionId'
+            });
+
+            // Index for querying by session type (primary, scheduled)
+            agentSessionsStore.createIndex(
+              'by_type',
+              'type',
+              { unique: false }
+            );
+
+            // Index for querying by state
+            agentSessionsStore.createIndex(
+              'by_state',
+              'state',
               { unique: false }
             );
           }

@@ -5,6 +5,7 @@
 
 export { AgentRegistry } from './AgentRegistry';
 export { AgentSession } from './AgentSession';
+export { SessionStorage, type PersistedSession } from './SessionStorage';
 export type {
   SessionState,
   SessionType,

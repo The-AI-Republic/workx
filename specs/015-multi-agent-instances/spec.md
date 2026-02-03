@@ -2,7 +2,7 @@
 
 **Feature Branch**: `015-multi-agent-instances`
 **Created**: 2026-02-02
-**Status**: Draft
+**Status**: DONE
 **Input**: User description: "Currently the service worker only creates one agent instance, which may cause scheduled task and side panel task (user currently actively working on) execution conflict. We should allow multi-agent instances to be running under service worker."
 
 ## Problem Statement

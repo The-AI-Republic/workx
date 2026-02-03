@@ -107,6 +107,11 @@ export enum MessageType {
   SCHEDULER_TASK_STATUS_CHANGED = 'SCHEDULER_TASK_STATUS_CHANGED',
   SCHEDULER_STATE_CHANGED = 'SCHEDULER_STATE_CHANGED',
   SCHEDULER_EVENT = 'SCHEDULER_EVENT', // Unified event for real-time updates (T020)
+
+  // Session management messages (Feature 015: Multi-Agent Instances)
+  SESSION_LIST = 'SESSION_LIST', // Get list of all sessions
+  SESSION_GET_ACTIVE_COUNT = 'SESSION_GET_ACTIVE_COUNT', // Get active session count
+  SESSION_EVENT = 'SESSION_EVENT', // Session lifecycle events (created, stateChanged, terminated)
 }
 
 /**

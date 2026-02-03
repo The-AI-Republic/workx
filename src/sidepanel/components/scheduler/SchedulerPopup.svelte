@@ -32,6 +32,21 @@
   // T042: Offline status tracking
   let isOffline = !navigator.onLine;
 
+  // Feature 015 (T050-T053): Session status tracking
+  let sessionCount = 0;
+  let maxSessions = 3;
+  let sessions: Array<{
+    sessionId: string;
+    sessionLetter: string;
+    type: string;
+    state: string;
+    scheduledTaskId: string | null;
+  }> = [];
+  let showSessionDetails = false;
+
+  // T057: Session error display for graceful degradation feedback
+  let lastSessionError: { message: string; sessionId: string; timestamp: number } | null = null;
+
   // Subscribe to theme
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
@@ -42,6 +57,27 @@
     if (message.type === MessageType.SCHEDULER_EVENT && show) {
       // Refresh data when scheduler events occur
       fetchAllData();
+    }
+    // Feature 015 (T051): Real-time session status updates
+    if (message.type === MessageType.SESSION_EVENT && show) {
+      const payload = message.payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+
+      // T057: Handle session:error events for graceful degradation feedback
+      if (payload?.type === 'session:error') {
+        lastSessionError = {
+          message: payload.error || 'Unknown session error',
+          sessionId: payload.sessionId || 'unknown',
+          timestamp: payload.timestamp || Date.now()
+        };
+        // Auto-clear error after 5 seconds
+        setTimeout(() => {
+          if (lastSessionError?.timestamp === payload.timestamp) {
+            lastSessionError = null;
+          }
+        }, 5000);
+      }
+
+      fetchSessionData();
     }
   }
 
@@ -94,10 +130,27 @@
       missedTasks = (missedRes?.data?.tasks || missedRes?.tasks || []);
       scheduledTasks = (scheduledRes?.data?.tasks || scheduledRes?.tasks || []);
       queuedTasks = (queueRes?.data?.tasks || queueRes?.tasks || []);
+
+      // Feature 015: Fetch session data
+      await fetchSessionData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to fetch data:', error);
     } finally {
       isLoading = false;
+    }
+  }
+
+  // Feature 015 (T050): Fetch session status
+  async function fetchSessionData() {
+    try {
+      const sessionRes = await chrome.runtime.sendMessage({ type: MessageType.SESSION_LIST });
+      const sessionData = sessionRes?.data || sessionRes;
+
+      sessions = sessionData?.sessions || [];
+      sessionCount = sessionData?.activeCount || 0;
+      maxSessions = sessionData?.maxConcurrent || 3;
+    } catch (error) {
+      console.error('[SchedulerPopup] Failed to fetch session data:', error);
     }
   }
 
@@ -218,7 +271,24 @@
   <div class="scheduler-popup {currentTheme}">
     <!-- Header -->
     <div class="popup-header">
-      <h3 class="popup-title">{$_t('Scheduled Tasks')}</h3>
+      <div class="title-area">
+        <h3 class="popup-title">{$_t('Scheduled Tasks')}</h3>
+        <!-- Feature 015 (T052): Session capacity badge -->
+        <button
+          class="session-badge"
+          class:at-capacity={sessionCount >= maxSessions}
+          on:click={() => showSessionDetails = !showSessionDetails}
+          title={$_t('Active Sessions')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span>{sessionCount}/{maxSessions}</span>
+        </button>
+      </div>
       <div class="header-actions">
         <button
           class="add-btn"
@@ -266,6 +336,73 @@
           <p class="empty-hint">{$_t('Long-press the send button to schedule a task')}</p>
         </div>
       {:else}
+        <!-- Feature 015 (T052, T053): Session Details Panel -->
+        {#if showSessionDetails}
+          <div class="session-details-panel">
+            <div class="session-details-header">
+              <span class="session-details-title">{$_t('Active Sessions')}</span>
+              <button class="close-session-details" on:click={() => showSessionDetails = false}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            {#if sessions.length === 0}
+              <div class="no-sessions">{$_t('No active sessions')}</div>
+            {:else}
+              <div class="session-list">
+                {#each sessions as session}
+                  <div class="session-item" class:is-primary={session.type === 'primary'}>
+                    <span class="session-letter">{session.sessionLetter.toUpperCase()}</span>
+                    <div class="session-info">
+                      <span class="session-type">{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Task')}</span>
+                      <span class="session-state state-{session.state}">{session.state}</span>
+                    </div>
+                    {#if session.scheduledTaskId}
+                      <span class="session-task-badge" title={$_t('Task ID')}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                      </span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
+            <!-- T053: Capacity warning -->
+            {#if sessionCount >= maxSessions}
+              <div class="capacity-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span>{$_t('Session limit reached. New tasks will queue.')}</span>
+              </div>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- T057: Session Error Notification -->
+        {#if lastSessionError}
+          <div class="session-error-toast" role="alert">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>{$_t('Session error')}: {lastSessionError.message}</span>
+            <button class="dismiss-error" on:click={() => lastSessionError = null} aria-label={$_t('Dismiss')}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        {/if}
+
         <!-- Paused Warning -->
         {#if isPaused}
           <div class="paused-warning">
@@ -479,12 +616,220 @@
     border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
   }
 
+  .title-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   .popup-title {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
     color: var(--color-term-bright-green, #00ff00);
     font-family: 'Monaco', 'Courier New', monospace;
+  }
+
+  /* Feature 015: Session badge */
+  .session-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(0, 255, 0, 0.1);
+    border: 1px solid var(--color-term-dim-green, #00cc00);
+    border-radius: 12px;
+    color: var(--color-term-dim-green, #00cc00);
+    font-size: 11px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .session-badge:hover {
+    background: rgba(0, 255, 0, 0.2);
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .session-badge.at-capacity {
+    background: rgba(255, 255, 0, 0.1);
+    border-color: var(--color-term-yellow, #ffff00);
+    color: var(--color-term-yellow, #ffff00);
+  }
+
+  /* Session details panel */
+  .session-details-panel {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--color-term-dim-green, #00cc00);
+    border-radius: 4px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .session-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(0, 255, 0, 0.05);
+    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
+  }
+
+  .session-details-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-term-bright-green, #00ff00);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .close-session-details {
+    padding: 2px;
+    background: transparent;
+    border: none;
+    color: var(--color-term-dim-green, #00cc00);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+
+  .close-session-details:hover {
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .no-sessions {
+    padding: 12px;
+    text-align: center;
+    color: var(--color-term-dim-green, #00cc00);
+    font-size: 11px;
+  }
+
+  .session-list {
+    padding: 8px;
+  }
+
+  .session-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+
+  .session-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .session-item.is-primary {
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+  }
+
+  .session-letter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--color-term-dim-green, #00cc00);
+    color: #000;
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 4px;
+  }
+
+  .session-item.is-primary .session-letter {
+    background: var(--color-term-cyan, #00ffff);
+  }
+
+  .session-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .session-type {
+    font-size: 11px;
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .session-state {
+    font-size: 10px;
+    color: var(--color-term-dim-green, #00cc00);
+    text-transform: capitalize;
+  }
+
+  .session-state.state-active {
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .session-state.state-idle {
+    color: var(--color-term-dim-green, #00cc00);
+  }
+
+  .session-state.state-initializing {
+    color: var(--color-term-yellow, #ffff00);
+  }
+
+  .session-task-badge {
+    display: flex;
+    align-items: center;
+    color: var(--color-term-dim-green, #00cc00);
+  }
+
+  .capacity-warning {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 0, 0.1);
+    border-top: 1px solid var(--color-term-yellow, #ffff00);
+    color: var(--color-term-yellow, #ffff00);
+    font-size: 10px;
+  }
+
+  /* T057: Session error toast styles */
+  .session-error-toast {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    background: rgba(255, 100, 100, 0.15);
+    border: 1px solid var(--color-term-red, #ff6666);
+    border-radius: 4px;
+    color: var(--color-term-red, #ff6666);
+    font-size: 11px;
+    animation: slideIn 0.2s ease-out;
+  }
+
+  .session-error-toast .dismiss-error {
+    margin-left: auto;
+    padding: 2px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .session-error-toast .dismiss-error:hover {
+    opacity: 1;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .header-actions {
@@ -864,5 +1209,97 @@
 
   .scheduler-popup.chatgpt .view-session-btn:hover {
     background: var(--chat-button-hover, #0e8c6d);
+  }
+
+  /* ChatGPT theme for session status (Feature 015) */
+  .scheduler-popup.chatgpt .session-badge {
+    background: var(--chat-bg-secondary, #f7f7f8);
+    border-color: var(--chat-border, #e5e5e5);
+    color: var(--chat-text-muted, #8e8ea0);
+    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  }
+
+  .scheduler-popup.chatgpt .session-badge:hover {
+    background: var(--chat-button-hover, #ececec);
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .session-badge.at-capacity {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+
+  .scheduler-popup.chatgpt .session-details-panel {
+    background: var(--chat-bg-secondary, #f7f7f8);
+    border-color: var(--chat-border, #e5e5e5);
+  }
+
+  .scheduler-popup.chatgpt .session-details-header {
+    background: var(--chat-bg, #ffffff);
+    border-color: var(--chat-border, #e5e5e5);
+  }
+
+  .scheduler-popup.chatgpt .session-details-title {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .close-session-details {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .scheduler-popup.chatgpt .close-session-details:hover {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .no-sessions {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .scheduler-popup.chatgpt .session-item {
+    background: var(--chat-bg, #ffffff);
+  }
+
+  .scheduler-popup.chatgpt .session-item.is-primary {
+    background: rgba(16, 163, 127, 0.1);
+    border-color: rgba(16, 163, 127, 0.3);
+  }
+
+  .scheduler-popup.chatgpt .session-letter {
+    background: var(--chat-button-bg, #10a37f);
+    color: white;
+  }
+
+  .scheduler-popup.chatgpt .session-type {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .session-state {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .scheduler-popup.chatgpt .session-state.state-active {
+    color: var(--chat-button-bg, #10a37f);
+  }
+
+  .scheduler-popup.chatgpt .session-state.state-initializing {
+    color: #f59e0b;
+  }
+
+  .scheduler-popup.chatgpt .session-task-badge {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .scheduler-popup.chatgpt .capacity-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }
+
+  /* T057: ChatGPT theme session error toast */
+  .scheduler-popup.chatgpt .session-error-toast {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
   }
 </style>

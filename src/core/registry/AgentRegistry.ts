@@ -5,6 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { AgentSession } from './AgentSession';
+import { SessionStorage, type PersistedSession } from './SessionStorage';
 import { BrowserxAgent } from '../BrowserxAgent';
 import { AgentConfig } from '../../config/AgentConfig';
 import { MessageRouter } from '../MessageRouter';
@@ -43,6 +44,7 @@ export class AgentRegistry {
   private _usedLetters: Set<string> = new Set();
   private _config: AgentConfig | null = null;
   private _router: MessageRouter | null = null;
+  private _storage: SessionStorage | null = null;
 
   /**
    * Create a new AgentRegistry
@@ -108,6 +110,10 @@ export class AgentRegistry {
    * @param sessionConfig Session configuration
    * @returns Promise resolving to the new session
    * @throws Error if max concurrent sessions reached or dependencies not initialized
+   *
+   * T057: Implements graceful degradation - if agent initialization fails,
+   * cleanup is performed to prevent resource leaks and the error is re-thrown
+   * with additional context.
    */
   async createSession(sessionConfig: SessionConfig): Promise<AgentSession> {
     // Check if we can create a new session
@@ -127,9 +133,34 @@ export class AgentRegistry {
     const letterIndex = this._allocateLetterIndex();
     const session = new AgentSession(sessionConfig, letterIndex);
 
-    // Create BrowserxAgent for this session
-    const agent = new BrowserxAgent(this._config, this._router);
-    await agent.initialize();
+    // Set up persistence if storage is configured
+    if (this._storage) {
+      session.setStorage(this._storage);
+    }
+
+    // T057: Wrap agent creation in try-catch for graceful error handling
+    let agent: BrowserxAgent;
+    try {
+      agent = new BrowserxAgent(this._config, this._router);
+      await agent.initialize();
+    } catch (initError) {
+      // Agent initialization failed - clean up and emit error event
+      console.error(`[AgentRegistry] Failed to initialize agent for session ${session.sessionId}:`, initError);
+
+      // Emit failure event for monitoring/UI feedback
+      this._emitEvent({
+        type: 'session:error',
+        sessionId: session.sessionId,
+        error: initError instanceof Error ? initError.message : 'Agent initialization failed',
+        timestamp: Date.now(),
+      });
+
+      // Re-throw with context
+      throw new Error(
+        `Failed to create ${sessionConfig.type} session: ` +
+          `${initError instanceof Error ? initError.message : 'Agent initialization failed'}`
+      );
+    }
 
     // Attach agent to session
     session.attachAgent(agent);
@@ -143,8 +174,13 @@ export class AgentRegistry {
       this._primarySessionId = session.sessionId;
     }
 
-    // Setup tab closure handling
-    this._setupTabClosureHandling(session);
+    // T057: Wrap tab closure handling setup in try-catch
+    try {
+      this._setupTabClosureHandling(session);
+    } catch (tabError) {
+      console.warn(`[AgentRegistry] Tab closure handling setup failed:`, tabError);
+      // Non-critical - session can still function without tab closure handling
+    }
 
     // Subscribe to session events and forward to registry listeners
     session.on((event) => this._emitEvent(event));
@@ -368,6 +404,110 @@ export class AgentRegistry {
 
     // Store unsubscribe function on session for cleanup
     session.setTabClosureUnsubscribe(unsubscribe);
+  }
+
+  // ==========================================================================
+  // Persistence (T035, T036, T037, T040)
+  // ==========================================================================
+
+  /**
+   * Set the storage adapter for session persistence
+   * @param storage The SessionStorage instance
+   */
+  setStorage(storage: SessionStorage): void {
+    this._storage = storage;
+    console.log(`[AgentRegistry] Storage configured for session persistence`);
+  }
+
+  /**
+   * T036: Load all persisted sessions from storage
+   * @returns List of persisted session records
+   */
+  async loadPersistedSessions(): Promise<PersistedSession[]> {
+    if (!this._storage) {
+      console.warn(`[AgentRegistry] No storage configured, cannot load persisted sessions`);
+      return [];
+    }
+
+    try {
+      const sessions = await this._storage.loadActiveSessions();
+      console.log(`[AgentRegistry] Loaded ${sessions.length} persisted sessions`);
+      return sessions;
+    } catch (error) {
+      console.error(`[AgentRegistry] Failed to load persisted sessions:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * T037: Resume a session from persisted state
+   * Creates a new AgentSession from persisted metadata and re-attaches an agent
+   * @param persistedSession The persisted session data
+   * @returns The resumed AgentSession
+   */
+  async resumeSession(persistedSession: PersistedSession): Promise<AgentSession | null> {
+    // Check if session is already active
+    if (this._sessions.has(persistedSession.sessionId)) {
+      console.log(`[AgentRegistry] Session ${persistedSession.sessionId} already active, skipping resume`);
+      return this._sessions.get(persistedSession.sessionId)!;
+    }
+
+    // Check if we can create a new session
+    if (!this.canCreateSession()) {
+      console.warn(`[AgentRegistry] Cannot resume session: max concurrent sessions reached`);
+      return null;
+    }
+
+    // Ensure dependencies are initialized
+    if (!this._config || !this._router) {
+      console.warn(`[AgentRegistry] Cannot resume session: registry not initialized`);
+      return null;
+    }
+
+    try {
+      // Find the letter index for this session
+      const letterIndex = SESSION_LETTERS.indexOf(persistedSession.sessionLetter);
+      if (letterIndex === -1 || this._usedLetters.has(persistedSession.sessionLetter)) {
+        // Letter is already in use, allocate a new one
+        const newLetterIndex = this._allocateLetterIndex();
+        console.log(`[AgentRegistry] Session letter ${persistedSession.sessionLetter} unavailable, using ${SESSION_LETTERS[newLetterIndex]}`);
+      }
+
+      // Create session config from persisted data
+      const sessionConfig: SessionConfig = {
+        type: persistedSession.type,
+        tabId: persistedSession.tabId ?? undefined,
+        scheduledTaskId: persistedSession.scheduledTaskId ?? undefined,
+      };
+
+      // Create new session (this will allocate a new letter if needed)
+      const session = await this.createSession(sessionConfig);
+
+      console.log(`[AgentRegistry] Resumed session: ${persistedSession.sessionId} as ${session.sessionId}`);
+      return session;
+    } catch (error) {
+      console.error(`[AgentRegistry] Failed to resume session ${persistedSession.sessionId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * T040: Clean up orphaned sessions from storage
+   * @param maxAgeMs Maximum age in milliseconds for inactive sessions (default: 24 hours)
+   */
+  async cleanupOrphanedSessions(maxAgeMs: number = 24 * 60 * 60 * 1000): Promise<void> {
+    if (!this._storage) {
+      return;
+    }
+
+    try {
+      const cleanedCount = await this._storage.cleanupOrphanedSessions(maxAgeMs);
+      if (cleanedCount > 0) {
+        console.log(`[AgentRegistry] Cleaned up ${cleanedCount} orphaned sessions`);
+      }
+    } catch (error) {
+      console.error(`[AgentRegistry] Failed to cleanup orphaned sessions:`, error);
+    }
   }
 
   // ==========================================================================

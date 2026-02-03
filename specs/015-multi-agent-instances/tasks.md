@@ -122,13 +122,13 @@
 
 ### Implementation for User Story 4
 
-- [ ] T035 [US4] Implement persistSession() method to save SessionMetadata to IndexedDB in src/core/registry/AgentSession.ts
-- [ ] T036 [US4] Implement loadPersistedSessions() in AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T037 [US4] Add resumeSession(sessionId) method in AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T038 [US4] Persist session on state changes automatically in src/core/registry/AgentSession.ts
-- [ ] T039 [US4] Load and resume sessions on service worker startup in src/background/service-worker.ts
-- [ ] T040 [US4] Handle orphaned session cleanup (no connected clients) in src/core/registry/AgentRegistry.ts
-- [ ] T041 [P] [US4] Create test for session persistence and resumption in tests/integration/session-persistence.test.ts
+- [X] T035 [US4] Implement persistSession() method to save SessionMetadata to IndexedDB in src/core/registry/AgentSession.ts
+- [X] T036 [US4] Implement loadPersistedSessions() in AgentRegistry in src/core/registry/AgentRegistry.ts
+- [X] T037 [US4] Add resumeSession(sessionId) method in AgentRegistry in src/core/registry/AgentRegistry.ts
+- [X] T038 [US4] Persist session on state changes automatically in src/core/registry/AgentSession.ts
+- [X] T039 [US4] Load and resume sessions on service worker startup in src/background/service-worker.ts
+- [X] T040 [US4] Handle orphaned session cleanup (no connected clients) in src/core/registry/AgentRegistry.ts
+- [X] T041 [P] [US4] Create test for session persistence and resumption in tests/integration/registry-persistence.test.ts
 
 **Checkpoint**: Sessions survive service worker restarts with full conversation history preserved
 
@@ -142,12 +142,12 @@
 
 ### Implementation for User Story 5
 
-- [ ] T042 [US5] Add maxConcurrent configuration to AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T043 [US5] Implement canCreateSession() check in AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T044 [US5] Add getMaxConcurrent() and setMaxConcurrent() methods in src/core/registry/AgentRegistry.ts
-- [ ] T045 [US5] Throw error when session limit reached in createSession() in src/core/registry/AgentRegistry.ts
-- [ ] T046 [US5] Add session limit setting to extension settings UI in src/sidepanel/Settings.svelte
-- [ ] T047 [P] [US5] Create test for concurrent limit enforcement in tests/unit/registry/AgentRegistry.test.ts
+- [X] T042 [US5] Add maxConcurrent configuration to AgentRegistry in src/core/registry/AgentRegistry.ts
+- [X] T043 [US5] Implement canCreateSession() check in AgentRegistry in src/core/registry/AgentRegistry.ts
+- [X] T044 [US5] Add getMaxConcurrent() and setMaxConcurrent() methods in src/core/registry/AgentRegistry.ts
+- [X] T045 [US5] Throw error when session limit reached in createSession() in src/core/registry/AgentRegistry.ts
+- [X] T046 [US5] Add session limit setting to extension settings UI in src/sidepanel/settings/GeneralSettings.svelte
+- [X] T047 [P] [US5] Create test for concurrent limit enforcement in tests/unit/registry/AgentRegistry.test.ts
 
 **Checkpoint**: System enforces configurable session limits and provides appropriate feedback
 
@@ -161,12 +161,12 @@
 
 ### Implementation for User Story 6
 
-- [ ] T048 [US6] Expose listSessions() via message API in src/background/service-worker.ts
-- [ ] T049 [US6] Add getActiveCount() exposure via message API in src/background/service-worker.ts
-- [ ] T050 [US6] Update SchedulerPopup to fetch and display session list in src/sidepanel/SchedulerPopup.svelte
-- [ ] T051 [US6] Add real-time status updates using session lifecycle events in src/sidepanel/SchedulerPopup.svelte
-- [ ] T052 [US6] Display session states (initializing, active, idle) in SchedulerPopup in src/sidepanel/SchedulerPopup.svelte
-- [ ] T053 [US6] Show queue position for sessions waiting due to capacity limits in src/sidepanel/SchedulerPopup.svelte
+- [X] T048 [US6] Expose listSessions() via message API in src/background/service-worker.ts
+- [X] T049 [US6] Add getActiveCount() exposure via message API in src/background/service-worker.ts
+- [X] T050 [US6] Update SchedulerPopup to fetch and display session list in src/sidepanel/components/scheduler/SchedulerPopup.svelte
+- [X] T051 [US6] Add real-time status updates using session lifecycle events in src/sidepanel/components/scheduler/SchedulerPopup.svelte
+- [X] T052 [US6] Display session states (initializing, active, idle) in SchedulerPopup in src/sidepanel/components/scheduler/SchedulerPopup.svelte
+- [X] T053 [US6] Show queue position for sessions waiting due to capacity limits in src/sidepanel/components/scheduler/SchedulerPopup.svelte
 
 **Checkpoint**: Users can view all session statuses in real-time via scheduler popup
 
@@ -176,11 +176,11 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T054 [P] Code cleanup: Remove deprecated singleton agent references across codebase
-- [ ] T055 [P] Add JSDoc documentation to AgentRegistry and AgentSession classes
-- [ ] T056 Performance validation: Verify <100ms overhead with concurrent sessions (SC-006)
-- [ ] T057 Error handling: Ensure graceful degradation when sessions fail
-- [ ] T058 Run quickstart.md validation scenarios manually
+- [X] T054 [P] Code cleanup: Remove deprecated singleton agent references across codebase
+- [X] T055 [P] Add JSDoc documentation to AgentRegistry and AgentSession classes
+- [X] T056 Performance validation: Verify <100ms overhead with concurrent sessions (SC-006)
+- [X] T057 Error handling: Ensure graceful degradation when sessions fail
+- [X] T058 Run quickstart.md validation scenarios manually
 
 ---
 

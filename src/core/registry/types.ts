@@ -80,7 +80,8 @@ export interface SessionMetadata {
 export type SessionEventType =
   | 'session:created'
   | 'session:stateChanged'
-  | 'session:terminated';
+  | 'session:terminated'
+  | 'session:error';
 
 /**
  * Session created event
@@ -114,12 +115,24 @@ export interface SessionTerminatedEvent {
 }
 
 /**
+ * Session error event (T057: graceful degradation)
+ * Emitted when session operations fail but the system can continue
+ */
+export interface SessionErrorEvent {
+  type: 'session:error';
+  sessionId: string;
+  error: string;
+  timestamp: number;
+}
+
+/**
  * Union type for all session events
  */
 export type SessionEvent =
   | SessionCreatedEvent
   | SessionStateChangedEvent
-  | SessionTerminatedEvent;
+  | SessionTerminatedEvent
+  | SessionErrorEvent;
 
 /**
  * Session event listener type

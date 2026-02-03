@@ -15,6 +15,7 @@ import type {
   SessionEventListener,
 } from './types';
 import { VALID_STATE_TRANSITIONS, SESSION_LETTERS } from './types';
+import type { SessionStorage } from './SessionStorage';
 
 /**
  * AgentSession wraps a BrowserxAgent instance and provides:
@@ -22,6 +23,7 @@ import { VALID_STATE_TRANSITIONS, SESSION_LETTERS } from './types';
  * - Tab binding and tab group management
  * - Event emission for state changes
  * - Resource cleanup on termination
+ * - Session persistence (T035, T038)
  */
 export class AgentSession {
   private _sessionId: string;
@@ -31,6 +33,7 @@ export class AgentSession {
   private _metadata: SessionMetadata;
   private _eventListeners: Set<SessionEventListener> = new Set();
   private _tabClosureUnsubscribe: (() => void) | null = null;
+  private _storage: SessionStorage | null = null;
 
   /**
    * Create a new AgentSession
@@ -131,6 +134,11 @@ export class AgentSession {
       previousState,
       newState,
       timestamp: Date.now(),
+    });
+
+    // T038: Auto-persist on state changes (fire and forget)
+    this._autoPersist().catch(err => {
+      console.error(`[AgentSession] Auto-persist failed:`, err);
     });
   }
 
@@ -449,6 +457,46 @@ export class AgentSession {
    */
   setTabClosureUnsubscribe(unsubscribe: () => void): void {
     this._tabClosureUnsubscribe = unsubscribe;
+  }
+
+  // ==========================================================================
+  // Persistence (T035, T038)
+  // ==========================================================================
+
+  /**
+   * Set the storage adapter for persistence
+   * Called by AgentRegistry during session creation
+   */
+  setStorage(storage: SessionStorage): void {
+    this._storage = storage;
+  }
+
+  /**
+   * T035: Persist session to storage
+   * Saves current session metadata to IndexedDB
+   */
+  async persistSession(): Promise<void> {
+    if (!this._storage) {
+      console.debug(`[AgentSession] No storage configured, skipping persist`);
+      return;
+    }
+
+    try {
+      await this._storage.persistSession(this._metadata);
+    } catch (error) {
+      console.error(`[AgentSession] Failed to persist session:`, error);
+    }
+  }
+
+  /**
+   * T038: Auto-persist on state changes
+   * Called internally when session state changes
+   */
+  private async _autoPersist(): Promise<void> {
+    // Only persist if storage is configured and session is not terminated
+    if (this._storage && this._state !== 'terminated') {
+      await this.persistSession();
+    }
   }
 
   // ==========================================================================

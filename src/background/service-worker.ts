@@ -43,12 +43,16 @@ import type {
 import type { TaskResultRecord } from '../models/types/Scheduler';
 
 // Multi-agent registry imports (Feature 015)
-import { AgentRegistry } from '../core/registry';
+import { AgentRegistry, SessionStorage } from '../core/registry';
 import type { SessionConfig } from '../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../models/types/SessionContracts';
 
 // Global instances
-// Feature 015: agent variable kept for backward compatibility but now accessed via registry
+/**
+ * @deprecated Feature 015: Use registry.getPrimarySession().agent instead.
+ * This variable is kept only for backward compatibility during migration.
+ * All new code should use AgentRegistry to access agent instances.
+ */
 let agent: BrowserxAgent | null = null;
 let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
 let router: MessageRouter | null = null;
@@ -60,6 +64,7 @@ let currentAuthManager: AuthManager | null = null; // Preserve auth state across
 let scheduler: Scheduler | null = null; // Task scheduler
 let schedulerStorage: SchedulerStorage | null = null;
 let schedulerAlarms: SchedulerAlarms | null = null;
+let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -103,8 +108,14 @@ async function doInitialize(): Promise<void> {
   router = new MessageRouter('background');
 
   // Feature 015: Initialize AgentRegistry instead of singleton agent
-  registry = AgentRegistry.getInstance();
+  // Load max concurrent sessions from user preferences
+  const config = agentConfig!.getConfig();
+  const maxConcurrentSessions = config.preferences?.maxConcurrentSessions ?? 3;
+  registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
   registry.initialize(agentConfig!, router);
+
+  // Feature 015 (T039): Initialize session persistence
+  await initializeSessionPersistence();
 
   // Create primary session (replaces singleton agent creation)
   // This maintains backward compatibility - agent variable points to primary session's agent
@@ -181,6 +192,56 @@ async function initializeAuthFromConfig(): Promise<void> {
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize auth from config:', error);
     // Continue without backend routing - will use direct API key mode
+  }
+}
+
+/**
+ * Feature 015 (T039): Initialize session persistence
+ * Sets up IndexedDB storage for session persistence and loads any persisted sessions
+ */
+async function initializeSessionPersistence(): Promise<void> {
+  if (!registry) {
+    console.warn('[ServiceWorker] Cannot initialize session persistence - registry not ready');
+    return;
+  }
+
+  try {
+    // Initialize IndexedDB adapter for session storage
+    const indexedDBAdapter = new IndexedDBAdapter();
+    await indexedDBAdapter.initialize();
+
+    // Create session storage
+    sessionStorage = new SessionStorage(indexedDBAdapter);
+
+    // Wire storage to registry
+    registry.setStorage(sessionStorage);
+
+    // Clean up orphaned sessions (older than 24 hours)
+    await registry.cleanupOrphanedSessions(24 * 60 * 60 * 1000);
+
+    // Load and resume persisted scheduled task sessions
+    // Note: We only resume 'scheduled' type sessions, not 'primary' (which gets recreated)
+    const persistedSessions = await registry.loadPersistedSessions();
+    const scheduledSessions = persistedSessions.filter(s => s.type === 'scheduled');
+
+    if (scheduledSessions.length > 0) {
+      console.log(`[ServiceWorker] Found ${scheduledSessions.length} persisted scheduled sessions to resume`);
+
+      for (const persisted of scheduledSessions) {
+        // Only resume if the session was active (not terminated)
+        if (persisted.state !== 'terminated') {
+          const resumed = await registry.resumeSession(persisted);
+          if (resumed) {
+            console.log(`[ServiceWorker] Resumed session: ${persisted.sessionId}`);
+          }
+        }
+      }
+    }
+
+    console.log('[ServiceWorker] Session persistence initialized');
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to initialize session persistence:', error);
+    // Continue without persistence - sessions will work but won't survive restarts
   }
 }
 
@@ -404,6 +465,19 @@ function setupMessageHandlers(): void {
 
       return true; // Keep channel open for async response
     }
+
+    // Feature 015: Handle max concurrent sessions update from settings
+    if (message.type === 'SET_MAX_CONCURRENT_SESSIONS') {
+      const { maxConcurrent } = message.payload || {};
+      if (registry && typeof maxConcurrent === 'number') {
+        registry.setMaxConcurrent(maxConcurrent);
+        console.log(`[ServiceWorker] Max concurrent sessions updated to: ${maxConcurrent}`);
+        sendResponse({ success: true });
+      } else {
+        sendResponse({ success: false, error: 'Invalid request or registry not initialized' });
+      }
+      return true;
+    }
   });
 
   // Handle storage operations
@@ -478,7 +552,13 @@ function setupMessageHandlers(): void {
           await initializeAuthFromConfig();
         }
       } else {
-        // Legacy fallback: recreate singleton agent
+        /**
+         * @deprecated Legacy fallback for CONFIG_UPDATE - should rarely execute.
+         * Feature 015: This path exists only for edge cases where registry
+         * is not available. All normal operation goes through AgentRegistry.
+         * TODO: Remove this fallback once Feature 015 is fully validated.
+         */
+        console.warn('[ServiceWorker] Using legacy agent recreation fallback - this path should be rare');
         if (agent) {
           const session = agent.getSession();
           await session.close();
@@ -802,6 +882,36 @@ function setupSchedulerMessageHandlers(): void {
   });
 
   console.log('[ServiceWorker] Scheduler message handlers registered');
+
+  // Feature 015: Session management message handlers (T048, T049)
+  setupSessionMessageHandlers();
+}
+
+/**
+ * Feature 015 (T048, T049): Setup session management message handlers
+ */
+function setupSessionMessageHandlers(): void {
+  if (!router || !registry) return;
+
+  // T048: Get list of all sessions
+  router.on(MessageType.SESSION_LIST, async () => {
+    return {
+      sessions: registry!.listSessions(),
+      maxConcurrent: registry!.getMaxConcurrent(),
+      activeCount: registry!.getActiveCount(),
+    };
+  });
+
+  // T049: Get active session count
+  router.on(MessageType.SESSION_GET_ACTIVE_COUNT, async () => {
+    return {
+      activeCount: registry!.getActiveCount(),
+      maxConcurrent: registry!.getMaxConcurrent(),
+      canCreateSession: registry!.canCreateSession(),
+    };
+  });
+
+  console.log('[ServiceWorker] Session message handlers registered');
 }
 
 /**
@@ -1297,6 +1407,7 @@ function setupPeriodicTasks(): void {
       chrome.alarms.create('rollout-cleanup', { periodInMinutes: 60 });
       chrome.alarms.create('cache-cleanup', { periodInMinutes: 30 });
       chrome.alarms.create('quota-check', { periodInMinutes: 10 });
+      chrome.alarms.create('session-cleanup', { periodInMinutes: 120 }); // Feature 015: Clean orphaned sessions every 2 hours
 
       // Handle alarms
       chrome.alarms.onAlarm?.addListener(async (alarm) => {
@@ -1324,6 +1435,12 @@ function setupPeriodicTasks(): void {
               }
             }
             break;
+          case 'session-cleanup':
+            // Feature 015: Clean up orphaned sessions
+            if (registry) {
+              await registry.cleanupOrphanedSessions(24 * 60 * 60 * 1000);
+            }
+            break;
         }
       });
     } else {
@@ -1347,6 +1464,13 @@ function setupPeriodicTasks(): void {
           }
         }
       }, 10 * 60 * 1000); // Every 10 minutes
+
+      // Feature 015: Fallback session cleanup
+      setInterval(async () => {
+        if (registry) {
+          await registry.cleanupOrphanedSessions(24 * 60 * 60 * 1000);
+        }
+      }, 2 * 60 * 60 * 1000); // Every 2 hours
     }
   } catch (error) {
     console.error('Failed to setup Chrome alarms:', error);
@@ -1371,6 +1495,13 @@ function setupPeriodicTasks(): void {
         }
       }
     }, 10 * 60 * 1000); // Every 10 minutes
+
+    // Feature 015: Fallback session cleanup (in catch block)
+    setInterval(async () => {
+      if (registry) {
+        await registry.cleanupOrphanedSessions(24 * 60 * 60 * 1000);
+      }
+    }, 2 * 60 * 60 * 1000); // Every 2 hours
   }
 }
 
@@ -1428,7 +1559,11 @@ chrome.runtime.onSuspend.addListener(async () => {
   if (registry) {
     await registry.cleanup();
   } else if (agent) {
-    // Legacy fallback
+    /**
+     * @deprecated Legacy fallback for shutdown - should rarely execute.
+     * Feature 015: This path exists only if registry failed to initialize.
+     */
+    console.warn('[ServiceWorker] Using legacy cleanup fallback - registry not available');
     const session = agent.getSession();
     await session.close();
     await agent.cleanup();
@@ -1512,5 +1647,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Initialize on script load
 initialize();
 
-// Export for testing (Feature 015: include registry)
-export { agent, router, registry, initialize };
+// Export for testing (Feature 015: include registry and sessionStorage)
+export { agent, router, registry, sessionStorage, initialize };
