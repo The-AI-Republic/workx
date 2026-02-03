@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { MessageType } from '@/core/MessageRouter';
@@ -28,30 +27,11 @@
 
   // Fetch data when popup opens
   $: if (show) {
-    fetchAllData(true); // Initial load shows loading state
+    fetchAllData();
   }
 
-  let refreshInterval: ReturnType<typeof setInterval> | null = null;
-
-  onMount(() => {
-    // Refresh data periodically while popup is open
-    refreshInterval = setInterval(() => {
-      if (show) {
-        fetchAllData(false); // Background refresh - no loading state
-      }
-    }, 5000);
-  });
-
-  onDestroy(() => {
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-    }
-  });
-
-  async function fetchAllData(showLoading: boolean = true) {
-    if (showLoading) {
-      isLoading = true;
-    }
+  async function fetchAllData() {
+    isLoading = true;
     try {
       const [stateRes, missedRes, scheduledRes, queueRes] = await Promise.all([
         chrome.runtime.sendMessage({ type: MessageType.SCHEDULER_GET_STATE }),
