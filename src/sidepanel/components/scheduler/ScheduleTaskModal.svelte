@@ -15,6 +15,10 @@
   let selectedDate: string = '';
   let selectedTime: string = '';
   let errorMessage: string = '';
+  let editableInput: string = '';
+
+  // Determine if input should be editable (when opened without pre-filled input)
+  $: isEditable = !input.trim();
 
   // Subscribe to theme
   uiTheme.subscribe((theme) => {
@@ -37,6 +41,7 @@
     selectedDate = formatDateForInput(now);
     selectedTime = formatTimeForInput(now);
     errorMessage = '';
+    editableInput = input || '';
   }
 
   function formatDateForInput(date: Date): string {
@@ -99,6 +104,14 @@
   }
 
   function validateAndSchedule() {
+    const taskInput = isEditable ? editableInput.trim() : input;
+
+    // Validate input
+    if (!taskInput) {
+      errorMessage = 'Please enter a task description';
+      return;
+    }
+
     const scheduledTime = getScheduledTimestamp();
     const now = Date.now();
 
@@ -108,7 +121,7 @@
       return;
     }
 
-    dispatch('schedule', { input, scheduledTime });
+    dispatch('schedule', { input: taskInput, scheduledTime });
   }
 
   function handleClose() {
@@ -163,10 +176,19 @@
 
       <!-- Content -->
       <div class="modal-content">
-        <!-- Task Preview -->
+        <!-- Task Input/Preview -->
         <div class="task-preview">
           <span class="preview-label">{$_t('Task')}:</span>
-          <p class="preview-text">{input.slice(0, 100)}{input.length > 100 ? '...' : ''}</p>
+          {#if isEditable}
+            <textarea
+              class="task-input"
+              bind:value={editableInput}
+              placeholder={$_t('Enter your task...')}
+              rows="3"
+            ></textarea>
+          {:else}
+            <p class="preview-text">{input.slice(0, 100)}{input.length > 100 ? '...' : ''}</p>
+          {/if}
         </div>
 
         <!-- Quick Schedule Buttons -->
@@ -337,6 +359,30 @@
     font-family: 'Monaco', 'Courier New', monospace;
     line-height: 1.4;
     word-break: break-word;
+  }
+
+  .task-input {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--color-term-dim-green, #00cc00);
+    border-radius: 4px;
+    color: var(--color-term-bright-green, #00ff00);
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    resize: vertical;
+    outline: none;
+  }
+
+  .task-input:focus {
+    border-color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .task-input::placeholder {
+    color: var(--color-term-dim-green, #00cc00);
+    opacity: 0.6;
   }
 
   .quick-schedule {
@@ -527,6 +573,21 @@
   .modal-backdrop.chatgpt .preview-text {
     color: var(--chat-text, #0d0d0d);
     font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  }
+
+  .modal-backdrop.chatgpt .task-input {
+    background: var(--chat-input-bg, #ffffff);
+    border-color: var(--chat-border, #e5e5e5);
+    color: var(--chat-text, #0d0d0d);
+    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  }
+
+  .modal-backdrop.chatgpt .task-input:focus {
+    border-color: var(--chat-primary, #60a5fa);
+  }
+
+  .modal-backdrop.chatgpt .task-input::placeholder {
+    color: var(--chat-text-muted, #8e8ea0);
   }
 
   .modal-backdrop.chatgpt .quick-btn {

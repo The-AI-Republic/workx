@@ -4,6 +4,7 @@
   import { MessageType } from '@/core/MessageRouter';
   import SchedulerTaskItem from './SchedulerTaskItem.svelte';
   import ArchivedTasksView from './ArchivedTasksView.svelte';
+  import ScheduleTaskModal from './ScheduleTaskModal.svelte';
   import type { SchedulerTaskSummary } from '@/models/types/SchedulerContracts';
 
   export let show: boolean = false;
@@ -13,6 +14,7 @@
   let isLoading = true;
   let isPaused = false;
   let showArchivedView = false;
+  let showScheduleModal = false;
 
   // Task lists
   let missedTasks: SchedulerTaskSummary[] = [];
@@ -96,8 +98,28 @@
   function handleClickOutside(event: MouseEvent) {
     if (!show) return;
     const target = event.target as HTMLElement;
-    if (!target.closest('.scheduler-popup') && !target.closest('.scheduler-button')) {
+    if (!target.closest('.scheduler-popup') && !target.closest('.scheduler-button') && !target.closest('.modal-backdrop')) {
       onClose();
+    }
+  }
+
+  function handleAddTask() {
+    showScheduleModal = true;
+  }
+
+  async function handleScheduleTask(event: CustomEvent<{ input: string; scheduledTime: number }>) {
+    const { input, scheduledTime } = event.detail;
+    showScheduleModal = false;
+
+    try {
+      await chrome.runtime.sendMessage({
+        type: MessageType.SCHEDULER_SCHEDULE_TASK,
+        payload: { input, scheduledTime },
+      });
+      // Refresh the task list
+      await fetchAllData();
+    } catch (error) {
+      console.error('[SchedulerPopup] Failed to schedule task:', error);
     }
   }
 
@@ -112,6 +134,16 @@
     <div class="popup-header">
       <h3 class="popup-title">{$_t('Scheduled Tasks')}</h3>
       <div class="header-actions">
+        <button
+          class="add-btn"
+          on:click={handleAddTask}
+          title={$_t('Add Task')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
         <button
           class="pause-btn"
           class:paused={isPaused}
@@ -234,6 +266,14 @@
   onClose={() => showArchivedView = false}
 />
 
+<!-- Schedule Task Modal -->
+<ScheduleTaskModal
+  show={showScheduleModal}
+  input=""
+  on:close={() => showScheduleModal = false}
+  on:schedule={handleScheduleTask}
+/>
+
 <style>
   .scheduler-popup {
     position: fixed;
@@ -278,7 +318,7 @@
     align-items: center;
   }
 
-  .pause-btn, .close-btn {
+  .add-btn, .pause-btn, .close-btn {
     padding: 4px;
     border: none;
     border-radius: 4px;
@@ -291,7 +331,7 @@
     transition: all 0.2s ease;
   }
 
-  .pause-btn:hover, .close-btn:hover {
+  .add-btn:hover, .pause-btn:hover, .close-btn:hover {
     color: var(--color-term-bright-green, #00ff00);
     background: rgba(0, 255, 0, 0.1);
   }
@@ -396,11 +436,13 @@
     font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   }
 
+  .scheduler-popup.chatgpt .add-btn,
   .scheduler-popup.chatgpt .pause-btn,
   .scheduler-popup.chatgpt .close-btn {
     color: var(--chat-text-muted, #8e8ea0);
   }
 
+  .scheduler-popup.chatgpt .add-btn:hover,
   .scheduler-popup.chatgpt .pause-btn:hover,
   .scheduler-popup.chatgpt .close-btn:hover {
     color: var(--chat-text, #0d0d0d);

@@ -35,6 +35,9 @@
   "Add_Server": {
     "message": ""
   },
+  "Add_Task": {
+    "message": ""
+  },
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
@@ -254,6 +257,9 @@
   "Enter_your_LLM_API_key": {
     "message": "अपनी LLM API कुंजी दर्ज करें"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "कमांड निष्पादित करें"
   },
@@ -386,6 +392,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "नि:शुल्क क्रेडिट पाने के लिए लॉगिन करें"
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
@@ -620,9 +629,6 @@
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "इंटरफ़ेस के लिए अपनी पसंदीदा भाषा चुनें"
-  },
-  "Send_hold_to_schedule": {
-    "message": ""
   },
   "Service_Tier": {
     "message": "सेवा स्तर"

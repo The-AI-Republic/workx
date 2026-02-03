@@ -35,6 +35,9 @@
   "Add_Server": {
     "message": ""
   },
+  "Add_Task": {
+    "message": ""
+  },
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
@@ -254,6 +257,9 @@
   "Enter_your_LLM_API_key": {
     "message": "Vnesite svoj LLM API ključ"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "Izvedi ukaze"
   },
@@ -381,6 +387,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Prijavite se za brezplačne kredite"
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
@@ -615,9 +624,6 @@
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Izberite želeni jezik za uporabniški vmesnik"
-  },
-  "Send_hold_to_schedule": {
-    "message": ""
   },
   "Service_Tier": {
     "message": "Raven storitve"

@@ -5,6 +5,7 @@
   "Action": "Action",
   "Action Details": "Action_Details",
   "Add Modification": "Add_Modification",
+  "Add Task": "Add_Task",
   "Advanced Configuration": "Advanced_Configuration",
   "Advanced Options": "Advanced_Options",
   "Agent Execution Tools": "Agent_Execution_Tools",
@@ -59,6 +60,7 @@
   "Enable caching to improve performance by storing frequently accessed data": "Enable_caching_to_improve_performance_by_ea45",
   "Enable web search capabilities for the agent": "Enable_web_search_capabilities_for_the_a_e8a0",
   "Enter your LLM API key": "Enter_your_LLM_API_key",
+  "Enter your task...": "Enter_your_task",
   "Execute Commands": "Execute_Commands",
   "Expire after days": "Expire_after_days",
   "Explain your decision...": "Explain_your_decision",
@@ -262,9 +264,9 @@
   "Schedule": "Schedule",
   "Schedule Task": "Schedule_Task",
   "Scheduled Tasks": "Scheduled_Tasks",
-  "Send (hold to schedule)": "Send_hold_to_schedule",
   "Task": "Task",
   "Task History": "Task_History",
   "Upcoming": "Upcoming",
-  "View History": "View_History"
+  "View History": "View_History",
+  "Long press to schedule task": "Long_press_to_schedule_task"
 }

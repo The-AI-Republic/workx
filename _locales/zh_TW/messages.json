@@ -35,6 +35,9 @@
   "Add_Server": {
     "message": ""
   },
+  "Add_Task": {
+    "message": ""
+  },
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
@@ -254,6 +257,9 @@
   "Enter_your_LLM_API_key": {
     "message": "輸入您的 LLM API 金鑰"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "執行指令"
   },
@@ -381,6 +387,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "登入以獲取免費點數"
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
@@ -615,9 +624,6 @@
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "選擇介面偏好的語言"
-  },
-  "Send_hold_to_schedule": {
-    "message": ""
   },
   "Service_Tier": {
     "message": "服務等級"
