@@ -35,7 +35,7 @@
     ? $_t('Stop the current task run')
     : !value.trim()
       ? $_t('Please type a valid command')
-      : $_t('Send (hold to schedule)');
+      : $_t('Long press to schedule task');
 
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
@@ -159,7 +159,7 @@
               on:pointerup={handlePointerUp}
               on:pointerleave={handlePointerLeave}
               disabled={!isProcessing && !value.trim()}
-              aria-label={isProcessing ? 'Stop the current task' : 'Send the message (hold to schedule)'}
+              aria-label={isProcessing ? 'Stop the current task' : 'Long press to schedule task'}
             >
               {#if isProcessing}
                 <!-- Stop Icon (Square) -->

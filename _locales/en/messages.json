@@ -385,6 +385,9 @@
   "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": "Long-press the send button to schedule a task"
   },
+  "Long_press_to_schedule_task": {
+    "message": "Long press to schedule task"
+  },
   "Low_credits_remaining": {
     "message": "Low credits remaining"
   },
