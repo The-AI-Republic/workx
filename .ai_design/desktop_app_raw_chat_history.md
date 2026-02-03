@@ -1994,3 +1994,149 @@ Updated the design document (`desktop_app_design.md`) with the profile-copying a
    - Launch Chrome with debugging enabled
    - User's main Chrome can stay open
    - Full CDP access with user's login sessions
+
+---
+
+## Question 19: Design Document Implementation Readiness Review
+
+**User:**
+> so is the design doc ready to be implemented, any part still not clear?
+
+**Assistant:**
+
+Identified 6 gaps/unclear areas:
+1. Chrome Detection & Multi-Browser Support
+2. DomTool Reuse Strategy
+3. Error Handling & Recovery
+4. Extension + Native Coexistence
+5. First-Run Experience
+6. Testing Strategy
+
+---
+
+## Question 20: Clarifications for All Gaps
+
+**User:**
+> 1. Chrome Detection & Multi-Browser Support,
+> a. if chrome is not installed in the right place, pax need to use teminal command the search for it, but most of the time mac os and windows user will just default install the browser.
+> b. seems current edge will support CDP, so if pax cannot find the chrome, it apply the operation to edge in windows directly. in mac os, it suggest user to install the chrome
+>
+> 2. DomTool Reuse Strategy
+> a. we want to use the logic DomService as much as possible, only replace the chrome.debugger api into CDP. so the code need to be better organized
+> b. we might need to build a middle layer between current DomService and chrome.debugger/CDP to unify the DOMservice call the methods
+>
+> 3. Error Handling & Recovery
+> a. retry first, after 3 times of retry and failed, ask user to manual open a debugger chrome
+>
+> 4. Extension + Native Coexistence
+> a. currently separate product, we can design the communication in the future separately
+>
+> 5. First-Run Experience
+> a. currently no onboarding flow needed
+>
+> 6. Testing Strategy
+> a. let's build unit test cases first
+
+**Assistant:**
+
+Updated the design document with all clarifications:
+
+### 1. Chrome Detection & Multi-Browser Support (Section 4.4.6)
+
+**Browser Detection Flow:**
+```
+1. Check default installation paths
+   ├── macOS: /Applications/Google Chrome.app/
+   ├── Windows: C:\Program Files\Google\Chrome\
+   └── Linux: /usr/bin/google-chrome
+
+2. If not found, search via terminal command
+   ├── macOS: mdfind "kMDItemCFBundleIdentifier == ..."
+   ├── Windows: where chrome.exe / reg query
+   └── Linux: which google-chrome / whereis
+
+3. If Chrome not found:
+   ├── Windows: Fall back to Microsoft Edge (supports CDP)
+   └── macOS/Linux: Prompt user to install Chrome
+```
+
+**Platform Support:**
+
+| Platform | Primary | Fallback |
+|----------|---------|----------|
+| macOS | Chrome | None (prompt to install) |
+| Windows | Chrome | Microsoft Edge |
+| Linux | Chrome/Chromium | Chromium |
+
+### 2. DomTool Reuse Strategy (Section 4.4.10)
+
+**Architecture - DebuggerClient Abstraction:**
+
+```
+┌─────────────────────┐
+│     DomService      │  (Existing logic - unchanged)
+└──────────┬──────────┘
+           │ Uses
+           ▼
+┌─────────────────────┐
+│   DebuggerClient    │  (NEW: Abstraction layer)
+│  • sendCommand()    │
+│  • onEvent()        │
+└──────────┬──────────┘
+           │
+    ┌──────┴──────┐
+    │             │
+    ▼             ▼
+┌─────────┐   ┌─────────┐
+│ Chrome  │   │  CDP    │
+│ Debugger│   │ Client  │
+│ Client  │   │         │
+└─────────┘   └─────────┘
+Extension     Native PAX
+```
+
+**Key Benefit**: DomService logic stays **unchanged**, only swap the communication layer.
+
+### 3. Error Handling & Recovery (Section 4.4.11)
+
+**Strategy:**
+1. Retry up to 3 times with backoff
+2. Auto-reconnect on connection errors
+3. After all retries fail → prompt user with manual instructions:
+   ```
+   "Please manually open Chrome with debugging:
+    chrome --remote-debugging-port=9222"
+   ```
+
+### 4. Extension + Native Coexistence (Section 4.4.12)
+
+**Decision**: Separate products for now. No communication between BrowserX extension and PAX native app. Can be designed later if needed.
+
+### 5. First-Run Experience
+
+**Decision**: No onboarding flow for MVP. Users configure via config file.
+
+### 6. Testing Strategy (Section 4.4.13)
+
+**Approach:**
+- Unit tests with mock `DebuggerClient` interface
+- Profile copy tests on each platform's CI
+- Integration tests with real Chrome (headless mode)
+
+---
+
+## Key Decisions Made (Final)
+
+1. **Runtime**: Tauri + Node sidecar (GUI) + Pure Node.js CLI (TUI)
+2. **Tunneling**: Tailscale (only needed for web UI)
+3. **Messaging**: Multi-channel with Telegram as default
+4. **Architecture**: Unified event bus
+5. **Browser Control**: Profile-copy + CDP
+6. **Browser Detection**: Chrome primary, Edge fallback on Windows
+7. **DomTool**: DebuggerClient abstraction layer
+8. **Error Handling**: Retry 3x, then prompt user
+9. **Extension/Native**: Separate products for now
+10. **Onboarding**: Deferred (config file only)
+11. **Testing**: Unit tests with mocks first
+
+**Design document is now ready for implementation.**

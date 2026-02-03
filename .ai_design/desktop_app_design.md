@@ -702,19 +702,165 @@ async function calculateSize(path: string): Promise<number> {
 }
 ```
 
-#### 4.4.6 Chrome Launcher Implementation
+#### 4.4.6 Browser Detection & Multi-Browser Support
+
+PAX supports Chrome as the primary browser, with Edge as fallback on Windows. The detection strategy:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    BROWSER DETECTION FLOW                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Check default installation paths                            │
+│     ├── macOS: /Applications/Google Chrome.app/                 │
+│     ├── Windows: C:\Program Files\Google\Chrome\                │
+│     └── Linux: /usr/bin/google-chrome                           │
+│                                                                  │
+│  2. If not found, search via terminal command                   │
+│     ├── macOS: mdfind "kMDItemCFBundleIdentifier == ..."       │
+│     ├── Windows: where chrome.exe / reg query                   │
+│     └── Linux: which google-chrome / whereis                    │
+│                                                                  │
+│  3. If Chrome not found:                                        │
+│     ├── Windows: Fall back to Microsoft Edge (supports CDP)     │
+│     └── macOS/Linux: Prompt user to install Chrome              │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Platform-Specific Browser Support:**
+
+| Platform | Primary | Fallback | Notes |
+|----------|---------|----------|-------|
+| macOS | Chrome | None (prompt to install) | Safari doesn't support CDP |
+| Windows | Chrome | Microsoft Edge | Edge uses Chromium, full CDP support |
+| Linux | Chrome/Chromium | Chromium | Both work with CDP |
+
+#### 4.4.7 Chrome Launcher Implementation
+
+```typescript
+// src/pax/tools/browser/browser-detector.ts
+
+import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { platform } from 'os';
+
+interface BrowserInfo {
+  name: 'chrome' | 'edge' | 'chromium';
+  path: string;
+  profilePath: string;
+}
+
+const DEFAULT_PATHS: Record<string, Record<string, string>> = {
+  darwin: {
+    chrome: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  },
+  win32: {
+    chrome: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    edge: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  },
+  linux: {
+    chrome: '/usr/bin/google-chrome',
+    chromium: '/usr/bin/chromium-browser',
+  }
+};
+
+const PROFILE_PATHS: Record<string, Record<string, string>> = {
+  darwin: {
+    chrome: `${process.env.HOME}/Library/Application Support/Google/Chrome`,
+  },
+  win32: {
+    chrome: `${process.env.LOCALAPPDATA}/Google/Chrome/User Data`,
+    edge: `${process.env.LOCALAPPDATA}/Microsoft/Edge/User Data`,
+  },
+  linux: {
+    chrome: `${process.env.HOME}/.config/google-chrome`,
+    chromium: `${process.env.HOME}/.config/chromium`,
+  }
+};
+
+export async function detectBrowser(): Promise<BrowserInfo | null> {
+  const os = platform();
+  const paths = DEFAULT_PATHS[os];
+  const profiles = PROFILE_PATHS[os];
+
+  // 1. Check default Chrome path first
+  if (paths.chrome && existsSync(paths.chrome)) {
+    return { name: 'chrome', path: paths.chrome, profilePath: profiles.chrome };
+  }
+
+  // 2. Search for Chrome via terminal
+  const searchedChrome = await searchForBrowser('chrome', os);
+  if (searchedChrome) {
+    return { name: 'chrome', path: searchedChrome, profilePath: profiles.chrome };
+  }
+
+  // 3. Platform-specific fallbacks
+  if (os === 'win32') {
+    // Windows: Try Edge as fallback
+    if (paths.edge && existsSync(paths.edge)) {
+      return { name: 'edge', path: paths.edge, profilePath: profiles.edge };
+    }
+  }
+
+  if (os === 'linux') {
+    // Linux: Try Chromium as fallback
+    if (paths.chromium && existsSync(paths.chromium)) {
+      return { name: 'chromium', path: paths.chromium, profilePath: profiles.chromium };
+    }
+  }
+
+  // 4. Not found
+  return null;
+}
+
+async function searchForBrowser(browser: string, os: string): Promise<string | null> {
+  try {
+    let command: string;
+
+    switch (os) {
+      case 'darwin':
+        // macOS: Use Spotlight search
+        command = `mdfind "kMDItemCFBundleIdentifier == 'com.google.Chrome'" | head -1`;
+        const appPath = execSync(command, { encoding: 'utf-8' }).trim();
+        return appPath ? `${appPath}/Contents/MacOS/Google Chrome` : null;
+
+      case 'win32':
+        // Windows: Search in registry or use where command
+        command = 'where chrome.exe 2>nul';
+        return execSync(command, { encoding: 'utf-8' }).trim().split('\n')[0] || null;
+
+      case 'linux':
+        // Linux: Use which/whereis
+        command = 'which google-chrome 2>/dev/null || which chromium-browser 2>/dev/null';
+        return execSync(command, { encoding: 'utf-8' }).trim() || null;
+
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+export function getBrowserNotFoundMessage(): string {
+  const os = platform();
+
+  if (os === 'darwin') {
+    return 'Chrome not found. Please install Google Chrome from https://www.google.com/chrome/';
+  } else if (os === 'win32') {
+    return 'Neither Chrome nor Edge found. Please install Google Chrome from https://www.google.com/chrome/';
+  } else {
+    return 'Chrome/Chromium not found. Please install: sudo apt install google-chrome-stable';
+  }
+}
+```
 
 ```typescript
 // src/pax/tools/browser/chrome-launcher.ts
 
 import { spawn } from 'child_process';
-import { platform } from 'os';
-
-const CHROME_PATHS: Record<string, string> = {
-  darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  win32: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  linux: '/usr/bin/google-chrome'
-};
+import { detectBrowser, getBrowserNotFoundMessage, BrowserInfo } from './browser-detector';
 
 const DEFAULT_DEBUG_PORT = 9222;
 
@@ -724,11 +870,16 @@ export interface LaunchOptions {
   headless?: boolean;
 }
 
-export async function launchChromeWithDebugging(
+export async function launchBrowserWithDebugging(
   options: LaunchOptions
-): Promise<number> {
+): Promise<{ port: number; browser: BrowserInfo }> {
   const port = options.port ?? DEFAULT_DEBUG_PORT;
-  const chromePath = CHROME_PATHS[platform()];
+
+  // Detect available browser
+  const browser = await detectBrowser();
+  if (!browser) {
+    throw new Error(getBrowserNotFoundMessage());
+  }
 
   const args = [
     `--remote-debugging-port=${port}`,
@@ -739,17 +890,17 @@ export async function launchChromeWithDebugging(
     args.push('--headless=new');
   }
 
-  const chrome = spawn(chromePath, args, {
+  const process = spawn(browser.path, args, {
     detached: true,
     stdio: 'ignore'
   });
 
-  chrome.unref(); // Let Chrome run independently of PAX
+  process.unref(); // Let browser run independently of PAX
 
   // Wait for debugger to be ready
   await waitForDebugger(port);
 
-  return port;
+  return { port, browser };
 }
 
 async function waitForDebugger(port: number, timeout = 15000): Promise<void> {
@@ -767,7 +918,7 @@ async function waitForDebugger(port: number, timeout = 15000): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 
-  throw new Error(`Chrome debugger not ready after ${timeout}ms`);
+  throw new Error(`Browser debugger not ready after ${timeout}ms`);
 }
 
 export async function isDebuggerAvailable(port = DEFAULT_DEBUG_PORT): Promise<boolean> {
@@ -944,12 +1095,285 @@ async function copyWithRetry(source: string, target: string, maxRetries = 3): Pr
 
 #### 4.4.10 DomTool Migration Strategy
 
-Current DomTool implementation in BrowserX needs:
+The goal is to **reuse existing DomService logic as much as possible**, only replacing the `chrome.debugger` API calls with CDP equivalents. This requires a middle abstraction layer.
 
-1. **Interface Extraction**: Define abstract `BrowserController` interface
-2. **Implementation Split**: Create `ExtensionBrowserController` and `CDPBrowserController`
-3. **Dependency Injection**: DomTool receives controller via constructor
-4. **Feature Parity Testing**: Ensure both implementations pass same test suite
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DOMTOOL ABSTRACTION LAYER                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│                    ┌─────────────────────┐                      │
+│                    │     DomService      │  (Existing logic)    │
+│                    │  ─────────────────  │                      │
+│                    │  • getSnapshot()    │                      │
+│                    │  • click()          │                      │
+│                    │  • type()           │                      │
+│                    │  • scroll()         │                      │
+│                    └──────────┬──────────┘                      │
+│                               │                                  │
+│                               │ Uses                             │
+│                               ▼                                  │
+│                    ┌─────────────────────┐                      │
+│                    │  DebuggerClient     │  (NEW: Abstraction)  │
+│                    │  ─────────────────  │                      │
+│                    │  • sendCommand()    │                      │
+│                    │  • onEvent()        │                      │
+│                    │  • attach()         │                      │
+│                    │  • detach()         │                      │
+│                    └──────────┬──────────┘                      │
+│                               │                                  │
+│              ┌────────────────┴────────────────┐                │
+│              │                                 │                │
+│              ▼                                 ▼                │
+│  ┌───────────────────────────┐   ┌───────────────────────────┐ │
+│  │ ChromeDebuggerClient      │   │ CDPDebuggerClient         │ │
+│  │ ─────────────────────────│   │ ─────────────────────────│ │
+│  │ chrome.debugger.attach()  │   │ puppeteer CDPSession      │ │
+│  │ chrome.debugger.sendCmd() │   │ client.send()             │ │
+│  │ chrome.debugger.onEvent   │   │ client.on()               │ │
+│  └───────────────────────────┘   └───────────────────────────┘ │
+│              ▲                                 ▲                │
+│              │                                 │                │
+│         Extension                         Native PAX           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation Steps:**
+
+1. **Define DebuggerClient Interface**
+```typescript
+// src/core/tools/dom/debugger-client.ts
+
+export interface DebuggerClient {
+  attach(target: { tabId: number } | { page: Page }): Promise<void>;
+  detach(): Promise<void>;
+  sendCommand<T>(method: string, params?: object): Promise<T>;
+  onEvent(callback: (method: string, params: any) => void): void;
+  isAttached(): boolean;
+}
+```
+
+2. **Create ChromeDebuggerClient (Extension)**
+```typescript
+// src/extension/tools/dom/chrome-debugger-client.ts
+
+export class ChromeDebuggerClient implements DebuggerClient {
+  private tabId: number | null = null;
+
+  async attach(target: { tabId: number }): Promise<void> {
+    this.tabId = target.tabId;
+    await chrome.debugger.attach({ tabId: this.tabId }, '1.3');
+  }
+
+  async sendCommand<T>(method: string, params?: object): Promise<T> {
+    return await chrome.debugger.sendCommand(
+      { tabId: this.tabId! },
+      method,
+      params
+    ) as T;
+  }
+
+  onEvent(callback: (method: string, params: any) => void): void {
+    chrome.debugger.onEvent.addListener((source, method, params) => {
+      if (source.tabId === this.tabId) {
+        callback(method, params);
+      }
+    });
+  }
+  // ...
+}
+```
+
+3. **Create CDPDebuggerClient (Native)**
+```typescript
+// src/pax/tools/dom/cdp-debugger-client.ts
+
+import { CDPSession, Page } from 'puppeteer-core';
+
+export class CDPDebuggerClient implements DebuggerClient {
+  private client: CDPSession | null = null;
+
+  async attach(target: { page: Page }): Promise<void> {
+    this.client = await target.page.target().createCDPSession();
+  }
+
+  async sendCommand<T>(method: string, params?: object): Promise<T> {
+    return await this.client!.send(method as any, params) as T;
+  }
+
+  onEvent(callback: (method: string, params: any) => void): void {
+    this.client!.on('*', (event: any) => {
+      callback(event.method, event.params);
+    });
+  }
+  // ...
+}
+```
+
+4. **Update DomService to Use DebuggerClient**
+```typescript
+// src/core/tools/dom/DomService.ts
+
+export class DomService {
+  private client: DebuggerClient;
+
+  constructor(client: DebuggerClient) {
+    this.client = client;  // Injected - works with both implementations
+  }
+
+  async getSnapshot(): Promise<DomSnapshot> {
+    // Existing logic unchanged, just use this.client instead of chrome.debugger
+    const { root } = await this.client.sendCommand('DOM.getDocument', { depth: -1 });
+    const { nodes } = await this.client.sendCommand('Accessibility.getFullAXTree');
+    // ... rest of existing logic
+  }
+
+  async click(nodeId: number): Promise<void> {
+    const { model } = await this.client.sendCommand('DOM.getBoxModel', { nodeId });
+    // ... existing click logic
+  }
+}
+```
+
+**Key Benefits:**
+- Existing `DomService`, `DomSnapshot`, serialization pipeline remain **unchanged**
+- Only the debugger communication layer is swapped
+- Unit tests for `DomService` work with mock `DebuggerClient`
+
+#### 4.4.11 Error Handling & Retry Strategy
+
+PAX implements a retry-first approach for browser control failures:
+
+```typescript
+// src/pax/tools/browser/resilient-controller.ts
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+export class ResilientBrowserController {
+  private controller: CDPBrowserController;
+
+  async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`${operationName} failed (attempt ${attempt}/${MAX_RETRIES}):`, error);
+
+        if (attempt < MAX_RETRIES) {
+          // Check if it's a connection issue
+          if (this.isConnectionError(error)) {
+            console.log('Attempting to reconnect...');
+            await this.attemptReconnect();
+          }
+          await this.delay(RETRY_DELAY_MS * attempt);
+        }
+      }
+    }
+
+    // All retries failed - prompt user for manual intervention
+    throw new BrowserControlError(
+      `${operationName} failed after ${MAX_RETRIES} attempts. ` +
+      `Please manually open Chrome with debugging: ` +
+      `chrome --remote-debugging-port=9222`,
+      lastError
+    );
+  }
+
+  private isConnectionError(error: any): boolean {
+    const message = error?.message?.toLowerCase() || '';
+    return (
+      message.includes('not connected') ||
+      message.includes('session closed') ||
+      message.includes('target closed') ||
+      message.includes('connection refused')
+    );
+  }
+
+  private async attemptReconnect(): Promise<void> {
+    try {
+      await this.controller.disconnect();
+      await this.controller.initialize();
+    } catch {
+      // Reconnect failed, will retry the whole operation
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+```
+
+**Error Scenarios & Handling:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Profile copy fails | Retry up to 3 times, then prompt user |
+| Chrome fails to launch | Check if already running, retry, then prompt |
+| CDP connection drops | Auto-reconnect, retry operation |
+| Chrome crashes | Detect via CDP events, re-launch and reconnect |
+| All retries exhausted | Show user-friendly message with manual instructions |
+
+#### 4.4.12 Extension + Native Coexistence
+
+Currently, the Chrome extension (BrowserX) and native app (PAX) are **separate products**:
+
+- **BrowserX Extension**: Controls browser from inside, uses `chrome.debugger`
+- **PAX Native App**: Controls browser from outside, uses CDP with profile copy
+
+**Current Design Decision**: No communication between them. They operate independently.
+
+**Future Consideration**: If both are installed, PAX could potentially communicate with the extension via WebSocket to leverage the extension's direct browser access. This would be designed separately when needed.
+
+#### 4.4.13 Testing Strategy
+
+**Unit Testing Approach:**
+
+1. **Mock DebuggerClient for DomService tests**
+```typescript
+// tests/dom/DomService.test.ts
+
+describe('DomService', () => {
+  let mockClient: jest.Mocked<DebuggerClient>;
+  let domService: DomService;
+
+  beforeEach(() => {
+    mockClient = {
+      attach: jest.fn(),
+      detach: jest.fn(),
+      sendCommand: jest.fn(),
+      onEvent: jest.fn(),
+      isAttached: jest.fn().mockReturnValue(true),
+    };
+    domService = new DomService(mockClient);
+  });
+
+  it('should get DOM snapshot', async () => {
+    mockClient.sendCommand
+      .mockResolvedValueOnce({ root: mockDomTree })
+      .mockResolvedValueOnce({ nodes: mockAxNodes });
+
+    const snapshot = await domService.getSnapshot();
+
+    expect(mockClient.sendCommand).toHaveBeenCalledWith('DOM.getDocument', { depth: -1 });
+    expect(snapshot).toBeDefined();
+  });
+});
+```
+
+2. **Profile Copy tests** - Test on each platform's CI
+3. **Browser Detection tests** - Mock file system and exec calls
+4. **Integration tests** - Test with real Chrome in CI (headless mode)
 
 ### 4.5 MCP Integration
 
@@ -2108,3 +2532,9 @@ Currently designed for single-user. Future multi-user support would require:
 | 2026-02-02 | Profile-copy strategy for browser control | PAX copies essential Chrome profile data (~100-500MB) to separate directory, launches Chrome with debugging enabled. Allows user's Chrome to stay open, PAX Chrome has all login sessions. Copy takes 2-10 seconds. No user action required. |
 | 2026-02-02 | Skip Cache/History in profile copy | Cache can be 1-5GB, not needed for login sessions. Skipping reduces copy time from minutes to seconds. |
 | 2026-02-02 | Use puppeteer-core for CDP | Lightweight (no bundled Chromium), connects to user's Chrome, mature API, good TypeScript support |
+| 2026-02-03 | Edge as fallback on Windows | If Chrome not found on Windows, use Microsoft Edge (also Chromium-based, full CDP support). On macOS, prompt user to install Chrome. |
+| 2026-02-03 | DebuggerClient abstraction layer | Create middle layer between DomService and chrome.debugger/CDP. DomService logic stays unchanged, only swap the communication layer. Enables code reuse and easier testing. |
+| 2026-02-03 | Retry-first error handling | On browser control failures: retry up to 3 times with backoff, attempt auto-reconnect on connection errors. After all retries fail, prompt user with manual instructions. |
+| 2026-02-03 | Extension and PAX are separate products | No communication between BrowserX extension and PAX native app for now. Can be designed later if needed. |
+| 2026-02-03 | No onboarding flow for MVP | First-run experience deferred. Users configure via config file initially. |
+| 2026-02-03 | Unit tests with mock DebuggerClient | Test DomService with mocked DebuggerClient interface. Integration tests with real Chrome in CI (headless). |
