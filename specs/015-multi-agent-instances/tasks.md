@@ -98,15 +98,18 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Add tabId field to AgentSession metadata in src/core/registry/AgentSession.ts
-- [ ] T026 [US3] Implement bindTab(tabId) method in AgentSession in src/core/registry/AgentSession.ts
-- [ ] T027 [US3] Implement unbindTab() method in AgentSession in src/core/registry/AgentSession.ts
-- [ ] T028 [US3] Add tab closure listener per session in AgentSession in src/core/registry/AgentSession.ts
-- [ ] T029 [US3] Implement session termination on tab closure (FR-022) in src/core/registry/AgentSession.ts
-- [ ] T030 [US3] Update tool execution to use session's bound tab in src/core/BrowserxAgent.ts
-- [ ] T031 [P] [US3] Create test for independent tab binding in tests/integration/tab-binding.test.ts
+- [ ] T025 [US3] Add sessionLetter allocation (a, b, c...) in AgentRegistry.createSession() in src/core/registry/AgentRegistry.ts
+- [ ] T026 [US3] Add tabId, tabGroupId, tabGroupName fields to AgentSession metadata in src/core/registry/AgentSession.ts
+- [ ] T027 [US3] Implement createTabGroup() to create Chrome tab group with name browserx_s_<letter> in src/core/registry/AgentSession.ts
+- [ ] T028 [US3] Implement bindTab(tabId) method that moves tab to session's group in src/core/registry/AgentSession.ts
+- [ ] T029 [US3] Implement unbindTab() method in AgentSession in src/core/registry/AgentSession.ts
+- [ ] T030 [US3] Add tab closure listener per session in AgentSession in src/core/registry/AgentSession.ts
+- [ ] T031 [US3] Implement session termination on tab closure (FR-022) in src/core/registry/AgentSession.ts
+- [ ] T032 [US3] Clean up tab group on session termination in src/core/registry/AgentSession.ts
+- [ ] T033 [US3] Update tool execution to use session's bound tab in src/core/BrowserxAgent.ts
+- [ ] T034 [P] [US3] Create test for independent tab binding and tab groups in tests/integration/tab-binding.test.ts
 
-**Checkpoint**: Multiple sessions can bind to different tabs without conflicts; tab closure terminates only that session
+**Checkpoint**: Multiple sessions have separate tab groups (browserx_s_a, browserx_s_b, etc.); tab closure terminates only that session
 
 ---
 
@@ -118,13 +121,13 @@
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Implement persistSession() method to save SessionMetadata to IndexedDB in src/core/registry/AgentSession.ts
-- [ ] T033 [US4] Implement loadPersistedSessions() in AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T034 [US4] Add resumeSession(sessionId) method in AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T035 [US4] Persist session on state changes automatically in src/core/registry/AgentSession.ts
-- [ ] T036 [US4] Load and resume sessions on service worker startup in src/background/service-worker.ts
-- [ ] T037 [US4] Handle orphaned session cleanup (no connected clients) in src/core/registry/AgentRegistry.ts
-- [ ] T038 [P] [US4] Create test for session persistence and resumption in tests/integration/session-persistence.test.ts
+- [ ] T035 [US4] Implement persistSession() method to save SessionMetadata to IndexedDB in src/core/registry/AgentSession.ts
+- [ ] T036 [US4] Implement loadPersistedSessions() in AgentRegistry in src/core/registry/AgentRegistry.ts
+- [ ] T037 [US4] Add resumeSession(sessionId) method in AgentRegistry in src/core/registry/AgentRegistry.ts
+- [ ] T038 [US4] Persist session on state changes automatically in src/core/registry/AgentSession.ts
+- [ ] T039 [US4] Load and resume sessions on service worker startup in src/background/service-worker.ts
+- [ ] T040 [US4] Handle orphaned session cleanup (no connected clients) in src/core/registry/AgentRegistry.ts
+- [ ] T041 [P] [US4] Create test for session persistence and resumption in tests/integration/session-persistence.test.ts
 
 **Checkpoint**: Sessions survive service worker restarts with full conversation history preserved
 
@@ -138,12 +141,12 @@
 
 ### Implementation for User Story 5
 
-- [ ] T039 [US5] Add maxConcurrent configuration to AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T040 [US5] Implement canCreateSession() check in AgentRegistry in src/core/registry/AgentRegistry.ts
-- [ ] T041 [US5] Add getMaxConcurrent() and setMaxConcurrent() methods in src/core/registry/AgentRegistry.ts
-- [ ] T042 [US5] Throw error when session limit reached in createSession() in src/core/registry/AgentRegistry.ts
-- [ ] T043 [US5] Add session limit setting to extension settings UI in src/sidepanel/Settings.svelte
-- [ ] T044 [P] [US5] Create test for concurrent limit enforcement in tests/unit/registry/AgentRegistry.test.ts
+- [ ] T042 [US5] Add maxConcurrent configuration to AgentRegistry in src/core/registry/AgentRegistry.ts
+- [ ] T043 [US5] Implement canCreateSession() check in AgentRegistry in src/core/registry/AgentRegistry.ts
+- [ ] T044 [US5] Add getMaxConcurrent() and setMaxConcurrent() methods in src/core/registry/AgentRegistry.ts
+- [ ] T045 [US5] Throw error when session limit reached in createSession() in src/core/registry/AgentRegistry.ts
+- [ ] T046 [US5] Add session limit setting to extension settings UI in src/sidepanel/Settings.svelte
+- [ ] T047 [P] [US5] Create test for concurrent limit enforcement in tests/unit/registry/AgentRegistry.test.ts
 
 **Checkpoint**: System enforces configurable session limits and provides appropriate feedback
 
@@ -157,12 +160,12 @@
 
 ### Implementation for User Story 6
 
-- [ ] T045 [US6] Expose listSessions() via message API in src/background/service-worker.ts
-- [ ] T046 [US6] Add getActiveCount() exposure via message API in src/background/service-worker.ts
-- [ ] T047 [US6] Update SchedulerPopup to fetch and display session list in src/sidepanel/SchedulerPopup.svelte
-- [ ] T048 [US6] Add real-time status updates using session lifecycle events in src/sidepanel/SchedulerPopup.svelte
-- [ ] T049 [US6] Display session states (initializing, active, idle) in SchedulerPopup in src/sidepanel/SchedulerPopup.svelte
-- [ ] T050 [US6] Show queue position for sessions waiting due to capacity limits in src/sidepanel/SchedulerPopup.svelte
+- [ ] T048 [US6] Expose listSessions() via message API in src/background/service-worker.ts
+- [ ] T049 [US6] Add getActiveCount() exposure via message API in src/background/service-worker.ts
+- [ ] T050 [US6] Update SchedulerPopup to fetch and display session list in src/sidepanel/SchedulerPopup.svelte
+- [ ] T051 [US6] Add real-time status updates using session lifecycle events in src/sidepanel/SchedulerPopup.svelte
+- [ ] T052 [US6] Display session states (initializing, active, idle) in SchedulerPopup in src/sidepanel/SchedulerPopup.svelte
+- [ ] T053 [US6] Show queue position for sessions waiting due to capacity limits in src/sidepanel/SchedulerPopup.svelte
 
 **Checkpoint**: Users can view all session statuses in real-time via scheduler popup
 
@@ -172,11 +175,11 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T051 [P] Code cleanup: Remove deprecated singleton agent references across codebase
-- [ ] T052 [P] Add JSDoc documentation to AgentRegistry and AgentSession classes
-- [ ] T053 Performance validation: Verify <100ms overhead with concurrent sessions (SC-006)
-- [ ] T054 Error handling: Ensure graceful degradation when sessions fail
-- [ ] T055 Run quickstart.md validation scenarios manually
+- [ ] T054 [P] Code cleanup: Remove deprecated singleton agent references across codebase
+- [ ] T055 [P] Add JSDoc documentation to AgentRegistry and AgentSession classes
+- [ ] T056 Performance validation: Verify <100ms overhead with concurrent sessions (SC-006)
+- [ ] T057 Error handling: Ensure graceful degradation when sessions fail
+- [ ] T058 Run quickstart.md validation scenarios manually
 
 ---
 
@@ -289,15 +292,15 @@ Setup → Foundational → US2 (Registry) → US1 (Parallel) = MVP
 | 2 | Foundational | - | 6 | 2 |
 | 3 | US2: Agent Registry | P1 | 7 | 1 |
 | 4 | US1: Parallel Execution | P1 | 8 | 1 |
-| 5 | US3: Tab Binding | P2 | 7 | 1 |
+| 5 | US3: Tab Binding + Tab Groups | P2 | 10 | 1 |
 | 6 | US4: Persistence | P2 | 7 | 1 |
 | 7 | US5: Concurrent Limits | P3 | 6 | 1 |
 | 8 | US6: Status Visibility | P3 | 6 | 0 |
 | 9 | Polish | - | 5 | 2 |
 
-**Total**: 55 tasks
+**Total**: 58 tasks
 **MVP Scope**: Phases 1-4 (24 tasks) - Registry + Parallel Execution
-**Full Feature**: All phases (55 tasks)
+**Full Feature**: All phases (58 tasks)
 
 ---
 

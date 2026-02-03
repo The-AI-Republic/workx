@@ -65,10 +65,13 @@ Wrapper around BrowserxAgent providing lifecycle management.
 | Field | Type | Description |
 |-------|------|-------------|
 | `sessionId` | `string` | Unique identifier (UUID) |
+| `sessionLetter` | `string` | Single letter identifier (a, b, c...) for tab group naming |
 | `state` | `SessionState` | Current lifecycle state |
 | `agent` | `BrowserxAgent` | Underlying agent instance |
 | `metadata` | `SessionMetadata` | Persisted session info |
 | `tabId` | `number \| null` | Bound browser tab |
+| `tabGroupId` | `number \| null` | Chrome tab group ID for this session |
+| `tabGroupName` | `string` | Tab group name: `browserx_s_<letter>` |
 | `createdAt` | `number` | Creation timestamp (ms) |
 | `lastActivityAt` | `number` | Last activity timestamp (ms) |
 
@@ -125,11 +128,14 @@ Persisted information for session resumption.
 | Field | Type | Description |
 |-------|------|-------------|
 | `sessionId` | `string` | Unique identifier |
+| `sessionLetter` | `string` | Single letter identifier (a, b, c...) for tab group naming |
 | `conversationId` | `string` | Conversation ID for history lookup |
 | `type` | `SessionType` | 'primary' or 'scheduled' |
 | `createdAt` | `number` | Creation timestamp (ms) |
 | `lastActivityAt` | `number` | Last activity timestamp (ms) |
 | `tabId` | `number \| null` | Last bound tab ID |
+| `tabGroupId` | `number \| null` | Chrome tab group ID |
+| `tabGroupName` | `string` | Tab group name: `browserx_s_<letter>` |
 | `scheduledTaskId` | `string \| null` | Associated scheduled task (if any) |
 
 ### Session Types

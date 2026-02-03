@@ -27,6 +27,7 @@ The current browserx architecture uses a **singleton BrowserxAgent pattern** in 
 - Q: What lifecycle states should a session have? → A: 4 states: `initializing` (session being created), `active` (task running), `idle` (awaiting input), `terminated` (session ended). Note: Tasks within a session have their own lifecycle; session states apply to the session container, not individual tasks.
 - Q: What happens when a session's bound tab is closed during execution? → A: Terminate session immediately and mark the task as failed.
 - Q: What is the default maximum concurrent session limit? → A: Default 3 (1 user session + 2 scheduled tasks or edge cases), configurable by user.
+- Q: How to visually distinguish tabs belonging to different sessions? → A: Each session gets its own Chrome tab group with naming convention `browserx_s_<letter>` (e.g., `browserx_s_a`, `browserx_s_b`, `browserx_s_c`). Tab groups can also have distinct colors for additional visual distinction.
 
 ## User Scenarios & Testing *(mandatory)*
 

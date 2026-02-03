@@ -52,6 +52,9 @@ export interface SessionMetadata {
   /** Unique session identifier */
   sessionId: string;
 
+  /** Single letter identifier (a, b, c...) for tab group naming */
+  sessionLetter: string;
+
   /** Conversation ID for history lookup */
   conversationId: string;
 
@@ -69,6 +72,12 @@ export interface SessionMetadata {
 
   /** Bound browser tab ID (if any) */
   tabId: number | null;
+
+  /** Chrome tab group ID for this session */
+  tabGroupId: number | null;
+
+  /** Tab group name: browserx_s_<letter> */
+  tabGroupName: string;
 
   /** Associated scheduled task ID (if any) */
   scheduledTaskId: string | null;
