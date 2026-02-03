@@ -196,6 +196,9 @@
   "Data_Extraction_Tool": {
     "message": "ابزار استخراج داده"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "روزهای باقی‌مانده تا انقضا"
   },
@@ -363,6 +366,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "فهرست مبدأهای مجاز (هر کدام در یک خط). از کاراکترهای جایگزین (*) پشتیبانی می‌کند."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "در حال بارگذاری اعتبار..."
   },
@@ -380,6 +386,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "برای دریافت اعتبار رایگان وارد شوید"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "اعتبار باقیمانده کم"
@@ -410,6 +419,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "حداکثر زمان (به میلی‌ثانیه) اجرای ابزار قبل از تایم‌اوت (پیش‌فرض: ۳۰۰۰۰)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "پیکربندی مدل"
@@ -453,6 +465,12 @@
   "No_approval_history_yet": {
     "message": "هنوز تاریخچه‌ای از تأییدها ثبت نشده است."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "هیچ زبانه‌ای موجود نیست"
   },
@@ -480,6 +498,9 @@
   "Parameter_Modifications": {
     "message": "تغییرات پارامترها"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "انجام اقدامات صفحه (اسکرول، اسکرین‌شات، انتظار)"
   },
@@ -500,6 +521,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "پرس‌وجو و دستکاری DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "شروع سریع"
@@ -543,11 +573,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "روی هر متنی کلیک راست کنید تا با Browserx آن را توضیح یا بهبود دهید"
   },
   "Rollout_Expiration": {
     "message": "انقضای انتشار"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "سیاست Sandbox"
@@ -561,6 +600,15 @@
   "Saving": {
     "message": "در حال ذخیره‌سازی..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "امنیت و حریم خصوصی"
   },
@@ -573,8 +621,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "زبان دلخواه خود را برای رابط کاربری انتخاب کنید"
   },
-  "Send_the_message": {
-    "message": "ارسال پیام"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "سطح سرویس"
@@ -626,6 +674,12 @@
   },
   "Tab_Tool": {
     "message": "ابزار برگه"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "ترمینال"
@@ -684,6 +738,9 @@
   "Unsaved_Changes": {
     "message": "تغییرات ذخیره‌نشده"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -728,6 +785,9 @@
   },
   "View_Chat_History": {
     "message": "مشاهده تاریخچه چت"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "تحلیل بصری محتوای صفحه و چیدمان"

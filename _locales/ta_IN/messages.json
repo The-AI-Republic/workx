@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "தரவு பிரித்தெடுப்புக் கருவி"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "காலாவதியாகும் வரை நாட்கள்"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "அனுமதிக்கப்பட்ட மூலங்களின் பட்டியல் (ஒவ்வொரு வரியிலும் ஒன்று). வைல்ட்கார்ட்கள் (*) ஆதரிக்கப்படுகின்றன."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "கிரெடிட்கள் ஏற்றுகிறது..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "இலவச கிரெடிட்களை பெற உள்நுழையவும்"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "மீதமுள்ள கிரெடிட்கள் குறைந்துள்ளன"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "நேரம் முடிவடையும்முன் ஒரு கருவி இயங்கக்கூடிய அதிகபட்ச நேரம் (மில்லிவிநாடிகள்) (இயல்புநிலை: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "மாதிரி கட்டமைப்பு"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "இன்னும் ஒப்புதல் வரலாறு இல்லை."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "தாவல்கள் கிடைக்கவில்லை"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "அளவுரு மாற்றங்கள்"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "பக்க செயல்களைச் செய்யவும் (சுருட்டல், திரைபிடிப்பு, காத்திரு)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM (Document Object Model) ஐ வினவி கையாளவும்"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "விரைவு தொடக்கம்"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "எந்த உரையிலும் வலது-கிளிக் செய்து BrowserX மூலம் விளக்கவும் அல்லது மேம்படுத்தவும்"
   },
   "Rollout_Expiration": {
     "message": "படிப்படியான வெளியீட்டுக் காலாவதி"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandbox கொள்கை"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "சேமிக்கப்படுகிறது..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "பாதுகாப்பும் தனியுரிமையும்"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "இடைமுகத்திற்கான உங்கள் விருப்ப மொழியைத் தேர்ந்தெடுக்கவும்"
   },
-  "Send_the_message": {
-    "message": "செய்தியை அனுப்பவும்"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "சேவை நிலை"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "தாவல் கருவி"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "டெர்மினல்"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "சேமிக்கப்படாத மாற்றங்கள்"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Chat வரலாற்றைக் காண்க"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "பக்க உள்ளடக்கம் மற்றும் அமைப்பின் காட்சி பகுப்பாய்வு"

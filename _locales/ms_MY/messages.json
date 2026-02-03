@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Alat Pengekstrak Data"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Hari sehingga tamat"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Senarai asal-usul yang dibenarkan (satu per baris). Menyokong wildcards (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Memuatkan kredit..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Log masuk untuk mendapatkan kredit percuma"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Baki kredit rendah"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Masa maksimum (dalam milisaat) alat boleh dijalankan sebelum timeout (lalai: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Konfigurasi Model"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Tiada sejarah kelulusan lagi."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Tiada tab tersedia"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Pengubahsuaian Parameter"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Lakukan tindakan halaman (tatal, tangkapan skrin, tunggu)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Kueri dan ubah suai DOM (Model Objek Dokumen)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Mula Cepat"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Klik kanan pada mana-mana teks untuk menjelaskan atau memperbaikinya dengan Browserx"
   },
   "Rollout_Expiration": {
     "message": "Tarikh Luput Pelancaran"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Dasar Sandbox"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Menyimpan..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Keselamatan & Privasi"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Pilih bahasa pilihan anda untuk antara muka pengguna"
   },
-  "Send_the_message": {
-    "message": "Hantar mesej"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Tahap Perkhidmatan"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Alat Tab"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminal"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Perubahan Tidak Disimpan"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Lihat Log Sembang"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Analisis visual kandungan dan susun atur halaman"

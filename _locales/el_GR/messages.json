@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Εργαλείο Εξαγωγής Δεδομένων"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Ημέρες μέχρι τη λήξη"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Λίστα επιτρεπόμενων προελεύσεων (μία ανά γραμμή). Υποστηρίζει wildcards (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Φόρτωση πιστώσεων..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Συνδεθείτε για να λάβετε δωρεάν μονάδες"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Χαμηλό υπόλοιπο πιστώσεων"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Μέγιστος χρόνος (σε χιλιοστά του δευτερολέπτου) που μπορεί να εκτελείται ένα εργαλείο πριν λήξει το χρονικό όριο (προεπιλογή: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Διαμόρφωση μοντέλου"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Δεν υπάρχει ακόμη ιστορικό εγκρίσεων."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Δεν υπάρχουν διαθέσιμες καρτέλες"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Τροποποιήσεις Παραμέτρων"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Εκτέλεση ενεργειών σελίδας (κύλιση, στιγμιότυπο, αναμονή)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Ερώτημα και τροποποίηση του DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Γρήγορη Έναρξη"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Κάντε δεξί κλικ σε οποιοδήποτε κείμενο για να το εξηγήσετε ή να το βελτιώσετε με το Browserx"
   },
   "Rollout_Expiration": {
     "message": "Λήξη σταδιακής κυκλοφορίας"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Πολιτική δοκιμαστικού περιβάλλοντος"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Αποθήκευση..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Ασφάλεια & Απόρρητο"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Επιλέξτε την προτιμώμενη γλώσσα για τη διεπαφή"
   },
-  "Send_the_message": {
-    "message": "Αποστολή μηνύματος"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Επίπεδο Υπηρεσίας"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Εργαλείο Καρτέλας"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Τερματικό"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Μη αποθηκευμένες αλλαγές"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Προβολή ιστορικού συνομιλίας"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Οπτική ανάλυση περιεχομένου και διάταξης σελίδας"

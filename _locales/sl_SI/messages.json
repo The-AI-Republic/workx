@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Orodje za izvlečenje podatkov"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Dnevi do izteka"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Seznam dovoljenih izvorov (ena na vrstico). Podpira nadomestne znake (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Nalaganje kreditov..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Prijavite se za brezplačne kredite"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Število kreditov je nizko"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Največji čas (v milisekundah), ki ga lahko orodje izvaja, preden se prekine (privzeto: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Konfiguracija modela"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Zgodovina odobritev še ni na voljo."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Ni razpoložljivih zavihkov"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Spremembe parametrov"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Izvedi dejanja na strani (pomikanje, posnetek zaslona, čakanje)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Poizvedujte in manipulirajte z DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Hiter začetek"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Z desnim klikom na poljubno besedilo ga razložite ali izboljšajte z Browserx"
   },
   "Rollout_Expiration": {
     "message": "Rok veljavnosti uvajanja"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Pravila sandboxa"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Shranjevanje..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Varnost in zasebnost"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Izberite želeni jezik za uporabniški vmesnik"
   },
-  "Send_the_message": {
-    "message": "Pošlji sporočilo"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Raven storitve"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Orodje Zavihki"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminal"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Neshranjene spremembe"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Ogled zgodovine klepeta"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Vizualna analiza vsebine in postavitve strani"

@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "เครื่องมือดึงข้อมูล"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "วันก่อนหมดอายุ"
   },
@@ -363,6 +366,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "รายการต้นทางที่อนุญาต (หนึ่งต่อบรรทัด) รองรับไวลด์การ์ด (*)"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "กำลังโหลดเครดิต..."
   },
@@ -380,6 +386,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "เข้าสู่ระบบเพื่อรับเครดิตฟรี"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "เครดิตเหลือน้อย"
@@ -410,6 +419,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "เวลาสูงสุด (มิลลิวินาที) ที่เครื่องมือทำงานก่อนหมดเวลา (ค่าเริ่มต้น: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "การกำหนดค่าโมเดล"
@@ -453,6 +465,12 @@
   "No_approval_history_yet": {
     "message": "ยังไม่มีประวัติการอนุมัติ"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "ไม่มีแท็บพร้อมใช้งาน"
   },
@@ -480,6 +498,9 @@
   "Parameter_Modifications": {
     "message": "การแก้ไขพารามิเตอร์"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "ทำการดำเนินการกับหน้า (เลื่อน, จับภาพหน้าจอ, รอ)"
   },
@@ -500,6 +521,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "ค้นหาและจัดการDOM(Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "เริ่มต้นอย่างรวดเร็ว"
@@ -543,11 +573,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "คลิกขวาที่ข้อความใดก็ได้เพื่ออธิบายหรือปรับปรุงด้วย Browserx"
   },
   "Rollout_Expiration": {
     "message": "วันหมดอายุการนำออกใช้"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "นโยบายแซนด์บ็อกซ์"
@@ -561,6 +600,15 @@
   "Saving": {
     "message": "กำลังบันทึก..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "ความปลอดภัยและความเป็นส่วนตัว"
   },
@@ -573,8 +621,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "เลือกภาษาที่คุณต้องการสำหรับส่วนติดต่อผู้ใช้"
   },
-  "Send_the_message": {
-    "message": "ส่งข้อความ"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "ระดับบริการ"
@@ -626,6 +674,12 @@
   },
   "Tab_Tool": {
     "message": "เครื่องมือแท็บ"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "เทอร์มินัล"
@@ -684,6 +738,9 @@
   "Unsaved_Changes": {
     "message": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -728,6 +785,9 @@
   },
   "View_Chat_History": {
     "message": "ดูประวัติแชท"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "การวิเคราะห์ภาพของเนื้อหาและการจัดหน้า"

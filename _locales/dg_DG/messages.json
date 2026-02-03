@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "much data extraction tool wow"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "much days until expiration wow"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "such list of allowed origins (one per line). supports wildcards (*) wow"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "much loading credits... wow"
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "such login to get free credits wow"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "very low credits remaining wow"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "such maximum time (in milliseconds) a tool can run before timeout (default: 30000) wow"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "such model config wow"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "such no approval history yet wow."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "no tabs available wow"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "such parameter modifications wow"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "do page actions (scroll, screenshot, wait) wow"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "query and manipulate DOM (Document Object Model) wow"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "much quick start wow"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "so right-click on any text to explain or improve it with Browserx wow"
   },
   "Rollout_Expiration": {
     "message": "much rollout expiration wow"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "much sandbox policy wow"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "much saving... wow"
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "much security & privacy wow"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "so select your preferred language for the interface wow"
   },
-  "Send_the_message": {
-    "message": "such send the message wow"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "much service tier wow"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "such tab tool wow"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "such terminal wow"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "such unsaved changes wow"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "much view chat history wow"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "very visual analysis of page content and layout wow"

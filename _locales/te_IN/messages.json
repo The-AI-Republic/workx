@@ -196,6 +196,9 @@
   "Data_Extraction_Tool": {
     "message": "డేటా ఎక్స్‌ట్రాక్షన్ టూల్"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "గడువు ముగిసే వరకు రోజులు"
   },
@@ -363,6 +366,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "అనుమతించబడిన మూలాల జాబితా (ప్రతి పంక్తిలో ఒకటి). వైల్డ్‌కార్డ్స్ (*) ను మద్దతు ఇస్తుంది."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "క్రెడిట్లు లోడ్ అవుతున్నాయి..."
   },
@@ -380,6 +386,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "ఉచిత క్రెడిట్లు పొందడానికి లాగిన్ చేయండి"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "మిగిలిన క్రెడిట్లు తక్కువగా ఉన్నాయి"
@@ -410,6 +419,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "సాధనం పనిచేయగల గరిష్ట సమయం (మిల్లీసెకన్లలో), టైమౌట్ ముందు (డిఫాల్ట్: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "మోడల్ కాన్ఫిగ్"
@@ -453,6 +465,12 @@
   "No_approval_history_yet": {
     "message": "ఇంకా ఆమోద చరిత్ర లేదు."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "ట్యాబ్‌లు అందుబాటులో లేవు"
   },
@@ -480,6 +498,9 @@
   "Parameter_Modifications": {
     "message": "పారామీటర్ సవరణలు"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "పేజీ చర్యలను అమలు చేయండి (స్క్రోల్, స్క్రీన్‌షాట్, వేచివుండటం)"
   },
@@ -500,6 +521,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM (డాక్యుమెంట్ ఆబ్జెక్ట్ మోడల్) ను ప్రశ్నించండి మరియు మార్చండి"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "త్వరిత ప్రారంభం"
@@ -543,11 +573,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "ఏదైనా పాఠ్యంపై రైట్‑క్లిక్ చేసి Browserx ద్వారా వివరణ లేదా మెరుగుపరచండి"
   },
   "Rollout_Expiration": {
     "message": "రోలౌట్ గడువు"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "సాండ్‌బాక్స్ విధానం"
@@ -561,6 +600,15 @@
   "Saving": {
     "message": "భద్రపరుస్తోంది..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "భద్రత & గోప్యత"
   },
@@ -573,8 +621,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "ఇంటర్ఫేస్ కోసం మీ ఇష్టమైన భాషను ఎంచుకోండి."
   },
-  "Send_the_message": {
-    "message": "సందేశాన్ని పంపండి"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "సేవా స్థాయి"
@@ -626,6 +674,12 @@
   },
   "Tab_Tool": {
     "message": "ట్యాబ్ టూల్"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "టెర్మినల్"
@@ -684,6 +738,9 @@
   "Unsaved_Changes": {
     "message": "సేవ్ చేయని మార్పులు"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -728,6 +785,9 @@
   },
   "View_Chat_History": {
     "message": "చాట్ చరిత్రను చూడండి"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "పేజీ కంటెంట్ మరియు లేఅవుట్ యొక్క విజువల్ విశ్లేషణ"

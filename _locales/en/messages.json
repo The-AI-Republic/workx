@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Data Extraction Tool"
   },
+  "Date": {
+    "message": "Date"
+  },
   "Days_until_expiration": {
     "message": "Days until expiration"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "List of allowed origins (one per line). Supports wildcards (*)."
   },
+  "Load_More": {
+    "message": "Load More"
+  },
   "Loading_credits": {
     "message": "Loading credits..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Login to get free credits"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "Long-press the send button to schedule a task"
   },
   "Low_credits_remaining": {
     "message": "Low credits remaining"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximum time (in milliseconds) a tool can run before timeout (default: 30000)"
+  },
+  "Missed": {
+    "message": "Missed"
   },
   "Model_Config": {
     "message": "Model Config"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "No approval history yet."
   },
+  "No_completed_tasks_yet": {
+    "message": "No completed tasks yet"
+  },
+  "No_scheduled_tasks": {
+    "message": "No scheduled tasks"
+  },
   "No_tabs_available": {
     "message": "No tabs available"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Parameter Modifications"
   },
+  "Pause_Queue": {
+    "message": "Pause Queue"
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Perform page actions (scroll, screenshot, wait)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Query and manipulate the DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": "Queue is paused"
+  },
+  "Queued": {
+    "message": "Queued"
+  },
+  "Quick_Schedule": {
+    "message": "Quick Schedule"
   },
   "Quick_Start": {
     "message": "Quick Start"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Request timeout in milliseconds (5000-120000)"
   },
+  "Resume_Queue": {
+    "message": "Resume Queue"
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Right-click on any text to explain or improve it with Browserx"
   },
   "Rollout_Expiration": {
     "message": "Rollout Expiration"
+  },
+  "Run_Now": {
+    "message": "Run Now"
+  },
+  "Running": {
+    "message": "Running"
   },
   "Sandbox_Policy": {
     "message": "Sandbox Policy"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Saving..."
   },
+  "Schedule": {
+    "message": "Schedule"
+  },
+  "Schedule_Task": {
+    "message": "Schedule Task"
+  },
+  "Scheduled_Tasks": {
+    "message": "Scheduled Tasks"
+  },
   "Security_Privacy": {
     "message": "Security & Privacy"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Select your preferred language for the interface"
   },
-  "Send_the_message": {
-    "message": "Send the message"
+  "Send_hold_to_schedule": {
+    "message": "Send (hold to schedule)"
   },
   "Service_Tier": {
     "message": "Service Tier"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Tab Tool"
+  },
+  "Task": {
+    "message": "Task"
+  },
+  "Task_History": {
+    "message": "Task History"
   },
   "Terminal": {
     "message": "Terminal"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Unsaved Changes"
   },
+  "Upcoming": {
+    "message": "Upcoming"
+  },
   "Update": {
     "message": "Update"
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "View Chat History"
+  },
+  "View_History": {
+    "message": "View History"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visual analysis of page content and layout"

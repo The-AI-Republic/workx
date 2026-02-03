@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "数据提取工具"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "距到期天数"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "允许的来源列表（每行一个）。支持通配符 (*)。"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "加载积分..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "登录获取免费积分"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "剩余积分较少"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "工具运行超时的最长时间（单位：毫秒，默认：30000）"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "模型配置"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "暂无审批记录。"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "暂无可用标签页"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "参数修改"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "执行页面操作（滚动、截图、等待）"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "查询并操作 DOM（文档对象模型）"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "快速入门"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "右键单击任意文本，以使用 Browserx 进行解释或改进"
   },
   "Rollout_Expiration": {
     "message": "设置发布过期时间"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "沙盒策略"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "保存中..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "安全与隐私"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "选择界面的首选语言"
   },
-  "Send_the_message": {
-    "message": "发送消息"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "服务级别"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "标签页工具"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "终端"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "未保存的更改"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "查看聊天记录"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "页面内容和布局的可视化分析"

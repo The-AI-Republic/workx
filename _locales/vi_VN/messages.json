@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Công cụ trích xuất dữ liệu"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Số ngày còn lại"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Danh sách các nguồn được phép (một mỗi dòng). Hỗ trợ ký tự đại diện (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Đang tải tín dụng..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Đăng nhập để nhận tín dụng miễn phí"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Số tín dụng còn lại thấp"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Thời gian tối đa (ms) một công cụ có thể chạy trước khi hết giờ (mặc định: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Cấu hình mô hình"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Chưa có lịch sử phê duyệt."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Không có tab nào khả dụng"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Sửa đổi Tham số"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Thực hiện các hành động trên trang (cuộn, chụp màn hình, chờ)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Truy vấn và thao tác DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Bắt đầu nhanh"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Nhấp chuột phải vào bất kỳ văn bản nào để giải thích hoặc cải thiện bằng Browserx"
   },
   "Rollout_Expiration": {
     "message": "Thời hạn Rollout"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Chính sách Sandbox"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Đang lưu..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Bảo mật & Riêng tư"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Chọn ngôn ngữ ưu tiên cho giao diện"
   },
-  "Send_the_message": {
-    "message": "Gửi tin nhắn"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Cấp dịch vụ"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Công cụ Tab"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminal"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Thay đổi chưa lưu"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Xem lịch sử trò chuyện"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Phân tích trực quan nội dung và bố cục trang"

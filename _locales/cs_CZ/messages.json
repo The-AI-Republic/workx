@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Nástroj pro extrakci dat"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Dny do vypršení platnosti"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Seznam povolených zdrojů (jeden na řádek). Podporuje zástupné znaky (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Načítání kreditů..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Přihlaste se a získejte bezplatné kredity"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Zbývá málo kreditů"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximální čas (v milisekundách), po který může nástroj běžet před vypršením časového limitu (výchozí: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Konfigurace modelu"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Zatím žádná historie schválení."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Žádné karty nejsou k dispozici"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Úpravy parametrů"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Provádět akce na stránce (posun, snímek obrazovky, čekání)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Dotazovat a manipulovat s DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Rychlý start"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Klikněte pravým tlačítkem na libovolný text a vysvětlete nebo vylepšete jej pomocí Browserx"
   },
   "Rollout_Expiration": {
     "message": "Vypršení nasazení"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Politika sandboxu"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Ukládá se..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Zabezpečení a soukromí"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Vyberte preferovaný jazyk rozhraní"
   },
-  "Send_the_message": {
-    "message": "Odeslat zprávu"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Úroveň služby"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Nástroj karet"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminál"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Neuložené změny"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Zobrazit historii chatu"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Vizualizovaná analýza obsahu a rozložení stránky"

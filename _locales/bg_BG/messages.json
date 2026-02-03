@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Инструмент за извличане на данни"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Дни до изтичане"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Списък с разрешени източници (по един на ред). Поддържа шаблони (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Зареждане на кредити..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Влезте, за да получите безплатни кредити"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Остават малко кредити"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Максимално време (в милисекунди), за което инструментът може да работи преди таймаут (по подразбиране: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Конфигурация на модела"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Все още няма история на одобрения."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Няма налични раздели"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Модификации на параметри"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Изпълнение на действия върху страница (превъртане, екранна снимка, изчакване)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Запитване и манипулиране на DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Бърз старт"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Щракнете с десния бутон върху всеки текст, за да го обясните или подобрите с Browserx"
   },
   "Rollout_Expiration": {
     "message": "Изтичане на разгръщането"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Политика за сигурна среда (Sandbox)"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Записване..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Сигурност и поверителност"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Изберете предпочитания език за интерфейса"
   },
-  "Send_the_message": {
-    "message": "Изпрати съобщението"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Ниво на услугата"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Инструмент за раздели"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Терминал"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Незаписани промени"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Преглед на историята на чата"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Визуален анализ на съдържанието и оформлението на страницата"

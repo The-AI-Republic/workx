@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "כלי חילוץ נתונים"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "ימים עד תפוגה"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "רשימת מקורות מורשים (אחד בכל שורה). תומכת בתווי כללה (*)"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "טוען קרדיטים..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "התחבר לקבלת קרדיטים חינם"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "נותרו קרדיטים מעטים"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "זמן מרבי (במילישניות) שבו כלי יכול לפעול לפני timeout (ברירת מחדל: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "הגדרת מודל"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "עדיין אין היסטוריית אישורים."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "אין לשוניות זמינות"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "שינויים בפרמטרים"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "בצע פעולות בדף (גלילה, צילום מסך, המתנה)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "שאילתה ושינוי ה‑DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "התחלה מהירה"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "לחץ לחיצה ימנית על כל טקסט כדי לקבל הסבר או לשפר אותו באמצעות Browserx"
   },
   "Rollout_Expiration": {
     "message": "תפוגת פריסה"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "מדיניות ארגז חול"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "שומר..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "אבטחה ופרטיות"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "בחר את השפה המועדפת עליך לממשק"
   },
-  "Send_the_message": {
-    "message": "שלח את ההודעה"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "רמת שירות"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "כלי לשוניות"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "טרמינל"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "שינויים שלא נשמרו"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "צפייה בהיסטוריית הצ'אט"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "ניתוח חזותי של תוכן ופריסת העמוד"

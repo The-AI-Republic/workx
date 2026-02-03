@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "डेटा एक्सट्रैक्शन टूल"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "समाप्ति तक के दिन"
   },
@@ -363,6 +366,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "अनुमत ओरिजिन्स की सूची (एक प्रति पंक्ति)। वाइल्डकार्ड (*) सपोर्टेड हैं।"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "क्रेडिट लोड हो रहे हैं..."
   },
@@ -380,6 +386,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "नि:शुल्क क्रेडिट पाने के लिए लॉगिन करें"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "शेष क्रेडिट कम है"
@@ -410,6 +419,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "टूल के टाइमआउट से पहले चलने का अधिकतम समय (मिलीसेकंड में) (डिफ़ॉल्ट: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "मॉडल कॉन्फ़िग"
@@ -453,6 +465,12 @@
   "No_approval_history_yet": {
     "message": "अभी तक कोई अनुमोदन इतिहास नहीं है।"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "कोई टैब उपलब्ध नहीं हैं"
   },
@@ -480,6 +498,9 @@
   "Parameter_Modifications": {
     "message": "पैरामीटर संशोधन"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "पेज एक्शन करें (स्क्रॉल, स्क्रीनशॉट, प्रतीक्षा)"
   },
@@ -500,6 +521,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM (डॉक्यूमेंट ऑब्जेक्ट मॉडल) को क्वेरी और संशोधित करें।"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "त्वरित प्रारंभ"
@@ -543,11 +573,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "किसी भी टेक्स्ट पर राइट‑क्लिक करके Browserx से समझाएँ या सुधारें"
   },
   "Rollout_Expiration": {
     "message": "रोलआउट समाप्ति"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "सैंडबॉक्स नीति"
@@ -561,6 +600,15 @@
   "Saving": {
     "message": "सहेजा जा रहा है..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "सुरक्षा और गोपनीयता"
   },
@@ -573,8 +621,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "इंटरफ़ेस के लिए अपनी पसंदीदा भाषा चुनें"
   },
-  "Send_the_message": {
-    "message": "संदेश भेजें"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "सेवा स्तर"
@@ -626,6 +674,12 @@
   },
   "Tab_Tool": {
     "message": "टैब टूल"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "टर्मिनल"
@@ -684,6 +738,9 @@
   "Unsaved_Changes": {
     "message": "असहेजे परिवर्तन"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -728,6 +785,9 @@
   },
   "View_Chat_History": {
     "message": "चैट इतिहास देखें"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "पृष्ठ सामग्री और लेआउट का दृश्य विश्लेषण"

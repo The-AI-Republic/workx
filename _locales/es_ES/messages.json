@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Herramienta de extracción de datos"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Días hasta la expiración"
   },
@@ -363,6 +366,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Lista de orígenes permitidos (uno por línea). Soporta comodines (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Cargando créditos..."
   },
@@ -380,6 +386,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Inicie sesión para obtener créditos gratuitos"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Quedan pocos créditos"
@@ -410,6 +419,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Tiempo máximo (en milisegundos) que una herramienta puede ejecutarse antes de expirar (por defecto: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Configuración del modelo"
@@ -453,6 +465,12 @@
   "No_approval_history_yet": {
     "message": "Aún no hay historial de aprobaciones."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "No hay pestañas disponibles"
   },
@@ -480,6 +498,9 @@
   "Parameter_Modifications": {
     "message": "Modificaciones de parámetros"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Ejecutar acciones de página (desplazamiento, captura de pantalla, espera)"
   },
@@ -500,6 +521,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Consultar y manipular el DOM (Modelo de Objeto de Documento)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Inicio rápido"
@@ -543,11 +573,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Haga clic con el botón derecho sobre cualquier texto para explicarlo o mejorarlo con Browserx"
   },
   "Rollout_Expiration": {
     "message": "Expiración del despliegue"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Política de sandbox"
@@ -561,6 +600,15 @@
   "Saving": {
     "message": "Guardando..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Seguridad y privacidad"
   },
@@ -573,8 +621,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Seleccione su idioma preferido para la interfaz"
   },
-  "Send_the_message": {
-    "message": "Enviar el mensaje"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Nivel de servicio"
@@ -626,6 +674,12 @@
   },
   "Tab_Tool": {
     "message": "Herramienta de pestaña"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminal"
@@ -684,6 +738,9 @@
   "Unsaved_Changes": {
     "message": "Cambios sin guardar"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -728,6 +785,9 @@
   },
   "View_Chat_History": {
     "message": "Ver historial de chat"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Análisis visual del contenido y diseño de la página"

@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "資料擷取工具"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "距到期天數"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "允許來源清單（每行一個）。支援萬用字元 (*)。"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "載入點數中..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "登入以獲取免費點數"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "剩餘點數偏低"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "工具執行逾時前的最大時間（毫秒）（預設值：30000）"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "模型設定"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "尚無批准歷史"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "沒有可用的分頁"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "參數修改"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "執行頁面操作（捲動、截圖、等待）"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "查詢與操作 DOM（文件物件模型）"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "快速開始"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "右鍵點擊任意文字，即可使用 Browserx 進行說明或改進"
   },
   "Rollout_Expiration": {
     "message": "部署到期時間"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "沙盒政策"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "儲存中..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "安全與隱私"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "選擇介面偏好的語言"
   },
-  "Send_the_message": {
-    "message": "發送訊息"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "服務等級"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "分頁工具"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "終端機"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "未儲存的變更"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "檢視聊天記錄"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "頁面內容與版面配置的視覺分析"

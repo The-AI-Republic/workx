@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "ডেটা এক্সট্র্যাকশন টুল"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "মেয়াদ শেষ হওয়া পর্যন্ত দিন"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "অনুমোদিত উত্সের তালিকা (প্রতি লাইনে একটি)। ওয়াইল্ডকার্ড (*) সমর্থন করে।"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "ক্রেডিট লোড হচ্ছে..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "ফ্রি ক্রেডিট পেতে লগইন করুন"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "কম ক্রেডিট বাকি আছে"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "টাইমআউটের আগে টুল চালানোর সর্বোচ্চ সময় (মিলিসেকেন্ডে) (ডিফল্ট: ৩০০০০)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "মডেল কনফিগ"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "এখনো কোনো অনুমোদন ইতিহাস নেই।"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "কোনো ট্যাব উপলব্ধ নেই"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "প্যারামিটার পরিবর্তন"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "পৃষ্ঠা ক্রিয়া সম্পাদন করুন (স্ক্রল, স্ক্রিনশট, অপেক্ষা)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM (ডকুমেন্ট অবজেক্ট মডেল) অনুসন্ধান এবং পরিবর্তন করুন"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "দ্রুত শুরু"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "যেকোনো লেখার উপর রাইট-ক্লিক করে Browserx-এর সাহায্যে এটি ব্যাখ্যা বা উন্নত করুন"
   },
   "Rollout_Expiration": {
     "message": "রোলআউটের মেয়াদোত্তীর্ণ তারিখ"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "স্যান্ডবক্স নীতি"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "সংরক্ষণ করা হচ্ছে..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "নিরাপত্তা ও গোপনীয়তা"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "ইন্টারফেসের জন্য আপনার পছন্দের ভাষা নির্বাচন করুন"
   },
-  "Send_the_message": {
-    "message": "বার্তা পাঠান"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "সেবা স্তর"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "ট্যাব টুল"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "টার্মিনাল"
@@ -684,6 +738,9 @@
   "Unsaved_Changes": {
     "message": "সংরক্ষণহীন পরিবর্তন"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -728,6 +785,9 @@
   },
   "View_Chat_History": {
     "message": "চ্যাট ইতিহাস"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "পৃষ্ঠার বিষয়বস্তু ও লেআউটের ভিজ্যুয়াল বিশ্লেষণ"

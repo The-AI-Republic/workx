@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Инструмент извлечения данных"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Дней до истечения срока"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Список разрешённых источников (по одному в строке). Поддерживает подстановочные знаки (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Загрузка кредитов..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Войдите, чтобы получить бесплатные кредиты"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Осталось мало кредитов"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Максимальное время (в миллисекундах), в течение которого инструмент может работать до тайм‑аута (по умолчанию: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Конфигурация модели"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "История одобрений отсутствует."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Нет доступных вкладок"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Изменения параметров"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Выполнять действия на странице (прокрутка, скриншот, ожидание)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Запрашивать и изменять DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Быстрый старт"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Щёлкните правой кнопкой мыши любой текст, чтобы объяснить или улучшить его с помощью Browserx"
   },
   "Rollout_Expiration": {
     "message": "Срок действия поэтапного выпуска"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Политика песочницы"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Сохранение..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Безопасность и конфиденциальность"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Выберите предпочтительный язык интерфейса"
   },
-  "Send_the_message": {
-    "message": "Отправить сообщение"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Уровень сервиса"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Инструмент вкладки"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Терминал"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Несохранённые изменения"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Просмотр истории чата"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Визуальный анализ содержимого и макета страницы"

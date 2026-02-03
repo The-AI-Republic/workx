@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Zana ya Kuchota Data"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Siku hadi kumalizika kwa muda"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Orodha ya vyanzo vinavyoruhusiwa (moja kwa kila mstari). Inaruhusu matumizi ya wildcards (*)"
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Inapakia mikopo..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Ingia ili upate mikopo ya bure"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Mikopo inayobaki ni ndogo"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Muda wa juu kabisa (kwa milisekunde) ambao zana inaweza kufanya kazi kabla ya kukatisha (chaguo-msingi: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Usanidi wa Modeli"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Bado hakuna historia ya idhini."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Hakuna tabu zinazopatikana"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Marekebisho ya Vigezo"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Fanya vitendo vya ukurasa (kusonga, chukua skrini, subiri)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Tafuta na ubadilishe DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Kuanzisha Haraka"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Bofya kulia kwenye maandishi yoyote ili kuyafafanua au kuyaboresha kwa Browserx"
   },
   "Rollout_Expiration": {
     "message": "Muda wa kumalizika wa utoaji"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sera ya Sandbox"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Inahifadhi..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Usalama & Faragha"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Chagua lugha unayopendelea kwa kiolesura"
   },
-  "Send_the_message": {
-    "message": "Tuma ujumbe"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Kiwango cha Huduma"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Zana ya Tab"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminali"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Mabadiliko Yasiyohifadhiwa"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Tazama Historia ya Mazungumzo"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Uchambuzi wa kuona wa maudhui na mpangilio wa ukurasa"

@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Nástroj na extrahovanie dát"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Dní do expirácie"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Zoznam povolených origins (jeden na riadok). Podporuje zástupné znaky (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Načítavam kredity..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Prihláste sa a získajte bezplatné kredity"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Nízky zostatok kreditov"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximálny čas v milisekundách, počas ktorého môže nástroj bežať pred vypršaním limitu (predvolene: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Konfigurácia modelu"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Zatiaľ žiadna história schvaľovania."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Nie sú dostupné žiadne karty"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Úpravy parametrov"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Vykonať akcie na stránke (posúvanie, snímka obrazovky, čakanie)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Dotazovať a manipulovať s DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Rýchly štart"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Kliknutím pravým tlačidlom na text ho vysvetlite alebo vylepšite pomocou Browserx"
   },
   "Rollout_Expiration": {
     "message": "Platnosť nasadenia"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Politika sandboxu"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Ukladá sa..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Bezpečnosť a súkromie"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Vyberte preferovaný jazyk rozhrania"
   },
-  "Send_the_message": {
-    "message": "Odoslať správu"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Úroveň služby"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Nástroj karty"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminál"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Neuložené zmeny"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Zobraziť históriu chatu"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Vizuálna analýza obsahu a rozloženia stránky"

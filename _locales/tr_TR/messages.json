@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Veri Çıkarma Aracı"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Son kullanma tarihine kalan gün"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "İzin verilen kaynakların listesi (satır başına bir). Joker karakter (*) desteklenir."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Krediler yükleniyor..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Ücretsiz kredi almak için giriş yapın"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Az Kredi Kaldı"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Bir aracın zaman aşımına uğramadan çalışabileceği maksimum süre (milisaniye, varsayılan: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Model Yapılandırması"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Henüz onay geçmişi yok."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Kullanılabilir sekme yok"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Parametre Değişiklikleri"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Sayfa eylemlerini gerçekleştir (kaydır, ekran görüntüsü al, bekle)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM'u (Document Object Model) sorgula ve değiştir"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Hızlı Başlangıç"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Herhangi bir metne sağ tıklayarak Browserx ile açıklama ekleyin veya geliştirin"
   },
   "Rollout_Expiration": {
     "message": "Yayılım Sonu"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandbox Politikası"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Kaydediliyor..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Güvenlik ve Gizlilik"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Arayüz için tercih ettiğiniz dili seçin"
   },
-  "Send_the_message": {
-    "message": "Mesajı gönder"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Hizmet Seviyesi"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Sekme Aracı"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminal"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Kaydedilmemiş Değişiklikler"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Sohbet Geçmişini Görüntüle"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Sayfa içeriği ve düzeninin görsel analizi"

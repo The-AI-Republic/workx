@@ -191,6 +191,9 @@
   "Data_Extraction_Tool": {
     "message": "Datenextraktions‑Tool"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Tage bis zum Ablauf"
   },
@@ -358,6 +361,9 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Liste der erlaubten Ursprünge (je einer pro Zeile). Unterstützt Platzhalter (*)."
   },
+  "Load_More": {
+    "message": ""
+  },
   "Loading_credits": {
     "message": "Lade Guthaben..."
   },
@@ -375,6 +381,9 @@
   },
   "Login_to_get_free_credits": {
     "message": "Melden Sie sich an, um kostenlose Guthaben zu erhalten"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
   },
   "Low_credits_remaining": {
     "message": "Wenig Guthaben übrig"
@@ -405,6 +414,9 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximale Laufzeit (in Millisekunden) für ein Tool, bevor ein Timeout erfolgt (Standard: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Modell‑Konfiguration"
@@ -448,6 +460,12 @@
   "No_approval_history_yet": {
     "message": "Noch keine Genehmigungshistorie vorhanden."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Keine Registerkarten verfügbar"
   },
@@ -475,6 +493,9 @@
   "Parameter_Modifications": {
     "message": "Parameteränderungen"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Seitenaktionen ausführen (Scrollen, Screenshot, warten)"
   },
@@ -495,6 +516,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Abfragen und manipulieren Sie das DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Schnellstart"
@@ -538,11 +568,20 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Rechtsklick auf beliebigen Text, um ihn mit Browserx zu erklären oder zu verbessern"
   },
   "Rollout_Expiration": {
     "message": "Rollout-Ablauf"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandbox-Richtlinie"
@@ -556,6 +595,15 @@
   "Saving": {
     "message": "Speichern..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Sicherheit & Datenschutz"
   },
@@ -568,8 +616,8 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Wählen Sie Ihre bevorzugte Sprache für die Oberfläche aus."
   },
-  "Send_the_message": {
-    "message": "Nachricht senden"
+  "Send_hold_to_schedule": {
+    "message": ""
   },
   "Service_Tier": {
     "message": "Service-Tier"
@@ -621,6 +669,12 @@
   },
   "Tab_Tool": {
     "message": "Tab-Tool"
+  },
+  "Task": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
   },
   "Terminal": {
     "message": "Terminal"
@@ -679,6 +733,9 @@
   "Unsaved_Changes": {
     "message": "Ungespeicherte Änderungen"
   },
+  "Upcoming": {
+    "message": ""
+  },
   "Update": {
     "message": ""
   },
@@ -723,6 +780,9 @@
   },
   "View_Chat_History": {
     "message": "Chatverlauf anzeigen"
+  },
+  "View_History": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visuelle Analyse von Seiteninhalt und -layout"
