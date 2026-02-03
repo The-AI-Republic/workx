@@ -519,6 +519,17 @@ async function initializeScheduler(): Promise<void> {
     schedulerAlarms = new SchedulerAlarms();
     scheduler = new Scheduler(schedulerStorage, schedulerAlarms);
 
+    // Set up event emitter to broadcast scheduler events to all clients (T020)
+    scheduler.setEventEmitter((event) => {
+      // Broadcast to all extension pages (sidepanel, popup, etc.)
+      chrome.runtime.sendMessage({
+        type: MessageType.SCHEDULER_EVENT,
+        payload: event,
+      }).catch(() => {
+        // Ignore errors when no listeners (e.g., popup not open)
+      });
+    });
+
     // Start the SchedulerTaskQueue processor
     await schedulerAlarms.startSchedulerTaskQueueProcessor();
 
@@ -535,6 +546,14 @@ async function initializeScheduler(): Promise<void> {
         priority: 2,
       });
     }
+
+    // T042: Resume task processing when connectivity is restored
+    self.addEventListener('online', async () => {
+      console.log('[ServiceWorker] Online - resuming scheduler task processing');
+      if (scheduler) {
+        await scheduler.processSchedulerTaskQueue();
+      }
+    });
 
     console.log('[ServiceWorker] Task Scheduler initialized');
   } catch (error) {

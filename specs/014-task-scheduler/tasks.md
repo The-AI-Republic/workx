@@ -19,9 +19,9 @@
 
 **Purpose**: Project structure and type definitions
 
-- [ ] T001 Create scheduler type definitions in src/models/types/Scheduler.ts (SchedulerTaskRecord, SchedulerTaskStatus, SchedulerState, TaskResultRecord)
-- [ ] T002 [P] Copy contract interfaces from specs to src/models/types/SchedulerContracts.ts (ISchedulerStorage, ISchedulerAlarms, SchedulerMessageType)
-- [ ] T003 [P] Create scheduler directory structure: src/core/scheduler/, src/sidepanel/components/scheduler/, src/background/scheduler-alarms.ts
+- [x] T001 Create scheduler type definitions in src/models/types/Scheduler.ts (SchedulerTaskRecord, SchedulerTaskStatus, SchedulerState, TaskResultRecord)
+- [x] T002 [P] Copy contract interfaces from specs to src/models/types/SchedulerContracts.ts (ISchedulerStorage, ISchedulerAlarms, SchedulerMessageType)
+- [x] T003 [P] Create scheduler directory structure: src/core/scheduler/, src/sidepanel/components/scheduler/, src/background/scheduler-alarms.ts
 
 ---
 
@@ -31,12 +31,12 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Add scheduler_tasks object store to IndexedDB migration in src/storage/IndexedDBAdapter.ts (increment DB_VERSION, add store with indexes: by_status, by_scheduled_time, by_status_time, by_created_at)
-- [ ] T005 Implement SchedulerStorage class in src/core/scheduler/SchedulerStorage.ts (implements ISchedulerStorage - createTask, getTask, updateTask, deleteTask, getDraftTasks, getScheduledTasks, getSchedulerTaskQueueTasks, getArchivedTasks, getNextTaskInSchedulerTaskQueue, getSchedulerState, setSchedulerState)
-- [ ] T006 Implement SchedulerAlarms class in src/background/scheduler-alarms.ts (implements ISchedulerAlarms - createTaskAlarm, clearTaskAlarm, hasTaskAlarm, startSchedulerTaskQueueProcessor, stopSchedulerTaskQueueProcessor, getAllAlarms, parseAlarmName, getTaskAlarmName)
-- [ ] T007 Implement core Scheduler class in src/core/scheduler/Scheduler.ts (constructor with storage/alarms/agent dependencies, createDraftTask, scheduleTask, scheduleExistingTask, triggerTask, executeTask, processSchedulerTaskQueue, handleAlarm)
-- [ ] T008 Add scheduler message handlers to service worker in src/background/service-worker.ts (import Scheduler, SchedulerStorage, SchedulerAlarms; initialize scheduler; add chrome.alarms.onAlarm listener for scheduler- prefix; register message handlers for all SchedulerMessageType)
-- [ ] T009 Add SchedulerMessageType to existing MessageRouter in src/core/MessageRouter.ts (extend MessageType enum with scheduler message types)
+- [x] T004 Add scheduler_tasks object store to IndexedDB migration in src/storage/IndexedDBAdapter.ts (increment DB_VERSION, add store with indexes: by_status, by_scheduled_time, by_status_time, by_created_at)
+- [x] T005 Implement SchedulerStorage class in src/core/scheduler/SchedulerStorage.ts (implements ISchedulerStorage - createTask, getTask, updateTask, deleteTask, getDraftTasks, getScheduledTasks, getSchedulerTaskQueueTasks, getArchivedTasks, getNextTaskInSchedulerTaskQueue, getSchedulerState, setSchedulerState)
+- [x] T006 Implement SchedulerAlarms class in src/background/scheduler-alarms.ts (implements ISchedulerAlarms - createTaskAlarm, clearTaskAlarm, hasTaskAlarm, startSchedulerTaskQueueProcessor, stopSchedulerTaskQueueProcessor, getAllAlarms, parseAlarmName, getTaskAlarmName)
+- [x] T007 Implement core Scheduler class in src/core/scheduler/Scheduler.ts (constructor with storage/alarms/agent dependencies, createDraftTask, scheduleTask, scheduleExistingTask, triggerTask, executeTask, processSchedulerTaskQueue, handleAlarm)
+- [x] T008 Add scheduler message handlers to service worker in src/background/service-worker.ts (import Scheduler, SchedulerStorage, SchedulerAlarms; initialize scheduler; add chrome.alarms.onAlarm listener for scheduler- prefix; register message handlers for all SchedulerMessageType)
+- [x] T009 Add SchedulerMessageType to existing MessageRouter in src/core/MessageRouter.ts (extend MessageType enum with scheduler message types)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -50,10 +50,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add long-press detection to send button in src/sidepanel/components/MessageInput.svelte (pointerdown/pointerup handlers, 500ms threshold, dispatch showScheduleModal event)
-- [ ] T011 [US1] Create ScheduleTaskModal.svelte in src/sidepanel/components/scheduler/ScheduleTaskModal.svelte (date/time picker, confirm/cancel buttons, dispatch scheduleTask event with input and scheduledTime)
-- [ ] T012 [US1] Integrate ScheduleTaskModal into Main.svelte in src/sidepanel/pages/chat/Main.svelte (handle showScheduleModal event, show modal, handle scheduleTask event, call router.send SCHEDULE_TASK)
-- [ ] T013 [US1] Add browser notification on task scheduled in src/core/scheduler/Scheduler.ts (chrome.notifications.create after successful scheduleTask)
+- [x] T010 [US1] Add long-press detection to send button in src/sidepanel/components/MessageInput.svelte (pointerdown/pointerup handlers, 500ms threshold, dispatch showScheduleModal event)
+- [x] T011 [US1] Create ScheduleTaskModal.svelte in src/sidepanel/components/scheduler/ScheduleTaskModal.svelte (date/time picker, confirm/cancel buttons, dispatch scheduleTask event with input and scheduledTime)
+- [x] T012 [US1] Integrate ScheduleTaskModal into Main.svelte in src/sidepanel/pages/chat/Main.svelte (handle showScheduleModal event, show modal, handle scheduleTask event, call router.send SCHEDULE_TASK)
+- [x] T013 [US1] Add browser notification on task scheduled in src/core/scheduler/Scheduler.ts (chrome.notifications.create after successful scheduleTask)
 
 **Checkpoint**: User Story 1 complete - users can schedule tasks for future execution
 
@@ -67,13 +67,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Create SchedulerButton.svelte in src/sidepanel/components/scheduler/SchedulerButton.svelte (calendar icon button, click handler dispatches openScheduler)
-- [ ] T015 [P] [US2] Create SchedulerTaskItem.svelte in src/sidepanel/components/scheduler/SchedulerTaskItem.svelte (displays task summary, scheduled time, status badge, click handler for details)
-- [ ] T016 [US2] Create SchedulerPopup.svelte in src/sidepanel/components/scheduler/SchedulerPopup.svelte (fetch GET_SCHEDULED_TASKS, GET_SCHEDULER_TASK_QUEUE, GET_SCHEDULER_STATE; list SchedulerTaskItem components; running task highlight; "View archived" link)
-- [ ] T017 [US2] Create ArchivedTasksView.svelte in src/sidepanel/components/scheduler/ArchivedTasksView.svelte (fetch GET_ARCHIVED_TASKS with pagination; list completed/failed tasks; click to view session)
-- [ ] T018 [US2] Add SchedulerButton to FooterBar in src/sidepanel/components/layout/FooterBar.svelte (import SchedulerButton, add beside UserLoginStatus, handle openScheduler event to show SchedulerPopup)
-- [ ] T019 [US2] Add task details view in SchedulerPopup (click task to expand/show full input, option to navigate to session for completed tasks)
-- [ ] T020 [US2] Subscribe to TASK_STATUS_CHANGED and SCHEDULER_STATE_CHANGED events in SchedulerPopup for real-time updates
+- [x] T014 [P] [US2] Create SchedulerButton.svelte in src/sidepanel/components/scheduler/SchedulerButton.svelte (calendar icon button, click handler dispatches openScheduler)
+- [x] T015 [P] [US2] Create SchedulerTaskItem.svelte in src/sidepanel/components/scheduler/SchedulerTaskItem.svelte (displays task summary, scheduled time, status badge, click handler for details)
+- [x] T016 [US2] Create SchedulerPopup.svelte in src/sidepanel/components/scheduler/SchedulerPopup.svelte (fetch GET_SCHEDULED_TASKS, GET_SCHEDULER_TASK_QUEUE, GET_SCHEDULER_STATE; list SchedulerTaskItem components; running task highlight; "View archived" link)
+- [x] T017 [US2] Create ArchivedTasksView.svelte in src/sidepanel/components/scheduler/ArchivedTasksView.svelte (fetch GET_ARCHIVED_TASKS with pagination; list completed/failed tasks; click to view session)
+- [x] T018 [US2] Add SchedulerButton to FooterBar in src/sidepanel/components/layout/FooterBar.svelte (import SchedulerButton, add beside UserLoginStatus, handle openScheduler event to show SchedulerPopup)
+- [x] T019 [US2] Add task details view in SchedulerPopup (click task to expand/show full input, option to navigate to session for completed tasks)
+- [x] T020 [US2] Subscribe to TASK_STATUS_CHANGED and SCHEDULER_STATE_CHANGED events in SchedulerPopup for real-time updates
 
 **Checkpoint**: User Story 2 complete - users can view and manage all scheduler tasks
 
@@ -87,11 +87,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Implement openSchedulerTaskTab in src/core/scheduler/Scheduler.ts (chrome.tabs.create with sidepanel/index.html?scheduledTask={taskId}, active: true)
-- [ ] T022 [US3] Add scheduled task detection in Main.svelte src/sidepanel/pages/chat/Main.svelte (onMount check URLSearchParams for scheduledTask param, if present call loadAndExecuteSchedulerTask)
-- [ ] T023 [US3] Implement loadAndExecuteSchedulerTask in Main.svelte (fetch task details via GET_TASK_DETAILS, create new Session, set up UI for task execution, call agent execution)
-- [ ] T024 [US3] Add session isolation in Scheduler.executeTask in src/core/scheduler/Scheduler.ts (generate new sessionId UUID, create new Session instance, update task with sessionId before execution)
-- [ ] T025 [US3] Add browser notification when task starts in src/core/scheduler/Scheduler.ts (chrome.notifications.create with "View" button linking to task tab)
+- [x] T021 [US3] Implement openSchedulerTaskTab in src/core/scheduler/Scheduler.ts (chrome.tabs.create with sidepanel/index.html?scheduledTask={taskId}, active: true)
+- [x] T022 [US3] Add scheduled task detection in Main.svelte src/sidepanel/pages/chat/Main.svelte (onMount check URLSearchParams for scheduledTask param, if present call loadAndExecuteSchedulerTask)
+- [x] T023 [US3] Implement loadAndExecuteSchedulerTask in Main.svelte (fetch task details via GET_TASK_DETAILS, create new Session, set up UI for task execution, call agent execution)
+- [x] T024 [US3] Add session isolation in Scheduler.executeTask in src/core/scheduler/Scheduler.ts (generate new sessionId UUID, create new Session instance, update task with sessionId before execution)
+- [x] T025 [US3] Add browser notification when task starts in src/core/scheduler/Scheduler.ts (chrome.notifications.create with "View" button linking to task tab)
 
 **Checkpoint**: User Story 3 complete - scheduled tasks execute in dedicated tabs
 
@@ -105,10 +105,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Implement pauseSchedulerTaskQueue in src/core/scheduler/Scheduler.ts (setSchedulerState isPaused: true, stopSchedulerTaskQueueProcessor)
-- [ ] T027 [US4] Implement resumeSchedulerTaskQueue in src/core/scheduler/Scheduler.ts (setSchedulerState isPaused: false, startSchedulerTaskQueueProcessor, call processSchedulerTaskQueue)
-- [ ] T028 [US4] Add pause/resume toggle button in SchedulerPopup.svelte (show current isPaused state, call PAUSE_SCHEDULER_TASK_QUEUE or RESUME_SCHEDULER_TASK_QUEUE on click)
-- [ ] T029 [US4] Update processSchedulerTaskQueue to respect isPaused state (check state.isPaused before executing next task)
+- [x] T026 [US4] Implement pauseSchedulerTaskQueue in src/core/scheduler/Scheduler.ts (setSchedulerState isPaused: true, stopSchedulerTaskQueueProcessor)
+- [x] T027 [US4] Implement resumeSchedulerTaskQueue in src/core/scheduler/Scheduler.ts (setSchedulerState isPaused: false, startSchedulerTaskQueueProcessor, call processSchedulerTaskQueue)
+- [x] T028 [US4] Add pause/resume toggle button in SchedulerPopup.svelte (show current isPaused state, call PAUSE_SCHEDULER_TASK_QUEUE or RESUME_SCHEDULER_TASK_QUEUE on click)
+- [x] T029 [US4] Update processSchedulerTaskQueue to respect isPaused state (check state.isPaused before executing next task)
 
 **Checkpoint**: User Story 4 complete - users can pause and resume queue processing
 
@@ -122,9 +122,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T030 [US5] Update triggerTask in Scheduler.ts to handle running task scenario (if currentTaskId exists, set new task status to 'waiting' instead of 'running')
-- [ ] T031 [US5] Update SchedulerPopup to show waiting tasks section (display tasks with status 'waiting' in separate "Queued" section)
-- [ ] T032 [US5] Ensure processSchedulerTaskQueue is called after task completion in executeTask (on success or failure, call processSchedulerTaskQueue to start next waiting task)
+- [x] T030 [US5] Update triggerTask in Scheduler.ts to handle running task scenario (if currentTaskId exists, set new task status to 'waiting' instead of 'running')
+- [x] T031 [US5] Update SchedulerPopup to show waiting tasks section (display tasks with status 'waiting' in separate "Queued" section)
+- [x] T032 [US5] Ensure processSchedulerTaskQueue is called after task completion in executeTask (on success or failure, call processSchedulerTaskQueue to start next waiting task)
 
 **Checkpoint**: User Story 5 complete - users can queue tasks while another runs
 
@@ -138,10 +138,10 @@
 
 ### Implementation for User Story 6
 
-- [ ] T033 [US6] Implement cancelTask in src/core/scheduler/Scheduler.ts (update task status to 'cancelled', clearTaskAlarm if scheduled, abort execution if running, call processSchedulerTaskQueue)
-- [ ] T034 [US6] Add cancel button to SchedulerTaskItem.svelte (show cancel/remove icon, call CANCEL_TASK on click, confirm dialog for running tasks)
-- [ ] T035 [US6] Implement task execution abort mechanism (track AbortController per task, signal abort on cancel, handle abort in agent execution)
-- [ ] T036 [US6] Add cancel confirmation dialog in SchedulerPopup (warn user when canceling running task, explain implications)
+- [x] T033 [US6] Implement cancelTask in src/core/scheduler/Scheduler.ts (update task status to 'cancelled', clearTaskAlarm if scheduled, abort execution if running, call processSchedulerTaskQueue)
+- [x] T034 [US6] Add cancel button to SchedulerTaskItem.svelte (show cancel/remove icon, call CANCEL_TASK on click, confirm dialog for running tasks)
+- [x] T035 [US6] Implement task execution abort mechanism (track AbortController per task, signal abort on cancel, handle abort in agent execution)
+- [x] T036 [US6] Add cancel confirmation dialog in SchedulerPopup (warn user when canceling running task, explain implications)
 
 **Checkpoint**: User Story 6 complete - users can cancel any task
 
@@ -151,15 +151,15 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T037 [P] Add error handling and user-friendly error messages throughout scheduler UI components
-- [ ] T038 [P] Add loading states to SchedulerPopup and ArchivedTasksView during data fetching
-- [ ] T039 Add missed task detection on browser restart in src/background/service-worker.ts (in initialize, query tasks with status 'scheduled' where scheduledTime < now, update status to 'missed', show notification)
-- [ ] T040 Add "Run Now" and "Dismiss" buttons for missed tasks in SchedulerTaskItem.svelte (different UI treatment for missed status)
-- [ ] T041 Show missed tasks section in SchedulerPopup.svelte (highlight missed tasks at top with warning style, count badge)
-- [ ] T042 Handle offline scenario (queue tasks for execution when connectivity restored)
-- [ ] T043 [P] Add CSS styling to scheduler components matching existing theme
-- [ ] T044 Validate scheduler functionality via quickstart.md test scenarios
-- [ ] T045 [P] Add scheduler-specific logging throughout core classes for debugging
+- [x] T037 [P] Add error handling and user-friendly error messages throughout scheduler UI components
+- [x] T038 [P] Add loading states to SchedulerPopup and ArchivedTasksView during data fetching
+- [x] T039 Add missed task detection on browser restart in src/background/service-worker.ts (in initialize, query tasks with status 'scheduled' where scheduledTime < now, update status to 'missed', show notification)
+- [x] T040 Add "Run Now" and "Dismiss" buttons for missed tasks in SchedulerTaskItem.svelte (different UI treatment for missed status)
+- [x] T041 Show missed tasks section in SchedulerPopup.svelte (highlight missed tasks at top with warning style, count badge)
+- [x] T042 Handle offline scenario (queue tasks for execution when connectivity restored)
+- [x] T043 [P] Add CSS styling to scheduler components matching existing theme
+- [x] T044 Validate scheduler functionality via quickstart.md test scenarios
+- [x] T045 [P] Add scheduler-specific logging throughout core classes for debugging
 
 ---
 

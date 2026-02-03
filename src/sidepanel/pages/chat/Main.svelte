@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { MessageRouter, MessageType } from '@/core/MessageRouter';
+  import type { TaskStatusChangedEvent } from '@/models/types/SchedulerContracts';
   import type { Event } from '@/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
@@ -201,6 +202,57 @@
       clearInterval(keepAliveInterval);
       router?.cleanup();
     };
+  });
+
+  // T035: Listen for scheduled task cancellation events
+  function handleSchedulerCancelEvent(message: { type: string; payload?: unknown }) {
+    if (message.type !== MessageType.SCHEDULER_EVENT) return;
+
+    const event = message.payload as TaskStatusChangedEvent;
+    // Check if this is a cancellation for our running task
+    if (
+      isScheduledTaskMode &&
+      scheduledTaskId &&
+      event?.taskId === scheduledTaskId &&
+      event?.newStatus === 'cancelled'
+    ) {
+      console.log('[App] Scheduled task cancelled, aborting execution:', scheduledTaskId);
+
+      // Stop processing
+      isProcessing = false;
+
+      // Add cancellation notice to UI
+      const cancelNotice: ProcessedEvent = {
+        id: `scheduled_cancel_${Date.now()}`,
+        category: 'system',
+        timestamp: new Date(),
+        title: 'system',
+        content: 'Task cancelled by user',
+        style: { textColor: 'text-yellow-400' },
+        streaming: false,
+        collapsible: false,
+      };
+      processedEvents = [...processedEvents, cancelNotice];
+
+      // Request agent to abort via message to service worker
+      chrome.runtime.sendMessage({
+        type: MessageType.INTERRUPT,
+      }).catch((err) => {
+        console.warn('[App] Failed to send interrupt on cancel:', err);
+      });
+    }
+  }
+
+  // Add listener on component initialization
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener(handleSchedulerCancelEvent);
+  }
+
+  onDestroy(() => {
+    // Clean up cancel event listener
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.removeListener(handleSchedulerCancelEvent);
+    }
   });
 
   /**

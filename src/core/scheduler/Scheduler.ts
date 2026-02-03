@@ -347,6 +347,12 @@ export class Scheduler {
       return;
     }
 
+    // T042: Don't process if offline
+    if (!navigator.onLine) {
+      console.log('[Scheduler] Offline - deferring task execution until connectivity restored');
+      return;
+    }
+
     // Don't process if a task is already running
     if (state.currentTaskId) {
       return;
@@ -357,6 +363,13 @@ export class Scheduler {
     if (nextTask) {
       await this.executeTask(nextTask.id);
     }
+  }
+
+  /**
+   * T042: Check if browser is online
+   */
+  isOnline(): boolean {
+    return navigator.onLine;
   }
 
   /**

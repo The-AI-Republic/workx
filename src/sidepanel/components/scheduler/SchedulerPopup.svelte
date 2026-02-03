@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { MessageType } from '@/core/MessageRouter';
@@ -6,6 +7,7 @@
   import ArchivedTasksView from './ArchivedTasksView.svelte';
   import ScheduleTaskModal from './ScheduleTaskModal.svelte';
   import type { SchedulerTaskSummary } from '@/models/types/SchedulerContracts';
+  import type { SchedulerTaskRecord } from '@/models/types/Scheduler';
 
   export let show: boolean = false;
   export let onClose: () => void = () => {};
@@ -22,9 +24,52 @@
   let queuedTasks: SchedulerTaskSummary[] = [];
   let runningTask: SchedulerTaskSummary | null = null;
 
+  // Task details expansion (T019)
+  let expandedTaskId: string | null = null;
+  let expandedTaskDetails: SchedulerTaskRecord | null = null;
+  let isLoadingDetails = false;
+
+  // T042: Offline status tracking
+  let isOffline = !navigator.onLine;
+
   // Subscribe to theme
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
+  });
+
+  // T020: Real-time status updates via chrome.runtime.onMessage
+  function handleSchedulerEvent(message: { type: string; payload?: unknown }) {
+    if (message.type === MessageType.SCHEDULER_EVENT && show) {
+      // Refresh data when scheduler events occur
+      fetchAllData();
+    }
+  }
+
+  // T042: Handle online/offline events
+  function handleOnline() {
+    isOffline = false;
+  }
+
+  function handleOffline() {
+    isOffline = true;
+  }
+
+  onMount(() => {
+    // Listen for scheduler events from service worker
+    chrome.runtime.onMessage.addListener(handleSchedulerEvent);
+
+    // T042: Listen for online/offline events
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+  });
+
+  onDestroy(() => {
+    // Clean up event listener
+    chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+
+    // T042: Clean up online/offline listeners
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
   });
 
   // Fetch data when popup opens
@@ -124,6 +169,47 @@
   }
 
   $: totalTasks = missedTasks.length + scheduledTasks.length + queuedTasks.length + (runningTask ? 1 : 0);
+
+  // T019: Handle task details expansion
+  async function handleTaskDetails(event: CustomEvent<{ taskId: string }>) {
+    const { taskId } = event.detail;
+
+    // Toggle off if clicking same task
+    if (expandedTaskId === taskId) {
+      expandedTaskId = null;
+      expandedTaskDetails = null;
+      return;
+    }
+
+    expandedTaskId = taskId;
+    isLoadingDetails = true;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.SCHEDULER_GET_TASK_DETAILS,
+        payload: { taskId },
+      });
+      expandedTaskDetails = response?.data || response;
+    } catch (error) {
+      console.error('[SchedulerPopup] Failed to fetch task details:', error);
+      expandedTaskDetails = null;
+    } finally {
+      isLoadingDetails = false;
+    }
+  }
+
+  // Navigate to task session for completed tasks
+  function navigateToSession(sessionId: string) {
+    // Open side panel with the session ID
+    window.location.href = `index.html?sessionId=${sessionId}`;
+    onClose();
+  }
+
+  // Close expanded details
+  function closeDetails() {
+    expandedTaskId = null;
+    expandedTaskDetails = null;
+  }
 </script>
 
 <svelte:window on:click={handleClickOutside} />
@@ -193,58 +279,147 @@
           </div>
         {/if}
 
-        <!-- Running Task -->
-        {#if runningTask}
-          <div class="section">
-            <h4 class="section-title">{$_t('Running')}</h4>
-            <SchedulerTaskItem
-              {...runningTask}
-              showActions={true}
-              on:cancel={handleCancelTask}
-            />
+        <!-- T042: Offline Warning -->
+        {#if isOffline}
+          <div class="offline-warning">
+            <span class="warning-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+              </svg>
+            </span>
+            <span>{$_t('Offline - tasks will run when connected')}</span>
           </div>
         {/if}
 
-        <!-- Missed Tasks -->
-        {#if missedTasks.length > 0}
-          <div class="section">
-            <h4 class="section-title missed">{$_t('Missed')} ({missedTasks.length})</h4>
-            {#each missedTasks as task (task.id)}
-              <SchedulerTaskItem
-                {...task}
-                on:trigger={handleTriggerTask}
-                on:cancel={handleCancelTask}
-              />
-            {/each}
+        <!-- Task Details Panel (T019) -->
+        {#if expandedTaskId && expandedTaskDetails}
+          <div class="task-details-panel">
+            <div class="details-header">
+              <h4 class="details-title">{$_t('Task Details')}</h4>
+              <button class="close-details-btn" on:click={closeDetails} aria-label="Close details">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div class="details-content">
+              <div class="detail-row">
+                <span class="detail-label">{$_t('Status')}:</span>
+                <span class="detail-value status-{expandedTaskDetails.status}">{expandedTaskDetails.status}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">{$_t('Created')}:</span>
+                <span class="detail-value">{new Date(expandedTaskDetails.createdAt).toLocaleString()}</span>
+              </div>
+              {#if expandedTaskDetails.scheduledTime}
+                <div class="detail-row">
+                  <span class="detail-label">{$_t('Scheduled')}:</span>
+                  <span class="detail-value">{new Date(expandedTaskDetails.scheduledTime).toLocaleString()}</span>
+                </div>
+              {/if}
+              {#if expandedTaskDetails.completedAt}
+                <div class="detail-row">
+                  <span class="detail-label">{$_t('Completed')}:</span>
+                  <span class="detail-value">{new Date(expandedTaskDetails.completedAt).toLocaleString()}</span>
+                </div>
+              {/if}
+              <div class="detail-section">
+                <span class="detail-label">{$_t('Full Input')}:</span>
+                <pre class="detail-input">{expandedTaskDetails.input}</pre>
+              </div>
+              {#if expandedTaskDetails.error}
+                <div class="detail-section">
+                  <span class="detail-label error">{$_t('Error')}:</span>
+                  <pre class="detail-error">{expandedTaskDetails.error}</pre>
+                </div>
+              {/if}
+              {#if expandedTaskDetails.result}
+                <div class="detail-section">
+                  <span class="detail-label">{$_t('Result Summary')}:</span>
+                  <pre class="detail-result">{expandedTaskDetails.result.summary}</pre>
+                  <div class="detail-stats">
+                    <span>{$_t('Tokens')}: {expandedTaskDetails.result.tokenUsage.totalTokens}</span>
+                    <span>{$_t('Duration')}: {(expandedTaskDetails.result.duration / 1000).toFixed(1)}s</span>
+                  </div>
+                </div>
+              {/if}
+              {#if expandedTaskDetails.sessionId && (expandedTaskDetails.status === 'completed' || expandedTaskDetails.status === 'failed')}
+                <button class="view-session-btn" on:click={() => navigateToSession(expandedTaskDetails.sessionId)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  {$_t('View Session')}
+                </button>
+              {/if}
+            </div>
           </div>
-        {/if}
+        {:else if isLoadingDetails}
+          <div class="loading-details">{$_t('Loading details...')}</div>
+        {:else}
+          <!-- Running Task -->
+          {#if runningTask}
+            <div class="section">
+              <h4 class="section-title">{$_t('Running')}</h4>
+              <SchedulerTaskItem
+                {...runningTask}
+                showActions={true}
+                on:cancel={handleCancelTask}
+                on:details={handleTaskDetails}
+              />
+            </div>
+          {/if}
 
-        <!-- Queued Tasks -->
-        {#if queuedTasks.length > 0}
-          <div class="section">
-            <h4 class="section-title">{$_t('Queued')} ({queuedTasks.length})</h4>
-            {#each queuedTasks as task (task.id)}
-              <SchedulerTaskItem
-                {...task}
-                on:trigger={handleTriggerTask}
-                on:cancel={handleCancelTask}
-              />
-            {/each}
-          </div>
-        {/if}
+          <!-- Missed Tasks -->
+          {#if missedTasks.length > 0}
+            <div class="section">
+              <h4 class="section-title missed">{$_t('Missed')} ({missedTasks.length})</h4>
+              {#each missedTasks as task (task.id)}
+                <SchedulerTaskItem
+                  {...task}
+                  on:trigger={handleTriggerTask}
+                  on:cancel={handleCancelTask}
+                  on:details={handleTaskDetails}
+                />
+              {/each}
+            </div>
+          {/if}
 
-        <!-- Scheduled Tasks -->
-        {#if scheduledTasks.length > 0}
-          <div class="section">
-            <h4 class="section-title">{$_t('Upcoming')} ({scheduledTasks.length})</h4>
-            {#each scheduledTasks as task (task.id)}
-              <SchedulerTaskItem
-                {...task}
-                on:trigger={handleTriggerTask}
-                on:cancel={handleCancelTask}
-              />
-            {/each}
-          </div>
+          <!-- Queued Tasks -->
+          {#if queuedTasks.length > 0}
+            <div class="section">
+              <h4 class="section-title">{$_t('Queued')} ({queuedTasks.length})</h4>
+              {#each queuedTasks as task (task.id)}
+                <SchedulerTaskItem
+                  {...task}
+                  on:trigger={handleTriggerTask}
+                  on:cancel={handleCancelTask}
+                  on:details={handleTaskDetails}
+                />
+              {/each}
+            </div>
+          {/if}
+
+          <!-- Scheduled Tasks -->
+          {#if scheduledTasks.length > 0}
+            <div class="section">
+              <h4 class="section-title">{$_t('Upcoming')} ({scheduledTasks.length})</h4>
+              {#each scheduledTasks as task (task.id)}
+                <SchedulerTaskItem
+                  {...task}
+                  on:trigger={handleTriggerTask}
+                  on:cancel={handleCancelTask}
+                  on:details={handleTaskDetails}
+                />
+              {/each}
+            </div>
+          {/if}
         {/if}
 
         <!-- View History Link -->
@@ -376,6 +551,20 @@
     align-items: center;
   }
 
+  /* T042: Offline warning */
+  .offline-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 100, 100, 0.1);
+    border: 1px solid var(--color-term-red, #ff6666);
+    border-radius: 4px;
+    color: var(--color-term-red, #ff6666);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
   .section {
     margin-bottom: 16px;
   }
@@ -464,6 +653,12 @@
     color: #f59e0b;
   }
 
+  .scheduler-popup.chatgpt .offline-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
   .scheduler-popup.chatgpt .section-title {
     color: var(--chat-text-muted, #8e8ea0);
   }
@@ -480,5 +675,194 @@
   .scheduler-popup.chatgpt .view-history-btn:hover {
     background: var(--chat-button-hover, #ececec);
     color: var(--chat-text, #0d0d0d);
+  }
+
+  /* Task Details Panel (T019) */
+  .task-details-panel {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--color-term-dim-green, #00cc00);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 255, 0, 0.05);
+    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
+  }
+
+  .details-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .close-details-btn {
+    padding: 2px;
+    background: transparent;
+    border: none;
+    color: var(--color-term-dim-green, #00cc00);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+
+  .close-details-btn:hover {
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .details-content {
+    padding: 12px;
+  }
+
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .detail-label {
+    color: var(--color-term-dim-green, #00cc00);
+    flex-shrink: 0;
+  }
+
+  .detail-label.error {
+    color: var(--color-term-red, #ff0000);
+  }
+
+  .detail-value {
+    color: var(--color-term-bright-green, #00ff00);
+    word-break: break-word;
+  }
+
+  .detail-value.status-running {
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .detail-value.status-completed {
+    color: var(--color-term-cyan, #00ffff);
+  }
+
+  .detail-value.status-failed {
+    color: var(--color-term-red, #ff0000);
+  }
+
+  .detail-value.status-missed {
+    color: var(--color-term-yellow, #ffff00);
+  }
+
+  .detail-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(0, 255, 0, 0.2);
+  }
+
+  .detail-input,
+  .detail-error,
+  .detail-result {
+    margin: 8px 0 0;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    color: var(--color-term-bright-green, #00ff00);
+  }
+
+  .detail-error {
+    color: var(--color-term-red, #ff0000);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+  }
+
+  .detail-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--color-term-dim-green, #00cc00);
+  }
+
+  .view-session-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    background: rgba(0, 255, 0, 0.1);
+    border: 1px solid var(--color-term-dim-green, #00cc00);
+    border-radius: 4px;
+    color: var(--color-term-bright-green, #00ff00);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .view-session-btn:hover {
+    background: rgba(0, 255, 0, 0.2);
+  }
+
+  .loading-details {
+    text-align: center;
+    padding: 24px;
+    color: var(--color-term-dim-green, #00cc00);
+    font-size: 12px;
+  }
+
+  /* ChatGPT theme for task details */
+  .scheduler-popup.chatgpt .task-details-panel {
+    background: var(--chat-bg-secondary, #f7f7f8);
+    border-color: var(--chat-border, #e5e5e5);
+  }
+
+  .scheduler-popup.chatgpt .details-header {
+    background: var(--chat-bg, #ffffff);
+    border-color: var(--chat-border, #e5e5e5);
+  }
+
+  .scheduler-popup.chatgpt .details-title {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .close-details-btn {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .scheduler-popup.chatgpt .close-details-btn:hover {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .detail-label {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .scheduler-popup.chatgpt .detail-value {
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .detail-input,
+  .scheduler-popup.chatgpt .detail-result {
+    background: var(--chat-bg, #ffffff);
+    color: var(--chat-text, #0d0d0d);
+  }
+
+  .scheduler-popup.chatgpt .view-session-btn {
+    background: var(--chat-button-bg, #10a37f);
+    border: none;
+    color: white;
+  }
+
+  .scheduler-popup.chatgpt .view-session-btn:hover {
+    background: var(--chat-button-hover, #0e8c6d);
   }
 </style>
