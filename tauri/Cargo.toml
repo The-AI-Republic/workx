@@ -1,0 +1,23 @@
+[package]
+name = "browserx-desktop"
+version = "0.1.0"
+description = "BrowserX Desktop Agent"
+authors = ["BrowserX Team"]
+license = "UNLICENSED"
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.6", features = ["shell-open", "system-tray", "global-shortcut"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+lazy_static = "1.4"
+uuid = { version = "1.0", features = ["v4"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,4 +1,4 @@
-# PAX (Personal Assistant X) - Desktop Agent Design Document
+# PI (Personal AI) - Desktop Agent Design Document
 
 **Version**: 1.0
 **Date**: 2026-02-02
@@ -12,14 +12,15 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Goals and Non-Goals](#2-goals-and-non-goals)
 3. [System Architecture](#3-system-architecture)
-4. [Component Design](#4-component-design)
-5. [Build System](#5-build-system)
-6. [Platform Considerations](#6-platform-considerations)
-7. [Security Model](#7-security-model)
-8. [Configuration System](#8-configuration-system)
-9. [Distribution Strategy](#9-distribution-strategy)
-10. [Migration Path](#10-migration-path)
-11. [Future Considerations](#11-future-considerations)
+4. [Multi-Channel Architecture](#4-multi-channel-architecture)
+5. [Component Design](#5-component-design)
+6. [Build System](#6-build-system)
+7. [Platform Considerations](#7-platform-considerations)
+8. [Security Model](#8-security-model)
+9. [Configuration System](#9-configuration-system)
+10. [Distribution Strategy](#10-distribution-strategy)
+11. [Migration Path](#11-migration-path)
+12. [Future Considerations](#12-future-considerations)
 
 ---
 
@@ -27,11 +28,11 @@
 
 ### 1.1 Background
 
-BrowserX is currently a Chrome extension that provides AI-powered browser automation. This design document outlines the architecture for **PAX (Personal Assistant X)**, an evolution that enables BrowserX to run as a native desktop agent while maintaining backward compatibility with the existing Chrome extension.
+BrowserX is currently a Chrome extension that provides AI-powered browser automation. This design document outlines the architecture for **PI (Personal AI)**, an evolution that enables BrowserX to run as a native desktop agent while maintaining backward compatibility with the existing Chrome extension.
 
 ### 1.2 Vision
 
-PAX transforms from a browser-only assistant to a **full-spectrum personal agent** capable of:
+PI transforms from a browser-only assistant to a **full-spectrum personal agent** capable of:
 
 - Executing terminal commands on the host machine
 - Controlling browsers externally via Chrome DevTools Protocol (CDP)
@@ -73,7 +74,7 @@ PAX transforms from a browser-only assistant to a **full-spectrum personal agent
 | ID | Non-Goal | Rationale |
 |----|----------|-----------|
 | NG1 | Mobile app development | Focus on desktop first; messaging apps provide mobile access |
-| NG2 | Cloud-hosted agent service | PAX runs locally; user data never leaves their machine |
+| NG2 | Cloud-hosted agent service | PI runs locally; user data never leaves their machine |
 | NG3 | Multi-user support | Personal assistant for single user/household |
 | NG4 | Real-time collaboration features | Not a collaborative tool |
 | NG5 | Custom LLM hosting | Use existing LLM providers via API |
@@ -84,249 +85,913 @@ PAX transforms from a browser-only assistant to a **full-spectrum personal agent
 
 ### 3.1 High-Level Architecture
 
+The PI system is built around a **channel-agnostic agent core** with pluggable UI adapters. The architecture separates three concerns:
+
+1. **UI Channels** - Multiple interfaces that send submissions and receive events
+2. **Agent Core** - The AI agent that processes requests and executes tools
+3. **Tool Layer** - Browser automation, terminal, MCP, and other capabilities
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              PAX SYSTEM                                      │
+│                              PI SYSTEM                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                        INPUT LAYER                                   │    │
+│  │                      UI CHANNELS (ChannelAdapter)                    │    │
 │  ├─────────────┬─────────────┬─────────────┬─────────────┬─────────────┤    │
-│  │   Local     │  Messaging  │  Scheduled  │   Webhook   │   Voice     │    │
-│  │   (TUI/GUI) │  Channels   │  Events     │   (Future)  │   (Future)  │    │
+│  │  Chrome     │  Chrome     │   Tauri     │  WebSocket  │  Telegram/  │    │
+│  │  Side Panel │  Tab Page   │   Desktop   │  (Remote)   │  WhatsApp   │    │
 │  └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘    │
 │         │             │             │             │             │           │
 │         └─────────────┴─────────────┼─────────────┴─────────────┘           │
 │                                     │                                        │
-│                              ┌──────▼──────┐                                │
-│                              │  EVENT BUS  │                                │
-│                              └──────┬──────┘                                │
+│                      ┌──────────────▼──────────────┐                        │
+│                      │      CHANNEL MANAGER        │                        │
+│                      │  (Routes SQ↓ and EQ↑)       │                        │
+│                      └──────────────┬──────────────┘                        │
 │                                     │                                        │
-│  ┌──────────────────────────────────┼──────────────────────────────────┐    │
-│  │                          CORE LAYER                                  │    │
-│  │                                  │                                   │    │
-│  │  ┌───────────────┐        ┌──────▼──────┐        ┌───────────────┐  │    │
-│  │  │   Context     │◄──────►│    AGENT    │◄──────►│   Memory      │  │    │
-│  │  │   Manager     │        │   RUNTIME   │        │   Store       │  │    │
-│  │  └───────────────┘        └──────┬──────┘        └───────────────┘  │    │
-│  │                                  │                                   │    │
-│  │         ┌────────────────────────┼────────────────────────┐         │    │
-│  │         │                        │                        │         │    │
-│  │  ┌──────▼──────┐          ┌──────▼──────┐          ┌──────▼──────┐  │    │
-│  │  │     LLM     │          │    TOOL     │          │   PLANNING  │  │    │
-│  │  │   ROUTER    │          │   REGISTRY  │          │   ENGINE    │  │    │
-│  │  └─────────────┘          └──────┬──────┘          └─────────────┘  │    │
-│  │                                  │                                   │    │
-│  └──────────────────────────────────┼──────────────────────────────────┘    │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐    │
+│  │                    SUBMISSION QUEUE (SQ)                             │    │
+│  │              Receives: Op (UserTurn, Interrupt, Approval)            │    │
+│  └──────────────────────────────────┬──────────────────────────────────┘    │
 │                                     │                                        │
-│  ┌──────────────────────────────────┼──────────────────────────────────┐    │
-│  │                         TOOL LAYER                                   │    │
-│  │                                  │                                   │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌─────▼────┐ ┌──────────┐ ┌──────────┐  │    │
-│  │  │ Browser  │ │ Terminal │ │   MCP    │ │   File   │ │  System  │  │    │
-│  │  │ Control  │ │ Executor │ │  Client  │ │  System  │ │  Info    │  │    │
-│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘  │    │
-│  │       │            │            │            │            │         │    │
-│  └───────┼────────────┼────────────┼────────────┼────────────┼─────────┘    │
-│          │            │            │            │            │              │
-├──────────┼────────────┼────────────┼────────────┼────────────┼──────────────┤
-│          │            │            │            │            │              │
-│     ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐        │
-│     │ Chrome  │  │  Shell  │  │   MCP   │  │   OS    │  │   OS    │        │
-│     │  (CDP)  │  │ Process │  │ Servers │  │   FS    │  │  APIs   │        │
-│     └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
-│                           EXTERNAL SYSTEMS                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
+│  ┌──────────────────────────────────▼──────────────────────────────────┐    │
+│  │                          AGENT CORE                                  │    │
+│  │                                                                      │    │
+│  │  ┌───────────────┐   ┌───────────────┐   ┌───────────────┐          │    │
+│  │  │ BrowserxAgent │◄─►│    Session    │◄─►│  TurnManager  │          │    │
+│  │  └───────────────┘   └───────────────┘   └───────┬───────┘          │    │
+│  │                                                   │                  │    │
+│  │         ┌─────────────────────────────────────────┤                  │    │
+│  │         │                    │                    │                  │    │
+│  │  ┌──────▼──────┐      ┌──────▼──────┐      ┌──────▼──────┐          │    │
+│  │  │ ModelClient │      │ ToolRegistry │      │  Approval   │          │    │
+│  │  │  (LLM API)  │      │             │      │   Manager   │          │    │
+│  │  └─────────────┘      └──────┬──────┘      └─────────────┘          │    │
+│  │                              │                                       │    │
+│  └──────────────────────────────┼───────────────────────────────────────┘    │
+│                                 │                                            │
+│  ┌──────────────────────────────▼───────────────────────────────────────┐    │
+│  │                          TOOL LAYER                                   │    │
+│  │                                                                       │    │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │    │
+│  │  │ DomTool  │ │ Terminal │ │   MCP    │ │Navigation│ │  Vision  │   │    │
+│  │  │(CDP/Ext) │ │(Native)  │ │ Client   │ │  Tool    │ │   Tool   │   │    │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘   │    │
+│  │       │            │            │            │            │          │    │
+│  └───────┼────────────┼────────────┼────────────┼────────────┼──────────┘    │
+│          │            │            │            │            │               │
+│  ┌───────▼────────────▼────────────▼────────────▼────────────▼──────────┐    │
+│  │                       EXTERNAL SYSTEMS                                │    │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐    │    │
+│  │  │ Chrome  │  │  Shell  │  │   MCP   │  │   OS    │  │   OS    │    │    │
+│  │  │  (CDP)  │  │ Process │  │ Servers │  │   FS    │  │  APIs   │    │    │
+│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘    │    │
+│  └──────────────────────────────────────────────────────────────────────┘    │
+│                                 │                                            │
+│  ┌──────────────────────────────▼───────────────────────────────────────┐    │
+│  │                       EVENT QUEUE (EQ)                                │    │
+│  │         Emits: EventMsg (TaskStarted, ToolCall, TextDelta, etc.)      │    │
+│  └──────────────────────────────┬───────────────────────────────────────┘    │
+│                                 │                                            │
+│                      ┌──────────▼──────────┐                                │
+│                      │   EVENT DISPATCHER  │                                │
+│                      │  (Routes to Channels)│                                │
+│                      └──────────┬──────────┘                                │
+│                                 │                                            │
+│         ┌───────────────────────┼───────────────────────┐                   │
+│         ▼             ▼         ▼         ▼             ▼                   │
+│  ┌─────────────┐┌─────────────┐┌─────────────┐┌─────────────┐┌─────────────┐│
+│  │ Side Panel  ││  Tab Page   ││   Tauri     ││  WebSocket  ││  Telegram   ││
+│  │ (renders)   ││ (renders)   ││  (renders)  ││  (streams)  ││  (sends)    ││
+│  └─────────────┘└─────────────┘└─────────────┘└─────────────┘└─────────────┘│
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.2 Component Overview
 
 | Component | Responsibility | Mode |
 |-----------|---------------|------|
-| **Event Bus** | Routes incoming events to agent runtime | Both |
-| **Agent Runtime** | Orchestrates LLM calls and tool execution | Both |
-| **LLM Router** | Manages connections to multiple LLM providers | Both |
-| **Tool Registry** | Registers and dispatches tool calls | Both |
-| **Context Manager** | Maintains conversation context and state | Both |
-| **Memory Store** | Persists long-term memory and preferences | Both |
-| **Planning Engine** | Decomposes complex tasks into steps | Both |
-| **Browser Control** | DOM manipulation via chrome.debugger or CDP | Both (abstracted) |
-| **Terminal Executor** | Runs shell commands | Native only |
+| **ChannelAdapter** | Interface for UI channels (send/receive) | Both |
+| **Channel Manager** | Routes submissions to agent, dispatches events to channels | Both |
+| **Submission Queue (SQ)** | Receives `Op` submissions from channels | Both |
+| **Event Queue (EQ)** | Emits `EventMsg` events to channels | Both |
+| **BrowserxAgent** | Orchestrates LLM calls and tool execution | Both |
+| **Session** | Maintains conversation state and history | Both |
+| **TurnManager** | Manages individual conversation turns | Both |
+| **ModelClient** | Connects to LLM providers (OpenAI, Anthropic, etc.) | Both |
+| **ToolRegistry** | Registers and dispatches tool calls | Both |
+| **ApprovalManager** | Handles user approval for sensitive operations | Both |
+| **DomTool** | Browser automation via chrome.debugger or CDP | Both (abstracted) |
+| **Terminal Tool** | Runs shell commands | Native only |
 | **MCP Client** | Communicates with MCP servers | Native only |
-| **Messaging Channels** | Telegram, WhatsApp, etc. adapters | Native only |
 
-### 3.3 Data Flow
+### 3.3 Data Flow (SQ/EQ Pattern)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            REQUEST FLOW                                      │
+│                         REQUEST/RESPONSE FLOW                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  1. INPUT RECEPTION                                                          │
+│  1. USER INPUT (Any Channel)                                                 │
 │     ┌─────────────┐                                                         │
 │     │ User sends  │ "Help me book a flight to NYC for next Friday"          │
-│     │ message via │                                                          │
-│     │ Telegram    │                                                          │
+│     │ via any UI  │ (Side Panel, Tauri, WebSocket, Telegram...)             │
 │     └──────┬──────┘                                                         │
 │            │                                                                 │
-│  2. EVENT NORMALIZATION                                                      │
+│  2. CHANNEL ADAPTER → SUBMISSION QUEUE                                       │
 │            ▼                                                                 │
-│     ┌─────────────┐                                                         │
-│     │ Telegram    │ Converts to IncomingEvent {                             │
-│     │ Adapter     │   channel: 'telegram',                                  │
-│     │             │   content: '...',                                       │
-│     │             │   reply: fn()                                           │
-│     │             │ }                                                        │
-│     └──────┬──────┘                                                         │
-│            │                                                                 │
-│  3. AGENT PROCESSING                                                         │
-│            ▼                                                                 │
-│     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                │
-│     │   Context   │────►│    LLM      │────►│  Planning   │                │
-│     │   Loaded    │     │   Decides   │     │  Breakdown  │                │
-│     │             │     │   Tools     │     │             │                │
-│     └─────────────┘     └─────────────┘     └──────┬──────┘                │
-│                                                     │                        │
-│  4. TOOL EXECUTION                                  │                        │
-│            ┌────────────────────────────────────────┘                        │
+│     ┌─────────────┐     ┌─────────────────────────────────────────────┐    │
+│     │ Channel     │────►│ Op: {                                        │    │
+│     │ Adapter     │     │   type: 'UserTurn',                          │    │
+│     │             │     │   items: [{ type: 'text', text: '...' }],    │    │
+│     │             │     │   tabId: 0,                                  │    │
+│     │             │     │   approval_policy: 'auto'                    │    │
+│     │             │     │ }                                            │    │
+│     └─────────────┘     └──────────────────────┬──────────────────────┘    │
+│                                                 │                           │
+│  3. AGENT CORE PROCESSING                       │                           │
+│            ┌────────────────────────────────────┘                           │
 │            ▼                                                                 │
 │     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                │
-│     │ Step 1:     │────►│ Step 2:     │────►│ Step 3:     │                │
-│     │ Open Chrome │     │ Navigate to │     │ Fill form   │                │
-│     │ (CDP)       │     │ airline.com │     │ & Search    │                │
+│     │ Session     │────►│   Model     │────►│    Tool     │                │
+│     │ Context     │     │   Client    │     │  Execution  │                │
 │     └─────────────┘     └─────────────┘     └──────┬──────┘                │
 │                                                     │                        │
-│  5. RESPONSE                                        │                        │
+│  4. EVENT QUEUE → CHANNEL (Streaming)               │                        │
 │            ┌────────────────────────────────────────┘                        │
 │            ▼                                                                 │
+│     ┌─────────────────────────────────────────────────────────────────┐    │
+│     │ EventMsg stream:                                                 │    │
+│     │   { type: 'TaskStarted', taskId: '...' }                        │    │
+│     │   { type: 'ToolCall', toolName: 'browser_navigate', ... }       │    │
+│     │   { type: 'AssistantTextDelta', delta: 'I found 3 flights...' } │    │
+│     │   { type: 'TaskComplete', result: {...} }                       │    │
+│     └──────────────────────────────┬──────────────────────────────────┘    │
+│                                    │                                        │
+│  5. RESPONSE DELIVERY              │                                        │
+│            ┌───────────────────────┘                                        │
+│            ▼                                                                 │
 │     ┌─────────────┐                                                         │
-│     │ Format &    │ "I found 3 flights to NYC on Friday..."                │
-│     │ Reply via   │                                                          │
-│     │ Telegram    │                                                          │
+│     │ Channel     │ Events routed back to originating channel              │
+│     │ Manager     │ (Side Panel renders UI, WebSocket streams JSON,        │
+│     │             │  Telegram sends message)                                │
 │     └─────────────┘                                                         │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### 3.4 Key Protocol Types
+
+The architecture uses two core message types from `src/protocol/`:
+
+**Submissions (Op)** - Input to agent:
+- `UserTurn` - User message with optional settings
+- `Interrupt` - Cancel current task
+- `ExecApproval` / `PatchApproval` - User approval decisions
+- `Compact` - Request context compaction
+
+**Events (EventMsg)** - Output from agent:
+- `TaskStarted` / `TaskComplete` / `TaskError` - Task lifecycle
+- `ToolCall` / `ToolResult` - Tool execution
+- `AssistantText` / `AssistantTextDelta` - Agent responses (streaming)
+- `RequestApproval` - Request user permission
+- `ReasoningDelta` - Reasoning process (if enabled)
+
 ---
 
-## 4. Component Design
+## 4. Multi-Channel Architecture
 
-### 4.1 Event Bus
+### 4.1 Overview
 
-#### 4.1.1 Purpose
+A core design principle of PI is the **separation of concerns** between the AI Agent, Tools, and UI channels. This enables:
 
-The Event Bus provides a unified interface for all input sources, decoupling the input layer from the agent runtime.
+1. **Multiple simultaneous UIs**: Side panel, tab page, desktop app, remote clients
+2. **Remote control**: External applications can send messages and receive events
+3. **Unified agent core**: Single agent implementation serves all channels
+4. **Event-driven communication**: All channels receive the same event stream
 
-#### 4.1.2 Event Schema
+### 4.2 Architecture Diagram
 
 ```
-IncomingEvent {
-  id: string                    // Unique event identifier
-  channel: ChannelType          // Source channel identifier
-  userId: string                // Sender identifier (for authorization)
-  timestamp: Date               // When event was created
-  type: EventType               // 'message' | 'scheduled' | 'webhook' | 'system'
-  content: string               // The actual message/command
-  metadata: Record<string,any>  // Channel-specific data
-  reply: (text) => Promise      // Callback to respond
-  sendMedia: (media) => Promise // Callback for images/files (optional)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PI MULTI-CHANNEL ARCHITECTURE                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                        UI CHANNELS (Inputs)                          │    │
+│  ├─────────────┬─────────────┬─────────────┬─────────────┬─────────────┤    │
+│  │  Chrome     │  Chrome     │   Tauri     │  Remote     │  Telegram/  │    │
+│  │  Side Panel │  Tab Page   │   Frontend  │  WebSocket  │  WhatsApp   │    │
+│  │  (Extension)│  (Extension)│   (Desktop) │  (API)      │  (Adapters) │    │
+│  └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘    │
+│         │             │             │             │             │           │
+│         └─────────────┴─────────────┼─────────────┴─────────────┘           │
+│                                     │                                        │
+│                      ┌──────────────▼──────────────┐                        │
+│                      │      CHANNEL MANAGER        │                        │
+│                      │   (Routes & Dispatches)     │                        │
+│                      └──────────────┬──────────────┘                        │
+│                                     │                                        │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐    │
+│  │                         SUBMISSION QUEUE (SQ)                        │    │
+│  │                    Receives: Op (UserTurn, Interrupt, etc.)          │    │
+│  └──────────────────────────────────┬──────────────────────────────────┘    │
+│                                     │                                        │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐    │
+│  │                           AGENT CORE                                 │    │
+│  │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐                │    │
+│  │  │ BrowserxAgent│   │   Session   │   │ TurnManager │                │    │
+│  │  │             │◄─►│   State     │◄─►│             │                │    │
+│  │  └─────────────┘   └─────────────┘   └─────────────┘                │    │
+│  │         │                                   │                        │    │
+│  │         │          ┌────────────────────────┤                        │    │
+│  │         ▼          ▼                        ▼                        │    │
+│  │  ┌─────────────┐ ┌─────────────┐  ┌─────────────────┐               │    │
+│  │  │ ToolRegistry │ │ ModelClient │  │ ApprovalManager │               │    │
+│  │  └──────┬──────┘ └─────────────┘  └─────────────────┘               │    │
+│  └─────────┼────────────────────────────────────────────────────────────┘    │
+│            │                                                                 │
+│  ┌─────────▼──────────────────────────────────────────────────────────┐     │
+│  │                            TOOL LAYER                               │     │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │     │
+│  │  │ DomTool  │ │ Terminal │ │   MCP    │ │Navigation│ │  Vision  │ │     │
+│  │  │(CDP/Ext) │ │(Native)  │ │ Client   │ │  Tool    │ │   Tool   │ │     │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │     │
+│  └─────────────────────────────────────────────────────────────────────┘     │
+│                                     │                                        │
+│  ┌──────────────────────────────────▼──────────────────────────────────┐    │
+│  │                          EVENT QUEUE (EQ)                            │    │
+│  │            Emits: EventMsg (TaskStarted, ToolCall, TextDelta, etc.)  │    │
+│  └──────────────────────────────────┬──────────────────────────────────┘    │
+│                                     │                                        │
+│                      ┌──────────────▼──────────────┐                        │
+│                      │      EVENT DISPATCHER       │                        │
+│                      │    (Routes to Channels)     │                        │
+│                      └──────────────┬──────────────┘                        │
+│                                     │                                        │
+│         ┌───────────────────────────┼───────────────────────────┐           │
+│         │             │             │             │             │           │
+│         ▼             ▼             ▼             ▼             ▼           │
+│  ┌─────────────┐┌─────────────┐┌─────────────┐┌─────────────┐┌─────────────┐│
+│  │ Side Panel  ││  Tab Page   ││   Tauri     ││  WebSocket  ││  Telegram   ││
+│  │ (renders)   ││ (renders)   ││  (renders)  ││  (sends)    ││  (sends)    ││
+│  └─────────────┘└─────────────┘└─────────────┘└─────────────┘└─────────────┘│
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.3 SQ/EQ Protocol (Existing Foundation)
+
+The codebase already uses a **Submission Queue / Event Queue** pattern that naturally supports multi-channel communication:
+
+#### 4.3.1 Submissions (Input to Agent)
+
+```typescript
+// src/protocol/types.ts - Op type (Submissions)
+type Op =
+  | { type: 'UserTurn'; items: InputItem[]; tabId: number; approval_policy; sandbox_policy; model; effort?; summary }
+  | { type: 'UserInput'; items: InputItem[] }
+  | { type: 'Interrupt' }
+  | { type: 'ExecApproval'; id: string; decision: 'allow' | 'deny' }
+  | { type: 'PatchApproval'; id: string; decision: 'allow' | 'deny' }
+  | { type: 'Compact' }
+  | { type: 'ManualCompact' }
+  | { type: 'AddToHistory'; text: string }
+  // ... more
+```
+
+#### 4.3.2 Events (Output from Agent)
+
+```typescript
+// src/protocol/events.ts - EventMsg types
+type EventMsg =
+  | { type: 'BackgroundEvent'; status: string; message?: string }
+  | { type: 'TaskStarted'; taskId: string }
+  | { type: 'TaskComplete'; result: any }
+  | { type: 'TaskError'; error: string }
+  | { type: 'TurnStart'; turnId: string }
+  | { type: 'TurnComplete'; turnId: string }
+  | { type: 'ToolCall'; toolName: string; parameters: any }
+  | { type: 'ToolResult'; toolName: string; result: any }
+  | { type: 'AssistantText'; text: string }
+  | { type: 'AssistantTextDelta'; delta: string }  // Streaming
+  | { type: 'RequestApproval'; id: string; toolName: string; reason: string }
+  | { type: 'ReasoningDelta'; delta: string }
+  // ... more
+```
+
+### 4.4 Channel Adapter Interface
+
+Each UI channel implements a unified adapter interface:
+
+```typescript
+// src/core/channels/ChannelAdapter.ts
+
+interface ChannelAdapter {
+  readonly channelId: string;
+  readonly channelType: ChannelType;
+
+  // Lifecycle
+  initialize(): Promise<void>;
+  shutdown(): Promise<void>;
+
+  // Receiving submissions from this channel
+  onSubmission(handler: (op: Op, context: SubmissionContext) => void): void;
+
+  // Sending events to this channel
+  sendEvent(event: EventMsg): Promise<void>;
+
+  // Channel capabilities
+  supportsStreaming(): boolean;
+  supportsApprovals(): boolean;
+  supportsMedia(): boolean;
+}
+
+type ChannelType =
+  | 'sidepanel'    // Chrome extension side panel
+  | 'tabpage'      // Chrome extension tab page
+  | 'tauri'        // Tauri desktop frontend
+  | 'websocket'    // Remote WebSocket API
+  | 'telegram'     // Telegram bot
+  | 'whatsapp'     // WhatsApp adapter
+  | 'cli';         // Terminal UI
+
+interface SubmissionContext {
+  channelId: string;
+  channelType: ChannelType;
+  userId?: string;
+  sessionId?: string;
+  tabId?: number;
+  replyCallback?: (text: string) => Promise<void>;
 }
 ```
 
-#### 4.1.3 Channel Adapter Interface
+### 4.5 Channel Implementations
 
-Each input channel implements a common adapter interface:
+#### 4.5.1 Extension Channels (Side Panel & Tab Page)
 
-```
-ChannelAdapter {
-  name: ChannelType
-  initialize(): Promise<void>
-  shutdown(): Promise<void>
-  onEvent(handler: EventHandler): void
-  isHealthy(): boolean
-  getStatus(): AdapterStatus
+Both use `chrome.runtime` messaging but register as separate channels:
+
+```typescript
+// src/extension/channels/SidePanelChannel.ts
+export class SidePanelChannel implements ChannelAdapter {
+  readonly channelId = 'sidepanel-main';
+  readonly channelType = 'sidepanel' as const;
+  private submissionHandler: (op: Op, ctx: SubmissionContext) => void;
+
+  async initialize() {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.source === 'sidepanel' && msg.type === 'SUBMISSION') {
+        this.submissionHandler(msg.payload, {
+          channelId: this.channelId,
+          channelType: this.channelType
+        });
+      }
+    });
+  }
+
+  onSubmission(handler: (op: Op, ctx: SubmissionContext) => void) {
+    this.submissionHandler = handler;
+  }
+
+  async sendEvent(event: EventMsg) {
+    chrome.runtime.sendMessage({
+      type: 'EVENT',
+      target: 'sidepanel',
+      payload: event
+    });
+  }
+
+  supportsStreaming() { return true; }
+  supportsApprovals() { return true; }
+  supportsMedia() { return true; }
 }
 ```
 
-#### 4.1.4 Supported Channels
+```typescript
+// src/extension/channels/TabPageChannel.ts
+export class TabPageChannel implements ChannelAdapter {
+  readonly channelId: string;
+  readonly channelType = 'tabpage' as const;
+  private tabId: number;
 
-| Channel | Protocol | Auth Method | Platform |
-|---------|----------|-------------|----------|
-| **Terminal (TUI)** | stdin/stdout | Local | All |
-| **GUI** | IPC | Local | All |
-| **Telegram** | Bot API (polling) | Bot token + user whitelist | All |
-| **WhatsApp** | WhatsApp Web protocol | QR code scan | All |
-| **iMessage** | SQLite + AppleScript | Full Disk Access | macOS |
-| **Discord** | Bot API (WebSocket) | Bot token + user whitelist | All |
-| **Email** | IMAP polling | OAuth or app password | All |
-| **Google Calendar** | Calendar API polling | OAuth | All |
+  constructor(tabId: number) {
+    this.tabId = tabId;
+    this.channelId = `tabpage-${tabId}`;
+  }
 
-#### 4.1.5 Message Routing
+  async sendEvent(event: EventMsg) {
+    // Send to tab via content script or dedicated messaging
+    chrome.tabs.sendMessage(this.tabId, {
+      type: 'EVENT',
+      payload: event
+    });
+  }
+}
+```
 
-The Event Bus maintains:
+#### 4.5.2 Tauri Desktop Channel
 
-1. **Adapter Registry**: Map of active channel adapters
-2. **Authorization Cache**: Cached user permissions per channel
-3. **Rate Limiter**: Per-user, per-channel rate limiting
-4. **Event Queue**: Ordered queue for processing (optional, for high load)
+When running as a Tauri app, communication happens via Tauri's IPC:
 
-### 4.2 Agent Runtime
+```typescript
+// src/pi/channels/TauriChannel.ts
+import { invoke, listen } from '@tauri-apps/api';
 
-#### 4.2.1 Purpose
+export class TauriChannel implements ChannelAdapter {
+  readonly channelId = 'tauri-main';
+  readonly channelType = 'tauri' as const;
+  private submissionHandler: (op: Op, ctx: SubmissionContext) => void;
 
-The Agent Runtime orchestrates the execution of user requests, managing the interaction between LLM, tools, and context.
+  async initialize() {
+    // Listen for submissions from Tauri frontend
+    await listen('agent:submission', (event) => {
+      this.submissionHandler(event.payload as Op, {
+        channelId: this.channelId,
+        channelType: this.channelType
+      });
+    });
+  }
 
-#### 4.2.2 Execution Model
+  onSubmission(handler: (op: Op, ctx: SubmissionContext) => void) {
+    this.submissionHandler = handler;
+  }
+
+  async sendEvent(event: EventMsg) {
+    // Emit event to Tauri frontend via Rust backend
+    await invoke('emit_event', { event });
+  }
+
+  supportsStreaming() { return true; }
+  supportsApprovals() { return true; }
+  supportsMedia() { return true; }
+}
+```
+
+#### 4.5.3 Remote WebSocket Channel
+
+This is **key for remote message control** - enables external clients to send tasks and receive events:
+
+```typescript
+// src/pi/channels/WebSocketChannel.ts
+import { WebSocketServer, WebSocket } from 'ws';
+
+export class WebSocketChannel implements ChannelAdapter {
+  readonly channelId = 'websocket-server';
+  readonly channelType = 'websocket' as const;
+  private wss: WebSocketServer;
+  private clients: Map<string, WebSocket> = new Map();
+  private submissionHandler: (op: Op, ctx: SubmissionContext) => void;
+
+  async initialize() {
+    this.wss = new WebSocketServer({ port: 8765 });
+
+    this.wss.on('connection', (ws, req) => {
+      const clientId = this.generateClientId();
+      this.clients.set(clientId, ws);
+
+      // Send welcome message
+      ws.send(JSON.stringify({
+        type: 'connected',
+        clientId,
+        message: 'Connected to PI agent'
+      }));
+
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString()) as RemoteMessage;
+          this.handleMessage(msg, clientId, ws);
+        } catch (e) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Invalid JSON' }));
+        }
+      });
+
+      ws.on('close', () => {
+        this.clients.delete(clientId);
+      });
+    });
+  }
+
+  private handleMessage(msg: RemoteMessage, clientId: string, ws: WebSocket) {
+    if (msg.type === 'submission') {
+      this.submissionHandler(msg.op, {
+        channelId: clientId,
+        channelType: 'websocket',
+        sessionId: msg.sessionId,
+        replyCallback: async (text) => {
+          ws.send(JSON.stringify({ type: 'reply', text }));
+        }
+      });
+    }
+  }
+
+  onSubmission(handler: (op: Op, ctx: SubmissionContext) => void) {
+    this.submissionHandler = handler;
+  }
+
+  async sendEvent(event: EventMsg, targetClientId?: string) {
+    const message = JSON.stringify({ type: 'event', event });
+
+    if (targetClientId) {
+      // Send to specific client
+      this.clients.get(targetClientId)?.send(message);
+    } else {
+      // Broadcast to all connected clients
+      this.clients.forEach(ws => ws.send(message));
+    }
+  }
+
+  supportsStreaming() { return true; }
+  supportsApprovals() { return true; }
+  supportsMedia() { return false; }  // Binary needs special handling
+
+  private generateClientId(): string {
+    return `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+
+// Remote message protocol
+interface RemoteMessage {
+  type: 'submission' | 'ping';
+  sessionId?: string;
+  op?: Op;
+}
+```
+
+### 4.6 Remote API Protocol
+
+For WebSocket and HTTP API clients, a clean protocol for external control:
+
+#### 4.6.1 Client → Agent (Submissions)
+
+```typescript
+// Start a new task
+{
+  "type": "submission",
+  "sessionId": "optional-session-id",  // Creates new if not provided
+  "op": {
+    "type": "UserTurn",
+    "items": [{ "type": "text", "text": "Book a flight to NYC for next Friday" }],
+    "tabId": 0,
+    "approval_policy": "auto",
+    "model": "gpt-4o"
+  }
+}
+
+// Interrupt current task
+{
+  "type": "submission",
+  "sessionId": "existing-session-id",
+  "op": { "type": "Interrupt" }
+}
+
+// Approve a tool execution
+{
+  "type": "submission",
+  "sessionId": "existing-session-id",
+  "op": {
+    "type": "ExecApproval",
+    "id": "approval-request-id",
+    "decision": "allow"
+  }
+}
+```
+
+#### 4.6.2 Agent → Client (Events)
+
+```typescript
+// Task lifecycle
+{ "type": "event", "event": { "type": "TaskStarted", "taskId": "task-123" } }
+{ "type": "event", "event": { "type": "TaskComplete", "result": {...} } }
+{ "type": "event", "event": { "type": "TaskError", "error": "..." } }
+
+// Streaming text (for real-time display)
+{ "type": "event", "event": { "type": "AssistantTextDelta", "delta": "I'll help" } }
+{ "type": "event", "event": { "type": "AssistantTextDelta", "delta": " you book" } }
+{ "type": "event", "event": { "type": "AssistantText", "text": "I'll help you book..." } }
+
+// Tool execution
+{ "type": "event", "event": { "type": "ToolCall", "toolName": "browser_navigate", "parameters": {...} } }
+{ "type": "event", "event": { "type": "ToolResult", "toolName": "browser_navigate", "result": {...} } }
+
+// Approval request (client must respond)
+{ "type": "event", "event": { "type": "RequestApproval", "id": "apr-456", "toolName": "terminal_execute", "reason": "Run: npm install" } }
+```
+
+#### 4.6.3 Example: Python Remote Client
+
+```python
+import asyncio
+import websockets
+import json
+
+async def main():
+    uri = "ws://localhost:8765"
+    async with websockets.connect(uri) as ws:
+        # Send a task
+        await ws.send(json.dumps({
+            "type": "submission",
+            "op": {
+                "type": "UserTurn",
+                "items": [{"type": "text", "text": "Check my Amazon orders"}],
+                "tabId": 0,
+                "approval_policy": "auto",
+                "model": "gpt-4o"
+            }
+        }))
+
+        # Listen for events
+        while True:
+            message = await ws.recv()
+            data = json.loads(message)
+
+            if data["type"] == "event":
+                event = data["event"]
+                print(f"Event: {event['type']}")
+
+                if event["type"] == "AssistantTextDelta":
+                    print(event["delta"], end="", flush=True)
+                elif event["type"] == "TaskComplete":
+                    print("\nTask completed!")
+                    break
+                elif event["type"] == "RequestApproval":
+                    # Auto-approve for this example
+                    await ws.send(json.dumps({
+                        "type": "submission",
+                        "op": {
+                            "type": "ExecApproval",
+                            "id": event["id"],
+                            "decision": "allow"
+                        }
+                    }))
+
+asyncio.run(main())
+```
+
+### 4.7 Channel Manager
+
+Orchestrates all channels and routes events:
+
+```typescript
+// src/core/channels/ChannelManager.ts
+
+export class ChannelManager {
+  private channels: Map<string, ChannelAdapter> = new Map();
+  private sessionChannels: Map<string, string> = new Map();  // sessionId -> channelId
+  private agent: BrowserxAgent;
+
+  constructor(agent: BrowserxAgent) {
+    this.agent = agent;
+  }
+
+  registerChannel(channel: ChannelAdapter) {
+    this.channels.set(channel.channelId, channel);
+
+    channel.onSubmission((op, context) => {
+      // Track which channel initiated this session
+      if (context.sessionId) {
+        this.sessionChannels.set(context.sessionId, context.channelId);
+      }
+
+      // Forward to agent
+      this.agent.handleSubmission(op, context);
+    });
+  }
+
+  unregisterChannel(channelId: string) {
+    this.channels.delete(channelId);
+    // Clean up session mappings
+    for (const [sessionId, cid] of this.sessionChannels) {
+      if (cid === channelId) {
+        this.sessionChannels.delete(sessionId);
+      }
+    }
+  }
+
+  // Called by agent when emitting events
+  dispatchEvent(event: EventMsg, sessionId: string) {
+    const channelId = this.sessionChannels.get(sessionId);
+
+    if (channelId) {
+      // Send to originating channel
+      const channel = this.channels.get(channelId);
+      channel?.sendEvent(event);
+    }
+  }
+
+  // Broadcast to all channels (for global events)
+  broadcastEvent(event: EventMsg) {
+    this.channels.forEach(channel => channel.sendEvent(event));
+  }
+
+  getChannelCapabilities(channelId: string): ChannelCapabilities | null {
+    const channel = this.channels.get(channelId);
+    if (!channel) return null;
+
+    return {
+      streaming: channel.supportsStreaming(),
+      approvals: channel.supportsApprovals(),
+      media: channel.supportsMedia()
+    };
+  }
+}
+
+interface ChannelCapabilities {
+  streaming: boolean;
+  approvals: boolean;
+  media: boolean;
+}
+```
+
+### 4.8 Integration with Existing Codebase
+
+The multi-channel architecture builds on existing patterns:
+
+| Existing Component | Current State | Required Change |
+|-------------------|---------------|-----------------|
+| `MessageRouter` | Tightly coupled to `chrome.runtime` | Abstract into `ChannelAdapter` interface |
+| `BrowserxAgent` | Single channel output | Inject `ChannelManager` for multi-channel dispatch |
+| `service-worker.ts` | Extension-only initialization | Conditional init based on build mode |
+| Side Panel Stores | Direct `chrome.runtime` calls | Use channel-agnostic message API |
+| `EventMsg` emission | Via `chrome.runtime.sendMessage` | Via `ChannelManager.dispatchEvent()` |
+
+#### 4.8.1 Agent Integration
+
+```typescript
+// Updated BrowserxAgent initialization
+export class BrowserxAgent {
+  private channelManager: ChannelManager;
+
+  constructor(config: AgentConfig, channelManager: ChannelManager) {
+    this.channelManager = channelManager;
+    // ... existing initialization
+  }
+
+  // Called when agent wants to emit an event
+  private emitEvent(event: EventMsg, sessionId: string) {
+    this.channelManager.dispatchEvent(event, sessionId);
+  }
+}
+```
+
+### 4.9 Build Mode Configuration
+
+Different channels are registered based on build mode:
+
+```typescript
+// src/core/channels/index.ts
+
+export async function initializeChannels(
+  agent: BrowserxAgent,
+  buildMode: 'extension' | 'native'
+): Promise<ChannelManager> {
+  const manager = new ChannelManager(agent);
+
+  if (buildMode === 'extension') {
+    // Chrome extension channels
+    const { SidePanelChannel } = await import('../../extension/channels/SidePanelChannel');
+    const { TabPageChannel } = await import('../../extension/channels/TabPageChannel');
+
+    manager.registerChannel(new SidePanelChannel());
+    // TabPageChannel registered dynamically per tab
+  } else {
+    // Native app channels
+    const { TauriChannel } = await import('../../pax/channels/TauriChannel');
+    const { WebSocketChannel } = await import('../../pax/channels/WebSocketChannel');
+    const { TelegramChannel } = await import('../../pax/channels/TelegramChannel');
+
+    manager.registerChannel(new TauriChannel());
+    manager.registerChannel(new WebSocketChannel());
+
+    // Optional channels based on config
+    if (config.channels.telegram.enabled) {
+      manager.registerChannel(new TelegramChannel(config.channels.telegram));
+    }
+  }
+
+  return manager;
+}
+```
+
+---
+
+## 5. Component Design
+
+This section details the internal components of the PI agent. For the multi-channel architecture (how UI channels communicate with the agent), see Section 4.
+
+### 5.1 Agent Core
+
+The agent core consists of three main classes that work together to process user requests:
+
+#### 5.1.1 BrowserxAgent
+
+The main orchestrator that coordinates all agent activities:
+
+```typescript
+// src/core/BrowserxAgent.ts
+class BrowserxAgent {
+  private session: Session;
+  private channelManager: ChannelManager;
+  private toolRegistry: ToolRegistry;
+  private modelClientFactory: ModelClientFactory;
+  private approvalManager: ApprovalManager;
+
+  // Receives Op submissions from ChannelManager
+  async handleSubmission(op: Op, context: SubmissionContext): Promise<void>;
+
+  // Emits EventMsg to channels via ChannelManager
+  private emitEvent(event: EventMsg, sessionId: string): void;
+}
+```
+
+#### 5.1.2 Session
+
+Maintains conversation state and history:
+
+```typescript
+// src/core/Session.ts
+class Session {
+  private state: SessionState;
+  private services: SessionServices;
+  private activeTurn: ActiveTurn | null;
+
+  // State includes: conversationId, messages, toolUsageStats, errorHistory
+  // Supports history restoration and compaction for long conversations
+}
+```
+
+#### 5.1.3 TurnManager
+
+Manages individual conversation turns (one user request → agent response cycle):
+
+```typescript
+// src/core/TurnManager.ts
+class TurnManager {
+  // Handles model streaming via ResponseStream
+  // Coordinates tool call execution
+  // Manages retry logic (3 retries, exponential backoff)
+  // Emits events: TurnStart, ToolCall, ToolResult, AssistantTextDelta, TurnComplete
+}
+```
+
+#### 5.1.4 Execution Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    AGENT EXECUTION LOOP                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
+│  Op: UserTurn                                                    │
+│       │                                                          │
+│       ▼                                                          │
 │  ┌─────────────┐                                                │
-│  │   START     │                                                │
+│  │ BrowserxAgent│ → emits TaskStarted                           │
 │  └──────┬──────┘                                                │
 │         │                                                        │
 │         ▼                                                        │
 │  ┌─────────────┐     ┌─────────────────────────────────────┐   │
-│  │ Load Context│────►│ - Conversation history               │   │
-│  │             │     │ - User preferences                   │   │
-│  │             │     │ - Active tools & permissions         │   │
+│  │   Session   │────►│ Load: conversation history,          │   │
+│  │  (Context)  │     │ tool registry, user preferences      │   │
 │  └──────┬──────┘     └─────────────────────────────────────┘   │
 │         │                                                        │
 │         ▼                                                        │
+│  ┌─────────────┐ → emits TurnStart                              │
+│  │ TurnManager │                                                │
+│  └──────┬──────┘                                                │
+│         │                                                        │
+│         ▼                                                        │
 │  ┌─────────────┐                                                │
-│  │  LLM Call   │◄─────────────────────────────┐                │
-│  │  (Decide)   │                              │                │
+│  │ ModelClient │◄─────────────────────────────┐                │
+│  │ (LLM API)   │                              │                │
 │  └──────┬──────┘                              │                │
-│         │                                      │                │
+│         │ streaming response                   │                │
 │         ▼                                      │                │
 │  ┌─────────────┐                              │                │
-│  │ Tool Call?  │                              │                │
+│  │ Tool Call?  │ → emits AssistantTextDelta   │                │
 │  └──────┬──────┘                              │                │
 │         │                                      │                │
 │    Yes  │  No                                 │                │
 │    ┌────┴────┐                                │                │
 │    ▼         ▼                                │                │
-│ ┌──────┐ ┌──────────┐                        │                │
-│ │Execute│ │ Format   │                        │                │
-│ │ Tool  │ │ Response │                        │                │
-│ └───┬───┘ └────┬─────┘                        │                │
-│     │          │                              │                │
-│     │          ▼                              │                │
-│     │    ┌──────────┐                         │                │
-│     │    │  REPLY   │                         │                │
-│     │    │  & END   │                         │                │
-│     │    └──────────┘                         │                │
-│     │                                          │                │
-│     └──────────────────────────────────────────┘                │
+│ ┌──────────┐ ┌──────────┐                    │                │
+│ │ToolCall  │ │ Complete │                    │                │
+│ │→ToolResult│ │ Turn    │                    │                │
+│ └────┬─────┘ └────┬─────┘                    │                │
+│      │            │                           │                │
+│      │            ▼                           │                │
+│      │     ┌──────────┐                       │                │
+│      │     │TaskComplete                      │                │
+│      │     └──────────┘                       │                │
+│      │                                         │                │
+│      └─────────────────────────────────────────┘                │
 │           (Loop with tool result)                               │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 4.2.3 Context Management
+#### 5.1.5 Context Management
 
 Context is maintained at multiple levels:
 
@@ -337,18 +1002,18 @@ Context is maintained at multiple levels:
 | **User Context** | Per-user preferences | Disk | Persistent |
 | **Global Context** | System-wide settings | Disk | Persistent |
 
-#### 4.2.4 Agentic Loop Configuration
+#### 5.1.6 Task Configuration
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `maxIterations` | 25 | Maximum tool call loops before forcing response |
-| `maxTokensPerTurn` | 8000 | Token budget per LLM call |
+| `MAX_TURNS` | 500 | Maximum turns per task |
+| `COMPACTION_THRESHOLD` | 0.85 | Compact when context reaches 85% of window |
 | `toolTimeout` | 30s | Timeout for individual tool execution |
 | `totalTimeout` | 5min | Total timeout for entire request |
 
-### 4.3 Tool System
+### 5.2 Tool System
 
-#### 4.3.1 Tool Registry Architecture
+#### 5.2.1 Tool Registry Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -357,14 +1022,13 @@ Context is maintained at multiple levels:
 │                                                                  │
 │  Built-in Tools                    Dynamic Tools                 │
 │  ┌─────────────────────────┐      ┌─────────────────────────┐   │
-│  │ - browser_navigate      │      │ MCP Server Tools        │   │
-│  │ - browser_click         │      │ (discovered at runtime) │   │
-│  │ - browser_type          │      │                         │   │
-│  │ - browser_screenshot    │      │ - filesystem (MCP)      │   │
-│  │ - terminal_execute      │      │ - git (MCP)             │   │
-│  │ - file_read             │      │ - database (MCP)        │   │
-│  │ - file_write            │      │ - custom user MCPs      │   │
-│  │ - system_info           │      │                         │   │
+│  │ - DOMTool (unified)     │      │ MCP Server Tools        │   │
+│  │ - NavigationTool        │      │ (discovered at runtime) │   │
+│  │ - PageVisionTool        │      │                         │   │
+│  │ - PlanningTool          │      │ - filesystem (MCP)      │   │
+│  │ - WebSearchTool         │      │ - git (MCP)             │   │
+│  │ - terminal_execute      │      │ - database (MCP)        │   │
+│  │ - StorageTool           │      │ - custom user MCPs      │   │
 │  └─────────────────────────┘      └─────────────────────────┘   │
 │              │                              │                    │
 │              └──────────────┬───────────────┘                    │
@@ -378,7 +1042,7 @@ Context is maintained at multiple levels:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 4.3.2 Tool Interface
+#### 5.2.2 Tool Interface
 
 Every tool (built-in or MCP) conforms to:
 
@@ -394,7 +1058,7 @@ Tool {
 }
 ```
 
-#### 4.3.3 Built-in Tools
+#### 5.2.3 Built-in Tools
 
 ##### Browser Control Tools
 
@@ -433,7 +1097,7 @@ Tool {
 | `system_clipboard_write` | Write clipboard | Both |
 | `system_notification` | Show OS notification | Native |
 
-#### 4.3.4 Tool Permission Model
+#### 5.2.4 Tool Permission Model
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -466,13 +1130,13 @@ Tool {
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.4 Browser Control Abstraction
+### 5.3 Browser Control Abstraction
 
-#### 4.4.1 The Abstraction Problem
+#### 5.3.1 The Abstraction Problem
 
-BrowserX currently uses `chrome.debugger` API which is only available in extension context. PAX native mode needs to use Chrome DevTools Protocol (CDP) directly. The core DOM manipulation logic must work with both.
+BrowserX currently uses `chrome.debugger` API which is only available in extension context. PI native mode needs to use Chrome DevTools Protocol (CDP) directly. The core DOM manipulation logic must work with both.
 
-#### 4.4.2 Abstraction Layer Design
+#### 5.3.2 Abstraction Layer Design
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -509,16 +1173,16 @@ BrowserX currently uses `chrome.debugger` API which is only available in extensi
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 4.4.3 CDP Connection Management (Native Mode) - Profile Copy Strategy
+#### 5.3.3 CDP Connection Management (Native Mode) - Profile Copy Strategy
 
-In native mode, PAX launches Chrome with debugging enabled using a **copied user profile**. This allows:
+In native mode, PI launches Chrome with debugging enabled using a **copied user profile**. This allows:
 - User's regular Chrome to remain open
-- PAX's Chrome to have all user's login sessions and cookies
+- PI's Chrome to have all user's login sessions and cookies
 - Full CDP access without requiring user to do anything special
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    PAX BROWSER LAUNCH FLOW                       │
+│                    PI BROWSER LAUNCH FLOW                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  User: "Check my Amazon orders"                                 │
@@ -528,7 +1192,7 @@ In native mode, PAX launches Chrome with debugging enabled using a **copied user
 │  │ Step 1: Copy Essential Profile Data (2-10 seconds)       │   │
 │  │ ─────────────────────────────────────────────────────── │   │
 │  │ Source: ~/Library/Application Support/Google/Chrome/     │   │
-│  │ Target: ~/.pax/chrome-profile/                           │   │
+│  │ Target: ~/.pi/chrome-profile/                           │   │
 │  │                                                           │   │
 │  │ Copy: Cookies, Login Data, Local Storage, Preferences    │   │
 │  │ Skip: Cache, History, GPUCache (saves time & space)      │   │
@@ -539,7 +1203,7 @@ In native mode, PAX launches Chrome with debugging enabled using a **copied user
 │  │ Step 2: Launch Chrome with Debugging                     │   │
 │  │ ─────────────────────────────────────────────────────── │   │
 │  │ chrome --remote-debugging-port=9222 \                    │   │
-│  │        --user-data-dir=~/.pax/chrome-profile             │   │
+│  │        --user-data-dir=~/.pi/chrome-profile             │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │         │                                                        │
 │         ▼                                                        │
@@ -551,7 +1215,7 @@ In native mode, PAX launches Chrome with debugging enabled using a **copied user
 │         │                                                        │
 │         ▼                                                        │
 │  ┌─────────────┐                    ┌─────────────┐            │
-│  │ User's      │  Both run          │ PAX's       │            │
+│  │ User's      │  Both run          │ PI's       │            │
 │  │ Chrome      │  simultaneously!   │ Chrome      │            │
 │  │ (untouched) │                    │ (controlled)│            │
 │  │             │                    │ Logged into │            │
@@ -561,7 +1225,7 @@ In native mode, PAX launches Chrome with debugging enabled using a **copied user
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 4.4.4 Profile Copy Strategy
+#### 5.3.4 Profile Copy Strategy
 
 **Chrome Profile Contents & Copy Strategy:**
 
@@ -601,10 +1265,10 @@ User's Chrome Profile (~/Library/Application Support/Google/Chrome/Default/)
 | Medium user  | ~200-500 MB   | 5-10 sec  |
 | Heavy user   | ~500MB-1GB    | 10-20 sec |
 
-#### 4.4.5 Profile Manager Implementation
+#### 5.3.5 Profile Manager Implementation
 
 ```typescript
-// src/pax/tools/browser/profile-manager.ts
+// src/pi/tools/browser/profile-manager.ts
 
 import { copyFile, mkdir, cp, stat } from 'fs/promises';
 import { join } from 'path';
@@ -616,7 +1280,7 @@ const CHROME_PROFILE_PATHS: Record<string, string> = {
   linux: `${homedir()}/.config/google-chrome`
 };
 
-const PAX_PROFILE_PATH = `${homedir()}/.pax/chrome-profile`;
+const PI_PROFILE_PATH = `${homedir()}/.pi/chrome-profile`;
 
 const ESSENTIAL_ITEMS = [
   // Files (login sessions, passwords, settings)
@@ -645,7 +1309,7 @@ export interface ProfileCopyResult {
 export async function copyUserProfile(): Promise<ProfileCopyResult> {
   const startTime = Date.now();
   const sourceProfile = join(CHROME_PROFILE_PATHS[platform()], 'Default');
-  const targetProfile = join(PAX_PROFILE_PATH, 'Default');
+  const targetProfile = join(PI_PROFILE_PATH, 'Default');
 
   // Create target directory
   await mkdir(targetProfile, { recursive: true });
@@ -675,14 +1339,14 @@ export async function copyUserProfile(): Promise<ProfileCopyResult> {
   try {
     await copyFile(
       join(CHROME_PROFILE_PATHS[platform()], 'Local State'),
-      join(PAX_PROFILE_PATH, 'Local State')
+      join(PI_PROFILE_PATH, 'Local State')
     );
   } catch (err) {
     console.warn('Could not copy Local State:', (err as Error).message);
   }
 
   return {
-    path: PAX_PROFILE_PATH,
+    path: PI_PROFILE_PATH,
     duration: Date.now() - startTime,
     sizeBytes: totalSize
   };
@@ -702,9 +1366,9 @@ async function calculateSize(path: string): Promise<number> {
 }
 ```
 
-#### 4.4.6 Browser Detection & Multi-Browser Support
+#### 5.3.6 Browser Detection & Multi-Browser Support
 
-PAX supports Chrome as the primary browser, with Edge as fallback on Windows. The detection strategy:
+PI supports Chrome as the primary browser, with Edge as fallback on Windows. The detection strategy:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -736,10 +1400,10 @@ PAX supports Chrome as the primary browser, with Edge as fallback on Windows. Th
 | Windows | Chrome | Microsoft Edge | Edge uses Chromium, full CDP support |
 | Linux | Chrome/Chromium | Chromium | Both work with CDP |
 
-#### 4.4.7 Chrome Launcher Implementation
+#### 5.3.7 Chrome Launcher Implementation
 
 ```typescript
-// src/pax/tools/browser/browser-detector.ts
+// src/pi/tools/browser/browser-detector.ts
 
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
@@ -857,7 +1521,7 @@ export function getBrowserNotFoundMessage(): string {
 ```
 
 ```typescript
-// src/pax/tools/browser/chrome-launcher.ts
+// src/pi/tools/browser/chrome-launcher.ts
 
 import { spawn } from 'child_process';
 import { detectBrowser, getBrowserNotFoundMessage, BrowserInfo } from './browser-detector';
@@ -895,7 +1559,7 @@ export async function launchBrowserWithDebugging(
     stdio: 'ignore'
   });
 
-  process.unref(); // Let browser run independently of PAX
+  process.unref(); // Let browser run independently of PI
 
   // Wait for debugger to be ready
   await waitForDebugger(port);
@@ -931,10 +1595,10 @@ export async function isDebuggerAvailable(port = DEFAULT_DEBUG_PORT): Promise<bo
 }
 ```
 
-#### 4.4.7 CDP Browser Controller
+#### 5.3.8 CDP Browser Controller
 
 ```typescript
-// src/pax/tools/browser/cdp-controller.ts
+// src/pi/tools/browser/cdp-controller.ts
 
 import puppeteer, { Browser, Page } from 'puppeteer-core';
 import { copyUserProfile, ProfileCopyResult } from './profile-manager';
@@ -1044,28 +1708,28 @@ export class CDPBrowserController implements BrowserController {
 }
 ```
 
-#### 4.4.8 CDP vs chrome.debugger Differences
+#### 5.3.9 CDP vs chrome.debugger Differences
 
-| Aspect | chrome.debugger (Extension) | CDP (Native PAX) |
+| Aspect | chrome.debugger (Extension) | CDP (Native PI) |
 |--------|----------------------------|------------------|
 | Connection | Automatic via extension | WebSocket to debugging port |
 | Profile | User's active profile | Copied profile (snapshot) |
 | Tab management | `chrome.tabs` API | CDP `Target` domain |
 | Authentication | Extension permissions | No auth (localhost only) |
 | Events | Extension event listeners | CDP event subscriptions |
-| Lifecycle | Managed by browser | PAX manages Chrome process |
+| Lifecycle | Managed by browser | PI manages Chrome process |
 | User's Chrome | Same instance | Separate instance (both can run) |
 
-#### 4.4.9 Important Caveats
+#### 5.3.10 Important Caveats
 
 **1. Profile is a Snapshot**
-The copied profile represents the user's data at the time of copy. New logins or cookies added to the user's main Chrome won't appear in PAX's Chrome until the next profile copy.
+The copied profile represents the user's data at the time of copy. New logins or cookies added to the user's main Chrome won't appear in PI's Chrome until the next profile copy.
 
 **2. Session Conflicts (Rare)**
 Some security-sensitive sites (banking, etc.) may detect concurrent sessions from the same account and log out one instance. Most sites handle this fine.
 
 **3. Password Decryption**
-Chrome encrypts saved passwords using OS-level encryption. Decryption works as long as PAX runs as the same OS user:
+Chrome encrypts saved passwords using OS-level encryption. Decryption works as long as PI runs as the same OS user:
 
 | Platform | Encryption | Works with Copy? |
 |----------|-----------|------------------|
@@ -1093,7 +1757,7 @@ async function copyWithRetry(source: string, target: string, maxRetries = 3): Pr
 }
 ```
 
-#### 4.4.10 DomTool Migration Strategy
+#### 5.3.11 DomTool Migration Strategy
 
 The goal is to **reuse existing DomService logic as much as possible**, only replacing the `chrome.debugger` API calls with CDP equivalents. This requires a middle abstraction layer.
 
@@ -1136,7 +1800,7 @@ The goal is to **reuse existing DomService logic as much as possible**, only rep
 │  └───────────────────────────┘   └───────────────────────────┘ │
 │              ▲                                 ▲                │
 │              │                                 │                │
-│         Extension                         Native PAX           │
+│         Extension                         Native PI           │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -1189,7 +1853,7 @@ export class ChromeDebuggerClient implements DebuggerClient {
 
 3. **Create CDPDebuggerClient (Native)**
 ```typescript
-// src/pax/tools/dom/cdp-debugger-client.ts
+// src/pi/tools/dom/cdp-debugger-client.ts
 
 import { CDPSession, Page } from 'puppeteer-core';
 
@@ -1243,12 +1907,12 @@ export class DomService {
 - Only the debugger communication layer is swapped
 - Unit tests for `DomService` work with mock `DebuggerClient`
 
-#### 4.4.11 Error Handling & Retry Strategy
+#### 5.3.12 Error Handling & Retry Strategy
 
-PAX implements a retry-first approach for browser control failures:
+PI implements a retry-first approach for browser control failures:
 
 ```typescript
-// src/pax/tools/browser/resilient-controller.ts
+// src/pi/tools/browser/resilient-controller.ts
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
@@ -1324,18 +1988,18 @@ export class ResilientBrowserController {
 | Chrome crashes | Detect via CDP events, re-launch and reconnect |
 | All retries exhausted | Show user-friendly message with manual instructions |
 
-#### 4.4.12 Extension + Native Coexistence
+#### 5.3.13 Extension + Native Coexistence
 
-Currently, the Chrome extension (BrowserX) and native app (PAX) are **separate products**:
+Currently, the Chrome extension (BrowserX) and native app (PI) are **separate products**:
 
 - **BrowserX Extension**: Controls browser from inside, uses `chrome.debugger`
-- **PAX Native App**: Controls browser from outside, uses CDP with profile copy
+- **PI Native App**: Controls browser from outside, uses CDP with profile copy
 
 **Current Design Decision**: No communication between them. They operate independently.
 
-**Future Consideration**: If both are installed, PAX could potentially communicate with the extension via WebSocket to leverage the extension's direct browser access. This would be designed separately when needed.
+**Future Consideration**: If both are installed, PI could potentially communicate with the extension via WebSocket to leverage the extension's direct browser access. This would be designed separately when needed.
 
-#### 4.4.13 Testing Strategy
+#### 5.3.14 Testing Strategy
 
 **Unit Testing Approach:**
 
@@ -1375,13 +2039,13 @@ describe('DomService', () => {
 3. **Browser Detection tests** - Mock file system and exec calls
 4. **Integration tests** - Test with real Chrome in CI (headless mode)
 
-### 4.5 MCP Integration
+### 5.4 MCP Integration
 
-#### 4.5.1 MCP Overview
+#### 5.4.1 Overview
 
-Model Context Protocol (MCP) is a standard for LLM tool integration. PAX acts as an MCP **client** that can connect to multiple MCP **servers**.
+Model Context Protocol (MCP) is a standard for LLM tool integration. PI acts as an MCP **client** that can connect to multiple MCP **servers**.
 
-#### 4.5.2 MCP Client Architecture
+#### 5.4.2 MCP Client Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1418,10 +2082,10 @@ Model Context Protocol (MCP) is a standard for LLM tool integration. PAX acts as
    └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-#### 4.5.3 MCP Server Configuration
+#### 5.4.3 MCP Server Configuration
 
 ```yaml
-# ~/.pax/mcp-servers.yaml
+# ~/.pi/mcp-servers.yaml
 
 servers:
   filesystem:
@@ -1442,7 +2106,7 @@ servers:
     auto_start: false
 ```
 
-#### 4.5.4 MCP Tool Discovery
+#### 5.4.4 MCP Tool Discovery
 
 On startup and periodically:
 
@@ -1451,7 +2115,7 @@ On startup and periodically:
 3. **Cache** tool schemas in Tool Registry
 4. **Monitor** for schema changes via MCP notifications
 
-#### 4.5.5 MCP Tool Execution Flow
+#### 5.4.5 MCP Tool Execution Flow
 
 ```
 1. LLM decides to call MCP tool "filesystem_read"
@@ -1472,9 +2136,11 @@ On startup and periodically:
 6. Result returned to Agent Runtime
 ```
 
-### 4.6 Messaging Channel Adapters
+### 5.5 Messaging Channel Adapters
 
-#### 4.6.1 Telegram Adapter
+These adapters implement the `ChannelAdapter` interface (Section 4.4) for external messaging platforms. Each converts platform-specific messages to `Op` submissions and sends `EventMsg` events back as replies.
+
+#### 5.5.1 Telegram Channel
 
 **Protocol**: Telegram Bot API with long polling
 
@@ -1486,27 +2152,28 @@ On startup and periodically:
 **Technical Details**:
 - Uses `node-telegram-bot-api` package
 - Polling mode (no webhook server needed)
+- Implements `ChannelAdapter` interface
 - Supports text, images, documents
-- Inline keyboard for confirmations
+- Inline keyboard for approval requests
 
 **Message Flow**:
 ```
-Telegram Servers ──(poll)──► PAX Telegram Adapter
+Telegram Servers ──(poll)──► TelegramChannel (ChannelAdapter)
                                       │
                               Parse message
                                       │
-                              Create IncomingEvent
+                              Create Op: UserTurn
                                       │
-                              Send to Event Bus
+                              ChannelManager.handleSubmission()
                                       │
-                              [Agent processes]
+                              [Agent processes, emits EventMsg]
                                       │
-                              Reply via Bot API
+                              EventMsg → Telegram reply
                                       │
 User's Telegram App ◄────────────────┘
 ```
 
-#### 4.6.2 WhatsApp Adapter
+#### 5.5.2 WhatsApp Channel
 
 **Protocol**: WhatsApp Web protocol (unofficial)
 
@@ -1518,7 +2185,7 @@ User's Telegram App ◄────────────────┘
 
 **Technical Details**:
 - Uses Puppeteer internally to run WhatsApp Web
-- Maintains persistent session in `~/.pax/whatsapp-session/`
+- Maintains persistent session in `~/.pi/whatsapp-session/`
 - Can send/receive text, images, documents
 - Risk: Against WhatsApp ToS, may break with updates
 
@@ -1527,13 +2194,13 @@ User's Telegram App ◄────────────────┘
 - Session can expire, need re-auth
 - Cannot use same WhatsApp account elsewhere on web
 
-#### 4.6.3 iMessage Adapter (macOS Only)
+#### 5.5.3 iMessage Channel (macOS Only)
 
 **Protocol**: Direct database access + AppleScript
 
 **Setup Requirements**:
 1. macOS with Messages.app configured
-2. Full Disk Access permission for PAX
+2. Full Disk Access permission for PI
 
 **Technical Details**:
 - Reads `~/Library/Messages/chat.db` (SQLite)
@@ -1547,31 +2214,31 @@ User's Telegram App ◄────────────────┘
 - AppleScript can be slow
 - Cannot send rich media easily
 
-#### 4.6.4 Google Calendar Adapter
+#### 5.5.4 Google Calendar Channel
 
 **Protocol**: Google Calendar API v3
 
 **Setup Requirements**:
 1. Google Cloud project with Calendar API enabled
 2. OAuth consent screen configured
-3. User authorizes PAX to read calendar
+3. User authorizes PI to read calendar
 
 **Technical Details**:
 - Polls upcoming events every 30 seconds
-- Looks for events with specific prefix (e.g., "PAX:")
+- Looks for events with specific prefix (e.g., "PI:")
 - Event description contains the command to execute
 - Can optionally delete/update event after execution
 
 **Event Format**:
 ```
-Title: PAX: Summarize my emails
+Title: PI: Summarize my emails
 Description: Send summary to my Telegram
 Start: 2026-02-02 09:00
 ```
 
-### 4.7 Storage Layer
+### 5.6 Storage Layer
 
-#### 4.7.1 Storage Abstraction
+#### 5.6.1 Storage Abstraction
 
 The storage layer provides a unified interface that abstracts away platform-specific storage implementations. This allows the core agent logic to remain agnostic of the underlying storage mechanism.
 
@@ -1610,7 +2277,7 @@ The storage layer provides a unified interface that abstracts away platform-spec
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 4.7.2 Platform-Specific Implementations
+#### 5.6.2 Platform-Specific Implementations
 
 ##### IndexedDB Provider (Chrome Extension)
 
@@ -1657,7 +2324,7 @@ The native desktop application uses SQLite for its:
 ```
 SQLiteStorageProvider {
   // Database location
-  path: ~/.pax/data/pax.db
+  path: ~/.pi/data/pi.db
 
   // Schema
   tables:
@@ -1683,7 +2350,7 @@ SQLiteStorageProvider {
 - Implement automatic vacuum and optimization
 - Support encryption via SQLCipher for sensitive deployments
 
-#### 4.7.3 Storage Interface Definition
+#### 5.6.3 Storage Interface Definition
 
 ```typescript
 interface StorageProvider {
@@ -1731,7 +2398,7 @@ interface QueryFilter {
 }
 ```
 
-#### 4.7.4 Storage Factory
+#### 5.6.4 Storage Factory
 
 ```typescript
 // src/core/storage/index.ts
@@ -1747,7 +2414,7 @@ export async function createStorageProvider(): Promise<StorageProvider> {
   } else {
     const { SQLiteStorageProvider } = await import('./sqlite');
     const provider = new SQLiteStorageProvider({
-      path: path.join(getDataDir(), 'pax.db'),
+      path: path.join(getDataDir(), 'pi.db'),
       walMode: true,
     });
     await provider.initialize();
@@ -1756,7 +2423,7 @@ export async function createStorageProvider(): Promise<StorageProvider> {
 }
 ```
 
-#### 4.7.5 Storage Categories
+#### 5.6.5 Storage Categories
 
 | Category | Content | Extension (IndexedDB) | Native (SQLite) |
 |----------|---------|----------------------|-----------------|
@@ -1766,7 +2433,7 @@ export async function createStorageProvider(): Promise<StorageProvider> {
 | **Cache** | LLM response cache, tool results | `cache` store with TTL index | `cache` table with expiry |
 | **Memory** | Long-term agent memory, embeddings | `memory` store | `memory` table with vector support |
 
-#### 4.7.6 Secure Credential Storage
+#### 5.6.6 Secure Credential Storage
 
 For sensitive data (API keys, tokens), each platform uses its native secure storage:
 
@@ -1796,7 +2463,7 @@ interface CredentialStore {
 // Native implementation uses keytar for OS-level secure storage
 ```
 
-#### 4.7.7 Data Migration
+#### 5.6.7 Data Migration
 
 When users transition between extension and native app, or when upgrading versions:
 
@@ -1821,13 +2488,13 @@ When users transition between extension and native app, or when upgrading versio
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.8 LLM Router
+### 5.7 LLM Router
 
-#### 4.8.1 Purpose
+#### 5.7.1 Purpose
 
 Manage connections to multiple LLM providers, handle routing, fallback, and rate limiting.
 
-#### 4.8.2 Supported Providers
+#### 5.7.2 Supported Providers
 
 | Provider | SDK/Protocol | Models |
 |----------|--------------|--------|
@@ -1838,7 +2505,7 @@ Manage connections to multiple LLM providers, handle routing, fallback, and rate
 | Ollama | OpenAI-compatible | Local models |
 | Custom | OpenAI-compatible | User-specified endpoints |
 
-#### 4.8.3 Routing Strategies
+#### 5.7.3 Routing Strategies
 
 | Strategy | Description | Use Case |
 |----------|-------------|----------|
@@ -1849,9 +2516,9 @@ Manage connections to multiple LLM providers, handle routing, fallback, and rate
 
 ---
 
-## 5. Build System
+## 6. Build System
 
-### 5.1 Dual Build Architecture
+### 6.1 Dual Build Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1861,6 +2528,10 @@ Manage connections to multiple LLM providers, handle routing, fallback, and rate
 │  src/                                                            │
 │  ├── core/                    # Shared code (both modes)        │
 │  │   ├── agent/               # Agent runtime                   │
+│  │   ├── channels/            # Channel abstractions            │
+│  │   │   ├── ChannelAdapter.ts      # Interface                 │
+│  │   │   ├── ChannelManager.ts      # Orchestrator              │
+│  │   │   └── index.ts               # Factory                   │
 │  │   ├── llm/                 # LLM router                      │
 │  │   ├── tools/               # Tool registry + built-ins       │
 │  │   │   ├── browser/                                           │
@@ -1880,17 +2551,22 @@ Manage connections to multiple LLM providers, handle routing, fallback, and rate
 │  │   ├── manifest.json                                          │
 │  │   ├── background.ts        # Service worker                  │
 │  │   ├── content.ts           # Content scripts                 │
+│  │   ├── channels/            # Extension channel adapters      │
+│  │   │   ├── SidePanelChannel.ts                                │
+│  │   │   └── TabPageChannel.ts                                  │
 │  │   ├── popup/               # Popup UI (Svelte)               │
 │  │   └── sidepanel/           # Side panel UI (Svelte)          │
 │  │                                                               │
-│  └── pax/                     # Native app specific             │
+│  └── pi/                      # Native app specific             │
 │      ├── main.ts              # Entry point                     │
 │      ├── daemon.ts            # Background service              │
 │      ├── tray.ts              # System tray (Tauri)             │
 │      ├── cli.ts               # TUI entry                       │
-│      ├── channels/            # Messaging adapters              │
-│      │   ├── telegram.ts                                        │
-│      │   ├── whatsapp.ts                                        │
+│      ├── channels/            # Channel adapters                │
+│      │   ├── TauriChannel.ts                                    │
+│      │   ├── WebSocketChannel.ts                                │
+│      │   ├── TelegramChannel.ts                                 │
+│      │   ├── WhatsAppChannel.ts                                 │
 │      │   └── ...                                                │
 │      ├── tools/               # Native-only tools               │
 │      │   ├── terminal.ts                                        │
@@ -1900,55 +2576,55 @@ Manage connections to multiple LLM providers, handle routing, fallback, and rate
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Build Configurations
+### 6.2 Build Configurations
 
-#### 5.2.1 Extension Build
+#### 6.2.1 Extension Build
 
 ```
 vite.config.extension.ts
 ├── Entry: src/extension/background.ts
 ├── Output: dist/extension/
 ├── Target: Chrome Extension (Manifest V3)
-├── Excludes: src/pax/**
+├── Excludes: src/pi/**
 └── Defines: __BUILD_MODE__ = 'extension'
 ```
 
-#### 5.2.2 PAX GUI Build (Tauri)
+#### 6.2.2 PI GUI Build (Tauri)
 
 ```
-vite.config.pax-gui.ts
-├── Entry: src/pax/main.ts
-├── Output: dist/pax-gui/
+vite.config.pi-gui.ts
+├── Entry: src/pi/main.ts
+├── Output: dist/pi-gui/
 ├── Target: Tauri application
 ├── Excludes: src/extension/**
 ├── Includes: Tauri Rust backend
 └── Defines: __BUILD_MODE__ = 'native'
 ```
 
-#### 5.2.3 PAX CLI Build
+#### 6.2.3 PI CLI Build
 
 ```
-vite.config.pax-cli.ts
-├── Entry: src/pax/cli.ts
-├── Output: dist/pax-cli/
+vite.config.pi-cli.ts
+├── Entry: src/pi/cli.ts
+├── Output: dist/pi-cli/
 ├── Target: Node.js executable
-├── Excludes: src/extension/**, src/pax/ui/**
+├── Excludes: src/extension/**, src/pi/ui/**
 ├── Bundled with: pkg or esbuild
 └── Defines: __BUILD_MODE__ = 'native'
 ```
 
-### 5.3 NPM Scripts
+### 6.3 NPM Scripts
 
 ```json
 {
   "scripts": {
     "dev": "vite --config vite.config.extension.ts",
-    "dev:pax": "tauri dev",
-    "dev:cli": "ts-node src/pax/cli.ts",
+    "dev:pi": "tauri dev",
+    "dev:cli": "ts-node src/pi/cli.ts",
 
     "build": "vite build --config vite.config.extension.ts",
-    "build:pax": "tauri build",
-    "build:cli": "esbuild src/pax/cli.ts --bundle --platform=node --outfile=dist/pax-cli/pax.js",
+    "build:pi": "tauri build",
+    "build:cli": "esbuild src/pi/cli.ts --bundle --platform=node --outfile=dist/pi-cli/pi.js",
 
     "test": "vitest",
     "test:e2e:extension": "playwright test --config=playwright.extension.config.ts",
@@ -1957,7 +2633,7 @@ vite.config.pax-cli.ts
 }
 ```
 
-### 5.4 Conditional Imports
+### 6.4 Conditional Imports
 
 Use build-time constants to tree-shake platform-specific code:
 
@@ -1979,9 +2655,9 @@ export async function createBrowserController(): Promise<BrowserController> {
 
 ---
 
-## 6. Platform Considerations
+## 7. Platform Considerations
 
-### 6.1 macOS
+### 7.1 macOS
 
 #### 6.1.1 Permissions Required
 
@@ -2013,7 +2689,7 @@ Create LaunchAgent plist in `~/Library/LaunchAgents/`:
     <string>com.pax.agent</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Applications/PAX.app/Contents/MacOS/pax</string>
+        <string>/Applications/PI.app/Contents/MacOS/pax</string>
         <string>--daemon</string>
     </array>
     <key>RunAtLoad</key>
@@ -2024,7 +2700,7 @@ Create LaunchAgent plist in `~/Library/LaunchAgents/`:
 </plist>
 ```
 
-### 6.2 Windows
+### 7.2 Windows
 
 #### 6.2.1 Permissions
 
@@ -2052,7 +2728,7 @@ Options:
 2. **Startup Folder**: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`
 3. **Task Scheduler**: For more control (delay, conditions)
 
-### 6.3 Linux
+### 7.3 Linux
 
 #### 6.3.1 Desktop Environments
 
@@ -2075,7 +2751,7 @@ Standard XDG autostart:
 # ~/.config/autostart/pax.desktop
 [Desktop Entry]
 Type=Application
-Name=PAX Agent
+Name=PI Agent
 Exec=/usr/local/bin/pax --daemon
 Hidden=false
 NoDisplay=false
@@ -2087,7 +2763,7 @@ Or systemd user service:
 ```ini
 # ~/.config/systemd/user/pax.service
 [Unit]
-Description=PAX Personal Assistant
+Description=PI Personal Assistant
 
 [Service]
 ExecStart=/usr/local/bin/pax --daemon
@@ -2099,9 +2775,9 @@ WantedBy=default.target
 
 ---
 
-## 7. Security Model
+## 8. Security Model
 
-### 7.1 Threat Model
+### 8.1 Threat Model
 
 | Threat | Severity | Mitigation |
 |--------|----------|------------|
@@ -2112,7 +2788,7 @@ WantedBy=default.target
 | Session hijacking (messaging) | Medium | Session stored locally, encrypted at rest |
 | Data exfiltration | Medium | No telemetry, all data stays local |
 
-### 7.2 Authorization Model
+### 8.2 Authorization Model
 
 #### 7.2.1 User Authorization
 
@@ -2156,7 +2832,7 @@ Per-tool permissions can be:
 3. **Allow Session**: Allow for current session after first confirmation
 4. **Always Deny**: Blocked operations
 
-### 7.3 Terminal Command Security
+### 8.3 Terminal Command Security
 
 #### 7.3.1 Command Filtering
 
@@ -2206,11 +2882,11 @@ Per-tool permissions can be:
 
 Recommended: Use firejail on Linux, Docker as fallback for all platforms.
 
-### 7.4 Network Security
+### 8.4 Network Security
 
 #### 7.4.1 Outbound Only Model
 
-PAX makes only outbound connections:
+PI makes only outbound connections:
 - LLM API calls (HTTPS)
 - Telegram/Discord API (HTTPS/WSS)
 - WhatsApp Web (HTTPS/WSS)
@@ -2225,13 +2901,13 @@ If user enables remote access (Tailscale):
 - Private mesh network only
 - No public internet exposure
 - User must explicitly install and configure Tailscale
-- PAX only binds to Tailscale interface
+- PI only binds to Tailscale interface
 
 ---
 
-## 8. Configuration System
+## 9. Configuration System
 
-### 8.1 Configuration Hierarchy
+### 9.1 Configuration Hierarchy
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -2243,16 +2919,16 @@ If user enables remote access (Tailscale):
 │     pax --port 3001 --debug                                     │
 │                                                                  │
 │  2. Environment variables                                        │
-│     PAX_PORT=3001 PAX_DEBUG=true                                │
+│     PI_PORT=3001 PI_DEBUG=true                                │
 │                                                                  │
 │  3. Project config (if running in a project)                    │
-│     ./pax.yaml or ./.pax/config.yaml                            │
+│     ./pi.yaml or ./.pax/config.yaml                            │
 │                                                                  │
 │  4. User config                                                  │
-│     ~/.pax/config.yaml                                          │
+│     ~/.pi/config.yaml                                          │
 │                                                                  │
 │  5. System config (admin-provided defaults)                     │
-│     /etc/pax/config.yaml                                        │
+│     /etc/pi/config.yaml                                        │
 │                                                                  │
 │  6. Built-in defaults                                            │
 │     Hardcoded in application                                    │
@@ -2260,10 +2936,10 @@ If user enables remote access (Tailscale):
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 8.2 Configuration Schema
+### 9.2 Configuration Schema
 
 ```yaml
-# ~/.pax/config.yaml
+# ~/.pi/config.yaml
 
 # General settings
 general:
@@ -2307,7 +2983,7 @@ channels:
 
   whatsapp:
     enabled: false
-    session_path: ~/.pax/whatsapp-session
+    session_path: ~/.pi/whatsapp-session
     allowed_contacts:
       - "+1234567890"
 
@@ -2319,9 +2995,9 @@ channels:
 
   calendar:
     enabled: true
-    credentials_path: ~/.pax/google-credentials.json
+    credentials_path: ~/.pi/google-credentials.json
     calendar_id: primary
-    command_prefix: "PAX:"
+    command_prefix: "PI:"
 
 # MCP servers
 mcp:
@@ -2361,7 +3037,7 @@ ui:
   hotkey: "Ctrl+Shift+P"     # Global hotkey to open
 ```
 
-### 8.3 Secrets Management
+### 9.3 Secrets Management
 
 Secrets should never be in config files. Options:
 
@@ -2371,9 +3047,9 @@ Secrets should never be in config files. Options:
 
 ---
 
-## 9. Distribution Strategy
+## 10. Distribution Strategy
 
-### 9.1 Distribution Channels
+### 10.1 Distribution Channels
 
 | Channel | Target Audience | Update Mechanism |
 |---------|-----------------|------------------|
@@ -2384,7 +3060,7 @@ Secrets should never be in config files. Options:
 | **AppImage (Linux)** | Universal Linux | Manual download |
 | **npm** | CLI users | `npm update -g` |
 
-### 9.2 Auto-Update
+### 10.2 Auto-Update
 
 Tauri includes built-in auto-update support:
 
@@ -2393,22 +3069,22 @@ Tauri includes built-in auto-update support:
 3. **Download**: Download in background
 4. **Install**: Apply on next restart (or immediately if user chooses)
 
-### 9.3 Release Artifacts
+### 10.3 Release Artifacts
 
 | Platform | Artifact | Size (Estimated) |
 |----------|----------|------------------|
-| macOS Intel | PAX-x.y.z-darwin-x64.dmg | ~15MB |
-| macOS ARM | PAX-x.y.z-darwin-arm64.dmg | ~15MB |
-| Windows | PAX-x.y.z-windows-x64.msi | ~20MB |
-| Linux | PAX-x.y.z-linux-x64.AppImage | ~25MB |
-| Linux | PAX-x.y.z-linux-x64.deb | ~15MB |
+| macOS Intel | PI-x.y.z-darwin-x64.dmg | ~15MB |
+| macOS ARM | PI-x.y.z-darwin-arm64.dmg | ~15MB |
+| Windows | PI-x.y.z-windows-x64.msi | ~20MB |
+| Linux | PI-x.y.z-linux-x64.AppImage | ~25MB |
+| Linux | PI-x.y.z-linux-x64.deb | ~15MB |
 | CLI (all) | pax-cli-x.y.z.tar.gz | ~5MB |
 
 ---
 
-## 10. Migration Path
+## 11. Migration Path
 
-### 10.1 Phase 1: Code Restructuring
+### 11.1 Phase 1: Code Restructuring
 
 **Goal**: Reorganize codebase without breaking existing extension
 
@@ -2420,7 +3096,7 @@ Tauri includes built-in auto-update support:
 
 **Risk**: Low (no functionality changes)
 
-### 10.2 Phase 2: Abstraction Layer
+### 11.2 Phase 2: Abstraction Layer
 
 **Goal**: Create interfaces that work for both modes
 
@@ -2432,7 +3108,7 @@ Tauri includes built-in auto-update support:
 
 **Risk**: Medium (refactoring core functionality)
 
-### 10.3 Phase 3: Native Implementation
+### 11.3 Phase 3: Native Implementation
 
 **Goal**: Implement native-mode specific code
 
@@ -2440,23 +3116,26 @@ Tauri includes built-in auto-update support:
 2. Implement `FileStorageProvider`
 3. Add terminal tool
 4. Add MCP client
-5. Create PAX entry points (CLI and Tauri)
+5. Create PI entry points (CLI and Tauri)
 
 **Risk**: Medium (new code, but isolated from extension)
 
-### 10.4 Phase 4: Messaging Channels
+### 11.4 Phase 4: Multi-Channel Architecture
 
-**Goal**: Add external trigger support
+**Goal**: Separate Agent, Tools, and UI with pluggable channel system
 
-1. Implement Event Bus
-2. Add Telegram adapter
-3. Add WhatsApp adapter
-4. Add Calendar adapter
-5. Add iMessage adapter (macOS)
+1. Define `ChannelAdapter` interface
+2. Implement `ChannelManager` orchestrator
+3. Refactor `MessageRouter` to use channel abstraction
+4. Implement Extension channels (SidePanelChannel, TabPageChannel)
+5. Implement Tauri channel (TauriChannel)
+6. Implement WebSocket channel for remote control
+7. Add messaging adapters (Telegram, WhatsApp, iMessage)
+8. Update `BrowserxAgent` to use `ChannelManager` for event dispatch
 
-**Risk**: Low (additive, optional features)
+**Risk**: Medium (refactoring core message flow, but well-defined interfaces)
 
-### 10.5 Phase 5: Polish & Distribution
+### 11.5 Phase 5: Polish & Distribution
 
 **Goal**: Prepare for release
 
@@ -2470,9 +3149,9 @@ Tauri includes built-in auto-update support:
 
 ---
 
-## 11. Future Considerations
+## 12. Future Considerations
 
-### 11.1 Potential Enhancements
+### 12.1 Potential Enhancements
 
 | Feature | Description | Complexity |
 |---------|-------------|------------|
@@ -2483,7 +3162,7 @@ Tauri includes built-in auto-update support:
 | **Plugin System** | User-installable extensions | Medium |
 | **Mobile Companion** | Dedicated mobile app | High |
 
-### 11.2 Scalability Considerations
+### 12.2 Scalability Considerations
 
 Currently designed for single-user. Future multi-user support would require:
 
@@ -2492,7 +3171,7 @@ Currently designed for single-user. Future multi-user support would require:
 3. Resource quotas
 4. Usage logging and billing (if commercial)
 
-### 11.3 Technology Risks
+### 12.3 Technology Risks
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -2508,8 +3187,14 @@ Currently designed for single-user. Future multi-user support would require:
 | Term | Definition |
 |------|------------|
 | **CDP** | Chrome DevTools Protocol - wire protocol for browser automation |
+| **ChannelAdapter** | Interface for UI channels that send submissions and receive events |
+| **ChannelManager** | Orchestrator that routes submissions to agent and dispatches events to channels |
+| **EQ** | Event Queue - outbound events from agent to UI channels |
+| **EventMsg** | Event message type emitted by agent (TaskStarted, ToolCall, AssistantText, etc.) |
 | **MCP** | Model Context Protocol - standard for LLM tool integration |
-| **PAX** | Personal Assistant X - the native agent product name |
+| **Op** | Operation/Submission type sent to agent (UserTurn, Interrupt, ExecApproval, etc.) |
+| **PI** | Personal AI - the native agent product name |
+| **SQ** | Submission Queue - inbound operations from UI channels to agent |
 | **TUI** | Terminal User Interface |
 | **GUI** | Graphical User Interface |
 | **Tauri** | Rust-based framework for building desktop apps |
@@ -2529,12 +3214,15 @@ Currently designed for single-user. Future multi-user support would require:
 | 2026-02-02 | Default to Telegram for messaging | Free, official API, reliable |
 | 2026-02-02 | Use Tailscale for remote access | Free, easy, secure, no port forwarding |
 | 2026-02-02 | MCP for tool extensibility | Industry standard, compatible with other tools |
-| 2026-02-02 | Profile-copy strategy for browser control | PAX copies essential Chrome profile data (~100-500MB) to separate directory, launches Chrome with debugging enabled. Allows user's Chrome to stay open, PAX Chrome has all login sessions. Copy takes 2-10 seconds. No user action required. |
+| 2026-02-02 | Profile-copy strategy for browser control | PI copies essential Chrome profile data (~100-500MB) to separate directory, launches Chrome with debugging enabled. Allows user's Chrome to stay open, PI Chrome has all login sessions. Copy takes 2-10 seconds. No user action required. |
 | 2026-02-02 | Skip Cache/History in profile copy | Cache can be 1-5GB, not needed for login sessions. Skipping reduces copy time from minutes to seconds. |
 | 2026-02-02 | Use puppeteer-core for CDP | Lightweight (no bundled Chromium), connects to user's Chrome, mature API, good TypeScript support |
 | 2026-02-03 | Edge as fallback on Windows | If Chrome not found on Windows, use Microsoft Edge (also Chromium-based, full CDP support). On macOS, prompt user to install Chrome. |
 | 2026-02-03 | DebuggerClient abstraction layer | Create middle layer between DomService and chrome.debugger/CDP. DomService logic stays unchanged, only swap the communication layer. Enables code reuse and easier testing. |
 | 2026-02-03 | Retry-first error handling | On browser control failures: retry up to 3 times with backoff, attempt auto-reconnect on connection errors. After all retries fail, prompt user with manual instructions. |
-| 2026-02-03 | Extension and PAX are separate products | No communication between BrowserX extension and PAX native app for now. Can be designed later if needed. |
+| 2026-02-03 | Extension and PI are separate products | No communication between BrowserX extension and PI native app for now. Can be designed later if needed. |
 | 2026-02-03 | No onboarding flow for MVP | First-run experience deferred. Users configure via config file initially. |
 | 2026-02-03 | Unit tests with mock DebuggerClient | Test DomService with mocked DebuggerClient interface. Integration tests with real Chrome in CI (headless). |
+| 2026-02-03 | Multi-Channel Architecture | Separate Agent, Tools, and UI into distinct layers with `ChannelAdapter` interface. UI channels (side panel, tab page, Tauri, WebSocket, Telegram) all implement same interface. Agent core receives `Op` submissions and emits `EventMsg` events. Enables remote control via WebSocket API. Builds on existing SQ/EQ pattern in codebase. |
+| 2026-02-03 | WebSocket for remote control | Port 8765 WebSocket server enables external clients (CLI, scripts, other apps) to send tasks and receive streaming events. JSON protocol with `submission` and `event` message types. No authentication for localhost by default. |
+| 2026-02-03 | ChannelManager orchestrator | Central component that routes submissions to agent and dispatches events to appropriate channels. Tracks session-to-channel mapping for proper response routing. |
