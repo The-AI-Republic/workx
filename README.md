@@ -1,10 +1,19 @@
-# Browserx for Chrome
+# BrowserX
 
-**An In-Browser AI Agent for Web Automation**
+**AI-Powered Personal Assistant - Chrome Extension & Desktop App**
 
-Browserx for Chrome is a privacy-preserving, general-purpose AI agent implemented as a Chrome extension. The agent operates entirely within the user's local browser environment, interpreting natural language commands and autonomously interacting with web pages to fulfill user requests. All large language model inference occurs client-side, ensuring that sensitive data never leaves the user's machine and eliminating the need for backend infrastructure.
+BrowserX is a privacy-preserving, general-purpose AI personal assistant available as both a **Chrome extension (BrowserX)** and a **desktop application (Pi)**. The agent operates entirely within the user's local environment, interpreting natural language commands and autonomously performing tasks across web browsing, file management, and more. All interactions occur client-side, ensuring that sensitive data never leaves your machine.
 
-![Browserx UI Screenshot](/src/static/browserx_UI.png)
+![BrowserX UI Screenshot](/src/static/browserx_UI.png)
+
+---
+
+## Dual-Mode Architecture
+
+| App | Platform | Description | Best For |
+|-----|----------|-------------|----------|
+| **BrowserX** | Chrome Extension | Browser-based agent with web automation | Quick web tasks, browsing assistance |
+| **Pi** | Desktop (Win/Mac/Linux) | Native application with full system access | Terminal commands, file operations, advanced automation |
 
 ---
 
@@ -14,138 +23,241 @@ Browserx for Chrome is a privacy-preserving, general-purpose AI agent implemente
 
 ---
 
-## Project Origin and Acknowledgments
-
-This project is derived from OpenAI's open-source Browserx reference implementation, available at [github.com/openai/browserx](https://github.com/openai/browserx). We express our profound gratitude to the OpenAI team ([@openai](https://github.com/openai)) for releasing browserx under an open-source license, which has enabled our development of this privacy-focused, browser-native AI agent implementations.
-
----
-
 ## Development Status and Usage Restrictions
 
 **Current Status:** Alpha Testing
 
-Browserx for Chrome is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. At this time, we also **authorize** the use of this codebase to create derivative works for public distribution, including but not limited to publishing extensions to the Chrome Web Store or other browser extension marketplaces. The public usage of the code must acknowledge the AI Republic as original owner of the source code
+BrowserX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code is publicly available for transparency and educational purposes, but this project is **not open source** at this time.
 
-**Important Notice:** This software is provided "as is" without warranty of any kind. While we authorize the use of this codebase for creating derivative works and public distribution under the Apache 2.0 license terms, users should be aware that the project is in active alpha development. Use at your own risk. AI Republic and contributors are not liable for any damages, data loss, or security issues arising from the use of this software.
+**Usage Restrictions:**
+- Personal evaluation and learning: ✅ Allowed
+- Internal organizational use: ✅ Allowed
+- Creating derivative works for public distribution: ❌ Not permitted without written authorization
+- Commercial use: ❌ Not permitted without written authorization
+
+**Important Notice:** This software is provided "as is" without warranty of any kind. Use at your own risk. AI Republic and contributors are not liable for any damages, data loss, or security issues arising from the use of this software.
 
 ---
 
 ## Licensing
 
-This project is now released under the **Apache License 2.0**—maintaining consistency with the upstream Browserx licensing framework. This fully permissive open-source license enables unrestricted use, modification, and distribution, including the creation and publication of derivative extensions.
+This project's source code is **publicly viewable** but **proprietary**. All rights are reserved by AI Republic. The code is made available for transparency, security review, and educational purposes only.
 
-**Trademark Considerations:**
-
-To avoid potential trademark considerations regarding the "Browserx" name with OpenAI, the project has been rebranded to **BrowserX** (or **browserx**). This naming convention better reflects the project's browser-centric architecture and cross-platform agent capabilities while avoiding potential trademark conflicts. The name emphasizes the extension's role as a powerful, extensible ("X") browser automation framework.
+For licensing inquiries, commercial use, or permission to create derivative works, please contact [ceo@airepublic.com](mailto:ceo@airepublic.com).
 
 ---
 
 ## Large Language Model Support
 
-**Currently Supported:**
-- OpenAI GPT-5 (via OpenAI API endpoints)
-
-**In Development:**
-- Anthropic Claude
-- Google Gemini
-- DeepSeek
-
-We are actively working to expand model provider support to offer users greater flexibility and choice in their AI backend infrastructure.
+We support state-of-the-art LLMs from leading providers.
 
 ---
 
-## Web Page Tool Improvement
+## Getting Started
 
-**Challenge: Complex Web Applications**
+### BrowserX (Chrome Extension)
 
-Modern web applications, particularly Single-Page Applications (SPAs), present significant challenges for AI agent automation. These applications feature dynamically generated DOM structures, shadow DOM elements, framework-specific rendering patterns (React, Vue, Angular), and complex state management systems that make reliable element identification and interaction difficult for language models.
-
-**Our Ongoing Efforts:**
-
-We are continuously enhancing our browser tool suite to handle increasingly sophisticated web interactions, including:
-
-- **Improved element selection strategies** for dynamic and framework-rendered content
-- **Enhanced DOM traversal algorithms** to handle shadow DOM and nested iframe contexts
-- **Robust state detection mechanisms** for asynchronous UI updates and lazy-loaded content
-- **Intelligent retry and fallback logic** for handling transient DOM states
-- **Advanced selector generation** using accessibility attributes, data attributes, and semantic markup
-
-**Community Contribution Opportunity:**
-
-This area of the project **requires substantial open-source community support**. The diversity and complexity of modern web applications make it impossible for a single team to address all edge cases and framework-specific patterns. We welcome contributions from developers who have:
-
-- Experience with specific JavaScript frameworks and their DOM manipulation patterns
-- Expertise in web accessibility and ARIA attribute usage for reliable element targeting
-- Knowledge of browser automation testing tools and best practices
-- Interest in AI agent reliability and robustness improvements
-
-**How You Can Help:**
-
-- Report challenging websites or SPAs where the agent struggles
-- Contribute improved tool implementations for specific use cases
-- Submit test cases and fixtures for complex web application scenarios
-- Propose and implement new DOM interaction strategies
-
-Together, we can build a more capable and reliable browser automation agent that handles the full spectrum of modern web applications.
-
----
-
-## Getting Started: Local Installation
-
-Follow these steps to build and run Browserx for Chrome in your local development environment:
-
-### Prerequisites
-- Node.js (v16 or higher recommended)
+#### Prerequisites
+- Node.js (v18 or higher)
 - npm package manager
 - Google Chrome browser
-- OpenAI API key ([obtain here](https://platform.openai.com/api-keys))
+- API key (OpenAI, xAI, or Groq)
 
-### Installation Steps
+#### Installation Steps
 
 1. **Clone the repository:**
    ```bash
    git clone git@github.com:The-AI-Republic/browserx.git
-   ```
-
-2. **Navigate to the project directory:**
-   ```bash
    cd browserx
    ```
 
-3. **Install dependencies:**
+2. **Install dependencies:**
    ```bash
    npm install
    ```
 
-4. **Build the extension:**
+3. **Build the extension:**
    ```bash
    npm run build
    ```
-   This generates the production-ready extension in the `dist/` directory.
 
-5. **Load the extension in Chrome:**
-   - Navigate to `chrome://extensions/` in your browser
+4. **Load in Chrome:**
+   - Navigate to `chrome://extensions/`
    - Enable **Developer Mode** (toggle in the top-right corner)
    - Click **Load unpacked**
-   - Select the `dist/` directory from your project
+   - Select the `dist/extension/` directory
 
-6. **Configure API credentials:**
+5. **Configure API credentials:**
    - Open the extension side panel
-   - Navigate to the Settings page
-   - Enter your OpenAI API key
-   - Click **Test Connection** to verify API connectivity
+   - Navigate to Settings
+   - Enter your API key (supports OpenAI, xAI, or Groq)
+   - Click **Test Connection** to verify
 
-7. **Verify installation:**
-   - Once the connection test succeeds, the agent is ready for use
-   - Begin issuing natural language commands through the side panel interface
+---
 
-**You're all set!** The agent can now interact with web pages on your behalf.
+### Pi (Desktop App)
+
+#### Prerequisites (Ubuntu/Linux)
+```bash
+# Install system dependencies
+sudo apt update
+
+# Ubuntu 22.04+
+sudo apt install libwebkit2gtk-4.1-dev \
+    build-essential \
+    curl \
+    wget \
+    libssl-dev \
+    libgtk-3-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    libjavascriptcoregtk-4.1-dev \
+    libsoup-3.0-dev
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+```
+
+#### Prerequisites (macOS)
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+#### Prerequisites (Windows)
+- Visual Studio Build Tools (with C++ workload)
+- WebView2 (pre-installed on Windows 10/11)
+- Rust: https://rustup.rs
+
+#### Development
+
+```bash
+# Install all dependencies (includes Tauri v2 packages)
+npm install
+
+# Install Tauri CLI v2
+cargo install tauri-cli@^2
+
+# Run in development mode (hot-reload)
+npm run tauri:dev
+```
+
+This will start the Vite frontend server and launch the Pi desktop window with hot-reload enabled.
+
+#### Environment Variables (Linux)
+
+On Linux systems, WebKit may fail to initialize GPU compositing, resulting in errors like:
+```
+Could not create GBM EGL display: EGL_NOT_INITIALIZED. Aborting...
+```
+
+The `npm run tauri:dev` script automatically sets the required environment variable to work around this issue. If you need to run Tauri commands directly, use one of these methods:
+
+**Method 1: Inline (per command)**
+```bash
+cd tauri && WEBKIT_DISABLE_COMPOSITING_MODE=1 cargo tauri dev
+```
+
+**Method 2: Export for current terminal session**
+```bash
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
+cd tauri && cargo tauri dev
+# The variable persists for all commands in this terminal session
+```
+
+**Method 3: Add to shell profile (permanent)**
+
+For bash users, add to `~/.bashrc`:
+```bash
+echo 'export WEBKIT_DISABLE_COMPOSITING_MODE=1' >> ~/.bashrc
+source ~/.bashrc
+```
+
+For zsh users, add to `~/.zshrc`:
+```bash
+echo 'export WEBKIT_DISABLE_COMPOSITING_MODE=1' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Method 4: Create a .env file (project-specific)**
+
+Create a file at the project root named `.env.local`:
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1
+```
+
+Then source it before running:
+```bash
+source .env.local && cd tauri && cargo tauri dev
+```
+
+#### Common Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WEBKIT_DISABLE_COMPOSITING_MODE=1` | Disables GPU compositing (fixes EGL errors on Linux) | Not set |
+| `WEBKIT_DISABLE_DMABUF_RENDERER=1` | Alternative fix for some GPU configurations | Not set |
+| `TAURI_DEBUG=1` | Enable verbose Tauri debug logging | Not set |
+| `RUST_BACKTRACE=1` | Show Rust stack traces on errors | Not set |
+| `RUST_LOG=debug` | Set Rust logging level (error/warn/info/debug/trace) | error |
+
+#### Troubleshooting Linux GPU Issues
+
+If you still encounter GPU-related errors after setting `WEBKIT_DISABLE_COMPOSITING_MODE=1`:
+
+1. **Try the DMA-BUF workaround:**
+   ```bash
+   cd tauri && WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 cargo tauri dev
+   ```
+
+2. **Update your GPU drivers:**
+   ```bash
+   # For NVIDIA
+   sudo ubuntu-drivers autoinstall
+
+   # For AMD/Intel
+   sudo apt update && sudo apt upgrade
+   ```
+
+3. **Check if running in a VM or container:**
+   Virtual machines often lack proper GPU passthrough. The software rendering workaround should work in most cases.
+
+4. **Verify WebKit installation:**
+   ```bash
+   dpkg -l | grep webkit
+   # Should show libwebkit2gtk-4.1-dev installed
+   ```
+
+#### Production Build
+
+```bash
+# Using npm script (from project root)
+npm run tauri:build
+
+# Or directly with cargo
+cd tauri && cargo tauri build
+```
+
+**Output locations:**
+- **Ubuntu:** `tauri/target/release/bundle/deb/pi_*.deb`
+- **Linux (AppImage):** `tauri/target/release/bundle/appimage/pi_*.AppImage`
+- **Windows:** `tauri/target/release/bundle/nsis/Pi_*-setup.exe`
+- **macOS:** `tauri/target/release/bundle/dmg/Pi_*.dmg`
+
+**Note:** The environment variables (like `WEBKIT_DISABLE_COMPOSITING_MODE`) are only needed during development. Production builds create standalone applications that users can run normally. End users experiencing GPU issues should launch the app with the environment variable:
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1 ./pi
+```
 
 ---
 
 ## Tool Testing Framework
 
-For developers working on browser tool integrations, we provide a standalone testing extension that simulates LLM function calling to individual browser tools.
+For developers working on browser tool integrations, we provide a standalone testing extension.
 
 ### Building and Using the Test Harness
 
@@ -156,41 +268,42 @@ For developers working on browser tool integrations, we provide a standalone tes
 
 2. **Load the test extension:**
    - Navigate to `chrome://extensions/`
-   - Ensure **Developer Mode** is enabled
+   - Enable **Developer Mode**
    - Click **Load unpacked**
    - Select the `tests/tools/e2e` directory
 
 3. **Execute tool tests:**
-   - Use the testing extension interface to simulate function calls to specific browser tools
-   - Validate tool behavior, response formats, and error handling
-   - This allows isolated testing without requiring full LLM integration
+   - Use the testing interface to simulate function calls
+   - Validate tool behavior without full LLM integration
 
 ---
 
 ## Contributing and Collaboration
 
-We welcome collaboration from the developer community and business partners interested in advancing privacy-preserving AI agent technologies.
+We welcome collaboration from the developer community and business partners.
 
 ### Areas of Interest
 - **Investment opportunities:** Strategic partnerships and funding discussions
-- **Enterprise adoption:** Integrating Browserx for Chrome into organizational workflows
-- **Open-source contributions:** Code improvements, bug fixes, documentation enhancements, and feature development
+- **Enterprise adoption:** Integrating BrowserX/Pi into organizational workflows
+- **Collaboration:** Bug reports, feature suggestions, and feedback
+
+### How You Can Help
+- Report challenging websites or scenarios where the agent struggles
+- Contribute improved tool implementations
+- Submit test cases for complex web applications
+- Propose and implement new interaction strategies
 
 ### Contact Information
 
-For all collaboration inquiries, please contact:
-
 **Richard Miao**
-Email: [mrc@airepublic.com](mailto:mrc@airepublic.com)
-LinkedIn: [linkedin.com/in/rcmiao](https://www.linkedin.com/in/rcmiao/)
-
-We look forward to building the future of in-browser AI agents together.
+- Email: [ceo@airepublic.com](mailto:ceo@airepublic.com)
+- LinkedIn: [linkedin.com/in/rcmiao](https://www.linkedin.com/in/rcmiao/)
 
 ---
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is proprietary software. All rights reserved by AI Republic. See the [LICENSE](LICENSE) file for details.
 
 ---
 
