@@ -9,7 +9,7 @@ pub struct PlatformInfo {
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to BrowserX Desktop.", name)
+    format!("Hello, {}! Welcome to Pi.", name)
 }
 
 #[tauri::command]

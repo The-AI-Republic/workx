@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager};
-use tokio::sync::mpsc;
+use tauri::{AppHandle, Emitter};
 
 lazy_static::lazy_static! {
     static ref MCP_SESSIONS: Mutex<HashMap<String, McpSession>> = Mutex::new(HashMap::new());
@@ -52,7 +51,7 @@ pub async fn mcp_spawn(
                 let reader = BufReader::new(stdout);
                 for line in reader.lines() {
                     if let Ok(line) = line {
-                        let _ = app_handle.emit_all(
+                        let _ = app_handle.emit(
                             "mcp_message",
                             McpMessage {
                                 session_id: sid.clone(),
