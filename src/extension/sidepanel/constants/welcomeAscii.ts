@@ -1,4 +1,6 @@
-export const welcomeAsciiLines: Array<{ text: string; color: string }> = [
+import { platform } from '../stores/platformStore';
+
+const browserxAsciiLines: Array<{ text: string; color: string }> = [
   { text: '██████╗ ██████╗  ██████╗ ██╗    ██╗███████╗███████╗██████╗ ██╗  ██╗', color: 'text-term-blue' },
   { text: '██╔══██╗██╔══██╗██╔═══██╗██║    ██║██╔════╝██╔════╝██╔══██╗╚██╗██╔╝', color: 'text-term-blue' },
   { text: '██████╔╝██████╔╝██║   ██║██║ █╗ ██║███████╗█████╗  ██████╔╝ ╚███╔╝ ', color: 'text-term-blue' },
@@ -7,3 +9,18 @@ export const welcomeAsciiLines: Array<{ text: string; color: string }> = [
   { text: '╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝', color: 'text-term-blue' },
   { text: '', color: 'text-term-blue' }
 ];
+
+const piAsciiLines: Array<{ text: string; color: string }> = [
+  { text: '██████╗ ██╗', color: 'text-term-blue' },
+  { text: '██╔══██╗██║', color: 'text-term-blue' },
+  { text: '██████╔╝██║', color: 'text-term-blue' },
+  { text: '██╔═══╝ ██║', color: 'text-term-blue' },
+  { text: '██║     ██║', color: 'text-term-blue' },
+  { text: '╚═╝     ╚═╝', color: 'text-term-blue' },
+  { text: '', color: 'text-term-blue' },
+  { text: 'Personal AI', color: 'text-term-dim-green' }
+];
+
+export const welcomeAsciiLines = platform.platformName === 'extension'
+  ? browserxAsciiLines
+  : piAsciiLines;
