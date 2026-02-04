@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vite --config vite.config.extension.mts",
     "dev:desktop": "vite --config vite.config.desktop.mts --port 5174",
+    "tauri:dev": "cd tauri && env WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 cargo tauri dev",
+    "tauri:build": "cd tauri && cargo tauri build",
     "vite:build": "vite build",
     "build": "node scripts/build.js",
     "build:extension": "vite build --config vite.config.extension.mts",
@@ -54,6 +56,10 @@
   "dependencies": {
     "@google/genai": "^1.30.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-global-shortcut": "^2.3.1",
+    "@tauri-apps/plugin-notification": "^2.3.3",
+    "@tauri-apps/plugin-shell": "^2.3.5",
     "@types/eventsource": "^1.1.15",
     "dom-accessibility-api": "^0.7.0",
     "eventsource": "^2.0.2",
