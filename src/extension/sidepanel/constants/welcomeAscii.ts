@@ -17,8 +17,7 @@ const piAsciiLines: Array<{ text: string; color: string }> = [
   { text: '██╔═══╝ ██║', color: 'text-term-blue' },
   { text: '██║     ██║', color: 'text-term-blue' },
   { text: '╚═╝     ╚═╝', color: 'text-term-blue' },
-  { text: '', color: 'text-term-blue' },
-  { text: 'Personal AI', color: 'text-term-dim-green' }
+  { text: '', color: 'text-term-blue' }
 ];
 
 export const welcomeAsciiLines = platform.platformName === 'extension'

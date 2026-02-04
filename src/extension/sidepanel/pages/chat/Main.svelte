@@ -12,6 +12,8 @@
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
+  // Platform store
+  import { platform } from '../../stores/platformStore';
   // Theme store
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   // Token usage visibility store
@@ -1007,7 +1009,7 @@
     <div class="content-container">
         <!-- Status Line -->
         <div class="status-line flex justify-between mb-2">
-          <TerminalMessage type="system" content="Browserx (Alpha)" />
+          <TerminalMessage type="system" content={platform.platformName === 'extension' ? "Browserx (Alpha)" : "PI: Your personal AI (Alpha)"} />
           <div class="flex items-center space-x-2">
             {#if isProcessing}
               <TerminalMessage type="warning" content="[PROCESSING]" />
@@ -1082,7 +1084,7 @@
                 {/each}
               </pre>
               <p class="welcome-subtitle text-term-blue">
-                {$_t("General in-browser AI agent for work tasks")}
+                {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : "Your personal AI assistant"}
               </p>
               <p class="welcome-subtitle text-term-dim-green">
                 {$_t("Developed and supported by AI Republic")}
