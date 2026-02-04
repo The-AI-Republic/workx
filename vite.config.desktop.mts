@@ -19,6 +19,14 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'src/desktop/index.html'),
       },
+      external: [
+        '@tauri-apps/api/tauri',
+        '@tauri-apps/api/window',
+        '@tauri-apps/api/event',
+        '@tauri-apps/api/globalShortcut',
+        '@tauri-apps/api/path',
+        '@tauri-apps/api/notification',
+      ],
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name]-[hash].js',
