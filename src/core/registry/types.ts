@@ -166,7 +166,7 @@ export const SESSION_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 /**
  * Default maximum concurrent sessions
  */
-export const DEFAULT_MAX_CONCURRENT = 3;
+export const DEFAULT_MAX_CONCURRENT = 5;
 
 /**
  * Maximum allowed concurrent sessions

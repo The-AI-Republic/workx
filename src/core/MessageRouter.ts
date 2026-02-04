@@ -112,6 +112,11 @@ export enum MessageType {
   SESSION_LIST = 'SESSION_LIST', // Get list of all sessions
   SESSION_GET_ACTIVE_COUNT = 'SESSION_GET_ACTIVE_COUNT', // Get active session count
   SESSION_EVENT = 'SESSION_EVENT', // Session lifecycle events (created, stateChanged, terminated)
+
+  // Sidepanel multi-tab session messages
+  SIDEPANEL_CREATE_SESSION = 'SIDEPANEL_CREATE_SESSION', // Create new 'primary' session for tab
+  SIDEPANEL_CLOSE_SESSION = 'SIDEPANEL_CLOSE_SESSION', // Terminate session when tab closed
+  SIDEPANEL_LIST_SESSIONS = 'SIDEPANEL_LIST_SESSIONS', // Get all 'primary' sessions for restoration
 }
 
 /**

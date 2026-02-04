@@ -26,6 +26,9 @@
   import { _t } from '../../lib/i18n';
   // Scheduler components
   import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
+  // Multi-tab support
+  import TabBar from '../../components/tabs/TabBar.svelte';
+  import { tabStore, type SidePanelTab } from '../../stores/tabStore';
 
   let router: MessageRouter;
   let eventProcessor: EventProcessor;
@@ -55,6 +58,21 @@
   let scheduledTaskId: string | null = null;
   let scheduledSessionId: string | null = null;
   let isScheduledTaskMode = false;
+
+  // Multi-tab state
+  interface TabConversationState {
+    messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
+    processedEvents: ProcessedEvent[];
+    inputText: string;
+    isProcessing: boolean;
+    currentTabId: number;
+    eventProcessor: EventProcessor;
+  }
+  let tabStates: Map<string, TabConversationState> = new Map();
+  let activeSessionId: string | null = null;
+  let canCreateTab: boolean = true;
+  let maxSessionsReached: boolean = false;
+
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -139,7 +157,22 @@
     // Setup event handlers
     router.on(MessageType.EVENT, (message) => {
       const event = message.payload as Event;
-      handleEvent(event);
+      // Route events to the correct tab based on sessionId
+      const eventSessionId = (message as any).sessionId;
+      if (eventSessionId && eventSessionId !== activeSessionId) {
+        // Event is for a different tab, store it but don't display
+        handleEventForSession(event, eventSessionId);
+      } else {
+        handleEvent(event);
+      }
+    });
+
+    // Listen for session events (termination, etc.)
+    router.on(MessageType.SESSION_EVENT, (message) => {
+      const sessionEvent = message.payload;
+      if (sessionEvent?.type === 'session:terminated') {
+        handleSessionTerminated(sessionEvent.sessionId);
+      }
     });
 
     router.on(MessageType.STATE_UPDATE, (message) => {
@@ -177,6 +210,9 @@
       await loadAndExecuteSchedulerTask(taskIdParam, sessionIdParam);
       return; // Skip normal initialization for scheduled task mode
     }
+
+    // Initialize multi-tab system
+    await initializeTabs();
 
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
@@ -601,7 +637,10 @@
     };
     processedEvents = [...processedEvents, userEvent];
 
-    // Send to agent with tab context
+    // Update tab title from first message
+    updateTabTitleFromMessage(text);
+
+    // Send to agent with tab context and session ID
     try {
       await router.sendSubmission({
         id: `user_${Date.now()}`,
@@ -611,6 +650,7 @@
         },
         context: {
           tabId: currentTabId, // Include current tab selection in context
+          sessionId: activeSessionId ?? undefined, // Route to correct session
         },
       });
 
@@ -999,12 +1039,366 @@
       isProcessing = false;
     }
   }
+
+  // ============================================================================
+  // Multi-Tab Management Functions
+  // ============================================================================
+
+  /**
+   * Initialize the multi-tab system
+   * Restores persisted tabs and validates against active sessions
+   */
+  async function initializeTabs() {
+    try {
+      // Restore tabs from storage
+      const restoredState = await tabStore.restoreTabs();
+
+      // Get list of active primary sessions from backend
+      const response = await router.send(MessageType.SIDEPANEL_LIST_SESSIONS);
+      const activeSessions = response?.sessions || [];
+      const maxConcurrent = response?.maxConcurrent || 5;
+      const activeCount = response?.activeCount || 0;
+
+      canCreateTab = response?.canCreateSession ?? true;
+      maxSessionsReached = activeCount >= maxConcurrent;
+
+      // Match tabs to sessions, remove orphaned tabs
+      const validTabs: SidePanelTab[] = [];
+      for (const tab of restoredState.tabs) {
+        const session = activeSessions.find((s: any) => s.sessionId === tab.sessionId);
+        if (session) {
+          validTabs.push(tab);
+        } else {
+          console.log(`[App] Removing orphaned tab: ${tab.id} (session ${tab.sessionId} not found)`);
+        }
+      }
+
+      // If no valid tabs, create a default one
+      if (validTabs.length === 0) {
+        await createNewTab();
+      } else {
+        // Update store with valid tabs only
+        tabStore.setState({
+          tabs: validTabs,
+          activeTabId: validTabs.some(t => t.id === restoredState.activeTabId)
+            ? restoredState.activeTabId
+            : validTabs[0]?.id || null,
+        });
+
+        // Load state for the active tab
+        const activeTab = tabStore.getActiveTab();
+        if (activeTab) {
+          activeSessionId = activeTab.sessionId;
+          loadTabState(activeTab.id);
+        }
+      }
+
+      console.log(`[App] Initialized ${validTabs.length} tabs, can create: ${canCreateTab}`);
+    } catch (error) {
+      console.error('[App] Failed to initialize tabs:', error);
+      // Fallback: create a default tab
+      await createNewTab();
+    }
+  }
+
+  /**
+   * Create a new tab with a new session
+   */
+  async function createNewTab() {
+    try {
+      // Request new session from backend
+      const response = await router.send(MessageType.SIDEPANEL_CREATE_SESSION);
+
+      if (!response?.success) {
+        console.error('[App] Failed to create session:', response?.error);
+        maxSessionsReached = response?.error?.includes('Maximum') ?? false;
+        return;
+      }
+
+      const { sessionId } = response;
+
+      // Create tab in store
+      const newTab = tabStore.createTab(sessionId, 'New Tab');
+
+      // Initialize state for new tab
+      const newState: TabConversationState = {
+        messages: [],
+        processedEvents: [],
+        inputText: '',
+        isProcessing: false,
+        currentTabId: -1,
+        eventProcessor: new EventProcessor(),
+      };
+      tabStates.set(newTab.id, newState);
+
+      // Switch to the new tab
+      activeSessionId = sessionId;
+      loadTabState(newTab.id);
+
+      // Update session limits
+      await updateSessionLimits();
+
+      // Auto-bind to active browser tab
+      await bindToActiveTab();
+
+      console.log(`[App] Created new tab: ${newTab.id} with session: ${sessionId}`);
+    } catch (error) {
+      console.error('[App] Failed to create new tab:', error);
+    }
+  }
+
+  /**
+   * Handle tab selection from TabBar
+   */
+  function handleTabSelect(event: CustomEvent<{ tabId: string }>) {
+    const { tabId } = event.detail;
+    switchToTab(tabId);
+  }
+
+  /**
+   * Switch to a specific tab
+   */
+  function switchToTab(tabId: string) {
+    const currentActiveTab = tabStore.getActiveTab();
+
+    // Save current tab state before switching
+    if (currentActiveTab) {
+      saveTabState(currentActiveTab.id);
+    }
+
+    // Set new active tab
+    tabStore.setActiveTab(tabId);
+
+    // Load state for new tab
+    loadTabState(tabId);
+
+    // Update active session ID
+    const newTab = tabStore.getActiveTab();
+    if (newTab) {
+      activeSessionId = newTab.sessionId;
+    }
+  }
+
+  /**
+   * Save current UI state to tab state map
+   */
+  function saveTabState(tabId: string) {
+    const state: TabConversationState = {
+      messages: [...messages],
+      processedEvents: [...processedEvents],
+      inputText,
+      isProcessing,
+      currentTabId,
+      eventProcessor: eventProcessor,
+    };
+    tabStates.set(tabId, state);
+  }
+
+  /**
+   * Load tab state from map to UI
+   */
+  function loadTabState(tabId: string) {
+    const state = tabStates.get(tabId);
+    if (state) {
+      messages = [...state.messages];
+      processedEvents = [...state.processedEvents];
+      inputText = state.inputText;
+      isProcessing = state.isProcessing;
+      currentTabId = state.currentTabId;
+      eventProcessor = state.eventProcessor;
+    } else {
+      // Initialize fresh state
+      messages = [];
+      processedEvents = [];
+      inputText = '';
+      isProcessing = false;
+      currentTabId = -1;
+      eventProcessor = new EventProcessor();
+    }
+  }
+
+  /**
+   * Handle tab close from TabBar
+   */
+  async function handleTabClose(event: CustomEvent<{ tabId: string }>) {
+    const { tabId } = event.detail;
+    await closeTab(tabId);
+  }
+
+  /**
+   * Close a tab and terminate its session
+   */
+  async function closeTab(tabId: string) {
+    const tab = tabStore.getTabBySessionId(
+      Array.from(tabStates.keys()).find(k => {
+        const state = tabStates.get(k);
+        return state !== undefined;
+      }) || ''
+    );
+
+    // Find the tab to close
+    let tabToClose: SidePanelTab | undefined;
+    tabStore.subscribe(state => {
+      tabToClose = state.tabs.find(t => t.id === tabId);
+    })();
+
+    if (!tabToClose) return;
+
+    // If this is the last tab, create a new one first
+    let tabCount = 0;
+    tabStore.subscribe(state => {
+      tabCount = state.tabs.length;
+    })();
+
+    if (tabCount <= 1) {
+      // Create new tab before closing the last one
+      await createNewTab();
+    }
+
+    // Terminate the session in backend
+    try {
+      await router.send(MessageType.SIDEPANEL_CLOSE_SESSION, {
+        sessionId: tabToClose.sessionId,
+      });
+    } catch (error) {
+      console.error(`[App] Failed to close session ${tabToClose.sessionId}:`, error);
+    }
+
+    // Remove tab state
+    tabStates.delete(tabId);
+
+    // Close tab in store (this handles switching to another tab)
+    tabStore.closeTab(tabId);
+
+    // Update active session
+    const newActiveTab = tabStore.getActiveTab();
+    if (newActiveTab) {
+      activeSessionId = newActiveTab.sessionId;
+      loadTabState(newActiveTab.id);
+    }
+
+    // Update session limits
+    await updateSessionLimits();
+
+    console.log(`[App] Closed tab: ${tabId}`);
+  }
+
+  /**
+   * Handle new tab button click from TabBar
+   */
+  async function handleNewTab() {
+    await createNewTab();
+  }
+
+  /**
+   * Handle event for a specific session (background tab)
+   */
+  function handleEventForSession(event: Event, sessionId: string) {
+    // Find the tab with this session
+    const tab = tabStore.getTabBySessionId(sessionId);
+    if (!tab) return;
+
+    // Get or create state for this tab
+    let state = tabStates.get(tab.id);
+    if (!state) {
+      state = {
+        messages: [],
+        processedEvents: [],
+        inputText: '',
+        isProcessing: false,
+        currentTabId: -1,
+        eventProcessor: new EventProcessor(),
+      };
+      tabStates.set(tab.id, state);
+    }
+
+    // Process event for this tab's state
+    const processed = state.eventProcessor.processEvent(event);
+    if (processed) {
+      state.processedEvents = [...state.processedEvents, processed];
+    }
+
+    // Update processing state
+    const msg = event.msg;
+    if (msg.type === 'TaskStarted') {
+      state.isProcessing = true;
+    } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
+      state.isProcessing = false;
+    }
+
+    tabStates.set(tab.id, state);
+  }
+
+  /**
+   * Handle session terminated event
+   */
+  function handleSessionTerminated(sessionId: string) {
+    const tab = tabStore.getTabBySessionId(sessionId);
+    if (tab) {
+      console.log(`[App] Session ${sessionId} terminated, removing tab ${tab.id}`);
+
+      // Remove tab state
+      tabStates.delete(tab.id);
+
+      // Close tab in store
+      tabStore.closeTab(tab.id);
+
+      // If this was the active tab, load state for the new active tab
+      const newActiveTab = tabStore.getActiveTab();
+      if (newActiveTab) {
+        activeSessionId = newActiveTab.sessionId;
+        loadTabState(newActiveTab.id);
+      } else {
+        // No tabs left, create a new one
+        createNewTab();
+      }
+    }
+
+    // Update session limits
+    updateSessionLimits();
+  }
+
+  /**
+   * Update session limit state
+   */
+  async function updateSessionLimits() {
+    try {
+      const response = await router.send(MessageType.SESSION_GET_ACTIVE_COUNT);
+      canCreateTab = response?.canCreateSession ?? true;
+      maxSessionsReached = !canCreateTab;
+    } catch (error) {
+      console.error('[App] Failed to update session limits:', error);
+    }
+  }
+
+  /**
+   * Update tab title based on first user message
+   */
+  function updateTabTitleFromMessage(message: string) {
+    const activeTab = tabStore.getActiveTab();
+    if (activeTab && activeTab.title === 'New Tab') {
+      // Use first 30 chars of message as title
+      const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
+      tabStore.updateTabTitle(activeTab.id, title);
+    }
+  }
 </script>
 
 <!-- Single UI with theme-aware styling -->
 <div class="main-layout {currentTheme}">
   <TerminalContainer theme={currentTheme}>
     <div class="content-container">
+        <!-- Multi-Tab Bar -->
+        {#if !isScheduledTaskMode}
+          <TabBar
+            {canCreateTab}
+            {maxSessionsReached}
+            on:tabSelect={handleTabSelect}
+            on:tabClose={handleTabClose}
+            on:newTab={handleNewTab}
+          />
+        {/if}
+
         <!-- Status Line -->
         <div class="status-line flex justify-between mb-2">
           <TerminalMessage type="system" content="Browserx (Alpha)" />

@@ -911,6 +911,75 @@ function setupSessionMessageHandlers(): void {
     };
   });
 
+  // Sidepanel multi-tab: Create new 'primary' session for a tab
+  router.on(MessageType.SIDEPANEL_CREATE_SESSION, async () => {
+    if (!registry!.canCreateSession()) {
+      return {
+        success: false,
+        error: 'Maximum concurrent sessions reached',
+      };
+    }
+
+    try {
+      const session = await registry!.createSession({ type: 'primary' });
+
+      // Restore auth manager for the new session
+      if (currentAuthManager && session.agent) {
+        const factory = session.agent.getModelClientFactory();
+        factory.setAuthManager(currentAuthManager);
+      }
+
+      console.log(`[ServiceWorker] Created sidepanel session: ${session.sessionId}`);
+
+      return {
+        success: true,
+        sessionId: session.sessionId,
+        sessionLetter: session.sessionLetter,
+      };
+    } catch (error) {
+      console.error('[ServiceWorker] Failed to create sidepanel session:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create session',
+      };
+    }
+  });
+
+  // Sidepanel multi-tab: Close/terminate a session when tab is closed
+  router.on(MessageType.SIDEPANEL_CLOSE_SESSION, async (message) => {
+    const { sessionId } = message.payload as { sessionId: string };
+
+    if (!sessionId) {
+      return { success: false, error: 'sessionId is required' };
+    }
+
+    try {
+      await registry!.removeSession(sessionId);
+      console.log(`[ServiceWorker] Closed sidepanel session: ${sessionId}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`[ServiceWorker] Failed to close session ${sessionId}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to close session',
+      };
+    }
+  });
+
+  // Sidepanel multi-tab: List all 'primary' sessions for restoration
+  router.on(MessageType.SIDEPANEL_LIST_SESSIONS, async () => {
+    const allSessions = registry!.listSessions();
+    // Filter to only primary sessions (sidepanel tabs)
+    const primarySessions = allSessions.filter((s) => s.type === 'primary');
+
+    return {
+      sessions: primarySessions,
+      maxConcurrent: registry!.getMaxConcurrent(),
+      activeCount: registry!.getActiveCount(),
+      canCreateSession: registry!.canCreateSession(),
+    };
+  });
+
   console.log('[ServiceWorker] Session message handlers registered');
 }
 
