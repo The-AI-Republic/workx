@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "작업 상세"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "명령"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "저장 공간 절약을 위해 캐시 데이터를 압축합니다"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "새 탭 만들기"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "크레딧 세부 정보"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "작업 완료 시 토큰 사용량(입력/출력 토큰) 표시"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "LLM API 키를 입력하십시오"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -313,6 +331,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "전체 접근 (위험)"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "일반"
@@ -373,6 +394,9 @@
   "Loading_credits": {
     "message": "크레딧을 불러오는 중..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "설정을 불러오는 중..."
   },
@@ -415,8 +439,14 @@
   "Max_Cache_Size_MB": {
     "message": "최대 캐시 크기(MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "최대 캐시 크기(메가바이트) (기본값: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -466,6 +496,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "아직 승인 기록이 없습니다."
   },
@@ -486,6 +519,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "배포 데이터가 만료되기까지의 일수 (기본값: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "사이드 패널 열기:"
@@ -577,6 +613,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -610,6 +649,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -631,6 +676,12 @@
   "Session": {
     "message": "세션"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "롤아웃 데이터가 만료되는 시점을 설정합니다"
   },
@@ -651,6 +702,9 @@
   },
   "Stable": {
     "message": "안정"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "현재 작업 실행을 중지합니다"
@@ -679,7 +733,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -711,6 +771,9 @@
   },
   "Toggle_side_panel": {
     "message": "사이드 패널 표시/숨기기"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "도구"
@@ -766,6 +829,9 @@
   "User_Center": {
     "message": "사용자 센터"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "사용자가 승인한 작업"
   },
@@ -788,6 +854,9 @@
     "message": "채팅 기록 보기"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -818,6 +887,12 @@
     "message": "귀하의 결정"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

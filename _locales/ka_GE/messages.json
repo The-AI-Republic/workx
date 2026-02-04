@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "მოქმედების დეტალები"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "ბრძანება"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "ქეშირებული მონაცემების შეკუმშვა საცავის სივრცის დასაზოგად"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "ახალი ჩანართის შექმნა"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "კრედიტის დეტალები"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "დავალებების დასრულებისას ტოკენების მოხმარების ჩვენება (შემომავალი/გამომავალი ტოკენები)"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "შეიყვანეთ თქვენი LLM API გასაღები"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -313,6 +331,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "სრული წვდომა (საშიში)"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "ზოგადი"
@@ -373,6 +394,9 @@
   "Loading_credits": {
     "message": "კრედიტები იტვირთება..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "პარამეტრები იტვირთება..."
   },
@@ -415,8 +439,14 @@
   "Max_Cache_Size_MB": {
     "message": "მაქს. ქეშის ზომა (მბ)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "ქეშის მაქსიმალური ზომა მეგაბაიტებში (ნაგულისხმევი: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -466,6 +496,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "დამტკიცების ისტორია ჯერ არ არსებობს."
   },
@@ -486,6 +519,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "დღეების რაოდენობა, სანამ დანერგვის მონაცემების ვადა ამოიწურება (ნაგულისხმევი: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "გვერდითი პანელის გახსნა:"
@@ -577,6 +613,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -610,6 +649,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -631,6 +676,12 @@
   "Session": {
     "message": "სესია"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "დააყენეთ, როდის უნდა ამოიწუროს განაწილების მონაცემების ვადა"
   },
@@ -651,6 +702,9 @@
   },
   "Stable": {
     "message": "სტაბილური"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "მიმდინარე დავალების შესრულების შეჩერება"
@@ -679,7 +733,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -711,6 +771,9 @@
   },
   "Toggle_side_panel": {
     "message": "გვერდითი პანელის გადართვა"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "ხელსაწყო"
@@ -766,6 +829,9 @@
   "User_Center": {
     "message": "მომხმარებლის ცენტრი"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "მომხმარებლის დამტკიცებული ქმედება"
   },
@@ -788,6 +854,9 @@
     "message": "საუბრის ისტორიის ნახვა"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -818,6 +887,12 @@
     "message": "თქვენი გადაწყვეტილება"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

@@ -7,7 +7,7 @@
  * @module core/channels/ChannelAdapter
  */
 
-import type { EventMsg } from '@/protocol/types';
+import type { EventMsg } from '@/core/protocol/types';
 import type { ChannelType, ChannelCapabilities, SubmissionHandler } from './types';
 
 /**

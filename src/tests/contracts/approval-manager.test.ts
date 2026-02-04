@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventCollector, createDeferred, waitFor } from '../utils/test-helpers';
-import { ReviewDecision } from '../../protocol/types';
+import { ReviewDecision } from '../../core/protocol/types';
 
 // Define ApprovalManager contract interfaces
 interface ApprovalRequest {

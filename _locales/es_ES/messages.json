@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Detalles de la acción"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "Comando"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Comprima los datos en caché para ahorrar espacio de almacenamiento"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "Crear Nueva Pestaña"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Detalles de crédito"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Mostrar consumo de tokens (tokens de entrada/salida) al completar las tareas"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "Introduzca su clave API de LLM"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -319,6 +337,9 @@
   "Full_Access_Dangerous": {
     "message": "Acceso total (Peligroso)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "General"
   },
@@ -378,6 +399,9 @@
   "Loading_credits": {
     "message": "Cargando créditos..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Cargando ajustes..."
   },
@@ -420,8 +444,14 @@
   "Max_Cache_Size_MB": {
     "message": "Tamaño máximo de caché (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Tamaño máximo de caché en megabytes (por defecto: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -471,6 +501,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Aún no hay historial de aprobaciones."
   },
@@ -491,6 +524,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Número de días antes de que los datos de despliegue expiren (por defecto: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Abrir panel lateral:"
@@ -582,6 +618,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -615,6 +654,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -636,6 +681,12 @@
   "Session": {
     "message": "Sesión"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "Establezca cuándo deben expirar los datos de despliegue"
   },
@@ -656,6 +707,9 @@
   },
   "Stable": {
     "message": "Estable"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Detener la ejecución actual de la tarea"
@@ -684,7 +738,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -716,6 +776,9 @@
   },
   "Toggle_side_panel": {
     "message": "Alternar panel lateral"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Herramienta"
@@ -771,6 +834,9 @@
   "User_Center": {
     "message": "Centro de usuarios"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Acción aprobada por el usuario"
   },
@@ -793,6 +859,9 @@
     "message": "Ver historial de chat"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -823,6 +892,12 @@
     "message": "Su decisión"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

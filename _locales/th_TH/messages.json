@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "รายละเอียดการดำเนินการ"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "คำสั่ง"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "บีบอัดข้อมูลแคชเพื่อประหยัดพื้นที่จัดเก็บ"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "สร้างแท็บใหม่"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "รายละเอียดเครดิต"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "แสดงการใช้โทเคน (อินพุต/เอาต์พุต) เมื่องานเสร็จสิ้น"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "ป้อนคีย์ API ของ LLM ของคุณ"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -319,6 +337,9 @@
   "Full_Access_Dangerous": {
     "message": "การเข้าถึงเต็มรูปแบบ (อันตราย)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "ทั่วไป"
   },
@@ -378,6 +399,9 @@
   "Loading_credits": {
     "message": "กำลังโหลดเครดิต..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "กำลังโหลดการตั้งค่า..."
   },
@@ -420,8 +444,14 @@
   "Max_Cache_Size_MB": {
     "message": "ขนาดแคชสูงสุด(MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "ขนาดแคชสูงสุดเป็นเมกะไบต์(ค่าเริ่มต้น:100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -471,6 +501,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "ยังไม่มีประวัติการอนุมัติ"
   },
@@ -491,6 +524,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "จำนวนวันก่อนข้อมูลการเปิดตัวจะหมดอายุ (ค่าเริ่มต้น: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "เปิดแถบด้านข้าง:"
@@ -582,6 +618,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -615,6 +654,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -636,6 +681,12 @@
   "Session": {
     "message": "ช่วงเวลาใช้งาน"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "ตั้งเวลาหมดอายุของข้อมูลการนำออกใช้"
   },
@@ -656,6 +707,9 @@
   },
   "Stable": {
     "message": "เสถียร"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "หยุดการทำงานของงานปัจจุบัน"
@@ -684,7 +738,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -716,6 +776,9 @@
   },
   "Toggle_side_panel": {
     "message": "สลับแถบด้านข้าง"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "เครื่องมือ"
@@ -771,6 +834,9 @@
   "User_Center": {
     "message": "ศูนย์ผู้ใช้"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "การกระทำที่ผู้ใช้อนุมัติ"
   },
@@ -793,6 +859,9 @@
     "message": "ดูประวัติแชท"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -823,6 +892,12 @@
     "message": "การตัดสินใจของคุณ"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

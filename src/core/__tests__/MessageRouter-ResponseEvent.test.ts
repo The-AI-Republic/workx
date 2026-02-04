@@ -5,7 +5,7 @@
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { MessageRouter, MessageType } from '../MessageRouter';
-import type { ResponseEvent } from '../../models/types/ResponseEvent';
+import type { ResponseEvent } from '../models/types/ResponseEvent';
 
 // Mock Chrome runtime API
 const mockChrome = {

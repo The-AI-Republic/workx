@@ -3,10 +3,10 @@
  * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
  */
 
-import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
-import type { Event, EventMsg } from '../protocol/events';
+import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from './protocol/types';
+import type { Event, EventMsg } from './protocol/events';
 import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
-import type { AgentReadyState } from '../models/types/Auth';
+import type { AgentReadyState } from './models/types/Auth';
 import type { InitialHistory } from './session/state/types';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
@@ -14,7 +14,7 @@ import { TurnContext } from './TurnContext';
 import { ApprovalManager } from './ApprovalManager';
 import { DiffTracker } from './DiffTracker';
 import { ToolRegistry } from '../tools/ToolRegistry';
-import { ModelClientFactory } from '../models/ModelClientFactory';
+import { ModelClientFactory } from './models/ModelClientFactory';
 import { UserNotifier } from './UserNotifier';
 import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';

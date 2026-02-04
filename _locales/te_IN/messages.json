@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "చర్య వివరాలు"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -151,6 +154,9 @@
   "Command": {
     "message": "Command"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "సంగ్రహణ స్థలాన్ని సేవ్ చేయడానికి క్యాష్ చేసిన డేటాను సంకోచించండి"
   },
@@ -184,6 +190,9 @@
   "Create_New_Tab": {
     "message": "కొత్త ట్యాబ్ సృష్టించండి"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "క్రెడిట్ వివరాలు"
   },
@@ -214,8 +223,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "పనులు పూర్తయ్యినప్పుడు టోకెన్ వినియోగాన్ని (ఇన్‌పుట్/అవుట్‌పుట్ టోకెన్లు) చూపించండి"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -263,6 +278,9 @@
     "message": "మీ LLM API కీని నమోదు చేయండి"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -318,6 +336,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "పూర్తి యాక్సెస్ (అపాయకరమైనది)"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "సాధారణ"
@@ -378,6 +399,9 @@
   "Loading_credits": {
     "message": "క్రెడిట్లు లోడ్ అవుతున్నాయి..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "సెట్టింగ్స్ లోడ్ అవుతున్నాయి..."
   },
@@ -420,8 +444,14 @@
   "Max_Cache_Size_MB": {
     "message": "గరిష్ట క్యాష్ పరిమాణం (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "మెగాబైట్లలో గరిష్ట క్యాష్ పరిమాణం (డిఫాల్ట్: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -471,6 +501,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "ఇంకా ఆమోద చరిత్ర లేదు."
   },
@@ -491,6 +524,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "రోలౌట్ డేటా గడువు ముగియడానికి ముందు ఉన్న రోజుల సంఖ్య (డిఫాల్ట్: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "సైడ్ ప్యానెల్‌ను తెరవండి:"
@@ -582,6 +618,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -615,6 +654,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -636,6 +681,12 @@
   "Session": {
     "message": "సెషన్"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "రోలౌట్ డేటా గడువు ముగింపు సమయాన్ని సెట్ చేయండి"
   },
@@ -656,6 +707,9 @@
   },
   "Stable": {
     "message": "స్థిర"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "ప్రస్తుత పని రన్‌ను ఆపండి"
@@ -684,7 +738,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -716,6 +776,9 @@
   },
   "Toggle_side_panel": {
     "message": "సైడ్ ప్యానెల్‌ను టోగుల్ చేయండి"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "సాధనం"
@@ -771,6 +834,9 @@
   "User_Center": {
     "message": "యూజర్ సెంటర్"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "వాడుకరి ఆమోదించిన చర్య"
   },
@@ -793,6 +859,9 @@
     "message": "చాట్ చరిత్రను చూడండి"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -823,6 +892,12 @@
     "message": "మీ నిర్ణయం"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

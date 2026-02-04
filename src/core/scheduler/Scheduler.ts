@@ -9,12 +9,12 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { SchedulerStorage } from './SchedulerStorage';
-import type { SchedulerAlarms } from '../../background/scheduler-alarms';
+import type { SchedulerAlarms } from '../../extension/background/scheduler-alarms';
 import type {
   SchedulerTaskRecord,
   SchedulerTaskStatus,
   TaskResultRecord,
-} from '../../models/types/Scheduler';
+} from '../models/types/Scheduler';
 import type {
   ISchedulerStorage,
   ISchedulerAlarms,
@@ -22,11 +22,11 @@ import type {
   SchedulerStateChangedEvent,
   SchedulerTaskSummary,
   GetSchedulerStateResponse,
-} from '../../models/types/SchedulerContracts';
+} from '../models/types/SchedulerContracts';
 import {
   parseAlarmName,
   DEFAULT_ALARM_CONFIG,
-} from '../../models/types/SchedulerContracts';
+} from '../models/types/SchedulerContracts';
 import type { AgentRegistry } from '../registry/AgentRegistry';
 import type { AgentSession } from '../registry/AgentSession';
 

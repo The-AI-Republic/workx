@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Handlingsdetaljer"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "Kommando"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimer cachedata for at spare lagerplads"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "Opret ny fane"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Kreditoplysninger"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Vis tokenforbrug (input/output‑tokens) når opgaver er afsluttet"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "Indtast din LLM API‑nøgle"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -313,6 +331,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "Fuld adgang (farligt)"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "Generelt"
@@ -373,6 +394,9 @@
   "Loading_credits": {
     "message": "Indlæser kreditter..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Indlæser indstillinger..."
   },
@@ -415,8 +439,14 @@
   "Max_Cache_Size_MB": {
     "message": "Maks. cache-størrelse (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maksimal cache-størrelse i megabytes (standard: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -466,6 +496,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Ingen godkendelseshistorik endnu."
   },
@@ -486,6 +519,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Antal dage før data for udrulning udløber (standard: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Åbn sidepanel:"
@@ -577,6 +613,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -610,6 +649,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -631,6 +676,12 @@
   "Session": {
     "message": "Session"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "Indstil hvornår udrulningsdata skal udløbe"
   },
@@ -651,6 +702,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Stop den aktuelle opgavekørsel"
@@ -679,7 +733,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -711,6 +771,9 @@
   },
   "Toggle_side_panel": {
     "message": "Skift sidepanel"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Værktøj"
@@ -766,6 +829,9 @@
   "User_Center": {
     "message": "Brugercenter"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Bruger godkendte handling"
   },
@@ -788,6 +854,9 @@
     "message": "Vis chat-historik"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -818,6 +887,12 @@
     "message": "Din beslutning"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

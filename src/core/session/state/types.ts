@@ -2,7 +2,7 @@
  * Shared types for state management
  */
 
-import type { ReviewDecision } from '../../../protocol/types';
+import type { ReviewDecision } from '../../protocol/types';
 import type { SessionTask } from '../../tasks/SessionTask';
 
 /**

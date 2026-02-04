@@ -3,8 +3,8 @@
  * Implements async queue patterns from browserx.rs
  */
 
-import type { Submission, Event, Op } from '../protocol/types';
-import type { EventMsg } from '../protocol/events';
+import type { Submission, Event, Op } from './protocol/types';
+import type { EventMsg } from './protocol/events';
 
 /**
  * Priority levels for queue items

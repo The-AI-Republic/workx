@@ -5,7 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { BrowserxAgent } from '../BrowserxAgent';
-import type { Op } from '../../protocol/types';
+import type { Op } from '../protocol/types';
 import type {
   SessionState,
   SessionType,

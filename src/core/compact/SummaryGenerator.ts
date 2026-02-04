@@ -2,7 +2,7 @@
  * SummaryGenerator - generates LLM-based summaries of conversation history
  */
 
-import type { ResponseItem } from '../../protocol/types';
+import type { ResponseItem } from '../protocol/types';
 import { SUMMARY_PREFIX, NO_SUMMARY_PLACEHOLDER } from './constants';
 import { isSummaryMessage, extractTextFromContent } from './utils';
 

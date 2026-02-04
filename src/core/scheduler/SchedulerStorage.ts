@@ -10,14 +10,14 @@ import { IndexedDBAdapter, STORE_NAMES, INDEX_NAMES } from '../../storage/Indexe
 import type {
   SchedulerTaskRecord,
   SchedulerState,
-} from '../../models/types/Scheduler';
+} from '../models/types/Scheduler';
 import {
   createDefaultSchedulerState,
   createDraftTaskRecord,
   createScheduledTaskRecord,
-} from '../../models/types/Scheduler';
-import type { ISchedulerStorage } from '../../models/types/SchedulerContracts';
-import { SCHEDULER_STATE_KEY } from '../../models/types/SchedulerContracts';
+} from '../models/types/Scheduler';
+import type { ISchedulerStorage } from '../models/types/SchedulerContracts';
+import { SCHEDULER_STATE_KEY } from '../models/types/SchedulerContracts';
 
 /**
  * Storage implementation for scheduler tasks

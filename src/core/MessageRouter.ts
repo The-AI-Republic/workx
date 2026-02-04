@@ -3,9 +3,9 @@
  * Handles message passing between background, content scripts, and side panel
  */
 
-import type { Submission, Event } from '../protocol/types';
-import type { EventMsg } from '../protocol/events';
-import type { ResponseEvent } from '../models/types/ResponseEvent';
+import type { Submission, Event } from './protocol/types';
+import type { EventMsg } from './protocol/events';
+import type { ResponseEvent } from './models/types/ResponseEvent';
 
 /**
  * Message types for Chrome extension communication

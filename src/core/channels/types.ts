@@ -6,7 +6,7 @@
  * @module core/channels/types
  */
 
-import type { Op, EventMsg } from '@/protocol/types';
+import type { Op, EventMsg } from '@/core/protocol/types';
 
 /**
  * Channel type discriminator

@@ -2,7 +2,7 @@
  * Types for chat history compaction
  */
 
-import type { ResponseItem } from '../../protocol/types';
+import type { ResponseItem } from '../protocol/types';
 
 /**
  * What triggered the compaction

@@ -7,7 +7,7 @@
  */
 
 import { BaseTool, type BaseToolOptions, type ToolDefinition } from './BaseTool';
-import { StepStatus, type UpdatePlanArgs, type PlanItemArg } from '../protocol/events';
+import { StepStatus, type UpdatePlanArgs, type PlanItemArg } from '../core/protocol/events';
 
 /**
  * Tool definition constant for LLM discovery

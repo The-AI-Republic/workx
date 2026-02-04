@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Detalye sa Aksyon"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "Komando"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Pag-compress sa cached nga datos aron makatipid sa espasyo sa storage"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "Himoa ang Bag-ong Tab"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Detalye sa Kredito"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Ipakita ang konsumo sa token (input/output nga mga token) kung mahuman na ang mga buluhaton"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "Ipasulod ang imong LLM API key"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -319,6 +337,9 @@
   "Full_Access_Dangerous": {
     "message": "Kompletong Access (Delikado)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Pangkalahatan"
   },
@@ -378,6 +399,9 @@
   "Loading_credits": {
     "message": "Nag-load sa mga kredito..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Nag-load sa mga setting..."
   },
@@ -420,8 +444,14 @@
   "Max_Cache_Size_MB": {
     "message": "Pinakadako nga kapasidad sa cache (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Pinakadako nga kapasidad sa cache nga megabytes (default: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -471,6 +501,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Wala pa’y kasaysayan sa pag-apruba."
   },
@@ -491,6 +524,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Gidaghanon sa mga adlaw dili pa ma-expire ang data sa rollout (default: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Side Panel nga Abli:"
@@ -582,6 +618,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -615,6 +654,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -636,6 +681,12 @@
   "Session": {
     "message": "Sesyon"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "Itakda kung kanus-a mag-expire ang datos sa rollout"
   },
@@ -656,6 +707,9 @@
   },
   "Stable": {
     "message": "Stable"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Hunonga ang kasamtangang task"
@@ -684,7 +738,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -716,6 +776,9 @@
   },
   "Toggle_side_panel": {
     "message": "I-toggle ang side panel"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Galamiton"
@@ -771,6 +834,9 @@
   "User_Center": {
     "message": "User Center"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Aksyon nga gi-aprubahan sa user"
   },
@@ -793,6 +859,9 @@
     "message": "Tan-awa ang Chat History"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -823,6 +892,12 @@
     "message": "Imong desisyon"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

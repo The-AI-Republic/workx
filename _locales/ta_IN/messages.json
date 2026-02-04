@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "செயல் விவரங்கள்"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "கட்டளை"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "சேமிப்பு இடத்தைச் சேமிக்க கேச் செய்யப்பட்ட தரவை சுருக்கவும்"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "புதிய தாவலை உருவாக்கவும்"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "கிரெடிட் விவரங்கள்"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "பணிகள் முடிந்தபோது டோக்கன் பயன்பாட்டை (உள்ளீடு/வெளியீடு டோக்கன்கள்) காட்டவும்"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "உங்கள் LLM API கீயை உள்ளிடவும்"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -313,6 +331,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "முழு அணுகல் (அபாயகரமான)"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "பொது"
@@ -373,6 +394,9 @@
   "Loading_credits": {
     "message": "கிரெடிட்கள் ஏற்றுகிறது..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "அமைப்புகள் ஏற்றுகிறது..."
   },
@@ -415,8 +439,14 @@
   "Max_Cache_Size_MB": {
     "message": "அதிகபட்ச கேஷ் அளவு (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "அதிகபட்ச கேஷ் அளவு (மெகாபைட்டுகள்) (இயல்புநிலை: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -466,6 +496,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "இன்னும் ஒப்புதல் வரலாறு இல்லை."
   },
@@ -486,6 +519,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "படிப்படியாக வெளியிடப்படும் தரவு காலாவதியாகும் முன் நாட்களின் எண்ணிக்கை (இயல்புநிலை: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "பக்கப் பலகை:"
@@ -577,6 +613,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -610,6 +649,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -631,6 +676,12 @@
   "Session": {
     "message": "அமர்வு"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "படிப்படியான வெளியீட்டுத் தரவு எப்போது காலாவதியாகும் என்பதை அமைக்கவும்"
   },
@@ -651,6 +702,9 @@
   },
   "Stable": {
     "message": "நிலையான"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "தற்போதைய பணியை நிறுத்தவும்"
@@ -679,7 +733,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -711,6 +771,9 @@
   },
   "Toggle_side_panel": {
     "message": "பக்கப் பலகை மாற்று"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "கருவி"
@@ -766,6 +829,9 @@
   "User_Center": {
     "message": "பயனர் மையம்"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "பயனர் அங்கீகரித்த செயல்"
   },
@@ -788,6 +854,9 @@
     "message": "Chat வரலாற்றைக் காண்க"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -818,6 +887,12 @@
     "message": "உங்கள் முடிவு"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

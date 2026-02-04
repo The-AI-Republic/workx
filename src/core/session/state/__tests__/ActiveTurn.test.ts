@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ActiveTurn } from '../ActiveTurn';
 import { TaskKind } from '../types';
-import { ReviewDecision } from '../../../../protocol/types';
+import { ReviewDecision } from '../../../protocol/types';
 
 describe('ActiveTurn', () => {
   let activeTurn: ActiveTurn;

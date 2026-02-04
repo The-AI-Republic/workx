@@ -3,8 +3,8 @@
  * Adapted for browser context
  */
 
-import type { EventMsg } from '../protocol/events';
-import type { Event } from '../protocol/types';
+import type { EventMsg } from './protocol/events';
+import type { Event } from './protocol/types';
 
 /**
  * Notification types

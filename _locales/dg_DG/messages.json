@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "much action details wow"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "such command wow"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "much compress cached data to save storage space wow"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "much create new tab wow"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "such credit details wow"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "much display token consumption (input/output tokens) when tasks complete wow"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "much enter LLM API key wow"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -313,6 +331,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "such full access (dangerous) wow"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "such general wow"
@@ -373,6 +394,9 @@
   "Loading_credits": {
     "message": "much loading credits... wow"
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "much loading settings... wow"
   },
@@ -415,8 +439,14 @@
   "Max_Cache_Size_MB": {
     "message": "such max cache size (MB) wow"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "such maximum cache size in megabytes (default: 100) wow"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -466,6 +496,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "such no approval history yet wow."
   },
@@ -486,6 +519,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "many days before rollout data expires (default: 60) wow"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "open side panel wow:"
@@ -577,6 +613,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -610,6 +649,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -631,6 +676,12 @@
   "Session": {
     "message": "much session wow"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "much set when rollout data should expire wow"
   },
@@ -651,6 +702,9 @@
   },
   "Stable": {
     "message": "such stable wow"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "stop the current task run, much stop wow"
@@ -679,7 +733,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -711,6 +771,9 @@
   },
   "Toggle_side_panel": {
     "message": "toggle side panel wow"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "very tool wow"
@@ -766,6 +829,9 @@
   "User_Center": {
     "message": "much user center wow"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "such user approved action wow"
   },
@@ -788,6 +854,9 @@
     "message": "much view chat history wow"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -818,6 +887,12 @@
     "message": "such your decision wow"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

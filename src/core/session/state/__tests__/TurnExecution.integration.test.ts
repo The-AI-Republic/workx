@@ -7,8 +7,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Session } from '../../../Session';
 import { TaskKind } from '../types';
-import type { InputItem } from '../../../protocol/types';
-import { ReviewDecision } from '../../../../protocol/types';
+import type { InputItem } from '../../protocol/types';
+import { ReviewDecision } from '../../../protocol/types';
 
 describe('Turn Execution Integration', () => {
   let session: Session;

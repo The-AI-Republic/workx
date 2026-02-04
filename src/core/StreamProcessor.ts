@@ -7,7 +7,7 @@
  * Extended in Phase 6 to also handle ResponseEvents from OpenAIResponsesClient.
  */
 
-import type { ResponseEvent } from '../models/types/ResponseEvent';
+import type { ResponseEvent } from './models/types/ResponseEvent';
 
 /**
  * UI update types for progressive rendering

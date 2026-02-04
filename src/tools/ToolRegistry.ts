@@ -5,7 +5,7 @@
  * Provides a centralized system for tool management with validation and metadata support.
  */
 
-import type { Event } from '../protocol/types';
+import type { Event } from '../core/protocol/types';
 import { EventCollector } from '../tests/utils/test-helpers';
 import type {
   ToolDefinition,

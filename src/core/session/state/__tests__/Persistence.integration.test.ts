@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Session } from '../../../Session';
 import { SessionState } from '../SessionState';
-import type { InputItem } from '../../../protocol/types';
+import type { InputItem } from '../../protocol/types';
 
 describe('Persistence Integration', () => {
   describe('Session Export/Import Round-Trip', () => {

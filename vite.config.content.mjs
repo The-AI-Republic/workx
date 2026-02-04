@@ -24,7 +24,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/content/content-script.ts'),
+      entry: resolve(__dirname, 'src/extension/content/content-script.ts'),
       name: 'BrowserxContentScript',
       formats: ['iife'],
       fileName: () => 'content.js'

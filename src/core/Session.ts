@@ -6,9 +6,9 @@
  * while maintaining full backward compatibility
  */
 
-import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from '../protocol/types';
+import type { InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, Event, ResponseItem, ConversationHistory, ReviewDecision } from './protocol/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
-import type { EventMsg } from '../protocol/events';
+import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { TurnContext } from './TurnContext';
@@ -26,7 +26,7 @@ import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotC
 // Compaction imports
 import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
-import type { ModelClient } from '../models/ModelClient';
+import type { ModelClient } from './models/ModelClient';
 
 // Title generation imports
 import { TitleGenerator } from './title';

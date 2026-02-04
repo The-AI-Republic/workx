@@ -6,8 +6,8 @@
  * for session-tab binding feature
  */
 
-import { ModelClient } from '../models/ModelClient';
-import type { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig } from '../protocol/types';
+import { ModelClient } from './models/ModelClient';
+import type { AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig } from './protocol/types';
 import type { IToolsConfig } from '../config/types';
 import { DEFAULT_TOOLS_CONFIG } from '../config/defaults';
 

@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "جزئیات اقدام"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -151,6 +154,9 @@
   "Command": {
     "message": "دستور"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "فشرده‌سازی داده‌های کش برای صرفه‌جویی در فضای ذخیره‌سازی"
   },
@@ -184,6 +190,9 @@
   "Create_New_Tab": {
     "message": "ایجاد برگه جدید"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "جزئیات اعتبار"
   },
@@ -214,8 +223,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "نمایش مصرف توکن (توکن‌های ورودی/خروجی) هنگام تکمیل وظایف"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -263,6 +278,9 @@
     "message": "کلید API LLM خود را وارد کنید"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -318,6 +336,9 @@
   },
   "Full_Access_Dangerous": {
     "message": "دسترسی کامل (خطرناک)"
+  },
+  "Full_Input": {
+    "message": ""
   },
   "General": {
     "message": "عمومی"
@@ -378,6 +399,9 @@
   "Loading_credits": {
     "message": "در حال بارگذاری اعتبار..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "در حال بارگذاری تنظیمات..."
   },
@@ -420,8 +444,14 @@
   "Max_Cache_Size_MB": {
     "message": "حداکثر اندازهٔ کش (مگابایت)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "حداکثر اندازهٔ کش بر حسب مگابایت (پیش‌فرض: ۱۰۰)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -471,6 +501,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "هنوز تاریخچه‌ای از تأییدها ثبت نشده است."
   },
@@ -491,6 +524,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "تعداد روز پیش از انقضای داده‌های استقرار (پیش‌فرض: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "باز کردن پنل کناری:"
@@ -582,6 +618,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -615,6 +654,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -636,6 +681,12 @@
   "Session": {
     "message": "جلسه"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "زمان انقضای داده‌های انتشار را تنظیم کنید"
   },
@@ -656,6 +707,9 @@
   },
   "Stable": {
     "message": "پایدار"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "توقف اجرای وظیفه جاری"
@@ -684,7 +738,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -716,6 +776,9 @@
   },
   "Toggle_side_panel": {
     "message": "تغییر وضعیت پنل کناری"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "ابزار"
@@ -771,6 +834,9 @@
   "User_Center": {
     "message": "مرکز کاربر"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "عملیات تأییدشده توسط کاربر"
   },
@@ -793,6 +859,9 @@
     "message": "مشاهده تاریخچه چت"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -823,6 +892,12 @@
     "message": "تصمیم شما"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

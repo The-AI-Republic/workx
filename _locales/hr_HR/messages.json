@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Detalji akcije"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
   "Add": {
     "message": ""
   },
@@ -146,6 +149,9 @@
   "Command": {
     "message": "Naredba"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimirajte podatke iz predmemorije kako biste uštedjeli prostor za pohranu"
   },
@@ -179,6 +185,9 @@
   "Create_New_Tab": {
     "message": "Kreiraj novu karticu"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Detalji kredita"
   },
@@ -209,8 +218,14 @@
   "Disconnect": {
     "message": ""
   },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Prikaži potrošnju tokena (ulazni/izlazni tokeni) po završetku zadataka"
+  },
+  "Duration": {
+    "message": ""
   },
   "Edit": {
     "message": ""
@@ -258,6 +273,9 @@
     "message": "Unesite svoj LLM API ključ"
   },
   "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
     "message": ""
   },
   "Execute_Commands": {
@@ -319,6 +337,9 @@
   "Full_Access_Dangerous": {
     "message": "Potpuni pristup (opasno)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Opće"
   },
@@ -378,6 +399,9 @@
   "Loading_credits": {
     "message": "Učitavanje kredita..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Učitavanje postavki..."
   },
@@ -420,8 +444,14 @@
   "Max_Cache_Size_MB": {
     "message": "Maksimalna veličina predmemorije (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maksimalna veličina predmemorije u megabajtima (zadano: 100)"
+  },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
   },
   "Maximum_of_5_servers_reached": {
     "message": ""
@@ -471,6 +501,9 @@
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Još nema povijesti odobrenja."
   },
@@ -491,6 +524,9 @@
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Broj dana prije isteka podataka o uvođenju (zadano: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Otvori bočni panel:"
@@ -582,6 +618,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Result_Summary": {
+    "message": ""
+  },
   "Resume_Queue": {
     "message": ""
   },
@@ -615,6 +654,12 @@
   "Schedule_Task": {
     "message": ""
   },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
   "Scheduled_Tasks": {
     "message": ""
   },
@@ -636,6 +681,12 @@
   "Session": {
     "message": "Sesija"
   },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
   "Set_when_rollout_data_should_expire": {
     "message": "Postavite kada će podaci uvođenja isteći"
   },
@@ -656,6 +707,9 @@
   },
   "Stable": {
     "message": "Stabilno"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Zaustavi trenutno izvođenje zadatka"
@@ -684,7 +738,13 @@
   "Task": {
     "message": ""
   },
+  "Task_Details": {
+    "message": ""
+  },
   "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
     "message": ""
   },
   "Terminal": {
@@ -716,6 +776,9 @@
   },
   "Toggle_side_panel": {
     "message": "Uključi/isključi bočni panel"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Alat"
@@ -771,6 +834,9 @@
   "User_Center": {
     "message": "Korisnički centar"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Korisnik je odobrio radnju"
   },
@@ -793,6 +859,9 @@
     "message": "Pregledaj povijest razgovora"
   },
   "View_History": {
+    "message": ""
+  },
+  "View_Session": {
     "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
@@ -823,6 +892,12 @@
     "message": "Vaša odluka"
   },
   "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   }
 }

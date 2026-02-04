@@ -3,8 +3,8 @@
  * Converts ResponseItem into EventMsg values that the UI can render
  */
 
-import type { EventMsg } from '../../protocol/events';
-import type { ResponseItem } from '../../protocol/types';
+import type { EventMsg } from '../protocol/events';
+import type { ResponseItem } from '../protocol/types';
 
 /**
  * Convert a ResponseItem into zero or more EventMsg values that the UI can render.

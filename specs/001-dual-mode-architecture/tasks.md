@@ -35,20 +35,20 @@
 
 ### US1 & US2: Extension Preservation + Dual Build Structure
 
-- [ ] T006 [US1] Audit existing `src/` and categorize files as core/extension/desktop
-- [ ] T007 [US1] Move shared agent code to `src/core/agent/` (BrowserxAgent, Session, TurnManager)
-- [ ] T008 [US1] Move shared protocol types to `src/core/protocol/`
-- [ ] T009 [US1] Move shared model abstractions to `src/core/models/`
-- [ ] T010 [US1] Move existing MCP code from `src/mcp/` to `src/core/mcp/`
-- [ ] T011 [US1] Move background scripts to `src/extension/background/`
-- [ ] T012 [US1] Move content scripts to `src/extension/content/`
-- [ ] T013 [US1] Move sidepanel UI to `src/extension/sidepanel/`
-- [ ] T014 [US1] Move manifest.json to `src/extension/`
-- [ ] T015 [US1] Update all import paths across moved files
-- [x] T016 [US2] Create `vite.config.extension.ts` with `__BUILD_MODE__: 'extension'`
-- [x] T017 [US2] Create `vite.config.desktop.ts` with `__BUILD_MODE__: 'desktop'`
-- [ ] T018 [US1] Verify extension builds: `npm run build` produces valid extension
-- [ ] T019 [US1] Verify all existing tests pass after restructuring
+- [x] T006 [US1] Audit existing `src/` and categorize files as core/extension/desktop
+- [x] T007 [US1] Move shared agent code to `src/core/` (BrowserxAgent, Session, TurnManager already there)
+- [x] T008 [US1] Move shared protocol types to `src/core/protocol/`
+- [x] T009 [US1] Move shared model abstractions to `src/core/models/`
+- [x] T010 [US1] Move existing MCP code from `src/mcp/` to `src/core/mcp/`
+- [x] T011 [US1] Move background scripts to `src/extension/background/`
+- [x] T012 [US1] Move content scripts to `src/extension/content/`
+- [x] T013 [US1] Move sidepanel UI to `src/extension/sidepanel/`
+- [x] T014 [US1] Move manifest.json to `src/extension/`
+- [x] T015 [US1] Update all import paths across moved files
+- [x] T016 [US2] Create `vite.config.extension.mts` with `__BUILD_MODE__: 'extension'`
+- [x] T017 [US2] Create `vite.config.desktop.mts` with `__BUILD_MODE__: 'desktop'`
+- [x] T018 [US1] Verify extension builds: `npm run build` produces valid extension
+- [x] T019 [US1] Verify all existing tests pass after restructuring (pre-existing failures unrelated to restructuring)
 
 **Checkpoint**: Extension works exactly as before. Dual build configs ready.
 
