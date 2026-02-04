@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import sveltePreprocess from 'svelte-preprocess';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,7 +11,17 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
  * Sets __BUILD_MODE__ to 'desktop'
  */
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [
+    svelte({
+      preprocess: sveltePreprocess({
+        typescript: {
+          tsconfigFile: resolve(__dirname, 'tsconfig.json'),
+        },
+      }),
+      configFile: resolve(__dirname, 'svelte.config.mjs'),
+    }),
+  ],
+  root: 'src/desktop',
   define: {
     __BUILD_MODE__: JSON.stringify('desktop'),
   },
@@ -20,12 +31,14 @@ export default defineConfig({
         main: resolve(__dirname, 'src/desktop/index.html'),
       },
       external: [
-        '@tauri-apps/api/tauri',
+        // Tauri v2 API packages
+        '@tauri-apps/api/core',
         '@tauri-apps/api/window',
         '@tauri-apps/api/event',
-        '@tauri-apps/api/globalShortcut',
         '@tauri-apps/api/path',
-        '@tauri-apps/api/notification',
+        '@tauri-apps/plugin-global-shortcut',
+        '@tauri-apps/plugin-notification',
+        '@tauri-apps/plugin-shell',
       ],
       output: {
         entryFileNames: '[name].js',
@@ -34,7 +47,7 @@ export default defineConfig({
         format: 'es',
       },
     },
-    outDir: 'dist/desktop',
+    outDir: resolve(__dirname, 'dist/desktop'),
     emptyOutDir: true,
     sourcemap: true,
     minify: true,
