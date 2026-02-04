@@ -5,6 +5,7 @@
   import Tooltip from './common/Tooltip.svelte';
   import ChatHistoryPopup from './chat/ChatHistoryPopup.svelte';
   import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { platform } from '../stores/platformStore';
   import { _t } from '../lib/i18n';
 
   export let value: string = '';
@@ -105,7 +106,9 @@
 <div class="message-input-container {currentTheme}">
   <!-- Tab Context Display -->
   <div class="tab-context-wrapper mb-2" on:mousedown|preventDefault>
-    <TabContext {tabId} on:tabSelected={handleTabSelected} />
+    {#if platform.hasTabSelection}
+      <TabContext {tabId} on:tabSelected={handleTabSelected} />
+    {/if}
     <div class="tab-context-spacer"></div>
     <!-- Top Right Button Group -->
     <div class="top-right-buttons">
