@@ -1009,7 +1009,7 @@
     <div class="content-container">
         <!-- Status Line -->
         <div class="status-line flex justify-between mb-2">
-          <TerminalMessage type="system" content={platform.platformName === 'extension' ? "Browserx (Alpha)" : "PI: Your personal AI (Alpha)"} />
+          <TerminalMessage type="system" content={platform.platformName === 'extension' ? "Browserx (Alpha)" : "Pi: Your personal AI (Alpha)"} />
           <div class="flex items-center space-x-2">
             {#if isProcessing}
               <TerminalMessage type="warning" content="[PROCESSING]" />
@@ -1191,8 +1191,9 @@
     flex-shrink: 0;
     background: var(--color-term-bg);
     border-top: 1px solid var(--color-term-border);
-    position: relative;
-    z-index: 10;
+    /* Note: position: relative and z-index removed to avoid creating a stacking context
+       that would trap fixed-positioned popups (PopupCard, SchedulerPopup, etc.)
+       The flex layout handles stacking order naturally. */
   }
 
   .input-area {

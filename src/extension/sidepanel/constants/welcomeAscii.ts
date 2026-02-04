@@ -12,8 +12,8 @@ const browserxAsciiLines: Array<{ text: string; color: string }> = [
 
 const piAsciiLines: Array<{ text: string; color: string }> = [
   { text: '██████╗ ██╗', color: 'text-term-blue' },
-  { text: '██╔══██╗██║', color: 'text-term-blue' },
-  { text: '██████╔╝██║', color: 'text-term-blue' },
+  { text: '██╔══██╗╚═╝', color: 'text-term-blue' },
+  { text: '██████╔╝██╗', color: 'text-term-blue' },
   { text: '██╔═══╝ ██║', color: 'text-term-blue' },
   { text: '██║     ██║', color: 'text-term-blue' },
   { text: '╚═╝     ╚═╝', color: 'text-term-blue' },
