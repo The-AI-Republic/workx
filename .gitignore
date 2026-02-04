@@ -66,6 +66,17 @@ tmp/
 # Vitest
 .vitest/
 
+# Tauri / Desktop App (Pi)
+tauri/target/
+tauri/Cargo.lock
+tauri/gen/
+*.AppImage
+*.deb
+*.dmg
+*.msi
+*.exe
+!*.exe.manifest
+
 # Source maps (uncomment if you don't want to commit them)
 # *.map
 
