@@ -8,6 +8,9 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 // Main build config - excludes content script (built separately with vite.config.content.mjs)
 export default defineConfig({
   plugins: [svelte()],
+  define: {
+    __BUILD_MODE__: JSON.stringify('extension'),
+  },
   build: {
     rollupOptions: {
       input: {
