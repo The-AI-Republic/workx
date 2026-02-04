@@ -7,7 +7,7 @@
  * @module desktop/tools/terminal/TerminalTool
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { SecurityFilter, type SecurityConfig, type FilterResult } from './SecurityFilter';
 
 /**

@@ -12,7 +12,7 @@
  * @module desktop/storage/KeytarCredentialStore
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import type { CredentialStore } from '@/core/storage/CredentialStore';
 
 /**

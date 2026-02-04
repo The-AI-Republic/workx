@@ -7,7 +7,7 @@
  * @module desktop/channels/websocket/WebSocketServer
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
 import type {
   WSMessage,

@@ -7,7 +7,7 @@
  * @module desktop/storage/SQLiteStorageProvider
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import type { StorageProvider } from '@/core/storage/StorageProvider';
 import type { ListOptions, QueryFilter, Transaction } from '@/core/storage/types';
 

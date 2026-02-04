@@ -8,13 +8,18 @@
  * @module desktop/tray
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
-import { appWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 /**
  * Tray state
  */
 let isMinimizedToTray = false;
+
+/**
+ * Get the current app window
+ */
+const getAppWindow = () => getCurrentWindow();
 
 /**
  * Initialize system tray behavior
@@ -23,6 +28,8 @@ let isMinimizedToTray = false;
  */
 export async function initializeTray(): Promise<void> {
   console.log('[Tray] Initializing system tray...');
+
+  const appWindow = getAppWindow();
 
   // Handle window close to minimize to tray instead
   appWindow.onCloseRequested(async (event) => {
@@ -39,6 +46,7 @@ export async function initializeTray(): Promise<void> {
  */
 export async function minimizeToTray(): Promise<void> {
   console.log('[Tray] Minimizing to tray...');
+  const appWindow = getAppWindow();
   await appWindow.hide();
   isMinimizedToTray = true;
 }
@@ -48,6 +56,7 @@ export async function minimizeToTray(): Promise<void> {
  */
 export async function restoreFromTray(): Promise<void> {
   console.log('[Tray] Restoring from tray...');
+  const appWindow = getAppWindow();
   await appWindow.show();
   await appWindow.setFocus();
   isMinimizedToTray = false;
@@ -57,6 +66,7 @@ export async function restoreFromTray(): Promise<void> {
  * Toggle window visibility
  */
 export async function toggleWindow(): Promise<void> {
+  const appWindow = getAppWindow();
   const visible = await appWindow.isVisible();
   if (visible) {
     await minimizeToTray();
@@ -90,10 +100,10 @@ export async function updateTrayTooltip(status: string): Promise<void> {
  * @param body - Notification body
  */
 export async function showTrayNotification(title: string, body: string): Promise<void> {
-  // Use the Tauri notification API if available
+  // Use the Tauri notification plugin
   try {
     const { sendNotification, isPermissionGranted, requestPermission } =
-      await import('@tauri-apps/api/notification');
+      await import('@tauri-apps/plugin-notification');
 
     let permissionGranted = await isPermissionGranted();
     if (!permissionGranted) {

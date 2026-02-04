@@ -2,13 +2,13 @@
  * Global Hotkey Support
  *
  * Manages global keyboard shortcuts for the desktop application.
- * Uses Tauri's globalShortcut API to register system-wide hotkeys.
+ * Uses Tauri's globalShortcut plugin to register system-wide hotkeys.
  *
  * @module desktop/hotkeys
  */
 
-import { register, unregister, isRegistered } from '@tauri-apps/api/globalShortcut';
-import { appWindow } from '@tauri-apps/api/window';
+import { register, unregister, isRegistered } from '@tauri-apps/plugin-global-shortcut';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { toggleWindow } from './tray';
 
 /**
@@ -38,6 +38,8 @@ const hotkeyHandlers: Map<string, () => void | Promise<void>> = new Map();
  */
 export async function initializeHotkeys(): Promise<void> {
   console.log('[Hotkeys] Initializing global hotkeys...');
+
+  const appWindow = getCurrentWindow();
 
   // Register toggle window hotkey
   await registerHotkey(DEFAULT_HOTKEYS.toggleWindow, async () => {

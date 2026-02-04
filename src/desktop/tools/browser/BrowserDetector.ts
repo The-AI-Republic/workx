@@ -7,7 +7,7 @@
  * @module desktop/tools/browser/BrowserDetector
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { platform } from '@tauri-apps/api/os';
 
 /**

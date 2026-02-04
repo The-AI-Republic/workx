@@ -7,7 +7,7 @@
  * @module desktop/tools/browser/ChromeLauncher
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { BrowserDetector } from './BrowserDetector';
 import { ProfileManager } from './ProfileManager';
 
