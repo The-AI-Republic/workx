@@ -103,7 +103,8 @@ export const userInitials: Readable<string> = derived(userStore, ($user) =>
   userStore.getInitials($user)
 );
 
-// Get the login page URL from environment
+// Get the login page URL derived from HOME_PAGE_BASE_URL
 export function getLoginPageUrl(): string {
-  return import.meta.env.VITE_LOGIN_PAGE || 'https://airepublic.com/login';
+  const baseUrl = import.meta.env.VITE_HOME_PAGE_BASE_URL || 'https://airepublic.com';
+  return `${baseUrl}/login`;
 }
