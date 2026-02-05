@@ -3,6 +3,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IToolsConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
+  import { notifyConfigUpdate } from '../lib/messaging';
 
   export let settingsConfig: AgentConfig;
 
@@ -60,10 +61,8 @@
       isSaving = true;
       await settingsConfig.updateConfig({ tools: currentTools });
 
-      // Send CONFIG_UPDATE message
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
-        console.warn('[ToolsSettings] Failed to notify service worker');
-      });
+      // Notify backend of config update
+      notifyConfigUpdate();
 
       originalTools = { ...currentTools };
       isDirty = false;

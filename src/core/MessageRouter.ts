@@ -67,6 +67,9 @@ export enum MessageType {
   RESUME_SESSION = 'RESUME_SESSION',
   RESUME_SESSION_COMPLETE = 'RESUME_SESSION_COMPLETE',
 
+  // Agent control
+  INTERRUPT = 'STOP_AGENT_SESSION', // Stop/interrupt the running agent
+
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
   AGENT_REINITIALIZED = 'AGENT_REINITIALIZED',

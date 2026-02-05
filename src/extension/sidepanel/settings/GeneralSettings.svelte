@@ -7,6 +7,7 @@
   import Switch from '../components/common/Switch.svelte';
   import { _t, getCurrentLocale, setLocale } from '../lib/i18n';
   import supportedLanguages from '../../../../_locales/supported_languages.json';
+  import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
 
   export let settingsConfig: AgentConfig;
 
@@ -71,10 +72,8 @@
       isSaving = true;
       await settingsConfig.updateConfig({ preferences: currentPreferences });
 
-      // Send CONFIG_UPDATE message
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
-        console.warn('[GeneralSettings] Failed to notify service worker');
-      });
+      // Notify backend of config update
+      notifyConfigUpdate();
 
       originalPreferences = { ...currentPreferences };
       saveMessage = t('Settings saved successfully');
@@ -126,11 +125,8 @@
     const value = parseInt(target.value, 10);
     currentPreferences.maxConcurrentSessions = value;
 
-    // Notify service worker to update AgentRegistry limit
-    chrome.runtime.sendMessage({
-      type: 'SET_MAX_CONCURRENT_SESSIONS',
-      payload: { maxConcurrent: value }
-    }).catch(() => {
+    // Notify backend to update AgentRegistry limit
+    sendMessage(MessageType.SET_MAX_CONCURRENT_SESSIONS, { maxConcurrent: value }).catch(() => {
       console.warn('[GeneralSettings] Failed to update max concurrent sessions');
     });
 

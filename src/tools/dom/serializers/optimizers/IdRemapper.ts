@@ -11,7 +11,7 @@
  * 4. Regenerated on snapshot rebuild after invalidation
  */
 
-import { IIdRemapper } from '../../types';
+import type { IIdRemapper } from '../../types';
 
 export class IdRemapper implements IIdRemapper {
   private sequentialToBackend: Map<number, number> = new Map();

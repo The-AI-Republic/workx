@@ -59,3 +59,34 @@ export interface CredentialStore {
    */
   listAccounts(service: string): Promise<string[]>;
 }
+
+// ============================================================================
+// Singleton Management
+// ============================================================================
+
+let credentialStoreInstance: CredentialStore | null = null;
+
+/**
+ * Get the global CredentialStore instance
+ * @throws Error if not initialized
+ */
+export function getCredentialStore(): CredentialStore {
+  if (!credentialStoreInstance) {
+    throw new Error('CredentialStore not initialized. Call initializeCredentialStore() first.');
+  }
+  return credentialStoreInstance;
+}
+
+/**
+ * Set the global CredentialStore instance
+ */
+export function setCredentialStore(store: CredentialStore): void {
+  credentialStoreInstance = store;
+}
+
+/**
+ * Check if CredentialStore is initialized
+ */
+export function isCredentialStoreInitialized(): boolean {
+  return credentialStoreInstance !== null;
+}

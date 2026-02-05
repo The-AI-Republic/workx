@@ -11,7 +11,7 @@
  * - Accessibility role
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 
 export class ClickableCache {
   private cache: Map<number, boolean> = new Map();

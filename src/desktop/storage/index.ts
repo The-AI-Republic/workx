@@ -8,3 +8,4 @@
 
 export { SQLiteStorageProvider } from './SQLiteStorageProvider';
 export { KeytarCredentialStore } from './KeytarCredentialStore';
+export { TauriConfigStorage } from './TauriConfigStorage';

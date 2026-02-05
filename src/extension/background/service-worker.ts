@@ -413,6 +413,14 @@ function setupMessageHandlers(): void {
       rolloutItems: initialHistory.payload.history,
     });
 
+    // Set up event dispatcher for chrome extension mode
+    agent.setEventDispatcher((event) => {
+      chrome.runtime.sendMessage({
+        type: 'EVENT',
+        payload: event,
+      }).catch(() => {});
+    });
+
     // Restore auth manager before initialization
     if (currentAuthManager) {
       const factory = agent.getModelClientFactory();
@@ -566,6 +574,15 @@ function setupMessageHandlers(): void {
         }
 
         agent = new BrowserxAgent(agentConfig, router!);
+
+        // Set up event dispatcher for chrome extension mode
+        agent.setEventDispatcher((event) => {
+          chrome.runtime.sendMessage({
+            type: 'EVENT',
+            payload: event,
+          }).catch(() => {});
+        });
+
         if (currentAuthManager) {
           const factory = agent.getModelClientFactory();
           factory.setAuthManager(currentAuthManager);
@@ -1314,6 +1331,25 @@ async function executeTabCommand(
  * Initialize storage layer
  */
 async function initializeStorage(): Promise<void> {
+  // Initialize config storage provider (platform-agnostic)
+  try {
+    const { initializeConfigStorage } = await import('@/core/storage');
+    await initializeConfigStorage();
+    console.log('[ServiceWorker] Config storage initialized');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize config storage:', error);
+    // Continue - will fall back to chrome.storage.local directly
+  }
+
+  // Initialize credential store (for secure API key storage)
+  try {
+    const { initializeCredentialStore } = await import('@/core/storage');
+    await initializeCredentialStore();
+    console.log('[ServiceWorker] Credential store initialized');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize credential store:', error);
+  }
+
   // Initialize cache manager
   cacheManager = new CacheManager({
     maxSize: 50 * 1024 * 1024, // 50MB

@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { MessageType } from '@/core/MessageRouter';
+  import { sendMessage, MessageType } from '../../lib/messaging';
   import SchedulerTaskItem from './SchedulerTaskItem.svelte';
   import ArchivedTasksView from './ArchivedTasksView.svelte';
   import ScheduleTaskModal from './ScheduleTaskModal.svelte';
@@ -91,8 +91,10 @@
   }
 
   onMount(() => {
-    // Listen for scheduler events from service worker
-    chrome.runtime.onMessage.addListener(handleSchedulerEvent);
+    // Listen for scheduler events from service worker (extension mode only)
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
+    }
 
     // T042: Listen for online/offline events
     window.addEventListener('online', handleOnline);
@@ -100,8 +102,10 @@
   });
 
   onDestroy(() => {
-    // Clean up event listener
-    chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+    // Clean up event listener (extension mode only)
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+    }
 
     // T042: Clean up online/offline listeners
     window.removeEventListener('online', handleOnline);
@@ -117,10 +121,10 @@
     isLoading = true;
     try {
       const [stateRes, missedRes, scheduledRes, queueRes] = await Promise.all([
-        chrome.runtime.sendMessage({ type: MessageType.SCHEDULER_GET_STATE }),
-        chrome.runtime.sendMessage({ type: MessageType.SCHEDULER_GET_MISSED_TASKS }),
-        chrome.runtime.sendMessage({ type: MessageType.SCHEDULER_GET_SCHEDULED_TASKS }),
-        chrome.runtime.sendMessage({ type: MessageType.SCHEDULER_GET_QUEUE }),
+        sendMessage(MessageType.SCHEDULER_GET_STATE),
+        sendMessage(MessageType.SCHEDULER_GET_MISSED_TASKS),
+        sendMessage(MessageType.SCHEDULER_GET_SCHEDULED_TASKS),
+        sendMessage(MessageType.SCHEDULER_GET_QUEUE),
       ]);
 
       const stateData = stateRes?.data || stateRes;
@@ -143,7 +147,7 @@
   // Feature 015 (T050): Fetch session status
   async function fetchSessionData() {
     try {
-      const sessionRes = await chrome.runtime.sendMessage({ type: MessageType.SESSION_LIST });
+      const sessionRes = await sendMessage<{ data?: { sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }; sessions?: typeof sessions; activeCount?: number; maxConcurrent?: number }>(MessageType.SESSION_LIST);
       const sessionData = sessionRes?.data || sessionRes;
 
       sessions = sessionData?.sessions || [];
@@ -156,10 +160,7 @@
 
   async function handleTriggerTask(event: CustomEvent<{ taskId: string }>) {
     try {
-      await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_TRIGGER_TASK,
-        payload: { taskId: event.detail.taskId },
-      });
+      await sendMessage(MessageType.SCHEDULER_TRIGGER_TASK, { taskId: event.detail.taskId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to trigger task:', error);
@@ -170,10 +171,7 @@
     if (!confirm('Are you sure you want to cancel this task?')) return;
 
     try {
-      await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_CANCEL_TASK,
-        payload: { taskId: event.detail.taskId },
-      });
+      await sendMessage(MessageType.SCHEDULER_CANCEL_TASK, { taskId: event.detail.taskId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to cancel task:', error);
@@ -186,7 +184,7 @@
         ? MessageType.SCHEDULER_RESUME_QUEUE
         : MessageType.SCHEDULER_PAUSE_QUEUE;
 
-      await chrome.runtime.sendMessage({ type: messageType });
+      await sendMessage(messageType);
       isPaused = !isPaused;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to toggle pause:', error);
@@ -210,10 +208,7 @@
     showScheduleModal = false;
 
     try {
-      await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_SCHEDULE_TASK,
-        payload: { input, scheduledTime },
-      });
+      await sendMessage(MessageType.SCHEDULER_SCHEDULE_TASK, { input, scheduledTime });
       // Refresh the task list
       await fetchAllData();
     } catch (error) {
@@ -238,11 +233,11 @@
     isLoadingDetails = true;
 
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_GET_TASK_DETAILS,
-        payload: { taskId },
-      });
-      expandedTaskDetails = response?.data || response;
+      const response = await sendMessage<{ data?: SchedulerTaskRecord } | SchedulerTaskRecord>(
+        MessageType.SCHEDULER_GET_TASK_DETAILS,
+        { taskId }
+      );
+      expandedTaskDetails = (response as { data?: SchedulerTaskRecord })?.data || response as SchedulerTaskRecord;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to fetch task details:', error);
       expandedTaskDetails = null;

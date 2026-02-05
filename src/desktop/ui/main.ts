@@ -1,17 +1,33 @@
 /**
- * Desktop UI Entry Point
+ * Desktop UI Entry Point (Tauri)
  *
- * Main entry point for the desktop UI. Reuses the sidepanel App.svelte
+ * Main entry point for the Tauri desktop UI. Reuses the sidepanel App.svelte
  * with desktop-specific styling and initialization.
+ *
+ * Architecture:
+ * 1. Initialize agent bootstrap (BrowserxAgent + TauriChannel + ChannelManager)
+ * 2. Initialize messaging service (TauriMessageService for UI communication)
+ * 3. Initialize desktop services (tray, hotkeys)
+ * 4. Mount the UI app
  *
  * @module desktop/ui/main
  */
+
+// IMPORTANT: Install chrome polyfill FIRST before any other imports
+// This provides compatibility for components that still use chrome.* directly
+import { installChromePolyfill } from '../polyfills/chromePolyfill';
+installChromePolyfill();
 
 import './desktop.css';
 import '../../extension/sidepanel/sidepanel.css';
 import '../../extension/sidepanel/styles.css';
 import App from '../../extension/sidepanel/App.svelte';
 import { initializeDesktop } from '../main';
+import { initializeMessaging, TauriMessageService } from '@/core/messaging';
+import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
+import { initLocale } from '../../extension/sidepanel/lib/i18n';
+import { AgentConfig } from '@/config/AgentConfig';
+import { initializeConfigStorage, initializeCredentialStore } from '@/core/storage';
 
 // Add desktop-mode and terminal-mode classes to body
 document.body.classList.add('desktop-mode', 'terminal-mode');
@@ -20,25 +36,73 @@ document.body.classList.add('desktop-mode', 'terminal-mode');
  * Initialize the desktop UI
  */
 async function init() {
-  console.log('[DesktopUI] Initializing...');
+  console.log('[Desktop] Initializing...');
 
+  // 0. Initialize config storage first (before anything else needs it)
   try {
-    // Initialize desktop services (tray, hotkeys, channels)
-    await initializeDesktop();
+    await initializeConfigStorage();
+    console.log('[Desktop] Config storage initialized');
   } catch (error) {
-    console.warn('[DesktopUI] Failed to initialize desktop services:', error);
+    console.warn('[Desktop] Failed to initialize config storage:', error);
+    // Continue - will fall back to in-memory storage
   }
 
-  // Mount the main app
+  // 0.5. Initialize credential store (for secure API key storage)
+  try {
+    await initializeCredentialStore();
+    console.log('[Desktop] Credential store initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize credential store:', error);
+  }
+
+  // 1. Initialize the agent bootstrap first
+  // This creates BrowserxAgent + TauriChannel + ChannelManager
+  try {
+    await initializeDesktopAgent();
+    console.log('[Desktop] Agent bootstrap initialized');
+  } catch (error) {
+    console.error('[Desktop] Failed to initialize agent bootstrap:', error);
+    // Continue anyway - the app will show error state
+  }
+
+  // 2. Initialize messaging service (Tauri-specific)
+  // This provides the UI-side abstraction for sending messages to the agent
+  try {
+    const messageService = new TauriMessageService();
+    await initializeMessaging(messageService);
+    console.log('[Desktop] Messaging service initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize messaging service:', error);
+    // Continue anyway - the app will show connection error state
+  }
+
+  // 3. Initialize desktop services (tray, hotkeys)
+  try {
+    await initializeDesktop();
+    console.log('[Desktop] Desktop services initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize desktop services:', error);
+  }
+
+  // 4. Initialize locale
+  try {
+    const config = await AgentConfig.getInstance();
+    const agentConfig = config.getConfig();
+    initLocale(agentConfig.preferences?.language);
+  } catch (error) {
+    console.warn('[Desktop] Failed to load locale, using default:', error);
+    initLocale();
+  }
+
+  // 5. Mount the main app
   const app = new App({
     target: document.getElementById('app')!,
   });
 
-  console.log('[DesktopUI] App mounted');
+  console.log('[Desktop] App mounted');
 
   // Listen for focus input events from hotkeys
   window.addEventListener('browserx:focus-input', () => {
-    // Dispatch to the app to focus the input field
     const inputElement = document.querySelector('textarea, input[type="text"]');
     if (inputElement instanceof HTMLElement) {
       inputElement.focus();
@@ -47,9 +111,7 @@ async function init() {
 
   // Listen for quick action events from hotkeys
   window.addEventListener('browserx:quick-action', () => {
-    // Dispatch to the app to open quick action menu
-    // This could trigger a command palette or similar UI
-    console.log('[DesktopUI] Quick action requested');
+    console.log('[Desktop] Quick action requested');
   });
 
   return app;

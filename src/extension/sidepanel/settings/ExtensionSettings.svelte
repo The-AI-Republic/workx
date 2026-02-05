@@ -3,6 +3,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
   import { _t } from '../lib/i18n';
+  import { notifyConfigUpdate } from '../lib/messaging';
 
   export let settingsConfig: AgentConfig;
 
@@ -83,10 +84,8 @@
 
       await settingsConfig.updateConfig({ extension: currentExtension });
 
-      // Send CONFIG_UPDATE message
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
-        console.warn('[ExtensionSettings] Failed to notify service worker');
-      });
+      // Notify backend of config update
+      notifyConfigUpdate();
 
       originalExtension = { ...currentExtension };
       isDirty = false;

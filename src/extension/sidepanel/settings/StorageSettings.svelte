@@ -3,6 +3,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ICacheSettings, IStorageConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
+  import { notifyConfigUpdate } from '../lib/messaging';
 
   export let settingsConfig: AgentConfig;
 
@@ -93,10 +94,8 @@
         storage: currentStorage,
       });
 
-      // Send CONFIG_UPDATE message
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {
-        console.warn('[StorageSettings] Failed to notify service worker');
-      });
+      // Notify backend of config update
+      notifyConfigUpdate();
 
       originalCache = { ...currentCache };
       originalStorage = { ...currentStorage };

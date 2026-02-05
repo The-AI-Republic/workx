@@ -6,8 +6,8 @@
   import { isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
   import { LLM_API_URL } from './lib/constants';
-  import { MessageType } from '@/core/MessageRouter';
   import { AgentConfig } from '@/config/AgentConfig';
+  import { sendMessage, MessageType } from './lib/messaging';
 
   // Route definitions
   // Add new routes here as the app grows
@@ -88,10 +88,7 @@
         };
         console.log('[App] Sending INIT_AUTH:', authPayload);
 
-        await chrome.runtime.sendMessage({
-          type: MessageType.INIT_AUTH,
-          payload: authPayload,
-        });
+        await sendMessage(MessageType.INIT_AUTH, authPayload);
         console.log('[App] INIT_AUTH sent successfully');
       } catch (authError) {
         console.warn('[App] Failed to send INIT_AUTH:', authError);

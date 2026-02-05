@@ -9,9 +9,9 @@
   import type { ConfiguredFeatures } from '@/config/types';
   import ModelSelector from './components/ModelSelector.svelte';
   import { userStore } from '../stores/userStore';
-  import { MessageType } from '@/core/MessageRouter';
   import { LLM_API_URL } from '../lib/constants';
   import { t } from '../lib/i18n';
+  import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
 
   // Default compound key for free users (Fireworks Kimi K2 Thinking)
   // Format: providerId:modelKey (compound key, not a raw model key)
@@ -278,7 +278,7 @@
 
       showMessage('API key saved successfully!', 'success');
 
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+      notifyConfigUpdate();
 
       dispatch('authUpdated', { isAuthenticated: true, mode: 'api_key' });
     } catch (error) {
@@ -432,7 +432,7 @@
       }
 
       showMessage(`${providerName} API key removed successfully`, 'info');
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+      notifyConfigUpdate();
       dispatch('authUpdated', { isAuthenticated: false, mode: null });
     } catch (error) {
       showMessage('Failed to remove API key', 'error');
@@ -480,12 +480,9 @@
         useOwnApiKey: newValue,
       };
 
-      await chrome.runtime.sendMessage({
-        type: MessageType.INIT_AUTH,
-        payload: authPayload,
-      });
+      await sendMessage(MessageType.INIT_AUTH, authPayload);
 
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+      notifyConfigUpdate();
 
       const message = newValue
         ? 'Switched to direct API mode. Please configure your API key.'
@@ -556,7 +553,7 @@
       }));
 
       await settingsConfig.setSelectedModel(modelId);
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+      notifyConfigUpdate();
 
       const message = apiKey
         ? `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`
@@ -595,7 +592,7 @@
           if (modelIndex !== -1) {
             provider.models[modelIndex].serviceTier = serviceTier;
             settingsConfig.updateProvider(modelData.provider.id, { models: provider.models });
-            chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+            notifyConfigUpdate();
             showMessage(`Service tier updated to ${serviceTier || 'default'}`, 'success');
           }
         }

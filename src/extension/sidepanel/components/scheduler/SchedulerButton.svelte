@@ -3,7 +3,7 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { MessageRouter, MessageType } from '@/core/MessageRouter';
+  import { sendMessage, MessageType } from '../../lib/messaging';
 
   const dispatch = createEventDispatcher<{
     click: void;
@@ -28,9 +28,9 @@
 
   async function fetchSchedulerState() {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_GET_STATE,
-      });
+      const response = await sendMessage<{ data?: { scheduledCount?: number; schedulerTaskQueueCount?: number; missedCount?: number; currentTaskId?: string | null }; scheduledCount?: number; schedulerTaskQueueCount?: number; missedCount?: number; currentTaskId?: string | null }>(
+        MessageType.SCHEDULER_GET_STATE
+      );
 
       const data = response?.data || response;
       if (data) {

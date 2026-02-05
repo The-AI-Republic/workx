@@ -25,7 +25,7 @@
  * Stage 2 Structure Simplification
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 
 export class AttributeDeduplicator {
   private implicitRoles: Map<string, string>;

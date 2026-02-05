@@ -11,6 +11,7 @@
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
   import { _t } from '../../lib/i18n';
+  import { notifyConfigUpdate } from '../../lib/messaging';
 
   const dispatch = createEventDispatcher<{
     modelChanged: { modelId: string; modelName: string };
@@ -207,8 +208,8 @@
       selectedModelName = modelName;
       isOpen = false;
 
-      // Notify service worker
-      chrome.runtime.sendMessage({ type: 'CONFIG_UPDATE' }).catch(() => {});
+      // Notify backend of config update
+      notifyConfigUpdate();
 
       dispatch('modelChanged', { modelId, modelName });
     } catch (error) {

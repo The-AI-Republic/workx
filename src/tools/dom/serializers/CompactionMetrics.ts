@@ -5,7 +5,7 @@
  * tracking token reduction, node counts, performance timing, and compaction scores.
  */
 
-import { CompactionMetrics as ICompactionMetrics } from '../types';
+import type { CompactionMetrics as ICompactionMetrics } from '../types';
 
 export class CompactionMetrics implements ICompactionMetrics {
   // Node counts

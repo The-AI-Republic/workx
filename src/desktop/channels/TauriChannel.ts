@@ -2,38 +2,60 @@
  * Tauri Channel Adapter
  *
  * Desktop-mode implementation of ChannelAdapter for Tauri windows.
- * Communicates between the frontend and Tauri backend via IPC.
+ * Communicates between the frontend UI and the BrowserxAgent via Tauri events.
+ *
+ * In desktop mode, both the UI and the agent run in the same WebView process.
+ * This channel uses Tauri's event system for decoupled communication.
  *
  * @module desktop/channels/TauriChannel
  */
 
-import { invoke } from '@tauri-apps/api/core';
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
+import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
 import type {
-  ChannelAdapter,
   ChannelType,
   SubmissionHandler,
-  ConnectionState,
   SubmissionContext,
-  EventMsg,
+  ChannelCapabilities,
 } from '@/core/channels/types';
+import type { EventMsg } from '@/core/protocol/events';
+import type { Op } from '@/core/protocol/types';
+
+/**
+ * Connection state for the channel
+ */
+type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+/**
+ * Submission message format from UI
+ */
+interface SubmissionMessage {
+  op: Op;
+  context?: Partial<SubmissionContext>;
+}
 
 /**
  * TauriChannel implements ChannelAdapter for Tauri desktop windows
+ *
+ * Flow:
+ * 1. UI emits 'browserx:submit' events with Op + context
+ * 2. TauriChannel receives and routes to registered submission handler
+ * 3. Handler (ChannelManager → BrowserxAgent) processes the submission
+ * 4. BrowserxAgent emits events via ChannelManager → TauriChannel.sendEvent()
+ * 5. TauriChannel emits 'browserx:event' for UI to receive
  *
  * @example
  * ```typescript
  * const channel = new TauriChannel();
  * await channel.initialize();
  *
- * channel.onSubmission(async (ctx) => {
- *   console.log('Received submission:', ctx.payload);
- *   return { success: true };
+ * channel.onSubmission(async (op, ctx) => {
+ *   await agent.submitOperation(op, ctx);
  * });
  *
  * await channel.sendEvent({
- *   type: 'assistant_message',
- *   payload: { text: 'Hello!' }
+ *   type: 'AssistantTextDelta',
+ *   data: { delta: 'Hello!' }
  * });
  * ```
  */
@@ -41,7 +63,7 @@ export class TauriChannel implements ChannelAdapter {
   readonly channelId = 'tauri-main';
   readonly channelType: ChannelType = 'tauri';
 
-  private submissionHandlers: SubmissionHandler[] = [];
+  private submissionHandler: SubmissionHandler | null = null;
   private connectionState: ConnectionState = 'disconnected';
   private unlistenFunctions: UnlistenFn[] = [];
   private initialized = false;
@@ -49,7 +71,7 @@ export class TauriChannel implements ChannelAdapter {
   /**
    * Initialize the Tauri channel
    *
-   * Sets up IPC event listeners for communication with the Rust backend.
+   * Sets up event listeners for submissions from the UI.
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
@@ -61,13 +83,13 @@ export class TauriChannel implements ChannelAdapter {
 
     try {
       // Listen for submissions from the UI
-      const unlistenSubmit = await listen<SubmissionContext>('browserx:submit', async (event) => {
+      const unlistenSubmit = await listen<SubmissionMessage>('browserx:submit', async (event) => {
         console.log('[TauriChannel] Received submission:', event.payload);
         await this.handleSubmission(event.payload);
       });
       this.unlistenFunctions.push(unlistenSubmit);
 
-      // Listen for connection state changes
+      // Listen for connection state changes (from Rust backend if applicable)
       const unlistenConnection = await listen<ConnectionState>(
         'browserx:connection',
         (event) => {
@@ -89,14 +111,34 @@ export class TauriChannel implements ChannelAdapter {
   }
 
   /**
-   * Register a submission handler
+   * Shutdown the channel (required by ChannelAdapter interface)
    */
-  onSubmission(handler: SubmissionHandler): void {
-    this.submissionHandlers.push(handler);
+  async shutdown(): Promise<void> {
+    console.log('[TauriChannel] Shutting down...');
+
+    // Remove all event listeners
+    for (const unlisten of this.unlistenFunctions) {
+      unlisten();
+    }
+    this.unlistenFunctions = [];
+
+    this.submissionHandler = null;
+    this.connectionState = 'disconnected';
+    this.initialized = false;
+
+    console.log('[TauriChannel] Shutdown complete');
   }
 
   /**
-   * Send an event to the Tauri frontend
+   * Register a submission handler
+   * Called by ChannelManager to route submissions to the agent
+   */
+  onSubmission(handler: SubmissionHandler): void {
+    this.submissionHandler = handler;
+  }
+
+  /**
+   * Send an event to the UI via Tauri event system
    */
   async sendEvent(event: EventMsg, _targetClientId?: string): Promise<void> {
     if (!this.initialized) {
@@ -114,6 +156,38 @@ export class TauriChannel implements ChannelAdapter {
   }
 
   /**
+   * Check if this channel supports streaming text deltas
+   */
+  supportsStreaming(): boolean {
+    return true;
+  }
+
+  /**
+   * Check if this channel can handle approval dialogs
+   */
+  supportsApprovals(): boolean {
+    return true;
+  }
+
+  /**
+   * Check if this channel can display media (images, etc.)
+   */
+  supportsMedia(): boolean {
+    return true;
+  }
+
+  /**
+   * Get all capabilities as an object
+   */
+  getCapabilities(): ChannelCapabilities {
+    return {
+      streaming: this.supportsStreaming(),
+      approvals: this.supportsApprovals(),
+      media: this.supportsMedia(),
+    };
+  }
+
+  /**
    * Get current connection state
    */
   getConnectionState(): ConnectionState {
@@ -121,34 +195,55 @@ export class TauriChannel implements ChannelAdapter {
   }
 
   /**
-   * Close the channel
+   * Handle incoming submissions from UI
    */
-  async close(): Promise<void> {
-    console.log('[TauriChannel] Closing...');
-
-    // Remove all event listeners
-    for (const unlisten of this.unlistenFunctions) {
-      unlisten();
+  private async handleSubmission(message: SubmissionMessage): Promise<void> {
+    if (!this.submissionHandler) {
+      console.warn('[TauriChannel] No submission handler registered, dropping submission');
+      return;
     }
-    this.unlistenFunctions = [];
 
-    this.submissionHandlers = [];
-    this.connectionState = 'disconnected';
-    this.initialized = false;
+    // Validate the submission has required fields
+    if (!message || !message.op) {
+      console.error('[TauriChannel] Invalid submission: missing op field', message);
+      await this.sendEvent({
+        type: 'Error',
+        data: {
+          message: 'Invalid submission format: missing op field',
+        },
+      });
+      return;
+    }
 
-    console.log('[TauriChannel] Closed');
-  }
+    if (!message.op.type) {
+      console.error('[TauriChannel] Invalid submission: op missing type field', message);
+      await this.sendEvent({
+        type: 'Error',
+        data: {
+          message: 'Invalid submission format: op missing type field',
+        },
+      });
+      return;
+    }
 
-  /**
-   * Handle incoming submissions
-   */
-  private async handleSubmission(context: SubmissionContext): Promise<void> {
-    for (const handler of this.submissionHandlers) {
-      try {
-        await handler(context);
-      } catch (error) {
-        console.error('[TauriChannel] Handler error:', error);
-      }
+    // Build submission context
+    const context: SubmissionContext = {
+      channelId: this.channelId,
+      channelType: this.channelType,
+      ...message.context,
+    };
+
+    try {
+      await this.submissionHandler(message.op, context);
+    } catch (error) {
+      console.error('[TauriChannel] Handler error:', error);
+      // Emit error event back to UI
+      await this.sendEvent({
+        type: 'Error',
+        data: {
+          message: error instanceof Error ? error.message : 'Unknown error processing submission',
+        },
+      });
     }
   }
 }

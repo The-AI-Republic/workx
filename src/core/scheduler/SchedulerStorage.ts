@@ -18,6 +18,11 @@ import {
 } from '../models/types/Scheduler';
 import type { ISchedulerStorage } from '../models/types/SchedulerContracts';
 import { SCHEDULER_STATE_KEY } from '../models/types/SchedulerContracts';
+import {
+  getConfigStorage,
+  isConfigStorageInitialized,
+  type ConfigStorageProvider
+} from '../storage/ConfigStorageProvider';
 
 /**
  * Storage implementation for scheduler tasks
@@ -172,39 +177,112 @@ export class SchedulerStorage implements ISchedulerStorage {
   }
 
   /**
-   * Get scheduler state from chrome.storage.local
+   * Get storage provider with fallback
    */
-  async getSchedulerState(): Promise<SchedulerState> {
-    return new Promise((resolve) => {
-      chrome.storage.local.get([SCHEDULER_STATE_KEY], (result) => {
-        if (result[SCHEDULER_STATE_KEY]) {
-          resolve(result[SCHEDULER_STATE_KEY] as SchedulerState);
-        } else {
-          resolve(createDefaultSchedulerState());
+  private async getStorage(): Promise<ConfigStorageProvider | null> {
+    if (isConfigStorageInitialized()) {
+      return getConfigStorage();
+    }
+    // Fallback to chrome.storage.local if provider not initialized
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      return {
+        async get<T>(key: string): Promise<T | null> {
+          return new Promise((resolve) => {
+            chrome.storage.local.get([key], (result) => {
+              resolve((result[key] as T) ?? null);
+            });
+          });
+        },
+        async set<T>(key: string, value: T): Promise<void> {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.set({ [key]: value }, () => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve();
+              }
+            });
+          });
+        },
+        async remove(key: string): Promise<void> {
+          return new Promise((resolve) => {
+            chrome.storage.local.remove(key, () => resolve());
+          });
+        },
+        async getMany<T>(keys: string[]): Promise<Record<string, T>> {
+          return new Promise((resolve) => {
+            chrome.storage.local.get(keys, (result) => {
+              resolve(result as Record<string, T>);
+            });
+          });
+        },
+        async setMany<T>(items: Record<string, T>): Promise<void> {
+          return new Promise((resolve, reject) => {
+            chrome.storage.local.set(items, () => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve();
+              }
+            });
+          });
+        },
+        async removeMany(keys: string[]): Promise<void> {
+          return new Promise((resolve) => {
+            chrome.storage.local.remove(keys, () => resolve());
+          });
+        },
+        async getAll(): Promise<Record<string, unknown>> {
+          return new Promise((resolve) => {
+            chrome.storage.local.get(null, (result) => resolve(result));
+          });
+        },
+        async clear(): Promise<void> {
+          return new Promise((resolve) => {
+            chrome.storage.local.clear(() => resolve());
+          });
+        },
+        async getBytesInUse(): Promise<number | null> {
+          return null;
         }
-      });
-    });
+      };
+    }
+    return null;
   }
 
   /**
-   * Update scheduler state in chrome.storage.local
+   * Get scheduler state from storage
+   */
+  async getSchedulerState(): Promise<SchedulerState> {
+    try {
+      const storage = await this.getStorage();
+      if (!storage) {
+        return createDefaultSchedulerState();
+      }
+      const state = await storage.get<SchedulerState>(SCHEDULER_STATE_KEY);
+      return state ?? createDefaultSchedulerState();
+    } catch (error) {
+      console.warn('[SchedulerStorage] Failed to get scheduler state:', error);
+      return createDefaultSchedulerState();
+    }
+  }
+
+  /**
+   * Update scheduler state in storage
    */
   async setSchedulerState(state: Partial<SchedulerState>): Promise<void> {
+    const storage = await this.getStorage();
+    if (!storage) {
+      throw new Error('Storage not available');
+    }
+
     const current = await this.getSchedulerState();
     const updated: SchedulerState = {
       ...current,
       ...state,
     };
 
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.set({ [SCHEDULER_STATE_KEY]: updated }, () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve();
-        }
-      });
-    });
+    await storage.set(SCHEDULER_STATE_KEY, updated);
   }
 
   /**

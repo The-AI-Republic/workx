@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import { MessageType } from '@/core/MessageRouter';
+  import { sendMessage, MessageType } from '../../lib/messaging';
   import SchedulerTaskItem from './SchedulerTaskItem.svelte';
   import type { ArchivedTaskSummary } from '@/core/models/types/SchedulerContracts';
 
@@ -31,10 +31,10 @@
   async function fetchArchivedTasks() {
     isLoading = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_GET_ARCHIVED_TASKS,
-        payload: { limit, offset },
-      });
+      const response = await sendMessage<{ data?: { tasks?: ArchivedTaskSummary[]; hasMore?: boolean }; tasks?: ArchivedTaskSummary[]; hasMore?: boolean }>(
+        MessageType.SCHEDULER_GET_ARCHIVED_TASKS,
+        { limit, offset }
+      );
 
       const data = response?.data || response;
       const newTasks = data?.tasks || [];

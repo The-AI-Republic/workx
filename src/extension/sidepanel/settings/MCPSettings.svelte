@@ -13,7 +13,7 @@
     IMCPTool,
   } from '@/core/mcp/types';
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/mcp/MCPConfig';
-  import { MessageType } from '@/core/MessageRouter';
+  import { sendMessage, MessageType } from '../lib/messaging';
   import { _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
@@ -107,9 +107,9 @@
 
   async function loadServers() {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.MCP_GET_SERVERS,
-      });
+      const response = await sendMessage<{ success: boolean; data?: IMCPServerConfig[] }>(
+        MessageType.MCP_GET_SERVERS
+      );
       if (response?.success) {
         servers = response.data || [];
       }
@@ -120,9 +120,9 @@
 
   async function loadConnections() {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.MCP_GET_CONNECTIONS,
-      });
+      const response = await sendMessage<{ success: boolean; data?: IMCPConnection[] }>(
+        MessageType.MCP_GET_CONNECTIONS
+      );
       if (response?.success) {
         connections = response.data || [];
       }
@@ -133,9 +133,9 @@
 
   async function loadTools() {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.MCP_GET_ALL_TOOLS,
-      });
+      const response = await sendMessage<{ success: boolean; data?: IMCPTool[] }>(
+        MessageType.MCP_GET_ALL_TOOLS
+      );
       if (response?.success) {
         allTools = response.data || [];
       }
@@ -239,13 +239,13 @@
           updatePayload.apiKey = formApiKey.trim();
         }
 
-        const response = await chrome.runtime.sendMessage({
-          type: MessageType.MCP_UPDATE_SERVER,
-          payload: {
+        const response = await sendMessage<{ success: boolean; error?: string }>(
+          MessageType.MCP_UPDATE_SERVER,
+          {
             id: editingServerId,
             update: updatePayload,
-          },
-        });
+          }
+        );
 
         if (!response?.success) {
           throw new Error(response?.error || 'Failed to update server');
@@ -262,10 +262,10 @@
           createPayload.apiKey = formApiKey.trim();
         }
 
-        const response = await chrome.runtime.sendMessage({
-          type: MessageType.MCP_ADD_SERVER,
-          payload: createPayload,
-        });
+        const response = await sendMessage<{ success: boolean; error?: string }>(
+          MessageType.MCP_ADD_SERVER,
+          createPayload
+        );
 
         if (!response?.success) {
           throw new Error(response?.error || 'Failed to add server');
@@ -295,10 +295,10 @@
     }
 
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.MCP_REMOVE_SERVER,
-        payload: { id: serverId },
-      });
+      const response = await sendMessage<{ success: boolean; error?: string }>(
+        MessageType.MCP_REMOVE_SERVER,
+        { id: serverId }
+      );
 
       if (!response?.success) {
         throw new Error(response?.error || 'Failed to remove server');
@@ -323,10 +323,10 @@
 
   async function handleConnect(serverId: string) {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.MCP_CONNECT,
-        payload: { id: serverId },
-      });
+      const response = await sendMessage<{ success: boolean; error?: string }>(
+        MessageType.MCP_CONNECT,
+        { id: serverId }
+      );
 
       if (!response?.success) {
         throw new Error(response?.error || 'Failed to connect');
@@ -350,10 +350,10 @@
 
   async function handleDisconnect(serverId: string) {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.MCP_DISCONNECT,
-        payload: { id: serverId },
-      });
+      const response = await sendMessage<{ success: boolean; error?: string }>(
+        MessageType.MCP_DISCONNECT,
+        { id: serverId }
+      );
 
       if (!response?.success) {
         throw new Error(response?.error || 'Failed to disconnect');

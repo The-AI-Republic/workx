@@ -6,7 +6,12 @@
  * Features persistence across extension restarts and comprehensive analytics.
  */
 
-import { CompletionRequest } from './ModelClient';
+import type { CompletionRequest } from './ModelClient';
+import {
+  getConfigStorage,
+  isConfigStorageInitialized,
+  type ConfigStorageProvider
+} from '../storage/ConfigStorageProvider';
 
 /**
  * Represents a queued request with metadata and callbacks
@@ -485,11 +490,60 @@ export class RequestQueue {
   }
 
   /**
-   * Load queue from Chrome storage
+   * Get storage provider with fallback
+   */
+  private async getStorage(): Promise<ConfigStorageProvider | null> {
+    if (isConfigStorageInitialized()) {
+      return getConfigStorage();
+    }
+    // Fallback to chrome.storage.local if provider not initialized
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      return {
+        async get<T>(key: string): Promise<T | null> {
+          const result = await chrome.storage.local.get(key);
+          return (result[key] as T) ?? null;
+        },
+        async set<T>(key: string, value: T): Promise<void> {
+          await chrome.storage.local.set({ [key]: value });
+        },
+        async remove(key: string): Promise<void> {
+          await chrome.storage.local.remove(key);
+        },
+        async getMany<T>(keys: string[]): Promise<Record<string, T>> {
+          return await chrome.storage.local.get(keys) as Record<string, T>;
+        },
+        async setMany<T>(items: Record<string, T>): Promise<void> {
+          await chrome.storage.local.set(items);
+        },
+        async removeMany(keys: string[]): Promise<void> {
+          await chrome.storage.local.remove(keys);
+        },
+        async getAll(): Promise<Record<string, unknown>> {
+          return await chrome.storage.local.get(null);
+        },
+        async clear(): Promise<void> {
+          await chrome.storage.local.clear();
+        },
+        async getBytesInUse(): Promise<number | null> {
+          return null;
+        }
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Load queue from storage
    */
   private async loadFromStorage(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get([this.STORAGE_KEY, this.HISTORY_KEY]);
+      const storage = await this.getStorage();
+      if (!storage) {
+        console.warn('Storage not available, starting with empty queue');
+        return;
+      }
+
+      const result = await storage.getMany<string>([this.STORAGE_KEY, this.HISTORY_KEY]);
 
       if (result[this.STORAGE_KEY]) {
         const saved = JSON.parse(result[this.STORAGE_KEY]);
@@ -516,32 +570,34 @@ export class RequestQueue {
   }
 
   /**
-   * Persist queue to Chrome storage
+   * Persist queue to storage
    */
   private async persistToStorage(): Promise<void> {
     try {
+      const storage = await this.getStorage();
+      if (!storage) return;
+
       const data = {
         queue: this.queue,
         metrics: this.metrics,
         timestamp: Date.now(),
       };
 
-      await chrome.storage.local.set({
-        [this.STORAGE_KEY]: JSON.stringify(data),
-      });
+      await storage.set(this.STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
       console.warn('Failed to persist request queue to storage:', error);
     }
   }
 
   /**
-   * Persist request history to Chrome storage
+   * Persist request history to storage
    */
   private async persistHistory(): Promise<void> {
     try {
-      await chrome.storage.local.set({
-        [this.HISTORY_KEY]: JSON.stringify(this.requestHistory),
-      });
+      const storage = await this.getStorage();
+      if (!storage) return;
+
+      await storage.set(this.HISTORY_KEY, JSON.stringify(this.requestHistory));
     } catch (error) {
       console.warn('Failed to persist request history to storage:', error);
     }

@@ -7,6 +7,11 @@
 
 import { z } from 'zod';
 import type { IMCPServerConfig, IMCPServerConfigCreate, IMCPServerConfigUpdate } from './types';
+import {
+  getConfigStorage,
+  isConfigStorageInitialized,
+  type ConfigStorageProvider
+} from '../storage/ConfigStorageProvider';
 
 // =============================================================================
 // Zod Validation Schemas (T005)
@@ -109,14 +114,62 @@ const STORAGE_KEY = 'mcpServers';
 const DEBUG_LOGGING_KEY = 'mcpDebugLogging';
 
 /**
- * Load all MCP server configurations from chrome.storage.local.
+ * Get storage provider with fallback
+ */
+async function getStorage(): Promise<ConfigStorageProvider | null> {
+  if (isConfigStorageInitialized()) {
+    return getConfigStorage();
+  }
+  // Fallback to chrome.storage.local if provider not initialized
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    return {
+      async get<T>(key: string): Promise<T | null> {
+        const result = await chrome.storage.local.get(key);
+        return (result[key] as T) ?? null;
+      },
+      async set<T>(key: string, value: T): Promise<void> {
+        await chrome.storage.local.set({ [key]: value });
+      },
+      async remove(key: string): Promise<void> {
+        await chrome.storage.local.remove(key);
+      },
+      async getMany<T>(keys: string[]): Promise<Record<string, T>> {
+        return await chrome.storage.local.get(keys) as Record<string, T>;
+      },
+      async setMany<T>(items: Record<string, T>): Promise<void> {
+        await chrome.storage.local.set(items);
+      },
+      async removeMany(keys: string[]): Promise<void> {
+        await chrome.storage.local.remove(keys);
+      },
+      async getAll(): Promise<Record<string, unknown>> {
+        return await chrome.storage.local.get(null);
+      },
+      async clear(): Promise<void> {
+        await chrome.storage.local.clear();
+      },
+      async getBytesInUse(): Promise<number | null> {
+        return null;
+      }
+    };
+  }
+  return null;
+}
+
+/**
+ * Load all MCP server configurations from storage.
  *
  * @returns Array of validated server configurations
  */
 export async function loadServers(): Promise<IMCPServerConfig[]> {
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY);
-    const rawServers = result[STORAGE_KEY];
+    const storage = await getStorage();
+    if (!storage) {
+      console.warn('[MCPConfig] Storage not available');
+      return [];
+    }
+
+    const rawServers = await storage.get<IMCPServerConfig[]>(STORAGE_KEY);
 
     if (!rawServers || !Array.isArray(rawServers)) {
       return [];
@@ -141,15 +194,20 @@ export async function loadServers(): Promise<IMCPServerConfig[]> {
 }
 
 /**
- * Save all MCP server configurations to chrome.storage.local.
+ * Save all MCP server configurations to storage.
  *
  * @param servers Array of server configurations to save
  */
 export async function saveServers(servers: IMCPServerConfig[]): Promise<void> {
   try {
+    const storage = await getStorage();
+    if (!storage) {
+      throw new Error('Storage not available');
+    }
+
     // Validate all servers before saving
     const validatedServers = MCPServersArraySchema.parse(servers);
-    await chrome.storage.local.set({ [STORAGE_KEY]: validatedServers });
+    await storage.set(STORAGE_KEY, validatedServers);
   } catch (error) {
     console.error('[MCPConfig] Failed to save servers to storage:', error);
     throw new Error(`Failed to save MCP server configurations: ${error}`);
@@ -236,8 +294,10 @@ export function updateServerConfig(
  */
 export async function isDebugLoggingEnabled(): Promise<boolean> {
   try {
-    const result = await chrome.storage.local.get(DEBUG_LOGGING_KEY);
-    return result[DEBUG_LOGGING_KEY] === true;
+    const storage = await getStorage();
+    if (!storage) return false;
+    const value = await storage.get<boolean>(DEBUG_LOGGING_KEY);
+    return value === true;
   } catch {
     return false;
   }
@@ -247,7 +307,11 @@ export async function isDebugLoggingEnabled(): Promise<boolean> {
  * Set MCP debug logging enabled/disabled.
  */
 export async function setDebugLogging(enabled: boolean): Promise<void> {
-  await chrome.storage.local.set({ [DEBUG_LOGGING_KEY]: enabled });
+  const storage = await getStorage();
+  if (!storage) {
+    throw new Error('Storage not available');
+  }
+  await storage.set(DEBUG_LOGGING_KEY, enabled);
 }
 
 /**

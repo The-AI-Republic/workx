@@ -28,6 +28,12 @@ import { TabManager } from './TabManager';
  * Enhanced with AgentTask integration for coordinated task execution
  * Feature 015: Now supports agentId for multi-agent instance tracking
  */
+/**
+ * Event dispatcher function type
+ * Used to route events to UI channels without hardcoding chrome.runtime
+ */
+export type EventDispatcher = (event: Event) => void | Promise<void>;
+
 export class BrowserxAgent {
   private _agentId: string;
   private nextId: number = 1;
@@ -42,6 +48,7 @@ export class BrowserxAgent {
   private modelClientFactory: ModelClientFactory;
   private userNotifier: UserNotifier;
   private messageRouter: MessageRouter;
+  private eventDispatcher: EventDispatcher | null = null;
 
   constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
@@ -894,7 +901,22 @@ export class BrowserxAgent {
   }
 
   /**
+   * Set the event dispatcher
+   *
+   * This MUST be called before using the agent. The dispatcher routes events
+   * to UI channels via ChannelManager. This makes BrowserxAgent platform-agnostic.
+   *
+   * @param dispatcher - Function to dispatch events to UI channels
+   */
+  setEventDispatcher(dispatcher: EventDispatcher): void {
+    this.eventDispatcher = dispatcher;
+  }
+
+  /**
    * Emit an event to the event queue
+   *
+   * Events are routed through the injected event dispatcher to ChannelManager,
+   * which then dispatches to the appropriate channel (extension, desktop, etc.)
    */
   private emitEvent(msg: EventMsg): void {
     const event: Event = {
@@ -907,14 +929,15 @@ export class BrowserxAgent {
     // Process event for user notifications
     this.userNotifier.processEvent(event);
 
-    // Notify listeners via Chrome runtime if available
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'EVENT',
-        payload: event,
-      }).catch(() => {
-        // Ignore errors if no listeners
-      });
+    // Dispatch event through the channel system
+    if (this.eventDispatcher) {
+      try {
+        this.eventDispatcher(event);
+      } catch (error) {
+        console.error('[BrowserxAgent] Event dispatcher error:', error);
+      }
+    } else {
+      console.warn('[BrowserxAgent] No event dispatcher set - event not delivered to UI');
     }
   }
 

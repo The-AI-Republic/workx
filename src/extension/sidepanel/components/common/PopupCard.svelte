@@ -99,7 +99,7 @@
   <slot name="trigger" />
 </div>
 
-<!-- Popup rendered with fixed positioning to escape overflow constraints -->
+<!-- Popup rendered with fixed positioning -->
 {#if show && isPositioned}
   <div
     class="popup-card-fixed {currentTheme}"

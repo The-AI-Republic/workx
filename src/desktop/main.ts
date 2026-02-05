@@ -1,40 +1,43 @@
 /**
  * Desktop Entry Point
  *
- * Main entry point for the Tauri desktop application.
- * Initializes the desktop-specific services and renders the UI.
+ * Initializes desktop-specific services (tray, hotkeys).
+ * Note: The agent and channel setup is handled by DesktopAgentBootstrap
+ * which is initialized from desktop/ui/main.ts.
  *
  * @module desktop/main
  */
 
 import { initializeHotkeys } from './hotkeys';
 import { initializeTray } from './tray';
-import { TauriChannel } from './channels/TauriChannel';
-import type { ChannelManager } from '@/core/channels/ChannelManager';
+import { getDesktopAgentBootstrap } from './agent/DesktopAgentBootstrap';
 
 /**
- * Desktop application state
- */
-let channelManager: ChannelManager | null = null;
-let mainChannel: TauriChannel | null = null;
-
-/**
- * Initialize the desktop application
+ * Initialize the desktop-specific services
+ *
+ * This is called from desktop/ui/main.ts after the agent bootstrap is initialized.
+ * It sets up native features like system tray and global hotkeys.
  */
 async function initializeDesktop(): Promise<void> {
-  console.log('[Desktop] Initializing BrowserX Desktop...');
+  console.log('[Desktop] Initializing desktop services...');
 
-  // Initialize system tray
-  await initializeTray();
+  // Initialize system tray (non-critical, catch errors)
+  try {
+    await initializeTray();
+    console.log('[Desktop] System tray initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize system tray (continuing):', error);
+  }
 
-  // Initialize global hotkeys
-  await initializeHotkeys();
+  // Initialize global hotkeys (non-critical, catch errors)
+  try {
+    await initializeHotkeys();
+    console.log('[Desktop] Global hotkeys initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize global hotkeys (continuing):', error);
+  }
 
-  // Create and register the main Tauri channel
-  mainChannel = new TauriChannel();
-  await mainChannel.initialize();
-
-  console.log('[Desktop] BrowserX Desktop initialized');
+  console.log('[Desktop] Desktop services initialization complete');
 }
 
 /**
@@ -43,16 +46,13 @@ async function initializeDesktop(): Promise<void> {
 async function cleanup(): Promise<void> {
   console.log('[Desktop] Shutting down...');
 
-  if (mainChannel) {
-    await mainChannel.close();
+  // Shutdown the agent bootstrap
+  try {
+    const bootstrap = getDesktopAgentBootstrap();
+    await bootstrap.shutdown();
+  } catch (error) {
+    console.error('[Desktop] Failed to shutdown agent bootstrap:', error);
   }
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeDesktop);
-} else {
-  initializeDesktop();
 }
 
 // Handle window unload

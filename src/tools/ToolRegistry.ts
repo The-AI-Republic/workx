@@ -6,7 +6,6 @@
  */
 
 import type { Event } from '../core/protocol/types';
-import { EventCollector } from '../tests/utils/test-helpers';
 import type {
   ToolDefinition,
   JsonSchema,
@@ -20,6 +19,14 @@ import type {
   ToolContext,
   ToolHandler,
 } from './BaseTool';
+
+/**
+ * Interface for event collection (used for testing)
+ * The actual EventCollector class is in tests/utils/test-helpers.ts
+ */
+export interface IEventCollector {
+  collect(event: Event): void;
+}
 
 /**
  * Tool registry entry
@@ -38,9 +45,9 @@ interface ToolRegistryEntry {
  */
 export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
-  private eventCollector?: EventCollector;
+  private eventCollector?: IEventCollector;
 
-  constructor(eventCollector?: EventCollector) {
+  constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
     // Note: TabManager (including tab grouping) is now initialized at service worker level
   }

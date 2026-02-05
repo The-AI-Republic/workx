@@ -105,12 +105,15 @@
 
 <div class="message-input-container {currentTheme}">
   <!-- Tab Context Display -->
-  <div class="tab-context-wrapper mb-2" on:mousedown|preventDefault>
+  <div class="tab-context-wrapper mb-2">
     {#if platform.hasTabSelection}
-      <TabContext {tabId} on:tabSelected={handleTabSelected} />
+      <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
+      <div class="tab-context-area" on:mousedown|preventDefault>
+        <TabContext {tabId} on:tabSelected={handleTabSelected} />
+      </div>
     {/if}
     <div class="tab-context-spacer"></div>
-    <!-- Top Right Button Group -->
+    <!-- Top Right Button Group - NOT inside mousedown preventDefault area -->
     <div class="top-right-buttons">
       <ChatHistoryPopup onSelectConversation={onSelectConversation} />
       <Tooltip content={$_t("New Conversation")} placement="left">
@@ -203,6 +206,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  /* Wrapper for TabContext with mousedown prevention for drag behavior */
+  .tab-context-area {
+    display: contents;
   }
 
   .tab-context-spacer {

@@ -2,7 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod keychain_commands;
 mod mcp_commands;
+mod storage_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -171,6 +173,19 @@ fn main() {
             mcp_commands::mcp_spawn,
             mcp_commands::mcp_send,
             mcp_commands::mcp_close,
+            // Config storage commands
+            storage_commands::config_storage_get,
+            storage_commands::config_storage_set,
+            storage_commands::config_storage_remove,
+            storage_commands::config_storage_set_many,
+            storage_commands::config_storage_remove_many,
+            storage_commands::config_storage_get_all,
+            storage_commands::config_storage_clear,
+            // Keychain commands
+            keychain_commands::keychain_get,
+            keychain_commands::keychain_set,
+            keychain_commands::keychain_delete,
+            keychain_commands::keychain_list_accounts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

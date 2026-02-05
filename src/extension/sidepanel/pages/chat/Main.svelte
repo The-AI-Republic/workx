@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { MessageRouter, MessageType } from '@/core/MessageRouter';
+  import { MessageType } from '@/core/MessageRouter';
+  import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
   import type { TaskStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
@@ -29,7 +30,9 @@
   // Scheduler components
   import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
 
-  let router: MessageRouter;
+  // Message service (platform-agnostic)
+  let service: IMessageService | null = null;
+  let unsubscribers: Array<() => void> = [];
   let eventProcessor: EventProcessor;
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = [];
   let processedEvents: ProcessedEvent[] = [];
@@ -86,80 +89,53 @@
       console.warn('[App] Failed to load UI preferences:', error);
     }
 
-    // Initialize router
-    router = new MessageRouter('sidepanel');
-
-    // ========================================================================
-    // ON-DEMAND SERVICE WORKER WAKE-UP (UI Side)
-    // ========================================================================
-    // Chrome terminates service workers after 30 seconds of inactivity.
-    // When the side panel opens, the service worker might be asleep.
-    // We retry with exponential backoff to give it time to wake up.
-    //
-    // Retry schedule: 200ms → 400ms → 800ms → 1.6s → 3.2s (max 8 attempts)
-    // Total max wait time: ~12.6 seconds
-    //
-    // The service worker will auto-initialize on the first message.
-    // See service-worker.ts lines 842-896 for wake-up implementation.
-    // ========================================================================
-
-    let retries = 0;
-    const maxRetries = 8;
-    let retryDelay = 200; // Start with 200ms
-
-    while (retries < maxRetries) {
-      try {
-        // Test connection with ping
-        await router.send(MessageType.PING);
-        console.log('[App] Successfully connected to service worker');
-        break;
-      } catch (error) {
-        retries++;
-        const isPortClosed = error instanceof Error &&
-          (error.message.includes('message port closed') ||
-           error.message.includes('Extension context invalidated'));
-
-        if (isPortClosed) {
-          console.log(`[App] Service worker unavailable (attempt ${retries}/${maxRetries}), waiting for initialization...`);
-        } else {
-          console.warn(`[App] Connection attempt ${retries}/${maxRetries} failed:`, error);
-        }
-
-        if (retries >= maxRetries) {
-          console.error('[App] Failed to connect to service worker after', maxRetries, 'attempts');
-          console.error('[App] This may indicate the service worker crashed. Try reloading the extension.');
-          break;
-        }
-
-        // Exponential backoff: 200ms, 400ms, 800ms, 1600ms, 3200ms
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        retryDelay = Math.min(retryDelay * 2, 3200); // Cap at 3.2 seconds
-      }
+    // Get the message service (initialized by entry point)
+    try {
+      service = getMessageService();
+      console.log('[App] Using message service');
+    } catch (error) {
+      console.error('[App] Message service not initialized:', error);
+      // Service not available - UI will show disconnected state
     }
 
+    // Setup event handlers if service is available
+    if (service) {
+      // Listen for events from backend
+      unsubscribers.push(
+        service.on(MessageType.EVENT, (payload) => {
+          const event = payload as Event;
+          handleEvent(event);
+        })
+      );
 
-    // Setup event handlers
-    router.on(MessageType.EVENT, (message) => {
-      const event = message.payload as Event;
-      handleEvent(event);
-    });
+      // Listen for state updates
+      unsubscribers.push(
+        service.on(MessageType.STATE_UPDATE, (payload) => {
+          const state = payload as { tabId?: number };
+          if (state && 'tabId' in state) {
+            currentTabId = state.tabId!;
+          }
+        })
+      );
 
-    router.on(MessageType.STATE_UPDATE, (message) => {
-      // Update tabId if available in state update
-      if (message.payload && 'tabId' in message.payload) {
-        const newTabId = message.payload.tabId;
-        currentTabId = newTabId;
-      }
-    });
+      // Handle agent re-initialization (e.g., when model is changed)
+      unsubscribers.push(
+        service.on(MessageType.AGENT_REINITIALIZED, () => {
+          // Clear all messages and events for fresh start with new agent
+          messages = [];
+          processedEvents = [];
+          isProcessing = false;
+          eventProcessor.reset();
+        })
+      );
 
-    // Handle agent re-initialization (e.g., when model is changed)
-    router.on(MessageType.AGENT_REINITIALIZED, (message) => {
-      // Clear all messages and events for fresh start with new agent
-      messages = [];
-      processedEvents = [];
-      isProcessing = false;
-      eventProcessor.reset();
-    });
+      // Listen for scheduler events (for task cancellation)
+      unsubscribers.push(
+        service.on(MessageType.SCHEDULER_EVENT, (payload) => {
+          handleSchedulerEvent(payload as TaskStatusChangedEvent);
+        })
+      );
+    }
 
     // Check connection
     checkConnection();
@@ -186,31 +162,35 @@
     // ========================================================================
     // KEEP-ALIVE: Send periodic pings to prevent service worker termination
     // ========================================================================
-    // Chrome terminates service workers after ~30 seconds of inactivity.
-    // While the side panel is open, send pings every 20 seconds to keep it alive.
-    // This ensures responsive UI and prevents state loss.
-    // ========================================================================
-    const keepAliveInterval = setInterval(async () => {
-      try {
-        await router.send(MessageType.PING);
-        console.log('[App] Keep-alive ping sent');
-      } catch (error) {
-        console.warn('[App] Keep-alive ping failed:', error);
-      }
-    }, 25000); // Every 25 seconds
+    // Keep-alive ping for Chrome extension (service worker stays awake)
+    // Only needed for extension mode - Tauri doesn't have this limitation
+    let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+    if (platform.platformName === 'extension' && service) {
+      keepAliveInterval = setInterval(async () => {
+        try {
+          await service!.send(MessageType.PING);
+          console.log('[App] Keep-alive ping sent');
+        } catch (error) {
+          console.warn('[App] Keep-alive ping failed:', error);
+        }
+      }, 25000); // Every 25 seconds
+    }
 
     return () => {
-      // Clean up keep-alive interval when panel closes
-      clearInterval(keepAliveInterval);
-      router?.cleanup();
+      // Clean up keep-alive interval
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+      }
+      // Clean up event subscriptions
+      for (const unsub of unsubscribers) {
+        unsub();
+      }
+      unsubscribers = [];
     };
   });
 
-  // T035: Listen for scheduled task cancellation events
-  function handleSchedulerCancelEvent(message: { type: string; payload?: unknown }) {
-    if (message.type !== MessageType.SCHEDULER_EVENT) return;
-
-    const event = message.payload as TaskStatusChangedEvent;
+  // T035: Handle scheduled task cancellation events
+  function handleSchedulerEvent(event: TaskStatusChangedEvent) {
     // Check if this is a cancellation for our running task
     if (
       isScheduledTaskMode &&
@@ -236,59 +216,58 @@
       };
       processedEvents = [...processedEvents, cancelNotice];
 
-      // Request agent to abort via message to service worker
-      chrome.runtime.sendMessage({
-        type: MessageType.INTERRUPT,
-      }).catch((err) => {
-        console.warn('[App] Failed to send interrupt on cancel:', err);
-      });
+      // Request agent to abort via message service
+      if (service) {
+        service.send(MessageType.INTERRUPT).catch((err) => {
+          console.warn('[App] Failed to send interrupt on cancel:', err);
+        });
+      }
     }
-  }
-
-  // Add listener on component initialization
-  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-    chrome.runtime.onMessage.addListener(handleSchedulerCancelEvent);
   }
 
   onDestroy(() => {
-    // Clean up cancel event listener
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.removeListener(handleSchedulerCancelEvent);
-    }
+    // Cleanup is handled by the onMount return function
   });
 
   /**
    * Fetch the current session's tabId and conversation history from BrowserAgent session
    * US3: Get tabId from session on mount
-   * If tabId is -1, automatically bind to the current active tab
+   * If tabId is -1, automatically bind to the current active tab (extension only)
    * Also restores conversation history to sync UI with backend state
    */
   async function fetchCurrentTabId() {
+    if (!service) {
+      console.warn('[App] Service not available for fetchCurrentTabId');
+      currentTabId = -1;
+      return;
+    }
+
     try {
-      // Request current session state from service worker
-      // Use chrome.runtime.sendMessage directly (same pattern as resumeConversation)
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.GET_STATE,
-      });
+      // Request current session state from backend
+      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
       console.log('[App] Fetched session state:', response);
 
-      // Response is wrapped by MessageRouter: { success: true, data: { tabId, history, ... } }
-      const stateData = response?.data || response;
+      const stateData = response || {};
 
       if (stateData && typeof stateData.tabId === 'number') {
         const fetchedTabId = stateData.tabId;
         console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
 
         // If no tab is bound (tabId === -1), get the current active tab ID
-        // but don't bind yet - just prepare to send it as context with the first message
-        if (fetchedTabId === -1) {
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-          const activeTab = tabs[0];
-          if (activeTab?.id) {
-            console.log(`[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`);
-            currentTabId = activeTab.id;
-          } else {
-            console.warn('[App] No active tab found');
+        // Only applicable for extension mode - desktop doesn't have tabs
+        if (fetchedTabId === -1 && platform.hasTabSelection) {
+          try {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            const activeTab = tabs[0];
+            if (activeTab?.id) {
+              console.log(`[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`);
+              currentTabId = activeTab.id;
+            } else {
+              console.warn('[App] No active tab found');
+              currentTabId = -1;
+            }
+          } catch (tabError) {
+            console.warn('[App] Failed to query tabs:', tabError);
             currentTabId = -1;
           }
         } else {
@@ -303,28 +282,24 @@
         restoreConversationHistory(historyItems);
       }
     } catch (error) {
-      const isPortClosed = error instanceof Error &&
-        (error.message.includes('message port closed') ||
-         error.message.includes('Extension context invalidated'));
+      console.error('[App] Failed to fetch current tabId from session:', error);
 
-      if (isPortClosed) {
-        console.warn('[App] Service worker not ready when fetching tabId, will retry later');
-      } else {
-        console.error('[App] Failed to fetch current tabId from session:', error);
-      }
-
-      // Fallback: get current active tab to send as suggestion
-      try {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        const activeTab = tabs[0];
-        if (activeTab?.id) {
-          console.log(`[App] Using active tab ${activeTab.id} as fallback`);
-          currentTabId = activeTab.id;
-        } else {
+      // Fallback: get current active tab to send as suggestion (extension only)
+      if (platform.hasTabSelection) {
+        try {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          const activeTab = tabs[0];
+          if (activeTab?.id) {
+            console.log(`[App] Using active tab ${activeTab.id} as fallback`);
+            currentTabId = activeTab.id;
+          } else {
+            currentTabId = -1;
+          }
+        } catch (tabError) {
+          console.warn('[App] Failed to get active tab:', tabError);
           currentTabId = -1;
         }
-      } catch (tabError) {
-        console.warn('[App] Failed to get active tab:', tabError);
+      } else {
         currentTabId = -1;
       }
     }
@@ -393,8 +368,15 @@
   /**
    * Bind the session to the current active tab
    * Called when session has no tab binding (tabId === -1)
+   * Only applicable for extension mode - desktop doesn't have tabs
    */
   async function bindToActiveTab() {
+    // Desktop mode doesn't have tabs
+    if (!platform.hasTabSelection) {
+      currentTabId = -1;
+      return;
+    }
+
     try {
       // Get the current active tab
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -416,10 +398,25 @@
 
   async function checkConnection() {
     try {
-      const response = await router?.send(MessageType.HEALTH_CHECK);
-      isConnected = response?.type === MessageType.HEALTH_STATUS;
+      if (!service) {
+        isConnected = false;
+        agentReady = false;
+        healthStatus = { ready: false, message: 'Message service not available', authMode: 'none' };
+        return;
+      }
 
-      if (response?.type === MessageType.HEALTH_STATUS) {
+      const response = await service.send<{
+        type?: string;
+        ready?: boolean;
+        message?: string;
+        provider?: string;
+        model?: string;
+        authMode?: 'login' | 'api_key' | 'none';
+      }>(MessageType.HEALTH_CHECK);
+
+      isConnected = response?.type === MessageType.HEALTH_STATUS || response?.ready !== undefined;
+
+      if (response?.ready !== undefined) {
         agentReady = response.ready === true;
         healthStatus = {
           ready: response.ready === true,
@@ -443,22 +440,12 @@
         agentStore.setNoAccess('Unable to check agent status');
       }
     } catch (error) {
-      const isPortClosed = error instanceof Error &&
-        (error.message.includes('message port closed') ||
-         error.message.includes('Extension context invalidated'));
+      console.error('[App] Health check failed:', error);
 
       isConnected = false;
       agentReady = false;
-
-      if (isPortClosed) {
-        console.warn('[App] Service worker unavailable during health check');
-        healthStatus = { ready: false, message: 'Service worker starting...', authMode: 'none' };
-        agentStore.setLoading();
-      } else {
-        console.error('[App] Health check failed:', error);
-        healthStatus = { ready: false, message: 'Connection error', authMode: 'none' };
-        agentStore.setNoAccess('Connection error');
-      }
+      healthStatus = { ready: false, message: 'Connection error', authMode: 'none' };
+      agentStore.setNoAccess('Connection error');
     }
   }
 
@@ -605,7 +592,8 @@
 
     // Send to agent with tab context
     try {
-      await router.sendSubmission({
+      if (!service) throw new Error('Message service not available');
+      await service.send(MessageType.SUBMISSION, {
         id: `user_${Date.now()}`,
         op: {
           type: 'UserInput',
@@ -619,13 +607,9 @@
     } catch (error) {
       console.error('Failed to send message:', error);
 
-      const isPortClosed = error instanceof Error &&
-        (error.message.includes('message port closed') ||
-         error.message.includes('Extension context invalidated'));
-
       let errorMessage = 'Failed to send message. Please try again.';
-      if (isPortClosed) {
-        errorMessage = 'Service worker unavailable. The extension may be restarting. Please wait a moment and try again.';
+      if (error instanceof Error && error.message.includes('not available')) {
+        errorMessage = 'Backend not available. Please wait a moment and try again.';
       }
 
       messages = [...messages, {
@@ -688,7 +672,8 @@
     showScheduleModal = false;
 
     try {
-      const response = await router.send(MessageType.SCHEDULER_SCHEDULE_TASK, {
+      if (!service) throw new Error('Message service not available');
+      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_TASK, {
         input,
         scheduledTime,
       });
@@ -752,7 +737,8 @@
 
     // Request session reset from backend
     try {
-      await router.requestSessionReset();
+      if (!service) throw new Error('Message service not available');
+      await service.send(MessageType.SESSION_RESET);
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -760,14 +746,7 @@
     } catch (error) {
       console.error('Failed to reset session:', error);
 
-      const isPortClosed = error instanceof Error &&
-        (error.message.includes('message port closed') ||
-         error.message.includes('Extension context invalidated'));
-
       let errorMessage = 'Failed to start new conversation. Please try again.';
-      if (isPortClosed) {
-        errorMessage = 'Service worker unavailable. Please wait a moment and try again.';
-      }
 
       messages = [...messages, {
         type: 'agent',
@@ -785,25 +764,17 @@
     if (!isProcessing) return;
 
     try {
-      // Send stop message to service worker
-      await chrome.runtime.sendMessage({ type: 'STOP_AGENT_SESSION' });
+      if (!service) throw new Error('Message service not available');
+      // Send stop message to backend
+      await service.send(MessageType.INTERRUPT);
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
       console.error('[App] Failed to stop agent:', error);
 
-      const isPortClosed = error instanceof Error &&
-        (error.message.includes('message port closed') ||
-         error.message.includes('Extension context invalidated'));
-
-      let errorMessage = 'Failed to stop the task. Please try again.';
-      if (isPortClosed) {
-        errorMessage = 'Service worker unavailable. Please wait a moment and try again.';
-      }
-
       messages = [...messages, {
         type: 'agent',
-        content: errorMessage,
+        content: 'Failed to stop the task. Please try again.',
         timestamp: Date.now(),
       }];
     }
@@ -826,14 +797,11 @@
     eventProcessor.reset();
 
     try {
-      // Request session resume from service worker
-      const response = await chrome.runtime.sendMessage({
-        type: 'RESUME_SESSION',
-        payload: { conversationId },
-      });
+      if (!service) throw new Error('Message service not available');
+      // Request session resume from backend
+      const response = await service.send<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
 
-      // Response is wrapped by MessageRouter: { success: true, data: { history: [...] } }
-      const historyItems = response?.data?.history || response?.history;
+      const historyItems = response?.history;
       console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
 
       // Restore history to UI using shared helper
@@ -843,18 +811,9 @@
     } catch (error) {
       console.error('[App] Failed to resume conversation:', error);
 
-      const isPortClosed = error instanceof Error &&
-        (error.message.includes('message port closed') ||
-         error.message.includes('Extension context invalidated'));
-
-      let errorMessage = 'Failed to load conversation. Please try again.';
-      if (isPortClosed) {
-        errorMessage = 'Service worker unavailable. Please wait a moment and try again.';
-      }
-
       messages = [...messages, {
         type: 'agent',
-        content: errorMessage,
+        content: 'Failed to load conversation. Please try again.',
         timestamp: Date.now(),
       }];
     }
@@ -865,7 +824,7 @@
    * Called when a scheduled task finishes executing
    */
   async function notifySchedulerTaskCompletion(success: boolean, msg: any) {
-    if (!scheduledTaskId) return;
+    if (!scheduledTaskId || !service) return;
 
     try {
       if (success) {
@@ -873,25 +832,19 @@
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Task completed';
 
-        await chrome.runtime.sendMessage({
-          type: MessageType.SCHEDULER_COMPLETE_TASK,
-          payload: {
-            taskId: scheduledTaskId,
-            result: {
-              summary: resultSummary,
-              completedAt: Date.now(),
-            },
+        await service.send(MessageType.SCHEDULER_COMPLETE_TASK, {
+          taskId: scheduledTaskId,
+          result: {
+            summary: resultSummary,
+            completedAt: Date.now(),
           },
         });
         console.log('[App] Notified scheduler of task completion:', scheduledTaskId);
       } else {
         const errorMessage = msg?.data?.message || 'Task failed';
-        await chrome.runtime.sendMessage({
-          type: MessageType.SCHEDULER_FAIL_TASK,
-          payload: {
-            taskId: scheduledTaskId,
-            error: errorMessage,
-          },
+        await service.send(MessageType.SCHEDULER_FAIL_TASK, {
+          taskId: scheduledTaskId,
+          error: errorMessage,
         });
         console.log('[App] Notified scheduler of task failure:', scheduledTaskId);
       }
@@ -908,11 +861,12 @@
     console.log('[App] Loading scheduled task:', taskId, 'with session:', sessionId);
 
     try {
+      if (!service) throw new Error('Message service not available');
       // Fetch task details from scheduler
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.SCHEDULER_GET_TASK_DETAILS,
-        payload: { taskId },
-      });
+      const response = await service.send<{ task?: { input: string; scheduledTime?: number } }>(
+        MessageType.SCHEDULER_GET_TASK_DETAILS,
+        { taskId }
+      );
 
       const taskData = response?.data || response;
       if (!taskData || !taskData.task) {
@@ -957,7 +911,7 @@
       // Execute the task via the agent
       // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
-      await router.sendSubmission({
+      await service.send(MessageType.SUBMISSION, {
         id: `scheduled_${taskId}_${Date.now()}`,
         op: {
           type: 'UserInput',
@@ -975,13 +929,12 @@
 
       // Notify scheduler of failure
       try {
-        await chrome.runtime.sendMessage({
-          type: MessageType.SCHEDULER_FAIL_TASK,
-          payload: {
+        if (service) {
+          await service.send(MessageType.SCHEDULER_FAIL_TASK, {
             taskId,
             error: error instanceof Error ? error.message : 'Unknown error',
-          },
-        });
+          });
+        }
       } catch (notifyError) {
         console.error('[App] Failed to notify scheduler of task failure:', notifyError);
       }

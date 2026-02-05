@@ -8,3 +8,4 @@
 
 export { IndexedDBStorageProvider } from './IndexedDBStorageProvider';
 export { ChromeCredentialStore } from './ChromeCredentialStore';
+export { ChromeConfigStorage } from './ChromeConfigStorage';
