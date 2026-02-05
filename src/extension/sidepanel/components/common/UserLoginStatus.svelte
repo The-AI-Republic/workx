@@ -11,6 +11,7 @@
   const dispatch = createEventDispatcher();
 
   let isLoggingIn = false;
+  let cancelLogin: (() => void) | null = null;
 
   let currentTheme: UITheme = 'terminal';
   let showMenu = false;
@@ -60,11 +61,24 @@
     if (platform.platformName === 'desktop') {
       // Desktop mode: use DesktopAuthService with deep link OAuth
       isLoggingIn = true;
+
+      // Create a cancellation mechanism
+      let isCancelled = false;
+      cancelLogin = () => {
+        isCancelled = true;
+        isLoggingIn = false;
+        cancelLogin = null;
+        console.log('[UserLoginStatus] Login cancelled by user');
+      };
+
       try {
         const { getDesktopAuthService } = await import('@/desktop/auth/DesktopAuthService');
         const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
         await authService.initialize();
         const session = await authService.login();
+
+        // Check if cancelled while waiting
+        if (isCancelled) return;
 
         // Update user store with session data
         userStore.setUser({
@@ -74,14 +88,29 @@
           userType: session.subscription?.plan_id ?? 0,
         });
       } catch (error) {
-        console.error('[UserLoginStatus] Desktop login failed:', error);
+        if (!isCancelled) {
+          console.error('[UserLoginStatus] Desktop login failed:', error);
+        }
       } finally {
-        isLoggingIn = false;
+        if (!isCancelled) {
+          isLoggingIn = false;
+          cancelLogin = null;
+        }
       }
     } else {
       // Extension mode: open login page in a new tab
       const loginUrl = getLoginPageUrl();
       chrome.tabs.create({ url: loginUrl });
+    }
+  }
+
+  function handleLoginClick() {
+    if (isLoggingIn && cancelLogin) {
+      // Cancel ongoing login
+      cancelLogin();
+    } else {
+      // Start login
+      openLoginPage();
     }
   }
 
@@ -185,12 +214,11 @@
     </PopupCard>
   {:else}
     <!-- Not logged in state - show login link -->
-    <Tooltip content={showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account")}>
+    <Tooltip content={isLoggingIn ? $_t("Click to cancel login") : (showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account"))}>
       <button
         class="login-link"
         class:logging-in={isLoggingIn}
-        on:click={openLoginPage}
-        disabled={isLoggingIn}
+        on:click={handleLoginClick}
       >
         {#if isLoggingIn}
           <span class="login-spinner"></span>
@@ -471,12 +499,18 @@
 
   /* Login loading state */
   .login-link.logging-in {
-    opacity: 0.7;
-    cursor: wait;
+    cursor: pointer;
   }
 
   .login-link.logging-in:hover {
-    background: transparent;
+    background: rgba(255, 0, 0, 0.1);
+    border-color: #ff6666;
+    color: #ff6666;
+  }
+
+  .login-link.logging-in:hover .login-spinner {
+    border-color: #ff6666;
+    border-top-color: transparent;
   }
 
   .login-spinner {

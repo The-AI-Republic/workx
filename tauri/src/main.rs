@@ -13,7 +13,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager,
+    Emitter, Manager,
 };
 
 /// Detect if the system is using a dark theme (Linux/GTK)
@@ -98,15 +98,36 @@ fn main() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_deep_link::init())
+        // Single instance plugin handles deep links on Windows/Linux
+        // When a second instance is launched with a deep link URL,
+        // it forwards the URL to the existing instance
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // On Windows/Linux, deep link URLs come as CLI arguments
+            // Check if any argument looks like our deep link
+            for arg in args {
+                if arg.starts_with("airepublic-pi://") {
+                    println!("[Pi] Received deep link via single-instance: {}", &arg[..50.min(arg.len())]);
+                    let _ = app.emit("auth-callback", &arg);
+
+                    // Bring the window to focus
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                    break;
+                }
+            }
+        }))
         .setup(|app| {
-            // Handle deep link events (e.g., airepublic-pi://auth/callback?token=xxx)
-            let handle = app.handle().clone();
-            app.listen("deep-link://new-url", move |event| {
-                // The payload is the deep link URL as a string
-                let url = event.payload();
-                // Emit the URL to the frontend for processing
-                let _ = handle.emit("auth-callback", url);
-            });
+            // Handle deep link events on macOS/iOS (they emit events directly)
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            {
+                let handle = app.handle().clone();
+                app.listen("deep-link://new-url", move |event| {
+                    let url = event.payload();
+                    let _ = handle.emit("auth-callback", url);
+                });
+            }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
