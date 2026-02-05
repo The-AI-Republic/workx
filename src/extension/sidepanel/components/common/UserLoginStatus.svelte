@@ -2,12 +2,15 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { platform } from '../../stores/platformStore';
   import { HOME_PAGE_BASE_URL } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
 
   const dispatch = createEventDispatcher();
+
+  let isLoggingIn = false;
 
   let currentTheme: UITheme = 'terminal';
   let showMenu = false;
@@ -53,10 +56,33 @@
     hidePromoTooltip();
   });
 
-  function openLoginPage() {
-    const loginUrl = getLoginPageUrl();
-    // Open login page in a new tab
-    chrome.tabs.create({ url: loginUrl });
+  async function openLoginPage() {
+    if (platform.platformName === 'desktop') {
+      // Desktop mode: use DesktopAuthService with deep link OAuth
+      isLoggingIn = true;
+      try {
+        const { getDesktopAuthService } = await import('@/desktop/auth/DesktopAuthService');
+        const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
+        await authService.initialize();
+        const session = await authService.login();
+
+        // Update user store with session data
+        userStore.setUser({
+          name: session.given_name || session.name || null,
+          email: session.email,
+          avatar: session.picture || null,
+          userType: session.subscription?.plan_id ?? 0,
+        });
+      } catch (error) {
+        console.error('[UserLoginStatus] Desktop login failed:', error);
+      } finally {
+        isLoggingIn = false;
+      }
+    } else {
+      // Extension mode: open login page in a new tab
+      const loginUrl = getLoginPageUrl();
+      chrome.tabs.create({ url: loginUrl });
+    }
   }
 
   function toggleMenu(event: MouseEvent) {
@@ -73,11 +99,19 @@
     dispatch('openSettings');
   }
 
-  function openUserCenter(event: MouseEvent) {
+  async function openUserCenter(event: MouseEvent) {
     event.preventDefault();
     showMenu = false;
-    // Use chrome.tabs.create instead of <a> tag to avoid CSS loading issues in SvelteKit
-    chrome.tabs.create({ url: `${HOME_PAGE_BASE_URL}/user-center/info` });
+    const userCenterUrl = `${HOME_PAGE_BASE_URL}/user-center/info`;
+
+    if (platform.platformName === 'desktop') {
+      // Desktop mode: use Tauri shell plugin to open in browser
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(userCenterUrl);
+    } else {
+      // Extension mode: use chrome.tabs.create
+      chrome.tabs.create({ url: userCenterUrl });
+    }
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -154,9 +188,16 @@
     <Tooltip content={showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account")}>
       <button
         class="login-link"
+        class:logging-in={isLoggingIn}
         on:click={openLoginPage}
+        disabled={isLoggingIn}
       >
-        {$_t("Login")}
+        {#if isLoggingIn}
+          <span class="login-spinner"></span>
+          {$_t("Logging in...")}
+        {:else}
+          {$_t("Login")}
+        {/if}
       </button>
     </Tooltip>
   {/if}
@@ -426,5 +467,31 @@
   .user-login-status.chatgpt .login-link:hover {
     background: var(--chat-button-hover, #ececec);
     color: var(--chat-text, #0d0d0d);
+  }
+
+  /* Login loading state */
+  .login-link.logging-in {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  .login-link.logging-in:hover {
+    background: transparent;
+  }
+
+  .login-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style>
