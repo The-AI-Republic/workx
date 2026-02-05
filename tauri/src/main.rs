@@ -13,7 +13,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Emitter, Listener, Manager,
 };
 
 /// Detect if the system is using a dark theme (Linux/GTK)
@@ -97,7 +97,16 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            // Handle deep link events (e.g., airepublic-pi://auth/callback?token=xxx)
+            let handle = app.handle().clone();
+            app.listen("deep-link://new-url", move |event| {
+                // The payload is the deep link URL as a string
+                let url = event.payload();
+                // Emit the URL to the frontend for processing
+                let _ = handle.emit("auth-callback", url);
+            });
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
