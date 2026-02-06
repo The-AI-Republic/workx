@@ -4,8 +4,8 @@
  * Handles OAuth authentication for the Pi desktop app using deep links.
  *
  * Flow:
- * 1. Open browser to HOME_BASE_URL/auth/login/google?redirect_url=airepublic-pi://auth/callback
- * 2. User logs in via Google OAuth
+ * 1. Open browser to HOME_BASE_URL/login?redirect_url=airepublic-pi://auth/callback
+ * 2. User logs in via login page (Google OAuth, etc.)
  * 3. Backend redirects to airepublic-pi://auth/callback?access_token=xxx&refresh_token=xxx
  * 4. OS routes deep link to Pi app
  * 5. Pi app extracts tokens and stores them in OS keychain
@@ -122,8 +122,8 @@ export class DesktopAuthService {
    * @returns Promise that resolves to the user session
    */
   async login(timeoutMs: number = 300000): Promise<UserSession> {
-    // Build the login URL with deep link callback
-    const loginUrl = `${this.authBaseUrl}/auth/login/google?redirect_url=${encodeURIComponent(AUTH_CALLBACK_SCHEME)}`;
+    // Build the login URL with deep link callback (same /login page as extension)
+    const loginUrl = `${this.authBaseUrl}/login?redirect_url=${encodeURIComponent(AUTH_CALLBACK_SCHEME)}`;
 
     // Create a promise that will be resolved by the callback handler
     const callbackPromise = new Promise<{ accessToken: string; refreshToken: string }>((resolve, reject) => {

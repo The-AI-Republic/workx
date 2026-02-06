@@ -22,6 +22,7 @@ export default defineConfig({
     }),
   ],
   root: 'src/desktop',
+  envDir: resolve(__dirname, 'src/desktop'), // Load .env from src/desktop
   define: {
     __BUILD_MODE__: JSON.stringify('desktop'),
   },

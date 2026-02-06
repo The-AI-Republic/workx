@@ -11,6 +11,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
  */
 export default defineConfig({
   plugins: [svelte()],
+  envDir: resolve(__dirname, 'src/extension'), // Load .env from src/extension
   define: {
     __BUILD_MODE__: JSON.stringify('extension'),
   },

@@ -53,6 +53,40 @@ We support state-of-the-art LLMs from leading providers.
 
 ---
 
+## Environment Configuration
+
+Both the Chrome extension and desktop app require environment configuration files. The `.env.example` file in the project root serves as a template with all required keys.
+
+### Setup
+
+```bash
+# For Chrome extension development
+cp .env.example src/extension/.env
+
+# For Pi desktop app development
+cp .env.example src/desktop/.env
+```
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `.env.example` | Template with all required keys (committed to repo) |
+| `src/extension/.env` | Extension-specific configuration (not committed) |
+| `src/desktop/.env` | Desktop app-specific configuration (not committed) |
+
+### Required Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VITE_HOME_PAGE_BASE_URL` | Base URL for AI Republic home page | `https://airepublic.com` |
+| `VITE_BACKEND_API_BASE_URL` | Backend API endpoint | `https://api.airepublic.com` |
+| `VITE_COOKIE_DOMAIN` | Cookie domain for auth | `.airepublic.com` |
+
+**Note:** Build and dev commands will abort if the required `.env` file is missing. This ensures consistent configuration across environments.
+
+---
+
 ## Getting Started
 
 ### BrowserX (Chrome Extension)
@@ -76,7 +110,13 @@ We support state-of-the-art LLMs from leading providers.
    npm install
    ```
 
-3. **Build the extension:**
+3. **Configure environment:**
+   ```bash
+   cp .env.example src/extension/.env
+   # Edit src/extension/.env with your configuration values
+   ```
+
+4. **Build the extension:**
    ```bash
    npm run build
    ```
@@ -141,6 +181,10 @@ npm install
 
 # Install Tauri CLI v2
 cargo install tauri-cli@^2
+
+# Configure environment
+cp .env.example src/desktop/.env
+# Edit src/desktop/.env with your configuration values
 
 # Run in development mode (hot-reload)
 npm run tauri:dev
