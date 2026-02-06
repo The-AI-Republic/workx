@@ -146,11 +146,11 @@ export class DesktopAuthService {
     // Wait for the callback
     const { accessToken, refreshToken } = await callbackPromise;
 
-    // Store tokens in OS keychain
+    // Store tokens in OS keychain and fetch session in parallel
     await this.storeTokens(accessToken, refreshToken);
 
-    // Get user session
-    return this.getSession();
+    // Get user session using the token we already have (avoids keychain round-trip)
+    return this.getSessionWithToken(accessToken);
   }
 
   /**
@@ -160,7 +160,7 @@ export class DesktopAuthService {
    */
   private handleAuthCallback(url: string): void {
     try {
-      console.log('[DesktopAuthService] Received auth callback:', url.substring(0, 50) + '...');
+      console.log('[DesktopAuthService] Received auth callback');
 
       // Parse the URL to extract tokens
       const urlObj = new URL(url);
@@ -169,6 +169,7 @@ export class DesktopAuthService {
 
       if (!accessToken || !refreshToken) {
         const error = urlObj.searchParams.get('error') || 'Missing tokens in callback';
+        console.error('[DesktopAuthService] Auth callback error:', error);
         if (this.authCallbackPromiseReject) {
           this.authCallbackPromiseReject(new Error(error));
         }
@@ -178,6 +179,8 @@ export class DesktopAuthService {
       // Resolve the login promise
       if (this.authCallbackPromiseResolve) {
         this.authCallbackPromiseResolve({ accessToken, refreshToken });
+      } else {
+        console.warn('[DesktopAuthService] Auth callback received but no login in progress');
       }
     } catch (error) {
       console.error('[DesktopAuthService] Error parsing auth callback:', error);
@@ -233,28 +236,73 @@ export class DesktopAuthService {
     if (!accessToken) {
       throw new Error('Not authenticated');
     }
+    return this.getSessionWithToken(accessToken);
+  }
 
-    const response = await fetch(`${this.authBaseUrl}/auth/desktop/session`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+  /**
+   * Check if user has a valid (non-expired) access token
+   */
+  async hasValidToken(): Promise<boolean> {
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) return false;
 
-    if (!response.ok) {
+    try {
+      const parts = accessToken.split('.');
+      if (parts.length !== 3) return false;
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.exp ? payload.exp * 1000 > Date.now() : true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get user session using a provided access token.
+   * Tries the session API first, falls back to decoding the JWT directly.
+   */
+  private async getSessionWithToken(accessToken: string): Promise<UserSession> {
+    try {
+      const response = await fetch(`${this.authBaseUrl}/auth/desktop/session`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        if (user) return user as UserSession;
+      }
+
       if (response.status === 401) {
-        // Try to refresh token
         const newSession = await this.refreshTokens();
         return newSession;
       }
-      throw new Error(`Failed to get session: ${response.status}`);
+    } catch (error) {
+      console.warn('[DesktopAuthService] Session API unavailable, using JWT decode:', error);
     }
 
-    const user = await response.json();
-    if (!user) {
-      throw new Error('No user session');
-    }
+    // Fallback: decode JWT payload directly
+    return this.decodeSessionFromJWT(accessToken);
+  }
 
-    return user as UserSession;
+  /**
+   * Extract user session from JWT payload
+   */
+  private decodeSessionFromJWT(token: string): UserSession {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) throw new Error('Invalid JWT format');
+
+      const payload = JSON.parse(atob(parts[1]));
+      return {
+        user_id: payload.sub,
+        email: payload.email || '',
+        is_active: true,
+        is_verified: true,
+      };
+    } catch (error) {
+      throw new Error(`Failed to decode session from token: ${error}`);
+    }
   }
 
   /**

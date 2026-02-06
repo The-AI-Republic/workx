@@ -18,6 +18,7 @@ import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { BrowserxAgent } from '@/core/BrowserxAgent';
 import { AgentConfig } from '@/config/AgentConfig';
+import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
@@ -64,6 +65,10 @@ export class DesktopAgentBootstrap {
       // 4. Initialize the agent (loads model client, tools, etc.)
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
+
+      // 4.5. Restore auth mode from keychain (before UI mounts)
+      // Same business logic as extension: logged in → backend routing, not logged in → api_key
+      await this.restoreAuthFromKeychain(config);
 
       // 5. Create and initialize TauriChannel
       this.channel = new TauriChannel();
@@ -153,6 +158,62 @@ export class DesktopAgentBootstrap {
     } catch (error) {
       console.error('[DesktopAgentBootstrap] Failed to handle config update:', error);
     }
+  }
+
+  /**
+   * Restore auth mode from keychain during initialization.
+   * If the user has a valid token in keychain → backend routing.
+   * Otherwise → api_key mode (user must configure their own key).
+   */
+  private async restoreAuthFromKeychain(config: AgentConfig): Promise<void> {
+    try {
+      const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
+      const { HOME_PAGE_BASE_URL, LLM_API_URL } = await import('@/extension/sidepanel/lib/constants');
+      const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
+      await authService.initialize();
+
+      const hasToken = await authService.hasValidToken();
+
+      if (hasToken) {
+        // User is logged in → backend routing
+        await this.setAuthMode(false, LLM_API_URL);
+
+        // Persist preference if not already set
+        const agentConfig = config.getConfig();
+        if (agentConfig.preferences?.useOwnApiKey === undefined) {
+          await config.updateConfig({
+            preferences: { ...agentConfig.preferences, useOwnApiKey: false },
+          });
+        }
+
+        console.log('[DesktopAgentBootstrap] Auth restored from keychain → backend routing');
+      } else {
+        console.log('[DesktopAgentBootstrap] No valid token in keychain → api_key mode');
+      }
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not restore auth from keychain:', error);
+    }
+  }
+
+  /**
+   * Set the authentication mode on the agent's ModelClientFactory.
+   * Called directly by UI code after login or on startup.
+   */
+  async setAuthMode(useOwnApiKey: boolean, backendBaseUrl: string | null): Promise<void> {
+    if (!this.agent) {
+      console.warn('[DesktopAgentBootstrap] Cannot set auth mode: agent not initialized');
+      return;
+    }
+
+    const shouldUseBackend = !useOwnApiKey;
+    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null);
+
+    const factory = this.agent.getModelClientFactory();
+    factory.setAuthManager(authManager);
+
+    console.log('[DesktopAgentBootstrap] Auth mode set, isBackendRouting:', factory.isBackendRouting());
+
+    await this.agent.refreshModelClient();
   }
 
   /**

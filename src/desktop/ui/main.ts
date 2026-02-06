@@ -13,10 +13,13 @@
  * @module desktop/ui/main
  */
 
-// IMPORTANT: Install chrome polyfill FIRST before any other imports
-// This provides compatibility for components that still use chrome.* directly
+// IMPORTANT: Install polyfills FIRST before any other imports
+// Chrome polyfill: compatibility for components that use chrome.* directly
+// Fetch proxy: routes external HTTP through Rust to bypass CORS
 import { installChromePolyfill } from '../polyfills/chromePolyfill';
+import { installFetchProxy } from '../polyfills/fetchProxy';
 installChromePolyfill();
+installFetchProxy();
 
 import './desktop.css';
 import '../../extension/sidepanel/sidepanel.css';

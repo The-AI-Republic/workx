@@ -3,7 +3,7 @@
   import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
-  import { HOME_PAGE_BASE_URL } from '../../lib/constants';
+  import { HOME_PAGE_BASE_URL, LLM_API_URL } from '../../lib/constants';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
@@ -87,6 +87,16 @@
           avatar: session.picture || null,
           userType: session.subscription?.plan_id ?? 0,
         });
+
+        // Tell the agent to switch to backend routing mode (direct call, same process)
+        try {
+          const { getDesktopAgentBootstrap } = await import('@/desktop/agent/DesktopAgentBootstrap');
+          const bootstrap = getDesktopAgentBootstrap();
+          await bootstrap.setAuthMode(false, LLM_API_URL);
+          console.log('[UserLoginStatus] Desktop auth mode set to backend routing');
+        } catch (authError) {
+          console.warn('[UserLoginStatus] Failed to set desktop auth mode:', authError);
+        }
       } catch (error) {
         if (!isCancelled) {
           console.error('[UserLoginStatus] Desktop login failed:', error);

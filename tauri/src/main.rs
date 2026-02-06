@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod http_commands;
 mod keychain_commands;
 mod mcp_commands;
 mod storage_commands;
@@ -15,6 +16,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
+use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Detect if the system is using a dark theme (Linux/GTK)
 fn is_dark_theme() -> bool {
@@ -119,6 +121,17 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // Register the deep link protocol handler at runtime.
+            // On Linux this creates/updates the .desktop file and registers with xdg-mime.
+            // On Windows this creates the registry entries.
+            // On macOS this is handled at compile time via Info.plist, so register() is a no-op.
+            #[cfg(desktop)]
+            {
+                if let Err(e) = app.deep_link().register("airepublic-pi") {
+                    eprintln!("[Pi] Failed to register deep link handler: {}", e);
+                }
+            }
+
             // Handle deep link events on macOS/iOS (they emit events directly)
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             {
@@ -211,6 +224,8 @@ fn main() {
             storage_commands::config_storage_remove_many,
             storage_commands::config_storage_get_all,
             storage_commands::config_storage_clear,
+            // HTTP proxy command
+            http_commands::http_fetch,
             // Keychain commands
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,
