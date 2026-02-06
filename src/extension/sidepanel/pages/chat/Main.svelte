@@ -126,6 +126,9 @@
           processedEvents = [];
           isProcessing = false;
           eventProcessor.reset();
+          
+          // Re-check connection/auth status since agent was reinitialized
+          checkConnection();
         })
       );
 

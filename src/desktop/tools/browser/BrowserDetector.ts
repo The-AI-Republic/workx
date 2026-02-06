@@ -8,7 +8,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import { platform } from '@tauri-apps/api/os';
+// import { platform } from '@tauri-apps/api/os'; // Deprecated/Moved in v2
 
 /**
  * Browser info
@@ -119,9 +119,21 @@ export class BrowserDetector {
    */
   private async getPlatform(): Promise<string> {
     if (!this.platformName) {
-      this.platformName = await platform();
+      // Use navigator to detect platform instead of Tauri plugin to avoid extra dependency
+      // We need to match the keys in BROWSER_PATHS: 'darwin', 'win32', 'linux'
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('mac')) {
+        this.platformName = 'darwin';
+      } else if (ua.includes('win')) {
+        this.platformName = 'win32';
+      } else if (ua.includes('linux')) {
+        this.platformName = 'linux';
+      } else {
+        console.warn('[BrowserDetector] Unknown platform, defaulting to linux');
+        this.platformName = 'linux';
+      }
     }
-    return this.platformName;
+    return this.platformName!;
   }
 
   /**

@@ -82,11 +82,8 @@ async function registerDesktopTools(
 ): Promise<void> {
   console.log('[registerPlatformTools] Registering desktop tools...');
 
-  // Use a variable-based import path to prevent Rollup from following it at build time.
-  // This file is only reached when __BUILD_MODE__ === 'desktop', so the desktop build
-  // will bundle it correctly, and the extension build won't try to resolve it.
-  const desktopModulePath = '../desktop/tools/registerDesktopTools';
-  const { registerDesktopToolsImpl } = await import(/* @vite-ignore */ desktopModulePath);
+  // Direct import to allow Vite/Rollup to bundle the module
+  const { registerDesktopToolsImpl } = await import('../desktop/tools/registerDesktopTools');
 
   await registerDesktopToolsImpl(registry, toolsConfig, modelConfig);
 

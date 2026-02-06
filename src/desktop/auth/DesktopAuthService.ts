@@ -85,6 +85,7 @@ export class DesktopAuthService {
   private unlistenCallback: UnlistenFn | null = null;
   private authCallbackPromiseResolve: ((tokens: { accessToken: string; refreshToken: string }) => void) | null = null;
   private authCallbackPromiseReject: ((error: Error) => void) | null = null;
+  private listeners: Set<() => void> = new Set();
 
   constructor(authBaseUrl: string) {
     this.credentialStore = new KeytarCredentialStore();
@@ -154,11 +155,33 @@ export class DesktopAuthService {
   }
 
   /**
+   * Register a callback to be notified when auth state changes
+   */
+  onAuthChange(callback: () => void): () => void {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+
+  /**
+   * Notify all listeners of auth state change
+   * Public to allow other components (like App.svelte) to trigger updates on successful load
+   */
+  notifyAuthChange(): void {
+    this.listeners.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.error('[DesktopAuthService] Error in auth change listener:', error);
+      }
+    });
+  }
+
+  /**
    * Handle the OAuth callback deep link
    *
    * @param url - The full callback URL with tokens
    */
-  private handleAuthCallback(url: string): void {
+  private async handleAuthCallback(url: string): Promise<void> {
     try {
       console.log('[DesktopAuthService] Received auth callback');
 
@@ -176,11 +199,16 @@ export class DesktopAuthService {
         return;
       }
 
-      // Resolve the login promise
+      // Always store tokens, regardless of whether we initiated the login
+      // This handles the case where the user clicks "Log in" link directly (managed outside this service)
+      await this.storeTokens(accessToken, refreshToken);
+      console.log('[DesktopAuthService] Tokens stored from callback');
+
+      // Resolve the login promise if it exists
       if (this.authCallbackPromiseResolve) {
         this.authCallbackPromiseResolve({ accessToken, refreshToken });
       } else {
-        console.warn('[DesktopAuthService] Auth callback received but no login in progress');
+        console.log('[DesktopAuthService] Auth callback handled (implicit flow)');
       }
     } catch (error) {
       console.error('[DesktopAuthService] Error parsing auth callback:', error);
@@ -202,6 +230,7 @@ export class DesktopAuthService {
       this.credentialStore.set(AUTH_SERVICE, TOKEN_ACCOUNTS.ACCESS, accessToken),
       this.credentialStore.set(AUTH_SERVICE, TOKEN_ACCOUNTS.REFRESH, refreshToken),
     ]);
+    this.notifyAuthChange();
   }
 
   /**
@@ -347,6 +376,7 @@ export class DesktopAuthService {
       this.credentialStore.delete(AUTH_SERVICE, TOKEN_ACCOUNTS.ACCESS),
       this.credentialStore.delete(AUTH_SERVICE, TOKEN_ACCOUNTS.REFRESH),
     ]);
+    this.notifyAuthChange();
   }
 
   /**

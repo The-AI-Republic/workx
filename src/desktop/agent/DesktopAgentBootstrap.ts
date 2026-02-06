@@ -17,6 +17,7 @@ import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { BrowserxAgent } from '@/core/BrowserxAgent';
+import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
@@ -66,8 +67,24 @@ export class DesktopAgentBootstrap {
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
-      // 4.5. Restore auth mode from keychain (before UI mounts)
+      // 4.5. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
+      const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
+      const { HOME_PAGE_BASE_URL } = await import('@/extension/sidepanel/lib/constants');
+      const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
+
+      // Listen for auth changes (implicit login via deep link)
+      // This allows the agent to switch to backend routing automatically when user logs in
+      authService.onAuthChange(async () => {
+        console.log('[DesktopAgentBootstrap] Auth state changed, reloading auth mode...');
+        await this.restoreAuthFromKeychain(config);
+
+        // Also notify the UI that auth has changed so it re-runs health check
+        if (this.messageRouter) {
+          this.messageRouter.send(MessageType.AGENT_REINITIALIZED);
+        }
+      });
+
       await this.restoreAuthFromKeychain(config);
 
       // 5. Create and initialize TauriChannel

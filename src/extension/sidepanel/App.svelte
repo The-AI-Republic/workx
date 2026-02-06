@@ -67,9 +67,12 @@
             name: session.given_name || session.name || null,
             email: session.email,
             avatar: session.picture || null,
-            userType: session.subscription?.plan_id ?? 0,
+            userType: (session.subscription as any)?.plan_id ?? 0,
           });
           console.log('[App] Desktop userStore updated for:', session.email);
+
+          // Notify the agent to re-check auth status (fixes race condition where agent checks too early)
+          authService.notifyAuthChange();
           return;
         }
       }
@@ -146,7 +149,10 @@
         const { cookie, removed } = changeInfo;
 
         // Only react to auth cookie changes on our domain
-        if (cookie.name === AUTH_COOKIE_NAME && cookie.domain.includes(COOKIE_DOMAIN.replace(/^\./, ''))) {
+        if (
+          cookie.name === AUTH_COOKIE_NAME &&
+          cookie.domain.includes(COOKIE_DOMAIN.replace(/^\./, ''))
+        ) {
           console.log('[App] Auth cookie changed:', removed ? 'removed' : 'set');
           checkAndUpdateAuth();
         }
