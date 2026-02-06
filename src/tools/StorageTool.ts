@@ -390,7 +390,14 @@ export class StorageTool extends BaseTool {
       description: CACHE_TOOL_DEFINITION.description,
       strict: false,
       parameters: CACHE_TOOL_DEFINITION.inputSchema as any
-    }
+    },
+    metadata: {
+      capabilities: ['session_cache', 'data_storage', 'quota_management'],
+      permissions: ['storage'],
+      platforms: ['extension'] as const,
+    },
+    category: 'storage',
+    version: '1.0.0',
   };
 
   /**

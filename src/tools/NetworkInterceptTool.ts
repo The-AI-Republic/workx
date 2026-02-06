@@ -186,6 +186,7 @@ export class NetworkInterceptTool extends BaseTool {
         category: 'browser',
         metadata: {
           permissions: ['declarativeNetRequest', 'webRequest', 'webNavigation'],
+          platforms: ['extension'],
         },
       }
     );

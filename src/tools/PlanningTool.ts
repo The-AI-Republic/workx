@@ -57,7 +57,13 @@ export class PlanningTool extends BaseTool {
       description: PLANNING_TOOL_DEFINITION.description,
       strict: false,
       parameters: PLANNING_TOOL_DEFINITION.inputSchema as any
-    }
+    },
+    metadata: {
+      capabilities: ['task_planning', 'progress_tracking'],
+      platforms: ['extension', 'desktop'],
+    },
+    category: 'planning',
+    version: '1.0.0',
   };
 
   /**

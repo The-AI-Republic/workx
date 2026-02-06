@@ -112,7 +112,7 @@ The type action automatically focuses the target element before typing.
           'page_keypress',
           'cdp_based',
         ],
-        platform: 'desktop',
+        platforms: ['desktop'],
       },
     }
   );

@@ -3,15 +3,14 @@
  *
  * Registers different tools based on the platform (extension vs desktop).
  * Extension mode uses Chrome extension APIs, desktop mode uses CDP.
+ * Tools declare their platform support via metadata.platforms field.
  *
  * @module tools/registerPlatformTools
  */
 
 import { ToolRegistry } from './ToolRegistry';
 import type { IToolsConfig } from '../config/types';
-
-// Platform detection
-type Platform = 'extension' | 'desktop';
+import type { ToolDefinition, Platform } from './BaseTool';
 
 /**
  * Detect the current platform based on build mode
@@ -22,6 +21,29 @@ function detectPlatform(): Platform {
     return 'desktop';
   }
   return 'extension';
+}
+
+/**
+ * Check if a tool supports the given platform based on its metadata
+ *
+ * @param toolDef - Tool definition to check
+ * @param platform - Target platform
+ * @returns true if tool supports the platform (or has no platform restriction)
+ */
+function isPlatformSupported(toolDef: ToolDefinition, platform: Platform): boolean {
+  // Non-function tools are always supported (local_shell, web_search, custom)
+  if (toolDef.type !== 'function') {
+    return true;
+  }
+
+  const platforms = toolDef.metadata?.platforms;
+
+  // If no platforms specified, tool is available on all platforms (backward compatibility)
+  if (!platforms || platforms.length === 0) {
+    return true;
+  }
+
+  return platforms.includes(platform);
 }
 
 /**
@@ -49,6 +71,9 @@ export async function registerPlatformTools(
 
 /**
  * Register desktop-specific tools (CDP-based)
+ *
+ * Uses a runtime-constructed path to avoid Rollup following the import.
+ * The actual desktop tools registration is in src/desktop/tools/registerDesktopTools.ts.
  */
 async function registerDesktopTools(
   registry: ToolRegistry,
@@ -57,73 +82,25 @@ async function registerDesktopTools(
 ): Promise<void> {
   console.log('[registerPlatformTools] Registering desktop tools...');
 
-  // Import desktop tools dynamically to avoid loading in extension mode
-  const { CDPDOMTool } = await import('../desktop/tools/CDPDOMTool');
+  // Use a variable-based import path to prevent Rollup from following it at build time.
+  // This file is only reached when __BUILD_MODE__ === 'desktop', so the desktop build
+  // will bundle it correctly, and the extension build won't try to resolve it.
+  const desktopModulePath = '../desktop/tools/registerDesktopTools';
+  const { registerDesktopToolsImpl } = await import(/* @vite-ignore */ desktopModulePath);
 
-  // Common tools that work on both platforms
-  const { PlanningTool } = await import('./PlanningTool');
-  const { WebSearchTool } = await import('./WebSearchTool');
-
-  // Helper to check if tool is enabled
-  const isToolEnabled = (toolName: string): boolean => {
-    if (toolsConfig.enable_all_tools === true) return true;
-
-    switch (toolName) {
-      case 'dom_tool':
-        return toolsConfig.dom_tool === true;
-      case 'navigation_tool':
-        return toolsConfig.navigation_tool === true;
-      case 'page_vision_tool':
-        return toolsConfig.page_vision_tool === true;
-      default:
-        return false;
-    }
-  };
-
-  // Helper to register a tool
-  const registerTool = async (toolName: string, toolInstance: any) => {
-    if (!registry.getTool(toolName)) {
-      const definition = toolInstance.getDefinition();
-      console.log(`[registerPlatformTools] Registering ${toolName} (desktop)...`);
-
-      await registry.register(definition, async (params, context) => {
-        return toolInstance.execute(params, {
-          metadata: {
-            ...context.metadata,
-            sessionId: context.sessionId,
-            turnId: context.turnId,
-            toolName: context.toolName,
-          },
-        });
-      });
-    }
-  };
-
-  // Register CDP-based DOM tool for desktop
-  if (isToolEnabled('dom_tool')) {
-    const cdpDomTool = new CDPDOMTool();
-    await cdpDomTool.initialize();
-    await registerTool('browser_dom', cdpDomTool);
-  }
-
-  // Planning tool - always enabled
-  const planningTool = new PlanningTool();
-  await registerTool('planning_tool', planningTool);
-
-  // Web search tool
-  const webSearchTool = new WebSearchTool();
-  await registerTool('web_search', webSearchTool);
-
-  // TODO: Add more desktop-specific tools:
-  // - TerminalTool (shell command execution)
-  // - FileSystemTool (file read/write)
-  // - CDPNavigationTool (browser navigation via CDP)
+  await registerDesktopToolsImpl(registry, toolsConfig, modelConfig);
 
   console.log('[registerPlatformTools] Desktop tools registration completed');
 }
 
 /**
  * Register extension-specific tools (Chrome extension APIs)
+ *
+ * Delegates to the existing registerTools from tools/index.ts.
+ * All extension tools have platforms: ['extension'] in their metadata,
+ * which is checked at runtime. This function only runs in extension mode
+ * (detectPlatform() returns 'extension'), so all registered tools
+ * will have the correct platform support.
  */
 async function registerExtensionTools(
   registry: ToolRegistry,
@@ -133,6 +110,7 @@ async function registerExtensionTools(
   console.log('[registerPlatformTools] Registering extension tools...');
 
   // Use existing registerTools from tools/index.ts
+  // All extension tools have platforms: ['extension'] metadata
   const { registerTools } = await import('./index');
 
   await registerTools(registry, toolsConfig, modelConfig);

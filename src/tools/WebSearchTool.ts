@@ -61,6 +61,7 @@ export class WebSearchTool extends BaseTool {
       metadata: {
         capabilities: ['web_search', 'information_retrieval'],
         permissions: ['tabs', 'scripting', 'debugger'],
+        platforms: ['extension', 'desktop'],
       },
     }
   );

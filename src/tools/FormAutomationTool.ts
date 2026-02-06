@@ -172,6 +172,7 @@ export class FormAutomationTool extends BaseTool {
         category: 'browser',
         metadata: {
           permissions: ['tabs', 'scripting', 'activeTab'],
+          platforms: ['extension'],
         },
       }
     );

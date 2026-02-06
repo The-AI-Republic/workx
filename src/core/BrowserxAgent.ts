@@ -20,7 +20,7 @@ import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
-import { registerTools } from '../tools';
+import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
 
 /**
@@ -127,7 +127,8 @@ export class BrowserxAgent {
     }
 
     // Register browser automation tools (pass model data for feature filtering)
-    await registerTools(this.toolRegistry, this.config.getToolsConfig(), {
+    // Uses registerPlatformTools to filter tools based on current platform (extension vs desktop)
+    await registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
       name: modelData.model.name,
       supportsImage: modelData.model.supportsImage
     });
