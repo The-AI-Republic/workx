@@ -192,8 +192,9 @@ export class DesktopAgentBootstrap {
       const hasToken = await authService.hasValidToken();
 
       if (hasToken) {
-        // User is logged in → backend routing
-        await this.setAuthMode(false, LLM_API_URL);
+        // User is logged in → backend routing (pass token getter for Bearer auth)
+        const tokenGetter = () => authService.getAccessToken();
+        await this.setAuthMode(false, LLM_API_URL, tokenGetter);
 
         // Persist preference if not already set
         const agentConfig = config.getConfig();
@@ -215,15 +216,16 @@ export class DesktopAgentBootstrap {
   /**
    * Set the authentication mode on the agent's ModelClientFactory.
    * Called directly by UI code after login or on startup.
+   * @param tokenGetter - Optional async function to retrieve access token (desktop keychain)
    */
-  async setAuthMode(useOwnApiKey: boolean, backendBaseUrl: string | null): Promise<void> {
+  async setAuthMode(useOwnApiKey: boolean, backendBaseUrl: string | null, tokenGetter?: () => Promise<string | null>): Promise<void> {
     if (!this.agent) {
       console.warn('[DesktopAgentBootstrap] Cannot set auth mode: agent not initialized');
       return;
     }
 
     const shouldUseBackend = !useOwnApiKey;
-    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null);
+    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
 
     const factory = this.agent.getModelClientFactory();
     factory.setAuthManager(authManager);

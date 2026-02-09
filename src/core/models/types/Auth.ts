@@ -30,6 +30,14 @@ export interface IAuthManager {
    * @returns Backend URL or null if not using backend routing
    */
   getBackendBaseUrl(): string | null;
+
+  /**
+   * Get the current access token for backend authentication.
+   * Desktop apps must provide this since they don't have browser cookies.
+   * Chrome extension can return null (cookies are sent via credentials: 'include').
+   * @returns Access token or null
+   */
+  getAccessToken(): Promise<string | null>;
 }
 
 /**
@@ -42,16 +50,19 @@ export interface IAuthManager {
 export class AuthManager implements IAuthManager {
   private _shouldUseBackend: boolean;
   private _backendBaseUrl: string | null;
+  private _tokenGetter: (() => Promise<string | null>) | null;
 
   /**
    * Create an AuthManager
    * @param shouldUseBackend - Whether to route through backend (derived from !useOwnApiKey)
    * @param backendBaseUrl - Backend URL to use when routing through backend
+   * @param tokenGetter - Optional async function to retrieve the access token (required for desktop)
    */
-  constructor(shouldUseBackend: boolean, backendBaseUrl: string | null) {
+  constructor(shouldUseBackend: boolean, backendBaseUrl: string | null, tokenGetter?: () => Promise<string | null>) {
     this._shouldUseBackend = shouldUseBackend;
     // Only set backend URL if using backend routing
     this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
+    this._tokenGetter = tokenGetter ?? null;
   }
 
   /**
@@ -66,6 +77,17 @@ export class AuthManager implements IAuthManager {
    */
   getBackendBaseUrl(): string | null {
     return this._backendBaseUrl;
+  }
+
+  /**
+   * Get the current access token.
+   * Returns token from tokenGetter if provided, null otherwise (Chrome extension uses cookies).
+   */
+  async getAccessToken(): Promise<string | null> {
+    if (this._tokenGetter) {
+      return this._tokenGetter();
+    }
+    return null;
   }
 }
 

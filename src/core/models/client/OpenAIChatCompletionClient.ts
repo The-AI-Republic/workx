@@ -136,7 +136,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       };
 
       this.client = new OpenAI({
-        apiKey: 'backend-routed',
+        apiKey: this.apiKey || 'backend-routed',
         baseURL: this.baseUrl ? `${this.baseUrl.replace(/\/+$/, '')}` : this.baseUrl,
         dangerouslyAllowBrowser: true,
         timeout: 360000,

@@ -170,6 +170,11 @@ export class ModelClientFactory {
       throw new ModelClientError('Backend URL not available for backend routing');
     }
 
+    // Get access token from auth manager (desktop provides JWT, extension uses cookies)
+    const accessToken = await this.authManager?.getAccessToken();
+    // Use real token if available (desktop), fall back to dummy key (extension uses cookies)
+    const apiKey = accessToken || 'backend-routed';
+
     // Get model metadata for configuration
     let modelConfig: any = undefined;
     let supportsReasoning = false;
@@ -232,7 +237,7 @@ export class ModelClientFactory {
       };
 
       return new GoogleCompletionClient({
-        apiKey: 'backend-routed', // Dummy key - backend uses cookies for auth
+        apiKey,
         baseUrl: geminiApiBaseUrl,
         provider: googleProvider,
         modelFamily,
@@ -244,7 +249,7 @@ export class ModelClientFactory {
     if (supportBackendMode === 1) {
       // OpenAI Responses API
       return new OpenAIResponsesClient({
-        apiKey: 'backend-routed', // Dummy key - backend uses cookies for auth
+        apiKey,
         baseUrl: openAIClientBackendBaseUrl,
         conversationId,
         modelFamily,
@@ -258,7 +263,7 @@ export class ModelClientFactory {
 
     // supportBackendMode === 2 or fallback: OpenAI Chat Completions API
     return new OpenAIChatCompletionClient({
-      apiKey: 'backend-routed', // Dummy key - backend uses cookies for auth
+      apiKey,
       baseUrl: openAIClientBackendBaseUrl,
       conversationId,
       modelFamily,

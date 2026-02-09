@@ -92,7 +92,8 @@
         try {
           const { getDesktopAgentBootstrap } = await import('@/desktop/agent/DesktopAgentBootstrap');
           const bootstrap = getDesktopAgentBootstrap();
-          await bootstrap.setAuthMode(false, LLM_API_URL);
+          const tokenGetter = () => authService.getAccessToken();
+          await bootstrap.setAuthMode(false, LLM_API_URL, tokenGetter);
           console.log('[UserLoginStatus] Desktop auth mode set to backend routing');
         } catch (authError) {
           console.warn('[UserLoginStatus] Failed to set desktop auth mode:', authError);
