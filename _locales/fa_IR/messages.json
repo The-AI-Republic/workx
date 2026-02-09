@@ -145,6 +145,9 @@
       }
     }
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "برای انتخاب مدل کلیک کنید"
   },
@@ -409,6 +412,9 @@
     "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
     "message": ""
   },
   "Login": {

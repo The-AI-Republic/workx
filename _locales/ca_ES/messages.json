@@ -140,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Feu clic a la icona de Browserx a la barra d'eines o premeu Alt+Maj+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Feu clic per seleccionar un model"
   },
@@ -404,6 +407,9 @@
     "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
     "message": ""
   },
   "Login": {

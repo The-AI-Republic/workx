@@ -140,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "टूलबारमधील Browserx आयकॉनवर क्लिक करा किंवा Alt+Shift+C दाबा"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "मॉडेल निवडण्यासाठी क्लिक करा"
   },
@@ -404,6 +407,9 @@
     "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
     "message": ""
   },
   "Login": {

@@ -140,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Click the Browserx icon in your toolbar or press Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": "Click to cancel login"
+  },
   "Click_to_select_a_model": {
     "message": "Click to select a model"
   },
@@ -405,6 +408,9 @@
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": "Log MCP protocol messages to browser console for debugging"
+  },
+  "Logging_in": {
+    "message": "Logging in..."
   },
   "Login": {
     "message": "Login"

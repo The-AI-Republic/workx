@@ -293,5 +293,7 @@
   "User Session": "User_Session",
   "View Session": "View_Session",
   "session": "session",
-  "sessions": "sessions"
+  "sessions": "sessions",
+  "Click to cancel login": "Click_to_cancel_login",
+  "Logging in...": "Logging_in"
 }

@@ -140,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "உங்கள் கருவிப்பட்டியில் உள்ள Browserx ஐகானைக் கிளிக் செய்யவும் அல்லது Alt+Shift+C ஐ அழுத்தவும்"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "மாதிரியைத் தேர்ந்தெடு கிளிக் செய்யவும்"
   },
@@ -404,6 +407,9 @@
     "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
     "message": ""
   },
   "Login": {

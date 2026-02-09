@@ -145,6 +145,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "మీ టూల్‌బార్‌లోని Browserx ఐకాన్‌పై క్లిక్ చేయండి లేదా Alt+Shift+C నొక్కండి"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "మోడల్‌ను ఎంచుకోవడానికి క్లిక్ చేయండి"
   },
@@ -409,6 +412,9 @@
     "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
     "message": ""
   },
   "Login": {
