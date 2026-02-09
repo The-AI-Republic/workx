@@ -14,11 +14,25 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
+    Emitter, Listener, Manager,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 
+/// Detect if the system is using a dark theme
+#[cfg(target_os = "macos")]
+fn is_dark_theme() -> bool {
+    if let Ok(output) = std::process::Command::new("defaults")
+        .args(["read", "-g", "AppleInterfaceStyle"])
+        .output()
+    {
+        let style = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        return style == "Dark";
+    }
+    false
+}
+
 /// Detect if the system is using a dark theme (Linux/GTK)
+#[cfg(not(target_os = "macos"))]
 fn is_dark_theme() -> bool {
     // Try to detect dark theme on Linux via gsettings
     if let Ok(output) = std::process::Command::new("gsettings")
@@ -136,7 +150,7 @@ fn main() {
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             {
                 let handle = app.handle().clone();
-                app.listen("deep-link://new-url", move |event| {
+                app.listen("deep-link://new-url", move |event: tauri::Event| {
                     let url = event.payload();
                     let _ = handle.emit("auth-callback", url);
                 });

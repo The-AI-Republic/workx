@@ -45,10 +45,6 @@
     "security": {
       "csp": null
     },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
-    },
     "windows": [
       {
         "fullscreen": false,
@@ -66,7 +62,9 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["airepublic-pi"]
+        "schemes": [
+          "airepublic-pi"
+        ]
       }
     }
   }
