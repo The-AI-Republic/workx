@@ -74,34 +74,30 @@ The type action automatically focuses the target element before typing.
 4. **keypress**: Send keyboard key (Enter, Escape, Tab, etc.)
 5. **scroll**: Scroll page or element`,
     {
-      type: 'object',
-      properties: {
-        action: {
-          type: 'string',
-          enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
-          description: 'Action to perform',
-        },
-        node_id: {
-          type: 'string',
-          description: 'Target element node ID (for click, type, scroll actions)',
-        },
-        text: {
-          type: 'string',
-          description: 'Text to type (for type action)',
-        },
-        key: {
-          type: 'string',
-          description: 'Key to press (for keypress action): Enter, Escape, Tab, ArrowUp, ArrowDown, etc.',
-        },
-        options: {
-          type: 'object',
-          description: 'Additional options for the action',
-        },
+      action: {
+        type: 'string',
+        enum: ['snapshot', 'click', 'type', 'keypress', 'scroll'],
+        description: 'Action to perform',
       },
-      required: ['action'],
-      additionalProperties: false,
+      node_id: {
+        type: 'string',
+        description: 'Target element node ID (for click, type, scroll actions)',
+      },
+      text: {
+        type: 'string',
+        description: 'Text to type (for type action)',
+      },
+      key: {
+        type: 'string',
+        description: 'Key to press (for keypress action): Enter, Escape, Tab, ArrowUp, ArrowDown, etc.',
+      },
+      options: {
+        type: 'object',
+        description: 'Additional options for the action',
+      },
     },
     {
+      required: ['action'],
       version: '1.0.0',
       metadata: {
         capabilities: [
