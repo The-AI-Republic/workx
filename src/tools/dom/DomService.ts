@@ -15,10 +15,13 @@ import { computeHeuristics, classifyNode, determineInteractionType, detectFramew
 import type { TypeOptions } from '../../types/domTool';
 import { DomPlugin, type DomPluginContext } from './plugins/DomPlugin';
 import { googleDocPlugin } from './plugins/GoogleDocPlugin';
+import type { DebuggerClient, CDPEventCallback } from '../../core/tools/browser/DebuggerClient';
 
 export class DomService {
-  private static instances = new Map<number, DomService>();
+  private static instances = new Map<string, DomService>();
 
+  private client: DebuggerClient;
+  private instanceKey: string;
   private tabId: number;
   private isAttached: boolean = false;
   private currentSnapshot: DomSnapshot | null = null;
@@ -26,8 +29,10 @@ export class DomService {
   private metrics: PerformanceMetrics; // Performance metrics tracking
   private plugins: DomPlugin[] = [googleDocPlugin]; // DOM plugins for special content handling
 
-  private constructor(tabId: number, config?: Partial<ServiceConfig>) {
-    this.tabId = tabId;
+  private constructor(client: DebuggerClient, instanceKey: string, config?: Partial<ServiceConfig>) {
+    this.client = client;
+    this.instanceKey = instanceKey;
+    this.tabId = -1; // Set by factory methods
     this.config = {
       enableVisualEffects: true,
       maxTreeDepth: 100,
@@ -59,48 +64,99 @@ export class DomService {
     };
   }
 
+  /**
+   * Extension factory: creates/reuses a DomService for a Chrome tab.
+   * Dynamically imports ChromeDebuggerClient to avoid desktop builds pulling in chrome.debugger.
+   */
   static async forTab(tabId: number, config?: Partial<ServiceConfig>): Promise<DomService> {
-    if (!this.instances.has(tabId)) {
-      const service = new DomService(tabId, config);
-      await service.attach();
-      this.instances.set(tabId, service);
-    }
-    return this.instances.get(tabId)!;
-  }
-
-  async attach(): Promise<void> {
-    if (this.isAttached) return;
-
-    try {
-      await chrome.debugger.attach({ tabId: this.tabId }, '1.3');
-      this.isAttached = true;
-
-      // Enable required domains
-      await this.sendCommand('DOM.enable', {});
-      await this.sendCommand('Accessibility.enable', {});
-      await this.sendCommand('Page.enable', {}); // Enable Page domain for lifecycle events
-
-      // Listen for invalidation events
-      chrome.debugger.onEvent.addListener(this.handleCdpEvent.bind(this));
-
-      // Listen for debugger detach (connection loss)
-      chrome.debugger.onDetach.addListener(this.handleDebuggerDetach.bind(this));
-    } catch (error: any) {
-      if (error.message?.includes('already attached')) {
-        throw new Error('ALREADY_ATTACHED: DevTools is open on this tab. Please close DevTools.');
+    const key = `tab:${tabId}`;
+    if (!this.instances.has(key)) {
+      const { ChromeDebuggerClient } = await import('@/extension/tools/browser/ChromeDebuggerClient');
+      const client = new ChromeDebuggerClient();
+      try {
+        await client.attach({ tabId });
+      } catch (error: any) {
+        if (error.message?.toLowerCase().includes('already attached')) {
+          throw new Error('ALREADY_ATTACHED: DevTools is open on this tab. Please close DevTools.');
+        }
+        throw new Error(`ATTACH_FAILED: ${error.message}`);
       }
-      throw new Error(`ATTACH_FAILED: ${error.message}`);
+      const service = new DomService(client, key, config);
+      service.tabId = tabId;
+      await service.enableDomains();
+      service.setupEventListeners();
+      this.instances.set(key, service);
+    }
+    return this.instances.get(key)!;
+  }
+
+  /**
+   * Desktop factory: creates/reuses a DomService for a pre-attached DebuggerClient.
+   * The client must already be attached before calling this method.
+   */
+  static async forClient(client: DebuggerClient, key: string, config?: Partial<ServiceConfig>): Promise<DomService> {
+    if (!this.instances.has(key)) {
+      if (!client.isAttached()) {
+        throw new Error('DebuggerClient must be attached before creating DomService');
+      }
+      const service = new DomService(client, key, config);
+      service.tabId = -1;
+      await service.enableDomains();
+      service.setupEventListeners();
+      this.instances.set(key, service);
+    }
+    return this.instances.get(key)!;
+  }
+
+  /**
+   * Enable required CDP domains.
+   * Called by factory methods after client is attached.
+   */
+  private async enableDomains(): Promise<void> {
+    this.isAttached = true;
+    await this.client.enableDomain('DOM');
+    await this.client.enableDomain('Accessibility');
+    await this.client.enableDomain('Page');
+  }
+
+  /**
+   * Set up event listeners for CDP events and debugger detach.
+   * Called by factory methods after domains are enabled.
+   */
+  private setupEventListeners(): void {
+    // Listen for CDP events (e.g. DOM.documentUpdated) via the client
+    this.boundHandleCdpEvent = this.handleCdpEvent.bind(this);
+    this.client.onEvent(this.boundHandleCdpEvent);
+
+    // Listen for debugger detach (extension-only, chrome.debugger.onDetach)
+    if (typeof chrome !== 'undefined' && chrome.debugger?.onDetach) {
+      this.boundHandleDebuggerDetach = this.handleDebuggerDetach.bind(this);
+      chrome.debugger.onDetach.addListener(this.boundHandleDebuggerDetach);
     }
   }
+
+  // Bound event handler references for cleanup
+  private boundHandleCdpEvent: CDPEventCallback | null = null;
+  private boundHandleDebuggerDetach: ((source: chrome.debugger.Debuggee, reason: string) => void) | null = null;
 
   async detach(): Promise<void> {
     if (!this.isAttached) return;
 
     try {
-      await chrome.debugger.detach({ tabId: this.tabId });
+      // Remove event listeners
+      if (this.boundHandleCdpEvent) {
+        this.client.offEvent(this.boundHandleCdpEvent);
+        this.boundHandleCdpEvent = null;
+      }
+      if (this.boundHandleDebuggerDetach && typeof chrome !== 'undefined' && chrome.debugger?.onDetach) {
+        chrome.debugger.onDetach.removeListener(this.boundHandleDebuggerDetach);
+        this.boundHandleDebuggerDetach = null;
+      }
+
+      await this.client.detach();
       this.isAttached = false;
       this.currentSnapshot = null;
-      DomService.instances.delete(this.tabId);
+      DomService.instances.delete(this.instanceKey);
     } catch (error: any) {
       console.warn(`[DomService] Detach error: ${error.message}`);
     }
@@ -179,22 +235,23 @@ export class DomService {
       if (readyState !== 'complete') {
         console.log(`[DomService] Page loading (readyState: ${readyState}), waiting for load event...`);
 
-        // Wait for load event
+        // Wait for load event via DebuggerClient
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
+            this.client.offEvent(eventListener);
             reject(new Error('PAGE_LOAD_TIMEOUT: Page did not finish loading within 30 seconds'));
           }, 30000); // 30 second timeout
 
-          const eventListener = (source: chrome.debugger.Debuggee, method: string) => {
-            if (source.tabId === this.tabId && method === 'Page.loadEventFired') {
+          const eventListener: CDPEventCallback = (method: string) => {
+            if (method === 'Page.loadEventFired') {
               clearTimeout(timeout);
-              chrome.debugger.onEvent.removeListener(eventListener);
+              this.client.offEvent(eventListener);
               console.log('[DomService] Page load event fired');
               resolve();
             }
           };
 
-          chrome.debugger.onEvent.addListener(eventListener);
+          this.client.onEvent(eventListener);
         });
       }
 
@@ -543,10 +600,10 @@ export class DomService {
       throw new Error('SNAPSHOT_FAILED: Could not build tree');
     }
 
-    // Get page info for plugins
-    const tab = await chrome.tabs.get(this.tabId);
-    const pageUrl = tab.url || '';
-    const pageTitle = tab.title || '';
+    // Get page info via CDP (platform-agnostic, no chrome.tabs dependency)
+    const pageMetadata = await this.getPageMetadata();
+    const pageUrl = pageMetadata.url;
+    const pageTitle = pageMetadata.title;
 
     // Run DOM plugins to augment the tree with special content (e.g., Google Docs)
     await this.runPlugins(virtualDom, pageUrl, pageTitle);
@@ -574,15 +631,14 @@ export class DomService {
     const framework = detectFramework(virtualDom);
 
     // Fetch viewport dimensions, scroll position, and page dimensions from the page
-    // Note: 'tab' already fetched above for plugin execution
     // Fallback values assume viewport = page (no overflow) if Runtime.evaluate fails
     let viewportData = {
-      width: tab.width || 0,
-      height: tab.height || 0,
+      width: pageMetadata.width || 0,
+      height: pageMetadata.height || 0,
       scrollX: 0,
       scrollY: 0,
-      pageWidth: tab.width || 0,  // Fallback: assume page width = viewport width (no horizontal overflow)
-      pageHeight: tab.height || 0, // Fallback: assume page height = viewport height (no vertical overflow)
+      pageWidth: pageMetadata.width || 0,  // Fallback: assume page width = viewport width (no horizontal overflow)
+      pageHeight: pageMetadata.height || 0, // Fallback: assume page height = viewport height (no vertical overflow)
       devicePixelRatio: 1
     };
     try {
@@ -639,7 +695,23 @@ export class DomService {
   }
 
   private async sendCommand<T>(method: string, params: any): Promise<T> {
-    return chrome.debugger.sendCommand({ tabId: this.tabId }, method, params) as Promise<T>;
+    return this.client.sendCommand<T>(method, params);
+  }
+
+  /**
+   * Get page metadata via CDP Runtime.evaluate (platform-agnostic).
+   * Replaces chrome.tabs.get() which is only available in extension mode.
+   */
+  private async getPageMetadata(): Promise<{ url: string; title: string; width?: number; height?: number }> {
+    try {
+      const result = await this.client.sendCommand<any>('Runtime.evaluate', {
+        expression: '({ url: window.location.href, title: document.title, width: window.innerWidth, height: window.innerHeight })',
+        returnByValue: true
+      });
+      return result.result.value;
+    } catch {
+      return { url: '', title: '' };
+    }
   }
 
   private async sendCommandWithRetry<T>(method: string, params: any): Promise<T> {
@@ -654,9 +726,7 @@ export class DomService {
     throw new Error('Retry exhausted');
   }
 
-  private handleCdpEvent(source: chrome.debugger.Debuggee, method: string, params?: any): void {
-    if (source.tabId !== this.tabId) return;
-
+  private handleCdpEvent(method: string, params?: unknown): void {
     if (method === 'DOM.documentUpdated') {
       // Proactively rebuild snapshot for faster next access
       this.buildSnapshot().catch((error) => {
@@ -666,14 +736,14 @@ export class DomService {
     }
   }
 
-  // Handle CDP connection loss
+  // Handle CDP connection loss (extension-only, chrome.debugger.onDetach)
   private handleDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
     if (source.tabId !== this.tabId) return;
 
     console.error(`[DomService] CDP_CONNECTION_LOST: Debugger detached from tab ${this.tabId}. Reason: ${reason}`);
     this.isAttached = false;
     this.currentSnapshot = null;
-    DomService.instances.delete(this.tabId);
+    DomService.instances.delete(this.instanceKey);
 
     // If detach was unexpected (not user-initiated), log for debugging
     if (reason !== 'target_closed' && reason !== 'canceled_by_user') {

@@ -11,7 +11,8 @@
 import { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
 import type { ToolDefinition, Platform } from '../../tools/BaseTool';
-import { CDPDOMTool } from './CDPDOMTool';
+import { DesktopDOMTool } from './DesktopDOMTool';
+import { CDPNavigationTool } from './CDPNavigationTool';
 import { PlanningTool } from '../../tools/PlanningTool';
 import { WebSearchTool } from '../../tools/WebSearchTool';
 
@@ -91,11 +92,16 @@ export async function registerDesktopToolsImpl(
     });
   };
 
-  // Register CDP-based DOM tool for desktop
+  // Register DesktopDOMTool (replaces CDPDOMTool, uses shared DomService)
   if (isToolEnabled('dom_tool')) {
-    const cdpDomTool = new CDPDOMTool();
-    await cdpDomTool.initialize();
-    await registerTool('browser_dom', cdpDomTool);
+    const desktopDomTool = new DesktopDOMTool();
+    await registerTool('browser_dom', desktopDomTool);
+  }
+
+  // Register CDPNavigationTool (browser navigation via CDP)
+  if (isToolEnabled('navigation_tool')) {
+    const navTool = new CDPNavigationTool();
+    await registerTool('browser_navigation', navTool);
   }
 
   // Planning tool - always enabled (supports both platforms)
@@ -105,9 +111,4 @@ export async function registerDesktopToolsImpl(
   // Web search tool (supports both platforms)
   const webSearchTool = new WebSearchTool();
   await registerTool('web_search', webSearchTool);
-
-  // TODO: Add more desktop-specific tools:
-  // - TerminalTool (shell command execution)
-  // - FileSystemTool (file read/write)
-  // - CDPNavigationTool (browser navigation via CDP)
 }

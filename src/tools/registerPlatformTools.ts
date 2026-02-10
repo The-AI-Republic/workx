@@ -122,13 +122,10 @@ async function registerExtensionTools(
 export function getAvailableTools(platform: Platform): string[] {
   if (platform === 'desktop') {
     return [
-      'browser_dom', // CDP-based DOM tool
+      'browser_dom', // CDP-based DOM tool (DesktopDOMTool, shared DomService)
+      'browser_navigation', // CDP-based navigation tool
       'planning_tool',
       'web_search',
-      // Future:
-      // 'terminal',
-      // 'file_system',
-      // 'cdp_navigation',
     ];
   }
 

@@ -7,7 +7,10 @@
  * @module desktop/tools
  */
 
-export { CDPDOMTool } from './CDPDOMTool';
+export { DesktopDOMTool } from './DesktopDOMTool';
+export { CDPNavigationTool } from './CDPNavigationTool';
 export { NativeBrowserController } from './browser/NativeBrowserController';
 export { NativeCDPClient } from './browser/NativeCDPClient';
+export { CDPDebuggerClient } from './browser/CDPDebuggerClient';
+export { DesktopTabManager } from './browser/DesktopTabManager';
 export { ChromeLauncher } from './browser/ChromeLauncher';

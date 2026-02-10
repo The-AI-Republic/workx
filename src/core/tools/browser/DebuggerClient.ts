@@ -11,8 +11,8 @@
  * Target for debugger attachment
  */
 export type DebuggerTarget =
-  | { tabId: number } // Extension mode: Chrome tab ID
-  | { page: unknown }; // Desktop mode: puppeteer Page
+  | { tabId: number }        // Extension mode: Chrome tab ID
+  | { wsEndpoint: string };  // Desktop mode: native WebSocket CDP
 
 /**
  * CDP event callback
@@ -52,7 +52,7 @@ export type CDPDomain =
  * @example Desktop Mode
  * ```typescript
  * const client = new CDPDebuggerClient();
- * await client.attach({ page: puppeteerPage });
+ * await client.attach({ wsEndpoint: 'ws://localhost:9222/devtools/page/...' });
  *
  * const { root } = await client.sendCommand('DOM.getDocument', { depth: -1 });
  * ```
@@ -123,6 +123,13 @@ export interface DebuggerClient {
    * ```
    */
   onEvent(callback: CDPEventCallback): void;
+
+  /**
+   * Unsubscribe from CDP events
+   *
+   * @param callback - Previously registered callback to remove
+   */
+  offEvent(callback: CDPEventCallback): void;
 
   /**
    * Enable a CDP domain to receive events
