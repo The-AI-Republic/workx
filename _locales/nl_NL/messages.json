@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Algemene in-browser AI-agent voor werktaken"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API-sleutelconfiguratie"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API-sleutels worden versleuteld en lokaal in uw browser opgeslagen. Ze worden nooit naar externe servers verzonden, behalve voor API-aanroepen."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Actiedetails"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Wijziging toevoegen"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Geavanceerde configuratie"
   },
   "Advanced_Options": {
     "message": "Geavanceerde opties"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Agent-uitvoeringshulpmiddelen"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Toegestane origins"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Goedkeuringsgeschiedenis"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Beschikbaar:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Klik om een model te selecteren"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Opdracht"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Cachegegevens comprimeren om opslagruimte te besparen"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Configureer AI-model en API-sleutels"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Verbonden"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Context"
   },
   "Create_New_Tab": {
     "message": "Nieuw tabblad maken"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "Creditdetails"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Gegevens-extractietool"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Dagen tot vervaldatum"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Wijzigingen negeren"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Toon tokenverbruik (invoer-/uitvoertokens) bij voltooiing van taken"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Alle tools inschakelen"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Extensie inschakelen"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Integratie van Model Context Protocol-tools inschakelen (komt in een toekomstige update)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Webzoekfunctionaliteit voor de agent inschakelen"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Voer uw LLM API-sleutel in"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "Opdrachten uitvoeren"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Volledige toegang (gevaarlijk)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Algemeen"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "Meer info"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Lijst met toegestane origins (één per regel). Ondersteunt wildcards (*)."
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Credits laden..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Instellingen laden..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Inloggen"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Log in om gratis credits te krijgen"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Weinig credits over"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP Tools (Niet beschikbaar)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Beheer browsertabbladen (openen, sluiten, wisselen, opvragen)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Maximale cachegrootte (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maximale cachegrootte in megabytes (standaard: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximumtijd (in milliseconden) dat een tool kan draaien voordat er een time‑out optreedt (standaard: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Modelconfiguratie"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "Meer configuratie"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigeer door pagina's, klik op links, beheer browsernavigatie"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "Nieuw gesprek"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Nog geen goedkeuringsgeschiedenis."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Geen tabbladen beschikbaar"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Niet verbonden"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Aantal dagen voordat implementatiegegevens verlopen (standaard: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Open zijpaneel:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Parameterwijzigingen"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Voer pagina-acties uit (scrollen, screenshot, wachten)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Bevraag en bewerk de DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Snel starten"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Resterend:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "API-sleutel verwijderen"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Wijzigingen voor deze actie aanvragen"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met Browserx"
   },
   "Rollout_Expiration": {
     "message": "Uitrolvervaldatum"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandboxbeleid"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Opslaan..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Beveiliging & privacy"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selecteer uw voorkeurstaal voor de interface"
   },
-  "Send_the_message": {
-    "message": "Bericht verzenden"
-  },
   "Service_Tier": {
     "message": "Serviceklasse"
   },
   "Session": {
     "message": "Sessie"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Instellen wanneer rolloutgegevens moeten verlopen"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Stabiel"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Stop de huidige taakuitvoering"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Tabblad-hulpmiddel"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminal"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Testen..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "De agent gebruikt momenteel de backend‑modus. LLM‑verzoeken worden via de AI Republic‑server geleid. Uw gesprekken worden veilig verwerkt via onze infrastructuur."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live voor gecachte items in seconden (standaard: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Zijpaneel tonen/verbergen"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Tool"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Niet-opgeslagen wijzigingen"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "Updatekanaal"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "Gebruikerscentrum"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Door gebruiker goedgekeurde actie"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "Chatgeschiedenis bekijken"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visuele analyse van paginainhoud en -indeling"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Je beslissing"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

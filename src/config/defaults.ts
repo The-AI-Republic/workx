@@ -3,7 +3,7 @@
  */
 
 import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig } from './types';
-import defaultProviders from '../models/providers/default.json';
+import defaultProviders from '../core/models/providers/default.json';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,

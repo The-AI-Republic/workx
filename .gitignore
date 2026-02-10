@@ -15,6 +15,8 @@ coverage/
 .env
 .env.local
 .env.*.local
+src/extension/.env
+src/desktop/.env
 
 # Editor directories and files
 .vscode/*
@@ -22,7 +24,6 @@ coverage/
 .idea/
 .claude/
 .specify/
-specs/
 CLAUDE.md
 *.suo
 *.ntvs*
@@ -58,7 +59,6 @@ tmp/
 # Claude Code
 .claude/
 .specify/
-specs/
 
 # Chrome extension specific
 *.crx
@@ -67,6 +67,17 @@ specs/
 
 # Vitest
 .vitest/
+
+# Tauri / Desktop App (Pi)
+tauri/target/
+tauri/Cargo.lock
+tauri/gen/
+*.AppImage
+*.deb
+*.dmg
+*.msi
+*.exe
+!*.exe.manifest
 
 # Source maps (uncomment if you don't want to commit them)
 # *.map

@@ -3,10 +3,10 @@
  * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
  */
 
-import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from '../protocol/types';
-import type { Event, EventMsg } from '../protocol/events';
+import type { Submission, Op, InputItem, AskForApproval, SandboxPolicy, ReasoningEffortConfig, ReasoningSummaryConfig, ReviewDecision } from './protocol/types';
+import type { Event, EventMsg } from './protocol/events';
 import type { IConfigChangeEvent, IToolsConfig, IModelConfig } from '../config/types';
-import type { AgentReadyState } from '../models/types/Auth';
+import type { AgentReadyState } from './models/types/Auth';
 import type { InitialHistory } from './session/state/types';
 import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
@@ -14,20 +14,28 @@ import { TurnContext } from './TurnContext';
 import { ApprovalManager } from './ApprovalManager';
 import { DiffTracker } from './DiffTracker';
 import { ToolRegistry } from '../tools/ToolRegistry';
-import { ModelClientFactory } from '../models/ModelClientFactory';
+import { ModelClientFactory } from './models/ModelClientFactory';
 import { UserNotifier } from './UserNotifier';
 import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
-import { registerTools } from '../tools';
+import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
 
 /**
  * Main agent class managing the submission and event queues
  * Enhanced with AgentTask integration for coordinated task execution
+ * Feature 015: Now supports agentId for multi-agent instance tracking
  */
+/**
+ * Event dispatcher function type
+ * Used to route events to UI channels without hardcoding chrome.runtime
+ */
+export type EventDispatcher = (event: Event) => void | Promise<void>;
+
 export class BrowserxAgent {
+  private _agentId: string;
   private nextId: number = 1;
   private submissionQueue: Submission[] = [];
   private eventQueue: Event[] = [];
@@ -40,8 +48,12 @@ export class BrowserxAgent {
   private modelClientFactory: ModelClientFactory;
   private userNotifier: UserNotifier;
   private messageRouter: MessageRouter;
+  private eventDispatcher: EventDispatcher | null = null;
 
-  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory) {
+  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string) {
+    // Generate or use provided agentId for multi-instance tracking (Feature 015)
+    this._agentId = agentId ?? `agent_${uuidv4()}`;
+
     // Config must be provided (use await AgentConfig.getInstance() if needed)
     this.config = config;
     this.messageRouter = router;
@@ -63,6 +75,14 @@ export class BrowserxAgent {
 
     // Subscribe to config changes
     this.setupConfigSubscriptions();
+  }
+
+  /**
+   * Get the unique agent ID for this instance
+   * Used for multi-agent instance tracking (Feature 015)
+   */
+  get agentId(): string {
+    return this._agentId;
   }
 
   /**
@@ -107,7 +127,8 @@ export class BrowserxAgent {
     }
 
     // Register browser automation tools (pass model data for feature filtering)
-    await registerTools(this.toolRegistry, this.config.getToolsConfig(), {
+    // Uses registerPlatformTools to filter tools based on current platform (extension vs desktop)
+    await registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
       name: modelData.model.name,
       supportsImage: modelData.model.supportsImage
     });
@@ -881,7 +902,22 @@ export class BrowserxAgent {
   }
 
   /**
+   * Set the event dispatcher
+   *
+   * This MUST be called before using the agent. The dispatcher routes events
+   * to UI channels via ChannelManager. This makes BrowserxAgent platform-agnostic.
+   *
+   * @param dispatcher - Function to dispatch events to UI channels
+   */
+  setEventDispatcher(dispatcher: EventDispatcher): void {
+    this.eventDispatcher = dispatcher;
+  }
+
+  /**
    * Emit an event to the event queue
+   *
+   * Events are routed through the injected event dispatcher to ChannelManager,
+   * which then dispatches to the appropriate channel (extension, desktop, etc.)
    */
   private emitEvent(msg: EventMsg): void {
     const event: Event = {
@@ -894,14 +930,15 @@ export class BrowserxAgent {
     // Process event for user notifications
     this.userNotifier.processEvent(event);
 
-    // Notify listeners via Chrome runtime if available
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'EVENT',
-        payload: event,
-      }).catch(() => {
-        // Ignore errors if no listeners
-      });
+    // Dispatch event through the channel system
+    if (this.eventDispatcher) {
+      try {
+        this.eventDispatcher(event);
+      } catch (error) {
+        console.error('[BrowserxAgent] Event dispatcher error:', error);
+      }
+    } else {
+      console.warn('[BrowserxAgent] No event dispatcher set - event not delivered to UI');
     }
   }
 

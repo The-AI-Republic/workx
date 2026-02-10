@@ -13,7 +13,7 @@
  * Complexity: O(n * m) where n = union size, m = average pieces after subtraction
  */
 
-import { Rect } from '../../types';
+import type { Rect } from '../../types';
 
 export class RectUnion {
   private rects: Rect[] = [];

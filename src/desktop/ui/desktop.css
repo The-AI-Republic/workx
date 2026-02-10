@@ -1,0 +1,171 @@
+/**
+ * Desktop-specific styles
+ *
+ * Extends the sidepanel styles for desktop application.
+ */
+
+/* Desktop window styling */
+body.desktop-mode {
+  /* Use full viewport */
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+
+  /* Desktop-specific background with subtle pattern */
+  background: var(--bg-primary, #0a0a0a);
+}
+
+/* Desktop container */
+body.desktop-mode #app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop title bar area (for custom window controls) */
+body.desktop-mode .desktop-titlebar {
+  -webkit-app-region: drag;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--bg-secondary, #1a1a1a);
+  border-bottom: 1px solid var(--border-color, #333);
+}
+
+body.desktop-mode .desktop-titlebar-title {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  font-weight: 500;
+}
+
+body.desktop-mode .desktop-titlebar-controls {
+  -webkit-app-region: no-drag;
+  display: flex;
+  gap: 8px;
+}
+
+body.desktop-mode .desktop-titlebar-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+body.desktop-mode .desktop-titlebar-button.close {
+  background: #ff5f57;
+}
+
+body.desktop-mode .desktop-titlebar-button.minimize {
+  background: #ffbd2e;
+}
+
+body.desktop-mode .desktop-titlebar-button.maximize {
+  background: #28c840;
+}
+
+/* Adjust main content for desktop */
+body.desktop-mode .app-container {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Desktop-specific scrollbar styling */
+body.desktop-mode ::-webkit-scrollbar {
+  width: 10px;
+}
+
+body.desktop-mode ::-webkit-scrollbar-track {
+  background: var(--bg-secondary, #1a1a1a);
+}
+
+body.desktop-mode ::-webkit-scrollbar-thumb {
+  background: var(--border-color, #333);
+  border-radius: 5px;
+}
+
+body.desktop-mode ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary, #555);
+}
+
+/* Desktop notification styling */
+body.desktop-mode .desktop-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  background: var(--bg-secondary, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Desktop status bar */
+body.desktop-mode .desktop-statusbar {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--bg-secondary, #1a1a1a);
+  border-top: 1px solid var(--border-color, #333);
+  font-size: 11px;
+  color: var(--text-tertiary, #666);
+}
+
+body.desktop-mode .desktop-statusbar-left,
+body.desktop-mode .desktop-statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+body.desktop-mode .desktop-statusbar-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+body.desktop-mode .desktop-statusbar-indicator::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color, #4CAF50);
+}
+
+body.desktop-mode .desktop-statusbar-indicator.disconnected::before {
+  background: #ff5f57;
+}
+
+body.desktop-mode .desktop-statusbar-indicator.connecting::before {
+  background: #ffbd2e;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

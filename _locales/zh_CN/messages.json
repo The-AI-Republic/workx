@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "用于工作任务的通用浏览器内 AI 智能体"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API 密钥配置"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API 密钥在浏览器中加密并本地存储。除 API 调用外，它们绝不会发送到外部服务器。"
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "操作详情"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "添加修改"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "高级设置"
   },
   "Advanced_Options": {
     "message": "高级选项"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "智能体执行工具"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "允许的来源"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "审批历史"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "请求 Browserx 从任意网页提取结构化数据"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "可用："
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "点击工具栏中的 Browserx 图标或按 Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "点击以选择模型"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "命令"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "压缩缓存数据以节省存储空间"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "配置 AI 模型和 API 密钥"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "已连接"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "上下文"
   },
   "Create_New_Tab": {
     "message": "新建标签页"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "积分详情"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "数据提取工具"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "距到期天数"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "放弃更改"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "任务完成时显示令牌消耗（输入/输出令牌）"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "启用所有工具"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "启用扩展"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "启用模型上下文协议工具集成（将在后续更新中提供）"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "启用缓存，通过存储常访问数据提升性能"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "为代理启用网络搜索功能"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "输入您的 LLM API 密钥"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "执行命令"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "完全访问（危险）"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "通用"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "了解更多"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "允许的来源列表（每行一个）。支持通配符 (*)。"
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "加载积分..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "加载设置..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "登录"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "登录获取免费积分"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "剩余积分较少"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP 工具（不可用）"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "管理浏览器标签页（打开、关闭、切换、查询）"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "最大缓存大小（MB）"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "最大缓存大小（单位：兆字节，默认：100）"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "工具运行超时的最长时间（单位：毫秒，默认：30000）"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "模型配置"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "更多配置"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "页面导航，点击链接，处理导航"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "新会话"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "暂无审批记录。"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "暂无可用标签页"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "未连接"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "数据过期前的天数（默认：60）"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "打开侧边栏："
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "参数修改"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "执行页面操作（滚动、截图、等待）"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "查询并操作 DOM（文档对象模型）"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "快速入门"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "剩余："
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "移除 API Key"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "请求对该操作进行更改"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "右键单击任意文本，以使用 Browserx 进行解释或改进"
   },
   "Rollout_Expiration": {
     "message": "设置发布过期时间"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "沙盒策略"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "保存中..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "安全与隐私"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "选择界面的首选语言"
   },
-  "Send_the_message": {
-    "message": "发送消息"
-  },
   "Service_Tier": {
     "message": "服务级别"
   },
   "Session": {
     "message": "会话"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "设置发布数据的过期时间"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "稳定"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "停止当前任务运行"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "标签页工具"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "终端"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "测试中…"
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "代理当前正使用后端模式。LLM 请求将通过 AI Republic 服务器路由。您的对话将通过我们的基础设施安全处理。"
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "缓存项的生存时间（秒）（默认：3600）"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "切换侧边栏"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "工具"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "未保存的更改"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "更新渠道"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "用户中心"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "用户已批准的操作"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "查看聊天记录"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "页面内容和布局的可视化分析"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "您的决定"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

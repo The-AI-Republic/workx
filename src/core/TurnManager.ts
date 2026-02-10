@@ -6,17 +6,17 @@
 import { Session } from './Session';
 import type { ToolDefinition } from '../tools/BaseTool';
 import { TurnContext } from './TurnContext';
-import type { CompletionRequest, CompletionResponse } from '../models/ModelClient';
+import type { CompletionRequest, CompletionResponse } from './models/ModelClient';
 import { loadPrompt, loadUserInstructions } from './PromptLoader';
-import type { EventMsg, TokenUsage, StreamErrorEvent } from '../protocol/events';
-import type { Event, InputItem } from '../protocol/types';
-import type { ResponseEvent } from '../models/types/ResponseEvent';
-import type { Prompt as ModelPrompt } from '../models/types/ResponsesAPI';
+import type { EventMsg, TokenUsage, StreamErrorEvent } from './protocol/events';
+import type { Event, InputItem } from './protocol/types';
+import type { ResponseEvent } from './models/types/ResponseEvent';
+import type { Prompt as ModelPrompt } from './models/types/ResponsesAPI';
 import { v4 as uuidv4 } from 'uuid';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
-import type { ResponseItem } from '../protocol/types';
+import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
 
 /**

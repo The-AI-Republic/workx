@@ -221,6 +221,7 @@ export class WebScrapingTool extends BaseTool {
         category: 'browser',
         metadata: {
           permissions: ['tabs', 'scripting', 'activeTab'],
+          platforms: ['extension'],
         },
       }
     );

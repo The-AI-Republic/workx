@@ -21,7 +21,15 @@ import {
   extractStoredConfig
 } from './defaults';
 import { validateConfig, validateModelConfig, validateProviderConfig, detectProviderFromKey } from './validators';
-import { encryptApiKey, decryptApiKey } from '../utils/encryption';
+import {
+  getCredentialStore,
+  isCredentialStoreInitialized,
+  type CredentialStore
+} from '../core/storage/CredentialStore';
+
+// Credential store constants
+const CREDENTIAL_SERVICE = 'browserx';
+const CREDENTIAL_ACCOUNT_PREFIX = 'provider-apikey-';
 
 export class AgentConfig implements IConfigService {
   private static instance: AgentConfig | null = null;
@@ -359,10 +367,20 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
+   * Get the credential store, with fallback for when not initialized
+   */
+  private getCredentials(): CredentialStore | null {
+    if (isCredentialStoreInitialized()) {
+      return getCredentialStore();
+    }
+    return null;
+  }
+
+  /**
    * Set API key for a specific provider
    * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
-   * @param apiKey - Unencrypted API key (will be encrypted before storage)
-   * @returns Provider configuration with encrypted API key
+   * @param apiKey - API key (stored securely in credential store)
+   * @returns Provider configuration
    * @throws Error if provider is unknown
    * @example
    * await agentConfig.setProviderApiKey('xai', 'xai-abc123...');
@@ -377,8 +395,14 @@ export class AgentConfig implements IConfigService {
       throw new Error(`Provider not found: ${providerId}`);
     }
 
-    // Encrypt and store API key
-    provider.apiKey = encryptApiKey(apiKey);
+    // Store API key in credential store (OS keychain on desktop, chrome.storage on extension)
+    const credentials = this.getCredentials();
+    if (credentials) {
+      await credentials.set(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`, apiKey);
+    }
+
+    // Mark that this provider has an API key configured (without storing the actual key)
+    provider.apiKey = '[SECURED]';
     this.currentConfig.providers[providerId] = provider;
 
     await this.storage.set(extractStoredConfig(this.currentConfig));
@@ -388,10 +412,9 @@ export class AgentConfig implements IConfigService {
   }
 
   /**
-   * Get decrypted API key for a specific provider
+   * Get API key for a specific provider
    * @param providerId - Provider identifier (e.g., 'openai', 'xai', 'anthropic', 'google-ai-studio')
-   * @returns Decrypted API key or null if not configured
-   * @remarks Includes backward compatibility fallback to auth.apiKey
+   * @returns API key or null if not configured
    * @example
    * const apiKey = await agentConfig.getProviderApiKey('openai');
    * if (apiKey) {
@@ -401,12 +424,13 @@ export class AgentConfig implements IConfigService {
   async getProviderApiKey(providerId: string): Promise<string | null> {
     this.ensureInitialized();
 
-    // Use static import for encryption utilities
-
-    // Check provider-specific key first
-    const provider = this.currentConfig.providers[providerId];
-    if (provider?.apiKey) {
-      return decryptApiKey(provider.apiKey);
+    // Get API key from credential store
+    const credentials = this.getCredentials();
+    if (credentials) {
+      const apiKey = await credentials.get(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`);
+      if (apiKey) {
+        return apiKey;
+      }
     }
 
     return null;
@@ -428,7 +452,13 @@ export class AgentConfig implements IConfigService {
       throw new Error(`Provider not found: ${providerId}`);
     }
 
-    // Clear the API key
+    // Delete from credential store
+    const credentials = this.getCredentials();
+    if (credentials) {
+      await credentials.delete(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`);
+    }
+
+    // Clear the marker
     provider.apiKey = '';
     this.currentConfig.providers[providerId] = provider;
 

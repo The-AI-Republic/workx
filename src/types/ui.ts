@@ -5,7 +5,7 @@
  * into UI-ready representations for the side panel display.
  */
 
-import type { Event } from '../protocol/types';
+import type { Event } from '../core/protocol/types';
 
 // ============================================================================
 // Core Event Display Types

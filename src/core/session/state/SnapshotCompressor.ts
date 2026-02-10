@@ -21,7 +21,7 @@
  * ```
  */
 
-import type { ResponseItem } from '../../../protocol/types';
+import type { ResponseItem } from '../../protocol/types';
 
 /**
  * Placeholder message for compressed snapshots

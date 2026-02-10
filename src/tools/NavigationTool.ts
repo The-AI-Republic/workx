@@ -118,6 +118,7 @@ export class NavigationTool extends BaseTool {
       metadata: {
         capabilities: ['page_navigation', 'history_management', 'load_monitoring'],
         permissions: ['tabs', 'history', 'webNavigation'],
+        platforms: ['extension'],
       },
     }
   );

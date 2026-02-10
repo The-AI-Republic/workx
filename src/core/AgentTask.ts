@@ -7,8 +7,8 @@
  */
 
 import { TaskRunner } from './TaskRunner';
-import type { InputItem, ResponseItem } from '../protocol/types';
-import { getResponseItemContent } from '../protocol/types';
+import type { InputItem, ResponseItem } from './protocol/types';
+import { getResponseItemContent } from './protocol/types';
 import type { Session } from './Session';
 import type { TurnContext } from './TurnContext';
 import type { TurnManager } from './TurnManager';

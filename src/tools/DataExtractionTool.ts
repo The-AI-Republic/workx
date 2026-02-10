@@ -21,48 +21,59 @@ export class DataExtractionTool extends BaseTool {
 
     // Initialize tool definition
     this.toolDefinition = {
-      name: 'data_extraction',
-      description: 'Extract structured data from web pages using patterns and semantic analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          mode: {
-            type: 'string',
-            description: 'Extraction mode: semantic, structured, pattern, table, or auto',
-            enum: ['semantic', 'structured', 'pattern', 'table', 'auto']
-          },
-          patterns: {
-            type: 'array',
-            description: 'Patterns to match for extraction',
-            items: {
-              type: 'string'
+      type: 'function' as const,
+      function: {
+        name: 'data_extraction',
+        description: 'Extract structured data from web pages using patterns and semantic analysis',
+        strict: false,
+        parameters: {
+          type: 'object',
+          properties: {
+            mode: {
+              type: 'string',
+              description: 'Extraction mode: semantic, structured, pattern, table, or auto',
+              enum: ['semantic', 'structured', 'pattern', 'table', 'auto']
+            },
+            patterns: {
+              type: 'array',
+              description: 'Patterns to match for extraction',
+              items: {
+                type: 'string'
+              }
+            },
+            selectors: {
+              type: 'object',
+              description: 'CSS selectors or XPath for targeted extraction'
+            },
+            schema: {
+              type: 'object',
+              description: 'Expected data schema. Must be a valid JSON schema object defining the structure of the data to extract.'
+            },
+            format: {
+              type: 'string',
+              description: 'Export format: json, csv, xml, or markdown',
+              enum: ['json', 'csv', 'xml', 'markdown']
+            },
+            tableSelector: {
+              type: 'string',
+              description: 'CSS selector for table extraction'
+            },
+            context: {
+              type: 'string',
+              description: 'Additional context for extraction'
             }
           },
-          selectors: {
-            type: 'object',
-            description: 'CSS selectors or XPath for targeted extraction'
-          },
-          schema: {
-            type: 'object',
-            description: 'Expected data schema. Must be a valid JSON schema object defining the structure of the data to extract.'
-          },
-          format: {
-            type: 'string',
-            description: 'Export format: json, csv, xml, or markdown',
-            enum: ['json', 'csv', 'xml', 'markdown']
-          },
-          tableSelector: {
-            type: 'string',
-            description: 'CSS selector for table extraction'
-          },
-          context: {
-            type: 'string',
-            description: 'Additional context for extraction'
-          }
-        },
-        required: [],
-        additionalProperties: false
-      }
+          required: [],
+          additionalProperties: false
+        }
+      },
+      metadata: {
+        capabilities: ['data_extraction', 'pattern_matching', 'semantic_analysis', 'table_extraction'],
+        permissions: ['activeTab', 'scripting'],
+        platforms: ['extension'] as const,
+      },
+      category: 'data',
+      version: '1.0.0',
     };
   }
 

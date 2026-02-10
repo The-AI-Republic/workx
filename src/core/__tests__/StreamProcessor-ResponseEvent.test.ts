@@ -5,7 +5,7 @@
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { StreamProcessor } from '../StreamProcessor';
-import type { ResponseEvent } from '../../models/types/ResponseEvent';
+import type { ResponseEvent } from '../models/types/ResponseEvent';
 
 describe('StreamProcessor ResponseEvent Integration', () => {
   let streamProcessor: StreamProcessor;

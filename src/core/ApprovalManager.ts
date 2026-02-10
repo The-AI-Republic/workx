@@ -3,8 +3,8 @@
  * Based on contract from approval-manager.test.ts
  */
 
-import type { ReviewDecision } from '../protocol/types';
-import type { Event } from '../protocol/types';
+import type { ReviewDecision } from './protocol/types';
+import type { Event } from './protocol/types';
 import type { AgentConfig } from '../config/AgentConfig';
 
 export interface ApprovalRequest {

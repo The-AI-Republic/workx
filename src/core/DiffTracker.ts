@@ -3,7 +3,7 @@
  * Based on contract from diff-tracker.test.ts
  */
 
-import type { Event } from '../protocol/types';
+import type { Event } from './protocol/types';
 
 export interface AddChangeRequest {
   changeId: string;

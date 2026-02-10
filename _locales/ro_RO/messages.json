@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Agent AI general în browser pentru sarcini de lucru"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Configurare cheie API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Cheile API sunt criptate și stocate local în browserul tău. Nu sunt niciodată trimise către servere externe, cu excepția apelurilor API."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Detalii acțiune"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Adaugă modificare"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Configurare avansată"
   },
   "Advanced_Options": {
     "message": "Opțiuni avansate"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Instrumente de execuție pentru agent"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Origini autorizate"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Istoric aprobare"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Solicită Browserx să extragă date structurate din orice pagină web"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Disponibil:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Fă clic pe pictograma Browserx din bara de instrumente sau apasă Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Fă clic pentru a selecta un model"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Comandă"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Comprimă datele în cache pentru a economisi spațiu de stocare"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Configurează modelul AI și cheile API"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Conectat"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Context"
   },
   "Create_New_Tab": {
     "message": "Creează filă nouă"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "Detalii credit"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Instrument de extragere a datelor"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Zile până la expirare"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Renunță la modificări"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Afișează consumul de tokeni (tokeni de intrare/ieșire) la finalizarea sarcinilor"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Activează toate instrumentele"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Activează extensia"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Activează integrarea instrumentelor Model Context Protocol (va veni în viitoarea actualizare)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activează caching-ul pentru a îmbunătăți performanța prin stocarea datelor accesate frecvent"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Activează căutarea web pentru agent"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Introduceți cheia API LLM"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "Execută comenzi"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Acces complet (Periculos)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "General"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "Află mai multe"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Listă de origini permise (câte una pe linie). Suportă wildcard-uri (*)"
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Se încarcă creditele..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Se încarcă setările..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Autentificare"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Autentificați-vă pentru a obține credite gratuite"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Credite aproape epuizate"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "Instrumente MCP (Indisponibile)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Gestionare file de browser (deschidere, închidere, comutare, interogare)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Dimensiune maximă a cache-ului (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Dimensiunea maximă a cache-ului în megabytes (implicit: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Timp maxim (în milisecunde) în care un instrument poate rula înainte de timeout (implicit: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Configurare model"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "Configurare suplimentară"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigare pagini, clic pe linkuri, gestionare navigare în browser"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "Conversație nouă"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Încă nu există istoric de aprobare."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Nu există file disponibile"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Neconectat"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Număr de zile înainte ca datele de lansare să expire (implicit: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Deschide panoul lateral:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Modificări de parametri"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Execută acțiuni pe pagină (derulare, captură de ecran, așteptare)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Interoghează și manipulează DOM-ul (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Start rapid"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Rămase:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Elimină cheia API"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Solicită modificări pentru această acțiune"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Fă clic dreapta pe orice text pentru a-l explica sau îmbunătăți cu Browserx"
   },
   "Rollout_Expiration": {
     "message": "Expirarea fazei de lansare"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Politica Sandbox"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Se salvează..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Securitate și confidențialitate"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selectați limba preferată pentru interfață"
   },
-  "Send_the_message": {
-    "message": "Trimite mesajul"
-  },
   "Service_Tier": {
     "message": "Nivel de serviciu"
   },
   "Session": {
     "message": "Sesiune"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Stabilește când datele din faza de lansare ar trebui să expire"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Oprește rularea curentă a sarcinii"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Instrument de file"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminal"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Se testează..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agentul folosește în prezent modul backend. Cererile LLM vor fi direcționate prin serverul AI Republic. Conversațiile tale sunt procesate în mod securizat prin infrastructura noastră."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Timpul de viață pentru elementele cache, în secunde (implicit: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Comută panoul lateral"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Instrument"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Modificări nesalvate"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "Canal de actualizare"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "Centru utilizator"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Acțiune aprobată de utilizator"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "Vizualizează istoricul conversațiilor"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Analiză vizuală a conținutului și aspectului paginii"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Decizia dvs."
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

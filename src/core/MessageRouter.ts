@@ -3,9 +3,9 @@
  * Handles message passing between background, content scripts, and side panel
  */
 
-import type { Submission, Event } from '../protocol/types';
-import type { EventMsg } from '../protocol/events';
-import type { ResponseEvent } from '../models/types/ResponseEvent';
+import type { Submission, Event } from './protocol/types';
+import type { EventMsg } from './protocol/events';
+import type { ResponseEvent } from './models/types/ResponseEvent';
 
 /**
  * Message types for Chrome extension communication
@@ -67,16 +67,59 @@ export enum MessageType {
   RESUME_SESSION = 'RESUME_SESSION',
   RESUME_SESSION_COMPLETE = 'RESUME_SESSION_COMPLETE',
 
+  // Agent control
+  INTERRUPT = 'STOP_AGENT_SESSION', // Stop/interrupt the running agent
+
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
   AGENT_REINITIALIZED = 'AGENT_REINITIALIZED',
 
   // Authentication management
   INIT_AUTH = 'INIT_AUTH',
+
+  // MCP Server Integration messages
+  MCP_GET_SERVERS = 'MCP_GET_SERVERS',
+  MCP_ADD_SERVER = 'MCP_ADD_SERVER',
+  MCP_UPDATE_SERVER = 'MCP_UPDATE_SERVER',
+  MCP_REMOVE_SERVER = 'MCP_REMOVE_SERVER',
+  MCP_CONNECT = 'MCP_CONNECT',
+  MCP_DISCONNECT = 'MCP_DISCONNECT',
+  MCP_GET_CONNECTION = 'MCP_GET_CONNECTION',
+  MCP_GET_CONNECTIONS = 'MCP_GET_CONNECTIONS',
+  MCP_GET_ALL_TOOLS = 'MCP_GET_ALL_TOOLS',
+  MCP_EXECUTE_TOOL = 'MCP_EXECUTE_TOOL',
+  MCP_GET_ALL_RESOURCES = 'MCP_GET_ALL_RESOURCES',
+  MCP_READ_RESOURCE = 'MCP_READ_RESOURCE',
+
+  // Task Scheduler messages
+  SCHEDULER_CREATE_DRAFT_TASK = 'SCHEDULER_CREATE_DRAFT_TASK',
+  SCHEDULER_SCHEDULE_TASK = 'SCHEDULER_SCHEDULE_TASK',
+  SCHEDULER_TRIGGER_TASK = 'SCHEDULER_TRIGGER_TASK',
+  SCHEDULER_CANCEL_TASK = 'SCHEDULER_CANCEL_TASK',
+  SCHEDULER_COMPLETE_TASK = 'SCHEDULER_COMPLETE_TASK',
+  SCHEDULER_FAIL_TASK = 'SCHEDULER_FAIL_TASK',
+  SCHEDULER_PAUSE_QUEUE = 'SCHEDULER_PAUSE_QUEUE',
+  SCHEDULER_RESUME_QUEUE = 'SCHEDULER_RESUME_QUEUE',
+  SCHEDULER_GET_DRAFT_TASKS = 'SCHEDULER_GET_DRAFT_TASKS',
+  SCHEDULER_GET_SCHEDULED_TASKS = 'SCHEDULER_GET_SCHEDULED_TASKS',
+  SCHEDULER_GET_MISSED_TASKS = 'SCHEDULER_GET_MISSED_TASKS',
+  SCHEDULER_GET_QUEUE = 'SCHEDULER_GET_QUEUE',
+  SCHEDULER_GET_ARCHIVED_TASKS = 'SCHEDULER_GET_ARCHIVED_TASKS',
+  SCHEDULER_GET_STATE = 'SCHEDULER_GET_STATE',
+  SCHEDULER_GET_TASK_DETAILS = 'SCHEDULER_GET_TASK_DETAILS',
+  SCHEDULER_TASK_STATUS_CHANGED = 'SCHEDULER_TASK_STATUS_CHANGED',
+  SCHEDULER_STATE_CHANGED = 'SCHEDULER_STATE_CHANGED',
+  SCHEDULER_EVENT = 'SCHEDULER_EVENT', // Unified event for real-time updates (T020)
+
+  // Session management messages (Feature 015: Multi-Agent Instances)
+  SESSION_LIST = 'SESSION_LIST', // Get list of all sessions
+  SESSION_GET_ACTIVE_COUNT = 'SESSION_GET_ACTIVE_COUNT', // Get active session count
+  SESSION_EVENT = 'SESSION_EVENT', // Session lifecycle events (created, stateChanged, terminated)
 }
 
 /**
  * Chrome extension message format
+ * Feature 015: Added sessionId for multi-agent routing
  */
 export interface ExtensionMessage {
   type: MessageType;
@@ -85,6 +128,8 @@ export interface ExtensionMessage {
   source?: 'background' | 'content' | 'sidepanel' | 'popup';
   tabId?: number;
   timestamp?: number;
+  /** Feature 015: Target session ID for routing (defaults to primary if omitted) */
+  sessionId?: string;
 }
 
 /**

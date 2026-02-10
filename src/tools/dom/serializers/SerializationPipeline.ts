@@ -9,15 +9,15 @@
  * Core pipeline orchestrator
  */
 
-import { VirtualNode } from '../types';
+import type { VirtualNode } from '../types';
 import { CompactionMetrics } from './CompactionMetrics';
 import { IdRemapper } from './optimizers/IdRemapper';
-import {
+import type {
   PipelineConfig,
   SerializationResult,
-  DEFAULT_PIPELINE_CONFIG,
   IIdRemapper
 } from '../types';
+import { DEFAULT_PIPELINE_CONFIG } from '../types';
 
 // Import filters
 import { VisibilityFilter } from './filters/VisibilityFilter';

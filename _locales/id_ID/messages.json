@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Agen AI serbaguna dalam peramban untuk tugas pekerjaan"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Konfigurasi Kunci API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Kunci API dienkripsi dan disimpan secara lokal di peramban Anda. Kunci tidak pernah dikirim ke server eksternal kecuali untuk panggilan API."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Detail Aksi"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Tambah Modifikasi"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Konfigurasi Lanjutan"
   },
   "Advanced_Options": {
     "message": "Opsi Lanjutan"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Alat Eksekusi Agen"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Asal yang Diizinkan"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Riwayat Persetujuan"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Minta Browserx mengekstrak data terstruktur dari halaman web mana pun"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Tersedia:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klik ikon Browserx di bilah alat atau tekan Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Klik untuk memilih model"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Perintah"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Kompres data cache untuk menghemat ruang penyimpanan"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Konfigurasi model AI dan kunci API"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Terhubung"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Konteks"
   },
   "Create_New_Tab": {
     "message": "Buat Tab Baru"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "Detail Kredit"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Alat Ekstraksi Data"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Hari hingga kedaluwarsa"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Buang Perubahan"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Tampilkan konsumsi token (token input/output) saat tugas selesai"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Aktifkan Semua Alat"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Aktifkan Ekstensi"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Aktifkan integrasi alat Model Context Protocol (Akan hadir dalam pembaruan mendatang)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Aktifkan caching untuk meningkatkan kinerja dengan menyimpan data yang sering diakses"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Aktifkan kemampuan pencarian web untuk agen"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Masukkan kunci API LLM Anda"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "Jalankan Perintah"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Akses Penuh (Berbahaya)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Umum"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "Pelajari lebih lanjut"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Daftar asal yang diizinkan (satu per baris). Mendukung karakter wildcard (*)."
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Memuat kredit..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Memuat pengaturan..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Masuk"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Masuk untuk mendapatkan kredit gratis"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Kredit tersisa sedikit"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "Alat MCP (Tidak Tersedia)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Kelola tab browser (buka, tutup, ganti, kueri)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Ukuran Cache Maks (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Ukuran cache maksimum dalam megabyte (default: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Waktu maksimum (dalam milidetik) sebuah alat dapat berjalan sebelum timeout (default: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Konfigurasi Model"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "Konfigurasi Lainnya"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigasi halaman, klik tautan, kelola navigasi browser"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "Percakapan Baru"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Belum ada riwayat persetujuan."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Tidak ada tab yang tersedia"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Tidak Terhubung"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Jumlah hari sebelum data penerapan kedaluwarsa (default: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Buka Panel Samping:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Modifikasi Parameter"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Lakukan aksi halaman (gulir, tangkapan layar, tunggu)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Kueri dan manipulasi DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Mulai Cepat"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Sisa:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Hapus Kunci API"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Minta perubahan pada tindakan ini"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Klik kanan pada teks apa pun untuk menjelaskan atau memperbaikinya dengan Browserx"
   },
   "Rollout_Expiration": {
     "message": "Kedaluwarsa Peluncuran"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Kebijakan Sandbox"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Menyimpan..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Keamanan & Privasi"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Pilih bahasa antarmuka yang Anda inginkan"
   },
-  "Send_the_message": {
-    "message": "Kirim pesan"
-  },
   "Service_Tier": {
     "message": "Tingkat Layanan"
   },
   "Session": {
     "message": "Sesi"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Atur kapan data rollout harus berakhir"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Hentikan tugas yang berjalan"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Alat Tab"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminal"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Menguji..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agen saat ini menggunakan mode backend. Permintaan LLM akan diarahkan melalui server AI Republic. Percakapan Anda diproses secara aman melalui infrastruktur kami."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Waktu hidup untuk item cache dalam detik (default: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Buka/Tutup Panel Samping"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Alat"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Perubahan Belum Disimpan"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "Kanal Pembaruan"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "Pusat Pengguna"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Tindakan disetujui pengguna"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "Lihat Riwayat Obrolan"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Analisis visual konten dan tata letak halaman"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Keputusan Anda"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

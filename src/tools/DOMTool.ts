@@ -213,6 +213,7 @@ Snapshots only return elements visible in the current viewport (inViewport: true
           'incremental_virtual_dom_updates',
         ],
         permissions: ['activeTab', 'scripting', 'tabs'],
+        platforms: ['extension'],
       },
     }
   );

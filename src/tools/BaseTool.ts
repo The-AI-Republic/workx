@@ -45,12 +45,33 @@ export interface FreeformTool {
 }
 
 /**
+ * Platform type for tool registration
+ */
+export type Platform = 'extension' | 'desktop';
+
+/**
+ * Tool metadata for capabilities, permissions, and platform support
+ */
+export interface ToolMetadata {
+  capabilities?: string[];
+  permissions?: string[];
+  platforms?: Platform[];
+  [key: string]: unknown;
+}
+
+/**
  * Tool definition - union type
  *
  * When serialized as JSON, this produces a valid "Tool" in the OpenAI Responses API.
  */
 export type ToolDefinition =
-  | { type: 'function'; function: ResponsesApiTool }
+  | {
+      type: 'function';
+      function: ResponsesApiTool;
+      metadata?: ToolMetadata;
+      category?: string;
+      version?: string;
+    }
   | { type: 'local_shell' }
   | { type: 'web_search' }
   | { type: 'custom'; custom: FreeformTool };
@@ -707,7 +728,7 @@ export function createObjectSchema(
  * @param name - Tool name
  * @param description - Tool description
  * @param properties - Tool parameters in simplified format
- * @param options - Additional options (required fields, etc.)
+ * @param options - Additional options (required fields, metadata, etc.)
  * @returns ToolDefinition in OpenAI Responses API format
  */
 export function createToolDefinition(
@@ -718,7 +739,7 @@ export function createToolDefinition(
     required?: string[];
     category?: string;
     version?: string;
-    metadata?: Record<string, any>;
+    metadata?: ToolMetadata;
   } = {}
 ): ToolDefinition {
   // Convert ParameterProperty to JsonSchema
@@ -752,8 +773,19 @@ export function createToolDefinition(
     convertedProperties[key] = convertToJsonSchema(value);
   }
 
-  return createFunctionTool(name, description, createObjectSchema(convertedProperties, {
-    required: options.required,
-    additionalProperties: false,
-  }));
+  return {
+    type: 'function',
+    function: {
+      name,
+      description,
+      strict: false,
+      parameters: createObjectSchema(convertedProperties, {
+        required: options.required,
+        additionalProperties: false,
+      }),
+    },
+    metadata: options.metadata,
+    category: options.category,
+    version: options.version,
+  };
 }

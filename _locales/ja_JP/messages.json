@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "業務タスク向けの汎用ブラウザ内 AI エージェント"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "APIキー設定"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "APIキーは暗号化され、ブラウザにローカル保存されます。API呼び出し以外で外部サーバーに送信されることはありません。"
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "アクション詳細"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "変更を追加"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "高度な設定"
   },
   "Advanced_Options": {
     "message": "高度なオプション"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "エージェント実行ツール"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "許可されたオリジン"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "承認履歴"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "任意のウェブページからBrowserxに構造化データを抽出させる"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "利用可能："
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "ツールバーのBrowserxアイコンをクリックするか、Alt+Shift+C を押してください"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "クリックしてモデルを選択"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "コマンド"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "キャッシュデータを圧縮してストレージ容量を節約"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "AIモデルとAPIキーを設定"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "接続済み"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "文脈"
   },
   "Create_New_Tab": {
     "message": "新しいタブを作成"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "クレジットの詳細"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "データ抽出ツール"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "期限までの日数"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "変更を破棄"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "タスク完了時にトークン消費量（入力/出力トークン）を表示"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "すべてのツールを有効化"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "拡張機能を有効化"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "モデルコンテキストプロトコル統合を有効化（今後のアップデートで提供予定）"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "頻繁にアクセスされるデータを保存し、パフォーマンスを向上させるにはキャッシュを有効化"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "エージェントのウェブ検索機能を有効化"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "LLM API キーを入力"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "コマンドを実行"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "フルアクセス（高リスク）"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "全般"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "詳細を見る"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "許可されたオリジンのリスト（1 行につき 1 つ）。ワイルドカード (*) をサポート"
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "クレジットを読み込み中..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "設定を読み込み中..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "ログイン"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "ログインして無料クレジットを取得"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "クレジット残量が少ない"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP ツール（利用不可）"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ブラウザタブの管理（開く、閉じる、切り替え、検索）"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "最大キャッシュサイズ (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "キャッシュサイズの最大値（単位: MB、デフォルト: 100）"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "ツールがタイムアウトになるまでの最大時間（ミリ秒、デフォルト: 30000）"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "モデル設定"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "詳細設定"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "ページの移動、リンクのクリック、ブラウザナビゲーションの処理"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "新しい会話"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "承認履歴はまだありません。"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "利用可能なタブがありません"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "未接続"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "ロールアウトデータの有効期限までの日数（デフォルト: 60）"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "サイドパネルを開く:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "パラメータ変更"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "ページ操作を実行（スクロール、スクリーンショット、待機）"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM（Document Object Model）をクエリおよび操作"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "クイックスタート"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "残り："
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "APIキーを削除"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "この操作の変更を依頼する"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "テキストを右クリックすると、ブラウザーXで説明や改善ができます。"
   },
   "Rollout_Expiration": {
     "message": "ロールアウト期限"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "サンドボックスポリシー"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "保存中..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "セキュリティとプライバシー"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "インターフェースの使用言語を選択"
   },
-  "Send_the_message": {
-    "message": "メッセージを送信"
-  },
   "Service_Tier": {
     "message": "サービス階層"
   },
   "Session": {
     "message": "セッション"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "段階的展開データの有効期限を設定"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "安定版"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "現在のタスク実行を停止"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "タブツール"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "ターミナル"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "テスト中..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "エージェントは現在バックエンドモードを使用しています。LLM リクエストは AI Republic サーバーを経由してルーティングされます。会話は当社のインフラストラクチャを通じて安全に処理されます。"
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "キャッシュ項目の有効期限（秒） (デフォルト: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "サイドパネルの切り替え"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "ツール"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "未保存の変更"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "アップデートチャンネル"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "ユーザーセンター"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "ユーザーが承認した操作"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "チャット履歴を表示"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "ページ内容とレイアウトのビジュアル分析"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "あなたの決定"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

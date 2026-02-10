@@ -18,7 +18,7 @@ import { WebSearchTool } from './WebSearchTool';
 // Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
 export { BaseTool, createFunctionTool, createObjectSchema, createToolDefinition } from './BaseTool';
-export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat } from './BaseTool';
+export type { ToolDefinition, JsonSchema, ResponsesApiTool, FreeformTool, FreeformToolFormat, ToolMetadata, Platform } from './BaseTool';
 export { WebScrapingTool } from './WebScrapingTool';
 export { FormAutomationTool } from './FormAutomationTool';
 export { NetworkInterceptTool } from './NetworkInterceptTool';

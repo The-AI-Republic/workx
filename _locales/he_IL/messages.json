@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "סוכן AI כללי בדפדפן למשימות עבודה"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "הגדרת מפתח API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "מפתחות API מוצפנים ונשמרים מקומית בדפדפן שלך. הם לעולם לא נשלחים לשרתים חיצוניים למעט קריאות API."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "פרטי פעולה"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "הוסף שינוי"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "הגדרות מתקדמות"
   },
   "Advanced_Options": {
     "message": "אפשרויות מתקדמות"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "כלי ביצוע לסוכן"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "מקורות מורשים"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "היסטוריית אישורים"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "בקש מ-Browserx לחלץ נתונים מובנים מכל דף אינטרנט"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "זמין:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "לחץ על סמל Browserx בסרגל הכלים או הקש Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "לחץ כדי לבחור מודל"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "פקודה"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "דחוס נתוני מטמון כדי לחסוך במקום אחסון"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "הגדר מודל AI ומפתחות API"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "מחובר"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "הקשר"
   },
   "Create_New_Tab": {
     "message": "צור לשונית חדשה"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "פרטי אשראי"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "כלי חילוץ נתונים"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "ימים עד תפוגה"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "בטל שינויים"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "הצג צריכת טוקנים (קלט/פלט) בתום המשימות"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "הפעל את כל הכלים"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "הפעל הרחבה"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "הפעל אינטגרציה עם כלי Model Context Protocol (MCP) (בקרוב בעדכון עתידי)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "הפעל מטמון לשיפור ביצועים על‑ידי אחסון נתונים שנגישים בתדירות גבוהה"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "הפעלת יכולות חיפוש באינטרנט עבור הסוכן"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "הזן את מפתח ה‑API של ה‑LLM שלך"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "ביצוע פקודות"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "גישה מלאה (מסוכנת)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "כללי"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "למידע נוסף"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "רשימת מקורות מורשים (אחד בכל שורה). תומכת בתווי כללה (*)"
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "טוען קרדיטים..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "טוען הגדרות..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "התחברות"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "התחבר לקבלת קרדיטים חינם"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "נותרו קרדיטים מעטים"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "כלי MCP (לא זמין)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ניהול לשוניות דפדפן (פתיחה, סגירה, מעבר, שאילתה)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "גודל מטמון מרבי (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "גודל מטמון מרבי במגה-בייטים (ברירת מחדל: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "זמן מרבי (במילישניות) שבו כלי יכול לפעול לפני timeout (ברירת מחדל: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "הגדרת מודל"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "הגדרות נוספות"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "ניווט בעמודים, לחיצה על קישורים, ניהול ניווט הדפדפן"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "שיחה חדשה"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "עדיין אין היסטוריית אישורים."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "אין לשוניות זמינות"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "לא מחובר"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "מספר הימים לפני שפג תוקף נתוני ההפצה (ברירת מחדל: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "פתח לוח צד"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "שינויים בפרמטרים"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "בצע פעולות בדף (גלילה, צילום מסך, המתנה)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "שאילתה ושינוי ה‑DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "התחלה מהירה"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "נותר:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "הסר מפתח API"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "בקש שינויים בפעולה זו"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "לחץ לחיצה ימנית על כל טקסט כדי לקבל הסבר או לשפר אותו באמצעות Browserx"
   },
   "Rollout_Expiration": {
     "message": "תפוגת פריסה"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "מדיניות ארגז חול"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "שומר..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "אבטחה ופרטיות"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "בחר את השפה המועדפת עליך לממשק"
   },
-  "Send_the_message": {
-    "message": "שלח את ההודעה"
-  },
   "Service_Tier": {
     "message": "רמת שירות"
   },
   "Session": {
     "message": "סשן"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "הגדר מתי נתוני ההפצה יפוגו"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "יציב"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "עצור את הרצת המשימה הנוכחית"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "כלי לשוניות"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "טרמינל"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "בבדיקה..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "הסוכן משתמש כעת במצב backend. בקשות LLM ינותבו דרך שרת AI Republic. השיחות שלך מעובדות בצורה מאובטחת דרך התשתית שלנו."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "זמן חיים (TTL) לפריטים במטמון בשניות (ברירת מחדל: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "הצג/הסתר לוח צד"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "כלי"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "שינויים שלא נשמרו"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "ערוץ עדכונים"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "מרכז משתמש"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "פעולה שאושרה על ידי המשתמש"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "צפייה בהיסטוריית הצ'אט"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "ניתוח חזותי של תוכן ופריסת העמוד"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "ההחלטה שלך"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

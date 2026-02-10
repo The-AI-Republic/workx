@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "عامل هوش مصنوعی عمومی درون مرورگر برای وظایف کاری"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "پیکربندی کلید API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "کلیدهای API رمزگذاری شده و به‌صورت محلی در مرورگر شما ذخیره می‌شوند. آن‌ها هرگز به سرورهای خارجی ارسال نمی‌شوند، به‌جز هنگام فراخوانی API."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "جزئیات اقدام"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "افزودن تغییرات"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "پیکربندی پیشرفته"
   },
   "Advanced_Options": {
     "message": "گزینه‌های پیشرفته"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "ابزارهای اجرای عامل"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "مبداهای مجاز"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "تاریخچه تأیید"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "درخواست از Browserx برای استخراج داده‌های ساختاریافته از هر صفحه وب"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "در دسترس:"
@@ -115,6 +145,9 @@
       }
     }
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "برای انتخاب مدل کلیک کنید"
   },
@@ -124,20 +157,44 @@
   "Command": {
     "message": "دستور"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "فشرده‌سازی داده‌های کش برای صرفه‌جویی در فضای ذخیره‌سازی"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "پیکربندی مدل هوش مصنوعی و کلیدهای API"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "متصل"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "متن"
   },
   "Create_New_Tab": {
     "message": "ایجاد برگه جدید"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "جزئیات اعتبار"
@@ -154,6 +211,9 @@
   "Data_Extraction_Tool": {
     "message": "ابزار استخراج داده"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "روزهای باقی‌مانده تا انقضا"
   },
@@ -163,8 +223,23 @@
   "Discard_Changes": {
     "message": "حذف تغییرات"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "نمایش مصرف توکن (توکن‌های ورودی/خروجی) هنگام تکمیل وظایف"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "فعال‌سازی همه ابزارها"
@@ -181,17 +256,35 @@
   "Enable_Extension": {
     "message": "فعال‌سازی افزونه"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "فعال‌سازی یکپارچه‌سازی با ابزارهای Model Context Protocol (در به‌روزرسانی‌های آینده)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "فعال‌سازی کش برای بهبود عملکرد با ذخیره‌سازی داده‌های پرکاربرد"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "فعال‌سازی قابلیت جستجوی وب برای عامل"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "کلید API LLM خود را وارد کنید"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "اجرای دستورات"
@@ -247,6 +340,9 @@
   "Full_Access_Dangerous": {
     "message": "دسترسی کامل (خطرناک)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "عمومی"
   },
@@ -294,14 +390,32 @@
   "Learn_more": {
     "message": "بیشتر بدانید"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "فهرست مبدأهای مجاز (هر کدام در یک خط). از کاراکترهای جایگزین (*) پشتیبانی می‌کند."
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "در حال بارگذاری اعتبار..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "در حال بارگذاری تنظیمات..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "ورود"
@@ -309,11 +423,20 @@
   "Login_to_get_free_credits": {
     "message": "برای دریافت اعتبار رایگان وارد شوید"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "اعتبار باقیمانده کم"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "ابزارهای MCP (در دسترس نیست)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "مدیریت زبانه‌های مرورگر (باز کردن، بستن، جابجایی، پرس‌وجو)"
@@ -327,11 +450,23 @@
   "Max_Cache_Size_MB": {
     "message": "حداکثر اندازهٔ کش (مگابایت)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "حداکثر اندازهٔ کش بر حسب مگابایت (پیش‌فرض: ۱۰۰)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "حداکثر زمان (به میلی‌ثانیه) اجرای ابزار قبل از تایم‌اوت (پیش‌فرض: ۳۰۰۰۰)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "پیکربندی مدل"
@@ -351,6 +486,9 @@
   "More_Config": {
     "message": "پیکربندی بیشتر"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "پیمایش صفحات، کلیک روی لینک‌ها، کنترل ناوبری مرورگر"
   },
@@ -366,17 +504,35 @@
   "New_Conversation": {
     "message": "گفتگوی جدید"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "هنوز تاریخچه‌ای از تأییدها ثبت نشده است."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "هیچ زبانه‌ای موجود نیست"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "متصل نیست"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "تعداد روز پیش از انقضای داده‌های استقرار (پیش‌فرض: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "باز کردن پنل کناری:"
@@ -392,6 +548,9 @@
   },
   "Parameter_Modifications": {
     "message": "تغییرات پارامترها"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "انجام اقدامات صفحه (اسکرول، اسکرین‌شات، انتظار)"
@@ -413,6 +572,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "پرس‌وجو و دستکاری DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "شروع سریع"
@@ -438,6 +606,9 @@
   "Remaining": {
     "message": "مانده:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "حذف کلید API"
   },
@@ -450,11 +621,26 @@
   "Request_changes_to_this_action": {
     "message": "درخواست تغییرات برای این عمل"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "روی هر متنی کلیک راست کنید تا با Browserx آن را توضیح یا بهبود دهید"
   },
   "Rollout_Expiration": {
     "message": "انقضای انتشار"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "سیاست Sandbox"
@@ -468,6 +654,21 @@
   "Saving": {
     "message": "در حال ذخیره‌سازی..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "امنیت و حریم خصوصی"
   },
@@ -480,14 +681,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "زبان دلخواه خود را برای رابط کاربری انتخاب کنید"
   },
-  "Send_the_message": {
-    "message": "ارسال پیام"
-  },
   "Service_Tier": {
     "message": "سطح سرویس"
   },
   "Session": {
     "message": "جلسه"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "زمان انقضای داده‌های انتشار را تنظیم کنید"
@@ -509,6 +713,9 @@
   },
   "Stable": {
     "message": "پایدار"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "توقف اجرای وظیفه جاری"
@@ -534,6 +741,18 @@
   "Tab_Tool": {
     "message": "ابزار برگه"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "ترمینال"
   },
@@ -542,6 +761,9 @@
   },
   "Testing": {
     "message": "در حال آزمایش..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "عامل در حال حاضر از حالت بک‌اند (Backend) استفاده می‌کند. درخواست‌های LLM از طریق سرور AI Republic مسیردهی می‌شوند. گفتگوهای شما به‌صورت ایمن از طریق زیرساخت ما پردازش می‌شوند."
@@ -555,8 +777,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "زمان انقضای موارد کش بر حسب ثانیه (پیش‌فرض: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "تغییر وضعیت پنل کناری"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "ابزار"
@@ -585,6 +813,12 @@
   "Unsaved_Changes": {
     "message": "تغییرات ذخیره‌نشده"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "کانال به‌روزرسانی"
   },
@@ -606,6 +840,9 @@
   "User_Center": {
     "message": "مرکز کاربر"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "عملیات تأییدشده توسط کاربر"
   },
@@ -626,6 +863,12 @@
   },
   "View_Chat_History": {
     "message": "مشاهده تاریخچه چت"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "تحلیل بصری محتوای صفحه و چیدمان"
@@ -653,5 +896,14 @@
   },
   "Your_Decision": {
     "message": "تصمیم شما"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

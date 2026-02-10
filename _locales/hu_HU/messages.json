@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Általános, böngészőben futó AI-ügynök munkafeladatokhoz"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "API-kulcs beállítása"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Az API-kulcsok titkosítva vannak és helyileg tárolódnak a böngészőben. Soha nem küldődnek külső szerverekre, kivéve az API-hívásokat."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Művelet részletei"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Módosítás hozzáadása"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Speciális beállítások"
   },
   "Advanced_Options": {
     "message": "Haladó beállítások"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Ügynök végrehajtási eszközök"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Engedélyezett források"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Jóváhagyási előzmények"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "A Browserx képes strukturált adatot kinyerni bármely weboldalról"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Elérhető:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Kattintson a Browserx ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Kattintson a modell kiválasztásához"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Parancs"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Gyorsítótárazott adatok tömörítése a tárhely megtakarítása érdekében"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "AI modell és API kulcsok konfigurálása"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Csatlakoztatva"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Kontextus"
   },
   "Create_New_Tab": {
     "message": "Új lap létrehozása"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "Kredit részletei"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Adatkinyerő eszköz"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Lejáratig hátralévő napok száma"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Módosítások elvetése"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Token-fogyasztás megjelenítése (bemeneti/kimeneti tokenek) a feladatok befejezésekor"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Minden eszköz engedélyezése"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Bővítmény engedélyezése"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Model Context Protocol (MCP) eszközök integrációjának engedélyezése (jövőbeli frissítés)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Engedélyezze a gyorsítótárazást a teljesítmény javításához, amely a gyakran használt adatokat tárolja."
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Webkeresési képességek engedélyezése az ügynök számára"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Adja meg az LLM API kulcsát"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "Parancsok végrehajtása"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Teljes hozzáférés (Veszélyes)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Általános"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "További információ"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Engedélyezett források listája (soronként egy). Támogatja a helyettesítő karaktereket (*)"
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Kreditek betöltése..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Beállítások betöltése..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Bejelentkezés"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Bejelentkezés az ingyenes kreditekért"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Kevés kredit maradt"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP Eszközök (Nem elérhető)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Böngészőlapok kezelése (nyitás, bezárás, váltás, lekérdezés)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Maximális gyorsítótár méret (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "A gyorsítótár maximális mérete megabájtban (alapértelmezett: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximum idő (ezredmásodpercben), ameddig egy eszköz futhat időtúllépés nélkül (alapértelmezett: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Modell beállítások"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "További beállítások"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Oldalak navigálása, linkek kattintása, böngésző navigáció kezelése"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "Új beszélgetés"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Még nincs jóváhagyási előzmény."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Nincs elérhető lap"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Nincs csatlakozva"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "A bevezetési adatok érvényességi ideje napokban (alapértelmezett: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Oldalsó panel megnyitása:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Paraméter módosítások"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Oldalműveletek végrehajtása (görgetés, képernyőkép, várakozás)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "A DOM (Document Object Model) lekérdezése és módosítása"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Gyors indítás"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Hátralévő:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "API kulcs eltávolítása"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Változtatás kérése ehhez a művelethez"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Kattintson jobb gombbal bármely szövegre, hogy a Browserx-szel magyarázzon vagy javítson rajta"
   },
   "Rollout_Expiration": {
     "message": "Kihelyezés lejárata"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandbox szabályzat"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Mentés..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Biztonság és adatvédelem"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Válassza ki a felület preferált nyelvét"
   },
-  "Send_the_message": {
-    "message": "Üzenet küldése"
-  },
   "Service_Tier": {
     "message": "Szolgáltatás szintje"
   },
   "Session": {
     "message": "Munkamenet"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Állítsa be, hogy mikor járjon le a bevezetés adata"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Állítsa le az aktuális feladatot"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Lap eszköz"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminál"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Tesztelés..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Az ügynök jelenleg backend módban működik. Az LLM kérések az AI Republic szerveren keresztül irányítódnak. Beszélgetéseit biztonságosan dolgozzuk fel infrastruktúránk segítségével."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "A gyorsítótárazott elemek élettartama másodpercben (alapértelmezett: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Oldalsáv ki-/bekapcsolása"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Eszköz"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Mentetlen módosítások"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "Frissítési csatorna"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "Felhasználói központ"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Felhasználó által jóváhagyott művelet"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "Csevegési előzmények megtekintése"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Az oldal tartalmának és elrendezésének vizuális elemzése"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Az Ön döntése"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

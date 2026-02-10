@@ -49,7 +49,7 @@ function build() {
     // Copy and fix HTML files
     log('\n📄 Copying and fixing HTML files...', colors.yellow);
     const htmlFiles = [
-      { src: 'src/sidepanel/sidepanel.html', dest: 'sidepanel.html' },
+      { src: 'src/extension/sidepanel/sidepanel.html', dest: 'sidepanel.html' },
       { src: 'src/welcome/welcome.html', dest: 'welcome.html' }
     ];
 

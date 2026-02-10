@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventCollector, createMockSubmission, createMockUserTurn, waitFor, createDeferred } from '../utils/test-helpers';
-import { Submission, Event, EventMsg } from '../../protocol/types';
+import { Submission, Event, EventMsg } from '../../core/protocol/types';
 
 // Define TaskRunner contract interface
 interface TaskResult {

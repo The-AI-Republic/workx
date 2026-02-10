@@ -8,7 +8,7 @@
 import type { SessionTask } from './SessionTask';
 import type { Session } from '../Session';
 import type { TurnContext } from '../TurnContext';
-import type { InputItem, ResponseItem } from '../../protocol/types';
+import type { InputItem, ResponseItem } from '../protocol/types';
 import { TaskKind } from '../session/state/types';
 import { AgentTask } from '../AgentTask';
 import { TurnManager } from '../TurnManager';

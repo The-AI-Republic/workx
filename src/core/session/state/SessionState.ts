@@ -2,7 +2,7 @@
  * SessionState - pure data container for session state
  */
 
-import type { ResponseItem, ConversationHistory } from '../../../protocol/types';
+import type { ResponseItem, ConversationHistory } from '../../protocol/types';
 import type { TokenUsageInfo, RateLimitSnapshot } from './types';
 import { isDOMSnapshotOutput, compressSnapshot } from './SnapshotCompressor';
 

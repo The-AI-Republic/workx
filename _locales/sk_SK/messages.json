@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Všeobecný AI agent v prehliadači pre pracovné úlohy"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Konfigurácia API kľúča"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API kľúče sú šifrované a uložené lokálne vo vašom prehliadači. Nikdy nie sú odosielané na externé servery, okrem volaní API."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Detaily akcie"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Pridať úpravu"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Pokročilá konfigurácia"
   },
   "Advanced_Options": {
     "message": "Pokročilé možnosti"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Nástroje na vykonávanie úloh agentom"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Povolené zdroje"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "História schválení"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Požiadať Browserx o extrakciu štruktúrovaných dát z akejkoľvek webovej stránky"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "K dispozícii:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Kliknite na ikonu Browserx v paneli nástrojov alebo stlačte Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Kliknutím vyberiete model"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Príkaz"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimovať dáta vo vyrovnávacej pamäti na úsporu úložného priestoru"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Nastaviť AI model a API kľúče"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Pripojené"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Kontext"
   },
   "Create_New_Tab": {
     "message": "Vytvoriť novú kartu"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "Podrobnosti kreditu"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Nástroj na extrahovanie dát"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Dní do expirácie"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Zahodiť zmeny"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Zobraziť spotrebu tokenov (vstupné/výstupné tokeny) po dokončení úloh"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Povoliť všetky nástroje"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Povoliť rozšírenie"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Povoliť integráciu nástrojov Model Context Protocol (príde v budúcej aktualizácii)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Povoliť ukladanie do vyrovnávacej pamäte pre zlepšenie výkonu ukladaním často pristupovaných údajov"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Povoliť webové vyhľadávanie pre agenta"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Zadajte svoj LLM API kľúč"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "Vykonať príkazy"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Plný prístup (nebezpečný)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Všeobecné"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "Zistiť viac"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Zoznam povolených origins (jeden na riadok). Podporuje zástupné znaky (*)."
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Načítavam kredity..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Načítavam nastavenia..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Prihlásiť sa"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Prihláste sa a získajte bezplatné kredity"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Nízky zostatok kreditov"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "Nástroje MCP (Nedostupné)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Spravovať karty prehliadača (otvoriť, zatvoriť, prepnúť, dotazovať)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Maximálna veľkosť cache (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maximálna veľkosť cache v megabajtoch (predvolene: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximálny čas v milisekundách, počas ktorého môže nástroj bežať pred vypršaním limitu (predvolene: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Konfigurácia modelu"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "Viac nastavení"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigovať po stránkach, kliknúť na odkazy, spravovať navigáciu prehliadača"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "Nová konverzácia"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Zatiaľ žiadna história schvaľovania."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Nie sú dostupné žiadne karty"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Nepripojený"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Počet dní pred vypršaním platnosti dát nasadenia (predvolené: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Otvoriť bočný panel:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Úpravy parametrov"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Vykonať akcie na stránke (posúvanie, snímka obrazovky, čakanie)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Dotazovať a manipulovať s DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Rýchly štart"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Zostáva:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Odstrániť API kľúč"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Požiadať o zmeny tejto akcie"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Kliknutím pravým tlačidlom na text ho vysvetlite alebo vylepšite pomocou Browserx"
   },
   "Rollout_Expiration": {
     "message": "Platnosť nasadenia"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Politika sandboxu"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Ukladá sa..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Bezpečnosť a súkromie"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Vyberte preferovaný jazyk rozhrania"
   },
-  "Send_the_message": {
-    "message": "Odoslať správu"
-  },
   "Service_Tier": {
     "message": "Úroveň služby"
   },
   "Session": {
     "message": "Relácia"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Nastavte, kedy majú vypršať údaje nasadenia"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Stabilná verzia"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Zastaviť aktuálne spustenie úlohy"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Nástroj karty"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminál"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Testovanie..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agent momentálne používa režim backendu. Požiadavky na LLM budú smerované cez server AI Republic. Vaše konverzácie sú bezpečne spracovávané prostredníctvom našej infraštruktúry."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Čas životnosti (TTL) pre položky vo vyrovnávacej pamäti v sekundách (predvolené: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Prepnúť bočný panel"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Nástroj"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Neuložené zmeny"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "Kanál aktualizácií"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "Centrum používateľa"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Akcia schválená používateľom"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "Zobraziť históriu chatu"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Vizuálna analýza obsahu a rozloženia stránky"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Vaše rozhodnutie"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

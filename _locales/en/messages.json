@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "General in-browser AI agent for work tasks"
   },
+  "API_Key": {
+    "message": "API Key"
+  },
   "API_Key_Configuration": {
     "message": "API Key Configuration"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "API key for authentication (stored encrypted)"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API keys are encrypted and stored locally in your browser. They are never sent to external servers except for API calls."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Action Details"
   },
+  "Active_Sessions": {
+    "message": "Active Sessions"
+  },
+  "Add": {
+    "message": "Add"
+  },
   "Add_Modification": {
     "message": "Add Modification"
+  },
+  "Add_Server": {
+    "message": "Add Server"
+  },
+  "Add_Task": {
+    "message": "Add Task"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "Add a server to connect to external tools."
   },
   "Advanced_Configuration": {
     "message": "Advanced Configuration"
   },
   "Advanced_Options": {
     "message": "Advanced Options"
+  },
+  "Advanced_Settings": {
+    "message": "Advanced Settings"
   },
   "Agent_Execution_Tools": {
     "message": "Agent Execution Tools"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Allowed Origins"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": "Alphanumeric characters and hyphens only (1-50 chars)"
+  },
   "Approval_History": {
     "message": "Approval History"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Ask Browserx to extract structured data from any webpage"
+  },
+  "Available_Tools": {
+    "message": "Available Tools"
   },
   "Available": {
     "message": "Available:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Click the Browserx icon in your toolbar or press Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": "Click to cancel login"
+  },
   "Click_to_select_a_model": {
     "message": "Click to select a model"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Command"
   },
+  "Completed": {
+    "message": "Completed"
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Compress cached data to save storage space"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Configure AI model and API keys"
   },
+  "Configured_Servers": {
+    "message": "Configured Servers"
+  },
+  "Connect": {
+    "message": "Connect"
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": "Connect to Model Context Protocol (MCP) servers to extend the agent with external tools."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "Connect to an MCP server to discover tools."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "Connect to external MCP tool servers"
+  },
   "Connected": {
     "message": "Connected"
+  },
+  "Connecting": {
+    "message": "Connecting..."
   },
   "Context": {
     "message": "Context"
   },
   "Create_New_Tab": {
     "message": "Create New Tab"
+  },
+  "Created": {
+    "message": "Created"
   },
   "Credit_Details": {
     "message": "Credit Details"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Data Extraction Tool"
   },
+  "Date": {
+    "message": "Date"
+  },
   "Days_until_expiration": {
     "message": "Days until expiration"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Discard Changes"
   },
+  "Disconnect": {
+    "message": "Disconnect"
+  },
+  "Dismiss": {
+    "message": "Dismiss"
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Display token consumption (input/output tokens) when tasks complete"
+  },
+  "Duration": {
+    "message": "Duration"
+  },
+  "Edit": {
+    "message": "Edit"
+  },
+  "Edit_Server": {
+    "message": "Edit Server"
   },
   "Enable_All_Tools": {
     "message": "Enable All Tools"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Enable Extension"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Enable Model Context Protocol tools integration (Coming in future update)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": "Enable Model Context Protocol tools from connected MCP servers"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Enable auto-connect when browserx starts"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Enable caching to improve performance by storing frequently accessed data"
   },
+  "Enable_debug_logging": {
+    "message": "Enable debug logging"
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Enable web search capabilities for the agent"
   },
+  "Enabled": {
+    "message": "Enabled"
+  },
+  "Enter_API_key_if_required": {
+    "message": "Enter API key if required"
+  },
   "Enter_your_LLM_API_key": {
     "message": "Enter your LLM API key"
+  },
+  "Enter_your_task": {
+    "message": "Enter your task..."
+  },
+  "Error": {
+    "message": "Error"
   },
   "Execute_Commands": {
     "message": "Execute Commands"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Full Access (Dangerous)"
   },
+  "Full_Input": {
+    "message": "Full Input"
+  },
   "General": {
     "message": "General"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "Learn more"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": "Leave empty to keep existing"
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "List of allowed origins (one per line). Supports wildcards (*)."
+  },
+  "Load_More": {
+    "message": "Load More"
   },
   "Loading_credits": {
     "message": "Loading credits..."
   },
+  "Loading_details": {
+    "message": "Loading details..."
+  },
   "Loading_settings": {
     "message": "Loading settings..."
+  },
+  "Loading": {
+    "message": "Loading..."
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": "Log MCP protocol messages to browser console for debugging"
+  },
+  "Logging_in": {
+    "message": "Logging in..."
   },
   "Login": {
     "message": "Login"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Login to get free credits"
   },
+  "Long_press_to_schedule_task": {
+    "message": "Long press to schedule task"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "Long-press the send button to schedule a task"
+  },
   "Low_credits_remaining": {
     "message": "Low credits remaining"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP Tools (Not Available)"
+  "MCP_Servers": {
+    "message": "MCP Servers"
+  },
+  "MCP_Tools": {
+    "message": "MCP Tools"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Manage browser tabs (open, close, switch, query)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Max Cache Size (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Max Concurrent Sessions"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maximum cache size in megabytes (default: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Maximum number of parallel agent sessions, including scheduled tasks"
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": "Maximum of 5 servers reached"
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximum time (in milliseconds) a tool can run before timeout (default: 30000)"
+  },
+  "Missed": {
+    "message": "Missed"
   },
   "Model_Config": {
     "message": "Model Config"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "More Config"
   },
+  "Name": {
+    "message": "Name"
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigate pages, click links, handle browser navigation"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "New Conversation"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": "No MCP servers configured yet."
+  },
+  "No_active_sessions": {
+    "message": "No active sessions"
+  },
   "No_approval_history_yet": {
     "message": "No approval history yet."
   },
+  "No_completed_tasks_yet": {
+    "message": "No completed tasks yet"
+  },
+  "No_scheduled_tasks": {
+    "message": "No scheduled tasks"
+  },
   "No_tabs_available": {
     "message": "No tabs available"
+  },
+  "No_tools_available": {
+    "message": "No tools available."
   },
   "Not_Connected": {
     "message": "Not Connected"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Number of days before rollout data expires (default: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Offline - tasks will run when connected"
   },
   "Open_Side_Panel": {
     "message": "Open Side Panel:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Parameter Modifications"
+  },
+  "Pause_Queue": {
+    "message": "Pause Queue"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Perform page actions (scroll, screenshot, wait)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Query and manipulate the DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": "Queue is paused"
+  },
+  "Queued": {
+    "message": "Queued"
+  },
+  "Quick_Schedule": {
+    "message": "Quick Schedule"
   },
   "Quick_Start": {
     "message": "Quick Start"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Remaining:"
   },
+  "Remove": {
+    "message": "Remove"
+  },
   "Remove_API_Key": {
     "message": "Remove API Key"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Request changes to this action"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": "Request timeout in milliseconds (5000-120000)"
+  },
+  "Result_Summary": {
+    "message": "Result Summary"
+  },
+  "Resume_Queue": {
+    "message": "Resume Queue"
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Right-click on any text to explain or improve it with Browserx"
   },
   "Rollout_Expiration": {
     "message": "Rollout Expiration"
+  },
+  "Run_Now": {
+    "message": "Run Now"
+  },
+  "Running": {
+    "message": "Running"
   },
   "Sandbox_Policy": {
     "message": "Sandbox Policy"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Saving..."
   },
+  "Schedule": {
+    "message": "Schedule"
+  },
+  "Schedule_Task": {
+    "message": "Schedule Task"
+  },
+  "Scheduled": {
+    "message": "Scheduled"
+  },
+  "Scheduled_Task": {
+    "message": "Scheduled Task"
+  },
+  "Scheduled_Tasks": {
+    "message": "Scheduled Tasks"
+  },
   "Security_Privacy": {
     "message": "Security & Privacy"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Select your preferred language for the interface"
   },
-  "Send_the_message": {
-    "message": "Send the message"
-  },
   "Service_Tier": {
     "message": "Service Tier"
   },
   "Session": {
     "message": "Session"
+  },
+  "Session_error": {
+    "message": "Session error"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "Session limit reached. New tasks will queue."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Set when rollout data should expire"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Stable"
+  },
+  "Status": {
+    "message": "Status"
   },
   "Stop_the_current_task_run": {
     "message": "Stop the current task run"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Tab Tool"
   },
+  "Task": {
+    "message": "Task"
+  },
+  "Task_Details": {
+    "message": "Task Details"
+  },
+  "Task_History": {
+    "message": "Task History"
+  },
+  "Task_ID": {
+    "message": "Task ID"
+  },
   "Terminal": {
     "message": "Terminal"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Testing..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "The MCP server endpoint URL (http or https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "The agent is currently using backend mode. LLM requests will route through AI Republic server. Your conversations are processed securely through our infrastructure."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live for cached items in seconds (default: 3600)"
   },
+  "Timeout_ms": {
+    "message": "Timeout (ms)"
+  },
   "Toggle_side_panel": {
     "message": "Toggle side panel"
+  },
+  "Tokens": {
+    "message": "Tokens"
   },
   "Tool": {
     "message": "Tool"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Unsaved Changes"
   },
+  "Upcoming": {
+    "message": "Upcoming"
+  },
+  "Update": {
+    "message": "Update"
+  },
   "Update_Channel": {
     "message": "Update Channel"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "User Center"
   },
+  "User_Session": {
+    "message": "User Session"
+  },
   "User_approved_action": {
     "message": "User approved action"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "View Chat History"
+  },
+  "View_History": {
+    "message": "View History"
+  },
+  "View_Session": {
+    "message": "View Session"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visual analysis of page content and layout"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Your Decision"
+  },
+  "optional": {
+    "message": "optional"
+  },
+  "session": {
+    "message": "session"
+  },
+  "sessions": {
+    "message": "sessions"
   }
 }

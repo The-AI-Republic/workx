@@ -5,8 +5,14 @@
   "extension_description": {
     "message": "Универсален AI агент в браузъра за работни задачи"
   },
+  "API_Key": {
+    "message": ""
+  },
   "API_Key_Configuration": {
     "message": "Конфигурация на API ключ"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API ключовете са криптирани и съхранявани локално в браузъра ви. Никога не се изпращат към външни сървъри, освен при API заявки."
@@ -20,14 +26,32 @@
   "Action_Details": {
     "message": "Подробности за действието"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Добавяне на модификация"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Разширена конфигурация"
   },
   "Advanced_Options": {
     "message": "Разширени опции"
+  },
+  "Advanced_Settings": {
+    "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Инструменти за изпълнение на агент"
@@ -44,6 +68,9 @@
   "Allowed_Origins": {
     "message": "Разрешени източници"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "История на одобренията"
   },
@@ -55,6 +82,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Помолете Browserx да извлече структурирани данни от всяка уеб страница"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Available": {
     "message": "Налично:"
@@ -110,6 +140,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Щракнете върху иконата Browserx в лентата с инструменти или натиснете Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Щракнете, за да изберете модел"
   },
@@ -119,20 +152,44 @@
   "Command": {
     "message": "Команда"
   },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Компресиране на кешираните данни за спестяване на дисково пространство"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Конфигурирайте AI модел и API ключове"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
   "Connected": {
     "message": "Свързано"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Контекст"
   },
   "Create_New_Tab": {
     "message": "Създаване на нов таб"
+  },
+  "Created": {
+    "message": ""
   },
   "Credit_Details": {
     "message": "Детайли за кредитите"
@@ -149,6 +206,9 @@
   "Data_Extraction_Tool": {
     "message": "Инструмент за извличане на данни"
   },
+  "Date": {
+    "message": ""
+  },
   "Days_until_expiration": {
     "message": "Дни до изтичане"
   },
@@ -158,8 +218,23 @@
   "Discard_Changes": {
     "message": "Отхвърляне на промените"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Показване на консумацията на токени (входни/изходни токени) при завършване на задачите"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Активиране на всички инструменти"
@@ -176,17 +251,35 @@
   "Enable_Extension": {
     "message": "Активиране на разширението"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Активиране на интеграцията на инструменти за Model Context Protocol (Ще бъде добавена в бъдеща актуализация)"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Активиране на кеширане за подобряване на производителността чрез съхранение на често достъпвани данни"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Активиране на възможностите за уеб търсене за агента"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Въведете вашия LLM API ключ"
+  },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
   },
   "Execute_Commands": {
     "message": "Изпълняване на команди"
@@ -242,6 +335,9 @@
   "Full_Access_Dangerous": {
     "message": "Пълен достъп (опасно)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Общи"
   },
@@ -289,14 +385,32 @@
   "Learn_more": {
     "message": "Научете повече"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Списък с разрешени източници (по един на ред). Поддържа шаблони (*)."
+  },
+  "Load_More": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Зареждане на кредити..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Зареждане на настройките..."
+  },
+  "Loading": {
+    "message": ""
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Вход"
@@ -304,11 +418,20 @@
   "Login_to_get_free_credits": {
     "message": "Влезте, за да получите безплатни кредити"
   },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Остават малко кредити"
   },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP инструменти (Не са налични)"
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Управление на раздели в браузъра (отваряне, затваряне, превключване, търсене)"
@@ -322,11 +445,23 @@
   "Max_Cache_Size_MB": {
     "message": "Максимален размер на кеша (МБ)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Максимален размер на кеша в мегабайти (по подразбиране: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Максимално време (в милисекунди), за което инструментът може да работи преди таймаут (по подразбиране: 30000)"
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Конфигурация на модела"
@@ -346,6 +481,9 @@
   "More_Config": {
     "message": "Още настройки"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Навигиране в страници, кликване върху връзки, обработка на браузърната навигация"
   },
@@ -361,17 +499,35 @@
   "New_Conversation": {
     "message": "Нов разговор"
   },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Все още няма история на одобрения."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Няма налични раздели"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Не е свързан"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Брой дни преди данните за разгръщане да изтече срокът им (по подразбиране: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
   },
   "Open_Side_Panel": {
     "message": "Отвори страничен панел:"
@@ -387,6 +543,9 @@
   },
   "Parameter_Modifications": {
     "message": "Модификации на параметри"
+  },
+  "Pause_Queue": {
+    "message": ""
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Изпълнение на действия върху страница (превъртане, екранна снимка, изчакване)"
@@ -408,6 +567,15 @@
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Запитване и манипулиране на DOM (Document Object Model)"
+  },
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
+  },
+  "Quick_Schedule": {
+    "message": ""
   },
   "Quick_Start": {
     "message": "Бърз старт"
@@ -433,6 +601,9 @@
   "Remaining": {
     "message": "Остава:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Премахни API ключ"
   },
@@ -445,11 +616,26 @@
   "Request_changes_to_this_action": {
     "message": "Поискай промени в това действие"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Щракнете с десния бутон върху всеки текст, за да го обясните или подобрите с Browserx"
   },
   "Rollout_Expiration": {
     "message": "Изтичане на разгръщането"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Политика за сигурна среда (Sandbox)"
@@ -463,6 +649,21 @@
   "Saving": {
     "message": "Записване..."
   },
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
+  },
   "Security_Privacy": {
     "message": "Сигурност и поверителност"
   },
@@ -475,14 +676,17 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Изберете предпочитания език за интерфейса"
   },
-  "Send_the_message": {
-    "message": "Изпрати съобщението"
-  },
   "Service_Tier": {
     "message": "Ниво на услугата"
   },
   "Session": {
     "message": "Сесия"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Задайте кога данните от разгръщането трябва да изтекат"
@@ -504,6 +708,9 @@
   },
   "Stable": {
     "message": "Стабилна"
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Спри текущото изпълнение на задачата"
@@ -529,6 +736,18 @@
   "Tab_Tool": {
     "message": "Инструмент за раздели"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Терминал"
   },
@@ -537,6 +756,9 @@
   },
   "Testing": {
     "message": "Тестване..."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Агентът в момента използва бекенд режим. Заявките към LLM ще се маршрутизират през сървъра на AI Republic. Вашите разговори се обработват сигурно чрез нашата инфраструктура."
@@ -550,8 +772,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Време за живеене (TTL) на кешираните елементи в секунди (по подразбиране: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Превключи страничния панел"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Инструмент"
@@ -580,6 +808,12 @@
   "Unsaved_Changes": {
     "message": "Незаписани промени"
   },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
+  },
   "Update_Channel": {
     "message": "Канал за актуализации"
   },
@@ -601,6 +835,9 @@
   "User_Center": {
     "message": "Потребителски център"
   },
+  "User_Session": {
+    "message": ""
+  },
   "User_approved_action": {
     "message": "Действие, одобрено от потребителя"
   },
@@ -621,6 +858,12 @@
   },
   "View_Chat_History": {
     "message": "Преглед на историята на чата"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Визуален анализ на съдържанието и оформлението на страницата"
@@ -648,5 +891,14 @@
   },
   "Your_Decision": {
     "message": "Вашето решение"
+  },
+  "optional": {
+    "message": ""
+  },
+  "session": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   }
 }

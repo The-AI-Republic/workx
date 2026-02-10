@@ -2,7 +2,7 @@
  * HistoryReconstructor - builds compacted history from components
  */
 
-import type { ResponseItem } from '../../protocol/types';
+import type { ResponseItem } from '../protocol/types';
 import type { CompactedHistory, CompactionConfig, UserMessageSelection } from './types';
 import { SUMMARY_PREFIX, DEFAULT_COMPACTION_CONFIG, TRUNCATION_MARKER } from './constants';
 import { approxTokenCount, truncateText } from './utils';

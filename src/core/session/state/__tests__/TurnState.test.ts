@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TurnState } from '../TurnState';
-import { ReviewDecision } from '../../../../protocol/types';
+import { ReviewDecision } from '../../../protocol/types';
 import type { ApprovalResolver } from '../types';
 
 describe('TurnState', () => {
