@@ -25,7 +25,7 @@ uuid = { version = "1.0", features = ["v4"] }
 png = "0.17"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 directories = "5"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
 base64 = "0.22"
 
 [features]

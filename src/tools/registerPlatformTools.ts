@@ -11,6 +11,9 @@
 import { ToolRegistry } from './ToolRegistry';
 import type { IToolsConfig } from '../config/types';
 import type { ToolDefinition, Platform } from './BaseTool';
+// Static import to avoid Vite's modulepreload polyfill being injected
+// The polyfill uses `document` which doesn't exist in service workers
+import { registerTools } from './index';
 
 /**
  * Detect the current platform based on build mode
@@ -106,10 +109,8 @@ async function registerExtensionTools(
 ): Promise<void> {
   console.log('[registerPlatformTools] Registering extension tools...');
 
-  // Use existing registerTools from tools/index.ts
-  // All extension tools have platforms: ['extension'] metadata
-  const { registerTools } = await import('./index');
-
+  // Use static import (at top of file) to avoid Vite's modulepreload polyfill
+  // Dynamic import() triggers the polyfill which uses `document` - fails in service workers
   await registerTools(registry, toolsConfig, modelConfig);
 
   console.log('[registerPlatformTools] Extension tools registration completed');
