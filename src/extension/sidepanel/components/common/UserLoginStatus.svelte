@@ -7,6 +7,7 @@
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
+  import { fetchUserProfile } from '../../lib/apis';
 
   const dispatch = createEventDispatcher();
 
@@ -80,13 +81,27 @@
         // Check if cancelled while waiting
         if (isCancelled) return;
 
-        // Update user store with session data
-        userStore.setUser({
-          name: session.given_name || session.name || null,
-          email: session.email,
-          avatar: session.picture || null,
-          userType: session.subscription?.plan_id ?? 0,
-        });
+        // Fetch user profile using same API as extension to get accurate userType
+        const accessToken = await authService.getAccessToken();
+        const profile = accessToken ? await fetchUserProfile(accessToken) : null;
+
+        // Update user store - prefer profile data (has accurate userType)
+        if (profile) {
+          userStore.setUser({
+            name: profile.name || session.given_name || session.name || null,
+            email: profile.email || session.email,
+            avatar: profile.avatar || session.picture || null,
+            userType: profile.userType,
+          });
+        } else {
+          // Fallback to session data
+          userStore.setUser({
+            name: session.given_name || session.name || null,
+            email: session.email,
+            avatar: session.picture || null,
+            userType: (session.subscription as any)?.plan_id ?? 0,
+          });
+        }
 
         // Tell the agent to switch to backend routing mode (direct call, same process)
         try {

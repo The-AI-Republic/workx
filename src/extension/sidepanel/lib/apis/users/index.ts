@@ -28,11 +28,12 @@ export interface UserCredits {
 
 /**
  * Fetch user profile from the API
+ * @param providedToken - Optional access token (used by desktop app). If not provided, reads from cookies.
  * @returns User profile or null if failed
  */
-export async function fetchUserProfile(): Promise<UserProfile | null> {
+export async function fetchUserProfile(providedToken?: string): Promise<UserProfile | null> {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = providedToken || await getAccessToken();
 
     if (!accessToken) {
       console.warn('[API] No access token available for fetching user profile');

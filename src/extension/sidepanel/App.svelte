@@ -51,6 +51,9 @@
 
   /**
    * Desktop: update userStore from keychain tokens.
+   * Uses the same /api/v1/users/profile endpoint as the extension to get
+   * accurate userType (subscription tier), instead of relying on the
+   * /auth/desktop/session endpoint which may not return subscription info.
    * Agent auth mode is already set during DesktopAgentBootstrap.initialize().
    */
   async function updateDesktopUserStore(): Promise<void> {
@@ -61,6 +64,30 @@
       await authService.initialize();
 
       if (await authService.hasValidToken()) {
+        const accessToken = await authService.getAccessToken();
+        if (!accessToken) {
+          userStore.setNotLoggedIn();
+          return;
+        }
+
+        // Use the same profile API as the extension to get accurate userType
+        const profile = await fetchUserProfile(accessToken);
+        if (profile) {
+          userStore.setUser({
+            name: profile.name,
+            email: profile.email,
+            avatar: profile.avatar,
+            userType: profile.userType,
+          });
+          console.log('[App] Desktop userStore updated for:', profile.email, 'userType:', profile.userType);
+
+          // Notify the agent to re-check auth status (fixes race condition where agent checks too early)
+          authService.notifyAuthChange();
+          return;
+        }
+
+        // Fallback: use session data if profile fetch fails
+        console.warn('[App] Profile fetch failed, falling back to session data');
         const session = await authService.getSession();
         if (session) {
           userStore.setUser({
@@ -69,9 +96,7 @@
             avatar: session.picture || null,
             userType: (session.subscription as any)?.plan_id ?? 0,
           });
-          console.log('[App] Desktop userStore updated for:', session.email);
-
-          // Notify the agent to re-check auth status (fixes race condition where agent checks too early)
+          console.log('[App] Desktop userStore updated (fallback) for:', session.email);
           authService.notifyAuthChange();
           return;
         }
