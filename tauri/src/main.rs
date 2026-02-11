@@ -159,7 +159,7 @@ fn main() {
             }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Open Pi", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
             // Detect initial theme
