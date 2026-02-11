@@ -1,9 +1,8 @@
 /**
  * CDP Navigation Tool - Desktop Version
  *
- * Desktop-mode implementation of browser_navigation using CDP commands.
- * Mirrors src/tools/NavigationTool.ts but replaces Chrome extension APIs
- * (chrome.tabs, chrome.scripting) with CDP equivalents.
+ * Desktop-mode implementation of browser_navigation using chrome-devtools-mcp
+ * via MCP tool calls. Replaces direct CDP commands with MCP equivalents.
  *
  * @module desktop/tools/CDPNavigationTool
  */
@@ -15,8 +14,7 @@ import {
   type BaseToolOptions,
   type ToolDefinition,
 } from '@/tools/BaseTool';
-import { DesktopTabManager } from './browser/DesktopTabManager';
-import type { CDPDebuggerClient } from './browser/CDPDebuggerClient';
+import { ChromeDevToolsMCPClient } from './browser/ChromeDevToolsMCPClient';
 
 // ============================================================================
 // Type Definitions
@@ -50,7 +48,7 @@ interface CDPNavigationResponse {
 // ============================================================================
 
 /**
- * CDPNavigationTool provides browser navigation on desktop via CDP.
+ * CDPNavigationTool provides browser navigation on desktop via chrome-devtools-mcp.
  *
  * Tool name: browser_navigation (same as extension NavigationTool)
  * Platform: desktop only
@@ -91,49 +89,42 @@ export class CDPNavigationTool extends BaseTool {
   );
 
   /**
-   * Execute navigation action
+   * Execute navigation action via chrome-devtools-mcp
    */
   protected async executeImpl(
     request: BaseToolRequest,
-    options?: BaseToolOptions
+    _options?: BaseToolOptions
   ): Promise<CDPNavigationResponse> {
     const typedRequest = request as CDPNavigationRequest;
-    const tabId = options?.metadata?.tabId;
-
-    if (tabId === undefined || tabId === null || tabId === -1) {
-      throw new Error('Target tab ID not provided in execution context');
-    }
-
-    const tabManager = DesktopTabManager.getInstance();
-    const client = await tabManager.getClient(tabId);
+    const mcpClient = ChromeDevToolsMCPClient.getInstance();
 
     switch (typedRequest.action) {
       case 'navigate':
-        return this.navigateToUrl(client, typedRequest);
+        return this.navigateToUrl(mcpClient, typedRequest);
       case 'reload':
-        return this.reloadPage(client, typedRequest);
+        return this.reloadPage(mcpClient, typedRequest);
       case 'goBack':
-        return this.goBack(client, typedRequest);
+        return this.goBack(mcpClient);
       case 'goForward':
-        return this.goForward(client, typedRequest);
+        return this.goForward(mcpClient);
       case 'getCurrentUrl':
-        return this.getCurrentUrl(client);
+        return this.getCurrentUrl(mcpClient);
       case 'waitForLoad':
-        return this.waitForLoad(client, typedRequest);
+        return this.waitForLoad(mcpClient, typedRequest);
       case 'stop':
-        return this.stopNavigation(client);
+        return this.stopNavigation(mcpClient);
       case 'getHistory':
-        return { status: 'complete' }; // History not available via CDP
+        return { status: 'complete' };
       default:
         throw new Error(`Unsupported navigation action: ${typedRequest.action}`);
     }
   }
 
   /**
-   * Navigate to a URL via CDP Page.navigate
+   * Navigate to a URL via MCP navigate_page
    */
   private async navigateToUrl(
-    client: CDPDebuggerClient,
+    mcpClient: ChromeDevToolsMCPClient,
     request: CDPNavigationRequest
   ): Promise<CDPNavigationResponse> {
     if (!request.url) {
@@ -145,23 +136,30 @@ export class CDPNavigationTool extends BaseTool {
 
     console.log(`[CDPNavigationTool] Navigating to ${validUrl}`);
 
-    // Ensure Page domain is enabled
-    await client.enableDomain('Page');
+    const timeout = request.options?.timeout || 30000;
+    const result = await mcpClient.callTool('navigate_page', {
+      type: 'url',
+      url: validUrl,
+      timeout,
+    });
 
-    // Navigate
-    await client.sendCommand('Page.navigate', { url: validUrl });
-
-    // Wait for load if requested (default: true)
-    if (request.options?.waitForLoad !== false) {
-      const timeout = request.options?.timeout || 30000;
-      await this.waitForPageLoadEvent(client, timeout);
+    if (result.isError) {
+      return {
+        status: 'error',
+        error: {
+          code: 'NAVIGATION_FAILED',
+          message: ChromeDevToolsMCPClient.getTextContent(result),
+          url: validUrl,
+          timestamp: Date.now(),
+        },
+      };
     }
 
-    // Get final page state
-    const pageInfo = await this.getPageInfo(client);
+    // Get page info after navigation
+    const pageInfo = await this.getPageInfo(mcpClient);
 
     return {
-      url: pageInfo.url,
+      url: pageInfo.url || validUrl,
       title: pageInfo.title,
       status: 'complete',
       loadTime: Date.now() - startTime,
@@ -172,21 +170,17 @@ export class CDPNavigationTool extends BaseTool {
    * Reload the current page
    */
   private async reloadPage(
-    client: CDPDebuggerClient,
+    mcpClient: ChromeDevToolsMCPClient,
     request: CDPNavigationRequest
   ): Promise<CDPNavigationResponse> {
     const startTime = Date.now();
 
-    await client.sendCommand('Page.reload', {
+    await mcpClient.callTool('navigate_page', {
+      type: 'reload',
       ignoreCache: request.options?.bypassCache || false,
     });
 
-    if (request.options?.waitForLoad !== false) {
-      const timeout = request.options?.timeout || 30000;
-      await this.waitForPageLoadEvent(client, timeout);
-    }
-
-    const pageInfo = await this.getPageInfo(client);
+    const pageInfo = await this.getPageInfo(mcpClient);
 
     return {
       url: pageInfo.url,
@@ -200,34 +194,12 @@ export class CDPNavigationTool extends BaseTool {
    * Go back in history
    */
   private async goBack(
-    client: CDPDebuggerClient,
-    request: CDPNavigationRequest
+    mcpClient: ChromeDevToolsMCPClient
   ): Promise<CDPNavigationResponse> {
-    // Use Page.getNavigationHistory + Page.navigateToHistoryEntry
-    const history = await client.sendCommand<any>('Page.getNavigationHistory');
-    const currentIndex = history.currentIndex;
+    await mcpClient.callTool('navigate_page', { type: 'back' });
 
-    if (currentIndex <= 0) {
-      return {
-        status: 'complete',
-        error: {
-          code: 'NO_HISTORY',
-          message: 'No previous page in history',
-          timestamp: Date.now(),
-        },
-      };
-    }
+    const pageInfo = await this.getPageInfo(mcpClient);
 
-    const previousEntry = history.entries[currentIndex - 1];
-    await client.sendCommand('Page.navigateToHistoryEntry', {
-      entryId: previousEntry.id,
-    });
-
-    if (request.options?.waitForLoad !== false) {
-      await this.waitForPageLoadEvent(client, request.options?.timeout || 10000);
-    }
-
-    const pageInfo = await this.getPageInfo(client);
     return {
       url: pageInfo.url,
       title: pageInfo.title,
@@ -239,33 +211,12 @@ export class CDPNavigationTool extends BaseTool {
    * Go forward in history
    */
   private async goForward(
-    client: CDPDebuggerClient,
-    request: CDPNavigationRequest
+    mcpClient: ChromeDevToolsMCPClient
   ): Promise<CDPNavigationResponse> {
-    const history = await client.sendCommand<any>('Page.getNavigationHistory');
-    const currentIndex = history.currentIndex;
+    await mcpClient.callTool('navigate_page', { type: 'forward' });
 
-    if (currentIndex >= history.entries.length - 1) {
-      return {
-        status: 'complete',
-        error: {
-          code: 'NO_HISTORY',
-          message: 'No forward page in history',
-          timestamp: Date.now(),
-        },
-      };
-    }
+    const pageInfo = await this.getPageInfo(mcpClient);
 
-    const nextEntry = history.entries[currentIndex + 1];
-    await client.sendCommand('Page.navigateToHistoryEntry', {
-      entryId: nextEntry.id,
-    });
-
-    if (request.options?.waitForLoad !== false) {
-      await this.waitForPageLoadEvent(client, request.options?.timeout || 10000);
-    }
-
-    const pageInfo = await this.getPageInfo(client);
     return {
       url: pageInfo.url,
       title: pageInfo.title,
@@ -276,8 +227,10 @@ export class CDPNavigationTool extends BaseTool {
   /**
    * Get current URL and title
    */
-  private async getCurrentUrl(client: CDPDebuggerClient): Promise<CDPNavigationResponse> {
-    const pageInfo = await this.getPageInfo(client);
+  private async getCurrentUrl(
+    mcpClient: ChromeDevToolsMCPClient
+  ): Promise<CDPNavigationResponse> {
+    const pageInfo = await this.getPageInfo(mcpClient);
     return {
       url: pageInfo.url,
       title: pageInfo.title,
@@ -286,18 +239,30 @@ export class CDPNavigationTool extends BaseTool {
   }
 
   /**
-   * Wait for page to finish loading
+   * Wait for specific text to appear on the page
    */
   private async waitForLoad(
-    client: CDPDebuggerClient,
+    mcpClient: ChromeDevToolsMCPClient,
     request: CDPNavigationRequest
   ): Promise<CDPNavigationResponse> {
     const startTime = Date.now();
     const timeout = request.options?.timeout || 10000;
 
-    await this.waitForPageLoadEvent(client, timeout);
+    // wait_for expects text to wait for on the page.
+    // For a generic "wait for load", we check for document readiness.
+    const result = await mcpClient.callTool('evaluate_script', {
+      function: `() => new Promise((resolve) => {
+        if (document.readyState === 'complete') return resolve('loaded');
+        window.addEventListener('load', () => resolve('loaded'), { once: true });
+        setTimeout(() => resolve('timeout'), ${timeout});
+      })`,
+    });
 
-    const pageInfo = await this.getPageInfo(client);
+    if (result.isError) {
+      console.warn(`[CDPNavigationTool] Wait for load warning: ${ChromeDevToolsMCPClient.getTextContent(result)}`);
+    }
+
+    const pageInfo = await this.getPageInfo(mcpClient);
     return {
       url: pageInfo.url,
       title: pageInfo.title,
@@ -309,10 +274,14 @@ export class CDPNavigationTool extends BaseTool {
   /**
    * Stop current navigation
    */
-  private async stopNavigation(client: CDPDebuggerClient): Promise<CDPNavigationResponse> {
-    await client.sendCommand('Page.stopLoading');
+  private async stopNavigation(
+    mcpClient: ChromeDevToolsMCPClient
+  ): Promise<CDPNavigationResponse> {
+    await mcpClient.callTool('evaluate_script', {
+      function: '() => window.stop()',
+    });
 
-    const pageInfo = await this.getPageInfo(client);
+    const pageInfo = await this.getPageInfo(mcpClient);
     return {
       url: pageInfo.url,
       title: pageInfo.title,
@@ -325,39 +294,24 @@ export class CDPNavigationTool extends BaseTool {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Wait for Page.loadEventFired event
-   */
-  private async waitForPageLoadEvent(
-    client: CDPDebuggerClient,
-    timeout: number
-  ): Promise<void> {
-    try {
-      await client.waitForEvent('Page.loadEventFired', timeout);
-    } catch {
-      // Timeout - proceed anyway (page may be interactive even if not fully loaded)
-      console.warn(`[CDPNavigationTool] Page load event timeout (${timeout}ms), proceeding`);
-    }
-  }
-
-  /**
-   * Get current page URL and title via Runtime.evaluate
+   * Get current page URL and title via evaluate_script
    */
   private async getPageInfo(
-    client: CDPDebuggerClient
+    mcpClient: ChromeDevToolsMCPClient
   ): Promise<{ url: string; title: string }> {
     try {
-      const result = await client.sendCommand<any>('Runtime.evaluate', {
-        expression: '({ url: window.location.href, title: document.title })',
-        returnByValue: true,
+      const result = await mcpClient.callTool('evaluate_script', {
+        function: '() => JSON.stringify({ url: window.location.href, title: document.title })',
       });
-      return result.result.value;
+      const text = ChromeDevToolsMCPClient.getTextContent(result);
+      return JSON.parse(text);
     } catch {
       return { url: '', title: '' };
     }
   }
 
   /**
-   * Validate and normalize URL (shared logic with extension NavigationTool)
+   * Validate and normalize URL
    */
   private validateAndNormalizeUrl(url: string): string {
     if (

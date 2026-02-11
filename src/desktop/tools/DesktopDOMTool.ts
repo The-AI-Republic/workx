@@ -1,10 +1,12 @@
 /**
  * Desktop DOM Tool
  *
- * Desktop-mode implementation of browser_dom that delegates to the shared DomService.
- * This replaces CDPDOMTool.ts by using the same DomService that powers the extension,
- * giving desktop mode all extension features for free: SPA wait, a11y enrichment,
- * caching, frame-scoped node IDs, shadow DOM, and iframes.
+ * Desktop-mode implementation of browser_dom that delegates to chrome-devtools-mcp
+ * via the ChromeDevToolsMCPClient singleton. Uses MCP tool calls instead of
+ * direct CDP/DomService for all DOM operations.
+ *
+ * chrome-devtools-mcp's take_snapshot returns an LLM-optimized accessibility tree
+ * with [uid] identifiers that map directly to the action tools (click, fill, press_key).
  *
  * @module desktop/tools/DesktopDOMTool
  */
@@ -16,16 +18,14 @@ import {
   type BaseToolOptions,
   type ToolDefinition,
 } from '@/tools/BaseTool';
-import type { SerializedDom, ActionResult } from '@/types/domTool';
-import { DomService } from '@/tools/dom/DomService';
-import { DesktopTabManager } from './browser/DesktopTabManager';
+import { ChromeDevToolsMCPClient } from './browser/ChromeDevToolsMCPClient';
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
 /**
- * Desktop DOM tool request (same interface as extension DOMTool)
+ * Desktop DOM tool request
  */
 export interface DesktopDOMToolRequest {
   action: 'snapshot' | 'click' | 'type' | 'keypress' | 'scroll';
@@ -40,10 +40,10 @@ export interface DesktopDOMToolRequest {
 // ============================================================================
 
 /**
- * DesktopDOMTool - thin wrapper that delegates to the shared DomService.
+ * DesktopDOMTool - delegates to chrome-devtools-mcp via MCP tool calls.
  *
- * All DOM operations are handled by DomService which is platform-agnostic.
- * This tool just bridges the tool interface to DomService.
+ * All DOM operations are handled by chrome-devtools-mcp which manages
+ * its own Chrome instance and page state internally.
  */
 export class DesktopDOMTool extends BaseTool {
   protected toolDefinition: ToolDefinition = createToolDefinition(
@@ -67,8 +67,8 @@ Example workflow:
 The type action automatically focuses the target element before typing.
 
 ## Available Actions
-1. **snapshot**: Capture current page DOM for AI analysis
-2. **click**: Click on an element by node_id
+1. **snapshot**: Capture current page accessibility tree for AI analysis (returns elements with uid identifiers)
+2. **click**: Click on an element by node_id (uid from snapshot)
 3. **type**: Type text into an element
 4. **keypress**: Send keyboard key (Enter, Escape, Tab, etc.)
 5. **scroll**: Scroll page or element`,
@@ -80,7 +80,7 @@ The type action automatically focuses the target element before typing.
       },
       node_id: {
         type: 'string',
-        description: 'Target element node ID (for click, type, scroll actions). Format: "frameId:backendNodeId"',
+        description: 'Target element uid from snapshot',
       },
       text: {
         type: 'string',
@@ -105,10 +105,8 @@ The type action automatically focuses the target element before typing.
           'page_click',
           'page_input',
           'page_keypress',
-          'cdp_based',
           'iframe_support',
           'shadow_dom_support',
-          'spa_wait',
         ],
         platforms: ['desktop'],
       },
@@ -116,65 +114,83 @@ The type action automatically focuses the target element before typing.
   );
 
   /**
-   * Get or create a DomService for the given tab
-   */
-  private async getDomService(tabId: number): Promise<DomService> {
-    const tabManager = DesktopTabManager.getInstance();
-    const client = await tabManager.getClient(tabId);
-    return DomService.forClient(client, `desktop:${tabId}`);
-  }
-
-  /**
-   * Execute DOM tool action - delegates to shared DomService
+   * Execute DOM tool action via chrome-devtools-mcp
    */
   protected async executeImpl(
     request: BaseToolRequest,
-    options?: BaseToolOptions
-  ): Promise<SerializedDom | ActionResult> {
+    _options?: BaseToolOptions
+  ): Promise<any> {
     const typedRequest = request as DesktopDOMToolRequest;
-
-    const tabId = options?.metadata?.tabId;
-
-    if (tabId === undefined || tabId === null || tabId === -1) {
-      throw new Error('Target tab ID not provided in execution context');
-    }
-
-    const domService = await this.getDomService(tabId);
+    const mcpClient = ChromeDevToolsMCPClient.getInstance();
 
     switch (typedRequest.action) {
-      case 'snapshot':
-        return domService.getSerializedDom();
+      case 'snapshot': {
+        const result = await mcpClient.callTool('take_snapshot');
+        return {
+          dom: ChromeDevToolsMCPClient.getTextContent(result),
+          metadata: { source: 'chrome-devtools-mcp' },
+        };
+      }
 
-      case 'click':
+      case 'click': {
         if (typedRequest.node_id === undefined) {
           throw new Error('node_id is required for click action');
         }
-        return domService.click(typedRequest.node_id);
+        const result = await mcpClient.callTool('click', { uid: String(typedRequest.node_id) });
+        if (result.isError) {
+          throw new Error(`Click failed: ${ChromeDevToolsMCPClient.getTextContent(result)}`);
+        }
+        return { success: true, action: 'click', node_id: typedRequest.node_id };
+      }
 
-      case 'type':
+      case 'type': {
         if (typedRequest.node_id === undefined) {
           throw new Error('node_id is required for type action');
         }
         if (typedRequest.text === undefined) {
           throw new Error('text is required for type action');
         }
-        return domService.type(typedRequest.node_id, typedRequest.text, typedRequest.options);
+        const result = await mcpClient.callTool('fill', {
+          uid: String(typedRequest.node_id),
+          value: typedRequest.text,
+        });
+        if (result.isError) {
+          throw new Error(`Type failed: ${ChromeDevToolsMCPClient.getTextContent(result)}`);
+        }
+        return { success: true, action: 'type', node_id: typedRequest.node_id };
+      }
 
-      case 'keypress':
+      case 'keypress': {
         if (!typedRequest.key) {
           throw new Error('key is required for keypress action');
         }
-        return domService.keypress(typedRequest.key, typedRequest.options?.modifiers);
+        const result = await mcpClient.callTool('press_key', { key: typedRequest.key });
+        if (result.isError) {
+          throw new Error(`Keypress failed: ${ChromeDevToolsMCPClient.getTextContent(result)}`);
+        }
+        return { success: true, action: 'keypress', key: typedRequest.key };
+      }
 
-      case 'scroll':
+      case 'scroll': {
         if (typedRequest.node_id === undefined) {
           throw new Error('node_id is required for scroll action');
         }
-        return domService.scroll(
-          typedRequest.node_id,
-          typedRequest.options?.scrollX || 0,
-          typedRequest.options?.scrollY
-        );
+        const uid = String(typedRequest.node_id);
+        const scrollX = typedRequest.options?.scrollX || 0;
+        const scrollY = typedRequest.options?.scrollY || 0;
+        // Use evaluate_script to scroll — chrome-devtools-mcp doesn't have a dedicated scroll tool
+        const result = await mcpClient.callTool('evaluate_script', {
+          function: `(uid, x, y) => {
+            const el = document.querySelector('[data-uid="' + uid + '"]');
+            if (el) { el.scrollBy(x, y); } else { window.scrollBy(x, y); }
+          }`,
+          args: [uid, scrollX, scrollY],
+        });
+        if (result.isError) {
+          throw new Error(`Scroll failed: ${ChromeDevToolsMCPClient.getTextContent(result)}`);
+        }
+        return { success: true, action: 'scroll', node_id: typedRequest.node_id };
+      }
 
       default:
         throw new Error(`Unknown action: ${(typedRequest as any).action}`);

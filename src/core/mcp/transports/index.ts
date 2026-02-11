@@ -103,3 +103,6 @@ export function getDefaultTransportType(): MCPTransportType {
 
 // Re-export transport implementations
 export { SSETransport } from './SSETransport';
+// Note: TauriStdioSDKTransport is not re-exported here to avoid pulling in
+// Tauri dependencies during non-desktop builds. Import directly from
+// './TauriStdioSDKTransport' when needed in desktop code.

@@ -34,10 +34,15 @@ pub async fn mcp_spawn(
 ) -> Result<McpSpawnResult, String> {
     let session_id = uuid::Uuid::new_v4().to_string();
 
+    println!("[mcp_spawn] Spawning: {} {:?} (session: {})", server, args, session_id);
+
     let mut cmd = Command::new(&server);
     cmd.args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        // Drain stderr to prevent pipe buffer deadlock.
+        // When stderr is piped but not read, the OS pipe buffer (~64KB)
+        // fills up and the child process blocks on write, causing a deadlock.
         .stderr(Stdio::piped());
 
     match cmd.spawn() {
@@ -50,14 +55,39 @@ pub async fn mcp_spawn(
             std::thread::spawn(move || {
                 let reader = BufReader::new(stdout);
                 for line in reader.lines() {
-                    if let Ok(line) = line {
-                        let _ = app_handle.emit(
-                            "mcp_message",
-                            McpMessage {
-                                session_id: sid.clone(),
-                                message: line,
-                            },
-                        );
+                    match line {
+                        Ok(line) => {
+                            println!("[mcp_spawn] stdout ({}): {}", sid, &line[..line.len().min(200)]);
+                            let _ = app_handle.emit(
+                                "mcp_message",
+                                McpMessage {
+                                    session_id: sid.clone(),
+                                    message: line,
+                                },
+                            );
+                        }
+                        Err(e) => {
+                            eprintln!("[mcp_spawn] stdout read error ({}): {}", sid, e);
+                            break;
+                        }
+                    }
+                }
+                println!("[mcp_spawn] stdout reader thread exiting ({})", sid);
+            });
+
+            // Spawn a thread to drain stderr — CRITICAL to prevent deadlock.
+            // Without this, the child blocks when stderr pipe buffer fills up.
+            let stderr = child.stderr.take().expect("Failed to capture stderr");
+            let sid_stderr = session_id.clone();
+
+            std::thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines() {
+                    match line {
+                        Ok(line) => {
+                            eprintln!("[mcp_spawn] stderr ({}): {}", sid_stderr, line);
+                        }
+                        Err(_) => break,
                     }
                 }
             });
@@ -65,31 +95,45 @@ pub async fn mcp_spawn(
             let mut sessions = MCP_SESSIONS.lock().unwrap();
             sessions.insert(session_id.clone(), McpSession { process: child });
 
+            println!("[mcp_spawn] Process spawned successfully (session: {})", session_id);
+
             Ok(McpSpawnResult {
                 session_id,
                 success: true,
                 error: None,
             })
         }
-        Err(e) => Ok(McpSpawnResult {
-            session_id: String::new(),
-            success: false,
-            error: Some(e.to_string()),
-        }),
+        Err(e) => {
+            eprintln!("[mcp_spawn] Failed to spawn: {}", e);
+            Ok(McpSpawnResult {
+                session_id: String::new(),
+                success: false,
+                error: Some(e.to_string()),
+            })
+        }
     }
 }
 
 #[tauri::command]
 pub async fn mcp_send(session_id: String, message: String) -> Result<bool, String> {
+    println!("[mcp_send] Sending to session {}: {}...", session_id, &message[..message.len().min(200)]);
+
     let mut sessions = MCP_SESSIONS.lock().unwrap();
 
     if let Some(session) = sessions.get_mut(&session_id) {
         if let Some(stdin) = session.process.stdin.as_mut() {
             if let Err(e) = writeln!(stdin, "{}", message) {
+                eprintln!("[mcp_send] Write error: {}", e);
                 return Err(format!("Failed to write to stdin: {}", e));
             }
+            if let Err(e) = stdin.flush() {
+                eprintln!("[mcp_send] Flush error: {}", e);
+                return Err(format!("Failed to flush stdin: {}", e));
+            }
+            println!("[mcp_send] Message sent successfully");
             return Ok(true);
         }
+        return Err(format!("Session {} has no stdin", session_id));
     }
 
     Err(format!("Session not found: {}", session_id))

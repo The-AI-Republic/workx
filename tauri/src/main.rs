@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod browser_commands;
 mod commands;
 mod http_commands;
 mod keychain_commands;
@@ -238,6 +239,14 @@ fn main() {
             storage_commands::config_storage_remove_many,
             storage_commands::config_storage_get_all,
             storage_commands::config_storage_clear,
+            // Browser detection and CDP commands
+            browser_commands::find_running_browsers,
+            browser_commands::file_exists,
+            browser_commands::get_home_dir,
+            browser_commands::is_port_available,
+            browser_commands::launch_chrome,
+            browser_commands::get_chrome_ws_endpoint,
+            browser_commands::kill_process,
             // HTTP proxy command
             http_commands::http_fetch,
             // Keychain commands

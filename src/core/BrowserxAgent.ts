@@ -437,12 +437,24 @@ export class BrowserxAgent {
     // ================================================================
     if (newTabId === -1) {
       try {
-        // Desktop mode: use DesktopTabManager for CDP-based tab creation
+        // Desktop mode: ensure chrome-devtools-mcp is connected.
+        // chrome-devtools-mcp launches Chrome with a default page — no need to
+        // call new_page. The agent will use navigate_page to go where it needs.
         if (__BUILD_MODE__ === 'desktop') {
-          const { DesktopTabManager } = await import('../desktop/tools/browser/DesktopTabManager');
-          const dtm = DesktopTabManager.getInstance();
-          await dtm.initialize();
-          const createdTabId = await dtm.createTab('about:blank');
+          console.log('[BrowserxAgent] Desktop mode: ensuring chrome-devtools-mcp is connected...');
+          try {
+            const { ChromeDevToolsMCPClient } = await import('../desktop/tools/browser/ChromeDevToolsMCPClient');
+            const mcpClient = ChromeDevToolsMCPClient.getInstance();
+            await mcpClient.ensureConnected();
+            console.log('[BrowserxAgent] Desktop mode: chrome-devtools-mcp connected successfully');
+          } catch (mcpError) {
+            console.error('[BrowserxAgent] Desktop mode: chrome-devtools-mcp connection failed:', mcpError);
+            // Don't fail the submission — tools will lazy-connect on first call
+            // and return a more specific error to the LLM
+          }
+
+          // Use sentinel tabId=1 since MCP manages page state internally
+          const createdTabId = 1;
 
           this.session.setTabId(createdTabId);
 

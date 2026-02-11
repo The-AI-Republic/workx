@@ -75,6 +75,8 @@ export class DesktopTabManager {
 
   /**
    * Initialize the tab manager by auto-detecting the debug port.
+   * If no Chrome instance with remote debugging is found, automatically
+   * launches one using ChromeLauncher.
    * Must be called before any tab operations.
    */
   async initialize(debugPort?: number): Promise<void> {
@@ -86,10 +88,24 @@ export class DesktopTabManager {
       // Auto-detect debug port from running browser
       const detector = new BrowserDetector();
       const port = await detector.findExistingDebugPort();
-      if (!port) {
-        throw new Error('No running Chrome instance with remote debugging found. Desktop tab management unavailable.');
+
+      if (port) {
+        this.debugPort = port;
+      } else {
+        // No Chrome with debugging found — launch one automatically
+        console.log('[DesktopTabManager] No existing debug session found, launching Chrome...');
+        const { ChromeLauncher } = await import('./ChromeLauncher');
+        const launcher = new ChromeLauncher();
+        const result = await launcher.launch();
+
+        if (!result.success || !result.debugPort) {
+          throw new Error(
+            `Failed to launch Chrome with remote debugging: ${result.error || 'Unknown error'}`
+          );
+        }
+
+        this.debugPort = result.debugPort;
       }
-      this.debugPort = port;
     }
 
     console.log(`[DesktopTabManager] Initialized with debug port ${this.debugPort}`);

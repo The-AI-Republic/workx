@@ -7,7 +7,7 @@
  * @module core/mcp/transports/TauriStdioTransport
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { MCPTransport } from './index';
 
@@ -28,10 +28,11 @@ export interface TauriStdioTransportOptions {
 }
 
 /**
- * Message received from MCP process
+ * Message received from MCP process.
+ * Field names must match the Rust McpMessage struct's serde serialization (snake_case).
  */
 interface MCPProcessMessage {
-  sessionId: string;
+  session_id: string;
   message: string;
 }
 
@@ -89,8 +90,13 @@ export class TauriStdioTransport implements MCPTransport {
     try {
       // Listen for messages from the MCP process
       this.unlistenFn = await listen<MCPProcessMessage>('mcp_message', (event) => {
-        if (event.payload.sessionId === this.sessionId) {
-          this.handleMessage(event.payload.message);
+        const payload = event.payload;
+        console.log(`[TauriStdioTransport] Event received: session_id=${payload.session_id}, my_session=${this.sessionId}, message_len=${payload.message?.length ?? 0}`);
+
+        if (payload.session_id === this.sessionId) {
+          this.handleMessage(payload.message);
+        } else {
+          console.warn(`[TauriStdioTransport] Session mismatch: got ${payload.session_id}, expected ${this.sessionId}`);
         }
       });
 
@@ -206,9 +212,12 @@ export class TauriStdioTransport implements MCPTransport {
   private handleMessage(messageStr: string): void {
     try {
       const message = JSON.parse(messageStr);
+      const id = (message as any).id;
+      const method = (message as any).method;
+      console.log(`[TauriStdioTransport] Parsed message: id=${id}, method=${method}, handlers=${this.messageHandlers.length}`);
       this.notifyMessage(message);
     } catch (error) {
-      console.error('[TauriStdioTransport] Failed to parse message:', error);
+      console.error('[TauriStdioTransport] Failed to parse message:', messageStr?.substring(0, 200), error);
       this.notifyError(new Error(`Failed to parse message: ${error}`));
     }
   }

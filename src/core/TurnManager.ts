@@ -290,6 +290,8 @@ export class TurnManager {
     // Get all registered browser tools from ToolRegistry
     const registeredTools = this.toolRegistry.listTools();
 
+    console.log(`[TurnManager] buildToolsFromContext: ${registeredTools.length} tools in registry, enableAllTools=${toolsConfig.enable_all_tools}, disabled=[${toolsConfig.disabled?.join(', ') || ''}]`);
+
     // Check if all tools should be enabled
     const enableAllTools = toolsConfig.enable_all_tools ?? false;
 
@@ -321,7 +323,9 @@ export class TurnManager {
     }
 
     // Add agent execution tools based on config
-    if (enableAllTools || toolsConfig.webSearch) {
+    // Only add web_search if not already registered in ToolRegistry
+    const hasWebSearch = tools.some(t => t.type === 'function' && t.function.name === 'web_search');
+    if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
       tools.push({
         type: 'function',
         function: {
@@ -381,6 +385,13 @@ export class TurnManager {
         }
       }
     }
+
+    // Log the final tool list for debugging
+    const toolNames = tools.map(t => {
+      if (t.type === 'function') return t.function.name;
+      return t.type;
+    });
+    console.log(`[TurnManager] buildToolsFromContext: sending ${tools.length} tools to LLM: [${toolNames.join(', ')}]`);
 
     return tools;
   }
@@ -494,6 +505,7 @@ export class TurnManager {
     if (item.type === 'function_call') {
       // Legacy function_call item - execute and return response
       const { name, arguments: args, call_id } = item;
+      console.log(`[TurnManager] handleResponseItem: function_call '${name}' (call_id: ${call_id})`);
 
       try {
         const result = await this.executeToolCall(name, args, call_id);
@@ -584,6 +596,8 @@ export class TurnManager {
    * Execute a tool call and return the response
    */
   private async executeToolCall(toolName: string, parameters: any, callId: string): Promise<any> {
+    console.log(`[TurnManager] executeToolCall: ${toolName} (callId: ${callId})`);
+
     try {
       // Parse parameters if they're a JSON string (common with OpenAI API)
       let parsedParams = parameters;
@@ -607,38 +621,52 @@ export class TurnManager {
           result = await this.updatePlan(parsedParams.plan, parsedParams.explanation);
           break;
 
-        default:
+        default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
+            console.log(`[TurnManager] Found ${toolName} in ToolRegistry, dispatching to executeBrowserTool`);
             result = await this.executeBrowserTool(browserTool, parsedParams);
             break;
           }
+
+          console.log(`[TurnManager] ${toolName} not in ToolRegistry, checking MCP fallback`);
 
           // Guard MCP execution with capability + config checks
           const toolsConfig = this.turnContext.getToolsConfig();
           const mcpEnabled = toolsConfig.mcpTools === true;
 
           if (!mcpEnabled) {
-            throw new Error(`Tool '${toolName}' not available (mcpTools disabled in config)`);
+            throw new Error(`Tool '${toolName}' not found in ToolRegistry and mcpTools disabled`);
           }
 
           // Only reach here if MCP is supported AND enabled
           result = await this.executeMcpTool(toolName, parsedParams);
           break;
+        }
       }
+
+      // Format result as function_call_output
+      // If result is already a string (e.g. from MCP text content), use it directly
+      // to avoid double-encoding (JSON.stringify on a string adds quotes + escapes)
+      const output = typeof result === 'string' ? result : JSON.stringify(result);
+
+      console.log(`[TurnManager] executeToolCall ${toolName} succeeded (output length: ${output.length})`);
 
       return {
         type: 'function_call_output',
         call_id: callId,
-        output: JSON.stringify(result),
+        output,
       };
 
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);
+
       return {
         type: 'function_call_output',
         call_id: callId,
-        output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        output: `Error: ${errorMsg}`,
       };
     }
   }
@@ -741,6 +769,8 @@ export class TurnManager {
     // Emit browser tool execution event
     const toolName = this.getToolNameFromDefinition(tool);
 
+    console.log(`[TurnManager] executeBrowserTool: ${toolName} with params:`, JSON.stringify(parameters));
+
     await this.emitEvent({
       type: 'ToolExecutionStart',
       data: {
@@ -754,20 +784,25 @@ export class TurnManager {
       // Get tabId from Session to pass to tool execution
       const tabId = this.session.getTabId();
 
-
       const request = {
         toolName,
         parameters,
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
         tabId, // Pass tabId in request for tools that need it
+        timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
       };
+
+      console.log(`[TurnManager] executeBrowserTool: calling ToolRegistry.execute for ${toolName} (timeout: ${request.timeout}ms)`);
 
       const response = await this.toolRegistry.execute(request);
 
       if (!response.success) {
+        console.error(`[TurnManager] executeBrowserTool: ${toolName} failed:`, response.error);
         throw new Error(response.error?.message || 'Tool execution failed');
       }
+
+      console.log(`[TurnManager] executeBrowserTool: ${toolName} succeeded (duration: ${response.duration}ms, data type: ${typeof response.data})`);
 
       await this.emitEvent({
         type: 'ToolExecutionEnd',
@@ -780,12 +815,15 @@ export class TurnManager {
 
       return response.data;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TurnManager] executeBrowserTool: ${toolName} threw:`, errorMsg);
+
       await this.emitEvent({
         type: 'ToolExecutionError',
         data: {
           tool_name: toolName,
           session_id: this.session.getSessionId(),
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         },
       });
       throw error;
