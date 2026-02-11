@@ -17,6 +17,7 @@ import { PlanningTool } from '../../tools/PlanningTool';
 import { WebSearchTool } from '../../tools/WebSearchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
+import { TerminalTool } from './terminal/TerminalTool';
 
 /**
  * Check if a tool supports the given platform based on its metadata
@@ -140,4 +141,37 @@ export async function registerDesktopToolsImpl(
   // Web search tool
   const webSearchTool = new WebSearchTool();
   await registerTool('web_search', webSearchTool);
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Register terminal tool (desktop only)
+  // ──────────────────────────────────────────────────────────────────────
+  const terminalTool = new TerminalTool();
+  const terminalDef = terminalTool.getToolDefinition();
+
+  if (!registry.getTool('terminal')) {
+    console.log('[registerDesktopTools] Registering terminal (desktop)...');
+
+    await registry.register(
+      {
+        type: 'function',
+        function: {
+          name: terminalDef.name,
+          description: terminalDef.description,
+          strict: false,
+          parameters: terminalDef.inputSchema as any,
+        },
+        metadata: {
+          platforms: ['desktop'],
+        },
+      },
+      async (params) => {
+        return await terminalTool.handleInvocation(params as {
+          command: string;
+          cwd?: string;
+          timeout?: number;
+          userConfirmed?: boolean;
+        });
+      }
+    );
+  }
 }

@@ -16,3 +16,4 @@ export { NativeCDPClient } from './browser/NativeCDPClient';
 export { CDPDebuggerClient } from './browser/CDPDebuggerClient';
 export { DesktopTabManager } from './browser/DesktopTabManager';
 export { ChromeLauncher } from './browser/ChromeLauncher';
+export { TerminalTool, SecurityFilter } from './terminal';
