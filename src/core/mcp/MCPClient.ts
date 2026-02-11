@@ -8,6 +8,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport, type SSEClientTransportOptions } from './transports/SSEClientTransport';
 import type {
+  IMCPClientAdapter,
   IMCPServerConfig,
   IMCPServerInfo,
   IMCPCapabilities,
@@ -51,7 +52,7 @@ export interface MCPClientOptions {
  * await client.disconnect();
  * ```
  */
-export class MCPClient {
+export class MCPClient implements IMCPClientAdapter {
   private client: Client | null = null;
   private transport: SSEClientTransport | null = null;
   private status: MCPConnectionStatus = 'disconnected';

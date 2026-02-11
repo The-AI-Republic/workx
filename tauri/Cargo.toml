@@ -27,6 +27,7 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 directories = "5"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
 base64 = "0.22"
+rmcp = { version = "0.15", features = ["client", "transport-child-process"] }
 
 [features]
 default = ["custom-protocol", "dark-icon"]

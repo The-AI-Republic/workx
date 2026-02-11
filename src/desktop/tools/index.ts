@@ -4,11 +4,13 @@
  * Exports desktop-specific tool implementations that use
  * native APIs (CDP, terminal, file system) instead of Chrome extension APIs.
  *
+ * Browser automation tools (DOM, navigation, etc.) are now registered
+ * dynamically via MCPManager's builtin 'browser' server. See
+ * registerDesktopTools.ts for the registration flow.
+ *
  * @module desktop/tools
  */
 
-export { DesktopDOMTool } from './DesktopDOMTool';
-export { CDPNavigationTool } from './CDPNavigationTool';
 export { NativeBrowserController } from './browser/NativeBrowserController';
 export { NativeCDPClient } from './browser/NativeCDPClient';
 export { CDPDebuggerClient } from './browser/CDPDebuggerClient';

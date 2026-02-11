@@ -5,7 +5,7 @@ mod browser_commands;
 mod commands;
 mod http_commands;
 mod keychain_commands;
-mod mcp_commands;
+mod mcp_manager;
 mod storage_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -228,9 +228,12 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
-            mcp_commands::mcp_spawn,
-            mcp_commands::mcp_send,
-            mcp_commands::mcp_close,
+            mcp_manager::mcp_connect,
+            mcp_manager::mcp_list_tools,
+            mcp_manager::mcp_call_tool,
+            mcp_manager::mcp_list_resources,
+            mcp_manager::mcp_read_resource,
+            mcp_manager::mcp_disconnect,
             // Config storage commands
             storage_commands::config_storage_get,
             storage_commands::config_storage_set,

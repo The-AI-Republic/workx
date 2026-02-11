@@ -441,16 +441,18 @@ export class BrowserxAgent {
         // chrome-devtools-mcp launches Chrome with a default page — no need to
         // call new_page. The agent will use navigate_page to go where it needs.
         if (__BUILD_MODE__ === 'desktop') {
-          console.log('[BrowserxAgent] Desktop mode: ensuring chrome-devtools-mcp is connected...');
+          console.log('[BrowserxAgent] Desktop mode: ensuring browser MCP server is connected...');
           try {
-            const { ChromeDevToolsMCPClient } = await import('../desktop/tools/browser/ChromeDevToolsMCPClient');
-            const mcpClient = ChromeDevToolsMCPClient.getInstance();
-            await mcpClient.ensureConnected();
-            console.log('[BrowserxAgent] Desktop mode: chrome-devtools-mcp connected successfully');
+            const { MCPManager } = await import('./mcp/MCPManager');
+            const mcpManager = await MCPManager.getInstance('desktop');
+            const browserServer = mcpManager.getServerByName('browser');
+            if (browserServer) {
+              await mcpManager.connect(browserServer.id);
+            }
+            console.log('[BrowserxAgent] Desktop mode: browser MCP server connected successfully');
           } catch (mcpError) {
-            console.error('[BrowserxAgent] Desktop mode: chrome-devtools-mcp connection failed:', mcpError);
-            // Don't fail the submission — tools will lazy-connect on first call
-            // and return a more specific error to the LLM
+            console.error('[BrowserxAgent] Desktop mode: browser MCP server connection failed:', mcpError);
+            // Don't fail the submission — tools will return errors to the LLM
           }
 
           // Use sentinel tabId=1 since MCP manages page state internally
