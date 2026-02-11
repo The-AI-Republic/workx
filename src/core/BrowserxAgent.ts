@@ -133,6 +133,13 @@ export class BrowserxAgent {
       supportsImage: modelData.model.supportsImage
     });
 
+    // In desktop mode, browser tools come from MCP (chrome-devtools-mcp).
+    // Enable mcpTools so TurnManager includes them in the tool list and
+    // allows the MCP fallback execution path.
+    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
+      this.config.updateToolsConfig({ mcpTools: true });
+    }
+
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
     // Use createClientForCurrentModel() to properly use selectedModelKey from config
@@ -441,17 +448,47 @@ export class BrowserxAgent {
         // chrome-devtools-mcp launches Chrome with a default page — no need to
         // call new_page. The agent will use navigate_page to go where it needs.
         if (__BUILD_MODE__ === 'desktop') {
-          console.log('[BrowserxAgent] Desktop mode: ensuring browser MCP server is connected...');
           try {
             const { MCPManager } = await import('./mcp/MCPManager');
+            const { registerMCPTools } = await import('./mcp/MCPToolAdapter');
             const mcpManager = await MCPManager.getInstance('desktop');
             const browserServer = mcpManager.getServerByName('browser');
             if (browserServer) {
               await mcpManager.connect(browserServer.id);
+
+              // Verify tools were actually discovered
+              const connection = mcpManager.getConnection(browserServer.id);
+              if (connection && connection.tools.length > 0) {
+                // Lazily register tools if they weren't registered at startup
+                if (!this.toolRegistry.getTool(`browser__${connection.tools[0].name}`)) {
+                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry);
+                }
+              } else {
+                const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
+                console.warn(`[BrowserxAgent] ${warnMsg}`);
+                this.emitEvent({
+                  type: 'BackgroundEvent',
+                  data: { message: warnMsg, level: 'warning' },
+                });
+              }
+            } else {
+              const warnMsg = 'Builtin browser server not found in MCPManager. Browser tools will be unavailable.';
+              console.warn(`[BrowserxAgent] ${warnMsg}`);
+              this.emitEvent({
+                type: 'BackgroundEvent',
+                data: { message: warnMsg, level: 'warning' },
+              });
             }
-            console.log('[BrowserxAgent] Desktop mode: browser MCP server connected successfully');
           } catch (mcpError) {
-            console.error('[BrowserxAgent] Desktop mode: browser MCP server connection failed:', mcpError);
+            const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
+            console.error(`[BrowserxAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
+            this.emitEvent({
+              type: 'BackgroundEvent',
+              data: {
+                message: `Browser tools unavailable: ${errorMsg}`,
+                level: 'warning',
+              },
+            });
             // Don't fail the submission — tools will return errors to the LLM
           }
 

@@ -133,11 +133,6 @@ pub async fn mcp_connect(
     env: Option<HashMap<String, String>>,
     cwd: Option<String>,
 ) -> Result<McpConnectResult, String> {
-    println!(
-        "[mcp_manager] Connecting: {} {:?} (server_id: {})",
-        command, args, server_id
-    );
-
     // Check if already connected
     {
         let sessions = MCP_SESSIONS.lock().await;
@@ -173,7 +168,6 @@ pub async fn mcp_connect(
     let child_process = match TokioChildProcess::new(cmd) {
         Ok(cp) => cp,
         Err(e) => {
-            eprintln!("[mcp_manager] Failed to spawn process: {}", e);
             return Ok(McpConnectResult {
                 success: false,
                 server_name: None,
@@ -203,7 +197,6 @@ pub async fn mcp_connect(
     let client = match client_info.serve(child_process).await {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("[mcp_manager] MCP handshake failed: {}", e);
             return Ok(McpConnectResult {
                 success: false,
                 server_name: None,
@@ -254,11 +247,6 @@ pub async fn mcp_connect(
         sessions.insert(server_id.clone(), session);
     }
 
-    println!(
-        "[mcp_manager] Connected successfully (server_id: {})",
-        server_id
-    );
-
     Ok(result)
 }
 
@@ -287,12 +275,6 @@ pub async fn mcp_list_tools(server_id: String) -> Result<Vec<McpToolDef>, String
         })
         .collect();
 
-    println!(
-        "[mcp_manager] Listed {} tools (server_id: {})",
-        tools.len(),
-        server_id
-    );
-
     Ok(tools)
 }
 
@@ -303,11 +285,6 @@ pub async fn mcp_call_tool(
     arguments: serde_json::Value,
     _timeout_ms: Option<u64>,
 ) -> Result<McpToolResult, String> {
-    println!(
-        "[mcp_manager] Calling tool: {} (server_id: {})",
-        tool_name, server_id
-    );
-
     let sessions = MCP_SESSIONS.lock().await;
 
     let session = sessions
@@ -367,15 +344,7 @@ pub async fn mcp_call_tool(
         })
         .collect();
 
-    let is_error = call_result.is_error;
-
-    println!(
-        "[mcp_manager] Tool {} result: is_error={}, blocks={} (server_id: {})",
-        tool_name,
-        is_error,
-        content.len(),
-        server_id
-    );
+    let is_error = call_result.is_error.unwrap_or(false);
 
     Ok(McpToolResult { content, is_error })
 }
@@ -471,15 +440,12 @@ pub async fn mcp_read_resource(
 
 #[tauri::command]
 pub async fn mcp_disconnect(server_id: String) -> Result<bool, String> {
-    println!("[mcp_manager] Disconnecting server_id: {}", server_id);
-
     let mut sessions = MCP_SESSIONS.lock().await;
 
     if let Some(session) = sessions.remove(&server_id) {
         // The RunningService will be dropped, which cancels the client
         // and kills the subprocess
         drop(session);
-        println!("[mcp_manager] Disconnected server_id: {}", server_id);
         Ok(true)
     } else {
         Err(format!("Server not found: {}", server_id))

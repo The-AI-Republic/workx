@@ -386,13 +386,6 @@ export class TurnManager {
       }
     }
 
-    // Log the final tool list for debugging
-    const toolNames = tools.map(t => {
-      if (t.type === 'function') return t.function.name;
-      return t.type;
-    });
-    console.log(`[TurnManager] buildToolsFromContext: sending ${tools.length} tools to LLM: [${toolNames.join(', ')}]`);
-
     return tools;
   }
 

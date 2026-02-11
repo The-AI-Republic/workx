@@ -313,6 +313,7 @@ export class MCPManager implements IMCPManager {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MCPManager] Connection to ${config.name} failed: ${errorMessage}`);
       this.updateConnectionStatus(id, 'error', errorMessage);
       throw error;
     }
@@ -397,20 +398,20 @@ export class MCPManager implements IMCPManager {
 
   /**
    * Execute a tool on the appropriate server.
-   * @param prefixedName Tool name with server prefix (e.g., "github:search")
+   * @param prefixedName Tool name with server prefix (e.g., "github__search")
    * @param args Tool arguments
    */
   async executeTool(prefixedName: string, args: Record<string, unknown>): Promise<IMCPToolResult> {
     this.ensureInitialized();
 
-    // Parse prefixed name
-    const colonIndex = prefixedName.indexOf(':');
-    if (colonIndex === -1) {
-      throw new Error(`Invalid tool name format: ${prefixedName}. Expected "serverName:toolName"`);
+    // Parse prefixed name (separator is __ to avoid LLM API restrictions on colons)
+    const separatorIndex = prefixedName.indexOf('__');
+    if (separatorIndex === -1) {
+      throw new Error(`Invalid tool name format: ${prefixedName}. Expected "serverName__toolName"`);
     }
 
-    const serverName = prefixedName.slice(0, colonIndex);
-    const toolName = prefixedName.slice(colonIndex + 1);
+    const serverName = prefixedName.slice(0, separatorIndex);
+    const toolName = prefixedName.slice(separatorIndex + 2);
 
     // Find server by name
     let serverId: string | undefined;
@@ -577,6 +578,15 @@ export class MCPManager implements IMCPManager {
       }
     }
 
+    // Resolve project root via Tauri so npx can find chrome-devtools-mcp deps
+    let projectRoot: string | undefined;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      projectRoot = await invoke<string>('get_project_root');
+    } catch (err) {
+      console.warn('[MCPManager] Failed to resolve project root, MCP subprocess will inherit cwd:', err);
+    }
+
     const now = Date.now();
     const builtinConfig: IMCPServerConfig = {
       id: BUILTIN_BROWSER_SERVER_ID,
@@ -586,7 +596,8 @@ export class MCPManager implements IMCPManager {
       platform: 'desktop',
       builtin: true,
       command: 'npx',
-      args: ['chrome-devtools-mcp'],
+      args: ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'],
+      cwd: projectRoot,
       enabled: true,
       timeout: 180000, // 3 min — browser tools can be slow
       createdAt: now,
@@ -601,7 +612,6 @@ export class MCPManager implements IMCPManager {
       resources: [],
     });
 
-    console.info('[MCPManager] Seeded builtin browser server (chrome-devtools-mcp)');
   }
 
   // ==========================================================================

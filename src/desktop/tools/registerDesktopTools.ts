@@ -5,7 +5,7 @@
  * plus cross-platform tools (planning, web search).
  *
  * The builtin browser server (chrome-devtools-mcp) is connected via MCPManager,
- * and its tools are registered dynamically with prefixed names (e.g., browser:click).
+ * and its tools are registered dynamically with prefixed names (e.g., browser__click).
  *
  * @module desktop/tools/registerDesktopTools
  */
@@ -59,18 +59,14 @@ export async function registerDesktopToolsImpl(
   // Helper to register a BaseTool instance
   const registerTool = async (toolName: string, toolInstance: any) => {
     if (registry.getTool(toolName)) {
-      console.log(`[registerDesktopTools] ${toolName} already registered, skipping...`);
       return;
     }
 
     const definition = toolInstance.getDefinition();
 
     if (!isPlatformSupported(definition, platform)) {
-      console.log(`[registerDesktopTools] ${toolName} not supported on ${platform}, skipping...`);
       return;
     }
-
-    console.log(`[registerDesktopTools] Registering ${toolName} (desktop)...`);
 
     await registry.register(definition, async (params, context) => {
       return toolInstance.execute(params, {
@@ -88,9 +84,6 @@ export async function registerDesktopToolsImpl(
   // Register browser tools via MCPManager builtin server
   // ──────────────────────────────────────────────────────────────────────
   if (enableBrowserTools) {
-    console.log('[registerDesktopTools] Browser tools enabled (enable_all_tools=%s, dom_tool=%s, navigation_tool=%s)',
-      toolsConfig.enable_all_tools, toolsConfig.dom_tool, toolsConfig.navigation_tool);
-
     try {
       const mcpManager = await MCPManager.getInstance('desktop');
 
@@ -98,25 +91,42 @@ export async function registerDesktopToolsImpl(
       const browserServer = mcpManager.getServerByName('browser');
 
       if (browserServer) {
-        // Connect the browser server (lazy — will spawn chrome-devtools-mcp)
-        try {
-          await mcpManager.connect(browserServer.id);
-          console.log('[registerDesktopTools] Browser MCP server connected');
+        // Connect with retry — chrome-devtools-mcp may take time to start
+        const MAX_RETRIES = 2;
+        const RETRY_DELAY_MS = 2000;
+        let lastError: unknown;
+        let connected = false;
 
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            if (attempt > 0) {
+              await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            }
+            await mcpManager.connect(browserServer.id);
+            connected = true;
+            break;
+          } catch (connectError) {
+            lastError = connectError;
+
+            // Disconnect before retrying so MCPManager doesn't think we're still connecting
+            if (attempt < MAX_RETRIES) {
+              try { await mcpManager.disconnect(browserServer.id); } catch { /* ignore */ }
+            }
+          }
+        }
+
+        if (connected) {
           // Get the connection to access discovered tools
           const connection = mcpManager.getConnection(browserServer.id);
 
           if (connection && connection.tools.length > 0) {
-            // Register all discovered tools with prefixed names (browser:click, etc.)
+            // Register all discovered tools with prefixed names (browser__click, etc.)
             await registerMCPTools(mcpManager, 'browser', connection.tools, registry);
-            console.log(`[registerDesktopTools] Registered ${connection.tools.length} browser tools via MCP`);
           } else {
             console.warn('[registerDesktopTools] Browser server connected but no tools discovered');
           }
-        } catch (connectError) {
-          console.error('[registerDesktopTools] Failed to connect browser MCP server:', connectError);
-          // Don't fail — tools will be unavailable but agent can still work
-          console.log('[registerDesktopTools] Browser tools will be unavailable');
+        } else {
+          console.warn('[registerDesktopTools] Browser tools will be unavailable — agent will proceed with planning and web search only');
         }
       } else {
         console.warn('[registerDesktopTools] Builtin browser server not found in MCPManager');
@@ -124,9 +134,6 @@ export async function registerDesktopToolsImpl(
     } catch (error) {
       console.error('[registerDesktopTools] Failed to initialize MCPManager:', error);
     }
-  } else {
-    console.log('[registerDesktopTools] Browser tools DISABLED (enable_all_tools=%s, dom_tool=%s, navigation_tool=%s)',
-      toolsConfig.enable_all_tools, toolsConfig.dom_tool, toolsConfig.navigation_tool);
   }
 
   // ──────────────────────────────────────────────────────────────────────
@@ -140,4 +147,5 @@ export async function registerDesktopToolsImpl(
   // Web search tool
   const webSearchTool = new WebSearchTool();
   await registerTool('web_search', webSearchTool);
+
 }
