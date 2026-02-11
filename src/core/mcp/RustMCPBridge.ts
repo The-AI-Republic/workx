@@ -196,7 +196,6 @@ export class RustMCPBridge implements IMCPClientAdapter {
 
     this.cleanup();
     this.setStatus('disconnected');
-    console.info(`[RustMCPBridge] Disconnected from ${this.options.config.name}`);
   }
 
   /**

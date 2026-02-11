@@ -122,8 +122,6 @@ export class BrowserxAgent {
           },
         });
       }
-    } else {
-      console.log('[BrowserxAgent] Using backend routing - skipping API key validation');
     }
 
     // Register browser automation tools (pass model data for feature filtering)
@@ -176,8 +174,6 @@ export class BrowserxAgent {
       const sessionTabId = this.session.getTabId();
 
       if (sessionTabId === closedTabId) {
-        console.log(`[BrowserxAgent] Session ${this.session.getId()} tab ${closedTabId} was closed/crashed`);
-
         // Clear session's tabId
         this.session.setTabId(-1);
 
@@ -251,8 +247,6 @@ export class BrowserxAgent {
    */
   async refreshModelClient(): Promise<void> {
     try {
-      console.log('[BrowserxAgent] Refreshing model client for auth change');
-
       // Create new model client with current auth state
       const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
@@ -265,8 +259,6 @@ export class BrowserxAgent {
 
       // Update session with new turn context
       this.session.setTurnContext(taskContext);
-
-      console.log('[BrowserxAgent] Model client refreshed successfully');
     } catch (error) {
       console.error('[BrowserxAgent] Failed to refresh model client:', error);
     }

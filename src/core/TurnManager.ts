@@ -290,8 +290,6 @@ export class TurnManager {
     // Get all registered browser tools from ToolRegistry
     const registeredTools = this.toolRegistry.listTools();
 
-    console.log(`[TurnManager] buildToolsFromContext: ${registeredTools.length} tools in registry, enableAllTools=${toolsConfig.enable_all_tools}, disabled=[${toolsConfig.disabled?.join(', ') || ''}]`);
-
     // Check if all tools should be enabled
     const enableAllTools = toolsConfig.enable_all_tools ?? false;
 
@@ -498,7 +496,6 @@ export class TurnManager {
     if (item.type === 'function_call') {
       // Legacy function_call item - execute and return response
       const { name, arguments: args, call_id } = item;
-      console.log(`[TurnManager] handleResponseItem: function_call '${name}' (call_id: ${call_id})`);
 
       try {
         const result = await this.executeToolCall(name, args, call_id);
@@ -589,8 +586,6 @@ export class TurnManager {
    * Execute a tool call and return the response
    */
   private async executeToolCall(toolName: string, parameters: any, callId: string): Promise<any> {
-    console.log(`[TurnManager] executeToolCall: ${toolName} (callId: ${callId})`);
-
     try {
       // Parse parameters if they're a JSON string (common with OpenAI API)
       let parsedParams = parameters;
@@ -618,12 +613,9 @@ export class TurnManager {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
-            console.log(`[TurnManager] Found ${toolName} in ToolRegistry, dispatching to executeBrowserTool`);
             result = await this.executeBrowserTool(browserTool, parsedParams);
             break;
           }
-
-          console.log(`[TurnManager] ${toolName} not in ToolRegistry, checking MCP fallback`);
 
           // Guard MCP execution with capability + config checks
           const toolsConfig = this.turnContext.getToolsConfig();
@@ -643,8 +635,6 @@ export class TurnManager {
       // If result is already a string (e.g. from MCP text content), use it directly
       // to avoid double-encoding (JSON.stringify on a string adds quotes + escapes)
       const output = typeof result === 'string' ? result : JSON.stringify(result);
-
-      console.log(`[TurnManager] executeToolCall ${toolName} succeeded (output length: ${output.length})`);
 
       return {
         type: 'function_call_output',
@@ -762,8 +752,6 @@ export class TurnManager {
     // Emit browser tool execution event
     const toolName = this.getToolNameFromDefinition(tool);
 
-    console.log(`[TurnManager] executeBrowserTool: ${toolName} with params:`, JSON.stringify(parameters));
-
     await this.emitEvent({
       type: 'ToolExecutionStart',
       data: {
@@ -786,16 +774,12 @@ export class TurnManager {
         timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
       };
 
-      console.log(`[TurnManager] executeBrowserTool: calling ToolRegistry.execute for ${toolName} (timeout: ${request.timeout}ms)`);
-
       const response = await this.toolRegistry.execute(request);
 
       if (!response.success) {
         console.error(`[TurnManager] executeBrowserTool: ${toolName} failed:`, response.error);
         throw new Error(response.error?.message || 'Tool execution failed');
       }
-
-      console.log(`[TurnManager] executeBrowserTool: ${toolName} succeeded (duration: ${response.duration}ms, data type: ${typeof response.data})`);
 
       await this.emitEvent({
         type: 'ToolExecutionEnd',

@@ -111,7 +111,6 @@ export class MCPManager implements IMCPManager {
       await this.seedBuiltinServers();
 
       this.initialized = true;
-      console.info(`[MCPManager] Initialized with ${this.servers.size} server(s), platform=${this.platform}`);
     } catch (error) {
       console.error('[MCPManager] Failed to initialize:', error);
       this.initialized = true; // Mark as initialized to prevent infinite retries
@@ -160,7 +159,6 @@ export class MCPManager implements IMCPManager {
     // Emit event
     this.emit({ type: 'config-added', config });
 
-    console.info(`[MCPManager] Added server: ${config.name} (${config.id})`);
     return config;
   }
 
@@ -188,7 +186,6 @@ export class MCPManager implements IMCPManager {
     // Emit event
     this.emit({ type: 'config-updated', config: updated });
 
-    console.info(`[MCPManager] Updated server: ${updated.name} (${id})`);
     return updated;
   }
 
@@ -226,7 +223,6 @@ export class MCPManager implements IMCPManager {
     // Emit event
     this.emit({ type: 'config-removed', configId: id });
 
-    console.info(`[MCPManager] Removed server: ${config.name} (${id})`);
   }
 
   /**
@@ -566,14 +562,12 @@ export class MCPManager implements IMCPManager {
 
     // Check if builtin browser server already exists
     if (this.servers.has(BUILTIN_BROWSER_SERVER_ID)) {
-      console.info('[MCPManager] Builtin browser server already exists');
       return;
     }
 
     // Check if a server named 'browser' already exists (user-created)
     for (const config of this.servers.values()) {
       if (config.name === 'browser') {
-        console.info('[MCPManager] Server named "browser" already exists, skipping builtin seed');
         return;
       }
     }
