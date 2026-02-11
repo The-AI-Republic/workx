@@ -8,6 +8,7 @@
   import { _t, getCurrentLocale, setLocale } from '../lib/i18n';
   import supportedLanguages from '../../../../_locales/supported_languages.json';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
+  import { platform } from '../stores/platformStore';
 
   export let settingsConfig: AgentConfig;
 
@@ -144,6 +145,25 @@
     autoSave();
   }
 
+  async function handleAutoStartChange(event: CustomEvent<boolean>) {
+    const enabled = event.detail;
+    currentPreferences.autoStartEnabled = enabled;
+
+    // Apply immediately via Tauri autostart plugin
+    try {
+      const { enableAutoStart, disableAutoStart } = await import('@/desktop/autostart');
+      if (enabled) {
+        await enableAutoStart();
+      } else {
+        await disableAutoStart();
+      }
+    } catch (error) {
+      console.warn('[GeneralSettings] Failed to update auto-start:', error);
+    }
+
+    autoSave();
+  }
+
   function handleBack() {
     dispatch('back');
   }
@@ -211,6 +231,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Auto-Start on Login Toggle (desktop only) -->
+    {#if platform.hasAutoStart}
+    <div class="settings-card">
+      <div class="form-group">
+        <div class="switch-row">
+          <div class="switch-label">
+            <span class="switch-title">{$_t("Start on login")}</span>
+            <span class="switch-description">{$_t("Automatically start the app when you log in to your computer")}</span>
+          </div>
+          <Switch
+            state={currentPreferences.autoStartEnabled ?? true}
+            on:change={handleAutoStartChange}
+          />
+        </div>
+      </div>
+    </div>
+    {/if}
 
     <!-- Language Selection -->
     <div class="settings-card">
