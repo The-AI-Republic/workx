@@ -402,7 +402,7 @@ describe('MCPManager', () => {
     it('should throw for non-existent server', async () => {
       const manager = await MCPManager.getInstance();
 
-      await expect(manager.executeTool('unknown:search', {})).rejects.toThrow(
+      await expect(manager.executeTool('unknown__search', {})).rejects.toThrow(
         /not found/i
       );
     });
@@ -416,7 +416,7 @@ describe('MCPManager', () => {
       });
 
       // Not connected
-      await expect(manager.executeTool('github:search', {})).rejects.toThrow(
+      await expect(manager.executeTool('github__search', {})).rejects.toThrow(
         /not connected/i
       );
     });

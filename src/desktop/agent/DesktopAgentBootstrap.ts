@@ -173,29 +173,34 @@ export class DesktopAgentBootstrap {
       const mcpManager = await MCPManager.getInstance('desktop');
       const registry = this.agent.getToolRegistry();
 
+      // Track registered tools per server so we can unregister them on disconnect.
+      // MCPManager clears connection.tools before emitting the event, so we
+      // can't read them from the connection at unregister time.
+      const registeredToolsByServer = new Map<string, import('@/core/mcp/types').IMCPTool[]>();
+
       mcpManager.on('event', (event) => {
         if (event.type !== 'tools-updated') return;
 
         const config = mcpManager.getServer(event.configId);
         if (!config) return;
 
+        // Unregister previously registered tools first (handles both disconnect and reconnect)
+        const previousTools = registeredToolsByServer.get(event.configId);
+        if (previousTools && previousTools.length > 0) {
+          unregisterMCPTools(config.name, previousTools, registry).catch((error) => {
+            console.error('[DesktopAgentBootstrap] Failed to unregister MCP tools:', error);
+          });
+          registeredToolsByServer.delete(event.configId);
+        }
+
         if (event.tools.length > 0) {
-          // Tools discovered — register them
+          // Tools discovered — register them and track for later unregistration
           registerMCPTools(mcpManager, config.name, event.tools, registry).catch((error) => {
             console.error('[DesktopAgentBootstrap] Failed to register MCP tools:', error);
           });
-        } else {
-          // Tools cleared (disconnect) — unregister them
-          const connection = mcpManager.getConnection(event.configId);
-          if (connection) {
-            unregisterMCPTools(config.name, connection.tools, registry).catch((error) => {
-              console.error('[DesktopAgentBootstrap] Failed to unregister MCP tools:', error);
-            });
-          }
+          registeredToolsByServer.set(event.configId, event.tools);
         }
       });
-
-      console.log('[DesktopAgentBootstrap] MCP tool registration events configured');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not set up MCP tool registration:', error);
     }

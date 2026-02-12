@@ -16,6 +16,9 @@ import type { TypeOptions } from '../../types/domTool';
 import { DomPlugin, type DomPluginContext } from './plugins/DomPlugin';
 import { googleDocPlugin } from './plugins/GoogleDocPlugin';
 import type { DebuggerClient, CDPEventCallback } from '../../core/tools/browser/DebuggerClient';
+// Static import — forTab() is only used in extension builds where DOMTool is registered.
+// Dynamic import() is banned in Chrome extension service workers.
+import { ChromeDebuggerClient } from '../../extension/tools/browser/ChromeDebuggerClient';
 
 export class DomService {
   private static instances = new Map<string, DomService>();
@@ -66,12 +69,11 @@ export class DomService {
 
   /**
    * Extension factory: creates/reuses a DomService for a Chrome tab.
-   * Dynamically imports ChromeDebuggerClient to avoid desktop builds pulling in chrome.debugger.
+   * Only used in extension builds (DOMTool, PageVisionTool).
    */
   static async forTab(tabId: number, config?: Partial<ServiceConfig>): Promise<DomService> {
     const key = `tab:${tabId}`;
     if (!this.instances.has(key)) {
-      const { ChromeDebuggerClient } = await import('@/extension/tools/browser/ChromeDebuggerClient');
       const client = new ChromeDebuggerClient();
       try {
         await client.attach({ tabId });

@@ -169,8 +169,6 @@ export class MCPClient implements IMCPClientAdapter {
       await this.discoverResources();
 
       this.setStatus('connected');
-      console.info(`[MCPClient] Connected to ${this.options.config.name} (${this.serverInfo?.name || 'unknown'})`);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.setStatus('error', errorMessage);
@@ -194,7 +192,6 @@ export class MCPClient implements IMCPClientAdapter {
       await this.cleanup();
     } finally {
       this.setStatus('disconnected');
-      console.info(`[MCPClient] Disconnected from ${this.options.config.name}`);
     }
   }
 

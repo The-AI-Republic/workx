@@ -401,7 +401,7 @@ export interface IMCPToolAdapter {
 
   /**
    * Parse a prefixed tool name into server and tool parts.
-   * @param prefixedName e.g., "github:search"
+   * @param prefixedName e.g., "github__search"
    * @returns { serverName: "github", toolName: "search" } or null if invalid
    */
   parsePrefixedName(prefixedName: string): { serverName: string; toolName: string } | null;

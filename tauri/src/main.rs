@@ -16,7 +16,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager,
+    Emitter, Manager,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 
@@ -229,6 +229,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
+            commands::get_project_root,
             mcp_manager::mcp_connect,
             mcp_manager::mcp_list_tools,
             mcp_manager::mcp_call_tool,
