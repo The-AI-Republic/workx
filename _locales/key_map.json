@@ -262,7 +262,6 @@
   "Run Now": "Run_Now",
   "Running": "Running",
   "Schedule": "Schedule",
-  "Schedule Task": "Schedule_Task",
   "Scheduled Tasks": "Scheduled_Tasks",
   "Task": "Task",
   "Task History": "Task_History",
@@ -295,5 +294,6 @@
   "session": "session",
   "sessions": "sessions",
   "Click to cancel login": "Click_to_cancel_login",
-  "Logging in...": "Logging_in"
+  "Logging in...": "Logging_in",
+  "Schedule A New Task": "Schedule_A_New_Task"
 }

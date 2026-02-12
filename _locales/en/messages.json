@@ -652,8 +652,8 @@
   "Schedule": {
     "message": "Schedule"
   },
-  "Schedule_Task": {
-    "message": "Schedule Task"
+  "Schedule_A_New_Task": {
+    "message": "Schedule A New Task"
   },
   "Scheduled": {
     "message": "Scheduled"
