@@ -37,6 +37,15 @@ export function configurePromptComposer(
 }
 
 /**
+ * Check if the PromptComposer has already been configured.
+ * Used by BrowserxAgent to skip re-configuration when the desktop bootstrap
+ * has already called configurePromptComposer() with platform context.
+ */
+export function isComposerConfigured(): boolean {
+  return composer !== null;
+}
+
+/**
  * Load the system prompt for the agent.
  *
  * If PromptComposer is configured: composes a fresh prompt with current

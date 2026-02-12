@@ -18,8 +18,7 @@ import { ModelClientFactory } from './models/ModelClientFactory';
 import { UserNotifier } from './UserNotifier';
 import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions, configurePromptComposer } from './PromptLoader';
-import type { RuntimeContext } from '../prompts/PromptComposer';
+import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
@@ -192,38 +191,28 @@ export class BrowserxAgent {
 
   /**
    * Configure PromptComposer for dynamic system prompt composition.
-   * Detects agent type from build mode and collects static platform context.
-   * Called once during initialize() — after this, every loadPrompt() call
-   * returns a freshly composed prompt.
+   * Detects agent type from build mode and sets basic context.
+   *
+   * In desktop mode, DesktopAgentBootstrap calls configurePromptComposer()
+   * with full platform context (OS, arch, shell, homeDir) BEFORE
+   * agent.initialize(), so this method skips re-configuration.
+   *
+   * In extension mode, this configures the browserx agent type.
    */
   private async configurePromptComposition(): Promise<void> {
+    // Skip if already configured (desktop bootstrap provides platform context)
+    if (isComposerConfigured()) {
+      console.log('[BrowserxAgent] PromptComposer already configured (by bootstrap)');
+      return;
+    }
+
     const agentType = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
       ? 'pi' as const
       : 'browserx' as const;
 
-    const staticContext: Partial<RuntimeContext> = {
+    configurePromptComposer(agentType, {
       browserConnection: agentType === 'browserx' ? 'extension' : 'mcp',
-    };
-
-    // For desktop mode, collect OS/platform info from Tauri backend
-    if (agentType === 'pi') {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
-        staticContext.os = platformInfo.os;
-        staticContext.arch = platformInfo.arch;
-        staticContext.osVersion = platformInfo.version;
-        staticContext.shell = platformInfo.os === 'macos' ? 'zsh'
-          : platformInfo.os === 'windows' ? 'powershell' : 'bash';
-
-        const { homeDir } = await import('@tauri-apps/api/path');
-        staticContext.homeDir = await homeDir();
-      } catch (e) {
-        console.warn('[BrowserxAgent] Could not fetch platform info for prompt composition:', e);
-      }
-    }
-
-    configurePromptComposer(agentType, staticContext);
+    });
     console.log(`[BrowserxAgent] PromptComposer configured for agent type: ${agentType}`);
   }
 
