@@ -17,6 +17,8 @@ import { PlanningTool } from '../../tools/PlanningTool';
 import { WebSearchTool } from '../../tools/WebSearchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
+import { TerminalTool } from './terminal/TerminalTool';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Check if a tool supports the given platform based on its metadata
@@ -148,4 +150,43 @@ export async function registerDesktopToolsImpl(
   const webSearchTool = new WebSearchTool();
   await registerTool('web_search', webSearchTool);
 
+  // ──────────────────────────────────────────────────────────────────────
+  // Register terminal tool (desktop only)
+  // ──────────────────────────────────────────────────────────────────────
+  const terminalTool = new TerminalTool();
+  let osName: string | undefined;
+  try {
+    const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
+    osName = platformInfo.os;
+  } catch (error) {
+    console.warn('[registerDesktopTools] Failed to get platform info:', error);
+  }
+  const terminalDef = terminalTool.getToolDefinition(osName);
+
+  if (!registry.getTool('terminal')) {
+    console.log('[registerDesktopTools] Registering terminal (desktop)...');
+
+    await registry.register(
+      {
+        type: 'function',
+        function: {
+          name: terminalDef.name,
+          description: terminalDef.description,
+          strict: false,
+          parameters: terminalDef.inputSchema as any,
+        },
+        metadata: {
+          platforms: ['desktop'],
+        },
+      },
+      async (params) => {
+        return await terminalTool.handleInvocation(params as {
+          command: string;
+          cwd?: string;
+          timeout?: number;
+          userConfirmed?: boolean;
+        });
+      }
+    );
+  }
 }

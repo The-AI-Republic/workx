@@ -7,6 +7,7 @@ mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod storage_commands;
+mod terminal_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -251,6 +252,8 @@ fn main() {
             browser_commands::launch_chrome,
             browser_commands::get_chrome_ws_endpoint,
             browser_commands::kill_process,
+            // Terminal command execution
+            terminal_commands::terminal_execute,
             // HTTP proxy command
             http_commands::http_fetch,
             // Keychain commands
