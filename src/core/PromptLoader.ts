@@ -11,8 +11,9 @@
  * If not configured, falls back to the default bundled prompt.
  */
 
-// Import default prompt as raw string at build time (fallback)
-import defaultPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
+// Import default prompts as raw strings at build time (fallbacks)
+import defaultBrowserxPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
+import defaultPiPrompt from '../prompts/default_pi_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
 import { PromptComposer, type AgentType, type RuntimeContext } from '../prompts/PromptComposer';
 
@@ -53,8 +54,11 @@ export async function loadPrompt(): Promise<string> {
     };
     return composer.compose_main_instruction(configuredAgentType, context);
   }
-  // Fallback: return static default prompt
-  return defaultPrompt;
+  // Fallback: return static default prompt based on build mode
+  if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
+    return defaultPiPrompt;
+  }
+  return defaultBrowserxPrompt;
 }
 
 /**
