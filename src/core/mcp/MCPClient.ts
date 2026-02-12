@@ -8,6 +8,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport, type SSEClientTransportOptions } from './transports/SSEClientTransport';
 import type {
+  IMCPClientAdapter,
   IMCPServerConfig,
   IMCPServerInfo,
   IMCPCapabilities,
@@ -51,7 +52,7 @@ export interface MCPClientOptions {
  * await client.disconnect();
  * ```
  */
-export class MCPClient {
+export class MCPClient implements IMCPClientAdapter {
   private client: Client | null = null;
   private transport: SSEClientTransport | null = null;
   private status: MCPConnectionStatus = 'disconnected';
@@ -168,8 +169,6 @@ export class MCPClient {
       await this.discoverResources();
 
       this.setStatus('connected');
-      console.info(`[MCPClient] Connected to ${this.options.config.name} (${this.serverInfo?.name || 'unknown'})`);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.setStatus('error', errorMessage);
@@ -193,7 +192,6 @@ export class MCPClient {
       await this.cleanup();
     } finally {
       this.setStatus('disconnected');
-      console.info(`[MCPClient] Disconnected from ${this.options.config.name}`);
     }
   }
 

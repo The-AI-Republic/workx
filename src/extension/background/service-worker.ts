@@ -32,6 +32,13 @@ import { Scheduler, SchedulerStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
 import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
+
+// Storage initialization — static imports required because dynamic import()
+// is banned in Chrome extension service workers by the HTML specification.
+import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
+import { setCredentialStore } from '../../core/storage/CredentialStore';
+import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
+import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import type {
   CreateDraftTaskRequest,
   ScheduleTaskRequest,
@@ -1331,10 +1338,10 @@ async function executeTabCommand(
  * Initialize storage layer
  */
 async function initializeStorage(): Promise<void> {
-  // Initialize config storage provider (platform-agnostic)
+  // Initialize config storage provider
+  // NOTE: Static imports used — dynamic import() is banned in service workers.
   try {
-    const { initializeConfigStorage } = await import('@/core/storage');
-    await initializeConfigStorage();
+    setConfigStorage(new ChromeConfigStorage());
     console.log('[ServiceWorker] Config storage initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize config storage:', error);
@@ -1343,8 +1350,7 @@ async function initializeStorage(): Promise<void> {
 
   // Initialize credential store (for secure API key storage)
   try {
-    const { initializeCredentialStore } = await import('@/core/storage');
-    await initializeCredentialStore();
+    setCredentialStore(new ChromeCredentialStore());
     console.log('[ServiceWorker] Credential store initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);

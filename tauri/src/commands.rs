@@ -20,3 +20,15 @@ pub fn get_platform_info() -> PlatformInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }
+
+/// Return the project root directory (one level above the `tauri/` crate dir).
+/// Used by the JS side to set `cwd` when spawning MCP subprocess servers so that
+/// `npx chrome-devtools-mcp` can resolve its Node dependencies correctly.
+#[tauri::command]
+pub fn get_project_root() -> Result<String, String> {
+    let current = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current dir: {}", e))?;
+    // If we're inside tauri/, go up one level to the monorepo/project root.
+    let root = current.parent().unwrap_or(&current);
+    Ok(root.to_string_lossy().to_string())
+}

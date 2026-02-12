@@ -51,8 +51,8 @@ describe('MCP Tool Execution Integration', () => {
       await registerMCPTools(mockManager, 'github', tools, mockRegistry);
 
       expect(mockRegistry.register).toHaveBeenCalledTimes(2);
-      expect(registeredTools.has('github:search')).toBe(true);
-      expect(registeredTools.has('github:create_issue')).toBe(true);
+      expect(registeredTools.has('github__search')).toBe(true);
+      expect(registeredTools.has('github__create_issue')).toBe(true);
     });
 
     it('should create handlers that execute tools via manager', async () => {
@@ -75,12 +75,12 @@ describe('MCP Tool Execution Integration', () => {
 
       await registerMCPTools(mockManager, 'github', tools, mockRegistry);
 
-      const tool = registeredTools.get('github:search');
+      const tool = registeredTools.get('github__search');
       expect(tool).toBeDefined();
 
       const result = await tool!.handler({ query: 'test' });
 
-      expect(mockManager.executeTool).toHaveBeenCalledWith('github:search', { query: 'test' });
+      expect(mockManager.executeTool).toHaveBeenCalledWith('github__search', { query: 'test' });
       expect(result).toBe('Found 10 results');
     });
   });
@@ -101,8 +101,8 @@ describe('MCP Tool Execution Integration', () => {
       // Then unregister
       await unregisterMCPTools('server', tools, mockRegistry);
 
-      expect(mockRegistry.unregister).toHaveBeenCalledWith('server:tool1');
-      expect(mockRegistry.unregister).toHaveBeenCalledWith('server:tool2');
+      expect(mockRegistry.unregister).toHaveBeenCalledWith('server__tool1');
+      expect(mockRegistry.unregister).toHaveBeenCalledWith('server__tool2');
       expect(registeredTools.size).toBe(0);
     });
   });
@@ -134,7 +134,7 @@ describe('MCP Tool Execution Integration', () => {
 
       // Adapt tool
       const definition = adapter.adaptTool(tool, 'weather');
-      expect(definition.function.name).toBe('weather:get_weather');
+      expect(definition.function.name).toBe('weather__get_weather');
 
       // Create handler
       const handler = adapter.createHandler(mockManager, 'weather', 'get_weather');
@@ -143,7 +143,7 @@ describe('MCP Tool Execution Integration', () => {
       const result = await handler({ location: 'New York' });
 
       expect(result).toBe('Weather in New York: 72°F, Sunny');
-      expect(mockManager.executeTool).toHaveBeenCalledWith('weather:get_weather', {
+      expect(mockManager.executeTool).toHaveBeenCalledWith('weather__get_weather', {
         location: 'New York',
       });
     });

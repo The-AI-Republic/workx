@@ -61,6 +61,7 @@
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@types/eventsource": "^1.1.15",
+    "chrome-devtools-mcp": "^0.17.0",
     "dom-accessibility-api": "^0.7.0",
     "eventsource": "^2.0.2",
     "marked": "^17.0.0",

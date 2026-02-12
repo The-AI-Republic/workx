@@ -3,6 +3,32 @@ import { NODE_TYPE_ELEMENT, NODE_TYPE_TEXT, NODE_TYPE_DOCUMENT_FRAGMENT } from '
 import { DomService } from '../DomService';
 import type { SerializedNode } from '../types';
 
+// Mock ChromeDebuggerClient so DomService.forTab() works with test chrome.debugger mocks
+vi.mock('@/extension/tools/browser/ChromeDebuggerClient', () => ({
+  ChromeDebuggerClient: class MockChromeDebuggerClient {
+    private target: any = null;
+    private attached = false;
+    private eventCallbacks: Array<(method: string, params: unknown) => void> = [];
+    async attach(target: any) {
+      const debuggee = target && 'tabId' in target ? { tabId: target.tabId } : {};
+      await (chrome.debugger.attach as any)(debuggee, '1.3');
+      this.target = target; this.attached = true;
+    }
+    async detach() { this.target = null; this.attached = false; this.eventCallbacks = []; }
+    isAttached() { return this.attached; }
+    async sendCommand(method: string, params?: any) {
+      const debuggee = this.target && 'tabId' in this.target ? { tabId: this.target.tabId } : {};
+      return (chrome.debugger.sendCommand as any)(debuggee, method, params);
+    }
+    onEvent(cb: any) { this.eventCallbacks.push(cb); }
+    offEvent(cb: any) { const i = this.eventCallbacks.indexOf(cb); if (i !== -1) this.eventCallbacks.splice(i, 1); }
+    async enableDomain(domain: string) { await this.sendCommand(`${domain}.enable`); }
+    async disableDomain(domain: string) { await this.sendCommand(`${domain}.disable`); }
+    getTargetInfo() { return this.target; }
+    getTabId() { return this.target && 'tabId' in this.target ? this.target.tabId : null; }
+  }
+}));
+
 // Helper to flatten tree structure for testing
 function flattenNodes(node: SerializedNode): SerializedNode[] {
   const result: SerializedNode[] = [node];

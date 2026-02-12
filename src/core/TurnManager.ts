@@ -321,7 +321,9 @@ export class TurnManager {
     }
 
     // Add agent execution tools based on config
-    if (enableAllTools || toolsConfig.webSearch) {
+    // Only add web_search if not already registered in ToolRegistry
+    const hasWebSearch = tools.some(t => t.type === 'function' && t.function.name === 'web_search');
+    if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
       tools.push({
         type: 'function',
         function: {
@@ -607,7 +609,7 @@ export class TurnManager {
           result = await this.updatePlan(parsedParams.plan, parsedParams.explanation);
           break;
 
-        default:
+        default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
@@ -620,25 +622,34 @@ export class TurnManager {
           const mcpEnabled = toolsConfig.mcpTools === true;
 
           if (!mcpEnabled) {
-            throw new Error(`Tool '${toolName}' not available (mcpTools disabled in config)`);
+            throw new Error(`Tool '${toolName}' not found in ToolRegistry and mcpTools disabled`);
           }
 
           // Only reach here if MCP is supported AND enabled
           result = await this.executeMcpTool(toolName, parsedParams);
           break;
+        }
       }
+
+      // Format result as function_call_output
+      // If result is already a string (e.g. from MCP text content), use it directly
+      // to avoid double-encoding (JSON.stringify on a string adds quotes + escapes)
+      const output = typeof result === 'string' ? result : JSON.stringify(result);
 
       return {
         type: 'function_call_output',
         call_id: callId,
-        output: JSON.stringify(result),
+        output,
       };
 
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);
+
       return {
         type: 'function_call_output',
         call_id: callId,
-        output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        output: `Error: ${errorMsg}`,
       };
     }
   }
@@ -754,18 +765,19 @@ export class TurnManager {
       // Get tabId from Session to pass to tool execution
       const tabId = this.session.getTabId();
 
-
       const request = {
         toolName,
         parameters,
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
         tabId, // Pass tabId in request for tools that need it
+        timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
       };
 
       const response = await this.toolRegistry.execute(request);
 
       if (!response.success) {
+        console.error(`[TurnManager] executeBrowserTool: ${toolName} failed:`, response.error);
         throw new Error(response.error?.message || 'Tool execution failed');
       }
 
@@ -780,12 +792,15 @@ export class TurnManager {
 
       return response.data;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TurnManager] executeBrowserTool: ${toolName} threw:`, errorMsg);
+
       await this.emitEvent({
         type: 'ToolExecutionError',
         data: {
           tool_name: toolName,
           session_id: this.session.getSessionId(),
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         },
       });
       throw error;

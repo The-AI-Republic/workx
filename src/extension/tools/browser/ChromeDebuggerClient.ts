@@ -147,6 +147,13 @@ export class ChromeDebuggerClient implements DebuggerClient {
     this.eventCallbacks.push(callback);
   }
 
+  offEvent(callback: CDPEventCallback): void {
+    const index = this.eventCallbacks.indexOf(callback);
+    if (index !== -1) {
+      this.eventCallbacks.splice(index, 1);
+    }
+  }
+
   async enableDomain(domain: CDPDomain): Promise<void> {
     if (this.enabledDomains.has(domain)) {
       return; // Already enabled

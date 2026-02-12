@@ -122,8 +122,6 @@ export class BrowserxAgent {
           },
         });
       }
-    } else {
-      console.log('[BrowserxAgent] Using backend routing - skipping API key validation');
     }
 
     // Register browser automation tools (pass model data for feature filtering)
@@ -132,6 +130,13 @@ export class BrowserxAgent {
       name: modelData.model.name,
       supportsImage: modelData.model.supportsImage
     });
+
+    // In desktop mode, browser tools come from MCP (chrome-devtools-mcp).
+    // Enable mcpTools so TurnManager includes them in the tool list and
+    // allows the MCP fallback execution path.
+    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
+      this.config.updateToolsConfig({ mcpTools: true });
+    }
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -169,8 +174,6 @@ export class BrowserxAgent {
       const sessionTabId = this.session.getTabId();
 
       if (sessionTabId === closedTabId) {
-        console.log(`[BrowserxAgent] Session ${this.session.getId()} tab ${closedTabId} was closed/crashed`);
-
         // Clear session's tabId
         this.session.setTabId(-1);
 
@@ -244,8 +247,6 @@ export class BrowserxAgent {
    */
   async refreshModelClient(): Promise<void> {
     try {
-      console.log('[BrowserxAgent] Refreshing model client for auth change');
-
       // Create new model client with current auth state
       const modelClient = await this.modelClientFactory.createClientForCurrentModel();
 
@@ -258,8 +259,6 @@ export class BrowserxAgent {
 
       // Update session with new turn context
       this.session.setTurnContext(taskContext);
-
-      console.log('[BrowserxAgent] Model client refreshed successfully');
     } catch (error) {
       console.error('[BrowserxAgent] Failed to refresh model client:', error);
     }
@@ -437,39 +436,99 @@ export class BrowserxAgent {
     // ================================================================
     if (newTabId === -1) {
       try {
-        const createdTabId = await tabManager.createTab({
-          url: 'about:blank',
-          active: false,
-        });
-        const oldTabId = currentTabId;
-        if (oldTabId !== -1) {
-          await tabManager.clearAllTabsFromGroup();
-        }
+        // Desktop mode: ensure chrome-devtools-mcp is connected.
+        // chrome-devtools-mcp launches Chrome with a default page — no need to
+        // call new_page. The agent will use navigate_page to go where it needs.
+        if (__BUILD_MODE__ === 'desktop') {
+          try {
+            const { MCPManager } = await import('./mcp/MCPManager');
+            const { registerMCPTools } = await import('./mcp/MCPToolAdapter');
+            const mcpManager = await MCPManager.getInstance('desktop');
+            const browserServer = mcpManager.getServerByName('browser');
+            if (browserServer) {
+              await mcpManager.connect(browserServer.id);
 
-        if (createdTabId) {
-          // Update session's tabId (SessionState is the source of truth)
+              // Verify tools were actually discovered
+              const connection = mcpManager.getConnection(browserServer.id);
+              if (connection && connection.tools.length > 0) {
+                // Lazily register tools if they weren't registered at startup
+                if (!this.toolRegistry.getTool(`browser__${connection.tools[0].name}`)) {
+                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry);
+                }
+              } else {
+                const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
+                console.warn(`[BrowserxAgent] ${warnMsg}`);
+                this.emitEvent({
+                  type: 'BackgroundEvent',
+                  data: { message: warnMsg, level: 'warning' },
+                });
+              }
+            } else {
+              const warnMsg = 'Builtin browser server not found in MCPManager. Browser tools will be unavailable.';
+              console.warn(`[BrowserxAgent] ${warnMsg}`);
+              this.emitEvent({
+                type: 'BackgroundEvent',
+                data: { message: warnMsg, level: 'warning' },
+              });
+            }
+          } catch (mcpError) {
+            const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
+            console.error(`[BrowserxAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
+            this.emitEvent({
+              type: 'BackgroundEvent',
+              data: {
+                message: `Browser tools unavailable: ${errorMsg}`,
+                level: 'warning',
+              },
+            });
+            // Don't fail the submission — tools will return errors to the LLM
+          }
+
+          // Use sentinel tabId=1 since MCP manages page state internally
+          const createdTabId = 1;
+
           this.session.setTabId(createdTabId);
 
-          // Add tab to BrowserX group
-          await tabManager.addTabToGroup(createdTabId);
-
-          // Notify UI of tab binding update
           await this.messageRouter.updateState({
             sessionId: this.session.getId(),
             tabId: createdTabId,
           });
         } else {
-          const errorMsg = 'Failed to create tab for session: tab creation returned null';
-
-          // Emit error to chat UI
-          this.emitEvent({
-            type: 'Error',
-            data: {
-              message: 'Failed to create a new tab. Please try again.',
-            },
+          // Extension mode: use Chrome extension TabManager
+          const createdTabId = await tabManager.createTab({
+            url: 'about:blank',
+            active: false,
           });
+          const oldTabId = currentTabId;
+          if (oldTabId !== -1) {
+            await tabManager.clearAllTabsFromGroup();
+          }
 
-          throw new Error(errorMsg);
+          if (createdTabId) {
+            // Update session's tabId (SessionState is the source of truth)
+            this.session.setTabId(createdTabId);
+
+            // Add tab to BrowserX group
+            await tabManager.addTabToGroup(createdTabId);
+
+            // Notify UI of tab binding update
+            await this.messageRouter.updateState({
+              sessionId: this.session.getId(),
+              tabId: createdTabId,
+            });
+          } else {
+            const errorMsg = 'Failed to create tab for session: tab creation returned null';
+
+            // Emit error to chat UI
+            this.emitEvent({
+              type: 'Error',
+              data: {
+                message: 'Failed to create a new tab. Please try again.',
+              },
+            });
+
+            throw new Error(errorMsg);
+          }
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab creation';
@@ -490,20 +549,23 @@ export class BrowserxAgent {
     // ================================================================
     else if (newTabId === currentTabId) {
 
-      const validation = await tabManager.validateTab(currentTabId);
+      // Desktop mode: tab health is managed by DesktopTabManager
+      if (__BUILD_MODE__ !== 'desktop') {
+        const validation = await tabManager.validateTab(currentTabId);
 
-      if (validation.status === 'invalid') {
-        const errorMsg = `Current tab ${currentTabId} is not healthy. Reason: ${validation.reason}`;
+        if (validation.status === 'invalid') {
+          const errorMsg = `Current tab ${currentTabId} is not healthy. Reason: ${validation.reason}`;
 
-        // Emit error to chat UI
-        this.emitEvent({
-          type: 'Error',
-          data: {
-            message: `The current tab is not valid (${validation.reason}). Please select a valid tab.`,
-          },
-        });
+          // Emit error to chat UI
+          this.emitEvent({
+            type: 'Error',
+            data: {
+              message: `The current tab is not valid (${validation.reason}). Please select a valid tab.`,
+            },
+          });
 
-        throw new Error(errorMsg);
+          throw new Error(errorMsg);
+        }
       }
 
     }
@@ -512,51 +574,56 @@ export class BrowserxAgent {
     // ================================================================
     else {
 
-      // Validate the new tab first
-      const validation = await tabManager.validateTab(newTabId);
+      if (__BUILD_MODE__ === 'desktop') {
+        // Desktop mode: just update session tabId (no tab groups, no extension validation)
+        this.session.setTabId(newTabId);
+      } else {
+        // Extension mode: validate tab and manage tab groups
+        const validation = await tabManager.validateTab(newTabId);
 
-      if (validation.status !== 'valid') {
-        const errorMsg = validation.status === 'invalid'
-          ? `Tab ${newTabId} is not valid. Reason: ${validation.reason}`
-          : `Tab ${newTabId} validation is still in progress`;
+        if (validation.status !== 'valid') {
+          const errorMsg = validation.status === 'invalid'
+            ? `Tab ${newTabId} is not valid. Reason: ${validation.reason}`
+            : `Tab ${newTabId} validation is still in progress`;
 
-        // Emit error to chat UI
-        this.emitEvent({
-          type: 'Error',
-          data: {
-            message: validation.status === 'invalid'
-              ? `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`
-              : `Unable to validate tab ${newTabId}. Please try again.`,
-          },
-        });
+          // Emit error to chat UI
+          this.emitEvent({
+            type: 'Error',
+            data: {
+              message: validation.status === 'invalid'
+                ? `The selected tab (ID: ${newTabId}) is not valid (${validation.reason}). Please select a valid tab and try again.`
+                : `Unable to validate tab ${newTabId}. Please try again.`,
+            },
+          });
 
-        throw new Error(errorMsg);
-      }
-
-      // Tab is valid, proceed with switching
-      try {
-        // Clear all tabs from group if it exists
-        if (currentTabId !== -1) {
-          await tabManager.clearAllTabsFromGroup();
+          throw new Error(errorMsg);
         }
 
-        // Update session's tabId (SessionState is the source of truth)
-        this.session.setTabId(newTabId);
+        // Tab is valid, proceed with switching
+        try {
+          // Clear all tabs from group if it exists
+          if (currentTabId !== -1) {
+            await tabManager.clearAllTabsFromGroup();
+          }
 
-        // Add new tab to BrowserX group
-        await tabManager.addTabToGroup(newTabId);
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
+          // Update session's tabId (SessionState is the source of truth)
+          this.session.setTabId(newTabId);
 
-        // Emit error to chat UI
-        this.emitEvent({
-          type: 'Error',
-          data: {
-            message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
-          },
-        });
+          // Add new tab to BrowserX group
+          await tabManager.addTabToGroup(newTabId);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
 
-        throw error;
+          // Emit error to chat UI
+          this.emitEvent({
+            type: 'Error',
+            data: {
+              message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
+            },
+          });
+
+          throw error;
+        }
       }
     }
 

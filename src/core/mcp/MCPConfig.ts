@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import type { IMCPServerConfig, IMCPServerConfigCreate, IMCPServerConfigUpdate } from './types';
+import type { IMCPServerConfig, IMCPServerConfigCreate, IMCPServerConfigUpdate, MCPTransportType, MCPPlatformScope } from './types';
 import {
   getConfigStorage,
   isConfigStorageInitialized,
@@ -47,14 +47,24 @@ export const MCPServerUrlSchema = z
 /**
  * Schema for timeout values.
  * - 5000ms (5s) minimum
- * - 120000ms (2 min) maximum
+ * - 180000ms (3 min) maximum (increased for stdio servers that may take longer)
  * - Defaults to 30000ms (30s)
  */
 export const MCPTimeoutSchema = z
   .number()
   .min(5000, 'Timeout must be at least 5 seconds')
-  .max(120000, 'Timeout must be at most 2 minutes')
+  .max(180000, 'Timeout must be at most 3 minutes')
   .default(30000);
+
+/**
+ * Schema for transport type.
+ */
+export const MCPTransportTypeSchema = z.enum(['sse', 'stdio']);
+
+/**
+ * Schema for platform scope.
+ */
+export const MCPPlatformScopeSchema = z.enum(['shared', 'extension', 'desktop']);
 
 /**
  * Full schema for a persisted MCP server configuration.
@@ -62,10 +72,17 @@ export const MCPTimeoutSchema = z
 export const MCPServerConfigSchema = z.object({
   id: z.string().uuid('Invalid server ID'),
   name: MCPServerNameSchema,
-  url: MCPServerUrlSchema,
+  url: z.string().default(''), // Optional for stdio transport
   apiKey: z.string().optional(),
   enabled: z.boolean(),
   timeout: MCPTimeoutSchema,
+  transport: MCPTransportTypeSchema.default('sse'),
+  platform: MCPPlatformScopeSchema.default('shared'),
+  builtin: z.boolean().optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+  cwd: z.string().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
@@ -76,11 +93,33 @@ export const MCPServerConfigSchema = z.object({
  */
 export const MCPServerConfigCreateSchema = z.object({
   name: MCPServerNameSchema,
-  url: MCPServerUrlSchema,
+  url: z.string().optional(), // Optional — not needed for stdio
   apiKey: z.string().optional(),
   enabled: z.boolean().default(true),
   timeout: MCPTimeoutSchema,
-});
+  transport: MCPTransportTypeSchema.default('sse'),
+  platform: MCPPlatformScopeSchema.default('shared'),
+  builtin: z.boolean().optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+  cwd: z.string().optional(),
+}).refine(
+  (data) => {
+    // SSE transport requires url
+    if (data.transport === 'sse' && (!data.url || data.url.trim() === '')) {
+      return false;
+    }
+    // stdio transport requires command
+    if (data.transport === 'stdio' && (!data.command || data.command.trim() === '')) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'SSE transport requires url; stdio transport requires command',
+  }
+);
 
 /**
  * Schema for updating an existing MCP server configuration.
@@ -88,10 +127,16 @@ export const MCPServerConfigCreateSchema = z.object({
  */
 export const MCPServerConfigUpdateSchema = z.object({
   name: MCPServerNameSchema.optional(),
-  url: MCPServerUrlSchema.optional(),
+  url: z.string().optional(),
   apiKey: z.string().optional(),
   enabled: z.boolean().optional(),
   timeout: MCPTimeoutSchema.optional(),
+  transport: MCPTransportTypeSchema.optional(),
+  platform: MCPPlatformScopeSchema.optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+  cwd: z.string().optional(),
 });
 
 /**
@@ -157,7 +202,34 @@ async function getStorage(): Promise<ConfigStorageProvider | null> {
 }
 
 /**
+ * Migrate a legacy server config (pre-transport/platform) to the current schema.
+ * Adds default transport='sse' and platform='shared' if missing.
+ */
+function migrateServerConfig(server: Record<string, unknown>): Record<string, unknown> {
+  let migrated = false;
+
+  if (!server.transport) {
+    server.transport = 'sse';
+    migrated = true;
+  }
+
+  if (!server.platform) {
+    server.platform = 'shared';
+    migrated = true;
+  }
+
+  // Ensure url has a default value for backwards compatibility
+  if (server.url === undefined || server.url === null) {
+    server.url = '';
+    migrated = true;
+  }
+
+  return server;
+}
+
+/**
  * Load all MCP server configurations from storage.
+ * Automatically migrates legacy configs that lack transport/platform fields.
  *
  * @returns Array of validated server configurations
  */
@@ -175,14 +247,31 @@ export async function loadServers(): Promise<IMCPServerConfig[]> {
       return [];
     }
 
-    // Validate each server config
+    // Migrate and validate each server config
+    let needsPersist = false;
     const validServers: IMCPServerConfig[] = [];
     for (const server of rawServers) {
       try {
-        const validated = MCPServerConfigSchema.parse(server);
+        // Migrate legacy configs (mutates in place, returns same object)
+        const raw = server as unknown as Record<string, unknown>;
+        const serverBefore = JSON.stringify(raw);
+        migrateServerConfig(raw);
+        if (JSON.stringify(raw) !== serverBefore) {
+          needsPersist = true;
+        }
+        const validated = MCPServerConfigSchema.parse(raw);
         validServers.push(validated);
       } catch (error) {
         console.warn('[MCPConfig] Skipping invalid server config:', server, error);
+      }
+    }
+
+    // Persist migrated configs back to storage
+    if (needsPersist && validServers.length > 0) {
+      try {
+        await storage.set(STORAGE_KEY, validServers);
+      } catch (e) {
+        console.warn('[MCPConfig] Failed to persist migrated configs:', e);
       }
     }
 
@@ -243,10 +332,17 @@ export function createServerConfig(
   return {
     id,
     name: validated.name,
-    url: validated.url,
+    url: validated.url ?? '',
     apiKey: validated.apiKey,
     enabled: validated.enabled ?? true,
     timeout: validated.timeout ?? 30000,
+    transport: (validated.transport ?? 'sse') as MCPTransportType,
+    platform: (validated.platform ?? 'shared') as MCPPlatformScope,
+    builtin: validated.builtin,
+    command: validated.command,
+    args: validated.args,
+    env: validated.env,
+    cwd: validated.cwd,
     createdAt: now,
     updatedAt: now,
   };
@@ -285,6 +381,12 @@ export function updateServerConfig(
     apiKey: validated.apiKey !== undefined ? validated.apiKey : existing.apiKey,
     enabled: validated.enabled ?? existing.enabled,
     timeout: validated.timeout ?? existing.timeout,
+    transport: validated.transport ?? existing.transport,
+    platform: validated.platform ?? existing.platform,
+    command: validated.command !== undefined ? validated.command : existing.command,
+    args: validated.args !== undefined ? validated.args : existing.args,
+    env: validated.env !== undefined ? validated.env : existing.env,
+    cwd: validated.cwd !== undefined ? validated.cwd : existing.cwd,
     updatedAt: Date.now(),
   };
 }

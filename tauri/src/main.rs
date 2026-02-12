@@ -1,10 +1,11 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod browser_commands;
 mod commands;
 mod http_commands;
 mod keychain_commands;
-mod mcp_commands;
+mod mcp_manager;
 mod storage_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -14,7 +15,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager,
+    Emitter, Manager,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 
@@ -227,9 +228,13 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
-            mcp_commands::mcp_spawn,
-            mcp_commands::mcp_send,
-            mcp_commands::mcp_close,
+            commands::get_project_root,
+            mcp_manager::mcp_connect,
+            mcp_manager::mcp_list_tools,
+            mcp_manager::mcp_call_tool,
+            mcp_manager::mcp_list_resources,
+            mcp_manager::mcp_read_resource,
+            mcp_manager::mcp_disconnect,
             // Config storage commands
             storage_commands::config_storage_get,
             storage_commands::config_storage_set,
@@ -238,6 +243,14 @@ fn main() {
             storage_commands::config_storage_remove_many,
             storage_commands::config_storage_get_all,
             storage_commands::config_storage_clear,
+            // Browser detection and CDP commands
+            browser_commands::find_running_browsers,
+            browser_commands::file_exists,
+            browser_commands::get_home_dir,
+            browser_commands::is_port_available,
+            browser_commands::launch_chrome,
+            browser_commands::get_chrome_ws_endpoint,
+            browser_commands::kill_process,
             // HTTP proxy command
             http_commands::http_fetch,
             // Keychain commands

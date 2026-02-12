@@ -11,6 +11,7 @@ import type {
   DebuggerClient,
   DebuggerTarget,
   CDPEventCallback,
+  CDPDomain,
 } from '@/core/tools/browser/DebuggerClient';
 
 /**
@@ -77,7 +78,7 @@ export class NativeCDPClient implements DebuggerClient {
       throw new Error('Already attached to a target');
     }
 
-    if (!target.wsEndpoint) {
+    if (!('wsEndpoint' in target)) {
       throw new Error('wsEndpoint is required for native CDP client');
     }
 
@@ -86,7 +87,7 @@ export class NativeCDPClient implements DebuggerClient {
     return new Promise((resolve, reject) => {
       console.log(`[NativeCDPClient] Connecting to ${target.wsEndpoint}`);
 
-      this.ws = new WebSocket(target.wsEndpoint!);
+      this.ws = new WebSocket(target.wsEndpoint);
 
       this.ws.onopen = () => {
         console.log('[NativeCDPClient] Connected');
@@ -182,9 +183,13 @@ export class NativeCDPClient implements DebuggerClient {
   }
 
   /**
-   * Check if connected
+   * Check if connected / attached
    */
   isConnected(): boolean {
+    return this.connected;
+  }
+
+  isAttached(): boolean {
     return this.connected;
   }
 
@@ -193,6 +198,14 @@ export class NativeCDPClient implements DebuggerClient {
    */
   getTarget(): DebuggerTarget | null {
     return this.target;
+  }
+
+  getTargetInfo(): DebuggerTarget | null {
+    return this.target;
+  }
+
+  getTabId(): number | null {
+    return null; // No tab concept for native CDP
   }
 
   /**
@@ -252,7 +265,7 @@ export class NativeCDPClient implements DebuggerClient {
    *
    * @param domain - Domain to enable (e.g., 'Page', 'Runtime', 'DOM')
    */
-  async enableDomain(domain: string): Promise<void> {
+  async enableDomain(domain: CDPDomain | string): Promise<void> {
     await this.sendCommand(`${domain}.enable`);
   }
 
@@ -261,7 +274,7 @@ export class NativeCDPClient implements DebuggerClient {
    *
    * @param domain - Domain to disable
    */
-  async disableDomain(domain: string): Promise<void> {
+  async disableDomain(domain: CDPDomain | string): Promise<void> {
     await this.sendCommand(`${domain}.disable`);
   }
 
@@ -286,7 +299,7 @@ export class NativeCDPClient implements DebuggerClient {
         if (method === eventName) {
           clearTimeout(timer);
           this.offEvent(callback);
-          resolve(params);
+          resolve(params as Record<string, unknown>);
         }
       };
 

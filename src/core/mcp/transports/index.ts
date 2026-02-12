@@ -2,7 +2,9 @@
  * MCP Transport Factory
  *
  * Provides transport implementations for MCP communication.
- * Supports SSE (extension/web) and stdio (desktop) transports.
+ * SSE transport is used for browser extension and web-based MCP servers.
+ * Stdio transport for desktop is handled at the adapter level via RustMCPBridge,
+ * not through this factory.
  *
  * @module core/mcp/transports
  */
@@ -46,20 +48,15 @@ export interface TransportConfig {
   type: MCPTransportType;
   /** Server URL for SSE/WebSocket */
   url?: string;
-  /** Command for stdio transport */
-  command?: string;
-  /** Arguments for stdio transport */
-  args?: string[];
-  /** Environment variables */
-  env?: Record<string, string>;
-  /** Working directory */
-  cwd?: string;
   /** Connection timeout in milliseconds */
   timeout?: number;
 }
 
 /**
  * Create a transport based on configuration
+ *
+ * Note: stdio transport is now handled at the adapter level (RustMCPBridge)
+ * rather than through this factory. Only SSE transport is created here.
  *
  * @param config - Transport configuration
  * @returns Transport instance
@@ -74,17 +71,9 @@ export async function createTransport(config: TransportConfig): Promise<MCPTrans
       });
 
     case 'stdio':
-      // Stdio transport for desktop mode (uses Tauri)
-      if (__BUILD_MODE__ !== 'desktop') {
-        throw new Error('stdio transport is only available in desktop mode');
-      }
-      const { TauriStdioTransport } = await import('./TauriStdioTransport');
-      return new TauriStdioTransport({
-        command: config.command!,
-        args: config.args || [],
-        env: config.env,
-        cwd: config.cwd,
-      });
+      // Stdio transport is handled at the adapter level via RustMCPBridge.
+      // MCPManager creates a RustMCPBridge instead of using this factory for stdio servers.
+      throw new Error('stdio transport is handled by RustMCPBridge, not the transport factory');
 
     case 'websocket':
       throw new Error('WebSocket transport not yet implemented');
