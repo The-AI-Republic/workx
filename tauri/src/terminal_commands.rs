@@ -27,12 +27,14 @@ pub async fn terminal_execute(
     let capture_stderr = captureStderr.unwrap_or(true);
 
     let shell = if cfg!(target_os = "windows") {
-        "cmd"
+        "powershell"
+    } else if cfg!(target_os = "macos") {
+        "zsh"
     } else {
-        "sh"
+        "bash"
     };
     let shell_flag = if cfg!(target_os = "windows") {
-        "/C"
+        "-Command"
     } else {
         "-c"
     };

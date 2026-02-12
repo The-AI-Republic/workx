@@ -205,11 +205,12 @@ export class TerminalTool {
   /**
    * Get the tool definition for agent integration
    */
-  getToolDefinition(): TerminalToolDefinition {
+  getToolDefinition(os?: string): TerminalToolDefinition {
+    const shellInfo = this.getShellInfo(os);
     return {
       name: 'terminal',
       description:
-        'Execute terminal/shell commands on the local system. Use this tool to run commands, scripts, and system operations. Commands are filtered for safety.',
+        `Execute terminal/shell commands on the local system. ${shellInfo}Commands are filtered for safety.`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -229,6 +230,22 @@ export class TerminalTool {
         required: ['command'],
       },
     };
+  }
+
+  /**
+   * Get shell description based on the current OS
+   */
+  private getShellInfo(os?: string): string {
+    switch (os) {
+      case 'linux':
+        return 'Running on Linux with bash shell. Write commands using bash syntax. ';
+      case 'macos':
+        return 'Running on macOS with zsh shell. Write commands using zsh syntax. ';
+      case 'windows':
+        return 'Running on Windows with PowerShell. Write commands using PowerShell syntax. ';
+      default:
+        return 'Uses bash on Linux, zsh on macOS, and PowerShell on Windows. Write commands using the appropriate shell syntax for the current platform. ';
+    }
   }
 
   /**
