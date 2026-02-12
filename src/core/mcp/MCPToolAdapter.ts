@@ -24,7 +24,7 @@ export class MCPToolAdapter implements IMCPToolAdapter {
    * Prefixes the tool name with server name for disambiguation.
    */
   adaptTool(tool: IMCPTool, serverName: string): ToolDefinition {
-    const prefixedName = `${serverName}:${tool.name}`;
+    const prefixedName = `${serverName}__${tool.name}`;
 
     // Build description with server context if not present
     let description = tool.description || `Tool from ${serverName} server`;
@@ -53,7 +53,7 @@ export class MCPToolAdapter implements IMCPToolAdapter {
     serverName: string,
     toolName: string
   ): ToolHandler {
-    const prefixedName = `${serverName}:${toolName}`;
+    const prefixedName = `${serverName}__${toolName}`;
 
     return async (args: Record<string, unknown>): Promise<string> => {
       try {
@@ -62,11 +62,14 @@ export class MCPToolAdapter implements IMCPToolAdapter {
         // Check for error result
         if (result.isError) {
           const errorText = this.formatToolResult(result);
+          console.error(`[MCPToolAdapter] Tool ${prefixedName} returned error: ${errorText}`);
           throw new Error(errorText || 'Tool execution failed');
         }
 
         return this.formatToolResult(result);
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[MCPToolAdapter] Tool ${prefixedName} execution failed: ${errorMsg}`);
         // Re-throw with context
         if (error instanceof Error) {
           throw error;
@@ -78,7 +81,7 @@ export class MCPToolAdapter implements IMCPToolAdapter {
 
   /**
    * Parse a prefixed tool name into server and tool parts.
-   * @param prefixedName e.g., "github:search"
+   * @param prefixedName e.g., "github__search"
    * @returns { serverName, toolName } or null if invalid
    */
   parsePrefixedName(prefixedName: string): { serverName: string; toolName: string } | null {
@@ -86,13 +89,13 @@ export class MCPToolAdapter implements IMCPToolAdapter {
       return null;
     }
 
-    const colonIndex = prefixedName.indexOf(':');
-    if (colonIndex <= 0) {
+    const separatorIndex = prefixedName.indexOf('__');
+    if (separatorIndex <= 0) {
       return null;
     }
 
-    const serverName = prefixedName.substring(0, colonIndex);
-    const toolName = prefixedName.substring(colonIndex + 1);
+    const serverName = prefixedName.substring(0, separatorIndex);
+    const toolName = prefixedName.substring(separatorIndex + 2);
 
     if (!serverName || !toolName) {
       return null;
@@ -190,7 +193,6 @@ export async function registerMCPTools(
 
     try {
       await registry.register(definition, handler);
-      console.log(`[MCPToolAdapter] Registered tool: ${definition.function.name}`);
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
       console.warn(`[MCPToolAdapter] Failed to register tool ${definition.function.name}:`, error);
@@ -208,10 +210,9 @@ export async function unregisterMCPTools(
   registry: IToolRegistry
 ): Promise<void> {
   for (const tool of tools) {
-    const prefixedName = `${serverName}:${tool.name}`;
+    const prefixedName = `${serverName}__${tool.name}`;
     try {
       await registry.unregister(prefixedName);
-      console.log(`[MCPToolAdapter] Unregistered tool: ${prefixedName}`);
     } catch (error) {
       // Tool might not be registered
       console.warn(`[MCPToolAdapter] Failed to unregister tool ${prefixedName}:`, error);

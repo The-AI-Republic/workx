@@ -224,10 +224,6 @@ function migrateServerConfig(server: Record<string, unknown>): Record<string, un
     migrated = true;
   }
 
-  if (migrated) {
-    console.info(`[MCPConfig] Migrated server config: ${server.name} (added transport/platform defaults)`);
-  }
-
   return server;
 }
 
@@ -274,7 +270,6 @@ export async function loadServers(): Promise<IMCPServerConfig[]> {
     if (needsPersist && validServers.length > 0) {
       try {
         await storage.set(STORAGE_KEY, validServers);
-        console.info('[MCPConfig] Persisted migrated server configs');
       } catch (e) {
         console.warn('[MCPConfig] Failed to persist migrated configs:', e);
       }

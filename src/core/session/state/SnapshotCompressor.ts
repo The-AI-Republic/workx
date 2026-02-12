@@ -68,15 +68,14 @@ export function isDOMSnapshotOutput(item: ResponseItem): boolean {
     // Parse the output JSON from executeBrowserTool: { data: SerializedDom, metadata: { toolName, action? } }
     const parsed = JSON.parse(item.output);
 
-    // Check for DOM snapshot using two methods:
-    // 1. Primary: Check metadata.action === 'snapshot' (most reliable when available)
-    // 2. Fallback: Check for page.body structure (for cases where action is missing)
+    // Check for DOM snapshot: must be browser_dom tool AND have the expected
+    // data.page structure with context and body.  Both conditions are required
+    // to avoid false positives that crash compression.
     const isBrowserDomTool = parsed.metadata?.toolName === 'browser_dom';
-    const hasSnapshotAction = parsed.metadata?.action === 'snapshot';
     const hasPageStructure = parsed.data?.page?.context !== undefined &&
                              parsed.data?.page?.body !== undefined;
 
-    return isBrowserDomTool && (hasSnapshotAction || hasPageStructure);
+    return isBrowserDomTool && hasPageStructure;
   } catch {
     // JSON parse failed, not a valid snapshot
     return false;

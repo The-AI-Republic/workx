@@ -132,13 +132,15 @@ export class RustMCPBridge implements IMCPClientAdapter {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
 
-      const result = await invoke<McpConnectResult>('mcp_connect', {
+      const connectParams = {
         serverId: this.options.config.id,
         command: this.options.config.command!,
         args: this.options.config.args || [],
         env: this.options.config.env,
         cwd: this.options.config.cwd,
-      });
+      };
+
+      const result = await invoke<McpConnectResult>('mcp_connect', connectParams);
 
       if (!result.success) {
         throw new Error(result.error || 'Connection failed');
@@ -167,9 +169,9 @@ export class RustMCPBridge implements IMCPClientAdapter {
       await this.discoverResources();
 
       this.setStatus('connected');
-      console.info(`[RustMCPBridge] Connected to ${this.options.config.name} (${this.serverInfo?.name || 'unknown'})`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[RustMCPBridge] Connection failed: ${errorMessage}`);
       this.setStatus('error', errorMessage);
       throw new Error(`Failed to connect to MCP server: ${errorMessage}`);
     }
@@ -194,7 +196,6 @@ export class RustMCPBridge implements IMCPClientAdapter {
 
     this.cleanup();
     this.setStatus('disconnected');
-    console.info(`[RustMCPBridge] Disconnected from ${this.options.config.name}`);
   }
 
   /**
