@@ -33,8 +33,9 @@ import { decryptApiKey } from '../../utils/encryption';
 /** Maximum number of MCP servers allowed (excluding builtins) */
 const MAX_SERVERS = 5;
 
-/** Builtin browser server ID (deterministic for desktop) */
-const BUILTIN_BROWSER_SERVER_ID = 'builtin-browser';
+/** Builtin browser server ID — deterministic UUID for desktop.
+ *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
+const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
 
 /**
  * MCPManager manages multiple MCP server connections.

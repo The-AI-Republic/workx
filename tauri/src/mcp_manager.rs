@@ -19,6 +19,7 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 lazy_static::lazy_static! {
@@ -27,20 +28,21 @@ lazy_static::lazy_static! {
 
 /// A live MCP session with a subprocess server.
 ///
-/// The `client` field is type-erased to avoid leaking rmcp generics.
-/// We store it as `Box<dyn Any + Send>` and downcast when needed.
+/// The client is wrapped in Arc so callers can clone a handle and release the
+/// global mutex before performing async MCP operations. This prevents one slow
+/// server from blocking all other servers.
 struct McpSession {
-    /// The running rmcp client service. We use a type-erased box because
-    /// `RunningService<RoleClient, ClientInfo>` is a concrete but complex type.
-    client: Box<dyn std::any::Any + Send>,
-    server_info: Option<McpServerInfo>,
+    client: Arc<ConcreteRunningService>,
     capabilities: Option<McpCapabilitiesResult>,
-    protocol_version: Option<String>,
 }
 
 /// Concrete type alias for the running service we actually store.
 type ConcreteRunningService =
     rmcp::service::RunningService<rmcp::RoleClient, ClientInfo>;
+
+/// Commands allowed for MCP subprocess spawning.
+/// Only known package runners are permitted to mitigate arbitrary command execution.
+const ALLOWED_COMMANDS: &[&str] = &["npx", "node", "deno", "bun", "uvx", "python3", "python"];
 
 // =============================================================================
 // Result Types (serialized to JS)
@@ -111,17 +113,6 @@ pub struct McpResourceContent {
 }
 
 // =============================================================================
-// Helper to downcast session client
-// =============================================================================
-
-fn get_client(session: &McpSession) -> Result<&ConcreteRunningService, String> {
-    session
-        .client
-        .downcast_ref::<ConcreteRunningService>()
-        .ok_or_else(|| "Internal error: failed to downcast MCP client".to_string())
-}
-
-// =============================================================================
 // Tauri Commands
 // =============================================================================
 
@@ -133,6 +124,26 @@ pub async fn mcp_connect(
     env: Option<HashMap<String, String>>,
     cwd: Option<String>,
 ) -> Result<McpConnectResult, String> {
+    // Validate command against allowlist to prevent arbitrary command execution
+    let base_command = std::path::Path::new(&command)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&command);
+    if !ALLOWED_COMMANDS.contains(&base_command) {
+        return Ok(McpConnectResult {
+            success: false,
+            server_name: None,
+            server_version: None,
+            protocol_version: None,
+            capabilities: None,
+            error: Some(format!(
+                "Command '{}' is not allowed. Permitted: {}",
+                command,
+                ALLOWED_COMMANDS.join(", ")
+            )),
+        });
+    }
+
     // Check if already connected
     {
         let sessions = MCP_SESSIONS.lock().await;
@@ -234,12 +245,10 @@ pub async fn mcp_connect(
         error: None,
     };
 
-    // Store session
+    // Store session with Arc-wrapped client for concurrent access
     let session = McpSession {
-        client: Box::new(client),
-        server_info,
+        client: Arc::new(client),
         capabilities,
-        protocol_version,
     };
 
     {
@@ -252,13 +261,14 @@ pub async fn mcp_connect(
 
 #[tauri::command]
 pub async fn mcp_list_tools(server_id: String) -> Result<Vec<McpToolDef>, String> {
-    let sessions = MCP_SESSIONS.lock().await;
-
-    let session = sessions
-        .get(&server_id)
-        .ok_or_else(|| format!("Server not found: {}", server_id))?;
-
-    let client = get_client(session)?;
+    // Clone the Arc handle and release the mutex before async work
+    let client = {
+        let sessions = MCP_SESSIONS.lock().await;
+        let session = sessions
+            .get(&server_id)
+            .ok_or_else(|| format!("Server not found: {}", server_id))?;
+        Arc::clone(&session.client)
+    };
 
     let result = client
         .list_all_tools()
@@ -285,13 +295,14 @@ pub async fn mcp_call_tool(
     arguments: serde_json::Value,
     _timeout_ms: Option<u64>,
 ) -> Result<McpToolResult, String> {
-    let sessions = MCP_SESSIONS.lock().await;
-
-    let session = sessions
-        .get(&server_id)
-        .ok_or_else(|| format!("Server not found: {}", server_id))?;
-
-    let client = get_client(session)?;
+    // Clone the Arc handle and release the mutex before async work
+    let client = {
+        let sessions = MCP_SESSIONS.lock().await;
+        let session = sessions
+            .get(&server_id)
+            .ok_or_else(|| format!("Server not found: {}", server_id))?;
+        Arc::clone(&session.client)
+    };
 
     let args_map = match arguments {
         serde_json::Value::Object(map) => map,
@@ -351,20 +362,23 @@ pub async fn mcp_call_tool(
 
 #[tauri::command]
 pub async fn mcp_list_resources(server_id: String) -> Result<Vec<McpResourceDef>, String> {
-    let sessions = MCP_SESSIONS.lock().await;
+    // Clone the Arc handle and check capabilities, then release the mutex
+    let (client, has_resources) = {
+        let sessions = MCP_SESSIONS.lock().await;
+        let session = sessions
+            .get(&server_id)
+            .ok_or_else(|| format!("Server not found: {}", server_id))?;
+        let has_resources = session
+            .capabilities
+            .as_ref()
+            .map(|c| c.resources)
+            .unwrap_or(false);
+        (Arc::clone(&session.client), has_resources)
+    };
 
-    let session = sessions
-        .get(&server_id)
-        .ok_or_else(|| format!("Server not found: {}", server_id))?;
-
-    // Check if server supports resources
-    if let Some(ref caps) = session.capabilities {
-        if !caps.resources {
-            return Ok(vec![]);
-        }
+    if !has_resources {
+        return Ok(vec![]);
     }
-
-    let client = get_client(session)?;
 
     let result = client
         .list_all_resources()
@@ -389,13 +403,14 @@ pub async fn mcp_read_resource(
     server_id: String,
     uri: String,
 ) -> Result<McpResourceContent, String> {
-    let sessions = MCP_SESSIONS.lock().await;
-
-    let session = sessions
-        .get(&server_id)
-        .ok_or_else(|| format!("Server not found: {}", server_id))?;
-
-    let client = get_client(session)?;
+    // Clone the Arc handle and release the mutex before async work
+    let client = {
+        let sessions = MCP_SESSIONS.lock().await;
+        let session = sessions
+            .get(&server_id)
+            .ok_or_else(|| format!("Server not found: {}", server_id))?;
+        Arc::clone(&session.client)
+    };
 
     let result = client
         .read_resource(ReadResourceRequestParams {
@@ -440,14 +455,27 @@ pub async fn mcp_read_resource(
 
 #[tauri::command]
 pub async fn mcp_disconnect(server_id: String) -> Result<bool, String> {
-    let mut sessions = MCP_SESSIONS.lock().await;
+    // Remove session from map and release the mutex before shutdown
+    let session = {
+        let mut sessions = MCP_SESSIONS.lock().await;
+        sessions.remove(&server_id)
+    };
 
-    if let Some(session) = sessions.remove(&server_id) {
-        // The RunningService will be dropped, which cancels the client
-        // and kills the subprocess
-        drop(session);
-        Ok(true)
-    } else {
-        Err(format!("Server not found: {}", server_id))
+    match session {
+        Some(session) => {
+            // Try to get exclusive ownership for graceful cancellation.
+            // If other operations still hold Arc refs, drop ours and let
+            // the DropGuard handle async cleanup when the last ref drops.
+            match Arc::try_unwrap(session.client) {
+                Ok(client) => {
+                    let _ = client.cancel().await;
+                }
+                Err(arc) => {
+                    drop(arc);
+                }
+            }
+            Ok(true)
+        }
+        None => Err(format!("Server not found: {}", server_id)),
     }
 }
