@@ -4,8 +4,6 @@
   import type { IToolsConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
-  import { invoke } from '@tauri-apps/api/core';
-
   export let settingsConfig: AgentConfig;
 
   const dispatch = createEventDispatcher<{
@@ -61,6 +59,7 @@
 
   async function loadTerminalSandboxSettings() {
     try {
+      const { invoke } = await import('@tauri-apps/api/core');
       await invoke('config_storage_get', { key: 'test' });
       isDesktop = true;
     } catch {
@@ -69,6 +68,8 @@
     }
 
     try {
+      const { invoke } = await import('@tauri-apps/api/core');
+
       const mode = await invoke<string | null>('config_storage_get', { key: 'terminal.executionMode' });
       if (mode === 'safe' || mode === 'power' || mode === 'auto') executionMode = mode;
 
@@ -95,6 +96,7 @@
 
   async function saveTerminalSandboxSetting(key: string, value: string) {
     try {
+      const { invoke } = await import('@tauri-apps/api/core');
       await invoke('config_storage_set', { key, value });
     } catch (error) {
       console.error('[ToolsSettings] Failed to save sandbox setting:', error);
