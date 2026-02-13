@@ -81,15 +81,15 @@
 
 ### Implementation for User Story 4 — Settings
 
-- [ ] T017 [US4] Implement config persistence for `terminal.executionMode` — add `getExecutionMode()` and `setExecutionMode()` methods that read/write via TauriConfigStorage, default to `auto` in `src/desktop/tools/terminal/SandboxManager.ts`
-- [ ] T018 [US4] Add execution mode selector to terminal settings UI — dropdown with three options (Safe, Power, Auto with "default" label), persists on change, takes effect on next command execution in `src/extension/sidepanel/ToolsSettings.svelte`
+- [X] T017 [US4] Implement config persistence for `terminal.executionMode` — add `getExecutionMode()` and `setExecutionMode()` methods that read/write via TauriConfigStorage, default to `auto` in `src/desktop/tools/terminal/SandboxManager.ts`
+- [X] T018 [US4] Add execution mode selector to terminal settings UI — dropdown with three options (Safe, Power, Auto with "default" label), persists on change, takes effect on next command execution in `src/extension/sidepanel/ToolsSettings.svelte`
 
 ### Implementation for User Story 6 — Access Controls
 
-- [ ] T019 [US6] Implement config persistence for sandbox access controls — add get/set methods for `terminal.sandbox.workspaceAccess` (default: `rw`), `terminal.sandbox.networkMode` (default: `host`), `terminal.sandbox.bindMounts` (default: `[]`) via TauriConfigStorage in `src/desktop/tools/terminal/SandboxManager.ts`
-- [ ] T020 [US6] Add sandbox access control settings UI — workspace access dropdown (rw/ro/none), network mode toggle (host/sandbox), bind mount list editor (add/remove entries with host path input and rw/ro access selector) in `src/extension/sidepanel/ToolsSettings.svelte`
-- [ ] T021 [US6] Read sandbox access control config from SandboxManager and pass `workspaceAccess`, `networkMode`, `bindMounts` parameters through to `invoke('terminal_execute', {...})` in `src/desktop/tools/terminal/TerminalTool.ts`
-- [ ] T022 [US6] Apply configurable access controls in LinuxSandbox bwrap command generation — workspace access: `rw` → `--bind`, `ro` → `--ro-bind`, `none` → omit workspace mount; network mode: `host` → default (no flag), `sandbox` → `--unshare-net`; bind mounts: additional `--bind`/`--ro-bind` per entry in `tauri/src/sandbox/linux.rs`
+- [X] T019 [US6] Implement config persistence for sandbox access controls — add get/set methods for `terminal.sandbox.workspaceAccess` (default: `rw`), `terminal.sandbox.networkMode` (default: `host`), `terminal.sandbox.bindMounts` (default: `[]`) via TauriConfigStorage in `src/desktop/tools/terminal/SandboxManager.ts`
+- [X] T020 [US6] Add sandbox access control settings UI — workspace access dropdown (rw/ro/none), network mode toggle (host/sandbox), bind mount list editor (add/remove entries with host path input and rw/ro access selector) in `src/extension/sidepanel/ToolsSettings.svelte`
+- [X] T021 [US6] Read sandbox access control config from SandboxManager and pass `workspaceAccess`, `networkMode`, `bindMounts` parameters through to `invoke('terminal_execute', {...})` in `src/desktop/tools/terminal/TerminalTool.ts`
+- [X] T022 [US6] Apply configurable access controls in LinuxSandbox bwrap command generation — workspace access: `rw` → `--bind`, `ro` → `--ro-bind`, `none` → omit workspace mount; network mode: `host` → default (no flag), `sandbox` → `--unshare-net`; bind mounts: additional `--bind`/`--ro-bind` per entry in `tauri/src/sandbox/linux.rs`
 
 **Checkpoint**: Users can configure execution mode and all sandbox access controls through settings. Settings persist across sessions. Power mode works with SecurityFilter still enforced. Workspace access, bind mounts, and network mode are applied in the Linux sandbox.
 
