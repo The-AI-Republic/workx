@@ -27,6 +27,8 @@
   let newTrustedDomain = '';
   let newBlockedDomain = '';
 
+  const APPROVAL_MODES: ApprovalMode[] = ['cautious', 'balanced', 'autonomous', 'yolo'];
+
   const MODE_DESCRIPTIONS: Record<ApprovalMode, string> = {
     cautious: 'Ask for almost every action (risk > 10). Best for sensitive environments.',
     balanced: 'Ask for medium-risk and above (risk > 30). Recommended for most users.',
@@ -132,7 +134,7 @@
         <p class="subsection-description">Controls how aggressively the agent asks for approval.</p>
 
         <div class="mode-options">
-          {#each (['cautious', 'balanced', 'autonomous', 'yolo'] as ApprovalMode[]) as mode}
+          {#each APPROVAL_MODES as mode}
             <label class="mode-option" class:selected={config.mode === mode}>
               <input
                 type="radio"
