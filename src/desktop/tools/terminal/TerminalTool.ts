@@ -8,7 +8,6 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import { SecurityFilter, type SecurityConfig, type FilterResult } from './SecurityFilter';
 
 /**
  * Command execution options
@@ -94,11 +93,10 @@ const DEFAULT_OPTIONS: ExecuteOptions = {
  * ```
  */
 export class TerminalTool {
-  private securityFilter: SecurityFilter;
   private defaultCwd: string | null = null;
 
-  constructor(securityConfig?: Partial<SecurityConfig>) {
-    this.securityFilter = new SecurityFilter(securityConfig);
+  constructor() {
+    // Security filtering is now handled by ApprovalGate + TerminalRiskAssessor
   }
 
   /**
@@ -112,42 +110,8 @@ export class TerminalTool {
     const opts = { ...DEFAULT_OPTIONS, ...options };
     const startTime = Date.now();
 
-    // Security check
-    if (!opts.skipSecurityCheck) {
-      const filterResult = this.securityFilter.check(command);
-
-      if (!filterResult.allowed) {
-        return {
-          success: false,
-          exitCode: -1,
-          stdout: '',
-          stderr: '',
-          executionTimeMs: Date.now() - startTime,
-          blocked: true,
-          blockedReason: filterResult.reason,
-          error: `Command blocked: ${filterResult.reason}`,
-        };
-      }
-
-      // Check if confirmation required
-      if (
-        this.securityFilter.needsConfirmation(command) &&
-        !opts.userConfirmed
-      ) {
-        return {
-          success: false,
-          exitCode: -1,
-          stdout: '',
-          stderr: '',
-          executionTimeMs: Date.now() - startTime,
-          blocked: true,
-          blockedReason: 'User confirmation required',
-          error: 'This command requires user confirmation before execution',
-        };
-      }
-
-      command = filterResult.sanitizedCommand || command;
-    }
+    // Security is now handled upstream by ApprovalGate + TerminalRiskAssessor.
+    // skipSecurityCheck and userConfirmed are kept for backward compat but are no-ops.
 
     try {
       // Execute via Tauri command
@@ -181,16 +145,6 @@ export class TerminalTool {
         error: `Execution failed: ${error}`,
       };
     }
-  }
-
-  /**
-   * Check if a command would be allowed
-   *
-   * @param command - Command to check
-   * @returns Filter result
-   */
-  check(command: string): FilterResult {
-    return this.securityFilter.check(command);
   }
 
   /**
@@ -277,17 +231,4 @@ export class TerminalTool {
     return result.stdout || '(no output)';
   }
 
-  /**
-   * Update security configuration
-   */
-  updateSecurityConfig(config: Partial<SecurityConfig>): void {
-    this.securityFilter.updateConfig(config);
-  }
-
-  /**
-   * Get current security configuration
-   */
-  getSecurityConfig(): SecurityConfig {
-    return this.securityFilter.getConfig();
-  }
 }

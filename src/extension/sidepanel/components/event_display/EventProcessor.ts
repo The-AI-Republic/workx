@@ -158,6 +158,7 @@ export class EventProcessor {
       // Approvals
       case 'ExecApprovalRequest':
       case 'ApplyPatchApprovalRequest':
+      case 'ApprovalRequested':
         return 'approval';
 
       // Plan events
@@ -686,10 +687,10 @@ export class EventProcessor {
           command: msg.data.command,
           explanation: msg.data.explanation,
           onApprove: () => {
-            console.log('Approval granted for:', msg.data.command);
+            this.sendApprovalDecision(event.id, 'approve');
           },
           onReject: () => {
-            console.log('Approval rejected for:', msg.data.command);
+            this.sendApprovalDecision(event.id, 'reject');
           },
         },
         collapsible: false,
@@ -713,10 +714,42 @@ export class EventProcessor {
             diff: '(patch details)',
           },
           onApprove: () => {
-            console.log('Patch approval granted');
+            this.sendApprovalDecision(event.id, 'approve');
           },
           onReject: () => {
-            console.log('Patch approval rejected');
+            this.sendApprovalDecision(event.id, 'reject');
+          },
+        },
+        collapsible: false,
+      };
+    }
+
+    if (msg.type === 'ApprovalRequested') {
+      const data = msg.data;
+      return {
+        id: event.id,
+        category: 'approval',
+        timestamp: new Date(),
+        title: `Approval Required: ${data.tool_name}`,
+        content: data.command || data.explanation || '',
+        style: { textColor: 'text-yellow-400' },
+        requiresApproval: {
+          id: data.id,
+          type: 'tool',
+          toolName: data.tool_name,
+          command: data.command,
+          explanation: data.explanation,
+          riskScore: data.risk_score,
+          riskLevel: data.risk_level,
+          riskFactors: data.risk_factors,
+          onApprove: () => {
+            this.sendApprovalDecision(data.id, 'approve');
+          },
+          onReject: () => {
+            this.sendApprovalDecision(data.id, 'reject');
+          },
+          onRemember: (scope: 'session' | 'no') => {
+            this.sendApprovalDecision(data.id, 'approve', scope === 'session');
           },
         },
         collapsible: false,
@@ -724,6 +757,20 @@ export class EventProcessor {
     }
 
     return null;
+  }
+
+  /**
+   * Send approval decision back to service worker
+   */
+  private sendApprovalDecision(id: string, decision: 'approve' | 'reject', remember?: boolean): void {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'EXEC_APPROVAL',
+        data: { id, decision, remember },
+      });
+    } catch (error) {
+      console.error('[EventProcessor] Failed to send approval decision:', error);
+    }
   }
 
   /**

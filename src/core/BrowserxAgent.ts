@@ -22,6 +22,12 @@ import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerCo
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
+import { ApprovalGate } from './approval/ApprovalGate';
+import { PolicyRulesEngine } from './approval/PolicyRulesEngine';
+import { getDefaultRules } from './approval/defaultRules';
+import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivityEnhancer';
+import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
+import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
 
 /**
  * Main agent class managing the submission and event queues
@@ -130,6 +136,20 @@ export class BrowserxAgent {
       name: modelData.model.name,
       supportsImage: modelData.model.supportsImage
     });
+
+    // Initialize approval gate for risk-based tool call interception
+    const platform = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
+      ? 'desktop' as const
+      : 'extension' as const;
+    const policyEngine = new PolicyRulesEngine(getDefaultRules(platform));
+    const approvalGate = new ApprovalGate(this.approvalManager, policyEngine);
+    approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+    if (platform === 'extension') {
+      approvalGate.addEnhancer(new SemanticElementEnhancer());
+    } else {
+      approvalGate.addEnhancer(new SensitivePathEnhancer());
+    }
+    this.toolRegistry.setApprovalGate(approvalGate);
 
     // In desktop mode, browser tools come from MCP (chrome-devtools-mcp).
     // Enable mcpTools so TurnManager includes them in the tool list and
@@ -483,7 +503,8 @@ export class BrowserxAgent {
               if (connection && connection.tools.length > 0) {
                 // Lazily register tools if they weren't registered at startup
                 if (!this.toolRegistry.getTool(`browser__${connection.tools[0].name}`)) {
-                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry);
+                  const { McpBrowserRiskAssessor } = await import('./approval/assessors/McpBrowserRiskAssessor');
+                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry, new McpBrowserRiskAssessor());
                 }
               } else {
                 const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';

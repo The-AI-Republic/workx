@@ -19,6 +19,8 @@ import type {
   ToolContext,
   ToolHandler,
 } from './BaseTool';
+import type { ApprovalGate } from '../core/approval/ApprovalGate';
+import type { IRiskAssessor } from '../core/approval/types';
 
 /**
  * Interface for event collection (used for testing)
@@ -35,6 +37,7 @@ interface ToolRegistryEntry {
   definition: ToolDefinition;
   handler: ToolHandler;
   registrationTime: number;
+  riskAssessor?: IRiskAssessor;
 }
 
 /**
@@ -46,6 +49,7 @@ interface ToolRegistryEntry {
 export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
   private eventCollector?: IEventCollector;
+  private approvalGate?: ApprovalGate;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -53,9 +57,16 @@ export class ToolRegistry {
   }
 
   /**
+   * Set the approval gate for risk-based tool call interception
+   */
+  setApprovalGate(gate: ApprovalGate): void {
+    this.approvalGate = gate;
+  }
+
+  /**
    * Register a tool with the registry
    */
-  async register(tool: ToolDefinition, handler: ToolHandler): Promise<void> {
+  async register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void> {
     // Validate tool definition
     this.validateToolDefinition(tool);
 
@@ -72,6 +83,7 @@ export class ToolRegistry {
       definition: tool,
       handler,
       registrationTime: Date.now(),
+      riskAssessor,
     };
 
     this.tools.set(toolName, entry);
@@ -243,6 +255,39 @@ export class ToolRegistry {
         };
       }
 
+      // Approval gate check (if configured)
+      if (this.approvalGate) {
+        const context = request.metadata ? {
+          currentUrl: request.metadata.currentUrl as string | undefined,
+          currentDomain: request.metadata.currentDomain as string | undefined,
+          cwd: request.metadata.cwd as string | undefined,
+          sessionId: request.sessionId,
+          turnId: request.turnId,
+        } : {
+          sessionId: request.sessionId,
+          turnId: request.turnId,
+        };
+
+        const decision = await this.approvalGate.check(
+          request.toolName,
+          request.parameters,
+          entry.riskAssessor,
+          context
+        );
+
+        if (decision === 'deny') {
+          return {
+            success: false,
+            error: {
+              code: 'APPROVAL_DENIED',
+              message: `Tool '${request.toolName}' was denied by the approval system`,
+            },
+            duration: Date.now() - startTime,
+          };
+        }
+        // 'auto_approve' and 'ask_user' (resolved to approve) continue execution
+      }
+
       // Emit execution start event
       this.emitEvent({
         id: `evt_exec_start_${request.toolName}`,
@@ -398,9 +443,7 @@ export class ToolRegistry {
    * Cleanup resources when shutting down
    */
   async cleanup(): Promise<void> {
-    if (this.tabGroupManager) {
-      await this.tabGroupManager.cleanup();
-    }
+    // No resources to clean up at the registry level
   }
 
 

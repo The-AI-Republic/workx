@@ -1,0 +1,467 @@
+/**
+ * Tests for Phases 3-5:
+ * - ApprovalConfigStorage (load/save/history)
+ * - ApprovalMode (threshold changes per mode)
+ * - Trusted/blocked domains (fast-path behavior)
+ * - History tracking (entries recorded)
+ * - ApprovalGate mode integration
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ApprovalConfigStorage } from '../ApprovalConfigStorage';
+import { ApprovalGate } from '../ApprovalGate';
+import { PolicyRulesEngine } from '../PolicyRulesEngine';
+import { RiskLevel, scoreToRiskLevel, DEFAULT_APPROVAL_CONFIG } from '../types';
+import type { RiskAssessment, ApprovalContext, IRiskAssessor, ApprovalHistoryEntry, IApprovalConfig } from '../types';
+
+// ============================================================================
+// Mock Storage
+// ============================================================================
+
+function createMockStorage() {
+  const store: Record<string, any> = {};
+  return {
+    get: vi.fn(async (keys: string[]) => {
+      const result: Record<string, any> = {};
+      for (const key of keys) {
+        if (store[key] !== undefined) result[key] = store[key];
+      }
+      return result;
+    }),
+    set: vi.fn(async (items: Record<string, any>) => {
+      Object.assign(store, items);
+    }),
+    _store: store,
+  };
+}
+
+function createMockApprovalManager() {
+  return {
+    requestApproval: vi.fn(async () => ({ decision: 'approve' as const, id: 'test' })),
+    getApproval: vi.fn(),
+    cancelRequest: vi.fn(),
+    updatePolicy: vi.fn(),
+    getPolicy: vi.fn(),
+    getApprovalHistory: vi.fn(),
+    onApprovalRequest: vi.fn(),
+  } as any;
+}
+
+function makeAssessor(score: number): IRiskAssessor {
+  return {
+    assess: () => ({
+      score,
+      level: scoreToRiskLevel(score),
+      factors: [`Score: ${score}`],
+      action: score <= 30 ? 'auto_approve' as const : score <= 85 ? 'ask_user' as const : 'deny' as const,
+    }),
+  };
+}
+
+// ============================================================================
+// ApprovalConfigStorage
+// ============================================================================
+
+describe('ApprovalConfigStorage', () => {
+  let mockStorage: ReturnType<typeof createMockStorage>;
+  let configStorage: ApprovalConfigStorage;
+
+  beforeEach(() => {
+    mockStorage = createMockStorage();
+    configStorage = new ApprovalConfigStorage(() => mockStorage);
+  });
+
+  describe('loadConfig', () => {
+    it('should return defaults when storage is empty', async () => {
+      const config = await configStorage.loadConfig();
+      expect(config).toEqual(DEFAULT_APPROVAL_CONFIG);
+    });
+
+    it('should merge stored config with defaults', async () => {
+      mockStorage._store['approval_config'] = { mode: 'cautious' };
+      const config = await configStorage.loadConfig();
+      expect(config.mode).toBe('cautious');
+      expect(config.version).toBe('1.0.0'); // from defaults
+      expect(config.timeouts).toEqual(DEFAULT_APPROVAL_CONFIG.timeouts);
+    });
+
+    it('should preserve stored timeout overrides', async () => {
+      mockStorage._store['approval_config'] = {
+        mode: 'balanced',
+        timeouts: { low: 10000, medium: 20000 },
+      };
+      const config = await configStorage.loadConfig();
+      expect(config.timeouts.low).toBe(10000);
+      expect(config.timeouts.medium).toBe(20000);
+      expect(config.timeouts.high).toBe(120000); // default
+    });
+  });
+
+  describe('saveConfig', () => {
+    it('should save config to storage', async () => {
+      const config: IApprovalConfig = {
+        ...DEFAULT_APPROVAL_CONFIG,
+        mode: 'autonomous',
+      };
+      await configStorage.saveConfig(config);
+      expect(mockStorage.set).toHaveBeenCalledWith({
+        approval_config: config,
+      });
+    });
+  });
+
+  describe('loadHistory', () => {
+    it('should return empty array when no history', async () => {
+      const history = await configStorage.loadHistory();
+      expect(history).toEqual([]);
+    });
+
+    it('should return stored history', async () => {
+      const entries: ApprovalHistoryEntry[] = [
+        {
+          timestamp: 1000,
+          toolName: 'terminal',
+          riskScore: 65,
+          riskLevel: RiskLevel.High,
+          decision: 'ask_user',
+          source: 'user',
+          factors: ['Dangerous command'],
+        },
+      ];
+      mockStorage._store['approval_history'] = entries;
+      const history = await configStorage.loadHistory();
+      expect(history).toHaveLength(1);
+      expect(history[0].toolName).toBe('terminal');
+    });
+
+    it('should respect limit parameter', async () => {
+      const entries: ApprovalHistoryEntry[] = Array.from({ length: 10 }, (_, i) => ({
+        timestamp: i,
+        toolName: 'tool',
+        riskScore: 0,
+        riskLevel: RiskLevel.None,
+        decision: 'auto_approve' as const,
+        source: 'auto' as const,
+        factors: [],
+      }));
+      mockStorage._store['approval_history'] = entries;
+      const history = await configStorage.loadHistory(3);
+      expect(history).toHaveLength(3);
+    });
+  });
+
+  describe('appendHistory', () => {
+    it('should append entry to history', async () => {
+      const entry: ApprovalHistoryEntry = {
+        timestamp: Date.now(),
+        toolName: 'terminal',
+        riskScore: 50,
+        riskLevel: RiskLevel.Medium,
+        decision: 'ask_user',
+        source: 'user',
+        factors: ['Modifying command'],
+      };
+      await configStorage.appendHistory(entry);
+      expect(mockStorage.set).toHaveBeenCalled();
+      const savedHistory = mockStorage._store['approval_history'];
+      expect(savedHistory).toHaveLength(1);
+      expect(savedHistory[0].toolName).toBe('terminal');
+    });
+
+    it('should cap history at 100 entries', async () => {
+      // Pre-fill with 100 entries
+      mockStorage._store['approval_history'] = Array.from({ length: 100 }, (_, i) => ({
+        timestamp: i,
+        toolName: 'tool',
+        riskScore: 0,
+        riskLevel: RiskLevel.None,
+        decision: 'auto_approve' as const,
+        source: 'auto' as const,
+        factors: [],
+      }));
+
+      const entry: ApprovalHistoryEntry = {
+        timestamp: 200,
+        toolName: 'new_tool',
+        riskScore: 50,
+        riskLevel: RiskLevel.Medium,
+        decision: 'ask_user',
+        source: 'user',
+        factors: [],
+      };
+      await configStorage.appendHistory(entry);
+      const savedHistory = mockStorage._store['approval_history'];
+      expect(savedHistory).toHaveLength(100); // capped
+      expect(savedHistory[savedHistory.length - 1].toolName).toBe('new_tool');
+    });
+  });
+});
+
+// ============================================================================
+// ApprovalGate - Mode integration
+// ============================================================================
+
+describe('ApprovalGate modes', () => {
+  let mockManager: any;
+  let gate: ApprovalGate;
+
+  beforeEach(() => {
+    mockManager = createMockApprovalManager();
+    // Empty rules engine - so we can test mode-based threshold
+    const engine = new PolicyRulesEngine([]);
+    gate = new ApprovalGate(mockManager, engine);
+  });
+
+  it('should default to balanced mode', () => {
+    expect(gate.getMode()).toBe('balanced');
+  });
+
+  it('should allow setting mode', () => {
+    gate.setMode('cautious');
+    expect(gate.getMode()).toBe('cautious');
+  });
+
+  it('cautious mode: should ask for score > 10', async () => {
+    gate.setMode('cautious');
+    const decision = await gate.check('test_tool', {}, makeAssessor(15));
+    expect(decision).toBe('auto_approve'); // ApprovalManager returns approve
+    expect(mockManager.requestApproval).toHaveBeenCalled();
+  });
+
+  it('cautious mode: should auto-approve for score <= 10', async () => {
+    gate.setMode('cautious');
+    const decision = await gate.check('test_tool', {}, makeAssessor(5));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('balanced mode: should ask for score > 30', async () => {
+    gate.setMode('balanced');
+    const decision = await gate.check('test_tool', {}, makeAssessor(35));
+    expect(decision).toBe('auto_approve'); // manager returns approve
+    expect(mockManager.requestApproval).toHaveBeenCalled();
+  });
+
+  it('balanced mode: should auto-approve for score <= 30', async () => {
+    gate.setMode('balanced');
+    const decision = await gate.check('test_tool', {}, makeAssessor(25));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('autonomous mode: should ask for score > 60', async () => {
+    gate.setMode('autonomous');
+    const decision = await gate.check('test_tool', {}, makeAssessor(65));
+    expect(decision).toBe('auto_approve'); // manager returns approve
+    expect(mockManager.requestApproval).toHaveBeenCalled();
+  });
+
+  it('autonomous mode: should auto-approve for score <= 60', async () => {
+    gate.setMode('autonomous');
+    const decision = await gate.check('test_tool', {}, makeAssessor(50));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('yolo mode: should auto-approve everything', async () => {
+    gate.setMode('yolo');
+    const decision = await gate.check('test_tool', {}, makeAssessor(90));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// ApprovalGate - Trusted/blocked domains
+// ============================================================================
+
+describe('ApprovalGate trusted/blocked domains', () => {
+  let mockManager: any;
+  let gate: ApprovalGate;
+
+  beforeEach(() => {
+    mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    gate = new ApprovalGate(mockManager, engine);
+  });
+
+  describe('trusted domains', () => {
+    it('should auto-approve for trusted domains', async () => {
+      gate.setTrustedDomains(['example.com']);
+      const decision = await gate.check(
+        'dom_tool',
+        { action: 'click' },
+        makeAssessor(80),
+        { currentDomain: 'example.com' }
+      );
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+
+    it('should match subdomains of trusted domains', async () => {
+      gate.setTrustedDomains(['example.com']);
+      const decision = await gate.check(
+        'dom_tool',
+        { action: 'click' },
+        makeAssessor(80),
+        { currentDomain: 'app.example.com' }
+      );
+      expect(decision).toBe('auto_approve');
+    });
+
+    it('should not auto-approve for non-trusted domains', async () => {
+      gate.setTrustedDomains(['example.com']);
+      const decision = await gate.check(
+        'dom_tool',
+        { action: 'click' },
+        makeAssessor(50),
+        { currentDomain: 'other.com' }
+      );
+      // Should go through normal approval flow
+      expect(mockManager.requestApproval).toHaveBeenCalled();
+    });
+  });
+
+  describe('blocked domains', () => {
+    it('should deny for blocked domains', async () => {
+      gate.setBlockedDomains(['malicious.com']);
+      const decision = await gate.check(
+        'dom_tool',
+        { action: 'click' },
+        makeAssessor(10),
+        { currentDomain: 'malicious.com' }
+      );
+      expect(decision).toBe('deny');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+
+    it('should match subdomains of blocked domains', async () => {
+      gate.setBlockedDomains(['malicious.com']);
+      const decision = await gate.check(
+        'dom_tool',
+        { action: 'click' },
+        makeAssessor(10),
+        { currentDomain: 'sub.malicious.com' }
+      );
+      expect(decision).toBe('deny');
+    });
+
+    it('should check blocked before trusted', async () => {
+      gate.setTrustedDomains(['malicious.com']);
+      gate.setBlockedDomains(['malicious.com']);
+      const decision = await gate.check(
+        'dom_tool',
+        { action: 'click' },
+        makeAssessor(10),
+        { currentDomain: 'malicious.com' }
+      );
+      expect(decision).toBe('deny'); // blocked wins
+    });
+  });
+});
+
+// ============================================================================
+// ApprovalGate - History tracking
+// ============================================================================
+
+describe('ApprovalGate history tracking', () => {
+  let mockManager: any;
+  let gate: ApprovalGate;
+  let mockStorage: ReturnType<typeof createMockStorage>;
+  let configStorage: ApprovalConfigStorage;
+
+  beforeEach(() => {
+    mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    gate = new ApprovalGate(mockManager, engine);
+
+    mockStorage = createMockStorage();
+    configStorage = new ApprovalConfigStorage(() => mockStorage);
+    gate.setConfigStorage(configStorage);
+  });
+
+  it('should record history for auto-approved decisions', async () => {
+    await gate.check('planning_tool', {}, makeAssessor(5));
+    expect(mockStorage.set).toHaveBeenCalled();
+    const history = mockStorage._store['approval_history'];
+    expect(history).toHaveLength(1);
+    expect(history[0].decision).toBe('auto_approve');
+    expect(history[0].source).toBe('auto');
+  });
+
+  it('should record history for user-approved decisions', async () => {
+    await gate.check('test_tool', {}, makeAssessor(50));
+    expect(mockStorage.set).toHaveBeenCalled();
+    const history = mockStorage._store['approval_history'];
+    expect(history).toHaveLength(1);
+    expect(history[0].decision).toBe('auto_approve'); // manager returned approve
+    expect(history[0].source).toBe('user');
+  });
+
+  it('should record history for denied decisions', async () => {
+    mockManager.requestApproval.mockResolvedValue({ decision: 'reject', id: 'test' });
+    await gate.check('test_tool', {}, makeAssessor(50));
+    const history = mockStorage._store['approval_history'];
+    expect(history).toHaveLength(1);
+    expect(history[0].decision).toBe('deny');
+    expect(history[0].source).toBe('user');
+  });
+
+  it('should record history for blocked domains', async () => {
+    gate.setBlockedDomains(['evil.com']);
+    await gate.check('dom_tool', {}, makeAssessor(10), { currentDomain: 'evil.com' });
+    const history = mockStorage._store['approval_history'];
+    expect(history).toHaveLength(1);
+    expect(history[0].decision).toBe('deny');
+    expect(history[0].factors).toContain('Blocked domain');
+  });
+
+  it('should record history for trusted domains', async () => {
+    gate.setTrustedDomains(['safe.com']);
+    await gate.check('dom_tool', {}, makeAssessor(50), { currentDomain: 'safe.com' });
+    const history = mockStorage._store['approval_history'];
+    expect(history).toHaveLength(1);
+    expect(history[0].decision).toBe('auto_approve');
+    expect(history[0].factors).toContain('Trusted domain');
+  });
+
+  it('should record history for YOLO mode', async () => {
+    gate.setMode('yolo');
+    await gate.check('test_tool', {}, makeAssessor(90));
+    const history = mockStorage._store['approval_history'];
+    expect(history).toHaveLength(1);
+    expect(history[0].factors).toContain('YOLO mode');
+  });
+});
+
+// ============================================================================
+// ApprovalGate - Session memory
+// ============================================================================
+
+describe('ApprovalGate session memory', () => {
+  let gate: ApprovalGate;
+
+  beforeEach(() => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    gate = new ApprovalGate(mockManager, engine);
+  });
+
+  it('should remember decisions', () => {
+    gate.rememberDecision('terminal', { command: 'ls' }, 'auto_approve');
+    expect(gate.getMemorySize()).toBe(1);
+  });
+
+  it('should return remembered decision on next check', async () => {
+    gate.rememberDecision('terminal', { command: 'ls' }, 'auto_approve');
+    const decision = await gate.check('terminal', { command: 'ls' });
+    expect(decision).toBe('auto_approve');
+  });
+
+  it('should clear memory', () => {
+    gate.rememberDecision('terminal', { command: 'ls' }, 'auto_approve');
+    expect(gate.getMemorySize()).toBe(1);
+    gate.clearMemory();
+    expect(gate.getMemorySize()).toBe(0);
+  });
+});

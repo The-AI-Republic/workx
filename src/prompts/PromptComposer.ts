@@ -14,6 +14,7 @@ import safety from './fragments/safety.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';
 import taskPolicies from './fragments/task_execution_policies.md?raw';
+import approvalPolicies from './fragments/approval_policies.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
 
@@ -68,6 +69,9 @@ export class PromptComposer {
 
     // 5. Task execution policies
     sections.push(taskPolicies);
+
+    // 6. Approval policies
+    sections.push(approvalPolicies);
 
     return sections.filter(Boolean).join('\n\n');
   }

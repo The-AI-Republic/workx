@@ -64,7 +64,11 @@ export type EventMsg =
   | { type: 'Notification'; data: NotificationEvent }
   | { type: 'Interrupted' }
   | { type: 'TaskFailed'; data: TaskFailedEvent }
-  | { type: 'CompactionCompleted'; data: CompactionCompletedEvent };
+  | { type: 'CompactionCompleted'; data: CompactionCompletedEvent }
+  | { type: 'ApprovalAutoApproved'; data: ApprovalAutoApprovedEvent }
+  | { type: 'ApprovalRequested'; data: ApprovalRequestedEvent }
+  | { type: 'ApprovalGranted'; data: ApprovalGrantedEvent }
+  | { type: 'ApprovalDenied'; data: ApprovalDeniedEvent };
 
 // Individual event payload types
 
@@ -372,4 +376,45 @@ export interface CompactionCompletedEvent {
   triggerReason: 'auto' | 'manual';
   /** Error message if compaction failed */
   error?: string;
+}
+
+/**
+ * Event emitted when a tool call is auto-approved by the approval system
+ */
+export interface ApprovalAutoApprovedEvent {
+  tool_name: string;
+  risk_score: number;
+  risk_level: string;
+}
+
+/**
+ * Event emitted when user approval is requested for a tool call
+ */
+export interface ApprovalRequestedEvent {
+  id: string;
+  tool_name: string;
+  risk_score: number;
+  risk_level: string;
+  risk_factors: string[];
+  explanation: string;
+  command?: string;
+}
+
+/**
+ * Event emitted when a tool call is granted by the user
+ */
+export interface ApprovalGrantedEvent {
+  id: string;
+  tool_name: string;
+  timestamp: number;
+}
+
+/**
+ * Event emitted when a tool call is denied by the user or system
+ */
+export interface ApprovalDeniedEvent {
+  id: string;
+  tool_name: string;
+  reason: string;
+  timestamp: number;
 }

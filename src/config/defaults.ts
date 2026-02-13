@@ -161,7 +161,9 @@ export function getDefaultAgentConfig(): IAgentConfig {
 // Storage keys
 export const STORAGE_KEYS = {
   CONFIG: 'agent_config',
-  CONFIG_VERSION: 'config_version'
+  CONFIG_VERSION: 'config_version',
+  APPROVAL_CONFIG: 'approval_config',
+  APPROVAL_HISTORY: 'approval_history',
 } as const;
 
 // Configuration limits

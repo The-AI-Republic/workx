@@ -107,10 +107,13 @@ export class ApprovalManager {
       msg: {
         type: 'ApprovalRequested',
         data: {
-          approval_id: request.id,
-          type: request.type,
-          risk_level: request.details.riskLevel,
-          title: request.title,
+          id: request.id,
+          tool_name: request.metadata?.toolName || request.type,
+          risk_score: this.riskLevelToScore(request.details.riskLevel),
+          risk_level: request.details.riskLevel || 'medium',
+          risk_factors: request.details.impact || [],
+          explanation: request.description || request.title,
+          command: request.details.command,
         },
       },
     });
@@ -129,10 +132,12 @@ export class ApprovalManager {
         this.emitEvent({
           id: `evt_approval_timeout_${request.id}`,
           msg: {
-            type: 'ApprovalTimeout',
+            type: 'ApprovalDenied',
             data: {
-              approval_id: request.id,
-              timeout_ms: timeout,
+              id: request.id,
+              tool_name: request.metadata?.toolName || request.type,
+              reason: `Request timed out after ${timeout}ms`,
+              timestamp: Date.now(),
             },
           },
         });
@@ -183,22 +188,32 @@ export class ApprovalManager {
     this.approvalHistory.set(response.id, response);
 
     // Emit appropriate event
-    const eventType = response.decision === 'approve' ? 'ApprovalGranted' :
-                     response.decision === 'reject' ? 'ApprovalRejected' :
-                     'ApprovalModified';
-
-    this.emitEvent({
-      id: `evt_approval_${response.decision}_${response.id}`,
-      msg: {
-        type: eventType as any,
-        data: {
-          approval_id: response.id,
-          decision: response.decision,
-          reason: response.reason,
-          modifications: response.modifications,
+    if (response.decision === 'approve') {
+      this.emitEvent({
+        id: `evt_approval_granted_${response.id}`,
+        msg: {
+          type: 'ApprovalGranted',
+          data: {
+            id: response.id,
+            tool_name: pending.request.metadata?.toolName || pending.request.type,
+            timestamp: Date.now(),
+          },
         },
-      },
-    });
+      });
+    } else {
+      this.emitEvent({
+        id: `evt_approval_denied_${response.id}`,
+        msg: {
+          type: 'ApprovalDenied',
+          data: {
+            id: response.id,
+            tool_name: pending.request.metadata?.toolName || pending.request.type,
+            reason: response.reason || 'Denied by user',
+            timestamp: Date.now(),
+          },
+        },
+      });
+    }
 
     // Resolve the pending promise
     if (pending.resolver) {
@@ -249,10 +264,12 @@ export class ApprovalManager {
     this.emitEvent({
       id: `evt_approval_canceled_${id}`,
       msg: {
-        type: 'ApprovalCanceled',
+        type: 'ApprovalDenied',
         data: {
-          approval_id: id,
+          id,
+          tool_name: pending.request.metadata?.toolName || pending.request.type,
           reason: 'User canceled request',
+          timestamp: Date.now(),
         },
       },
     });
@@ -281,16 +298,9 @@ export class ApprovalManager {
     const oldPolicy = { ...this.policy };
     this.policy = { ...this.policy, ...updates };
 
-    this.emitEvent({
-      id: `evt_policy_updated_${Date.now()}`,
-      msg: {
-        type: 'PolicyUpdated',
-        data: {
-          policy: this.policy,
-          changes: updates,
-        },
-      },
-    });
+    // Policy updates are handled internally; no specific event type needed
+    // Logging for debugging
+    console.log('[ApprovalManager] Policy updated:', updates);
   }
 
   /**
@@ -401,17 +411,32 @@ export class ApprovalManager {
     this.approvalHistory.set(request.id, response);
 
     // Emit event
-    const eventType = decision === 'approve' ? 'AutoApproved' : 'AutoRejected';
-    this.emitEvent({
-      id: `evt_auto_${decision}_${request.id}`,
-      msg: {
-        type: eventType as any,
-        data: {
-          approval_id: request.id,
-          policy_reason: reason,
+    if (decision === 'approve') {
+      this.emitEvent({
+        id: `evt_auto_approved_${request.id}`,
+        msg: {
+          type: 'ApprovalAutoApproved',
+          data: {
+            tool_name: request.metadata?.toolName || request.type,
+            risk_score: this.riskLevelToScore(request.details.riskLevel),
+            risk_level: request.details.riskLevel,
+          },
         },
-      },
-    });
+      });
+    } else {
+      this.emitEvent({
+        id: `evt_auto_rejected_${request.id}`,
+        msg: {
+          type: 'ApprovalDenied',
+          data: {
+            id: request.id,
+            tool_name: request.metadata?.toolName || request.type,
+            reason,
+            timestamp: Date.now(),
+          },
+        },
+      });
+    }
 
     return response;
   }
@@ -432,6 +457,19 @@ export class ApprovalManager {
       return hostname === pattern;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Map risk level string to numeric score for event payloads
+   */
+  private riskLevelToScore(level: string): number {
+    switch (level) {
+      case 'low': return 15;
+      case 'medium': return 45;
+      case 'high': return 75;
+      case 'critical': return 95;
+      default: return 50;
     }
   }
 
