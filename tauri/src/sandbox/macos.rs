@@ -65,8 +65,11 @@ impl MacSandbox {
 
         // Network access
         match profile.network_mode {
-            NetworkMode::Host | NetworkMode::Sandbox => {
+            NetworkMode::Host => {
                 rules.push("(allow network*)".to_string());
+            }
+            NetworkMode::Sandbox => {
+                // Network denied by default (deny default) — no allow rule needed
             }
         }
 
