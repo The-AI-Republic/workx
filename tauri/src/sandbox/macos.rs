@@ -96,7 +96,12 @@ impl SandboxExecutor for MacSandbox {
             .map_err(|e| format!("Failed to write SBPL profile: {}", e))?;
         let profile_path = tmp.path().to_string_lossy().to_string();
 
-        log::info!("Executing command in sandbox mode via sandbox-exec");
+        log::info!(
+            "Executing command in sandbox via sandbox-exec (workspace={}, access={:?}, network={:?})",
+            profile.workspace_dir.display(),
+            profile.workspace_access,
+            profile.network_mode
+        );
 
         let mut cmd = Command::new("sandbox-exec");
         cmd.arg("-f")

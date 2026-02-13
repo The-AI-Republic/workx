@@ -108,7 +108,12 @@ impl SandboxExecutor for LinuxSandbox {
         args.push(shell_flag.to_string());
         args.push(command.to_string());
 
-        log::info!("Executing command in sandbox mode via bwrap");
+        log::info!(
+            "Executing command in sandbox via bwrap (workspace={}, access={:?}, network={:?})",
+            ws,
+            profile.workspace_access,
+            profile.network_mode
+        );
 
         let mut cmd = Command::new("bwrap");
         cmd.args(&args);

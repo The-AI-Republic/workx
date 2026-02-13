@@ -50,6 +50,7 @@ pub async fn terminal_execute(
     };
 
     // If sandboxing requested, try to use the sandbox executor
+    log::info!("Terminal execute: sandboxed={}, cwd={:?}", should_sandbox, cwd);
     if should_sandbox {
         match sandbox::get_executor() {
             Some(executor) => {

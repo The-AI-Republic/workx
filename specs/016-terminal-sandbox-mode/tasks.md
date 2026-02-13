@@ -117,11 +117,11 @@
 
 **Purpose**: Logging, validation, edge case handling, and verification across all user stories
 
-- [ ] T028 [P] Add sandbox event logging using `log` crate — INFO: execution mode per command, runtime status at startup; WARN: sandbox unavailable fallback, sandbox violation blocks (from stderr); ERROR: installation failures — across `tauri/src/sandbox/mod.rs`, `tauri/src/sandbox/linux.rs`, `tauri/src/sandbox/status.rs`
-- [ ] T029 [P] Add path canonicalization — call `std::fs::canonicalize()` on workspace_dir and all bind_mount host_paths before passing to sandbox executor to prevent symlink escapes in `tauri/src/sandbox/mod.rs`
-- [ ] T030 [P] Add bind mount validation — verify each bind mount path exists and is absolute, warn if path overlaps with workspace directory (most specific mount wins), reject relative paths with error in `src/desktop/tools/terminal/SandboxManager.ts`
-- [ ] T031 Add bwrap functional smoke test — beyond `which bwrap`, run `bwrap --ro-bind /usr /usr -- /usr/bin/true` as a functional check during status detection; if smoke test fails (e.g., user namespaces disabled), report status as `unavailable` with kernel restriction message in `tauri/src/sandbox/status.rs`
-- [ ] T032 Validate all new and modified files match the quickstart.md file map — verify `tauri/src/sandbox/` module structure, all TypeScript files, and settings UI components exist and are wired correctly
+- [X] T028 [P] Add sandbox event logging using `log` crate — INFO: execution mode per command, runtime status at startup; WARN: sandbox unavailable fallback, sandbox violation blocks (from stderr); ERROR: installation failures — across `tauri/src/sandbox/mod.rs`, `tauri/src/sandbox/linux.rs`, `tauri/src/sandbox/status.rs`
+- [X] T029 [P] Add path canonicalization — call `std::fs::canonicalize()` on workspace_dir and all bind_mount host_paths before passing to sandbox executor to prevent symlink escapes in `tauri/src/sandbox/mod.rs`
+- [X] T030 [P] Add bind mount validation — verify each bind mount path exists and is absolute, warn if path overlaps with workspace directory (most specific mount wins), reject relative paths with error in `src/desktop/tools/terminal/SandboxManager.ts`
+- [X] T031 Add bwrap functional smoke test — beyond `which bwrap`, run `bwrap --ro-bind /usr /usr -- /usr/bin/true` as a functional check during status detection; if smoke test fails (e.g., user namespaces disabled), report status as `unavailable` with kernel restriction message in `tauri/src/sandbox/status.rs`
+- [X] T032 Validate all new and modified files match the quickstart.md file map — verify `tauri/src/sandbox/` module structure, all TypeScript files, and settings UI components exist and are wired correctly
 
 ---
 
