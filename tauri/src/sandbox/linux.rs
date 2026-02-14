@@ -6,7 +6,23 @@ pub struct LinuxSandbox;
 
 impl LinuxSandbox {
     pub fn is_available() -> bool {
-        which::which("bwrap").is_ok()
+        if which::which("bwrap").is_err() {
+            return false;
+        }
+
+        // Run a real smoke test — `which bwrap` alone is not enough.
+        // On Ubuntu 24.04+ AppArmor blocks unprivileged user namespaces,
+        // so bwrap exists but fails at runtime with "Permission denied".
+        let result = std::process::Command::new("bwrap")
+            .args(["--ro-bind", "/usr", "/usr", "--", "/usr/bin/true"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+
+        match result {
+            Ok(status) => status.success(),
+            Err(_) => false,
+        }
     }
 }
 
