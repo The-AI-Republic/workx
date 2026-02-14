@@ -125,8 +125,18 @@ export class ApprovalManager {
 
     // Set up timeout handling
     const timeout = request.timeout || this.policy.timeout || 30000;
+
+    // Create pending approval entry first so timeout can reference it
+    const pendingApproval: PendingApproval = {
+      request,
+      timestamp: Date.now(),
+      timeRemaining: timeout,
+    };
+
     const timeoutPromise = new Promise<ApprovalResponse>((resolve) => {
-      setTimeout(() => {
+      pendingApproval.timeoutId = setTimeout(() => {
+        // Only fire if still pending (not already resolved by handleDecision/cancelRequest)
+        if (!this.pendingRequests.has(request.id)) return;
         this.pendingRequests.delete(request.id);
 
         this.emitEvent({
@@ -155,13 +165,6 @@ export class ApprovalManager {
       }, timeout);
     });
 
-    // Create pending approval entry
-    const pendingApproval: PendingApproval = {
-      request,
-      timestamp: Date.now(),
-      timeRemaining: timeout,
-    };
-
     this.pendingRequests.set(request.id, pendingApproval);
 
     // Wait for user decision or timeout
@@ -179,6 +182,11 @@ export class ApprovalManager {
     const pending = this.pendingRequests.get(response.id);
     if (!pending) {
       return; // Request already processed or doesn't exist
+    }
+
+    // Clear timeout to prevent duplicate events
+    if (pending.timeoutId) {
+      clearTimeout(pending.timeoutId);
     }
 
     // Remove from pending
@@ -257,6 +265,11 @@ export class ApprovalManager {
     const pending = this.pendingRequests.get(id);
     if (!pending) {
       return false;
+    }
+
+    // Clear timeout to prevent duplicate events
+    if (pending.timeoutId) {
+      clearTimeout(pending.timeoutId);
     }
 
     this.pendingRequests.delete(id);
@@ -525,4 +538,5 @@ interface PendingApproval {
   timestamp: number;
   timeRemaining: number;
   resolver?: (response: ApprovalResponse) => void;
+  timeoutId?: ReturnType<typeof setTimeout>;
 }

@@ -11,6 +11,19 @@ import { scoreToRiskLevel } from '../types';
 /** Patterns indicating submit/payment actions */
 const SUBMIT_PATTERNS = /submit|pay|purchase|checkout|confirm|delete|remove|send|transfer|authorize/i;
 
+/** Extract searchable text from element metadata fields only (not URLs or arbitrary data) */
+function extractElementText(parameters: Record<string, any>): string {
+  return [
+    parameters.aria_label,
+    parameters.text,
+    parameters.name,
+    parameters.role,
+    parameters.placeholder,
+    parameters.title,
+    parameters.type,
+  ].filter(v => typeof v === 'string').join(' ').toLowerCase();
+}
+
 /** Map MCP browser tool suffixes to risk scores */
 const TOOL_RISK_MAP: Record<string, { score: number; factor: string }> = {
   'take_snapshot': { score: 0, factor: 'Read-only page snapshot' },
@@ -30,9 +43,9 @@ export class McpBrowserRiskAssessor implements IRiskAssessor {
     _context?: ApprovalContext
   ): RiskAssessment {
     // Extract action from prefixed tool name (browser__click -> click)
-    const action = toolName.includes('__')
-      ? toolName.split('__').pop() || toolName
-      : toolName;
+    const parts = toolName.split('__');
+    const lastPart = parts[parts.length - 1];
+    const action = lastPart || toolName;
 
     const factors: string[] = [];
     let score: number;
@@ -46,9 +59,9 @@ export class McpBrowserRiskAssessor implements IRiskAssessor {
       score = 25;
       factors.push('Click action on page element');
 
-      // Check for submit/payment indicators
-      const paramStr = JSON.stringify(parameters).toLowerCase();
-      if (SUBMIT_PATTERNS.test(paramStr)) {
+      // Check for submit/payment indicators in element metadata only
+      const clickText = extractElementText(parameters);
+      if (clickText && SUBMIT_PATTERNS.test(clickText)) {
         score = 70;
         factors.push('Click target appears to be a submit/payment element');
       }
@@ -56,9 +69,9 @@ export class McpBrowserRiskAssessor implements IRiskAssessor {
       score = 40;
       factors.push('Typing into form field');
 
-      // Check for sensitive fields
-      const fieldStr = JSON.stringify(parameters).toLowerCase();
-      if (/password|credit.?card|ssn|cvv|pin/i.test(fieldStr)) {
+      // Check for sensitive fields in element metadata only
+      const fieldText = extractElementText(parameters);
+      if (fieldText && /password|credit.?card|ssn|cvv|pin/i.test(fieldText)) {
         score = 65;
         factors.push('Typing into sensitive field');
       }

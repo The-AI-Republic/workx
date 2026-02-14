@@ -285,12 +285,14 @@ export class ApprovalGate {
   }
 
   /**
-   * Build a memory key from tool name and parameters
+   * Build a memory key from tool name and parameters (keys + values)
    */
   private buildMemoryKey(toolName: string, parameters: Record<string, any>): string {
-    // Use tool name + sorted parameter keys for stable hashing
-    const paramKeys = Object.keys(parameters).sort().join(',');
-    return `${toolName}:${paramKeys}`;
+    const sorted = Object.keys(parameters).sort().reduce((obj, key) => {
+      obj[key] = parameters[key];
+      return obj;
+    }, {} as Record<string, any>);
+    return `${toolName}||${JSON.stringify(sorted)}`;
   }
 
   /**

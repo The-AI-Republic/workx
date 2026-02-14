@@ -41,7 +41,7 @@ describe('DomainSensitivityEnhancer', () => {
     it('should boost for bank domains', () => {
       const result = enhancer.enhance(
         makeAssessment(30),
-        makeContext({ currentDomain: 'bankofamerica.com' })
+        makeContext({ currentDomain: 'bank.example.com' })
       );
       expect(result.score).toBe(50);
     });

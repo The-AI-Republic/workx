@@ -13,6 +13,17 @@ export class PolicyRulesEngine {
   private allowRules: PolicyRule[];
 
   constructor(rules: PolicyRule[]) {
+    // Validate regex patterns at construction time
+    for (const rule of rules) {
+      if (rule.match.pattern !== undefined) {
+        try {
+          new RegExp(rule.match.pattern, 'i');
+        } catch (e) {
+          throw new Error(`Invalid regex pattern in ${rule.type} rule: ${rule.match.pattern}`);
+        }
+      }
+    }
+
     // Partition rules by type for ordered evaluation
     this.denyRules = rules.filter(r => r.type === 'deny');
     this.askRules = rules.filter(r => r.type === 'ask');

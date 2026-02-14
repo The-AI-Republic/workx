@@ -11,6 +11,19 @@ import { scoreToRiskLevel } from '../types';
 /** Patterns indicating submit/payment actions */
 const SUBMIT_PATTERNS = /submit|pay|purchase|checkout|confirm|delete|remove|send|transfer|authorize/i;
 
+/** Extract searchable text from element metadata fields only (not URLs or arbitrary data) */
+function extractElementText(parameters: Record<string, any>): string {
+  return [
+    parameters.aria_label,
+    parameters.text,
+    parameters.name,
+    parameters.role,
+    parameters.placeholder,
+    parameters.title,
+    parameters.type,
+  ].filter(v => typeof v === 'string').join(' ').toLowerCase();
+}
+
 export class DomToolRiskAssessor implements IRiskAssessor {
   assess(
     _toolName: string,
@@ -37,9 +50,9 @@ export class DomToolRiskAssessor implements IRiskAssessor {
         score = 25;
         factors.push('Click action on page element');
 
-        // Check for submit/payment indicators in parameters
-        const paramStr = JSON.stringify(parameters).toLowerCase();
-        if (SUBMIT_PATTERNS.test(paramStr)) {
+        // Check for submit/payment indicators in element metadata only
+        const clickText = extractElementText(parameters);
+        if (clickText && SUBMIT_PATTERNS.test(clickText)) {
           score = 70;
           factors.push('Click target appears to be a submit/payment element');
         }
@@ -50,9 +63,9 @@ export class DomToolRiskAssessor implements IRiskAssessor {
         score = 40;
         factors.push('Typing into form field');
 
-        // Check for sensitive field patterns
-        const fieldStr = JSON.stringify(parameters).toLowerCase();
-        if (/password|credit.?card|ssn|social.?security|cvv|pin/i.test(fieldStr)) {
+        // Check for sensitive field patterns in element metadata only
+        const fieldText = extractElementText(parameters);
+        if (fieldText && /password|credit.?card|ssn|social.?security|cvv|pin/i.test(fieldText)) {
           score = 65;
           factors.push('Typing into sensitive field (password/financial)');
         }

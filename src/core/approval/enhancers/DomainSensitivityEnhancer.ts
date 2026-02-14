@@ -12,12 +12,12 @@ import { scoreToRiskLevel } from '../types';
 /** Financial/banking domains that warrant extra caution */
 const FINANCIAL_PATTERNS = [
   /paypal\.com$/,
-  /^bank/,
-  /\.bank\./,
+  /^bank[.-]/,
+  /\.bank\b/,
   /\.gov$/,
   /\.gov\./,
   /stripe\.com$/,
-  /braintree/,
+  /braintree\.com$/,
   /venmo\.com$/,
   /wise\.com$/,
   /robinhood\.com$/,

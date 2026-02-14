@@ -102,12 +102,15 @@ export class TerminalRiskAssessor implements IRiskAssessor {
       factors.push('Uses sudo elevation');
     }
 
-    if (/[|;&]/.test(command)) {
+    // Strip quoted strings before checking for shell operators and redirects
+    const unquoted = command.replace(/"[^"]*"|'[^']*'/g, '');
+
+    if (/[|;&]/.test(unquoted)) {
       score = Math.min(score + 5, 85);
       factors.push('Uses shell operators');
     }
 
-    if (/[><]/.test(command)) {
+    if (/[><]/.test(unquoted)) {
       score = Math.min(score + 5, 85);
       factors.push('Uses file redirects');
     }

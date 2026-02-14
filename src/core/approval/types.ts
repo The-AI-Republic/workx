@@ -25,10 +25,11 @@ export enum RiskLevel {
  * Map a numeric risk score (0-100) to a RiskLevel
  */
 export function scoreToRiskLevel(score: number): RiskLevel {
-  if (score <= 10) return RiskLevel.None;
-  if (score <= 30) return RiskLevel.Low;
-  if (score <= 60) return RiskLevel.Medium;
-  if (score <= 85) return RiskLevel.High;
+  const clamped = Math.max(0, Math.min(100, Number(score) || 0));
+  if (clamped <= 10) return RiskLevel.None;
+  if (clamped <= 30) return RiskLevel.Low;
+  if (clamped <= 60) return RiskLevel.Medium;
+  if (clamped <= 85) return RiskLevel.High;
   return RiskLevel.Critical;
 }
 

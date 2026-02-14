@@ -91,7 +91,7 @@ describe('DomToolRiskAssessor', () => {
     const result = assessor.assess('dom_tool', {
       action: 'type',
       text: 'secret',
-      field_type: 'password',
+      type: 'password',
     });
     expect(result.score).toBe(65);
     expect(result.level).toBe(RiskLevel.High);
@@ -206,7 +206,7 @@ describe('McpBrowserRiskAssessor', () => {
 
   it('should score click on submit/payment as 70', () => {
     const result = assessor.assess('browser__click', {
-      selector: '#submit-payment',
+      aria_label: 'Submit Payment',
     });
     expect(result.score).toBe(70);
   });
@@ -218,7 +218,7 @@ describe('McpBrowserRiskAssessor', () => {
 
   it('should score typing into password field as 65', () => {
     const result = assessor.assess('browser__type', {
-      selector: 'input[type=password]',
+      type: 'password',
       text: 'secret',
     });
     expect(result.score).toBe(65);

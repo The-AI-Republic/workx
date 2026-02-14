@@ -48,6 +48,28 @@ describe('scoreToRiskLevel', () => {
     });
   });
 
+  describe('edge cases (clamping)', () => {
+    it('should return None for negative scores', () => {
+      expect(scoreToRiskLevel(-10)).toBe(RiskLevel.None);
+    });
+
+    it('should return Critical for scores above 100', () => {
+      expect(scoreToRiskLevel(150)).toBe(RiskLevel.Critical);
+    });
+
+    it('should return None for NaN', () => {
+      expect(scoreToRiskLevel(NaN)).toBe(RiskLevel.None);
+    });
+
+    it('should return Critical for Infinity', () => {
+      expect(scoreToRiskLevel(Infinity)).toBe(RiskLevel.Critical);
+    });
+
+    it('should return None for -Infinity', () => {
+      expect(scoreToRiskLevel(-Infinity)).toBe(RiskLevel.None);
+    });
+  });
+
   describe('mid-range values', () => {
     it('should return None for score 5', () => {
       expect(scoreToRiskLevel(5)).toBe(RiskLevel.None);

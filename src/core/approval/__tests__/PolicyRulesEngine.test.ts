@@ -142,15 +142,12 @@ describe('PolicyRulesEngine', () => {
       expect(engine.evaluate('terminal', { command: 'rm file.txt' }, 0)).toBeUndefined();
     });
 
-    it('should handle invalid regex patterns gracefully', () => {
+    it('should throw on invalid regex patterns at construction time', () => {
       const rules: PolicyRule[] = [
         { type: 'deny', match: { pattern: '[invalid' }, description: 'Invalid regex' },
       ];
 
-      const engine = new PolicyRulesEngine(rules);
-
-      // Should not throw, just not match
-      expect(engine.evaluate('tool', {}, 50)).toBeUndefined();
+      expect(() => new PolicyRulesEngine(rules)).toThrow('Invalid regex pattern');
     });
   });
 
