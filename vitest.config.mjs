@@ -7,20 +7,19 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [],
+    setupFiles: ['src/__test-utils__/setup.ts'],
     coverage: {
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
         'dist/',
         '**/*.config.ts',
+        '**/*.config.mjs',
         '**/*.d.ts',
-        'tests/**'
+        'src/__test-utils__/**'
       ]
     },
     include: [
-      'tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-      'src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
       'src/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
     ],
     mockReset: true,
