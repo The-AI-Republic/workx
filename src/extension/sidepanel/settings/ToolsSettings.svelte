@@ -4,7 +4,6 @@
   import type { IToolsConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
-
   export let settingsConfig: AgentConfig;
 
   const dispatch = createEventDispatcher<{
@@ -20,13 +19,25 @@
   let saveMessage = '';
   let saveMessageType: 'success' | 'error' | '' = '';
 
+  // Terminal sandbox settings (persisted via Tauri config_storage)
+  let executionMode: 'safe' | 'power' | 'auto' = 'auto';
+  let workspaceAccess: 'rw' | 'ro' | 'none' = 'rw';
+  let networkMode: 'host' | 'sandbox' = 'host';
+  let bindMounts: Array<{ hostPath: string; access: 'rw' | 'ro' }> = [];
+  let newBindMountPath = '';
+  let newBindMountAccess: 'rw' | 'ro' = 'ro';
+  let sandboxStatus: string | null = null;
+  let isDesktop = false;
+
   // Collapsible sections state
   let browserToolsExpanded = true;
   let agentToolsExpanded = true;
   let advancedExpanded = false;
+  let terminalSandboxExpanded = false;
 
   onMount(async () => {
     await loadSettings();
+    await loadTerminalSandboxSettings();
   });
 
   async function loadSettings() {
@@ -44,6 +55,84 @@
       saveMessage = 'Failed to load settings';
       saveMessageType = 'error';
     }
+  }
+
+  async function loadTerminalSandboxSettings() {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('config_storage_get', { key: 'test' });
+      isDesktop = true;
+    } catch {
+      isDesktop = false;
+      return;
+    }
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+
+      const mode = await invoke<string | null>('config_storage_get', { key: 'terminal.executionMode' });
+      if (mode === 'safe' || mode === 'power' || mode === 'auto') executionMode = mode;
+
+      const access = await invoke<string | null>('config_storage_get', { key: 'terminal.sandbox.workspaceAccess' });
+      if (access === 'rw' || access === 'ro' || access === 'none') workspaceAccess = access;
+
+      const network = await invoke<string | null>('config_storage_get', { key: 'terminal.sandbox.networkMode' });
+      if (network === 'host' || network === 'sandbox') networkMode = network;
+
+      const mountsJson = await invoke<string | null>('config_storage_get', { key: 'terminal.sandbox.bindMounts' });
+      if (mountsJson) {
+        try {
+          const parsed = JSON.parse(mountsJson);
+          if (Array.isArray(parsed)) bindMounts = parsed;
+        } catch { /* keep defaults */ }
+      }
+
+      const status = await invoke<{ status: string; runtime: string }>('sandbox_check_status');
+      sandboxStatus = `${status.status} (${status.runtime})`;
+    } catch (error) {
+      console.warn('[ToolsSettings] Failed to load terminal sandbox settings:', error);
+    }
+  }
+
+  async function saveTerminalSandboxSetting(key: string, value: string) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('config_storage_set', { key, value });
+    } catch (error) {
+      console.error('[ToolsSettings] Failed to save sandbox setting:', error);
+    }
+  }
+
+  async function handleExecutionModeChange() {
+    await saveTerminalSandboxSetting('terminal.executionMode', executionMode);
+  }
+
+  async function handleWorkspaceAccessChange() {
+    await saveTerminalSandboxSetting('terminal.sandbox.workspaceAccess', workspaceAccess);
+  }
+
+  async function handleNetworkModeChange() {
+    await saveTerminalSandboxSetting('terminal.sandbox.networkMode', networkMode);
+  }
+
+  async function addBindMount() {
+    if (!newBindMountPath.trim()) return;
+    const path = newBindMountPath.trim();
+    if (!path.startsWith('/') && !path.match(/^[A-Z]:\\/)) {
+      saveMessage = 'Bind mount path must be absolute';
+      saveMessageType = 'error';
+      setTimeout(() => { saveMessage = ''; saveMessageType = ''; }, 3000);
+      return;
+    }
+    bindMounts = [...bindMounts, { hostPath: path, access: newBindMountAccess }];
+    newBindMountPath = '';
+    newBindMountAccess = 'ro';
+    await saveTerminalSandboxSetting('terminal.sandbox.bindMounts', JSON.stringify(bindMounts));
+  }
+
+  async function removeBindMount(index: number) {
+    bindMounts = bindMounts.filter((_, i) => i !== index);
+    await saveTerminalSandboxSetting('terminal.sandbox.bindMounts', JSON.stringify(bindMounts));
   }
 
   function handleInput() {
@@ -88,10 +177,11 @@
     }
   }
 
-  function toggleSection(section: 'browser' | 'agent' | 'advanced') {
+  function toggleSection(section: 'browser' | 'agent' | 'advanced' | 'terminal-sandbox') {
     if (section === 'browser') browserToolsExpanded = !browserToolsExpanded;
     else if (section === 'agent') agentToolsExpanded = !agentToolsExpanded;
     else if (section === 'advanced') advancedExpanded = !advancedExpanded;
+    else if (section === 'terminal-sandbox') terminalSandboxExpanded = !terminalSandboxExpanded;
   }
 </script>
 
@@ -390,24 +480,144 @@
             <div class="help-text">{$_t("Maximum time (in milliseconds) a tool can run before timeout (default: 30000)")}</div>
           </div>
 
-          <!-- Sandbox Policy -->
-          <div class="form-group">
-            <label for="sandbox-mode" class="form-label">{$_t("Sandbox Policy")}</label>
-            <select
-              id="sandbox-mode"
-              bind:value={currentTools.sandboxPolicy.mode}
-              on:input={handleInput}
-              class="form-select"
-            >
-              <option value="read-only">{$_t("Read-only")}</option>
-              <option value="workspace-write">{$_t("Workspace Write")}</option>
-              <option value="danger-full-access">{$_t("Full Access (Dangerous)")}</option>
-            </select>
-            <div class="help-text">{$_t("Security level for tool execution environment")}</div>
-          </div>
+          <!-- Legacy Sandbox Policy (non-desktop) -->
+          {#if !isDesktop}
+            <div class="form-group">
+              <label for="sandbox-mode" class="form-label">{$_t("Sandbox Policy")}</label>
+              <select
+                id="sandbox-mode"
+                bind:value={currentTools.sandboxPolicy.mode}
+                on:input={handleInput}
+                class="form-select"
+              >
+                <option value="read-only">{$_t("Read-only")}</option>
+                <option value="workspace-write">{$_t("Workspace Write")}</option>
+                <option value="danger-full-access">{$_t("Full Access (Dangerous)")}</option>
+              </select>
+              <div class="help-text">{$_t("Security level for tool execution environment")}</div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
+
+    <!-- Terminal Sandbox Settings (Desktop only) -->
+    {#if isDesktop}
+      <div class="collapsible-section settings-card">
+        <button
+          class="section-header"
+          on:click={() => toggleSection('terminal-sandbox')}
+          aria-expanded={terminalSandboxExpanded}
+        >
+          <svg
+            class="expand-icon"
+            class:expanded={terminalSandboxExpanded}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+          >
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+          <h3 class="section-title">{$_t("Terminal Sandbox")}</h3>
+          {#if sandboxStatus}
+            <span class="status-badge">{sandboxStatus}</span>
+          {/if}
+        </button>
+
+        {#if terminalSandboxExpanded}
+          <div class="section-content">
+            <!-- Execution Mode -->
+            <div class="form-group">
+              <label for="execution-mode" class="form-label">{$_t("Execution Mode")}</label>
+              <select
+                id="execution-mode"
+                bind:value={executionMode}
+                on:change={handleExecutionModeChange}
+                class="form-select"
+              >
+                <option value="auto">{$_t("Auto (default)")}</option>
+                <option value="safe">{$_t("Safe")}</option>
+                <option value="power">{$_t("Power")}</option>
+              </select>
+              <div class="help-text">
+                {#if executionMode === 'safe'}
+                  {$_t("All commands run inside an OS-native sandbox. Writes restricted to workspace directory.")}
+                {:else if executionMode === 'power'}
+                  {$_t("Commands run directly on the host. Security filter still applies.")}
+                {:else}
+                  {$_t("The AI decides per-command whether to use sandbox based on risk assessment.")}
+                {/if}
+              </div>
+            </div>
+
+            <!-- Workspace Access -->
+            <div class="form-group">
+              <label for="workspace-access" class="form-label">{$_t("Workspace Access")}</label>
+              <select
+                id="workspace-access"
+                bind:value={workspaceAccess}
+                on:change={handleWorkspaceAccessChange}
+                class="form-select"
+              >
+                <option value="rw">{$_t("Read-Write")}</option>
+                <option value="ro">{$_t("Read-Only")}</option>
+                <option value="none">{$_t("No Access")}</option>
+              </select>
+              <div class="help-text">{$_t("How the workspace directory is mounted in the sandbox")}</div>
+            </div>
+
+            <!-- Network Mode -->
+            <div class="form-group">
+              <label for="network-mode" class="form-label">{$_t("Network Access")}</label>
+              <select
+                id="network-mode"
+                bind:value={networkMode}
+                on:change={handleNetworkModeChange}
+                class="form-select"
+              >
+                <option value="host">{$_t("Allowed")}</option>
+                <option value="sandbox">{$_t("Restricted")}</option>
+              </select>
+              <div class="help-text">{$_t("Whether sandboxed commands can access the network")}</div>
+            </div>
+
+            <!-- Bind Mounts -->
+            <div class="form-group">
+              <label class="form-label">{$_t("Additional Bind Mounts")}</label>
+              <div class="help-text" style="margin-bottom: 0.5rem;">{$_t("Extra directories accessible inside the sandbox")}</div>
+
+              {#if bindMounts.length > 0}
+                <div class="bind-mount-list">
+                  {#each bindMounts as mount, i}
+                    <div class="bind-mount-item">
+                      <span class="bind-mount-path">{mount.hostPath}</span>
+                      <span class="bind-mount-access">{mount.access}</span>
+                      <button class="bind-mount-remove" on:click={() => removeBindMount(i)} title="Remove">×</button>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
+              <div class="bind-mount-add">
+                <input
+                  type="text"
+                  bind:value={newBindMountPath}
+                  placeholder="/path/to/directory"
+                  class="form-input bind-mount-input"
+                />
+                <select bind:value={newBindMountAccess} class="form-select bind-mount-access-select">
+                  <option value="ro">ro</option>
+                  <option value="rw">rw</option>
+                </select>
+                <button class="btn btn-small" on:click={addBindMount}>{$_t("Add")}</button>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Save Button -->
     <div class="button-group">
@@ -681,5 +891,77 @@
   .message.error {
     color: var(--browserx-error);
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+  }
+
+  .status-badge {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--browserx-text-secondary);
+    background: color-mix(in srgb, var(--browserx-text-secondary) 10%, transparent);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+  }
+
+  .bind-mount-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .bind-mount-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    background: color-mix(in srgb, var(--browserx-surface) 90%, var(--browserx-text));
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+  }
+
+  .bind-mount-path {
+    flex: 1;
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bind-mount-access {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--browserx-text-secondary);
+    text-transform: uppercase;
+  }
+
+  .bind-mount-remove {
+    background: none;
+    border: none;
+    color: var(--browserx-error);
+    cursor: pointer;
+    font-size: 1.125rem;
+    line-height: 1;
+    padding: 0 0.25rem;
+  }
+
+  .bind-mount-add {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+  }
+
+  .bind-mount-input {
+    flex: 1;
+  }
+
+  .bind-mount-access-select {
+    width: 4.5rem;
+    flex-shrink: 0;
+  }
+
+  .btn-small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
   }
 </style>

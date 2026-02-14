@@ -17,3 +17,14 @@ export {
   type ExecuteResult,
   type TerminalToolDefinition,
 } from './TerminalTool';
+export {
+  SandboxManager,
+  type ExecutionMode,
+  type WorkspaceAccess,
+  type NetworkMode,
+  type BindMount,
+  type SandboxStatus,
+  type SandboxStatusResult,
+  type SandboxInstallResult,
+  type SandboxConfig,
+} from './SandboxManager';
