@@ -351,6 +351,9 @@ export class TerminalTool {
     userConfirmed?: boolean;
     sandboxed?: boolean;
   }): Promise<string> {
+    // Reload config so setting changes take effect without restart
+    await this.sandboxManager.reloadConfig();
+
     const result = await this.execute(input.command, {
       cwd: input.cwd,
       timeout: input.timeout,

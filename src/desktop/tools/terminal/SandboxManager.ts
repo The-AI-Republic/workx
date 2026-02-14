@@ -197,6 +197,13 @@ export class SandboxManager {
   }
 
   /**
+   * Reload config from storage so the next command picks up any setting changes.
+   */
+  async reloadConfig(): Promise<void> {
+    await this.loadConfig();
+  }
+
+  /**
    * Set execution mode and persist to config
    */
   async setExecutionMode(mode: ExecutionMode): Promise<void> {

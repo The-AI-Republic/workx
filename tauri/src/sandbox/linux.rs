@@ -53,6 +53,26 @@ impl SandboxExecutor for LinuxSandbox {
             args.push("/lib64".to_string());
         }
 
+        // /run and /var (needed for dbus, systemd tools, etc.)
+        for dir in &["/run", "/var"] {
+            if std::path::Path::new(dir).exists() {
+                args.push("--ro-bind".to_string());
+                args.push(dir.to_string());
+                args.push(dir.to_string());
+            }
+        }
+
+        // Home directory as read-only base (shell profiles, nvm/pyenv/rbenv, etc.)
+        // Workspace and writable paths overlay on top with --bind
+        if let Some(home) = dirs::home_dir() {
+            if home.exists() {
+                let h = home.to_string_lossy().to_string();
+                args.push("--ro-bind".to_string());
+                args.push(h.clone());
+                args.push(h);
+            }
+        }
+
         // /proc, /dev
         args.push("--proc".to_string());
         args.push("/proc".to_string());

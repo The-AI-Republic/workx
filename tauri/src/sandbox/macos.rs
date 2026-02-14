@@ -5,13 +5,25 @@ use tokio::process::Command;
 
 pub struct MacSandbox;
 
+/// Escape a path for safe inclusion in an SBPL profile string.
+/// Rejects paths containing `"` to prevent SBPL injection.
+fn escape_sbpl_path(p: &str) -> Result<String, String> {
+    if p.contains('"') {
+        return Err(format!(
+            "Path contains illegal character '\"' and cannot be used in sandbox profile: {}",
+            p
+        ));
+    }
+    Ok(p.to_string())
+}
+
 impl MacSandbox {
     pub fn is_available() -> bool {
         which::which("sandbox-exec").is_ok()
     }
 
     /// Generate a Seatbelt (SBPL) profile string from the sandbox profile
-    fn generate_sbpl(profile: &SandboxProfile) -> String {
+    fn generate_sbpl(profile: &SandboxProfile) -> Result<String, String> {
         let mut rules = Vec::new();
 
         rules.push("(version 1)".to_string());
@@ -28,7 +40,7 @@ impl MacSandbox {
         rules.push("(allow mach-lookup)".to_string());
 
         // Workspace directory access
-        let ws = profile.workspace_dir.to_string_lossy().to_string();
+        let ws = escape_sbpl_path(&profile.workspace_dir.to_string_lossy())?;
         match profile.workspace_access {
             WorkspaceAccess::Rw => {
                 rules.push(format!("(allow file-write* (subpath \"{}\"))", ws));
@@ -44,7 +56,7 @@ impl MacSandbox {
 
         // Standard writable paths
         for path in &profile.standard_writable {
-            let p = path.to_string_lossy().to_string();
+            let p = escape_sbpl_path(&path.to_string_lossy())?;
             rules.push(format!("(allow file-write* (subpath \"{}\"))", p));
         }
 
@@ -54,10 +66,11 @@ impl MacSandbox {
 
         // User-configured bind mounts
         for mount in &profile.bind_mounts {
+            let mp = escape_sbpl_path(&mount.host_path)?;
             if mount.access == "rw" {
                 rules.push(format!(
                     "(allow file-write* (subpath \"{}\"))",
-                    mount.host_path
+                    mp
                 ));
             }
             // Read access already globally allowed
@@ -73,7 +86,7 @@ impl MacSandbox {
             }
         }
 
-        rules.join("\n")
+        Ok(rules.join("\n"))
     }
 }
 
@@ -87,7 +100,7 @@ impl SandboxExecutor for MacSandbox {
         profile: &SandboxProfile,
         env: Option<&HashMap<String, String>>,
     ) -> Result<SandboxOutput, String> {
-        let sbpl = Self::generate_sbpl(profile);
+        let sbpl = Self::generate_sbpl(profile)?;
 
         // Write SBPL profile to a temp file
         let mut tmp = tempfile::NamedTempFile::new()

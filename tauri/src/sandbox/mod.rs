@@ -111,8 +111,9 @@ pub fn build_profile(
     // Canonicalize workspace dir if it exists
     let workspace_dir = std::fs::canonicalize(&workspace_dir).unwrap_or(workspace_dir);
 
-    // Standard writable paths
-    let standard_writable = vec![
+    // Standard writable paths (mut needed on macOS where we push platform-specific paths)
+    #[allow(unused_mut)]
+    let mut standard_writable = vec![
         PathBuf::from("/tmp"),
         home.join(".cache"),
         home.join(".npm"),

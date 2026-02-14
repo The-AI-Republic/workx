@@ -6,10 +6,10 @@ pub struct WindowsSandbox;
 
 impl WindowsSandbox {
     pub fn is_available() -> bool {
-        // AppContainer is available on Windows 8+ / Windows 10+
-        // For now, check if we're on Windows — the actual AppContainer
-        // implementation will be added when Windows support is fully built out.
-        cfg!(target_os = "windows")
+        // AppContainer sandbox is not yet implemented.
+        // Return false so Windows hits the graceful degradation path
+        // (runs commands directly without claiming they are sandboxed).
+        false
     }
 }
 

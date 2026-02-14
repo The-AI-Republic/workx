@@ -41,11 +41,11 @@ pub async fn sandbox_check_status() -> Result<SandboxStatusResult, String> {
     #[cfg(target_os = "windows")]
     {
         return Ok(SandboxStatusResult {
-            status: "available".to_string(),
+            status: "unavailable".to_string(),
             runtime: "appcontainer".to_string(),
             os: os.to_string(),
             version: None,
-            message: Some("AppContainer available (Windows 10+)".to_string()),
+            message: Some("AppContainer sandbox is not yet implemented. Commands will run without sandbox isolation.".to_string()),
         });
     }
 
@@ -404,11 +404,12 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
 
     log::info!("Installing bubblewrap via {}...", pm);
 
-    let output = tokio::process::Command::new(pm)
+    let output = tokio::process::Command::new("sudo")
+        .arg(pm)
         .args(&args)
         .output()
         .await
-        .map_err(|e| format!("Failed to run {}: {}", pm, e))?;
+        .map_err(|e| format!("Failed to run sudo {}: {}", pm, e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
