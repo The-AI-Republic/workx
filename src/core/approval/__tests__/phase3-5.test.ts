@@ -464,4 +464,164 @@ describe('ApprovalGate session memory', () => {
     gate.clearMemory();
     expect(gate.getMemorySize()).toBe(0);
   });
+
+  it('should produce stable keys regardless of parameter order', async () => {
+    gate.rememberDecision('tool', { b: 2, a: 1 }, 'auto_approve');
+    const decision = await gate.check('tool', { a: 1, b: 2 });
+    expect(decision).toBe('auto_approve');
+  });
+
+  it('should not match different parameters', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gateWithManager = new ApprovalGate(mockManager, engine);
+
+    gateWithManager.rememberDecision('tool', { a: 1 }, 'auto_approve');
+    // Different params should NOT match memory
+    await gateWithManager.check('tool', { b: 2 }, makeAssessor(5));
+    // Should go through pipeline (no memory hit), but auto-approve via low score
+    expect(gateWithManager.getMemorySize()).toBe(1);
+  });
+});
+
+// ============================================================================
+// ApprovalGate - Exact threshold boundaries
+// ============================================================================
+
+describe('ApprovalGate threshold boundaries', () => {
+  let mockManager: any;
+
+  beforeEach(() => {
+    mockManager = createMockApprovalManager();
+  });
+
+  it('cautious mode: score exactly 10 should auto-approve', async () => {
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+    gate.setMode('cautious');
+    const decision = await gate.check('test_tool', {}, makeAssessor(10));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('cautious mode: score exactly 11 should ask', async () => {
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+    gate.setMode('cautious');
+    const decision = await gate.check('test_tool', {}, makeAssessor(11));
+    expect(mockManager.requestApproval).toHaveBeenCalled();
+  });
+
+  it('balanced mode: score exactly 30 should auto-approve', async () => {
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+    gate.setMode('balanced');
+    const decision = await gate.check('test_tool', {}, makeAssessor(30));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('balanced mode: score exactly 31 should ask', async () => {
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+    gate.setMode('balanced');
+    const decision = await gate.check('test_tool', {}, makeAssessor(31));
+    expect(mockManager.requestApproval).toHaveBeenCalled();
+  });
+
+  it('autonomous mode: score exactly 60 should auto-approve', async () => {
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+    gate.setMode('autonomous');
+    const decision = await gate.check('test_tool', {}, makeAssessor(60));
+    expect(decision).toBe('auto_approve');
+    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('autonomous mode: score exactly 61 should ask', async () => {
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+    gate.setMode('autonomous');
+    const decision = await gate.check('test_tool', {}, makeAssessor(61));
+    expect(mockManager.requestApproval).toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// ApprovalGate - Approval request mapping
+// ============================================================================
+
+describe('ApprovalGate approval request construction', () => {
+  it('should map terminal tool to command type', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('terminal', { command: 'npm install' }, makeAssessor(50));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.type).toBe('command');
+  });
+
+  it('should map storage tools to storage_access type', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('local_storage', {}, makeAssessor(50));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.type).toBe('storage_access');
+  });
+
+  it('should map network tools to network_access type', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('network_fetch', {}, makeAssessor(50));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.type).toBe('network_access');
+  });
+
+  it('should map unknown tools to dangerous_action type', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('dom_tool', { action: 'click' }, makeAssessor(50));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.type).toBe('dangerous_action');
+  });
+
+  it('should include risk level in approval request details', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('test_tool', {}, makeAssessor(50));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.details.riskLevel).toBe('medium');
+  });
+
+  it('should map RiskLevel.None to low in approval details', async () => {
+    const mockManager = createMockApprovalManager();
+    // Need a rule or threshold that forces ask_user at low score
+    const engine = new PolicyRulesEngine([
+      { type: 'ask', match: { riskAbove: 0 }, description: 'Ask everything' },
+    ]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('test_tool', {}, makeAssessor(5));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.details.riskLevel).toBe('low'); // 'none' maps to 'low'
+  });
+
+  it('should include risk factors in approval request', async () => {
+    const mockManager = createMockApprovalManager();
+    const engine = new PolicyRulesEngine([]);
+    const gate = new ApprovalGate(mockManager, engine);
+
+    await gate.check('test_tool', {}, makeAssessor(50));
+    const call = mockManager.requestApproval.mock.calls[0][0];
+    expect(call.details.impact).toContain('Score: 50');
+  });
 });
