@@ -170,7 +170,18 @@ export async function registerDesktopToolsImpl(
   } catch (error) {
     console.warn('[registerDesktopTools] Failed to get platform info:', error);
   }
-  const terminalDef = terminalTool.getToolDefinition(osName);
+
+  // Initialize sandbox support and fetch status for dynamic tool description
+  let sandboxStatus;
+  try {
+    await terminalTool.initializeSandbox();
+    sandboxStatus = terminalTool.getSandboxManager().status ?? undefined;
+    console.log('[registerDesktopTools] Sandbox initialized:', sandboxStatus?.status, sandboxStatus?.runtime);
+  } catch (error) {
+    console.warn('[registerDesktopTools] Failed to initialize sandbox:', error);
+  }
+
+  const terminalDef = terminalTool.getToolDefinition(osName, sandboxStatus);
 
   if (!registry.getTool('terminal')) {
     console.log('[registerDesktopTools] Registering terminal (desktop)...');
@@ -194,6 +205,7 @@ export async function registerDesktopToolsImpl(
           cwd?: string;
           timeout?: number;
           userConfirmed?: boolean;
+          sandboxed?: boolean;
         });
       },
       terminalAssessor

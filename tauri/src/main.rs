@@ -6,6 +6,7 @@ mod commands;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
+mod sandbox;
 mod storage_commands;
 mod terminal_commands;
 
@@ -254,6 +255,9 @@ fn main() {
             browser_commands::kill_process,
             // Terminal command execution
             terminal_commands::terminal_execute,
+            // Sandbox commands
+            sandbox::status::sandbox_check_status,
+            sandbox::status::sandbox_install_runtime,
             // HTTP proxy command
             http_commands::http_fetch,
             // Keychain commands

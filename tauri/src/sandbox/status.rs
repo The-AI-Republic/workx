@@ -1,0 +1,484 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SandboxStatusResult {
+    pub status: String,
+    pub runtime: String,
+    pub os: String,
+    pub version: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SandboxInstallResult {
+    pub success: bool,
+    pub message: String,
+}
+
+/// Check sandbox runtime availability on the current platform
+#[tauri::command]
+pub async fn sandbox_check_status() -> Result<SandboxStatusResult, String> {
+    let os = if cfg!(target_os = "linux") {
+        "linux"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        "unknown"
+    };
+
+    #[cfg(target_os = "linux")]
+    {
+        return check_linux_status(os).await;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        return check_macos_status(os).await;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        return Ok(SandboxStatusResult {
+            status: "unavailable".to_string(),
+            runtime: "appcontainer".to_string(),
+            os: os.to_string(),
+            version: None,
+            message: Some("AppContainer sandbox is not yet implemented. Commands will run without sandbox isolation.".to_string()),
+        });
+    }
+
+    #[allow(unreachable_code)]
+    Ok(SandboxStatusResult {
+        status: "unavailable".to_string(),
+        runtime: "none".to_string(),
+        os: os.to_string(),
+        version: None,
+        message: Some("Unsupported platform".to_string()),
+    })
+}
+
+#[cfg(target_os = "linux")]
+async fn check_linux_status(os: &str) -> Result<SandboxStatusResult, String> {
+    // Check if bwrap exists
+    match which::which("bwrap") {
+        Ok(_) => {
+            // Run functional smoke test
+            let smoke = tokio::process::Command::new("bwrap")
+                .args(["--ro-bind", "/usr", "/usr", "--", "/usr/bin/true"])
+                .output()
+                .await;
+
+            match smoke {
+                Ok(output) if output.status.success() => {
+                    // Try to get version
+                    let version = tokio::process::Command::new("bwrap")
+                        .arg("--version")
+                        .output()
+                        .await
+                        .ok()
+                        .and_then(|v| {
+                            String::from_utf8_lossy(&v.stdout)
+                                .trim()
+                                .strip_prefix("bubblewrap ")
+                                .map(|s| s.to_string())
+                        });
+
+                    log::info!(
+                        "Sandbox runtime: bwrap {} available",
+                        version.as_deref().unwrap_or("(unknown version)")
+                    );
+
+                    Ok(SandboxStatusResult {
+                        status: "available".to_string(),
+                        runtime: "bwrap".to_string(),
+                        os: os.to_string(),
+                        version,
+                        message: Some("bubblewrap is installed and functional".to_string()),
+                    })
+                }
+                _ => {
+                    let message = if is_apparmor_userns_restricted() {
+                        log::warn!("bwrap found but blocked by AppArmor unprivileged userns restriction");
+                        "bubblewrap is installed but blocked by AppArmor. \
+                         Click \"Install / Fix\" to create an AppArmor profile for bwrap."
+                            .to_string()
+                    } else if is_userns_clone_disabled() {
+                        log::warn!("bwrap found but unprivileged_userns_clone is disabled");
+                        "bubblewrap is installed but user namespaces are disabled. \
+                         Click \"Install / Fix\" to enable them."
+                            .to_string()
+                    } else {
+                        log::warn!("bwrap found but smoke test failed for unknown reason");
+                        "bubblewrap is installed but not functional. \
+                         Click \"Install / Fix\" to attempt automatic repair."
+                            .to_string()
+                    };
+
+                    Ok(SandboxStatusResult {
+                        status: "unavailable".to_string(),
+                        runtime: "bwrap".to_string(),
+                        os: os.to_string(),
+                        version: None,
+                        message: Some(message),
+                    })
+                }
+            }
+        }
+        Err(_) => {
+            log::info!("Sandbox runtime: bwrap not found, needs installation");
+            Ok(SandboxStatusResult {
+                status: "needs-installation".to_string(),
+                runtime: "bwrap".to_string(),
+                os: os.to_string(),
+                version: None,
+                message: Some("bubblewrap is not installed".to_string()),
+            })
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn check_macos_status(os: &str) -> Result<SandboxStatusResult, String> {
+    match which::which("sandbox-exec") {
+        Ok(_) => {
+            log::info!("Sandbox runtime: sandbox-exec available");
+            Ok(SandboxStatusResult {
+                status: "available".to_string(),
+                runtime: "sandbox-exec".to_string(),
+                os: os.to_string(),
+                version: None,
+                message: Some("sandbox-exec is available".to_string()),
+            })
+        }
+        Err(_) => Ok(SandboxStatusResult {
+            status: "unavailable".to_string(),
+            runtime: "sandbox-exec".to_string(),
+            os: os.to_string(),
+            version: None,
+            message: Some("sandbox-exec not found".to_string()),
+        }),
+    }
+}
+
+/// Check if AppArmor is restricting unprivileged user namespaces (Ubuntu 24.04+)
+#[cfg(target_os = "linux")]
+fn is_apparmor_userns_restricted() -> bool {
+    std::fs::read_to_string("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+        .map(|v| v.trim() == "1")
+        .unwrap_or(false)
+}
+
+/// Check if the kernel sysctl blocks unprivileged user namespaces
+/// (older Debian, hardened kernels)
+#[cfg(target_os = "linux")]
+fn is_userns_clone_disabled() -> bool {
+    std::fs::read_to_string("/proc/sys/kernel/unprivileged_userns_clone")
+        .map(|v| v.trim() == "0")
+        .unwrap_or(false) // file missing means kernel doesn't have this knob (userns allowed)
+}
+
+/// Check if an AppArmor profile already exists for bwrap
+#[cfg(target_os = "linux")]
+fn has_bwrap_apparmor_profile() -> bool {
+    let profile_path = std::path::Path::new("/etc/apparmor.d/bwrap");
+    if !profile_path.exists() {
+        return false;
+    }
+    // Verify it contains the userns permission
+    std::fs::read_to_string(profile_path)
+        .map(|content| content.contains("userns"))
+        .unwrap_or(false)
+}
+
+/// Enable unprivileged user namespaces via sysctl.
+/// Required on older Debian and hardened kernels where
+/// kernel.unprivileged_userns_clone=0.
+/// Sets the runtime value and persists it across reboots.
+#[cfg(target_os = "linux")]
+async fn enable_userns_clone() -> Result<(), String> {
+    // Set runtime value
+    let runtime = tokio::process::Command::new("sudo")
+        .args(["sysctl", "-w", "kernel.unprivileged_userns_clone=1"])
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run sysctl: {}", e))?;
+
+    if !runtime.status.success() {
+        let stderr = String::from_utf8_lossy(&runtime.stderr);
+        return Err(format!("Failed to enable user namespaces: {}", stderr));
+    }
+
+    // Persist across reboots via /etc/sysctl.d/
+    let persist = tokio::process::Command::new("sudo")
+        .args(["tee", "/etc/sysctl.d/99-bwrap-userns.conf"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn();
+
+    let mut child = persist.map_err(|e| format!("Failed to persist sysctl config: {}", e))?;
+
+    if let Some(ref mut stdin) = child.stdin {
+        use tokio::io::AsyncWriteExt;
+        stdin.write_all(b"kernel.unprivileged_userns_clone=1\n").await
+            .map_err(|e| format!("Failed to write sysctl config: {}", e))?;
+    }
+
+    let output = child.wait_with_output().await
+        .map_err(|e| format!("Failed to persist sysctl config: {}", e))?;
+
+    if !output.status.success() {
+        // Runtime value is set, just warn about persistence
+        log::warn!("User namespaces enabled for this session but failed to persist config");
+    }
+
+    log::info!("Unprivileged user namespaces enabled successfully");
+    Ok(())
+}
+
+/// Create an AppArmor profile for bwrap and load it.
+/// Required on Ubuntu 24.04+ where unprivileged user namespaces are
+/// restricted by AppArmor. Uses the same pattern as lxc-usernsexec.
+#[cfg(target_os = "linux")]
+async fn install_bwrap_apparmor_profile() -> Result<(), String> {
+    let profile = r#"abi <abi/4.0>,
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+
+  include if exists <local/bwrap>
+}
+"#;
+
+    // Write profile — needs sudo since /etc/apparmor.d/ is root-owned
+    let write_result = tokio::process::Command::new("sudo")
+        .args(["tee", "/etc/apparmor.d/bwrap"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn();
+
+    let mut child = write_result.map_err(|e| format!("Failed to write AppArmor profile: {}", e))?;
+
+    if let Some(ref mut stdin) = child.stdin {
+        use tokio::io::AsyncWriteExt;
+        stdin.write_all(profile.as_bytes()).await
+            .map_err(|e| format!("Failed to write AppArmor profile content: {}", e))?;
+    }
+
+    let output = child.wait_with_output().await
+        .map_err(|e| format!("Failed to write AppArmor profile: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to write AppArmor profile: {}", stderr));
+    }
+
+    // Reload the profile
+    let reload = tokio::process::Command::new("sudo")
+        .args(["apparmor_parser", "-r", "/etc/apparmor.d/bwrap"])
+        .output()
+        .await
+        .map_err(|e| format!("Failed to reload AppArmor profile: {}", e))?;
+
+    if !reload.status.success() {
+        let stderr = String::from_utf8_lossy(&reload.stderr);
+        return Err(format!("Failed to reload AppArmor profile: {}", stderr));
+    }
+
+    log::info!("AppArmor profile for bwrap installed and loaded successfully");
+    Ok(())
+}
+
+/// Install sandbox runtime (Linux only — installs bubblewrap)
+#[tauri::command]
+pub async fn sandbox_install_runtime() -> Result<SandboxInstallResult, String> {
+    #[cfg(not(target_os = "linux"))]
+    {
+        return Err("Sandbox runtime ships with the OS on this platform. No installation needed.".to_string());
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        install_bwrap_linux().await
+    }
+}
+
+#[cfg(target_os = "linux")]
+async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
+    let bwrap_exists = which::which("bwrap").is_ok();
+
+    // If bwrap is already installed, try to fix known blockers
+    if bwrap_exists {
+        let mut fixed_something = false;
+
+        // Fix 1: AppArmor userns restriction (Ubuntu 24.04+, possibly Debian/openSUSE)
+        if is_apparmor_userns_restricted() && !has_bwrap_apparmor_profile() {
+            log::info!("bwrap already installed; AppArmor userns restriction detected, installing profile...");
+            if let Err(e) = install_bwrap_apparmor_profile().await {
+                return Ok(SandboxInstallResult {
+                    success: false,
+                    message: format!("AppArmor profile setup failed: {}", e),
+                });
+            }
+            fixed_something = true;
+        }
+
+        // Fix 2: unprivileged_userns_clone=0 (older Debian, hardened kernels)
+        if is_userns_clone_disabled() {
+            log::info!("bwrap already installed; unprivileged_userns_clone disabled, enabling...");
+            if let Err(e) = enable_userns_clone().await {
+                return Ok(SandboxInstallResult {
+                    success: false,
+                    message: format!("Failed to enable user namespaces: {}", e),
+                });
+            }
+            fixed_something = true;
+        }
+
+        // Verify after fixes (or check if it was already working)
+        let smoke = tokio::process::Command::new("bwrap")
+            .args(["--ro-bind", "/usr", "/usr", "--", "/usr/bin/true"])
+            .output()
+            .await;
+
+        if matches!(&smoke, Ok(o) if o.status.success()) {
+            let message = if fixed_something {
+                "System configuration fixed — bubblewrap is now functional".to_string()
+            } else {
+                "bubblewrap is already installed and functional".to_string()
+            };
+            return Ok(SandboxInstallResult {
+                success: true,
+                message,
+            });
+        }
+
+        // If we tried fixes and still failed, report it
+        if fixed_something {
+            return Ok(SandboxInstallResult {
+                success: false,
+                message: "Applied fixes but bubblewrap smoke test still failed".to_string(),
+            });
+        }
+    }
+
+    // Detect distro from /etc/os-release
+    let os_release = tokio::fs::read_to_string("/etc/os-release")
+        .await
+        .unwrap_or_default();
+
+    let distro_id = os_release
+        .lines()
+        .find(|line| line.starts_with("ID="))
+        .map(|line| line.trim_start_matches("ID=").trim_matches('"'))
+        .unwrap_or("");
+
+    let (pm, args): (&str, Vec<&str>) = match distro_id {
+        "ubuntu" | "debian" | "pop" | "linuxmint" | "elementary" | "zorin" => {
+            ("apt-get", vec!["install", "-y", "bubblewrap"])
+        }
+        "fedora" | "rhel" | "centos" | "rocky" | "alma" => {
+            ("dnf", vec!["install", "-y", "bubblewrap"])
+        }
+        "arch" | "manjaro" | "endeavouros" => {
+            ("pacman", vec!["-S", "--noconfirm", "bubblewrap"])
+        }
+        "opensuse" | "suse" | "opensuse-leap" | "opensuse-tumbleweed" => {
+            ("zypper", vec!["install", "-y", "bubblewrap"])
+        }
+        _ => {
+            return Ok(SandboxInstallResult {
+                success: false,
+                message: format!(
+                    "Unsupported Linux distribution '{}'. Please install bubblewrap manually: \
+                     https://github.com/containers/bubblewrap",
+                    distro_id
+                ),
+            });
+        }
+    };
+
+    log::info!("Installing bubblewrap via {}...", pm);
+
+    let output = tokio::process::Command::new("sudo")
+        .arg(pm)
+        .args(&args)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run sudo {}: {}", pm, e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        log::error!("Failed to install bubblewrap: {}", stderr);
+        return Ok(SandboxInstallResult {
+            success: false,
+            message: format!(
+                "Failed to install bubblewrap via {}. You may need sudo access. Error: {}",
+                pm, stderr
+            ),
+        });
+    }
+
+    log::info!("bubblewrap package installed successfully");
+
+    // Fix known blockers that prevent bwrap from working after installation.
+
+    // AppArmor userns restriction (Ubuntu 24.04+, Debian, openSUSE with AppArmor)
+    if is_apparmor_userns_restricted() && !has_bwrap_apparmor_profile() {
+        log::info!("AppArmor userns restriction detected, installing bwrap profile...");
+        if let Err(e) = install_bwrap_apparmor_profile().await {
+            log::error!("Failed to install AppArmor profile: {}", e);
+            return Ok(SandboxInstallResult {
+                success: false,
+                message: format!(
+                    "bubblewrap installed but AppArmor profile setup failed: {}. \
+                     Sandbox will not work until this is resolved.",
+                    e
+                ),
+            });
+        }
+    }
+
+    // Sysctl userns restriction (older Debian, hardened kernels)
+    if is_userns_clone_disabled() {
+        log::info!("unprivileged_userns_clone disabled, enabling...");
+        if let Err(e) = enable_userns_clone().await {
+            log::error!("Failed to enable user namespaces: {}", e);
+            return Ok(SandboxInstallResult {
+                success: false,
+                message: format!(
+                    "bubblewrap installed but failed to enable user namespaces: {}. \
+                     Sandbox will not work until this is resolved.",
+                    e
+                ),
+            });
+        }
+    }
+
+    // Verify with a smoke test
+    let smoke = tokio::process::Command::new("bwrap")
+        .args(["--ro-bind", "/usr", "/usr", "--", "/usr/bin/true"])
+        .output()
+        .await;
+
+    match smoke {
+        Ok(result) if result.status.success() => {
+            Ok(SandboxInstallResult {
+                success: true,
+                message: "bubblewrap installed and verified successfully".to_string(),
+            })
+        }
+        _ => {
+            Ok(SandboxInstallResult {
+                success: false,
+                message: "bubblewrap installed but smoke test failed. \
+                         Sandbox may not work correctly in this environment."
+                    .to_string(),
+            })
+        }
+    }
+}
