@@ -5,6 +5,9 @@
   "extension_description": {
     "message": "เอเย่นต์ AI สำหรับงานทั่วไปในเบราว์เซอร์"
   },
+  "_current_": {
+    "message": ""
+  },
   "API_Key": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "การกำหนดค่าขั้นสูง"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "เครื่องมือดำเนินการเอเจนต์"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "อนุญาตให้เอเจนต์ดำเนินการคำสั่งระบบ(ใช้ด้วยความระมัดระวัง)"
   },
@@ -64,6 +73,9 @@
   },
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "อนุญาตให้คอนเทนต์สคริปต์ทำงานบนหน้าเว็บ"
+  },
+  "Allowed": {
+    "message": ""
   },
   "Allowed_Origins": {
     "message": "แหล่งที่มาที่อนุญาต"
@@ -82,6 +94,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ขอให้บราวเซอร์เอ็กซ์ดึงข้อมูลที่มีโครงสร้างจากหน้าเว็บใดก็ได้"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +166,9 @@
   },
   "Command": {
     "message": "คำสั่ง"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +302,9 @@
   "Execute_Commands": {
     "message": "ดำเนินการคำสั่ง"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "หมดอายุหลังจาก $1$ วัน",
     "placeholders": {
@@ -309,6 +330,9 @@
   },
   "Extra_Credits": {
     "message": "เครดิตเพิ่มเติม"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "ดึงข้อมูล:"
@@ -368,6 +392,9 @@
   },
   "History": {
     "message": "ประวัติ"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "ผลกระทบ"
@@ -495,6 +522,9 @@
   "Navigation_Tool": {
     "message": "เครื่องมือการนำทาง"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "เครื่องมือดักจับเครือข่าย"
   },
@@ -503,6 +533,9 @@
   },
   "New_Conversation": {
     "message": "การสนทนาใหม่"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -564,6 +597,9 @@
   "Please_type_a_valid_command": {
     "message": "กรุณาพิมพ์คำสั่งที่ถูกต้อง"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "ระดับความสำคัญให้เวลาตอบสนองที่เร็วขึ้น แต่มีราคาสูงกว่า"
   },
@@ -587,6 +623,12 @@
   },
   "Quick_action": {
     "message": "การกระทำอย่างรวดเร็ว"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "อ่านอย่างเดียว"
@@ -624,6 +666,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -640,6 +685,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -756,11 +804,17 @@
   "Terminal": {
     "message": "เทอร์มินัล"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "ทดสอบการเชื่อมต่อ"
   },
   "Testing": {
     "message": "กำลังทดสอบ..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -881,6 +935,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "ยินดีต้อนรับสู่Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "เขียนในพื้นที่ทำงาน"

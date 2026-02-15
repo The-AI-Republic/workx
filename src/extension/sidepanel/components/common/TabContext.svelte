@@ -42,6 +42,10 @@
   // Tab update listener reference for cleanup
   let tabUpdateListener: ((tabId: number, changeInfo: { title?: string }, tab: chrome.tabs.Tab) => void) | null = null;
 
+  // Active tab tracking for "(current)" marker
+  let activeTabId: number = -1;
+  let activeTabListener: ((activeInfo: chrome.tabs.TabActiveInfo) => void) | null = null;
+
   // Reactive translated label for "Create New Tab"
   $: createNewTabLabel = $_t("Create New Tab");
 
@@ -113,6 +117,13 @@
   }
 
   /**
+   * Handle active tab change for "(current)" marker
+   */
+  function handleTabActivated(activeInfo: chrome.tabs.TabActiveInfo): void {
+    activeTabId = activeInfo.tabId;
+  }
+
+  /**
    * Handle tab updates
    */
   function handleTabUpdate(updatedTabId: number, changeInfo: { title?: string }, tab: chrome.tabs.Tab): void {
@@ -126,9 +137,24 @@
    * Setup tab update listener
    */
   onMount(() => {
-    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.onUpdated) {
-      tabUpdateListener = handleTabUpdate;
-      chrome.tabs.onUpdated.addListener(tabUpdateListener);
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      if (chrome.tabs.onUpdated) {
+        tabUpdateListener = handleTabUpdate;
+        chrome.tabs.onUpdated.addListener(tabUpdateListener);
+      }
+      // Initialize active tab tracking
+      if (chrome.tabs.onActivated) {
+        activeTabListener = handleTabActivated;
+        chrome.tabs.onActivated.addListener(activeTabListener);
+        // Query initial active tab (fire-and-forget)
+        chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+          if (tabs[0]?.id) {
+            activeTabId = tabs[0].id;
+          }
+        }).catch(() => {
+          // Ignore - active tab detection is best-effort
+        });
+      }
     }
   });
 
@@ -214,8 +240,13 @@
    * Cleanup tab update listener
    */
   onDestroy(() => {
-    if (tabUpdateListener && typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.onUpdated) {
-      chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      if (tabUpdateListener && chrome.tabs.onUpdated) {
+        chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+      }
+      if (activeTabListener && chrome.tabs.onActivated) {
+        chrome.tabs.onActivated.removeListener(activeTabListener);
+      }
     }
   });
 </script>
@@ -255,40 +286,44 @@
         <div class="dropdown-item no-tabs">{$_t("No tabs available")}</div>
       {:else}
         <!-- "Create New Tab" option to unbind session from any tab -->
-        <div
-          class="dropdown-item new-tab-option"
-          class:selected={tabId === -1}
-          on:click={() => selectTab(-1)}
-          on:keydown={(e) => e.key === 'Enter' && selectTab(-1)}
-          role="button"
-          tabindex="0"
-          data-testid="tab-dropdown-new-tab"
-        >
-          <span class="tab-item-title">+ {$_t("Create New Tab")}</span>
-          {#if tabId === -1}
-            <span class="selected-indicator">✓</span>
-          {/if}
-        </div>
+        <Tooltip content={$_t("Create New Tab")} placement="right">
+          <div
+            class="dropdown-item new-tab-option"
+            class:selected={tabId === -1}
+            on:click={() => selectTab(-1)}
+            on:keydown={(e) => e.key === 'Enter' && selectTab(-1)}
+            role="button"
+            tabindex="0"
+            data-testid="tab-dropdown-new-tab"
+          >
+            <span class="tab-item-title">+ {$_t("Create New Tab")}</span>
+            {#if tabId === -1}
+              <span class="selected-indicator">✓</span>
+            {/if}
+          </div>
+        </Tooltip>
 
         <!-- Separator -->
         <div class="dropdown-separator"></div>
 
         <!-- List of available tabs -->
         {#each availableTabs as tab (tab.id)}
-          <div
-            class="dropdown-item"
-            class:selected={tab.id === tabId}
-            on:click={() => tab.id && selectTab(tab.id)}
-            on:keydown={(e) => e.key === 'Enter' && tab.id && selectTab(tab.id)}
-            role="button"
-            tabindex="0"
-            data-testid="tab-dropdown-item"
-          >
-            <span class="tab-item-title">{tab.title || tab.url || 'Untitled'}</span>
-            {#if tab.id === tabId}
-              <span class="selected-indicator">✓</span>
-            {/if}
-          </div>
+          <Tooltip content={tab.title || tab.url || 'Untitled'} placement="right">
+            <div
+              class="dropdown-item"
+              class:selected={tab.id === tabId}
+              on:click={() => tab.id && selectTab(tab.id)}
+              on:keydown={(e) => e.key === 'Enter' && tab.id && selectTab(tab.id)}
+              role="button"
+              tabindex="0"
+              data-testid="tab-dropdown-item"
+            >
+              <span class="tab-item-title">{#if tab.id === activeTabId}{$_t("(current)")} {/if}{tab.title || tab.url || 'Untitled'}</span>
+              {#if tab.id === tabId}
+                <span class="selected-indicator">✓</span>
+              {/if}
+            </div>
+          </Tooltip>
         {/each}
       {/if}
     </div>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
-import TabContext from '../../src/sidepanel/components/TabContext.svelte';
+import TabContext from '../../src/extension/sidepanel/components/common/TabContext.svelte';
 
 describe('TabContext Component', () => {
   // Mock chrome.tabs API
@@ -8,7 +8,12 @@ describe('TabContext Component', () => {
     global.chrome = {
       tabs: {
         get: vi.fn(),
+        query: vi.fn().mockResolvedValue([]),
         onUpdated: {
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+        },
+        onActivated: {
           addListener: vi.fn(),
           removeListener: vi.fn(),
         },
@@ -365,6 +370,60 @@ describe('TabContext Component', () => {
 
       // Should have been called twice (once for each tabId)
       expect((chrome.tabs.get as any).mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('Active Tab Tracking', () => {
+    it('should register onActivated listener on mount', async () => {
+      (chrome.tabs.get as any).mockResolvedValue({
+        id: 123,
+        title: 'Test Tab',
+        url: 'https://example.com',
+      });
+
+      render(TabContext, {
+        props: { tabId: 123 },
+      });
+
+      await waitFor(() => {
+        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
+      });
+    });
+
+    it('should clean up onActivated listener on unmount', async () => {
+      (chrome.tabs.get as any).mockResolvedValue({
+        id: 123,
+        title: 'Test Tab',
+        url: 'https://example.com',
+      });
+
+      const { unmount } = render(TabContext, {
+        props: { tabId: 123 },
+      });
+
+      await waitFor(() => {
+        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
+      });
+
+      unmount();
+
+      expect(chrome.tabs.onActivated.removeListener).toHaveBeenCalled();
+    });
+
+    it('should query initial active tab on mount', async () => {
+      (chrome.tabs.get as any).mockResolvedValue({
+        id: 123,
+        title: 'Test Tab',
+        url: 'https://example.com',
+      });
+
+      render(TabContext, {
+        props: { tabId: 123 },
+      });
+
+      await waitFor(() => {
+        expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+      });
     });
   });
 });
