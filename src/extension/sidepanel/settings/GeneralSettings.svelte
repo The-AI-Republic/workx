@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, tick } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
   import { uiTheme, type UITheme } from '../stores/themeStore';
@@ -10,6 +10,7 @@
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
 
   export let settingsConfig: AgentConfig;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -26,6 +27,21 @@
   // Language state
   let selectedLanguage = getCurrentLocale();
   let browserLanguage = getCurrentLocale();
+
+  $: if (highlightSettingId) {
+    (async () => {
+      await tick();
+      const el = document.getElementById(highlightSettingId) ||
+                 document.querySelector(`[data-setting-id="${highlightSettingId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const target = el.closest('.settings-card') || el.closest('.form-group') || el;
+        target.classList.add('highlight-pulse');
+        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
+      }
+      highlightSettingId = undefined;
+    })();
+  }
 
   // Theme options - reactive to locale changes
   $: themeOptions = [
@@ -156,7 +172,7 @@
 
   <div class="settings-form">
     <!-- UI Theme Selection -->
-    <div class="settings-card">
+    <div class="settings-card" data-setting-id="uiTheme">
       <div class="form-group">
         <label for="uiTheme" class="form-label">{$_t("UI Theme")}</label>
         <div class="theme-options">
@@ -197,7 +213,7 @@
     </div>
 
     <!-- Show Token Usage Toggle -->
-    <div class="settings-card">
+    <div class="settings-card" data-setting-id="showTokenUsage">
       <div class="form-group">
         <div class="switch-row">
           <div class="switch-label">
@@ -584,5 +600,14 @@
     font-size: 0.75rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
+  }
+
+  @keyframes highlightPulse {
+    0%, 100% { background-color: transparent; }
+    25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
+  }
+
+  :global(.highlight-pulse) {
+    animation: highlightPulse 0.75s ease-in-out 2;
   }
 </style>

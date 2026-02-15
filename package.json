@@ -64,6 +64,7 @@
     "chrome-devtools-mcp": "^0.17.0",
     "dom-accessibility-api": "^0.7.0",
     "eventsource": "^2.0.2",
+    "fuse.js": "^7.1.0",
     "marked": "^17.0.0",
     "openai": "^6.6.0",
     "svelte-spa-router": "^4.0.1",

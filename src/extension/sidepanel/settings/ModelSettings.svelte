@@ -4,7 +4,7 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, tick } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ConfiguredFeatures } from '@/config/types';
   import ModelSelector from './components/ModelSelector.svelte';
@@ -28,6 +28,7 @@
 
   // Exported for parent to bind
   export let isDirty = false;
+  export let highlightSettingId: string | undefined = undefined;
 
   // Component state
   let apiKey = '';
@@ -60,6 +61,21 @@
 
   // API key validation warning (only show after save attempt)
   let showApiKeyWarning = false;
+
+  $: if (highlightSettingId) {
+    (async () => {
+      await tick();
+      const el = document.getElementById(highlightSettingId) ||
+                 document.querySelector(`[data-setting-id="${highlightSettingId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const target = el.closest('.settings-card') || el.closest('.form-group') || el;
+        target.classList.add('highlight-pulse');
+        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
+      }
+      highlightSettingId = undefined;
+    })();
+  }
 
   // Subscribe to user store
   $: isUserLoggedIn = $userStore.isLoggedIn;
@@ -612,7 +628,7 @@
   <button class="back-button" on:click={handleBack}>← {t("Back")}</button>
 
   <!-- Model Selection -->
-  <div class="settings-section settings-card">
+  <div class="settings-section settings-card" data-setting-id="model-selection">
     <h3 class="section-title">{t("Model Selection")}</h3>
     <div class="form-group">
       <label class="form-label">{t("Choose AI Model")}</label>
@@ -661,7 +677,7 @@
 
   <!-- Use Own API Key Toggle (only shown when logged in) -->
   {#if isUserLoggedIn}
-    <div class="settings-section settings-card">
+    <div class="settings-section settings-card" data-setting-id="use-own-api-key">
       <div class="toggle-row">
         <div class="toggle-info">
           <span class="toggle-label">{t("Use Own API Key")}</span>
@@ -1429,5 +1445,14 @@
 
   .security-notice.backend-notice svg {
     color: var(--browserx-primary);
+  }
+
+  @keyframes highlightPulse {
+    0%, 100% { background-color: transparent; }
+    25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
+  }
+
+  :global(.highlight-pulse) {
+    animation: highlightPulse 0.75s ease-in-out 2;
   }
 </style>

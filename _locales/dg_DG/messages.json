@@ -44,6 +44,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "much advanced configuration wow"
   },
@@ -56,6 +59,9 @@
   "Agent_Execution_Tools": {
     "message": "much agent execution tools wow"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "much allow agent to execute system commands (use with caution) wow"
   },
@@ -64,6 +70,9 @@
   },
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "much allow content scripts to run on web pages wow"
+  },
+  "Allowed": {
+    "message": ""
   },
   "Allowed_Origins": {
     "message": "much allowed origins wow"
@@ -82,6 +91,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "much ask Browserx to extract structured data from any webpage wow"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -137,6 +149,9 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "so clean modern chat interface similar to ChatGPT wow"
   },
+  "Clear_search": {
+    "message": ""
+  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "much click the Browserx icon in your toolbar or press Alt+Shift+C wow"
   },
@@ -151,6 +166,9 @@
   },
   "Command": {
     "message": "such command wow"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +302,9 @@
   "Execute_Commands": {
     "message": "such execute commands wow"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "much expire after days wow"
   },
@@ -304,6 +325,9 @@
   },
   "Extra_Credits": {
     "message": "such extra credits wow, many bonus"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "much extract data: wow"
@@ -363,6 +387,9 @@
   },
   "History": {
     "message": "much history wow"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "such impact wow"
@@ -490,6 +517,9 @@
   "Navigation_Tool": {
     "message": "much navigation tool wow"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "very network intercept tool wow"
   },
@@ -498,6 +528,9 @@
   },
   "New_Conversation": {
     "message": "much new conversation wow"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -512,6 +545,9 @@
     "message": ""
   },
   "No_scheduled_tasks": {
+    "message": ""
+  },
+  "No_settings_found": {
     "message": ""
   },
   "No_tabs_available": {
@@ -559,6 +595,9 @@
   "Please_type_a_valid_command": {
     "message": "pls type valid command wow"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "priority tier so fast, much price wow"
   },
@@ -582,6 +621,12 @@
   },
   "Quick_action": {
     "message": "very quick action wow"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "much read-only wow"
@@ -619,6 +664,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +683,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -662,6 +713,9 @@
     "message": ""
   },
   "Scheduled_Tasks": {
+    "message": ""
+  },
+  "Search_settings": {
     "message": ""
   },
   "Security_Privacy": {
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "such terminal wow"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "much test connection wow"
   },
   "Testing": {
     "message": "such testing wow"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -877,6 +937,12 @@
   "Welcome_to_Browserx": {
     "message": "such welcome to Browserx wow"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "much workspace write wow"
   },
@@ -891,6 +957,9 @@
   },
   "Your_Decision": {
     "message": "such your decision wow"
+  },
+  "more_results": {
+    "message": ""
   },
   "optional": {
     "message": ""

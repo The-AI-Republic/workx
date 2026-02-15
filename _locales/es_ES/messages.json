@@ -44,6 +44,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Configuración avanzada"
   },
@@ -56,6 +59,9 @@
   "Agent_Execution_Tools": {
     "message": "Herramientas del agente"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Permitir que el agente ejecute comandos del sistema (utilícelo con precaución)"
   },
@@ -64,6 +70,9 @@
   },
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Permitir que los scripts de contenido se ejecuten en páginas web"
+  },
+  "Allowed": {
+    "message": ""
   },
   "Allowed_Origins": {
     "message": "Orígenes permitidos"
@@ -82,6 +91,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Solicitar a Browserx que extraiga datos estructurados de cualquier página web"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -137,6 +149,9 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "Interfaz de chat limpia y moderna, similar a ChatGPT"
   },
+  "Clear_search": {
+    "message": ""
+  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Haga clic en el icono de Browserx en la barra de herramientas o pulse Alt+Mayús+C"
   },
@@ -151,6 +166,9 @@
   },
   "Command": {
     "message": "Comando"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +302,9 @@
   "Execute_Commands": {
     "message": "Ejecutar comandos"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Caducar tras $1$ días",
     "placeholders": {
@@ -309,6 +330,9 @@
   },
   "Extra_Credits": {
     "message": "Créditos adicionales"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Extraer datos:"
@@ -368,6 +392,9 @@
   },
   "History": {
     "message": "Historial"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "Impacto"
@@ -495,6 +522,9 @@
   "Navigation_Tool": {
     "message": "Herramienta de navegación"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Herramienta de intercepción de red"
   },
@@ -503,6 +533,9 @@
   },
   "New_Conversation": {
     "message": "Nueva conversación"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -517,6 +550,9 @@
     "message": ""
   },
   "No_scheduled_tasks": {
+    "message": ""
+  },
+  "No_settings_found": {
     "message": ""
   },
   "No_tabs_available": {
@@ -564,6 +600,9 @@
   "Please_type_a_valid_command": {
     "message": "Por favor, escriba un comando válido"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "El nivel prioritario ofrece tiempos de respuesta más rápidos con precios más altos."
   },
@@ -587,6 +626,12 @@
   },
   "Quick_action": {
     "message": "Acción rápida"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "Solo lectura"
@@ -624,6 +669,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -640,6 +688,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -667,6 +718,9 @@
     "message": ""
   },
   "Scheduled_Tasks": {
+    "message": ""
+  },
+  "Search_settings": {
     "message": ""
   },
   "Security_Privacy": {
@@ -756,11 +810,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Probar conexión"
   },
   "Testing": {
     "message": "Probando..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -882,6 +942,12 @@
   "Welcome_to_Browserx": {
     "message": "Le damos la bienvenida a Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Escribir en el área de trabajo"
   },
@@ -896,6 +962,9 @@
   },
   "Your_Decision": {
     "message": "Su decisión"
+  },
+  "more_results": {
+    "message": ""
   },
   "optional": {
     "message": ""

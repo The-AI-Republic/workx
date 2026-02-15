@@ -44,6 +44,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": "Add a server to connect to external tools."
   },
+  "Additional_Bind_Mounts": {
+    "message": "Additional Bind Mounts"
+  },
   "Advanced_Configuration": {
     "message": "Advanced Configuration"
   },
@@ -56,6 +59,9 @@
   "Agent_Execution_Tools": {
     "message": "Agent Execution Tools"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "All commands run inside an OS-native sandbox. Writes restricted to workspace directory."
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Allow agent to execute system commands (use with caution)"
   },
@@ -64,6 +70,9 @@
   },
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Allow content scripts to run on web pages"
+  },
+  "Allowed": {
+    "message": "Allowed"
   },
   "Allowed_Origins": {
     "message": "Allowed Origins"
@@ -82,6 +91,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Ask Browserx to extract structured data from any webpage"
+  },
+  "Auto_default": {
+    "message": "Auto (default)"
   },
   "Available_Tools": {
     "message": "Available Tools"
@@ -137,6 +149,9 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "Clean, modern chat interface similar to ChatGPT"
   },
+  "Clear_search": {
+    "message": "Clear search"
+  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Click the Browserx icon in your toolbar or press Alt+Shift+C"
   },
@@ -151,6 +166,9 @@
   },
   "Command": {
     "message": "Command"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "Commands run directly on the host. Security filter still applies."
   },
   "Completed": {
     "message": "Completed"
@@ -284,6 +302,9 @@
   "Execute_Commands": {
     "message": "Execute Commands"
   },
+  "Execution_Mode": {
+    "message": "Execution Mode"
+  },
   "Expire_after_days": {
     "message": "Expire after days"
   },
@@ -304,6 +325,9 @@
   },
   "Extra_Credits": {
     "message": "Extra Credits"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "Extra directories accessible inside the sandbox"
   },
   "Extract_Data": {
     "message": "Extract Data:"
@@ -363,6 +387,9 @@
   },
   "History": {
     "message": "History"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "How the workspace directory is mounted in the sandbox"
   },
   "Impact": {
     "message": "Impact"
@@ -490,6 +517,9 @@
   "Navigation_Tool": {
     "message": "Navigation Tool"
   },
+  "Network_Access": {
+    "message": "Network Access"
+  },
   "Network_Intercept_Tool": {
     "message": "Network Intercept Tool"
   },
@@ -498,6 +528,9 @@
   },
   "New_Conversation": {
     "message": "New Conversation"
+  },
+  "No_Access": {
+    "message": "No Access"
   },
   "No_MCP_servers_configured_yet": {
     "message": "No MCP servers configured yet."
@@ -513,6 +546,9 @@
   },
   "No_scheduled_tasks": {
     "message": "No scheduled tasks"
+  },
+  "No_settings_found": {
+    "message": "No settings found"
   },
   "No_tabs_available": {
     "message": "No tabs available"
@@ -559,6 +595,9 @@
   "Please_type_a_valid_command": {
     "message": "Please type a valid command"
   },
+  "Power": {
+    "message": "Power"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Priority tier provides faster response times with higher pricing."
   },
@@ -582,6 +621,12 @@
   },
   "Quick_action": {
     "message": "Quick action"
+  },
+  "Read_Only": {
+    "message": "Read-Only"
+  },
+  "Read_Write": {
+    "message": "Read-Write"
   },
   "Read_only": {
     "message": "Read-only"
@@ -619,6 +664,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Request timeout in milliseconds (5000-120000)"
   },
+  "Restricted": {
+    "message": "Restricted"
+  },
   "Result_Summary": {
     "message": "Result Summary"
   },
@@ -636,6 +684,9 @@
   },
   "Running": {
     "message": "Running"
+  },
+  "Safe": {
+    "message": "Safe"
   },
   "Sandbox_Policy": {
     "message": "Sandbox Policy"
@@ -663,6 +714,9 @@
   },
   "Scheduled_Tasks": {
     "message": "Scheduled Tasks"
+  },
+  "Search_settings": {
+    "message": "Search settings..."
   },
   "Security_Privacy": {
     "message": "Security & Privacy"
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": "Terminal Sandbox"
+  },
   "Test_Connection": {
     "message": "Test Connection"
   },
   "Testing": {
     "message": "Testing..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "The AI decides per-command whether to use sandbox based on risk assessment."
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": "The MCP server endpoint URL (http or https)"
@@ -877,6 +937,12 @@
   "Welcome_to_Browserx": {
     "message": "Welcome to Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "Whether sandboxed commands can access the network"
+  },
+  "Workspace_Access": {
+    "message": "Workspace Access"
+  },
   "Workspace_Write": {
     "message": "Workspace Write"
   },
@@ -891,6 +957,9 @@
   },
   "Your_Decision": {
     "message": "Your Decision"
+  },
+  "more_results": {
+    "message": "more results..."
   },
   "optional": {
     "message": "optional"

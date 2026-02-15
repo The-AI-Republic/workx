@@ -1,10 +1,36 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../../lib/i18n';
+  import SettingsSearch from './SettingsSearch.svelte';
 
   const dispatch = createEventDispatcher<{
-    categorySelected: { categoryId: string };
+    categorySelected: { categoryId: string; scrollToId?: string };
   }>();
+
+  // Desktop detection for conditional settings filtering
+  let isDesktop = false;
+  onMount(async () => {
+    try {
+      await import('@tauri-apps/api/core');
+      isDesktop = true;
+    } catch {
+      isDesktop = false;
+    }
+  });
+
+  // Track whether search is active to hide/show category cards
+  let searchActive = false;
+
+  function handleSearchResult(event: CustomEvent<{ categoryId: string; scrollToId: string }>) {
+    dispatch('categorySelected', {
+      categoryId: event.detail.categoryId,
+      scrollToId: event.detail.scrollToId,
+    });
+  }
+
+  function handleSearchActive(event: CustomEvent<{ active: boolean }>) {
+    searchActive = event.detail.active;
+  }
 
   interface Category {
     id: string;
@@ -82,6 +108,12 @@
 
 <div class="settings-menu">
   <h2 class="menu-title">{t("Settings")}</h2>
+  <SettingsSearch
+    {isDesktop}
+    on:resultSelected={handleSearchResult}
+    on:searchActive={handleSearchActive}
+  />
+  {#if !searchActive}
   <div class="categories-grid">
     {#each categories as category}
       <button
@@ -99,6 +131,7 @@
       </button>
     {/each}
   </div>
+  {/if}
 </div>
 
 <style>

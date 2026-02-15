@@ -44,6 +44,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "प्रगत कॉन्फिगरेशन"
   },
@@ -56,6 +59,9 @@
   "Agent_Execution_Tools": {
     "message": "एजंट कार्यान्वयन साधने"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "एजंटला सिस्टम कमांड्स कार्यान्वित करण्याची परवानगी द्या (सावधगिरीने वापरा)"
   },
@@ -64,6 +70,9 @@
   },
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "वेब पृष्ठांवर कंटेंट स्क्रिप्ट्स चालविण्याची परवानगी द्या"
+  },
+  "Allowed": {
+    "message": ""
   },
   "Allowed_Origins": {
     "message": "परवानगी दिलेल्या उत्पत्त्या"
@@ -82,6 +91,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx ला कोणत्याही वेबपृष्ठावरून संरचित डेटा एक्स्ट्रॅक्ट करण्यास सांगा"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -137,6 +149,9 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "स्वच्छ, आधुनिक चॅट इंटरफेस, ChatGPT सारखा"
   },
+  "Clear_search": {
+    "message": ""
+  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "टूलबारमधील Browserx आयकॉनवर क्लिक करा किंवा Alt+Shift+C दाबा"
   },
@@ -151,6 +166,9 @@
   },
   "Command": {
     "message": "आदेश"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +302,9 @@
   "Execute_Commands": {
     "message": "आदेश कार्यान्वित करा"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "दिवसांनंतर समाप्त होणे"
   },
@@ -304,6 +325,9 @@
   },
   "Extra_Credits": {
     "message": "अतिरिक्त क्रेडिट्स"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "डेटा काढा:"
@@ -363,6 +387,9 @@
   },
   "History": {
     "message": "इतिहास"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "प्रभाव"
@@ -490,6 +517,9 @@
   "Navigation_Tool": {
     "message": "नेव्हिगेशन साधन"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "नेटवर्क इंटरसेप्ट साधन"
   },
@@ -498,6 +528,9 @@
   },
   "New_Conversation": {
     "message": "नवीन संभाषण"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -512,6 +545,9 @@
     "message": ""
   },
   "No_scheduled_tasks": {
+    "message": ""
+  },
+  "No_settings_found": {
     "message": ""
   },
   "No_tabs_available": {
@@ -559,6 +595,9 @@
   "Please_type_a_valid_command": {
     "message": "कृपया वैध कमांड टाइप करा"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "प्राथमिकता स्तर जलद प्रतिसाद वेळा देते, ज्यासाठी किंमत जास्त असते."
   },
@@ -582,6 +621,12 @@
   },
   "Quick_action": {
     "message": "जलद क्रिया"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "फक्त-वाचन"
@@ -619,6 +664,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +683,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -662,6 +713,9 @@
     "message": ""
   },
   "Scheduled_Tasks": {
+    "message": ""
+  },
+  "Search_settings": {
     "message": ""
   },
   "Security_Privacy": {
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "टर्मिनल"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "कनेक्शन तपासा"
   },
   "Testing": {
     "message": "चाचणी चालू आहे..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -877,6 +937,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx मध्ये आपले स्वागत आहे"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "वर्कस्पेस लेखन"
   },
@@ -891,6 +957,9 @@
   },
   "Your_Decision": {
     "message": "आपला निर्णय"
+  },
+  "more_results": {
+    "message": ""
   },
   "optional": {
     "message": ""

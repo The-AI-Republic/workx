@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, tick } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ICacheSettings, IStorageConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
 
   export let settingsConfig: AgentConfig;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -25,6 +26,21 @@
   // For rolloutTTL input
   let rolloutTTLValue = '';
   let rolloutTTLUnit: 'days' | 'permanent' = 'days';
+
+  $: if (highlightSettingId) {
+    (async () => {
+      await tick();
+      const el = document.getElementById(highlightSettingId) ||
+                 document.querySelector(`[data-setting-id="${highlightSettingId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const target = el.closest('.settings-card') || el.closest('.form-group') || el;
+        target.classList.add('highlight-pulse');
+        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
+      }
+      highlightSettingId = undefined;
+    })();
+  }
 
   onMount(async () => {
     await loadSettings();
@@ -137,7 +153,7 @@
       <h3 class="section-title">{$_t("Cache Settings")}</h3>
 
       <!-- Cache Enabled Toggle -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="cache-enabled">
         <label class="checkbox-label">
           <input
             type="checkbox"
@@ -183,7 +199,7 @@
       </div>
 
       <!-- Compression Enabled -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="cache-compression-enabled">
         <label class="checkbox-label">
           <input
             type="checkbox"
@@ -198,7 +214,7 @@
       </div>
 
       <!-- Persist to Storage -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="cache-persist-to-storage">
         <label class="checkbox-label">
           <input
             type="checkbox"
@@ -476,5 +492,14 @@
   .message.error {
     color: var(--browserx-error);
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
+  }
+
+  @keyframes highlightPulse {
+    0%, 100% { background-color: transparent; }
+    25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
+  }
+
+  :global(.highlight-pulse) {
+    animation: highlightPulse 0.75s ease-in-out 2;
   }
 </style>
