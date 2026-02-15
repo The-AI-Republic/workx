@@ -168,7 +168,7 @@ export const DEFAULT_APPROVAL_CONFIG: IApprovalConfig = {
   trustedDomains: [],
   blockedDomains: [],
   timeouts: {
-    low: 120000,
+    low: 600000,
     medium: 60000,
     high: 120000,
     critical: 120000,

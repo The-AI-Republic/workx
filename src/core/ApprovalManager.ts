@@ -102,7 +102,8 @@ export class ApprovalManager {
     }
 
     // Set up timeout handling
-    const timeout = request.timeout || this.policy.timeout || 120000;
+    // timeout=0 means no timeout (wait indefinitely for user input, used in balanced mode)
+    const timeout = request.timeout !== undefined ? request.timeout : (this.policy.timeout || 600000);
 
     // Emit approval requested event
     this.emitEvent({
@@ -129,46 +130,52 @@ export class ApprovalManager {
       timeRemaining: timeout,
     };
 
-    const timeoutPromise = new Promise<ApprovalResponse>((resolve) => {
-      pendingApproval.timeoutId = setTimeout(() => {
-        // Only fire if still pending (not already resolved by handleDecision/cancelRequest)
-        if (!this.pendingRequests.has(request.id)) return;
-        this.pendingRequests.delete(request.id);
-
-        this.emitEvent({
-          id: `evt_approval_timeout_${request.id}`,
-          msg: {
-            type: 'ApprovalGranted',
-            data: {
-              id: request.id,
-              tool_name: request.metadata?.toolName || request.type,
-              reason: 'Auto-approved after timeout',
-              timestamp: Date.now(),
-            },
-          },
-        });
-
-        const timeoutResponse: ApprovalResponse = {
-          id: request.id,
-          decision: 'approve',
-          timestamp: Date.now(),
-          reason: 'Auto-approved after timeout',
-          metadata: { timeout: true },
-        };
-
-        this.approvalHistory.set(request.id, timeoutResponse);
-        resolve(timeoutResponse);
-      }, timeout);
-    });
-
     this.pendingRequests.set(request.id, pendingApproval);
 
-    // Wait for user decision or timeout
+    // Wait for user decision
     const userDecisionPromise = new Promise<ApprovalResponse>((resolve) => {
       pendingApproval.resolver = resolve;
     });
 
-    return Promise.race([userDecisionPromise, timeoutPromise]);
+    // If timeout > 0, race user decision against auto-approve timer
+    if (timeout > 0) {
+      const timeoutPromise = new Promise<ApprovalResponse>((resolve) => {
+        pendingApproval.timeoutId = setTimeout(() => {
+          // Only fire if still pending (not already resolved by handleDecision/cancelRequest)
+          if (!this.pendingRequests.has(request.id)) return;
+          this.pendingRequests.delete(request.id);
+
+          this.emitEvent({
+            id: `evt_approval_timeout_${request.id}`,
+            msg: {
+              type: 'ApprovalGranted',
+              data: {
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                reason: 'Auto-approved after timeout',
+                timestamp: Date.now(),
+              },
+            },
+          });
+
+          const timeoutResponse: ApprovalResponse = {
+            id: request.id,
+            decision: 'approve',
+            timestamp: Date.now(),
+            reason: 'Auto-approved after timeout',
+            metadata: { timeout: true },
+          };
+
+          this.approvalHistory.set(request.id, timeoutResponse);
+          resolve(timeoutResponse);
+        }, timeout);
+      });
+
+      return Promise.race([userDecisionPromise, timeoutPromise]);
+    }
+
+    // No timeout — wait indefinitely for user input (balanced mode)
+    return userDecisionPromise;
   }
 
   /**
@@ -516,7 +523,7 @@ export class ApprovalManager {
    */
   getApprovalTimeout(): number {
     // Config integration placeholder - returns default
-    return 120000;
+    return 600000;
   }
 }
 

@@ -742,7 +742,7 @@ export class EventProcessor {
           riskScore: data.risk_score,
           riskLevel: data.risk_level,
           riskFactors: data.risk_factors,
-          countdown: Math.floor((data.timeout || 120000) / 1000),
+          countdown: data.timeout ? Math.floor(data.timeout / 1000) : 0,
           onApprove: () => {
             this.sendApprovalDecision(data.id, 'approve');
           },

@@ -202,6 +202,7 @@ export class ApprovalGate {
         timestamp: Date.now(),
         rollbackable: false,
       },
+      timeout: this.getTimeoutForMode(),
     };
 
     const response = await this.approvalManager.requestApproval(approvalRequest);
@@ -251,6 +252,19 @@ export class ApprovalGate {
       case 'high_speed': return 60;
       case 'yolo': return 100; // unreachable (yolo handled above)
       default: return 30;
+    }
+  }
+
+  /**
+   * Get the approval timeout for the current mode.
+   * Returns 0 for modes that should wait indefinitely for user input.
+   */
+  private getTimeoutForMode(): number {
+    switch (this.mode) {
+      case 'balanced': return 0; // No timeout — always wait for user
+      case 'high_speed': return 600000; // 10 minutes, auto-approve on expiry
+      case 'yolo': return 600000; // unreachable (yolo handled above)
+      default: return 0;
     }
   }
 

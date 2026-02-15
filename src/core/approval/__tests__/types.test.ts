@@ -116,7 +116,7 @@ describe('DEFAULT_APPROVAL_CONFIG', () => {
 
   it('should have all timeout values defined', () => {
     expect(DEFAULT_APPROVAL_CONFIG.timeouts).toEqual({
-      low: 120000,
+      low: 600000,
       medium: 60000,
       high: 120000,
       critical: 120000,

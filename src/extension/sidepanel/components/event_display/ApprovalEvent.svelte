@@ -13,20 +13,26 @@
   let showAlternativeInput = false;
 
   // Countdown timer
-  let timeRemaining = event.requiresApproval?.countdown ?? 120;
+  // countdown=0 means no timeout (balanced mode — wait indefinitely for user)
+  let timeRemaining = event.requiresApproval?.countdown ?? 0;
   let timedOut = false;
-  const countdownInterval = setInterval(() => {
-    if (timeRemaining > 0) {
-      timeRemaining--;
-    }
-    if (timeRemaining <= 0) {
-      timedOut = true;
-      clearInterval(countdownInterval);
-    }
-  }, 1000);
+  const hasCountdown = timeRemaining > 0;
+  let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
+  if (hasCountdown) {
+    countdownInterval = setInterval(() => {
+      if (timeRemaining > 0) {
+        timeRemaining--;
+      }
+      if (timeRemaining <= 0) {
+        timedOut = true;
+        if (countdownInterval) clearInterval(countdownInterval);
+      }
+    }, 1000);
+  }
 
   onDestroy(() => {
-    clearInterval(countdownInterval);
+    if (countdownInterval) clearInterval(countdownInterval);
   });
 
   // Risk level color mapping
@@ -132,8 +138,10 @@
         Risk Score: {event.requiresApproval.riskScore}/100
       </span>
     {/if}
-    {#if !timedOut}
+    {#if hasCountdown && !timedOut}
       <span class="text-yellow-400">{timeRemaining}s remaining</span>
+    {:else if !hasCountdown}
+      <span class="text-yellow-400">Waiting for approval</span>
     {/if}
   </div>
 
