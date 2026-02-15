@@ -61,7 +61,8 @@ export class TerminalRiskAssessor implements IRiskAssessor {
       };
     }
 
-    // Check critical patterns first (deny)
+    // Check critical patterns first (deny) — patterns are unanchored so they
+    // catch dangerous commands anywhere in a chain (e.g. "echo ok; rm -rf /")
     for (const pattern of CRITICAL_PATTERNS) {
       if (pattern.test(command)) {
         return {
@@ -73,41 +74,63 @@ export class TerminalRiskAssessor implements IRiskAssessor {
       }
     }
 
+    // Strip quoted strings before splitting on shell operators
+    const unquoted = command.replace(/"[^"]*"|'[^']*'/g, '""');
+
+    // Split on shell chaining operators and evaluate each part independently
+    // to prevent safe commands from masking dangerous ones (e.g. "ls; sudo rm -rf foo")
+    const parts = unquoted.split(/\s*(?:&&|\|\||[;&])\s*/).filter(p => p.trim());
     let score = 20; // Default baseline
 
-    // Safe read-only commands
-    if (SAFE_COMMANDS.test(command)) {
-      score = 0;
-      factors.push('Read-only command');
-    }
-    // Safe git commands
-    else if (SAFE_GIT.test(command)) {
-      score = 5;
-      factors.push('Read-only git command');
-    }
-    // Modifying commands
-    else if (MODIFY_COMMANDS.test(command)) {
-      score = 35;
-      factors.push('Modifying command');
-    }
-    // Dangerous commands
-    else if (DANGEROUS_COMMANDS.test(command)) {
-      score = 65;
-      factors.push('Potentially dangerous command');
+    for (const part of parts) {
+      const trimmed = part.trim();
+      let partScore = 20;
+
+      if (SAFE_COMMANDS.test(trimmed)) {
+        partScore = 0;
+      } else if (SAFE_GIT.test(trimmed)) {
+        partScore = 5;
+      } else if (MODIFY_COMMANDS.test(trimmed)) {
+        partScore = 35;
+      } else if (DANGEROUS_COMMANDS.test(trimmed)) {
+        partScore = 65;
+      }
+
+      if (/^sudo\s/.test(trimmed)) {
+        partScore = Math.min(partScore + 15, 85);
+      }
+
+      score = Math.max(score, partScore);
     }
 
-    // Additional risk modifiers
-    if (/^sudo\s/.test(command)) {
-      score = Math.min(score + 15, 85);
-      factors.push('Uses sudo elevation');
+    if (parts.length === 1) {
+      // Single command — check against patterns for factors
+      if (SAFE_COMMANDS.test(command)) {
+        factors.push('Read-only command');
+        score = 0;
+      } else if (SAFE_GIT.test(command)) {
+        factors.push('Read-only git command');
+        score = 5;
+      } else if (MODIFY_COMMANDS.test(command)) {
+        factors.push('Modifying command');
+      } else if (DANGEROUS_COMMANDS.test(command)) {
+        factors.push('Potentially dangerous command');
+      }
+
+      if (/^sudo\s/.test(command)) {
+        score = Math.min(score + 15, 85);
+        factors.push('Uses sudo elevation');
+      }
+    } else {
+      factors.push(`Chained command (${parts.length} parts)`);
     }
 
-    // Strip quoted strings before checking for shell operators and redirects
-    const unquoted = command.replace(/"[^"]*"|'[^']*'/g, '');
-
+    // Check for shell operators and redirects
     if (/[|;&]/.test(unquoted)) {
       score = Math.min(score + 5, 85);
-      factors.push('Uses shell operators');
+      if (!factors.some(f => f.includes('Chained'))) {
+        factors.push('Uses shell operators');
+      }
     }
 
     if (/[><]/.test(unquoted)) {
@@ -116,8 +139,7 @@ export class TerminalRiskAssessor implements IRiskAssessor {
     }
 
     const level = scoreToRiskLevel(score);
-    const action = score <= 10 ? 'auto_approve' as const
-      : score <= 30 ? 'auto_approve' as const
+    const action = score <= 30 ? 'auto_approve' as const
       : score <= 85 ? 'ask_user' as const
       : 'deny' as const;
 

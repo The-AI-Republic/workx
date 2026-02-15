@@ -10,6 +10,7 @@
   import { _t } from '../../lib/i18n';
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
   import { DEFAULT_APPROVAL_CONFIG } from '@/core/approval/types';
+  import { STORAGE_KEYS } from '@/config/defaults';
 
   let currentTheme: UITheme = 'terminal';
   let currentMode: ApprovalMode = 'balanced';
@@ -37,8 +38,8 @@
   });
 
   function handleStorageChange(changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) {
-    if (areaName === 'local' && changes['approval_config']) {
-      const newConfig = changes['approval_config'].newValue as IApprovalConfig | undefined;
+    if (areaName === 'local' && changes[STORAGE_KEYS.APPROVAL_CONFIG]) {
+      const newConfig = changes[STORAGE_KEYS.APPROVAL_CONFIG].newValue as IApprovalConfig | undefined;
       if (newConfig?.mode) {
         currentMode = newConfig.mode;
       }
@@ -47,8 +48,8 @@
 
   async function loadMode() {
     try {
-      const result = await chrome.storage.local.get('approval_config');
-      const config = result['approval_config'] as IApprovalConfig | undefined;
+      const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
+      const config = result[STORAGE_KEYS.APPROVAL_CONFIG] as IApprovalConfig | undefined;
       if (config?.mode) {
         currentMode = config.mode;
       }
@@ -62,10 +63,10 @@
     showPopup = false;
 
     try {
-      const result = await chrome.storage.local.get('approval_config');
-      const existing = (result['approval_config'] as IApprovalConfig) || { ...DEFAULT_APPROVAL_CONFIG };
+      const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
+      const existing = (result[STORAGE_KEYS.APPROVAL_CONFIG] as IApprovalConfig) || { ...DEFAULT_APPROVAL_CONFIG };
       existing.mode = mode;
-      await chrome.storage.local.set({ 'approval_config': existing });
+      await chrome.storage.local.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: existing });
     } catch (error) {
       console.error('[ApprovalModeIndicator] Failed to save mode:', error);
     }

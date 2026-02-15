@@ -84,9 +84,12 @@
     processing = true;
     try {
       if (event.requiresApproval.onRemember) {
+        // onRemember('session') already sends approve + remember=true
         event.requiresApproval.onRemember('session');
+      } else {
+        // Fallback: approve without remember if onRemember not available
+        event.requiresApproval.onApprove();
       }
-      event.requiresApproval.onApprove();
     } finally {
       processing = false;
     }

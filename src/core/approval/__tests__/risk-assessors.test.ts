@@ -61,23 +61,25 @@ describe('DomToolRiskAssessor', () => {
     expect(result.action).toBe('auto_approve');
   });
 
-  it('should score click on submit/payment as 70 (high)', () => {
+  it('should score click with submit/payment params as 25 (base only, semantic boost handled by enhancer)', () => {
     const result = assessor.assess('dom_tool', {
       action: 'click',
       node_id: '42',
       role: 'submit',
     });
-    expect(result.score).toBe(70);
-    expect(result.level).toBe(RiskLevel.High);
-    expect(result.action).toBe('ask_user');
+    // DomToolRiskAssessor only scores base action type now;
+    // SemanticElementEnhancer handles submit/payment boosting to avoid double-counting
+    expect(result.score).toBe(25);
+    expect(result.level).toBe(RiskLevel.Low);
+    expect(result.action).toBe('auto_approve');
   });
 
-  it('should detect payment keywords in parameters', () => {
+  it('should not check payment keywords (handled by SemanticElementEnhancer)', () => {
     const result = assessor.assess('dom_tool', {
       action: 'click',
       aria_label: 'Purchase now',
     });
-    expect(result.score).toBe(70);
+    expect(result.score).toBe(25); // base click score only
   });
 
   it('should score type as 40 (medium)', () => {
@@ -87,14 +89,15 @@ describe('DomToolRiskAssessor', () => {
     expect(result.action).toBe('ask_user');
   });
 
-  it('should score typing into password field as 65 (high)', () => {
+  it('should score type with password params as 40 (base only, sensitive fields handled by enhancer)', () => {
     const result = assessor.assess('dom_tool', {
       action: 'type',
       text: 'secret',
       type: 'password',
     });
-    expect(result.score).toBe(65);
-    expect(result.level).toBe(RiskLevel.High);
+    // Sensitive field boosting now handled by SemanticElementEnhancer
+    expect(result.score).toBe(40);
+    expect(result.level).toBe(RiskLevel.Medium);
   });
 
   it('should score keypress as 30', () => {

@@ -166,7 +166,7 @@ describe('getDefaultRules', () => {
     expect(askRule).toBeDefined();
 
     // Should include extension-specific rules
-    const snapshotRule = rules.find(r => r.match.tool === 'dom_tool' && r.match.pattern?.includes('snapshot'));
+    const snapshotRule = rules.find(r => r.match.tool === 'browser_dom' && r.match.pattern?.includes('snapshot'));
     expect(snapshotRule).toBeDefined();
     expect(snapshotRule?.type).toBe('allow');
 
@@ -190,13 +190,13 @@ describe('getDefaultRules', () => {
     expect(terminalDeny).toBeDefined();
 
     // Should NOT include extension-specific rules
-    const domRule = rules.find(r => r.match.tool === 'dom_tool');
+    const domRule = rules.find(r => r.match.tool === 'browser_dom');
     expect(domRule).toBeUndefined();
   });
 
   it('should default to extension rules when no platform specified', () => {
     const rules = getDefaultRules();
-    const domRule = rules.find(r => r.match.tool === 'dom_tool');
+    const domRule = rules.find(r => r.match.tool === 'browser_dom');
     expect(domRule).toBeDefined();
   });
 

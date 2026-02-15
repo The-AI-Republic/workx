@@ -28,6 +28,9 @@ import { getDefaultRules } from './approval/defaultRules';
 import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivityEnhancer';
 import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
 import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
+import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
+import { STORAGE_KEYS } from '../config/defaults';
+import type { IApprovalConfig } from './approval/types';
 
 /**
  * Main agent class managing the submission and event queues
@@ -149,6 +152,33 @@ export class BrowserxAgent {
     } else {
       approvalGate.addEnhancer(new SensitivePathEnhancer());
     }
+
+    // Connect config storage for history tracking (I2)
+    const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+    approvalGate.setConfigStorage(configStorage);
+
+    // Load stored approval config and apply to gate (I1)
+    try {
+      const storedConfig = await configStorage.loadConfig();
+      approvalGate.setMode(storedConfig.mode);
+      approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+      approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+    } catch (error) {
+      console.warn('[BrowserxAgent] Failed to load approval config, using defaults:', error);
+    }
+
+    // Listen for approval config changes in storage to keep gate in sync
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'local' && changes[STORAGE_KEYS.APPROVAL_CONFIG]) {
+        const newConfig = changes[STORAGE_KEYS.APPROVAL_CONFIG].newValue as IApprovalConfig | undefined;
+        if (newConfig) {
+          approvalGate.setMode(newConfig.mode);
+          approvalGate.setTrustedDomains(newConfig.trustedDomains || []);
+          approvalGate.setBlockedDomains(newConfig.blockedDomains || []);
+        }
+      }
+    });
+
     this.toolRegistry.setApprovalGate(approvalGate);
 
     // In desktop mode, browser tools come from MCP (chrome-devtools-mcp).

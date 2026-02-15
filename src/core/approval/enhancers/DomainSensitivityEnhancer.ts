@@ -49,7 +49,6 @@ const LOCAL_PATTERNS = [
   /^172\.(1[6-9]|2\d|3[01])\./,
   /\.local$/,
   /\.test$/,
-  /\.dev$/,
   /\.localhost$/,
 ];
 

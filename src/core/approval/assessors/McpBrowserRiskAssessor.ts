@@ -82,8 +82,7 @@ export class McpBrowserRiskAssessor implements IRiskAssessor {
     }
 
     const level = scoreToRiskLevel(score);
-    const decision = score <= 10 ? 'auto_approve' as const
-      : score <= 30 ? 'auto_approve' as const
+    const decision = score <= 30 ? 'auto_approve' as const
       : score <= 85 ? 'ask_user' as const
       : 'deny' as const;
 

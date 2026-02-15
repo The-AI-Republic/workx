@@ -312,12 +312,7 @@ export class ApprovalManager {
    * Update approval policy
    */
   async updatePolicy(updates: Partial<ApprovalPolicy>): Promise<void> {
-    const oldPolicy = { ...this.policy };
     this.policy = { ...this.policy, ...updates };
-
-    // Policy updates are handled internally; no specific event type needed
-    // Logging for debugging
-    console.log('[ApprovalManager] Policy updated:', updates);
   }
 
   /**

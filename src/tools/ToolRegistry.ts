@@ -436,14 +436,8 @@ export class ToolRegistry {
    * Get registry statistics
    */
   getStats() {
-    let totalTools = 0;
-
-    for (const entry of this.tools.values()) {
-      totalTools++;
-    }
-
     return {
-      totalTools,
+      totalTools: this.tools.size,
       categories: [], // ToolDefinition doesn't have category field
       registeredTools: Array.from(this.tools.keys()),
     };

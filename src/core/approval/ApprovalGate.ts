@@ -104,7 +104,7 @@ export class ApprovalGate {
     // Fast path: check blocked domains
     const domain = fullContext.currentDomain;
     if (domain && this.blockedDomains.length > 0) {
-      if (this.blockedDomains.some(d => domain.endsWith(d))) {
+      if (this.blockedDomains.some(d => this.matchesDomainPattern(domain, d))) {
         await this.recordHistory(toolName, 0, RiskLevel.Critical, 'deny', 'auto', ['Blocked domain']);
         return 'deny';
       }
@@ -112,7 +112,7 @@ export class ApprovalGate {
 
     // Fast path: check trusted domains
     if (domain && this.trustedDomains.length > 0) {
-      if (this.trustedDomains.some(d => domain.endsWith(d))) {
+      if (this.trustedDomains.some(d => this.matchesDomainPattern(domain, d))) {
         await this.recordHistory(toolName, 0, RiskLevel.None, 'auto_approve', 'auto', ['Trusted domain']);
         return 'auto_approve';
       }
@@ -299,14 +299,22 @@ export class ApprovalGate {
   }
 
   /**
-   * Build a memory key from tool name and parameters (keys + values)
+   * Check if a domain matches a pattern (exact match or subdomain)
+   * Handles boundary correctly: "bank.com" matches "bank.com" and "my.bank.com"
+   * but NOT "notabank.com"
+   */
+  private matchesDomainPattern(domain: string, pattern: string): boolean {
+    return domain === pattern || domain.endsWith('.' + pattern);
+  }
+
+  /**
+   * Build a memory key from tool name and stable parameters (excludes volatile IDs like node_id)
    */
   private buildMemoryKey(toolName: string, parameters: Record<string, any>): string {
-    const sorted = Object.keys(parameters).sort().reduce((obj, key) => {
-      obj[key] = parameters[key];
-      return obj;
-    }, {} as Record<string, any>);
-    return `${toolName}||${JSON.stringify(sorted)}`;
+    // Use only action/method for the key — volatile params like node_id
+    // change every snapshot, making full-param keys useless for "Always Approve"
+    const action = parameters.action || parameters.method || '';
+    return `${toolName}||${action}`;
   }
 
   /**

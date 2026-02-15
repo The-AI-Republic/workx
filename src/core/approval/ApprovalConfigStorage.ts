@@ -13,6 +13,9 @@ import { STORAGE_KEYS } from '../../config/defaults';
 /** Maximum number of history entries to retain */
 const MAX_HISTORY_ENTRIES = 100;
 
+/** Minimum interval between history writes (ms) to avoid storage thrashing */
+const HISTORY_WRITE_INTERVAL_MS = 2000;
+
 /** Storage adapter interface */
 type StorageGetter = () => {
   get(keys: string[]): Promise<Record<string, any>>;
@@ -21,6 +24,8 @@ type StorageGetter = () => {
 
 export class ApprovalConfigStorage {
   private getStorage: StorageGetter;
+  private pendingHistoryEntries: ApprovalHistoryEntry[] = [];
+  private historyWriteTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(storageGetter: StorageGetter) {
     this.getStorage = storageGetter;
@@ -85,15 +90,36 @@ export class ApprovalConfigStorage {
   }
 
   /**
-   * Append an entry to approval history (capped at MAX_HISTORY_ENTRIES).
+   * Append an entry to approval history (debounced to avoid storage thrashing).
+   * Entries are batched and written at most once per HISTORY_WRITE_INTERVAL_MS.
    */
   async appendHistory(entry: ApprovalHistoryEntry): Promise<void> {
+    this.pendingHistoryEntries.push(entry);
+
+    // Debounce: schedule a write if not already pending
+    if (!this.historyWriteTimer) {
+      this.historyWriteTimer = setTimeout(() => {
+        this.flushHistory();
+      }, HISTORY_WRITE_INTERVAL_MS);
+    }
+  }
+
+  /**
+   * Flush pending history entries to storage.
+   */
+  private async flushHistory(): Promise<void> {
+    this.historyWriteTimer = null;
+
+    if (this.pendingHistoryEntries.length === 0) return;
+
+    const entriesToWrite = this.pendingHistoryEntries.splice(0);
+
     try {
       const storage = this.getStorage();
       const result = await storage.get([STORAGE_KEYS.APPROVAL_HISTORY]);
       const history: ApprovalHistoryEntry[] = result[STORAGE_KEYS.APPROVAL_HISTORY] || [];
 
-      history.push(entry);
+      history.push(...entriesToWrite);
 
       // Cap at max entries
       const trimmed = history.length > MAX_HISTORY_ENTRIES
@@ -102,7 +128,7 @@ export class ApprovalConfigStorage {
 
       await storage.set({ [STORAGE_KEYS.APPROVAL_HISTORY]: trimmed });
     } catch (error) {
-      console.error('[ApprovalConfigStorage] Failed to append history:', error);
+      console.error('[ApprovalConfigStorage] Failed to flush history:', error);
     }
   }
 }
