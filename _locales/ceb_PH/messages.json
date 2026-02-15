@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Detalye sa Aksyon"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Active_Sessions": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Abansadong Pag-configure"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "Mga Himan sa Ahente"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Tugoti ang ahente nga magpadagan og mga command sa sistema (gamiton nga may pag-amping)"
   },
@@ -65,14 +74,23 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Tugoti ang mga content script nga modagan sa mga web page"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Gitugot nga mga Origin"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "Approval_Safety": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "History sa Pag-apruba"
+  },
+  "Approval_Mode": {
+    "message": ""
   },
   "Approve": {
     "message": "Uyon"
@@ -82,6 +100,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Pangayoa ang Browserx nga mokuha og structured data gikan sa bisan unsang webpage"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +172,9 @@
   },
   "Command": {
     "message": "Komando"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +308,9 @@
   "Execute_Commands": {
     "message": "Pagpatuman sa mga sugo"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Mawagtang human sa $1$ ka adlaw",
     "placeholders": {
@@ -309,6 +336,9 @@
   },
   "Extra_Credits": {
     "message": "Dugang nga Kredito"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Pagkuha sa Data:"
@@ -368,6 +398,9 @@
   },
   "History": {
     "message": "Kasaysayan"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "Epekto"
@@ -495,6 +528,9 @@
   "Navigation_Tool": {
     "message": "Kasangkapan sa Pagnavigate"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Kasangkapan sa Pagintercept sa Network"
   },
@@ -503,6 +539,9 @@
   },
   "New_Conversation": {
     "message": "Bag-ong Panag-istorya"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -564,6 +603,9 @@
   "Please_type_a_valid_command": {
     "message": "Palihug i-type ang balidong command"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Ang priority tier naghatag og mas paspas nga tubag apan mas mahal ang presyo."
   },
@@ -587,6 +629,12 @@
   },
   "Quick_action": {
     "message": "Dali nga aksyon"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "Basahon ra"
@@ -624,6 +672,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -640,6 +691,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -756,11 +810,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Test Connection"
   },
   "Testing": {
     "message": "Gisulayan..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -881,6 +941,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Maayong pag-abot sa Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Workspace Write"

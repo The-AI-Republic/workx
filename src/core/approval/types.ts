@@ -139,7 +139,7 @@ export interface SessionMemoryEntry {
 /**
  * Approval operating mode
  */
-export type ApprovalMode = 'cautious' | 'balanced' | 'autonomous' | 'yolo';
+export type ApprovalMode = 'balanced' | 'high_speed' | 'yolo';
 
 /**
  * Persistent approval configuration
@@ -168,7 +168,7 @@ export const DEFAULT_APPROVAL_CONFIG: IApprovalConfig = {
   trustedDomains: [],
   blockedDomains: [],
   timeouts: {
-    low: 30000,
+    low: 120000,
     medium: 60000,
     high: 120000,
     critical: 120000,

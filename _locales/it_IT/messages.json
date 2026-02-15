@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Dettagli dell'azione"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Active_Sessions": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Configurazione avanzata"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "Strumenti di esecuzione dell'agente"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Consentire all'agente di eseguire comandi di sistema (utilizzare con cautela)"
   },
@@ -65,14 +74,23 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Consentire l'esecuzione di script di contenuto sulle pagine web"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Origini consentite"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "Approval_Safety": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Cronologia delle approvazioni"
+  },
+  "Approval_Mode": {
+    "message": ""
   },
   "Approve": {
     "message": "Approva"
@@ -82,6 +100,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Chieda a Browserx di estrarre dati strutturati da qualsiasi pagina web"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +172,9 @@
   },
   "Command": {
     "message": "Comando"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +308,9 @@
   "Execute_Commands": {
     "message": "Eseguire comandi"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Scade dopo giorni"
   },
@@ -304,6 +331,9 @@
   },
   "Extra_Credits": {
     "message": "Crediti extra"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Estrarre dati:"
@@ -363,6 +393,9 @@
   },
   "History": {
     "message": "Cronologia"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "Impatto"
@@ -490,6 +523,9 @@
   "Navigation_Tool": {
     "message": "Strumento di navigazione"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Strumento di intercettazione di rete"
   },
@@ -498,6 +534,9 @@
   },
   "New_Conversation": {
     "message": "Nuova conversazione"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -559,6 +598,9 @@
   "Please_type_a_valid_command": {
     "message": "Inserisca un comando valido"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Il livello prioritario offre tempi di risposta più rapidi con prezzi più elevati."
   },
@@ -582,6 +624,12 @@
   },
   "Quick_action": {
     "message": "Azione rapida"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "Sola lettura"
@@ -619,6 +667,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +686,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "Terminale"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Testi la connessione"
   },
   "Testing": {
     "message": "Test in corso..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -876,6 +936,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Benvenuto in Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Scrivi nello spazio di lavoro"

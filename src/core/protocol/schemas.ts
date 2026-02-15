@@ -112,6 +112,8 @@ const ExecApprovalOpSchema = z.object({
   type: z.literal('ExecApproval'),
   id: z.string(),
   decision: ReviewDecisionSchema,
+  remember: z.boolean().optional(),
+  alternativeText: z.string().optional(),
 });
 
 const PatchApprovalOpSchema = z.object({

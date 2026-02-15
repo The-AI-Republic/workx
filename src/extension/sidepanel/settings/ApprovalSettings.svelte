@@ -27,14 +27,17 @@
   let newTrustedDomain = '';
   let newBlockedDomain = '';
 
-  const APPROVAL_MODES: ApprovalMode[] = ['cautious', 'balanced', 'autonomous', 'yolo'];
+  const APPROVAL_MODES: ApprovalMode[] = ['balanced', 'high_speed', 'yolo'];
 
   const MODE_DESCRIPTIONS: Record<ApprovalMode, string> = {
-    cautious: 'Ask for almost every action (risk > 10). Best for sensitive environments.',
     balanced: 'Ask for medium-risk and above (risk > 30). Recommended for most users.',
-    autonomous: 'Ask only for high-risk actions (risk > 60). For experienced users.',
+    high_speed: 'Ask only for high-risk actions (risk > 60). For experienced users.',
     yolo: 'Auto-approve everything. Deny rules still apply. Use at your own risk.',
   };
+
+  function formatModeLabel(mode: ApprovalMode): string {
+    return mode.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
 
   onMount(async () => {
     await loadConfig();
@@ -144,7 +147,7 @@
                 on:change={() => handleModeChange(mode)}
               />
               <div class="mode-content">
-                <span class="mode-label">{mode.charAt(0).toUpperCase() + mode.slice(1)}</span>
+                <span class="mode-label">{formatModeLabel(mode)}</span>
                 <span class="mode-desc">{MODE_DESCRIPTIONS[mode]}</span>
               </div>
             </label>

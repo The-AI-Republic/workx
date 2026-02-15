@@ -67,7 +67,7 @@ export class BrowserxAgent {
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
     this.toolRegistry = new ToolRegistry();
-    this.approvalManager = new ApprovalManager(this.config);
+    this.approvalManager = new ApprovalManager(this.config, (event) => this.emitEvent(event.msg));
     this.diffTracker = new DiffTracker();
     this.userNotifier = new UserNotifier();
 
@@ -849,16 +849,71 @@ export class BrowserxAgent {
 
   /**
    * Handle exec approval
+   * Unified handler for both extension and desktop platforms.
+   * Routes decisions to ApprovalManager (risk-based approvals) and Session (protocol-level).
    */
   private async handleExecApproval(op: Extract<Op, { type: 'ExecApproval' }>): Promise<void> {
-    // Resolve the pending approval through Session
-    await this.session.notifyApproval(op.id, op.decision);
+    const decision = op.decision === 'approve' ? 'approve' : 'reject';
+
+    // Capture pending approval data before handleDecision removes it
+    let toolName = '';
+    let params: Record<string, any> = {};
+    if (op.remember) {
+      const pending = this.approvalManager.getApproval(op.id);
+      if (pending) {
+        toolName = pending.request?.metadata?.toolName || '';
+        params = pending.request?.details?.parameters || {};
+      } else {
+        console.warn(`[BrowserxAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
+      }
+    }
+
+    // Resolve through both approval paths. Either or both may have a pending
+    // request for this ID depending on which subsystem initiated the approval.
+    // Use try-catch to ensure one path's failure doesn't block the other.
+
+    let riskBasedResolved = false;
+    try {
+      await this.approvalManager.handleDecision({
+        id: op.id,
+        decision,
+        timestamp: Date.now(),
+        reason: op.alternativeText || (decision === 'reject' ? 'Denied by user' : undefined),
+      });
+      riskBasedResolved = true;
+    } catch (error) {
+      console.warn(`[BrowserxAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
+    }
+
+    let protocolResolved = false;
+    try {
+      await this.session.notifyApproval(op.id, op.decision);
+      protocolResolved = true;
+    } catch (error) {
+      console.warn(`[BrowserxAgent] Session.notifyApproval failed for ${op.id}:`, error);
+    }
+
+    if (!riskBasedResolved && !protocolResolved) {
+      console.error(`[BrowserxAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
+    }
+
+    // Remember decision for this session if requested
+    if (op.remember && toolName) {
+      const approvalGate = this.toolRegistry.getApprovalGate();
+      if (approvalGate) {
+        approvalGate.rememberDecision(
+          toolName,
+          params,
+          decision === 'approve' ? 'auto_approve' : 'deny',
+        );
+      }
+    }
 
     // Emit event
     this.emitEvent({
       type: 'BackgroundEvent',
       data: {
-        message: `Execution ${op.decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
+        message: `Execution ${decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
         level: 'info',
       },
     });

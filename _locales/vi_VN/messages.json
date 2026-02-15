@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Chi tiết hành động"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Active_Sessions": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Cấu hình nâng cao"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "Công cụ thực thi cho tác nhân"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Cho phép tác nhân thực thi lệnh hệ thống (sử dụng cẩn thận)"
   },
@@ -65,14 +74,23 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Cho phép content scripts chạy trên các trang web"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Nguồn được phép"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "Approval_Safety": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Lịch sử phê duyệt"
+  },
+  "Approval_Mode": {
+    "message": ""
   },
   "Approve": {
     "message": "Phê duyệt"
@@ -82,6 +100,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Yêu cầu Browserx trích xuất dữ liệu có cấu trúc từ bất kỳ trang web nào"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +172,9 @@
   },
   "Command": {
     "message": "Lệnh"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +308,9 @@
   "Execute_Commands": {
     "message": "Thực thi lệnh"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Hết hạn sau (số ngày)"
   },
@@ -304,6 +331,9 @@
   },
   "Extra_Credits": {
     "message": "Điểm bổ sung"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Trích xuất dữ liệu:"
@@ -363,6 +393,9 @@
   },
   "History": {
     "message": "Lịch sử"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "Tác động"
@@ -490,6 +523,9 @@
   "Navigation_Tool": {
     "message": "Công cụ Điều hướng"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Công cụ Chặn Mạng"
   },
@@ -498,6 +534,9 @@
   },
   "New_Conversation": {
     "message": "Cuộc trò chuyện mới"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -559,6 +598,9 @@
   "Please_type_a_valid_command": {
     "message": "Vui lòng nhập lệnh hợp lệ"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Mức ưu tiên cung cấp thời gian phản hồi nhanh hơn với giá cao hơn."
   },
@@ -582,6 +624,12 @@
   },
   "Quick_action": {
     "message": "Hành động nhanh"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "Chỉ đọc"
@@ -619,6 +667,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +686,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Kiểm tra kết nối"
   },
   "Testing": {
     "message": "Đang kiểm tra..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -876,6 +936,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Chào mừng đến với Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Ghi vào Không gian làm việc"

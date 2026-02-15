@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Detalls de l'acció"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Active_Sessions": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Configuració avançada"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "Eines d'execució de l'agent"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Permetre que l'agent executi ordres del sistema (utilitzar amb precaució)"
   },
@@ -65,14 +74,23 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Permetre que els scripts de contingut s'executin a les pàgines web"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Orígens permesos"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "Approval_Safety": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Historial d'aprovacions"
+  },
+  "Approval_Mode": {
+    "message": ""
   },
   "Approve": {
     "message": "Aprovar"
@@ -82,6 +100,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Demaneu a Browserx que extregui dades estructurades de qualsevol pàgina web"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +172,9 @@
   },
   "Command": {
     "message": "Comanda"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +308,9 @@
   "Execute_Commands": {
     "message": "Executa ordres"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Caduca després de dies"
   },
@@ -304,6 +331,9 @@
   },
   "Extra_Credits": {
     "message": "Crèdits addicionals"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Extreu dades:"
@@ -363,6 +393,9 @@
   },
   "History": {
     "message": "Historial"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "Impacte"
@@ -490,6 +523,9 @@
   "Navigation_Tool": {
     "message": "Eina de navegació"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Eina d'intercepció de xarxa"
   },
@@ -498,6 +534,9 @@
   },
   "New_Conversation": {
     "message": "Nova conversa"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -559,6 +598,9 @@
   "Please_type_a_valid_command": {
     "message": "Escriviu una ordre vàlida"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "El nivell prioritari ofereix temps de resposta més ràpids amb preus més alts."
   },
@@ -582,6 +624,12 @@
   },
   "Quick_action": {
     "message": "Acció ràpida"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "Només lectura"
@@ -619,6 +667,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +686,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Prova la connexió"
   },
   "Testing": {
     "message": "Provant..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -876,6 +936,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Benvingut a Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Escriptura de l'espai de treball"

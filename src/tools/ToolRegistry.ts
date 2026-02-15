@@ -21,6 +21,7 @@ import type {
 } from './BaseTool';
 import type { ApprovalGate } from '../core/approval/ApprovalGate';
 import type { IRiskAssessor } from '../core/approval/types';
+import { parseNodeId } from './dom/utils';
 
 /**
  * Interface for event collection (used for testing)
@@ -61,6 +62,13 @@ export class ToolRegistry {
    */
   setApprovalGate(gate: ApprovalGate): void {
     this.approvalGate = gate;
+  }
+
+  /**
+   * Get the approval gate (if configured)
+   */
+  getApprovalGate(): ApprovalGate | undefined {
+    return this.approvalGate;
   }
 
   /**
@@ -268,9 +276,18 @@ export class ToolRegistry {
           turnId: request.turnId,
         };
 
+        // Enrich browser_dom parameters with element metadata for risk assessment
+        let approvalParameters = request.parameters;
+        if (request.toolName === 'browser_dom' && request.parameters.node_id && request.tabId) {
+          const action = request.parameters.action;
+          if (action === 'click' || action === 'type' || action === 'keypress') {
+            approvalParameters = await this.enrichDomParameters(request.parameters, request.tabId);
+          }
+        }
+
         const decision = await this.approvalGate.check(
           request.toolName,
-          request.parameters,
+          approvalParameters,
           entry.riskAssessor,
           context
         );
@@ -446,6 +463,61 @@ export class ToolRegistry {
     // No resources to clean up at the registry level
   }
 
+
+  /**
+   * Enrich browser_dom parameters with element metadata from DOM snapshot
+   * for more accurate risk assessment. Read-only — does not modify execution params.
+   */
+  private async enrichDomParameters(
+    parameters: Record<string, any>,
+    tabId: number
+  ): Promise<Record<string, any>> {
+    try {
+      // Dynamic import to avoid circular dependency at module load time
+      const { DomService } = await import('./dom/DomService');
+      const domService = await DomService.forTab(tabId);
+      const snapshot = domService.getCurrentSnapshot();
+      if (!snapshot) return parameters;
+
+      const { frameId, backendNodeId } = parseNodeId(parameters.node_id);
+      const node = snapshot.resolveNodeByBackendIdAndFrame(backendNodeId, frameId);
+      if (!node) return parameters;
+
+      const enriched: Record<string, any> = { ...parameters };
+
+      if (node.accessibility?.name) {
+        enriched.aria_label = node.accessibility.name;
+      }
+      if (node.accessibility?.role) {
+        enriched.role = node.accessibility.role;
+      }
+
+      // Extract text from first text child
+      if (node.children) {
+        for (const child of node.children) {
+          if (child.nodeType === 3 && child.nodeValue) {
+            enriched.text = child.nodeValue.trim();
+            break;
+          }
+        }
+      }
+
+      // Extract 'name' attribute from attributes array
+      if (node.attributes) {
+        for (let i = 0; i < node.attributes.length; i += 2) {
+          if (node.attributes[i] === 'name' && node.attributes[i + 1]) {
+            enriched.name = node.attributes[i + 1];
+            break;
+          }
+        }
+      }
+
+      return enriched;
+    } catch {
+      // Non-critical: return original parameters if enrichment fails
+      return parameters;
+    }
+  }
 
   /**
    * Extract tool name from ToolDefinition based on type

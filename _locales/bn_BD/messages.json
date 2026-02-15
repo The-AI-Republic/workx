@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "অ্যাকশন বিবরণ"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Active_Sessions": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "উন্নত কনফিগারেশন"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "এজেন্ট এক্সিকিউশন সরঞ্জাম"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "এজেন্টকে সিস্টেম কমান্ড চালানোর অনুমতি দিন (সাবধানে ব্যবহার করুন)"
   },
@@ -65,14 +74,23 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "কন্টেন্ট স্ক্রিপ্টগুলোকে ওয়েব পেজে চালানোর অনুমতি দিন"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "অনুমোদিত উৎস"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "Approval_Safety": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "অনুমোদন ইতিহাস"
+  },
+  "Approval_Mode": {
+    "message": ""
   },
   "Approve": {
     "message": "অনুমোদন"
@@ -82,6 +100,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx-কে যেকোনো ওয়েবপেজ থেকে কাঠামোবদ্ধ ডেটা বের করতে বলুন"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +172,9 @@
   },
   "Command": {
     "message": "কমান্ড"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +308,9 @@
   "Execute_Commands": {
     "message": "কমান্ড এক্সিকিউট করুন"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "দিন পর মেয়াদোত্তীর্ণ"
   },
@@ -304,6 +331,9 @@
   },
   "Extra_Credits": {
     "message": "অতিরিক্ত ক্রেডিট"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "ডেটা বের করুন:"
@@ -363,6 +393,9 @@
   },
   "History": {
     "message": "ইতিহাস"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "প্রভাব"
@@ -490,6 +523,9 @@
   "Navigation_Tool": {
     "message": "নেভিগেশন টুল"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "নেটওয়ার্ক ইন্টারসেপ্ট টুল"
   },
@@ -498,6 +534,9 @@
   },
   "New_Conversation": {
     "message": "নতুন কথোপকথন"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -559,6 +598,9 @@
   "Please_type_a_valid_command": {
     "message": "অনুগ্রহ করে একটি বৈধ কমান্ড টাইপ করুন"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "প্রায়োরিটি টিয়ার দ্রুততর প্রতিক্রিয়া সময় প্রদান করে, তবে উচ্চ মূল্যে।"
   },
@@ -582,6 +624,12 @@
   },
   "Quick_action": {
     "message": "দ্রুত ক্রিয়া"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "শুধু পড়ার জন্য"
@@ -619,6 +667,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +686,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -751,11 +805,17 @@
   "Terminal": {
     "message": "টার্মিনাল"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "সংযোগ পরীক্ষা করুন"
   },
   "Testing": {
     "message": "পরীক্ষা চলছে..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -881,6 +941,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Browserx-এ স্বাগতম"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "ওয়ার্কস্পেস রাইট"

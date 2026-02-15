@@ -43,7 +43,6 @@ function createMockApprovalManager() {
     updatePolicy: vi.fn(),
     getPolicy: vi.fn(),
     getApprovalHistory: vi.fn(),
-    onApprovalRequest: vi.fn(),
   } as any;
 }
 
@@ -78,9 +77,9 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should merge stored config with defaults', async () => {
-      mockStorage._store['approval_config'] = { mode: 'cautious' };
+      mockStorage._store['approval_config'] = { mode: 'high_speed' };
       const config = await configStorage.loadConfig();
-      expect(config.mode).toBe('cautious');
+      expect(config.mode).toBe('high_speed');
       expect(config.version).toBe('1.0.0'); // from defaults
       expect(config.timeouts).toEqual(DEFAULT_APPROVAL_CONFIG.timeouts);
     });
@@ -101,7 +100,7 @@ describe('ApprovalConfigStorage', () => {
     it('should save config to storage', async () => {
       const config: IApprovalConfig = {
         ...DEFAULT_APPROVAL_CONFIG,
-        mode: 'autonomous',
+        mode: 'high_speed',
       };
       await configStorage.saveConfig(config);
       expect(mockStorage.set).toHaveBeenCalledWith({
@@ -217,22 +216,8 @@ describe('ApprovalGate modes', () => {
   });
 
   it('should allow setting mode', () => {
-    gate.setMode('cautious');
-    expect(gate.getMode()).toBe('cautious');
-  });
-
-  it('cautious mode: should ask for score > 10', async () => {
-    gate.setMode('cautious');
-    const decision = await gate.check('test_tool', {}, makeAssessor(15));
-    expect(decision).toBe('auto_approve'); // ApprovalManager returns approve
-    expect(mockManager.requestApproval).toHaveBeenCalled();
-  });
-
-  it('cautious mode: should auto-approve for score <= 10', async () => {
-    gate.setMode('cautious');
-    const decision = await gate.check('test_tool', {}, makeAssessor(5));
-    expect(decision).toBe('auto_approve');
-    expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    gate.setMode('high_speed');
+    expect(gate.getMode()).toBe('high_speed');
   });
 
   it('balanced mode: should ask for score > 30', async () => {
@@ -249,15 +234,15 @@ describe('ApprovalGate modes', () => {
     expect(mockManager.requestApproval).not.toHaveBeenCalled();
   });
 
-  it('autonomous mode: should ask for score > 60', async () => {
-    gate.setMode('autonomous');
+  it('high_speed mode: should ask for score > 60', async () => {
+    gate.setMode('high_speed');
     const decision = await gate.check('test_tool', {}, makeAssessor(65));
     expect(decision).toBe('auto_approve'); // manager returns approve
     expect(mockManager.requestApproval).toHaveBeenCalled();
   });
 
-  it('autonomous mode: should auto-approve for score <= 60', async () => {
-    gate.setMode('autonomous');
+  it('high_speed mode: should auto-approve for score <= 60', async () => {
+    gate.setMode('high_speed');
     const decision = await gate.check('test_tool', {}, makeAssessor(50));
     expect(decision).toBe('auto_approve');
     expect(mockManager.requestApproval).not.toHaveBeenCalled();
@@ -495,23 +480,6 @@ describe('ApprovalGate threshold boundaries', () => {
     mockManager = createMockApprovalManager();
   });
 
-  it('cautious mode: score exactly 10 should auto-approve', async () => {
-    const engine = new PolicyRulesEngine([]);
-    const gate = new ApprovalGate(mockManager, engine);
-    gate.setMode('cautious');
-    const decision = await gate.check('test_tool', {}, makeAssessor(10));
-    expect(decision).toBe('auto_approve');
-    expect(mockManager.requestApproval).not.toHaveBeenCalled();
-  });
-
-  it('cautious mode: score exactly 11 should ask', async () => {
-    const engine = new PolicyRulesEngine([]);
-    const gate = new ApprovalGate(mockManager, engine);
-    gate.setMode('cautious');
-    const decision = await gate.check('test_tool', {}, makeAssessor(11));
-    expect(mockManager.requestApproval).toHaveBeenCalled();
-  });
-
   it('balanced mode: score exactly 30 should auto-approve', async () => {
     const engine = new PolicyRulesEngine([]);
     const gate = new ApprovalGate(mockManager, engine);
@@ -529,19 +497,19 @@ describe('ApprovalGate threshold boundaries', () => {
     expect(mockManager.requestApproval).toHaveBeenCalled();
   });
 
-  it('autonomous mode: score exactly 60 should auto-approve', async () => {
+  it('high_speed mode: score exactly 60 should auto-approve', async () => {
     const engine = new PolicyRulesEngine([]);
     const gate = new ApprovalGate(mockManager, engine);
-    gate.setMode('autonomous');
+    gate.setMode('high_speed');
     const decision = await gate.check('test_tool', {}, makeAssessor(60));
     expect(decision).toBe('auto_approve');
     expect(mockManager.requestApproval).not.toHaveBeenCalled();
   });
 
-  it('autonomous mode: score exactly 61 should ask', async () => {
+  it('high_speed mode: score exactly 61 should ask', async () => {
     const engine = new PolicyRulesEngine([]);
     const gate = new ApprovalGate(mockManager, engine);
-    gate.setMode('autonomous');
+    gate.setMode('high_speed');
     const decision = await gate.check('test_tool', {}, makeAssessor(61));
     expect(mockManager.requestApproval).toHaveBeenCalled();
   });

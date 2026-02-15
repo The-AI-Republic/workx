@@ -26,6 +26,9 @@
   "Action_Details": {
     "message": "Detalji akcije"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Active_Sessions": {
     "message": ""
   },
@@ -44,6 +47,9 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Napredna konfiguracija"
   },
@@ -56,6 +62,9 @@
   "Agent_Execution_Tools": {
     "message": "Alati za izvršavanje agenta"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Dozvoli agentu izvršavanje sustavskih naredbi (koristite s oprezom)"
   },
@@ -65,14 +74,23 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Dozvoli pokretanje skripti sadržaja na web stranicama"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Dozvoljeni izvori"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "Approval_Safety": {
+    "message": ""
+  },
   "Approval_History": {
     "message": "Povijest odobrenja"
+  },
+  "Approval_Mode": {
+    "message": ""
   },
   "Approve": {
     "message": "Odobri"
@@ -82,6 +100,9 @@
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Zatražite od Browserx da izvuče strukturirane podatke s bilo koje web stranice"
+  },
+  "Auto_default": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -151,6 +172,9 @@
   },
   "Command": {
     "message": "Naredba"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -284,6 +308,9 @@
   "Execute_Commands": {
     "message": "Izvrši naredbe"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Istek nakon $1$ dana",
     "placeholders": {
@@ -309,6 +336,9 @@
   },
   "Extra_Credits": {
     "message": "Dodatni krediti"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Izvuci podatke:"
@@ -368,6 +398,9 @@
   },
   "History": {
     "message": "Povijest"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Impact": {
     "message": "Utjecaj"
@@ -495,6 +528,9 @@
   "Navigation_Tool": {
     "message": "Alat za navigaciju"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Alat za presretanje mreže"
   },
@@ -503,6 +539,9 @@
   },
   "New_Conversation": {
     "message": "Novi razgovor"
+  },
+  "No_Access": {
+    "message": ""
   },
   "No_MCP_servers_configured_yet": {
     "message": ""
@@ -564,6 +603,9 @@
   "Please_type_a_valid_command": {
     "message": "Unesite ispravnu naredbu"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Prioritetni nivo pruža brže vrijeme odgovora uz višu cijenu."
   },
@@ -587,6 +629,12 @@
   },
   "Quick_action": {
     "message": "Brza radnja"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Read_only": {
     "message": "Samo za čitanje"
@@ -624,6 +672,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -640,6 +691,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -756,11 +810,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Testiraj vezu"
   },
   "Testing": {
     "message": "Testiranje..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -881,6 +941,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Dobrodošli u Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Pisanje radnog prostora"

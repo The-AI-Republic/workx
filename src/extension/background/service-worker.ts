@@ -493,6 +493,11 @@ function setupMessageHandlers(): void {
       }
       return true;
     }
+
+    // Note: Approval decisions (EXEC_APPROVAL) are now handled through the unified
+    // SUBMISSION pipeline. EventProcessor sends { type: 'SUBMISSION', payload: { op: { type: 'ExecApproval' } } }
+    // which routes through MessageRouter → agent.submitOperation() → handleExecApproval()
+    // on both extension and desktop platforms.
   });
 
   // Handle storage operations

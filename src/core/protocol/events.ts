@@ -398,6 +398,7 @@ export interface ApprovalRequestedEvent {
   risk_factors: string[];
   explanation: string;
   command?: string;
+  timeout?: number;
 }
 
 /**

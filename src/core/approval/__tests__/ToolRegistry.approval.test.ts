@@ -45,7 +45,6 @@ function createMockApprovalManager(decision: 'approve' | 'reject' = 'approve') {
     getDefaultPolicy: vi.fn().mockReturnValue({ mode: 'always_ask' }),
     getAutoApproveList: vi.fn().mockReturnValue([]),
     getApprovalTimeout: vi.fn().mockReturnValue(30000),
-    onApprovalRequest: vi.fn(),
     getApproval: vi.fn(),
     getPendingApprovals: vi.fn().mockReturnValue([]),
     getApprovalHistory: vi.fn().mockReturnValue([]),

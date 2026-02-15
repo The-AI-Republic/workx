@@ -222,7 +222,7 @@ export interface ApprovalRequest {
   // Response callbacks
   onApprove: () => void;               // Callback for approval
   onReject: () => void;                // Callback for rejection
-  onRequestChange?: () => void;        // Optional: request changes
+  onRequestChange?: (text: string) => void; // Optional: send alternative instructions
   onRemember?: (scope: 'session' | 'no') => void; // Optional: remember decision
 }
 

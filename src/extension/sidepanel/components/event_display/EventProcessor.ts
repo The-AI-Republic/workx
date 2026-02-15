@@ -730,7 +730,7 @@ export class EventProcessor {
         id: event.id,
         category: 'approval',
         timestamp: new Date(),
-        title: `Approval Required: ${data.tool_name}`,
+        title: 'Approval Required',
         content: data.command || data.explanation || '',
         style: { textColor: 'text-yellow-400' },
         requiresApproval: {
@@ -742,11 +742,15 @@ export class EventProcessor {
           riskScore: data.risk_score,
           riskLevel: data.risk_level,
           riskFactors: data.risk_factors,
+          countdown: Math.floor((data.timeout || 120000) / 1000),
           onApprove: () => {
             this.sendApprovalDecision(data.id, 'approve');
           },
           onReject: () => {
             this.sendApprovalDecision(data.id, 'reject');
+          },
+          onRequestChange: (text: string) => {
+            this.sendApprovalDecision(data.id, 'reject', false, text);
           },
           onRemember: (scope: 'session' | 'no') => {
             this.sendApprovalDecision(data.id, 'approve', scope === 'session');
@@ -760,13 +764,29 @@ export class EventProcessor {
   }
 
   /**
-   * Send approval decision back to service worker
+   * Send approval decision as a standard SUBMISSION.
+   * This routes through the same pipeline for both extension and desktop,
+   * reaching BrowserxAgent.handleExecApproval() on all platforms.
    */
-  private sendApprovalDecision(id: string, decision: 'approve' | 'reject', remember?: boolean): void {
+  private sendApprovalDecision(
+    id: string,
+    decision: 'approve' | 'reject',
+    remember?: boolean,
+    alternativeText?: string
+  ): void {
     try {
       chrome.runtime.sendMessage({
-        type: 'EXEC_APPROVAL',
-        data: { id, decision, remember },
+        type: 'SUBMISSION',
+        payload: {
+          id: `approval_${Date.now()}`,
+          op: {
+            type: 'ExecApproval',
+            id,
+            decision,
+            ...(remember !== undefined && { remember }),
+            ...(alternativeText && { alternativeText }),
+          },
+        },
       });
     } catch (error) {
       console.error('[EventProcessor] Failed to send approval decision:', error);

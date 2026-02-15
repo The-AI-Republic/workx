@@ -147,6 +147,23 @@ const runtimePolyfill = {
           console.log('[chromePolyfill] SESSION_RESET received (desktop mode)');
           responseCallback?.({ success: true });
           return;
+
+        case 'SUBMISSION':
+          // Route SUBMISSION messages through 'browserx:submit' so TauriChannel
+          // picks them up and routes to agent.submitOperation().
+          // This ensures approval decisions (ExecApproval ops) work on desktop.
+          if (tauriEvent) {
+            const payload = (message as { payload?: unknown })?.payload;
+            tauriEvent.emit('browserx:submit', payload).then(() => {
+              responseCallback?.({ success: true });
+            }).catch((error) => {
+              console.error('[chromePolyfill] Failed to emit submission:', error);
+              responseCallback?.({ success: false, error: (error as Error).message });
+            });
+          } else {
+            responseCallback?.({ success: false, error: 'Tauri API not available' });
+          }
+          return;
       }
     }
 

@@ -187,11 +187,12 @@ export class ApprovalGate {
       id: `approval_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type: this.mapToolToApprovalType(toolName),
       title: `Approve ${toolName}`,
-      description: `Risk score: ${assessment.score}/100 (${assessment.level}). ${assessment.factors.join('. ')}`,
+      description: `Risk score reasoning: ${assessment.score}/100 (${assessment.level}). ${assessment.factors.join('. ')}`,
       details: {
         action: toolName,
         parameters,
         riskLevel: this.mapRiskLevelToApproval(assessment.level),
+        riskScore: assessment.score,
         impact: assessment.factors,
       },
       metadata: {
@@ -246,9 +247,8 @@ export class ApprovalGate {
    */
   private getAskThreshold(): number {
     switch (this.mode) {
-      case 'cautious': return 10;
       case 'balanced': return 30;
-      case 'autonomous': return 60;
+      case 'high_speed': return 60;
       case 'yolo': return 100; // unreachable (yolo handled above)
       default: return 30;
     }

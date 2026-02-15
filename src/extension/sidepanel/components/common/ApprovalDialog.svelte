@@ -57,9 +57,9 @@
 
     const timeoutResponse: ApprovalResponse = {
       id: request.id,
-      decision: 'reject',
+      decision: 'approve',
       timestamp: Date.now(),
-      reason: 'Request timed out',
+      reason: 'Auto-approved after timeout',
       metadata: { timeout: true },
     };
 

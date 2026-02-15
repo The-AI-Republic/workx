@@ -25,6 +25,7 @@ export interface ApprovalDetails {
   action?: string;
   parameters?: Record<string, any>;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskScore?: number;
   impact?: string[];
 }
 
@@ -75,7 +76,6 @@ export class ApprovalManager {
   private pendingRequests = new Map<string, PendingApproval>();
   private approvalHistory = new Map<string, ApprovalResponse>();
   private eventEmitter?: (event: Event) => void;
-  private approvalRequestCallback?: (approval: ApprovalRequest) => void;
 
   constructor(configOrEventEmitter?: AgentConfig | ((event: Event) => void), eventEmitter?: (event: Event) => void) {
     // Handle both signatures for backward compatibility
@@ -101,6 +101,9 @@ export class ApprovalManager {
       return policyDecision;
     }
 
+    // Set up timeout handling
+    const timeout = request.timeout || this.policy.timeout || 120000;
+
     // Emit approval requested event
     this.emitEvent({
       id: `evt_approval_requested_${request.id}`,
@@ -109,22 +112,15 @@ export class ApprovalManager {
         data: {
           id: request.id,
           tool_name: request.metadata?.toolName || request.type,
-          risk_score: this.riskLevelToScore(request.details.riskLevel),
+          risk_score: request.details.riskScore ?? this.riskLevelToScore(request.details.riskLevel),
           risk_level: request.details.riskLevel || 'medium',
           risk_factors: request.details.impact || [],
           explanation: request.description || request.title,
           command: request.details.command,
+          timeout,
         },
       },
     });
-
-    // Call approval request callback if registered
-    if (this.approvalRequestCallback) {
-      this.approvalRequestCallback(request);
-    }
-
-    // Set up timeout handling
-    const timeout = request.timeout || this.policy.timeout || 30000;
 
     // Create pending approval entry first so timeout can reference it
     const pendingApproval: PendingApproval = {
@@ -142,11 +138,11 @@ export class ApprovalManager {
         this.emitEvent({
           id: `evt_approval_timeout_${request.id}`,
           msg: {
-            type: 'ApprovalDenied',
+            type: 'ApprovalGranted',
             data: {
               id: request.id,
               tool_name: request.metadata?.toolName || request.type,
-              reason: `Request timed out after ${timeout}ms`,
+              reason: 'Auto-approved after timeout',
               timestamp: Date.now(),
             },
           },
@@ -154,9 +150,9 @@ export class ApprovalManager {
 
         const timeoutResponse: ApprovalResponse = {
           id: request.id,
-          decision: 'reject',
+          decision: 'approve',
           timestamp: Date.now(),
-          reason: 'Request timed out',
+          reason: 'Auto-approved after timeout',
           metadata: { timeout: true },
         };
 
@@ -181,7 +177,8 @@ export class ApprovalManager {
   async handleDecision(response: ApprovalResponse): Promise<void> {
     const pending = this.pendingRequests.get(response.id);
     if (!pending) {
-      return; // Request already processed or doesn't exist
+      console.warn(`[ApprovalManager] No pending approval found for id: ${response.id} (already processed or timed out)`);
+      return;
     }
 
     // Clear timeout to prevent duplicate events
@@ -352,13 +349,6 @@ export class ApprovalManager {
   }
 
   /**
-   * Register a callback for approval requests
-   */
-  onApprovalRequest(callback: (approval: ApprovalRequest) => void): void {
-    this.approvalRequestCallback = callback;
-  }
-
-  /**
    * Evaluate policy for automatic decisions
    */
   private evaluatePolicy(request: ApprovalRequest): ApprovalResponse | null {
@@ -526,7 +516,7 @@ export class ApprovalManager {
    */
   getApprovalTimeout(): number {
     // Config integration placeholder - returns default
-    return 30000;
+    return 120000;
   }
 }
 

@@ -1,13 +1,33 @@
 <script lang="ts">
   /**
    * ApprovalEvent - Renders interactive approval requests with risk-aware display
+   * Offers 4 options: Approve, Always Approve, Deny, and alternative instructions
    */
+  import { onDestroy } from 'svelte';
   import type { ProcessedEvent } from '@/types/ui';
 
   export let event: ProcessedEvent;
 
   let processing = false;
-  let rememberForSession = false;
+  let alternativeText = '';
+  let showAlternativeInput = false;
+
+  // Countdown timer
+  let timeRemaining = event.requiresApproval?.countdown ?? 120;
+  let timedOut = false;
+  const countdownInterval = setInterval(() => {
+    if (timeRemaining > 0) {
+      timeRemaining--;
+    }
+    if (timeRemaining <= 0) {
+      timedOut = true;
+      clearInterval(countdownInterval);
+    }
+  }, 1000);
+
+  onDestroy(() => {
+    clearInterval(countdownInterval);
+  });
 
   // Risk level color mapping
   function getRiskColor(level?: string): string {
@@ -47,7 +67,17 @@
     if (!event.requiresApproval || processing) return;
     processing = true;
     try {
-      if (rememberForSession && event.requiresApproval.onRemember) {
+      event.requiresApproval.onApprove();
+    } finally {
+      processing = false;
+    }
+  }
+
+  async function handleAlwaysApprove() {
+    if (!event.requiresApproval || processing) return;
+    processing = true;
+    try {
+      if (event.requiresApproval.onRemember) {
         event.requiresApproval.onRemember('session');
       }
       event.requiresApproval.onApprove();
@@ -56,7 +86,7 @@
     }
   }
 
-  async function handleReject() {
+  async function handleDeny() {
     if (!event.requiresApproval || processing) return;
     processing = true;
     try {
@@ -66,13 +96,20 @@
     }
   }
 
-  async function handleRequestChange() {
-    if (!event.requiresApproval?.onRequestChange || processing) return;
+  async function handleSendAlternative() {
+    if (!event.requiresApproval?.onRequestChange || processing || !alternativeText.trim()) return;
     processing = true;
     try {
-      event.requiresApproval.onRequestChange();
+      event.requiresApproval.onRequestChange(alternativeText.trim());
     } finally {
       processing = false;
+    }
+  }
+
+  function handleAlternativeKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendAlternative();
     }
   }
 
@@ -82,45 +119,44 @@
 
 <div class="approval-event border {borderClass} bg-yellow-500/10 rounded p-3">
   <div class="flex items-center gap-2 mb-2">
-    <div class="text-yellow-400 font-semibold text-sm">
+    <div class="text-yellow-400 font-semibold">
       {event.title}
     </div>
     {#if riskLevel}
-      <span class="text-xs px-2 py-0.5 rounded-full border {getRiskBadgeClass(riskLevel)}">
+      <span class="px-2 py-0.5 rounded-full border {getRiskBadgeClass(riskLevel)}">
         {riskLevel.toUpperCase()}
       </span>
     {/if}
     {#if event.requiresApproval?.riskScore !== undefined}
-      <span class="text-xs text-gray-500">
-        Score: {event.requiresApproval.riskScore}/100
+      <span class="text-yellow-400">
+        Risk Score: {event.requiresApproval.riskScore}/100
       </span>
+    {/if}
+    {#if !timedOut}
+      <span class="text-yellow-400">{timeRemaining}s remaining</span>
     {/if}
   </div>
 
   {#if event.requiresApproval}
-    <div class="text-gray-300 text-sm mb-3">
+    <div class="text-yellow-400 mb-3">
       {#if event.requiresApproval.type === 'exec'}
-        <div class="font-mono bg-black/30 p-2 rounded mb-2">
-          {event.requiresApproval.command}
-        </div>
-      {:else if event.requiresApproval.type === 'patch'}
-        <div class="text-sm mb-2">
-          Patch for files
-        </div>
+        <div class="mb-2">Tool name: {event.requiresApproval.command}</div>
       {:else if event.requiresApproval.type === 'tool' && event.requiresApproval.toolName}
-        <div class="font-mono bg-black/30 p-2 rounded mb-2">
-          {event.requiresApproval.toolName}
+        <div class="mb-2">
+          Tool name: {event.requiresApproval.toolName}
           {#if event.requiresApproval.command}
             : {event.requiresApproval.command}
           {/if}
         </div>
+      {:else if event.requiresApproval.type === 'patch'}
+        <div class="mb-2">Tool name: patch</div>
       {/if}
 
       {#if event.requiresApproval.riskFactors && event.requiresApproval.riskFactors.length > 0}
-        <div class="text-xs text-gray-400 mb-2">
+        <div class="text-yellow-400 mb-2">
           {#each event.requiresApproval.riskFactors as factor}
             <div class="flex items-start gap-1">
-              <span class="text-gray-500 mt-0.5">-</span>
+              <span class="text-yellow-400 mt-0.5">-</span>
               <span>{factor}</span>
             </div>
           {/each}
@@ -128,50 +164,75 @@
       {/if}
 
       {#if event.requiresApproval.explanation}
-        <div class="text-gray-400 text-xs italic">
+        <div class="text-yellow-400 italic">
           {event.requiresApproval.explanation}
+        </div>
+      {/if}
+
+      {#if timedOut}
+        <div class="text-green-400 font-semibold mt-2">
+          Auto-approved — timeout reached
         </div>
       {/if}
     </div>
 
     <div class="flex flex-col gap-2">
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <button
-          class="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={processing}
+          class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={processing || timedOut}
           on:click={handleApprove}
         >
           {processing ? 'Processing...' : 'Approve'}
         </button>
 
+        {#if event.requiresApproval.onRemember}
+          <button
+            class="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={processing || timedOut}
+            on:click={handleAlwaysApprove}
+          >
+            Always Approve
+          </button>
+        {/if}
+
         <button
           class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={processing}
-          on:click={handleReject}
+          disabled={processing || timedOut}
+          on:click={handleDeny}
         >
-          Reject
+          Deny
         </button>
 
         {#if event.requiresApproval.onRequestChange}
           <button
             class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={processing}
-            on:click={handleRequestChange}
+            disabled={processing || timedOut}
+            on:click={() => { showAlternativeInput = !showAlternativeInput; }}
           >
-            Request Change
+            Suggest Alternative
           </button>
         {/if}
       </div>
 
-      {#if event.requiresApproval.onRemember}
-        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+      {#if showAlternativeInput && event.requiresApproval.onRequestChange}
+        <div class="flex gap-2 mt-1">
           <input
-            type="checkbox"
-            bind:checked={rememberForSession}
-            class="rounded border-gray-600"
+            type="text"
+            bind:value={alternativeText}
+            on:keydown={handleAlternativeKeydown}
+            placeholder="Type alternative instructions..."
+            class="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            disabled={processing}
           />
-          Remember for this session
-        </label>
+          <button
+            class="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={processing || !alternativeText.trim()}
+            on:click={handleSendAlternative}
+          >
+            Send
+          </button>
+        </div>
       {/if}
     </div>
   {/if}
