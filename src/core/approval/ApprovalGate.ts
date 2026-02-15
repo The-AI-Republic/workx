@@ -307,14 +307,29 @@ export class ApprovalGate {
     return domain === pattern || domain.endsWith('.' + pattern);
   }
 
+  /** Keys excluded from memory key because they change every snapshot */
+  private static readonly VOLATILE_KEYS = new Set([
+    'node_id', 'nodeId', 'backend_node_id', 'backendNodeId',
+    'timestamp', 'frame_id', 'frameId',
+  ]);
+
   /**
-   * Build a memory key from tool name and stable parameters (excludes volatile IDs like node_id)
+   * Build a memory key from tool name and stable semantic parameters.
+   * Includes action + semantic identifiers (aria_label, role, text, command, url)
+   * but excludes volatile IDs (node_id) that change every DOM snapshot.
    */
   private buildMemoryKey(toolName: string, parameters: Record<string, any>): string {
-    // Use only action/method for the key — volatile params like node_id
-    // change every snapshot, making full-param keys useless for "Always Approve"
-    const action = parameters.action || parameters.method || '';
-    return `${toolName}||${action}`;
+    const stable: Record<string, any> = {};
+    for (const [key, value] of Object.entries(parameters)) {
+      if (!ApprovalGate.VOLATILE_KEYS.has(key) && value !== undefined && value !== null) {
+        stable[key] = value;
+      }
+    }
+    const sorted = Object.keys(stable).sort().reduce((obj, key) => {
+      obj[key] = stable[key];
+      return obj;
+    }, {} as Record<string, any>);
+    return `${toolName}||${JSON.stringify(sorted)}`;
   }
 
   /**

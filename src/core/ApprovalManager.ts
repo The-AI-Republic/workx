@@ -128,6 +128,7 @@ export class ApprovalManager {
       request,
       timestamp: Date.now(),
       timeRemaining: timeout,
+      resolved: false,
     };
 
     this.pendingRequests.set(request.id, pendingApproval);
@@ -142,7 +143,8 @@ export class ApprovalManager {
       const timeoutPromise = new Promise<ApprovalResponse>((resolve) => {
         pendingApproval.timeoutId = setTimeout(() => {
           // Only fire if still pending (not already resolved by handleDecision/cancelRequest)
-          if (!this.pendingRequests.has(request.id)) return;
+          if (pendingApproval.resolved || !this.pendingRequests.has(request.id)) return;
+          pendingApproval.resolved = true;
           this.pendingRequests.delete(request.id);
 
           this.emitEvent({
@@ -183,10 +185,13 @@ export class ApprovalManager {
    */
   async handleDecision(response: ApprovalResponse): Promise<void> {
     const pending = this.pendingRequests.get(response.id);
-    if (!pending) {
+    if (!pending || pending.resolved) {
       console.warn(`[ApprovalManager] No pending approval found for id: ${response.id} (already processed or timed out)`);
       return;
     }
+
+    // Mark as resolved to prevent timeout from also resolving
+    pending.resolved = true;
 
     // Clear timeout to prevent duplicate events
     if (pending.timeoutId) {
@@ -267,9 +272,12 @@ export class ApprovalManager {
    */
   async cancelRequest(id: string): Promise<boolean> {
     const pending = this.pendingRequests.get(id);
-    if (!pending) {
+    if (!pending || pending.resolved) {
       return false;
     }
+
+    // Mark as resolved to prevent timeout from also resolving
+    pending.resolved = true;
 
     // Clear timeout to prevent duplicate events
     if (pending.timeoutId) {
@@ -529,6 +537,7 @@ interface PendingApproval {
   request: ApprovalRequest;
   timestamp: number;
   timeRemaining: number;
+  resolved: boolean;
   resolver?: (response: ApprovalResponse) => void;
   timeoutId?: ReturnType<typeof setTimeout>;
 }

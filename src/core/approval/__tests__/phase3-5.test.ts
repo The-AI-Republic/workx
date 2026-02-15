@@ -501,9 +501,9 @@ describe('ApprovalGate session memory', () => {
     expect(gate.getMemorySize()).toBe(0);
   });
 
-  it('should match same tool+action regardless of other parameters', async () => {
+  it('should match same tool+action regardless of volatile parameters', async () => {
     gate.rememberDecision('dom_tool', { action: 'click', node_id: '0:42' }, 'auto_approve');
-    // Same tool+action with different node_id should still match (key is toolName||action)
+    // Same tool+action with different node_id should still match (volatile keys excluded from memory key)
     const decision = await gate.check('dom_tool', { action: 'click', node_id: '0:99' });
     expect(decision).toBe('auto_approve');
   });
