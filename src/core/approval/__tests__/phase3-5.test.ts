@@ -471,14 +471,15 @@ describe('ApprovalGate history tracking', () => {
 });
 
 // ============================================================================
-// ApprovalGate - Session memory
+// ApprovalGate - Session memory (tool-category-aware keys)
 // ============================================================================
 
 describe('ApprovalGate session memory', () => {
   let gate: ApprovalGate;
+  let mockManager: any;
 
   beforeEach(() => {
-    const mockManager = createMockApprovalManager();
+    mockManager = createMockApprovalManager();
     const engine = new PolicyRulesEngine([]);
     gate = new ApprovalGate(mockManager, engine);
   });
@@ -488,12 +489,6 @@ describe('ApprovalGate session memory', () => {
     expect(gate.getMemorySize()).toBe(1);
   });
 
-  it('should return remembered decision on next check', async () => {
-    gate.rememberDecision('terminal', { command: 'ls' }, 'auto_approve');
-    const decision = await gate.check('terminal', { command: 'ls' });
-    expect(decision).toBe('auto_approve');
-  });
-
   it('should clear memory', () => {
     gate.rememberDecision('terminal', { command: 'ls' }, 'auto_approve');
     expect(gate.getMemorySize()).toBe(1);
@@ -501,23 +496,106 @@ describe('ApprovalGate session memory', () => {
     expect(gate.getMemorySize()).toBe(0);
   });
 
-  it('should match same tool+action regardless of volatile parameters', async () => {
-    gate.rememberDecision('dom_tool', { action: 'click', node_id: '0:42' }, 'auto_approve');
-    // Same tool+action with different node_id should still match (volatile keys excluded from memory key)
-    const decision = await gate.check('dom_tool', { action: 'click', node_id: '0:99' });
-    expect(decision).toBe('auto_approve');
+  describe('web tool (browser_dom) keys: action + domain', () => {
+    it('should match same action + same domain', async () => {
+      gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'linkedin.com', 30);
+      const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(25), { currentDomain: 'linkedin.com' });
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+
+    it('should NOT match same action + different domain', async () => {
+      gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'linkedin.com', 30);
+      // Different domain → memory miss → goes through pipeline
+      const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(5), { currentDomain: 'bank.com' });
+      // Score 5 auto-approves via threshold, not memory
+      expect(decision).toBe('auto_approve');
+      // Should have gone through pipeline (no memory hit)
+      expect(gate.getMemorySize()).toBe(1); // original entry unchanged
+    });
+
+    it('should NOT match different action + same domain', async () => {
+      gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'linkedin.com', 30);
+      // Different action → memory miss
+      await gate.check('browser_dom', { action: 'type' }, makeAssessor(5), { currentDomain: 'linkedin.com' });
+      expect(gate.getMemorySize()).toBe(1); // only original entry
+    });
   });
 
-  it('should not match different actions', async () => {
-    const mockManager = createMockApprovalManager();
-    const engine = new PolicyRulesEngine([]);
-    const gateWithManager = new ApprovalGate(mockManager, engine);
+  describe('terminal keys: full command', () => {
+    it('should match exact same command', async () => {
+      gate.rememberDecision('terminal', { command: 'npm install express' }, 'auto_approve', undefined, 20);
+      const decision = await gate.check('terminal', { command: 'npm install express' }, makeAssessor(15));
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
 
-    gateWithManager.rememberDecision('dom_tool', { action: 'click' }, 'auto_approve');
-    // Different action should NOT match memory
-    await gateWithManager.check('dom_tool', { action: 'type' }, makeAssessor(5));
-    // Should go through pipeline (no memory hit), but auto-approve via low score
-    expect(gateWithManager.getMemorySize()).toBe(1);
+    it('should NOT match different command with same base (npm install ≠ npm test)', async () => {
+      gate.rememberDecision('terminal', { command: 'npm install' }, 'auto_approve', undefined, 20);
+      // Different command → memory miss
+      await gate.check('terminal', { command: 'npm test' }, makeAssessor(5));
+      expect(gate.getMemorySize()).toBe(1); // only original entry
+    });
+
+    it('should NOT match different command entirely (npm ≠ rm)', async () => {
+      gate.rememberDecision('terminal', { command: 'npm install' }, 'auto_approve', undefined, 20);
+      await gate.check('terminal', { command: 'rm -rf /' }, makeAssessor(5));
+      expect(gate.getMemorySize()).toBe(1);
+    });
+  });
+
+  describe('other tools: broad tool-level trust', () => {
+    it('should match at tool level regardless of parameters', async () => {
+      gate.rememberDecision('planning_tool', { plan: 'step 1' }, 'auto_approve', undefined, 10);
+      const decision = await gate.check('planning_tool', { plan: 'step 99' }, makeAssessor(8));
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('MCP browser tools (browser__*)', () => {
+    it('should key by action + domain for browser__click', async () => {
+      gate.rememberDecision('browser__click', {}, 'auto_approve', 'linkedin.com', 30);
+      const decision = await gate.check('browser__click', {}, makeAssessor(25), { currentDomain: 'linkedin.com' });
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+
+    it('should NOT match browser__click on different domain', async () => {
+      gate.rememberDecision('browser__click', {}, 'auto_approve', 'linkedin.com', 30);
+      // Different domain → no memory hit
+      await gate.check('browser__click', {}, makeAssessor(5), { currentDomain: 'bank.com' });
+      expect(gate.getMemorySize()).toBe(1);
+    });
+  });
+
+  describe('risk ceiling guard', () => {
+    it('should use memory when score is within margin (25 pts)', async () => {
+      // Original approval at score 30
+      gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'example.com', 30);
+      // New score 50 is within margin (30 + 25 = 55)
+      const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(50), { currentDomain: 'example.com' });
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
+
+    it('should bypass memory when score exceeds margin', async () => {
+      // Original approval at score 30
+      gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'example.com', 30);
+      // New score 60 exceeds margin (30 + 25 = 55)
+      const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(60), { currentDomain: 'example.com' });
+      // Should fall through to policy evaluation → score 60 > threshold 30 → ask_user → manager approves
+      expect(mockManager.requestApproval).toHaveBeenCalled();
+    });
+
+    it('should use memory when approvedRiskScore is undefined (legacy entries)', async () => {
+      // Legacy entry without risk score
+      gate.rememberDecision('browser_dom', { action: 'click' }, 'auto_approve', 'example.com');
+      // Any score should match since no ceiling to enforce
+      const decision = await gate.check('browser_dom', { action: 'click' }, makeAssessor(80), { currentDomain: 'example.com' });
+      expect(decision).toBe('auto_approve');
+      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -134,6 +134,10 @@ export interface SessionMemoryEntry {
   decision: ApprovalDecision;
   /** When this decision was made */
   timestamp: number;
+  /** Domain at time of decision (for web tools) */
+  domain?: string;
+  /** Risk score at time of decision (for risk ceiling guard) */
+  approvedRiskScore?: number;
 }
 
 /**

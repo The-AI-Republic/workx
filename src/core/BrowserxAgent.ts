@@ -29,8 +29,6 @@ import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivit
 import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
 import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
 import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
-import { STORAGE_KEYS } from '../config/defaults';
-import type { IApprovalConfig } from './approval/types';
 
 /**
  * Main agent class managing the submission and event queues
@@ -167,17 +165,9 @@ export class BrowserxAgent {
       console.warn('[BrowserxAgent] Failed to load approval config, using defaults:', error);
     }
 
-    // Listen for approval config changes in storage to keep gate in sync
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName === 'local' && changes[STORAGE_KEYS.APPROVAL_CONFIG]) {
-        const newConfig = changes[STORAGE_KEYS.APPROVAL_CONFIG].newValue as IApprovalConfig | undefined;
-        if (newConfig) {
-          approvalGate.setMode(newConfig.mode);
-          approvalGate.setTrustedDomains(newConfig.trustedDomains || []);
-          approvalGate.setBlockedDomains(newConfig.blockedDomains || []);
-        }
-      }
-    });
+    // Note: Approval config sync is handled via UPDATE_APPROVAL_CONFIG message pattern
+    // (service-worker.ts and chromePolyfill.ts), not chrome.storage.onChanged,
+    // to support desktop mode where storage.onChanged is not available.
 
     this.toolRegistry.setApprovalGate(approvalGate);
 
@@ -888,11 +878,15 @@ export class BrowserxAgent {
     // Capture pending approval data before handleDecision removes it
     let toolName = '';
     let params: Record<string, any> = {};
+    let domain: string | undefined;
+    let riskScore: number | undefined;
     if (op.remember) {
       const pending = this.approvalManager.getApproval(op.id);
       if (pending) {
         toolName = pending.request?.metadata?.toolName || '';
         params = pending.request?.details?.parameters || {};
+        domain = pending.request?.metadata?.domain;
+        riskScore = pending.request?.metadata?.riskScore;
       } else {
         console.warn(`[BrowserxAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
       }
@@ -935,6 +929,8 @@ export class BrowserxAgent {
           toolName,
           params,
           decision === 'approve' ? 'auto_approve' : 'deny',
+          domain,
+          riskScore,
         );
       }
     }

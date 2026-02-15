@@ -38,6 +38,10 @@ export interface ApprovalMetadata {
   rollbackable: boolean;
   description?: string;
   tags?: string[];
+  /** Current page domain (for web tools memory key) */
+  domain?: string;
+  /** Final risk score after enhancers (for risk ceiling guard) */
+  riskScore?: number;
 }
 
 export interface ApprovalResponse {

@@ -148,6 +148,30 @@ const runtimePolyfill = {
           responseCallback?.({ success: true });
           return;
 
+        case 'UPDATE_APPROVAL_CONFIG': {
+          const config = (message as any).config;
+          // 1. Save to storage
+          storagePolyfill.local.get('approval_config').then(async (result) => {
+            const existing = (result as any)['approval_config'] || {};
+            const merged = { ...existing, ...config };
+            await storagePolyfill.local.set({ approval_config: merged });
+          });
+          // 2. Update ApprovalGate directly
+          import('../agent/DesktopAgentBootstrap').then(({ getDesktopAgentBootstrap }) => {
+            const agent = getDesktopAgentBootstrap().getAgent();
+            if (agent) {
+              const gate = agent.getToolRegistry().getApprovalGate();
+              if (gate) {
+                if (config.mode) gate.setMode(config.mode);
+                if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
+                if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+              }
+            }
+          });
+          responseCallback?.({ success: true });
+          return;
+        }
+
         case 'SUBMISSION':
           // Route SUBMISSION messages through 'browserx:submit' so TauriChannel
           // picks them up and routes to agent.submitOperation().

@@ -118,13 +118,6 @@ export class ApprovalGate {
       }
     }
 
-    // Check session memory for a remembered decision
-    const memoryKey = this.buildMemoryKey(toolName, parameters);
-    const remembered = this.sessionMemory.get(memoryKey);
-    if (remembered) {
-      return remembered.decision;
-    }
-
     // YOLO mode: auto-approve everything (deny rules still checked above)
     if (this.mode === 'yolo') {
       await this.recordHistory(toolName, 0, RiskLevel.None, 'auto_approve', 'auto', ['YOLO mode']);
@@ -153,11 +146,25 @@ export class ApprovalGate {
     // Recalculate level after enhancement
     assessment.level = scoreToRiskLevel(assessment.score);
 
-    // 3. Apply mode-based threshold adjustment
+    // 3. Check session memory with risk ceiling guard
+    const RISK_CEILING_MARGIN = 25;
+    const memoryKey = this.buildMemoryKey(toolName, parameters, domain);
+    const remembered = this.sessionMemory.get(memoryKey);
+    if (remembered) {
+      const withinMargin = remembered.approvedRiskScore === undefined
+        || assessment.score <= remembered.approvedRiskScore + RISK_CEILING_MARGIN;
+      if (withinMargin) {
+        await this.recordHistory(toolName, assessment.score, assessment.level, remembered.decision, 'auto', ['Remembered session decision']);
+        return remembered.decision;
+      }
+      // Risk escalated beyond margin — fall through to normal policy evaluation
+    }
+
+    // 4. Apply mode-based threshold adjustment
     const effectiveScore = assessment.score;
     const askThreshold = this.getAskThreshold();
 
-    // 4. Evaluate policy rules
+    // 5. Evaluate policy rules
     const ruleDecision = this.policyEngine.evaluate(toolName, parameters, effectiveScore);
 
     // Use rule decision if available, otherwise apply mode-based threshold
@@ -171,7 +178,7 @@ export class ApprovalGate {
       decision = 'auto_approve';
     }
 
-    // 5. Handle the decision
+    // 6. Handle the decision
     if (decision === 'auto_approve') {
       await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', assessment.factors);
       return 'auto_approve';
@@ -201,6 +208,8 @@ export class ApprovalGate {
         toolName,
         timestamp: Date.now(),
         rollbackable: false,
+        domain,
+        riskScore: assessment.score,
       },
       timeout: this.getTimeoutForMode(),
     };
@@ -219,13 +228,21 @@ export class ApprovalGate {
   /**
    * Remember a decision for this session
    */
-  rememberDecision(toolName: string, parameters: Record<string, any>, decision: ApprovalDecision): void {
-    const key = this.buildMemoryKey(toolName, parameters);
+  rememberDecision(
+    toolName: string,
+    parameters: Record<string, any>,
+    decision: ApprovalDecision,
+    domain?: string,
+    riskScore?: number,
+  ): void {
+    const key = this.buildMemoryKey(toolName, parameters, domain);
     this.sessionMemory.set(key, {
       toolName,
       parameterHash: key,
       decision,
       timestamp: Date.now(),
+      domain,
+      approvedRiskScore: riskScore,
     });
   }
 
@@ -307,29 +324,33 @@ export class ApprovalGate {
     return domain === pattern || domain.endsWith('.' + pattern);
   }
 
-  /** Keys excluded from memory key because they change every snapshot */
-  private static readonly VOLATILE_KEYS = new Set([
-    'node_id', 'nodeId', 'backend_node_id', 'backendNodeId',
-    'timestamp', 'frame_id', 'frameId',
-  ]);
-
   /**
-   * Build a memory key from tool name and stable semantic parameters.
-   * Includes action + semantic identifiers (aria_label, role, text, command, url)
-   * but excludes volatile IDs (node_id) that change every DOM snapshot.
+   * Build a tool-category-aware memory key.
+   *
+   * Key format by tool category:
+   * - Web tools (browser_dom): `browser_dom||{action}||{domain}`
+   * - Web tools (MCP browser__*): `browser__||{action}||{domain}`
+   * - Terminal: `terminal||{command}` (full command string, like Claude Code)
+   * - Other tools: `{toolName}` (broad tool-level trust)
    */
-  private buildMemoryKey(toolName: string, parameters: Record<string, any>): string {
-    const stable: Record<string, any> = {};
-    for (const [key, value] of Object.entries(parameters)) {
-      if (!ApprovalGate.VOLATILE_KEYS.has(key) && value !== undefined && value !== null) {
-        stable[key] = value;
-      }
+  private buildMemoryKey(toolName: string, parameters: Record<string, any>, domain?: string): string {
+    // Web tools (extension DOM tool)
+    if (toolName === 'browser_dom') {
+      const action = parameters.action || 'unknown';
+      return `browser_dom||${action}||${domain || '_unknown_'}`;
     }
-    const sorted = Object.keys(stable).sort().reduce((obj, key) => {
-      obj[key] = stable[key];
-      return obj;
-    }, {} as Record<string, any>);
-    return `${toolName}||${JSON.stringify(sorted)}`;
+    // Web tools (desktop MCP browser tools)
+    if (toolName.startsWith('browser__')) {
+      const action = toolName.split('__').pop() || 'unknown';
+      return `browser__||${action}||${domain || '_unknown_'}`;
+    }
+    // Terminal: full command string (exact match, like Claude Code's per-command pattern)
+    if (toolName === 'terminal') {
+      const command = (parameters.command || '').trim() || 'unknown';
+      return `terminal||${command}`;
+    }
+    // Other tools: broad tool-level trust
+    return toolName;
   }
 
   /**

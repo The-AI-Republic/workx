@@ -17,6 +17,8 @@ import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../../storage/rollout';
 import { AgentConfig } from '../../config/AgentConfig';
+import { STORAGE_KEYS } from '../../config/defaults';
+import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
 import { MCPManager } from '../../core/mcp/MCPManager';
@@ -491,6 +493,36 @@ function setupMessageHandlers(): void {
       } else {
         sendResponse({ success: false, error: 'Invalid request or registry not initialized' });
       }
+      return true;
+    }
+
+    // Handle approval config updates (UPDATE_APPROVAL_CONFIG)
+    // Uses "double write" pattern: saves to storage AND updates ApprovalGate directly.
+    // This avoids reliance on chrome.storage.onChanged which is not available in desktop mode.
+    if (message.type === 'UPDATE_APPROVAL_CONFIG') {
+      (async () => {
+        try {
+          const config = message.config;
+          // 1. Save to storage
+          const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
+          const existing = result[STORAGE_KEYS.APPROVAL_CONFIG] || { ...DEFAULT_APPROVAL_CONFIG };
+          const merged = { ...existing, ...config };
+          await chrome.storage.local.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: merged });
+          // 2. Update ApprovalGate directly
+          const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+          if (primaryAgent) {
+            const gate = primaryAgent.getToolRegistry().getApprovalGate();
+            if (gate) {
+              if (config.mode) gate.setMode(config.mode);
+              if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
+              if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+            }
+          }
+          sendResponse({ success: true });
+        } catch (error) {
+          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+      })();
       return true;
     }
 

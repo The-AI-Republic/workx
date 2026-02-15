@@ -4,12 +4,11 @@
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
-  import { DEFAULT_APPROVAL_CONFIG } from '@/core/approval/types';
   import { STORAGE_KEYS } from '@/config/defaults';
 
   let currentTheme: UITheme = 'terminal';
@@ -28,23 +27,7 @@
 
   onMount(async () => {
     await loadMode();
-
-    // Listen for storage changes to stay in sync
-    chrome.storage.onChanged.addListener(handleStorageChange);
   });
-
-  onDestroy(() => {
-    chrome.storage.onChanged.removeListener(handleStorageChange);
-  });
-
-  function handleStorageChange(changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) {
-    if (areaName === 'local' && changes[STORAGE_KEYS.APPROVAL_CONFIG]) {
-      const newConfig = changes[STORAGE_KEYS.APPROVAL_CONFIG].newValue as IApprovalConfig | undefined;
-      if (newConfig?.mode) {
-        currentMode = newConfig.mode;
-      }
-    }
-  }
 
   async function loadMode() {
     try {
@@ -63,12 +46,9 @@
     showPopup = false;
 
     try {
-      const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
-      const existing = (result[STORAGE_KEYS.APPROVAL_CONFIG] as IApprovalConfig) || { ...DEFAULT_APPROVAL_CONFIG };
-      existing.mode = mode;
-      await chrome.storage.local.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: existing });
+      chrome.runtime.sendMessage({ type: 'UPDATE_APPROVAL_CONFIG', config: { mode } });
     } catch (error) {
-      console.error('[ApprovalModeIndicator] Failed to save mode:', error);
+      console.error('[ApprovalModeIndicator] Failed to send config update:', error);
     }
   }
 
