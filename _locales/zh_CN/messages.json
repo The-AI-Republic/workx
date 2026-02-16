@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "访问浏览器存储（localStorage、sessionStorage、cookies）"
   },
-  "Action": {
-    "message": "操作"
-  },
-  "Action_Details": {
-    "message": "操作详情"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "添加修改"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "高级设置"
-  },
-  "Advanced_Options": {
-    "message": "高级选项"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "智能体执行工具"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "允许代理执行系统命令（请谨慎使用）"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "允许内容脚本在网页上运行"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "允许的来源"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "审批历史"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "批准"
-  },
-  "Approve_this_action": {
-    "message": "批准此操作"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "请求 Browserx 从任意网页提取结构化数据"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "关闭设置"
   },
-  "Command": {
-    "message": "命令"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "上下文"
   },
   "Create_New_Tab": {
     "message": "新建标签页"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "执行命令"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "过期天数"
-  },
-  "Explain_your_decision": {
-    "message": "解释您的决定..."
   },
   "Extension_Permission": {
     "message": "扩展与权限"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "额外积分"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "提取数据："
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "文件操作（不可用）"
-  },
-  "File_Path": {
-    "message": "文件路径"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "填写表单、提交数据、与表单元素交互"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "你好，世界"
   },
-  "History": {
-    "message": "历史"
-  },
-  "Impact": {
-    "message": "影响"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "拦截并修改网络请求/响应"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "现代聊天"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "请求更改时，修改相关参数"
-  },
   "Monthly_Credits": {
     "message": "每月积分"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "导航工具"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "网络拦截工具"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "新会话"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "暂无审批记录。"
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "页面视觉工具"
   },
-  "Parameter_Modifications": {
-    "message": "参数修改"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "请输入有效的命令"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "优先级层提供更快的响应时间，但价格更高。"
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "快速操作"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "只读"
   },
-  "Reason_optional": {
-    "message": "原因（可选）"
-  },
   "Refreshes_in": {
     "message": "刷新于"
-  },
-  "Reject": {
-    "message": "拒绝"
-  },
-  "Reject_this_action": {
-    "message": "拒绝此操作"
   },
   "Remaining": {
     "message": "剩余："
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "移除 API Key"
   },
-  "Remove_modification": {
-    "message": "移除修改"
-  },
-  "Request_Changes": {
-    "message": "请求更改"
-  },
-  "Request_changes_to_this_action": {
-    "message": "请求对该操作进行更改"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "服务级别"
   },
-  "Session": {
-    "message": "会话"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "稳定"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "终端"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "测试连接"
   },
   "Testing": {
     "message": "测试中…"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "时间"
-  },
-  "Time_remaining": {
-    "message": "剩余时间"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "缓存项的生存时间（秒）（默认：3600）"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "工具"
-  },
   "Tool_Timeout_ms": {
     "message": "工具超时（ms）"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "工具设置"
-  },
-  "Turn": {
-    "message": "切换"
   },
   "UI_Theme": {
     "message": "UI 主题"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "用户已批准的操作"
-  },
-  "User_decision": {
-    "message": "用户决定"
-  },
   "User_preferences_and_interface_settings": {
     "message": "用户偏好和界面设置"
-  },
-  "User_rejected_action": {
-    "message": "用户已拒绝的操作"
-  },
-  "User_requested_modifications": {
-    "message": "用户请求的修改"
   },
   "Using_extra_credits": {
     "message": "使用额外额度"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "欢迎使用 Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "工作区写入"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "您的 API 密钥已加密"
-  },
-  "Your_Decision": {
-    "message": "您的决定"
   },
   "optional": {
     "message": ""

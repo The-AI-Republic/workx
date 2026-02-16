@@ -644,6 +644,21 @@ export class TurnManager {
 
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // Handle approval denial with a descriptive message for the LLM
+      if (errorMsg.includes('denied by the approval system')) {
+        const reason = (error as any).reason;
+        console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`);
+        const output = reason
+          ? `Action denied: The user paused this action and said: "${reason}". Please respond to the user's message directly.`
+          : `Action denied: The user's approval system blocked this ${toolName} call. The action was assessed as too risky or was explicitly denied by the user. Please inform the user and suggest an alternative approach.`;
+        return {
+          type: 'function_call_output',
+          call_id: callId,
+          output,
+        };
+      }
+
       console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);
 
       return {
@@ -765,6 +780,19 @@ export class TurnManager {
       // Get tabId from Session to pass to tool execution
       const tabId = this.session.getTabId();
 
+      // Build metadata for approval context
+      let currentUrl: string | undefined;
+      let currentDomain: string | undefined;
+      try {
+        if (tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
+          const tab = await chrome.tabs.get(tabId);
+          currentUrl = tab.url;
+          if (currentUrl) {
+            try { currentDomain = new URL(currentUrl).hostname; } catch { /* ignore */ }
+          }
+        }
+      } catch { /* tab may not exist in desktop mode */ }
+
       const request = {
         toolName,
         parameters,
@@ -772,13 +800,22 @@ export class TurnManager {
         turnId: `turn_${Date.now()}`,
         tabId, // Pass tabId in request for tools that need it
         timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
+        metadata: {
+          currentUrl,
+          currentDomain,
+        },
       };
 
       const response = await this.toolRegistry.execute(request);
 
       if (!response.success) {
         console.error(`[TurnManager] executeBrowserTool: ${toolName} failed:`, response.error);
-        throw new Error(response.error?.message || 'Tool execution failed');
+        const err = new Error(response.error?.message || 'Tool execution failed');
+        // Thread user's alternative text from approval denial
+        if (response.error?.details?.reason) {
+          (err as any).reason = response.error.details.reason;
+        }
+        throw err;
       }
 
       await this.emitEvent({

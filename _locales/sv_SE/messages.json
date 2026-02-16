@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Åtkomst till webbläsarlagring (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Åtgärd"
-  },
-  "Action_Details": {
-    "message": "Åtgärdsdetaljer"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Lägg till ändring"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Avancerad konfiguration"
-  },
-  "Advanced_Options": {
-    "message": "Avancerade alternativ"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Verktyg för agentexekvering"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Tillåt agenten att köra systemkommandon (använd med försiktighet)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Tillåt innehållsskript att köras på webbsidor"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Tillåtna ursprung"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Godkännandehistorik"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "Godkänn"
-  },
-  "Approve_this_action": {
-    "message": "Godkänn denna åtgärd"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Be Browserx att extrahera strukturerad data från vilken webbsida som helst"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "Stäng inställningar"
   },
-  "Command": {
-    "message": "Kommando"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Kontext"
   },
   "Create_New_Tab": {
     "message": "Skapa ny flik"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "Kör kommandon"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Förfaller efter dagar"
-  },
-  "Explain_your_decision": {
-    "message": "Förklara ditt beslut..."
   },
   "Extension_Permission": {
     "message": "Tillägg och behörigheter"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "Extra krediter"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Extrahera data:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "Filoperationer (ej tillgängligt)"
-  },
-  "File_Path": {
-    "message": "Filsökväg"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Fyll i formulär, skicka data, interagera med formulärelement"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Hej världen"
   },
-  "History": {
-    "message": "Historik"
-  },
-  "Impact": {
-    "message": "Påverkan"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Avskära och modifiera nätverksförfrågningar/svar"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Ändra parametrar vid begäran om förändringar"
-  },
   "Monthly_Credits": {
     "message": "Månatliga krediter"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "Navigationsverktyg"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Nätverksinspektionsverktyg"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "Ny konversation"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Ingen godkännandshistorik ännu."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "Sidvisionsverktyg"
   },
-  "Parameter_Modifications": {
-    "message": "Parameterändringar"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "Ange ett giltigt kommando"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Prioritetsskiktet ger snabbare svarstider med högre pris."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "Snabbåtgärd"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "Skrivskyddad"
   },
-  "Reason_optional": {
-    "message": "Orsak (valfritt)"
-  },
   "Refreshes_in": {
     "message": "Uppdateras om"
-  },
-  "Reject": {
-    "message": "Avvisa"
-  },
-  "Reject_this_action": {
-    "message": "Avvisa denna åtgärd"
   },
   "Remaining": {
     "message": "Återstår:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "Ta bort API-nyckel"
   },
-  "Remove_modification": {
-    "message": "Ta bort ändring"
-  },
-  "Request_Changes": {
-    "message": "Begär ändringar"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Begär ändringar av denna åtgärd"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "Tjänstenivå"
   },
-  "Session": {
-    "message": "Session"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Testa anslutning"
   },
   "Testing": {
     "message": "Testar..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "Tid"
-  },
-  "Time_remaining": {
-    "message": "Återstående tid"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Livstid för cachade objekt i sekunder (standard: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Verktyg"
-  },
   "Tool_Timeout_ms": {
     "message": "Verktygstidsgräns (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Verktygsinställningar"
-  },
-  "Turn": {
-    "message": "Runda"
   },
   "UI_Theme": {
     "message": "UI-tema"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Användargodkänd åtgärd"
-  },
-  "User_decision": {
-    "message": "Användarbeslut"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Användarinställningar och gränssnittsinställningar"
-  },
-  "User_rejected_action": {
-    "message": "Användaren avvisade åtgärden"
-  },
-  "User_requested_modifications": {
-    "message": "Användaren begärde ändringar"
   },
   "Using_extra_credits": {
     "message": "Använder extra krediter"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Välkommen till Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Skriv till arbetsyta"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Din API-nyckel är krypterad"
-  },
-  "Your_Decision": {
-    "message": "Ditt beslut"
   },
   "optional": {
     "message": ""

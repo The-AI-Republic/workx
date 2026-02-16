@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਸਟੋਰੇਜ (localStorage, sessionStorage, cookies) ਤੱਕ ਪਹੁੰਚ"
   },
-  "Action": {
-    "message": "ਕਾਰਵਾਈ"
-  },
-  "Action_Details": {
-    "message": "ਕਾਰਵਾਈ ਵੇਰਵੇ"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "ਸੋਧ ਜੋੜੋ"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "ਉੱਨਤ ਸੰਰਚਨਾ"
-  },
-  "Advanced_Options": {
-    "message": "ਉੱਨਤ ਵਿਕਲਪ"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "ਏਜੰਟ ਚਲਾਉਣ ਦੇ ਟੂਲ"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "ਏਜੰਟ ਨੂੰ ਸਿਸਟਮ ਕਮਾਂਡਾਂ ਚਲਾਉਣ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ (ਸਾਵਧਾਨੀ ਨਾਲ ਵਰਤੋ)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "ਵੈੱਬ ਪੇਜਾਂ 'ਤੇ ਕਾਂਟੈਂਟ ਸਕ੍ਰਿਪਟ ਚਲਾਉਣ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "ਮਨਜ਼ੂਰਿਤ ਮੂਲ"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "ਮਨਜ਼ੂਰੀ ਇਤਿਹਾਸ"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "ਮਨਜ਼ੂਰ ਕਰੋ"
-  },
-  "Approve_this_action": {
-    "message": "ਇਸ ਕਾਰਵਾਈ ਨੂੰ ਮਨਜ਼ੂਰ ਕਰੋ"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ਕਿਸੇ ਵੀ ਵੈੱਬਪੇਜ ਤੋਂ ਸੰਰਚਿਤ ਡਾਟਾ ਕੱਢਣ ਲਈ Browserx ਨੂੰ ਕਹਿੰਦੇ ਹੋ"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "ਸੈਟਿੰਗਜ਼ ਬੰਦ ਕਰੋ"
   },
-  "Command": {
-    "message": "ਕਮਾਂਡ"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "ਸੰਦਰਭ"
   },
   "Create_New_Tab": {
     "message": "ਨਵਾਂ ਟੈਬ ਬਣਾਓ"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "ਕਮਾਂਡਾਂ ਚਲਾਓ"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "ਦਿਨਾਂ ਬਾਅਦ ਮਿਆਦ ਖਤਮ ਹੋਵੇ"
-  },
-  "Explain_your_decision": {
-    "message": "ਆਪਣਾ ਫੈਸਲਾ ਸਮਝਾਓ..."
   },
   "Extension_Permission": {
     "message": "ਐਕਸਟੈਂਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀ"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "ਵਾਧੂ ਕ੍ਰੈਡਿਟਸ"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "ਡਾਟਾ ਕੱਢੋ:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "ਫਾਈਲ ਕਾਰਵਾਈਆਂ (ਉਪਲਬਧ ਨਹੀਂ)"
-  },
-  "File_Path": {
-    "message": "ਫਾਈਲ ਪੰਥ"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ਫਾਰਮ ਭਰੋ, ਡਾਟਾ ਸਬਮਿਟ ਕਰੋ, ਫਾਰਮ ਅੰਸ਼ਾਂ ਨਾਲ ਇੰਟਰੈਕਟ ਕਰੋ"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "ਹੈਲੋ ਵਰਲਡ"
   },
-  "History": {
-    "message": "ਇਤਿਹਾਸ"
-  },
-  "Impact": {
-    "message": "ਅਸਰ"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "ਨੈੱਟਵਰਕ ਰਿਕਵੈਸਟ/ਰਿਸਪਾਂਸ ਨੂੰ ਇੰਟਰਸੈਪਟ ਅਤੇ ਸੋਧੋ"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "ਆਧੁਨਿਕ ਚੈਟ"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "ਬਦਲਾਅ ਮੰਗਣ ਸਮੇਂ ਪੈਰਾਮੀਟਰਾਂ ਸੋਧੋ"
-  },
   "Monthly_Credits": {
     "message": "ਮਾਸਿਕ ਕ੍ਰੈਡਿਟ"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "ਨੈਵੀਗੇਸ਼ਨ ਟੂਲ"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "ਨੈੱਟਵਰਕ ਇੰਟਰਸੈਪਟ ਟੂਲ"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "ਨਵੀਂ ਗੱਲਬਾਤ"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "ਹਾਲੇ ਕੋਈ ਮਨਜ਼ੂਰੀ ਇਤਿਹਾਸ ਨਹੀਂ।"
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "ਪੇਜ ਵਿਜ਼ਨ ਟੂਲ"
   },
-  "Parameter_Modifications": {
-    "message": "ਪੈਰਾਮੀਟਰ ਤਬਦੀਲੀਆਂ"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵੈਧ ਕਮਾਂਡ ਟਾਈਪ ਕਰੋ"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "ਪ੍ਰਾਇਰਟੀ ਟੀਅਰ ਉੱਚੀ ਕੀਮਤ ਨਾਲ ਤੇਜ਼ ਜਵਾਬ ਸਮਾਂ ਪ੍ਰਦਾਨ ਕਰਦੀ ਹੈ।"
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "ਤੇਜ਼ ਕਾਰਵਾਈ"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "ਪੜ੍ਹਨ-ਲਈ-ਕੇਵਲ"
   },
-  "Reason_optional": {
-    "message": "ਕਾਰਨ (ਵਿਕਲਪਿਕ)"
-  },
   "Refreshes_in": {
     "message": "ਨਵੀਂਕਰਨ ਵਿੱਚ"
-  },
-  "Reject": {
-    "message": "ਰੱਦ ਕਰੋ"
-  },
-  "Reject_this_action": {
-    "message": "ਇਸ ਕਾਰਵਾਈ ਨੂੰ ਰੱਦ ਕਰੋ"
   },
   "Remaining": {
     "message": "ਬਾਕੀ:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "API ਕੁੰਜੀ ਹਟਾਓ"
   },
-  "Remove_modification": {
-    "message": "ਸੋਧ ਹਟਾਓ"
-  },
-  "Request_Changes": {
-    "message": "ਬਦਲਾਅ ਦੀ ਬੇਨਤੀ ਕਰੋ"
-  },
-  "Request_changes_to_this_action": {
-    "message": "ਇਸ ਕਾਰਵਾਈ ਲਈ ਬਦਲਾਅ ਦੀ ਬੇਨਤੀ ਕਰੋ"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "ਸੇਵਾ ਪੱਧਰ"
   },
-  "Session": {
-    "message": "ਸੈਸ਼ਨ"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "ਸਥਿਰ"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "ਟਰਮੀਨਲ"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "ਕਨੈਕਸ਼ਨ ਦੀ ਜਾਂਚ ਕਰੋ"
   },
   "Testing": {
     "message": "ਪਰੀਖਿਆ ਜਾ ਰਹੀ ਹੈ..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "ਸਮਾਂ"
-  },
-  "Time_remaining": {
-    "message": "ਬਾਕੀ ਸਮਾਂ"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "ਕੈਸ਼ ਕੀਤੇ ਆਈਟਮਾਂ ਦੀ ਜੀਵਨ ਸਮਾਂ (ਸੈਕੰਡ) (ਮੂਲ: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "ਟੂਲ"
-  },
   "Tool_Timeout_ms": {
     "message": "ਟੂਲ ਟਾਈਮਆਉਟ (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "ਟੂਲ ਸੈਟਿੰਗਜ਼"
-  },
-  "Turn": {
-    "message": "ਮੋੜ"
   },
   "UI_Theme": {
     "message": "UI ਥੀਮ"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "ਉਪਭੋਗਤਾ ਦੁਆਰਾ ਮਨਜ਼ੂਰ ਕੀਤੀ ਕਾਰਵਾਈ"
-  },
-  "User_decision": {
-    "message": "ਉਪਭੋਗਤਾ ਦਾ ਫੈਸਲਾ"
-  },
   "User_preferences_and_interface_settings": {
     "message": "ਉਪਭੋਗਤਾ ਦੀਆਂ ਪਸੰਦਾਂ ਅਤੇ ਇੰਟਰਫੇਸ ਸੈਟਿੰਗਾਂ"
-  },
-  "User_rejected_action": {
-    "message": "ਉਪਭੋਗਤਾ ਦੁਆਰਾ ਰੱਦ ਕੀਤੀ ਕਾਰਵਾਈ"
-  },
-  "User_requested_modifications": {
-    "message": "ਉਪਭੋਗਤਾ ਦੁਆਰਾ ਮੰਗੇ ਗਏ ਸੋਧਾਂ"
   },
   "Using_extra_credits": {
     "message": "ਵਾਧੂ ਕ੍ਰੈਡਿਟ ਦੀ ਵਰਤੋਂ"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "ਵਰਕਸਪੇਸ ਰਾਈਟ"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "ਤੁਹਾਡੀ API ਕੁੰਜੀ ਇਨਕ੍ਰਿਪਟ ਕੀਤੀ ਗਈ ਹੈ"
-  },
-  "Your_Decision": {
-    "message": "ਤੁਹਾਡਾ ਫੈਸਲਾ"
   },
   "optional": {
     "message": ""

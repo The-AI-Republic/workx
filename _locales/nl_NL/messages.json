@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Toegang tot browseropslag (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Actie"
-  },
-  "Action_Details": {
-    "message": "Actiedetails"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Wijziging toevoegen"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Geavanceerde configuratie"
-  },
-  "Advanced_Options": {
-    "message": "Geavanceerde opties"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Agent-uitvoeringshulpmiddelen"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Agent toestaan systeemopdrachten uit te voeren (met voorzichtigheid gebruiken)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Toestaan dat inhoudsscripts op webpagina's worden uitgevoerd"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Toegestane origins"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Goedkeuringsgeschiedenis"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "Goedkeuren"
-  },
-  "Approve_this_action": {
-    "message": "Deze actie goedkeuren"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "Instellingen sluiten"
   },
-  "Command": {
-    "message": "Opdracht"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Context"
   },
   "Create_New_Tab": {
     "message": "Nieuw tabblad maken"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "Opdrachten uitvoeren"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Verloopt na dagen"
-  },
-  "Explain_your_decision": {
-    "message": "Leg uw beslissing uit..."
   },
   "Extension_Permission": {
     "message": "Extensie & toestemming"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "Extra Credits"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Gegevens extraheren:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "Bestandsbewerkingen (niet beschikbaar)"
-  },
-  "File_Path": {
-    "message": "Bestandspad"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Formulieren invullen, gegevens verzenden, interactie met formulierelementen"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Hallo wereld"
   },
-  "History": {
-    "message": "Geschiedenis"
-  },
-  "Impact": {
-    "message": "Impact"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Netwerkverzoeken en -reacties onderscheppen en aanpassen"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "Moderne chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Parameters aanpassen bij het aanvragen van wijzigingen"
-  },
   "Monthly_Credits": {
     "message": "Maandelijkse credits"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "Navigatietool"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Netwerkinterceptietool"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "Nieuw gesprek"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Nog geen goedkeuringsgeschiedenis."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "Pagina Vision Tool"
   },
-  "Parameter_Modifications": {
-    "message": "Parameterwijzigingen"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "Typ een geldige opdracht"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Het prioriteitsniveau biedt snellere responstijden tegen hogere kosten."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "Snelle actie"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "Alleen-lezen"
   },
-  "Reason_optional": {
-    "message": "Reden (optioneel)"
-  },
   "Refreshes_in": {
     "message": "Vernieuwt over:"
-  },
-  "Reject": {
-    "message": "Afwijzen"
-  },
-  "Reject_this_action": {
-    "message": "Deze actie weigeren"
   },
   "Remaining": {
     "message": "Resterend:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "API-sleutel verwijderen"
   },
-  "Remove_modification": {
-    "message": "Wijziging verwijderen"
-  },
-  "Request_Changes": {
-    "message": "Wijzigingen aanvragen"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Wijzigingen voor deze actie aanvragen"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "Serviceklasse"
   },
-  "Session": {
-    "message": "Sessie"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabiel"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Verbinding testen"
   },
   "Testing": {
     "message": "Testen..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "Tijd"
-  },
-  "Time_remaining": {
-    "message": "Resterende tijd"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live voor gecachte items in seconden (standaard: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Tool"
-  },
   "Tool_Timeout_ms": {
     "message": "Tool-timeout (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Tools-instellingen"
-  },
-  "Turn": {
-    "message": "Beurt"
   },
   "UI_Theme": {
     "message": "UI-thema"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Door gebruiker goedgekeurde actie"
-  },
-  "User_decision": {
-    "message": "Gebruikerskeuze"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Gebruikersvoorkeuren en interface-instellingen"
-  },
-  "User_rejected_action": {
-    "message": "Gebruiker heeft actie afgewezen"
-  },
-  "User_requested_modifications": {
-    "message": "Door gebruiker aangevraagde wijzigingen"
   },
   "Using_extra_credits": {
     "message": "Extra credits gebruiken"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Welkom bij Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Schrijven in werkruimte"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Je API-sleutel is versleuteld"
-  },
-  "Your_Decision": {
-    "message": "Je beslissing"
   },
   "optional": {
     "message": ""

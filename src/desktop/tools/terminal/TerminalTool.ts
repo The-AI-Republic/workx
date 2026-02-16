@@ -91,7 +91,6 @@ const DEFAULT_OPTIONS: ExecuteOptions = {
  * and optional OS-native sandbox protection.
  */
 export class TerminalTool {
-  private securityFilter: SecurityFilter;
   private defaultCwd: string | null = null;
   private sandboxManager: SandboxManager;
 
@@ -376,17 +375,4 @@ export class TerminalTool {
     return output;
   }
 
-  /**
-   * Update security configuration
-   */
-  updateSecurityConfig(config: Partial<SecurityConfig>): void {
-    this.securityFilter.updateConfig(config);
-  }
-
-  /**
-   * Get current security configuration
-   */
-  getSecurityConfig(): SecurityConfig {
-    return this.securityFilter.getConfig();
-  }
 }

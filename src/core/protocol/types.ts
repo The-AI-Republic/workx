@@ -76,6 +76,10 @@ export type Op =
     id: string;
     /** The user's decision in response to the request */
     decision: ReviewDecision;
+    /** Remember this decision for the rest of the session */
+    remember?: boolean;
+    /** Alternative instructions from the user (when decision is request_change) */
+    alternativeText?: string;
   }
   | {
     type: 'PatchApproval';

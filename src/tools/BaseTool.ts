@@ -99,6 +99,7 @@ export interface ToolExecutionRequest {
   turnId: string;
   tabId?: number; // Current session's bound tab ID
   timeout?: number;
+  metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
 }
 
 /**

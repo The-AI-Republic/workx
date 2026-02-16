@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Доступ к хранилищу браузера (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Действие"
-  },
-  "Action_Details": {
-    "message": "Детали действия"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Добавить изменение"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Расширенная конфигурация"
-  },
-  "Advanced_Options": {
-    "message": "Расширенные параметры"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Инструменты выполнения агента"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Разрешить агенту выполнять системные команды (используйте с осторожностью)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Разрешить запуск скриптов содержимого на веб‑страницах"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Разрешённые источники"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "История одобрений"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "Одобрить"
-  },
-  "Approve_this_action": {
-    "message": "Одобрить это действие"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Попросить Browserx извлечь структурированные данные с любой веб‑страницы"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "Закрыть настройки"
   },
-  "Command": {
-    "message": "Команда"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Контекст"
   },
   "Create_New_Tab": {
     "message": "Создать новую вкладку"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "Выполнить команды"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Истекает через дней"
-  },
-  "Explain_your_decision": {
-    "message": "Объясните ваше решение..."
   },
   "Extension_Permission": {
     "message": "Расширение и разрешение"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "Дополнительные кредиты"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Извлечь данные:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "Операции с файлами (Недоступно)"
-  },
-  "File_Path": {
-    "message": "Путь к файлу"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Заполнять формы, отправлять данные, взаимодействовать с элементами формы"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Здравствуй, мир"
   },
-  "History": {
-    "message": "История"
-  },
-  "Impact": {
-    "message": "Влияние"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Перехватывать и изменять сетевые запросы/ответы"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "Современный чат"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Изменять параметры при запросе изменений"
-  },
   "Monthly_Credits": {
     "message": "Ежемесячные кредиты"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "Инструмент навигации"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Инструмент перехвата сети"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "Новый разговор"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "История одобрений отсутствует."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "Инструмент Page Vision"
   },
-  "Parameter_Modifications": {
-    "message": "Изменения параметров"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "Введите корректную команду"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Приоритетный тариф обеспечивает более быстрое время ответа по более высокой цене."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "Быстрое действие"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "Только для чтения"
   },
-  "Reason_optional": {
-    "message": "Причина (необязательно)"
-  },
   "Refreshes_in": {
     "message": "Обновление через"
-  },
-  "Reject": {
-    "message": "Отклонить"
-  },
-  "Reject_this_action": {
-    "message": "Отклонить это действие"
   },
   "Remaining": {
     "message": "Осталось:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "Удалить API‑ключ"
   },
-  "Remove_modification": {
-    "message": "Удалить изменение"
-  },
-  "Request_Changes": {
-    "message": "Запросить изменения"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Запросить изменения к этому действию"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "Уровень сервиса"
   },
-  "Session": {
-    "message": "Сессия"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "Стабильный"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "Терминал"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Проверить соединение"
   },
   "Testing": {
     "message": "Проверка..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "Время"
-  },
-  "Time_remaining": {
-    "message": "Оставшееся время"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Время жизни кэшированных элементов в секундах (по умолчанию: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Инструмент"
-  },
   "Tool_Timeout_ms": {
     "message": "Тайм-аут инструмента (мс)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Настройки инструментов"
-  },
-  "Turn": {
-    "message": "Переключить"
   },
   "UI_Theme": {
     "message": "Тема интерфейса"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Действие, одобренное пользователем"
-  },
-  "User_decision": {
-    "message": "Решение пользователя"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Настройки предпочтений пользователя и интерфейса"
-  },
-  "User_rejected_action": {
-    "message": "Действие, отклонённое пользователем"
-  },
-  "User_requested_modifications": {
-    "message": "Запрошенные пользователем изменения"
   },
   "Using_extra_credits": {
     "message": "Использование дополнительных кредитов"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Добро пожаловать в Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Запись рабочего пространства"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Ваш API‑ключ зашифрован"
-  },
-  "Your_Decision": {
-    "message": "Ваше решение"
   },
   "optional": {
     "message": ""

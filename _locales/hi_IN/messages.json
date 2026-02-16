@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ब्राउज़र स्टोरेज (localStorage, sessionStorage, cookies) तक पहुँचें"
   },
-  "Action": {
-    "message": "कार्रवाई"
-  },
-  "Action_Details": {
-    "message": "कार्रवाई विवरण"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "संशोधन जोड़ें"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "उन्नत कॉन्फ़िगरेशन"
-  },
-  "Advanced_Options": {
-    "message": "उन्नत विकल्प"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "एजेंट निष्पादन टूल्स"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "एजेंट को सिस्टम कमांड्स चलाने की अनुमति दें (सावधानी से उपयोग करें)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "वेब पेजों पर कंटेंट स्क्रिप्ट्स चलाने की अनुमति दें"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "अनुमत स्रोत (Origins)"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "स्वीकृति इतिहास"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "स्वीकृत करें"
-  },
-  "Approve_this_action": {
-    "message": "इस कार्रवाई को स्वीकृत करें"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx को किसी भी वेबपेज से संरचित डेटा निकालने के लिए कहें"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "सेटिंग्स बंद करें"
   },
-  "Command": {
-    "message": "कमांड"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "संदर्भ"
   },
   "Create_New_Tab": {
     "message": "नया टैब बनाएं"
@@ -284,6 +284,9 @@
   "Execute_Commands": {
     "message": "कमांड निष्पादित करें"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "$1$ दिनों के बाद समाप्त हो",
     "placeholders": {
@@ -291,9 +294,6 @@
         "content": "$1"
       }
     }
-  },
-  "Explain_your_decision": {
-    "message": "अपना निर्णय समझाएँ..."
   },
   "Extension_Permission": {
     "message": "एक्सटेंशन और अनुमति"
@@ -309,6 +309,9 @@
   },
   "Extra_Credits": {
     "message": "अतिरिक्त क्रेडिट्स"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "डेटा निकालें:"
@@ -327,9 +330,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "फ़ाइल संचालन (उपलब्ध नहीं)"
-  },
-  "File_Path": {
-    "message": "फ़ाइल पथ"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "फ़ॉर्म भरें, डेटा सबमिट करें, फ़ॉर्म तत्वों के साथ इंटरैक्ट करें"
@@ -366,11 +366,8 @@
   "Hello_World": {
     "message": "हैलो वर्ल्ड"
   },
-  "History": {
-    "message": "इतिहास"
-  },
-  "Impact": {
-    "message": "प्रभाव"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "नेटवर्क अनुरोध/प्रतिक्रिया को इंटरसेप्ट और संशोधित करना"
@@ -477,9 +474,6 @@
   "Modern_Chat": {
     "message": "आधुनिक चैट"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "परिवर्तनों का अनुरोध करते समय पैरामीटर संशोधित करें"
-  },
   "Monthly_Credits": {
     "message": "मासिक क्रेडिट"
   },
@@ -495,6 +489,9 @@
   "Navigation_Tool": {
     "message": "नेविगेशन टूल"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "नेटवर्क इंटरसेप्ट टूल"
   },
@@ -504,14 +501,14 @@
   "New_Conversation": {
     "message": "नई बातचीत"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "अभी तक कोई अनुमोदन इतिहास नहीं है।"
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -546,9 +543,6 @@
   "Page_Vision_Tool": {
     "message": "पेज विज़न टूल"
   },
-  "Parameter_Modifications": {
-    "message": "पैरामीटर संशोधन"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -563,6 +557,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "कृपया एक वैध कमांड दर्ज करें।"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "प्रायोरिटी टियर तेज़ प्रतिक्रिया समय प्रदान करता है, लेकिन कीमत अधिक होती है।"
@@ -588,20 +585,17 @@
   "Quick_action": {
     "message": "त्वरित कार्रवाई"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "केवल पढ़ने योग्य"
   },
-  "Reason_optional": {
-    "message": "कारण (वैकल्पिक)"
-  },
   "Refreshes_in": {
     "message": "रिफ्रेश होगा:"
-  },
-  "Reject": {
-    "message": "अस्वीकार करें"
-  },
-  "Reject_this_action": {
-    "message": "इस कार्रवाई को अस्वीकार करें"
   },
   "Remaining": {
     "message": "शेष:"
@@ -612,16 +606,10 @@
   "Remove_API_Key": {
     "message": "API कुंजी हटाएँ"
   },
-  "Remove_modification": {
-    "message": "परिवर्तन हटाएँ"
-  },
-  "Request_Changes": {
-    "message": "परिवर्तन का अनुरोध"
-  },
-  "Request_changes_to_this_action": {
-    "message": "इस कार्रवाई में बदलाव का अनुरोध करें"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -640,6 +628,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -684,9 +675,6 @@
   "Service_Tier": {
     "message": "सेवा स्तर"
   },
-  "Session": {
-    "message": "सत्र"
-  },
   "Session_error": {
     "message": ""
   },
@@ -713,6 +701,9 @@
   },
   "Stable": {
     "message": "स्थिर"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -756,11 +747,17 @@
   "Terminal": {
     "message": "टर्मिनल"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "कनेक्शन परीक्षण करें"
   },
   "Testing": {
     "message": "परीक्षण चल रहा है..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -770,9 +767,6 @@
   },
   "Time": {
     "message": "समय"
-  },
-  "Time_remaining": {
-    "message": "शेष समय"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "कैश किए गए आइटमों के लिए सेकंड में टाइम-टू-लाइव (डिफ़ॉल्ट: 3600)"
@@ -786,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "टूल"
-  },
   "Tool_Timeout_ms": {
     "message": "टूल टाइमआउट (ms)"
   },
@@ -797,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "टूल सेटिंग्स"
-  },
-  "Turn": {
-    "message": "टर्न"
   },
   "UI_Theme": {
     "message": "UI थीम"
@@ -843,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "उपयोगकर्ता द्वारा स्वीकृत कार्रवाई"
-  },
-  "User_decision": {
-    "message": "उपयोगकर्ता निर्णय"
-  },
   "User_preferences_and_interface_settings": {
     "message": "उपयोगकर्ता प्राथमिकताएँ और इंटरफ़ेस सेटिंग्स"
-  },
-  "User_rejected_action": {
-    "message": "उपयोगकर्ता द्वारा अस्वीकृत कार्रवाई"
-  },
-  "User_requested_modifications": {
-    "message": "उपयोगकर्ता ने संशोधन का अनुरोध किया"
   },
   "Using_extra_credits": {
     "message": "अतिरिक्त क्रेडिट का उपयोग"
@@ -882,6 +858,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx में आपका स्वागत है"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "वर्कस्पेस लिखें"
   },
@@ -893,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "आपकी API कुंजी एन्क्रिप्टेड है"
-  },
-  "Your_Decision": {
-    "message": "आपका निर्णय"
   },
   "optional": {
     "message": ""
