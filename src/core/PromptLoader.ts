@@ -62,16 +62,22 @@ export async function loadPrompt(): Promise<string> {
         ...staticContext,
         currentDateTime: new Date().toISOString(),
       };
-      return composer.composeMainInstruction(configuredAgentType, context);
+      const prompt = composer.composeMainInstruction(configuredAgentType, context);
+      console.log(`[PromptLoader] System prompt (${configuredAgentType}, composed):\n`, prompt);
+      return prompt;
     } catch (error) {
       console.error('[PromptLoader] composeMainInstruction failed, falling back to default prompt:', error);
     }
   }
   // Fallback: return static default prompt based on build mode
+  let fallback: string;
   if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
-    return defaultPiPrompt;
+    fallback = defaultPiPrompt;
+  } else {
+    fallback = defaultBrowserxPrompt;
   }
-  return defaultBrowserxPrompt;
+  console.log(`[PromptLoader] System prompt (${configuredAgentType}, fallback):\n`, fallback);
+  return fallback;
 }
 
 /**
