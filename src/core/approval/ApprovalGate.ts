@@ -9,6 +9,7 @@
 
 import type {
   ApprovalDecision,
+  ApprovalCheckResult,
   RiskAssessment,
   IRiskAssessor,
   IContextEnhancer,
@@ -93,7 +94,7 @@ export class ApprovalGate {
     parameters: Record<string, any>,
     assessor?: IRiskAssessor,
     context?: Partial<ApprovalContext>
-  ): Promise<ApprovalDecision> {
+  ): Promise<ApprovalCheckResult> {
     // Build full context
     const fullContext: ApprovalContext = {
       toolName,
@@ -222,6 +223,10 @@ export class ApprovalGate {
     }
 
     await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'user', assessment.factors);
+    // Return user's alternative text alongside denial when present
+    if (response.reason && response.reason !== 'Denied by user') {
+      return { decision: 'deny', reason: response.reason };
+    }
     return 'deny';
   }
 

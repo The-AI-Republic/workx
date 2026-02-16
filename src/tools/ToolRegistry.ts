@@ -285,12 +285,15 @@ export class ToolRegistry {
           }
         }
 
-        const decision = await this.approvalGate.check(
+        const result = await this.approvalGate.check(
           request.toolName,
           approvalParameters,
           entry.riskAssessor,
           context
         );
+
+        const decision = typeof result === 'string' ? result : result.decision;
+        const reason = typeof result === 'object' && result !== null ? result.reason : undefined;
 
         if (decision === 'deny') {
           return {
@@ -298,6 +301,7 @@ export class ToolRegistry {
             error: {
               code: 'APPROVAL_DENIED',
               message: `Tool '${request.toolName}' was denied by the approval system`,
+              details: reason ? { reason } : undefined,
             },
             duration: Date.now() - startTime,
           };

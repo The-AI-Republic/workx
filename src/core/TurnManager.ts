@@ -647,11 +647,15 @@ export class TurnManager {
 
       // Handle approval denial with a descriptive message for the LLM
       if (errorMsg.includes('denied by the approval system')) {
-        console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system`);
+        const reason = (error as any).reason;
+        console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`);
+        const output = reason
+          ? `Action denied: The user paused this action and said: "${reason}". Please respond to the user's message directly.`
+          : `Action denied: The user's approval system blocked this ${toolName} call. The action was assessed as too risky or was explicitly denied by the user. Please inform the user and suggest an alternative approach.`;
         return {
           type: 'function_call_output',
           call_id: callId,
-          output: `Action denied: The user's approval system blocked this ${toolName} call. The action was assessed as too risky or was explicitly denied by the user. Please inform the user and suggest an alternative approach.`,
+          output,
         };
       }
 
@@ -806,7 +810,12 @@ export class TurnManager {
 
       if (!response.success) {
         console.error(`[TurnManager] executeBrowserTool: ${toolName} failed:`, response.error);
-        throw new Error(response.error?.message || 'Tool execution failed');
+        const err = new Error(response.error?.message || 'Tool execution failed');
+        // Thread user's alternative text from approval denial
+        if (response.error?.details?.reason) {
+          (err as any).reason = response.error.details.reason;
+        }
+        throw err;
       }
 
       await this.emitEvent({

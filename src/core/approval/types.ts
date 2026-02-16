@@ -39,6 +39,12 @@ export function scoreToRiskLevel(score: number): RiskLevel {
 export type ApprovalDecision = 'auto_approve' | 'ask_user' | 'deny';
 
 /**
+ * Result of ApprovalGate.check() — either a bare decision string
+ * or an enriched denial carrying the user's alternative text.
+ */
+export type ApprovalCheckResult = ApprovalDecision | { decision: 'deny'; reason: string };
+
+/**
  * Result of a risk assessment for a tool call
  */
 export interface RiskAssessment {
