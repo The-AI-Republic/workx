@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "存取瀏覽器儲存 (localStorage、sessionStorage、cookies)"
   },
-  "Action": {
-    "message": "操作"
-  },
-  "Action_Details": {
-    "message": "操作細節"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "新增修改"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "進階設定"
-  },
-  "Advanced_Options": {
-    "message": "進階選項"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "批准紀錄"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "核准"
-  },
-  "Approve_this_action": {
-    "message": "批准此操作"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "請求 Browserx 從任何網頁提取結構化資料"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "關閉設定"
   },
-  "Command": {
-    "message": "指令"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "上下文"
   },
   "Create_New_Tab": {
     "message": "建立新分頁"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "過期天數"
   },
-  "Explain_your_decision": {
-    "message": "說明您的決定…"
-  },
   "Extension_Permission": {
     "message": "擴充功能與權限"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "檔案操作（不可用）"
   },
-  "File_Path": {
-    "message": "檔案路徑"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "填寫表單、提交資料、與表單元件互動"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "你好，世界"
   },
-  "History": {
-    "message": "歷史記錄"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "影響"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "攔截並修改網路請求/回應"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat (保留原文)"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "在請求變更時修改參數"
-  },
   "Monthly_Credits": {
     "message": "每月點數"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "尚無批准歷史"
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "頁面視覺工具"
-  },
-  "Parameter_Modifications": {
-    "message": "參數修改"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "唯讀"
   },
-  "Reason_optional": {
-    "message": "原因（選填）"
-  },
   "Refreshes_in": {
     "message": "刷新於"
-  },
-  "Reject": {
-    "message": "拒絕"
-  },
-  "Reject_this_action": {
-    "message": "拒絕此操作"
   },
   "Remaining": {
     "message": "剩餘："
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "移除 API 金鑰"
-  },
-  "Remove_modification": {
-    "message": "移除修改"
-  },
-  "Request_Changes": {
-    "message": "請求變更"
-  },
-  "Request_changes_to_this_action": {
-    "message": "請求對此操作進行變更"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "服務等級"
   },
-  "Session": {
-    "message": "工作階段"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "穩定"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "時間"
   },
-  "Time_remaining": {
-    "message": "剩餘時間"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "快取項目的存活時間（秒）（預設：3600）"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "工具"
-  },
   "Tool_Timeout_ms": {
     "message": "工具逾時 (毫秒)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "工具設定"
-  },
-  "Turn": {
-    "message": "開啟/關閉"
   },
   "UI_Theme": {
     "message": "介面主題"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "使用者已批准的操作"
-  },
-  "User_decision": {
-    "message": "使用者決策"
-  },
   "User_preferences_and_interface_settings": {
     "message": "使用者偏好與介面設定"
-  },
-  "User_rejected_action": {
-    "message": "使用者拒絕的操作"
-  },
-  "User_requested_modifications": {
-    "message": "使用者請求的修改"
   },
   "Using_extra_credits": {
     "message": "使用額外信用"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "您的 API 金鑰已加密"
-  },
-  "Your_Decision": {
-    "message": "您的決定"
   },
   "optional": {
     "message": ""

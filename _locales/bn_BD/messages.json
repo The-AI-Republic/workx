@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ব্রাউজার স্টোরেজে প্রবেশ (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "অ্যাকশন"
-  },
-  "Action_Details": {
-    "message": "অ্যাকশন বিবরণ"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "পরিবর্তন যোগ করুন"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "উন্নত কনফিগারেশন"
-  },
-  "Advanced_Options": {
-    "message": "উন্নত বিকল্প"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "অনুমোদন ইতিহাস"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "অনুমোদন"
-  },
-  "Approve_this_action": {
-    "message": "এই অ্যাকশন অনুমোদন করুন"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx-কে যেকোনো ওয়েবপেজ থেকে কাঠামোবদ্ধ ডেটা বের করতে বলুন"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "সেটিংস বন্ধ করুন"
   },
-  "Command": {
-    "message": "কমান্ড"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "প্রসঙ্গ"
   },
   "Create_New_Tab": {
     "message": "নতুন ট্যাব তৈরি করুন"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "দিন পর মেয়াদোত্তীর্ণ"
   },
-  "Explain_your_decision": {
-    "message": "আপনার সিদ্ধান্ত ব্যাখ্যা করুন..."
-  },
   "Extension_Permission": {
     "message": "এক্সটেনশন ও অনুমতি"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "ফাইল অপারেশন (উপলব্ধ নয়)"
   },
-  "File_Path": {
-    "message": "ফাইল পথ"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ফর্ম পূরণ করুন, ডেটা জমা দিন, ফর্ম উপাদানগুলোর সঙ্গে ইন্টারঅ্যাক্ট করুন"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "ইতিহাস"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "প্রভাব"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "নেটওয়ার্ক অনুরোধ/প্রতিক্রিয়া আটকান ও পরিবর্তন করুন"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "আধুনিক চ্যাট"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "পরিবর্তনের অনুরোধ করার সময় প্যারামিটার সংশোধন"
-  },
   "Monthly_Credits": {
     "message": "মাসিক ক্রেডিট"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "এখনো কোনো অনুমোদন ইতিহাস নেই।"
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "পেজ ভিশন টুল"
-  },
-  "Parameter_Modifications": {
-    "message": "প্যারামিটার পরিবর্তন"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "শুধু পড়ার জন্য"
   },
-  "Reason_optional": {
-    "message": "কারণ (ঐচ্ছিক)"
-  },
   "Refreshes_in": {
     "message": "রিফ্রেশ হবে:"
-  },
-  "Reject": {
-    "message": "প্রত্যাখ্যান"
-  },
-  "Reject_this_action": {
-    "message": "এই কাজটি প্রত্যাখ্যান করুন"
   },
   "Remaining": {
     "message": "অবশিষ্ট:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "API কী সরান"
-  },
-  "Remove_modification": {
-    "message": "পরিবর্তন সরান"
-  },
-  "Request_Changes": {
-    "message": "পরিবর্তনের অনুরোধ করুন"
-  },
-  "Request_changes_to_this_action": {
-    "message": "এই কাজের জন্য পরিবর্তনের অনুরোধ করুন"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "সেবা স্তর"
   },
-  "Session": {
-    "message": "সেশন"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "স্থিতিশীল"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "সময়"
   },
-  "Time_remaining": {
-    "message": "বাকি সময়"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "ক্যাশে রাখা আইটেমের স্থায়িত্বকাল (সেকেন্ডে) (default: $1$)",
     "placeholders": {
@@ -846,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "টুল"
-  },
   "Tool_Timeout_ms": {
     "message": "টুল টাইমআউট (মিলিসেকেন্ড)"
   },
@@ -857,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "টুলসের সেটিংস"
-  },
-  "Turn": {
-    "message": "টার্ন"
   },
   "UI_Theme": {
     "message": "ইউআই থিম"
@@ -903,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "ব্যবহারকারী অনুমোদিত ক্রিয়া"
-  },
-  "User_decision": {
-    "message": "ব্যবহারকারী সিদ্ধান্ত"
-  },
   "User_preferences_and_interface_settings": {
     "message": "ব্যবহারকারী পছন্দ ও ইন্টারফেস সেটিংস"
-  },
-  "User_rejected_action": {
-    "message": "ব্যবহারকারী দ্বারা কর্ম প্রত্যাখ্যান"
-  },
-  "User_requested_modifications": {
-    "message": "ব্যবহারকারীর অনুরোধকৃত পরিবর্তনসমূহ"
   },
   "Using_extra_credits": {
     "message": "অতিরিক্ত ক্রেডিট ব্যবহার করা"
@@ -959,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "আপনার API কী এনক্রিপ্ট করা হয়েছে"
-  },
-  "Your_Decision": {
-    "message": "আপনার সিদ্ধান্ত"
   },
   "optional": {
     "message": ""

@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Prieiga prie naršyklės saugyklos (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Veiksmas"
-  },
-  "Action_Details": {
-    "message": "Veiksmo informacija"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Pridėti pakeitimą"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Išplėstinė konfigūracija"
-  },
-  "Advanced_Options": {
-    "message": "Išplėstiniai nustatymai"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Patvirtinimų istorija"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Patvirtinti"
-  },
-  "Approve_this_action": {
-    "message": "Patvirtinti šį veiksmą"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Paprašyti Browserx išgauti struktūruotus duomenis iš bet kurio tinklalapio"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Uždaryti nustatymus"
   },
-  "Command": {
-    "message": "Komanda"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Kontekstas"
   },
   "Create_New_Tab": {
     "message": "Sukurti naują skirtuką"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Galiojimas po dienų"
   },
-  "Explain_your_decision": {
-    "message": "Paaiškinkite savo sprendimą..."
-  },
   "Extension_Permission": {
     "message": "Plėtinys ir teisės"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Failų operacijos (Neprieinama)"
   },
-  "File_Path": {
-    "message": "Failo kelias"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Užpildyti formas, pateikti duomenis, bendrauti su formų elementais"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Sveikas, pasauli"
   },
-  "History": {
-    "message": "Istorija"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Poveikis"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Perimti ir modifikuoti tinklo užklausas/atsakymus"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Keisti parametrus prašant pakeitimų"
-  },
   "Monthly_Credits": {
     "message": "Mėnesiniai kreditai"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Patvirtinimų istorijos dar nėra."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Puslapio vizijos įrankis"
-  },
-  "Parameter_Modifications": {
-    "message": "Parametrų modifikacijos"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Tik skaitoma"
   },
-  "Reason_optional": {
-    "message": "Priežastis (neprivaloma)"
-  },
   "Refreshes_in": {
     "message": "Atnaujinama po"
-  },
-  "Reject": {
-    "message": "Atmesti"
-  },
-  "Reject_this_action": {
-    "message": "Atmesti šį veiksmą"
   },
   "Remaining": {
     "message": "Liko:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Pašalinti API raktą"
-  },
-  "Remove_modification": {
-    "message": "Pašalinti modifikaciją"
-  },
-  "Request_Changes": {
-    "message": "Prašyti pakeitimų"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Prašyti pakeisti šį veiksmą"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Paslaugos lygis"
   },
-  "Session": {
-    "message": "Sesija"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabili"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Laikas"
   },
-  "Time_remaining": {
-    "message": "Likęs laikas"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Talpyklos elementų galiojimo laikas sekundėmis (numatyta: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Įrankis"
-  },
   "Tool_Timeout_ms": {
     "message": "Įrankio laiko limitas (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Įrankių nustatymai"
-  },
-  "Turn": {
-    "message": "Ėjimas"
   },
   "UI_Theme": {
     "message": "Vartotojo sąsajos tema"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Vartotojo patvirtinta operacija"
-  },
-  "User_decision": {
-    "message": "Vartotojo sprendimas"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Vartotojo nuostatos ir sąsajos nustatymai"
-  },
-  "User_rejected_action": {
-    "message": "Vartotojo atmestas veiksmas"
-  },
-  "User_requested_modifications": {
-    "message": "Vartotojo prašomi pakeitimai"
   },
   "Using_extra_credits": {
     "message": "Naudojami papildomi kreditai"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Jūsų API raktas yra šifruotas"
-  },
-  "Your_Decision": {
-    "message": "Jūsų sprendimas"
   },
   "optional": {
     "message": ""

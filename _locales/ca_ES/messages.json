@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Accedir a l'emmagatzematge del navegador (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Acció"
-  },
-  "Action_Details": {
-    "message": "Detalls de l'acció"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Afegir modificació"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Configuració avançada"
-  },
-  "Advanced_Options": {
-    "message": "Opcions avançades"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Historial d'aprovacions"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Aprovar"
-  },
-  "Approve_this_action": {
-    "message": "Aprovar aquesta acció"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Demaneu a Browserx que extregui dades estructurades de qualsevol pàgina web"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Tancar configuració"
   },
-  "Command": {
-    "message": "Comanda"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Context"
   },
   "Create_New_Tab": {
     "message": "Crea una pestanya nova"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Caduca després de dies"
   },
-  "Explain_your_decision": {
-    "message": "Explica la teva decisió..."
-  },
   "Extension_Permission": {
     "message": "Extensió i permisos"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Operacions de fitxer (No disponible)"
   },
-  "File_Path": {
-    "message": "Camí del fitxer"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Omple formularis, envia dades, interactua amb elements del formulari"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Hola món"
   },
-  "History": {
-    "message": "Historial"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Impacte"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Intercepta i modifica sol·licituds/respostes de xarxa"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Xat modern"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Modifica els paràmetres en sol·licitar canvis"
-  },
   "Monthly_Credits": {
     "message": "Crèdits mensuals"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Encara no hi ha historial d'aprovacions."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Eina de visió de pàgina"
-  },
-  "Parameter_Modifications": {
-    "message": "Modificacions de paràmetres"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Només lectura"
   },
-  "Reason_optional": {
-    "message": "Motiu (opcional)"
-  },
   "Refreshes_in": {
     "message": "S'actualitza en"
-  },
-  "Reject": {
-    "message": "Rebutjar"
-  },
-  "Reject_this_action": {
-    "message": "Rebutja aquesta acció"
   },
   "Remaining": {
     "message": "Restant:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Eliminar clau API"
-  },
-  "Remove_modification": {
-    "message": "Eliminar modificació"
-  },
-  "Request_Changes": {
-    "message": "Sol·licitar canvis"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Sol·licitar canvis per a aquesta acció"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Nivell de servei"
   },
-  "Session": {
-    "message": "Sessió"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Estable"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Temps"
   },
-  "Time_remaining": {
-    "message": "Temps restant"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Temps de vida per a elements en memòria cau en segons (per defecte: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Eina"
-  },
   "Tool_Timeout_ms": {
     "message": "Temps d'espera de l'eina (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Configuració d'eines"
-  },
-  "Turn": {
-    "message": "Torn"
   },
   "UI_Theme": {
     "message": "Tema de la interfície d'usuari"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Acció aprovada per l'usuari"
-  },
-  "User_decision": {
-    "message": "Decisió de l'usuari"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Preferències d'usuari i configuració de la interfície"
-  },
-  "User_rejected_action": {
-    "message": "Acció rebutjada per l'usuari"
-  },
-  "User_requested_modifications": {
-    "message": "Modificacions sol·licitades per l'usuari"
   },
   "Using_extra_credits": {
     "message": "Utilitzant crèdits addicionals"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "La teva clau API està encriptada"
-  },
-  "Your_Decision": {
-    "message": "La teva decisió"
   },
   "optional": {
     "message": ""

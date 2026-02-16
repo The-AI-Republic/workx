@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Достъп до съхранение в браузъра (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Действие"
-  },
-  "Action_Details": {
-    "message": "Подробности за действието"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Добавяне на модификация"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Разширена конфигурация"
-  },
-  "Advanced_Options": {
-    "message": "Разширени опции"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "История на одобренията"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Одобри"
-  },
-  "Approve_this_action": {
-    "message": "Одобрете това действие"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Помолете Browserx да извлече структурирани данни от всяка уеб страница"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Затвори настройките"
   },
-  "Command": {
-    "message": "Команда"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Контекст"
   },
   "Create_New_Tab": {
     "message": "Създаване на нов таб"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Изтича след дни"
   },
-  "Explain_your_decision": {
-    "message": "Обяснете решението..."
-  },
   "Extension_Permission": {
     "message": "Разширение и разрешение"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Файлови операции (недостъпни)"
   },
-  "File_Path": {
-    "message": "Път до файл"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Попълване на форми, изпращане на данни, взаимодействие с елементи на формата"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Здравей свят"
   },
-  "History": {
-    "message": "История"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Въздействие"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Прехващане и модифициране на мрежови заявки/отговори"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Модерен чат"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Промяна на параметрите при поискване на промени"
-  },
   "Monthly_Credits": {
     "message": "Месечни кредити"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Все още няма история на одобрения."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Инструмент за визуален анализ на страница"
-  },
-  "Parameter_Modifications": {
-    "message": "Модификации на параметри"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Само за четене"
   },
-  "Reason_optional": {
-    "message": "Причина (по избор)"
-  },
   "Refreshes_in": {
     "message": "Обновява след:"
-  },
-  "Reject": {
-    "message": "Отхвърли"
-  },
-  "Reject_this_action": {
-    "message": "Отхвърли това действие"
   },
   "Remaining": {
     "message": "Остава:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Премахни API ключ"
-  },
-  "Remove_modification": {
-    "message": "Премахни промяна"
-  },
-  "Request_Changes": {
-    "message": "Поискай промени"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Поискай промени в това действие"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Ниво на услугата"
   },
-  "Session": {
-    "message": "Сесия"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Стабилна"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Време"
   },
-  "Time_remaining": {
-    "message": "Оставащо време"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Време за живеене (TTL) на кешираните елементи в секунди (по подразбиране: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Инструмент"
-  },
   "Tool_Timeout_ms": {
     "message": "Време за изчакване на инструмента (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Настройки на инструментите"
-  },
-  "Turn": {
-    "message": "Превключване"
   },
   "UI_Theme": {
     "message": "Тема на интерфейса"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Действие, одобрено от потребителя"
-  },
-  "User_decision": {
-    "message": "Решение на потребителя"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Потребителски предпочитания и настройки на интерфейса"
-  },
-  "User_rejected_action": {
-    "message": "Потребителят отхвърли действието"
-  },
-  "User_requested_modifications": {
-    "message": "Промени, поискани от потребителя"
   },
   "Using_extra_credits": {
     "message": "Използване на допълнителни кредити"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Вашият API ключ е криптиран"
-  },
-  "Your_Decision": {
-    "message": "Вашето решение"
   },
   "optional": {
     "message": ""

@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "เข้าถึงที่เก็บข้อมูลเบราว์เซอร์ (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "ดำเนินการ"
-  },
-  "Action_Details": {
-    "message": "รายละเอียดการดำเนินการ"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "เพิ่มการแก้ไข"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "การกำหนดค่าขั้นสูง"
-  },
-  "Advanced_Options": {
-    "message": "ตัวเลือกขั้นสูง"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "ประวัติการอนุมัติ"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "อนุมัติ"
-  },
-  "Approve_this_action": {
-    "message": "อนุมัติการกระทำนี้"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ขอให้บราวเซอร์เอ็กซ์ดึงข้อมูลที่มีโครงสร้างจากหน้าเว็บใดก็ได้"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "ปิดการตั้งค่า"
   },
-  "Command": {
-    "message": "คำสั่ง"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "บริบท"
   },
   "Create_New_Tab": {
     "message": "สร้างแท็บใหม่"
@@ -319,9 +295,6 @@
       }
     }
   },
-  "Explain_your_decision": {
-    "message": "อธิบายการตัดสินใจของคุณ..."
-  },
   "Extension_Permission": {
     "message": "ส่วนขยายและสิทธิ์"
   },
@@ -358,9 +331,6 @@
   "File_Operations_Not_Available": {
     "message": "การดำเนินการไฟล์ (ไม่พร้อมใช้งาน)"
   },
-  "File_Path": {
-    "message": "เส้นทางไฟล์"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "กรอกแบบฟอร์ม ส่งข้อมูล และโต้ตอบกับองค์ประกอบแบบฟอร์ม"
   },
@@ -396,14 +366,8 @@
   "Hello_World": {
     "message": "สวัสดีโลก"
   },
-  "History": {
-    "message": "ประวัติ"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "ผลกระทบ"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "ดักจับและแก้ไขคำขอ/การตอบสนองเครือข่าย"
@@ -510,9 +474,6 @@
   "Modern_Chat": {
     "message": "แชทสมัยใหม่"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "แก้ไขพารามิเตอร์เมื่อร้องขอการเปลี่ยนแปลง"
-  },
   "Monthly_Credits": {
     "message": "เครดิตรายเดือน"
   },
@@ -549,9 +510,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "ยังไม่มีประวัติการอนุมัติ"
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -584,9 +542,6 @@
   },
   "Page_Vision_Tool": {
     "message": "เครื่องมือตรวจสอบหน้า"
-  },
-  "Parameter_Modifications": {
-    "message": "การแก้ไขพารามิเตอร์"
   },
   "Pause_Queue": {
     "message": ""
@@ -639,17 +594,8 @@
   "Read_only": {
     "message": "อ่านอย่างเดียว"
   },
-  "Reason_optional": {
-    "message": "เหตุผล (ไม่จำเป็น)"
-  },
   "Refreshes_in": {
     "message": "จะรีเฟรชใน"
-  },
-  "Reject": {
-    "message": "ปฏิเสธ"
-  },
-  "Reject_this_action": {
-    "message": "ปฏิเสธการกระทำนี้"
   },
   "Remaining": {
     "message": "คงเหลือ:"
@@ -659,15 +605,6 @@
   },
   "Remove_API_Key": {
     "message": "ลบ API Key"
-  },
-  "Remove_modification": {
-    "message": "ลบการแก้ไข"
-  },
-  "Request_Changes": {
-    "message": "ขอให้เปลี่ยนแปลง"
-  },
-  "Request_changes_to_this_action": {
-    "message": "ขอเปลี่ยนแปลงการกระทำนี้"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -738,9 +675,6 @@
   "Service_Tier": {
     "message": "ระดับบริการ"
   },
-  "Session": {
-    "message": "ช่วงเวลาใช้งาน"
-  },
   "Session_error": {
     "message": ""
   },
@@ -767,6 +701,9 @@
   },
   "Stable": {
     "message": "เสถียร"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -831,9 +768,6 @@
   "Time": {
     "message": "เวลา"
   },
-  "Time_remaining": {
-    "message": "เวลาที่เหลือ"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "อายุการใช้งานของรายการแคชเป็นวินาที(ค่าเริ่มต้น:3600)"
   },
@@ -846,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "เครื่องมือ"
-  },
   "Tool_Timeout_ms": {
     "message": "เครื่องมือหมดเวลา(ms)"
   },
@@ -857,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "การตั้งค่าเครื่องมือ"
-  },
-  "Turn": {
-    "message": "เปลี่ยน"
   },
   "UI_Theme": {
     "message": "ธีมUI"
@@ -903,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "การกระทำที่ผู้ใช้อนุมัติ"
-  },
-  "User_decision": {
-    "message": "การตัดสินใจของผู้ใช้"
-  },
   "User_preferences_and_interface_settings": {
     "message": "การตั้งค่าความชอบและส่วนติดต่อผู้ใช้"
-  },
-  "User_rejected_action": {
-    "message": "ผู้ใช้ปฏิเสธการกระทำ"
-  },
-  "User_requested_modifications": {
-    "message": "การแก้ไขที่ผู้ใช้ร้องขอ"
   },
   "Using_extra_credits": {
     "message": "กำลังใช้เครดิตพิเศษ"
@@ -959,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "คีย์APIของคุณถูกเข้ารหัส"
-  },
-  "Your_Decision": {
-    "message": "การตัดสินใจของคุณ"
   },
   "optional": {
     "message": ""

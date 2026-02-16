@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Truy cập bộ nhớ trình duyệt (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Hành động"
-  },
-  "Action_Details": {
-    "message": "Chi tiết hành động"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Thêm sửa đổi"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Cấu hình nâng cao"
-  },
-  "Advanced_Options": {
-    "message": "Tùy chọn nâng cao"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Lịch sử phê duyệt"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Phê duyệt"
-  },
-  "Approve_this_action": {
-    "message": "Phê duyệt hành động này"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Yêu cầu Browserx trích xuất dữ liệu có cấu trúc từ bất kỳ trang web nào"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Đóng cài đặt"
   },
-  "Command": {
-    "message": "Lệnh"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Ngữ cảnh"
   },
   "Create_New_Tab": {
     "message": "Tạo tab mới"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Hết hạn sau (số ngày)"
   },
-  "Explain_your_decision": {
-    "message": "Giải thích quyết định của bạn..."
-  },
   "Extension_Permission": {
     "message": "Tiện ích & Quyền"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Thao tác tệp (Không khả dụng)"
   },
-  "File_Path": {
-    "message": "Đường dẫn tệp"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Điền biểu mẫu, gửi dữ liệu, tương tác với các thành phần biểu mẫu"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "Lịch sử"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Tác động"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Chặn và sửa đổi yêu cầu/phản hồi mạng"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Chat Hiện đại"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Sửa đổi tham số khi yêu cầu thay đổi"
-  },
   "Monthly_Credits": {
     "message": "Tín dụng hàng tháng"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Chưa có lịch sử phê duyệt."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Công cụ Kiểm tra Trang"
-  },
-  "Parameter_Modifications": {
-    "message": "Sửa đổi Tham số"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Chỉ đọc"
   },
-  "Reason_optional": {
-    "message": "Lý do (tùy chọn)"
-  },
   "Refreshes_in": {
     "message": "Sẽ làm mới sau"
-  },
-  "Reject": {
-    "message": "Từ chối"
-  },
-  "Reject_this_action": {
-    "message": "Từ chối hành động này"
   },
   "Remaining": {
     "message": "Còn lại:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Xóa API Key"
-  },
-  "Remove_modification": {
-    "message": "Xóa sửa đổi"
-  },
-  "Request_Changes": {
-    "message": "Yêu cầu thay đổi"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Yêu cầu thay đổi hành động này"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Cấp dịch vụ"
   },
-  "Session": {
-    "message": "Phiên"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Ổn định"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Thời gian"
   },
-  "Time_remaining": {
-    "message": "Thời gian còn lại"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Thời gian tồn tại (TTL) cho các mục bộ nhớ đệm tính bằng giây (mặc định: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Công cụ"
-  },
   "Tool_Timeout_ms": {
     "message": "Thời gian chờ công cụ (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Cài đặt công cụ"
-  },
-  "Turn": {
-    "message": "Xoay"
   },
   "UI_Theme": {
     "message": "Chủ đề giao diện"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Hành động người dùng đã phê duyệt"
-  },
-  "User_decision": {
-    "message": "Quyết định của người dùng"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Tùy chọn người dùng và cài đặt giao diện"
-  },
-  "User_rejected_action": {
-    "message": "Hành động bị người dùng từ chối"
-  },
-  "User_requested_modifications": {
-    "message": "Người dùng yêu cầu sửa đổi"
   },
   "Using_extra_credits": {
     "message": "Sử dụng tín dụng bổ sung"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Khóa API của bạn đã được mã hóa"
-  },
-  "Your_Decision": {
-    "message": "Quyết định của bạn"
   },
   "optional": {
     "message": ""

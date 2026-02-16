@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Access browser storage (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Action"
-  },
-  "Action_Details": {
-    "message": "Action Details"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Add Modification"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Advanced Configuration"
-  },
-  "Advanced_Options": {
-    "message": "Advanced Options"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Approval History"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Approve"
-  },
-  "Approve_this_action": {
-    "message": "Approve this action"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Ask Browserx to extract structured data from any webpage"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Close settings"
   },
-  "Command": {
-    "message": "Command"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Context"
   },
   "Create_New_Tab": {
     "message": "Create New Tab"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Expire after days"
   },
-  "Explain_your_decision": {
-    "message": "Explain your decision..."
-  },
   "Extension_Permission": {
     "message": "Extension & Permission"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "File Operations (Not Available)"
   },
-  "File_Path": {
-    "message": "File Path"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Fill forms, submit data, interact with form elements"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "History"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Impact"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Intercept and modify network requests/responses"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Modify parameters when requesting changes"
-  },
   "Monthly_Credits": {
     "message": "Monthly Credits"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "No approval history yet."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Page vision tool"
-  },
-  "Parameter_Modifications": {
-    "message": "Parameter modifications"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Read-only"
   },
-  "Reason_optional": {
-    "message": "Reason (optional)"
-  },
   "Refreshes_in": {
     "message": "Refreshes in"
-  },
-  "Reject": {
-    "message": "Reject"
-  },
-  "Reject_this_action": {
-    "message": "Reject this action"
   },
   "Remaining": {
     "message": "Remaining:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Remove API Key"
-  },
-  "Remove_modification": {
-    "message": "Remove modification"
-  },
-  "Request_Changes": {
-    "message": "Request Changes"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Request changes to this action"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Service Tier"
   },
-  "Session": {
-    "message": "Session"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Stable"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Time"
   },
-  "Time_remaining": {
-    "message": "Time remaining"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live for cached items in seconds (default: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Tool"
-  },
   "Tool_Timeout_ms": {
     "message": "Tool Timeout (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Tools Settings"
-  },
-  "Turn": {
-    "message": "Turn"
   },
   "UI_Theme": {
     "message": "UI Theme"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "User approved action"
-  },
-  "User_decision": {
-    "message": "User decision"
-  },
   "User_preferences_and_interface_settings": {
     "message": "User preferences and interface settings"
-  },
-  "User_rejected_action": {
-    "message": "User rejected action"
-  },
-  "User_requested_modifications": {
-    "message": "User requested modifications"
   },
   "Using_extra_credits": {
     "message": "Using extra credits"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Your API key is encrypted"
-  },
-  "Your_Decision": {
-    "message": "Your Decision"
   },
   "optional": {
     "message": ""

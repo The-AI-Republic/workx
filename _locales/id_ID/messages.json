@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Akses penyimpanan peramban (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Aksi"
-  },
-  "Action_Details": {
-    "message": "Detail Aksi"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Tambah Modifikasi"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Konfigurasi Lanjutan"
-  },
-  "Advanced_Options": {
-    "message": "Opsi Lanjutan"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Riwayat Persetujuan"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Setujui"
-  },
-  "Approve_this_action": {
-    "message": "Setujui tindakan ini"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Minta Browserx mengekstrak data terstruktur dari halaman web mana pun"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Tutup pengaturan"
   },
-  "Command": {
-    "message": "Perintah"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Konteks"
   },
   "Create_New_Tab": {
     "message": "Buat Tab Baru"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Kedaluwarsa setelah hari"
   },
-  "Explain_your_decision": {
-    "message": "Jelaskan keputusan Anda..."
-  },
   "Extension_Permission": {
     "message": "Ekstensi & Izin"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Operasi File (Tidak Tersedia)"
   },
-  "File_Path": {
-    "message": "Jalur File"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Isi formulir, kirim data, berinteraksi dengan elemen formulir"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Halo Dunia"
   },
-  "History": {
-    "message": "Riwayat"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Dampak"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Intersepsi dan modifikasi permintaan/respons jaringan"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Obrolan Modern"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Ubah parameter saat meminta perubahan"
-  },
   "Monthly_Credits": {
     "message": "Kredit Bulanan"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Belum ada riwayat persetujuan."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Alat Visi Halaman"
-  },
-  "Parameter_Modifications": {
-    "message": "Modifikasi Parameter"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Hanya baca"
   },
-  "Reason_optional": {
-    "message": "Alasan (opsional)"
-  },
   "Refreshes_in": {
     "message": "Penyegaran dalam"
-  },
-  "Reject": {
-    "message": "Tolak"
-  },
-  "Reject_this_action": {
-    "message": "Tolak tindakan ini"
   },
   "Remaining": {
     "message": "Sisa:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Hapus Kunci API"
-  },
-  "Remove_modification": {
-    "message": "Hapus modifikasi"
-  },
-  "Request_Changes": {
-    "message": "Minta Perubahan"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Minta perubahan pada tindakan ini"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Tingkat Layanan"
   },
-  "Session": {
-    "message": "Sesi"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Waktu"
   },
-  "Time_remaining": {
-    "message": "Waktu tersisa"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Waktu hidup untuk item cache dalam detik (default: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Alat"
-  },
   "Tool_Timeout_ms": {
     "message": "Batas Waktu Alat (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Pengaturan Alat"
-  },
-  "Turn": {
-    "message": "Putar"
   },
   "UI_Theme": {
     "message": "Tema UI"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Tindakan disetujui pengguna"
-  },
-  "User_decision": {
-    "message": "Keputusan pengguna"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Preferensi pengguna dan pengaturan antarmuka"
-  },
-  "User_rejected_action": {
-    "message": "Tindakan ditolak pengguna"
-  },
-  "User_requested_modifications": {
-    "message": "Modifikasi diminta pengguna"
   },
   "Using_extra_credits": {
     "message": "Menggunakan kredit tambahan"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Kunci API Anda telah dienkripsi"
-  },
-  "Your_Decision": {
-    "message": "Keputusan Anda"
   },
   "optional": {
     "message": ""

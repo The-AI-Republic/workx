@@ -6,6 +6,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
+  import PopupCard from './PopupCard.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
@@ -52,56 +53,56 @@
     }
   }
 
-  function togglePopup() {
+  function togglePopup(event: MouseEvent) {
+    event.stopPropagation();
     showPopup = !showPopup;
-  }
-
-  function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.approval-indicator-container')) {
-      showPopup = false;
-    }
   }
 
   $: currentColor = MODE_OPTIONS.find(o => o.mode === currentMode)?.color || '#22c55e';
   $: currentLabel = MODE_OPTIONS.find(o => o.mode === currentMode)?.label || 'Balanced';
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<PopupCard
+  title=""
+  show={showPopup}
+  onClose={() => showPopup = false}
+>
+  <div slot="trigger" class="indicator-trigger {currentTheme}">
+    <Tooltip content="{$_t('Approval Mode')}: {currentLabel}" disabled={showPopup}>
+      <button
+        class="indicator-button"
+        on:click={togglePopup}
+        aria-label="{$_t('Approval Mode')}: {currentLabel}"
+        aria-haspopup="true"
+        aria-expanded={showPopup}
+      >
+        <span class="indicator-dot" style="background-color: {currentColor};"></span>
+      </button>
+    </Tooltip>
+  </div>
 
-<div class="approval-indicator-container {currentTheme}">
-  <Tooltip content="{$_t('Approval Mode')}: {currentLabel}">
-    <button
-      class="indicator-button"
-      on:click|stopPropagation={togglePopup}
-      aria-label="{$_t('Approval Mode')}: {currentLabel}"
-    >
-      <span class="indicator-dot" style="background-color: {currentColor};"></span>
-    </button>
-  </Tooltip>
-
-  {#if showPopup}
-    <div class="mode-popup" on:click|stopPropagation>
-      {#each MODE_OPTIONS as option}
-        <button
-          class="mode-option"
-          class:selected={currentMode === option.mode}
-          on:click={() => selectMode(option.mode)}
-        >
-          <span class="option-dot" style="background-color: {option.color};"></span>
-          <div class="option-text">
-            <span class="option-label">{option.label}</span>
-            <span class="option-desc">— {option.description}</span>
-          </div>
-        </button>
-      {/each}
-    </div>
-  {/if}
-</div>
+  <div slot="content" class="mode-content {currentTheme}">
+    {#each MODE_OPTIONS as option}
+      <button
+        class="mode-option"
+        class:selected={currentMode === option.mode}
+        on:click={() => selectMode(option.mode)}
+      >
+        <span class="option-dot" style="background-color: {option.color};"></span>
+        <div class="option-text">
+          <span class="option-label">{option.label}</span>
+          <span class="option-desc">— {option.description}</span>
+        </div>
+      </button>
+    {/each}
+  </div>
+</PopupCard>
 
 <style>
-  .approval-indicator-container {
-    position: relative;
+  /* Trigger — Terminal Theme (default) */
+  .indicator-trigger {
+    display: flex;
+    align-items: center;
   }
 
   .indicator-button {
@@ -135,18 +136,9 @@
     transition: background-color 0.2s ease;
   }
 
-  .mode-popup {
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1a1a2e;
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 4px;
-    min-width: 260px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    z-index: 100;
+  /* Content — Terminal Theme (default) */
+  .mode-content {
+    min-width: 240px;
   }
 
   .mode-option {
@@ -159,18 +151,19 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    color: #e0e0e0;
+    color: var(--color-term-bright-green, #00ff00);
     font-size: 0.8125rem;
     text-align: left;
     transition: background 0.15s ease;
+    font-family: 'Monaco', 'Courier New', monospace;
   }
 
   .mode-option:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 255, 0, 0.1);
   }
 
   .mode-option.selected {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(0, 255, 0, 0.15);
   }
 
   .option-dot {
@@ -192,42 +185,38 @@
   }
 
   .option-desc {
-    color: #888;
+    color: var(--color-term-dim-green, #00cc00);
     font-size: 0.75rem;
     white-space: nowrap;
   }
 
-  /* ChatGPT Theme */
-  .approval-indicator-container.chatgpt .indicator-button {
+  /* Trigger — ChatGPT Theme */
+  .indicator-trigger.chatgpt .indicator-button {
     background: transparent;
     border: none;
     border-radius: 0.5rem;
   }
 
-  .approval-indicator-container.chatgpt .indicator-button:hover {
+  .indicator-trigger.chatgpt .indicator-button:hover {
     background: var(--chat-button-hover, #ececec);
     transform: none;
   }
 
-  .approval-indicator-container.chatgpt .mode-popup {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  /* Content — ChatGPT Theme */
+  .mode-content.chatgpt .mode-option {
+    color: var(--chat-tooltip-text, #ffffff);
+    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   }
 
-  .approval-indicator-container.chatgpt .mode-option {
-    color: #0d0d0d;
+  .mode-content.chatgpt .mode-option:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 
-  .approval-indicator-container.chatgpt .mode-option:hover {
-    background: #f5f5f5;
+  .mode-content.chatgpt .mode-option.selected {
+    background: rgba(255, 255, 255, 0.12);
   }
 
-  .approval-indicator-container.chatgpt .mode-option.selected {
-    background: #ececec;
-  }
-
-  .approval-indicator-container.chatgpt .option-desc {
-    color: #8e8ea0;
+  .mode-content.chatgpt .option-desc {
+    color: rgba(255, 255, 255, 0.5);
   }
 </style>

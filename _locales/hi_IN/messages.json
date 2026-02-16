@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ब्राउज़र स्टोरेज (localStorage, sessionStorage, cookies) तक पहुँचें"
   },
-  "Action": {
-    "message": "कार्रवाई"
-  },
-  "Action_Details": {
-    "message": "कार्रवाई विवरण"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "संशोधन जोड़ें"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "उन्नत कॉन्फ़िगरेशन"
-  },
-  "Advanced_Options": {
-    "message": "उन्नत विकल्प"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "स्वीकृति इतिहास"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "स्वीकृत करें"
-  },
-  "Approve_this_action": {
-    "message": "इस कार्रवाई को स्वीकृत करें"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx को किसी भी वेबपेज से संरचित डेटा निकालने के लिए कहें"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "सेटिंग्स बंद करें"
   },
-  "Command": {
-    "message": "कमांड"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "संदर्भ"
   },
   "Create_New_Tab": {
     "message": "नया टैब बनाएं"
@@ -319,9 +295,6 @@
       }
     }
   },
-  "Explain_your_decision": {
-    "message": "अपना निर्णय समझाएँ..."
-  },
   "Extension_Permission": {
     "message": "एक्सटेंशन और अनुमति"
   },
@@ -358,9 +331,6 @@
   "File_Operations_Not_Available": {
     "message": "फ़ाइल संचालन (उपलब्ध नहीं)"
   },
-  "File_Path": {
-    "message": "फ़ाइल पथ"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "फ़ॉर्म भरें, डेटा सबमिट करें, फ़ॉर्म तत्वों के साथ इंटरैक्ट करें"
   },
@@ -396,14 +366,8 @@
   "Hello_World": {
     "message": "हैलो वर्ल्ड"
   },
-  "History": {
-    "message": "इतिहास"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "प्रभाव"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "नेटवर्क अनुरोध/प्रतिक्रिया को इंटरसेप्ट और संशोधित करना"
@@ -510,9 +474,6 @@
   "Modern_Chat": {
     "message": "आधुनिक चैट"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "परिवर्तनों का अनुरोध करते समय पैरामीटर संशोधित करें"
-  },
   "Monthly_Credits": {
     "message": "मासिक क्रेडिट"
   },
@@ -549,9 +510,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "अभी तक कोई अनुमोदन इतिहास नहीं है।"
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -584,9 +542,6 @@
   },
   "Page_Vision_Tool": {
     "message": "पेज विज़न टूल"
-  },
-  "Parameter_Modifications": {
-    "message": "पैरामीटर संशोधन"
   },
   "Pause_Queue": {
     "message": ""
@@ -639,17 +594,8 @@
   "Read_only": {
     "message": "केवल पढ़ने योग्य"
   },
-  "Reason_optional": {
-    "message": "कारण (वैकल्पिक)"
-  },
   "Refreshes_in": {
     "message": "रिफ्रेश होगा:"
-  },
-  "Reject": {
-    "message": "अस्वीकार करें"
-  },
-  "Reject_this_action": {
-    "message": "इस कार्रवाई को अस्वीकार करें"
   },
   "Remaining": {
     "message": "शेष:"
@@ -659,15 +605,6 @@
   },
   "Remove_API_Key": {
     "message": "API कुंजी हटाएँ"
-  },
-  "Remove_modification": {
-    "message": "परिवर्तन हटाएँ"
-  },
-  "Request_Changes": {
-    "message": "परिवर्तन का अनुरोध"
-  },
-  "Request_changes_to_this_action": {
-    "message": "इस कार्रवाई में बदलाव का अनुरोध करें"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -738,9 +675,6 @@
   "Service_Tier": {
     "message": "सेवा स्तर"
   },
-  "Session": {
-    "message": "सत्र"
-  },
   "Session_error": {
     "message": ""
   },
@@ -767,6 +701,9 @@
   },
   "Stable": {
     "message": "स्थिर"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -831,9 +768,6 @@
   "Time": {
     "message": "समय"
   },
-  "Time_remaining": {
-    "message": "शेष समय"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "कैश किए गए आइटमों के लिए सेकंड में टाइम-टू-लाइव (डिफ़ॉल्ट: 3600)"
   },
@@ -846,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "टूल"
-  },
   "Tool_Timeout_ms": {
     "message": "टूल टाइमआउट (ms)"
   },
@@ -857,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "टूल सेटिंग्स"
-  },
-  "Turn": {
-    "message": "टर्न"
   },
   "UI_Theme": {
     "message": "UI थीम"
@@ -903,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "उपयोगकर्ता द्वारा स्वीकृत कार्रवाई"
-  },
-  "User_decision": {
-    "message": "उपयोगकर्ता निर्णय"
-  },
   "User_preferences_and_interface_settings": {
     "message": "उपयोगकर्ता प्राथमिकताएँ और इंटरफ़ेस सेटिंग्स"
-  },
-  "User_rejected_action": {
-    "message": "उपयोगकर्ता द्वारा अस्वीकृत कार्रवाई"
-  },
-  "User_requested_modifications": {
-    "message": "उपयोगकर्ता ने संशोधन का अनुरोध किया"
   },
   "Using_extra_credits": {
     "message": "अतिरिक्त क्रेडिट का उपयोग"
@@ -959,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "आपकी API कुंजी एन्क्रिप्टेड है"
-  },
-  "Your_Decision": {
-    "message": "आपका निर्णय"
   },
   "optional": {
     "message": ""

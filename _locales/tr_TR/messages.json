@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Tarayıcı depolamasına eriş (localStorage, sessionStorage, çerezler)"
   },
-  "Action": {
-    "message": "Eylem"
-  },
-  "Action_Details": {
-    "message": "Eylem Ayrıntıları"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Değişiklik Ekle"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Gelişmiş Yapılandırma"
-  },
-  "Advanced_Options": {
-    "message": "Gelişmiş Seçenekler"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Onay Geçmişi"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Onayla"
-  },
-  "Approve_this_action": {
-    "message": "Bu eylemi onayla"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için Browserx'i kullanın"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Ayarları kapat"
   },
-  "Command": {
-    "message": "Komut"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Bağlam"
   },
   "Create_New_Tab": {
     "message": "Yeni Sekme Oluştur"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Süresi şu kadar gün sonra dolsun"
   },
-  "Explain_your_decision": {
-    "message": "Kararınızı açıklayın..."
-  },
   "Extension_Permission": {
     "message": "Eklenti ve İzin"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Dosya İşlemleri (Kullanılamaz)"
   },
-  "File_Path": {
-    "message": "Dosya Yolu"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Formları doldur, veri gönder, form öğeleriyle etkileşim kur"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Merhaba Dünya"
   },
-  "History": {
-    "message": "Geçmiş"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Etki"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Ağ isteklerini/yanıtlarını yakala ve değiştir"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Değişiklik talep edilirken parametreleri düzenle"
-  },
   "Monthly_Credits": {
     "message": "Aylık Krediler"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Henüz onay geçmişi yok."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Sayfa Görselleştirme Aracı"
-  },
-  "Parameter_Modifications": {
-    "message": "Parametre Değişiklikleri"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Salt okunur"
   },
-  "Reason_optional": {
-    "message": "Sebep (isteğe bağlı)"
-  },
   "Refreshes_in": {
     "message": "Yenilenme süresi"
-  },
-  "Reject": {
-    "message": "Reddet"
-  },
-  "Reject_this_action": {
-    "message": "Bu eylemi reddet"
   },
   "Remaining": {
     "message": "Kalan:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "API Anahtarını Kaldır"
-  },
-  "Remove_modification": {
-    "message": "Değişikliği kaldır"
-  },
-  "Request_Changes": {
-    "message": "Değişiklik İste"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Bu eylem için değişiklik iste"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Hizmet Seviyesi"
   },
-  "Session": {
-    "message": "Oturum"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Stable"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Zaman"
   },
-  "Time_remaining": {
-    "message": "Kalan süre"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Önbellek öğelerinin saniye cinsinden yaşam süresi (varsayılan: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Araç"
-  },
   "Tool_Timeout_ms": {
     "message": "Araç Zaman Aşımı (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Araç Ayarları"
-  },
-  "Turn": {
-    "message": "Döndür"
   },
   "UI_Theme": {
     "message": "Arayüz Teması"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Kullanıcı Onaylı Eylem"
-  },
-  "User_decision": {
-    "message": "Kullanıcı Kararı"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Kullanıcı tercihleri ve arayüz ayarları"
-  },
-  "User_rejected_action": {
-    "message": "Kullanıcı eylemi reddetti"
-  },
-  "User_requested_modifications": {
-    "message": "Kullanıcı değişiklik talep etti"
   },
   "Using_extra_credits": {
     "message": "Ekstra Kredi Kullanma"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "API anahtarınız şifrelenmiştir"
-  },
-  "Your_Decision": {
-    "message": "Kararınız"
   },
   "optional": {
     "message": ""

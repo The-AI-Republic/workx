@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "الوصول إلى تخزين المتصفح (localStorage، sessionStorage، cookies)"
   },
-  "Action": {
-    "message": "إجراء"
-  },
-  "Action_Details": {
-    "message": "تفاصيل الإجراء"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "إضافة تعديل"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "تكوين متقدم"
-  },
-  "Advanced_Options": {
-    "message": "خيارات متقدمة"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "سجل الموافقات"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "الموافقة"
-  },
-  "Approve_this_action": {
-    "message": "الموافقة على هذا الإجراء"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "اطلب من Browserx استخراج بيانات مُهيكلة من أي صفحة ويب"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "إغلاق الإعدادات"
   },
-  "Command": {
-    "message": "أمر"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "السياق"
   },
   "Create_New_Tab": {
     "message": "إنشاء علامة تبويب جديدة"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "انتهاء الصلاحية بعد أيام"
   },
-  "Explain_your_decision": {
-    "message": "اشرح قرارك..."
-  },
   "Extension_Permission": {
     "message": "الامتداد والإذن"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "عمليات الملفات (غير متاحة)"
   },
-  "File_Path": {
-    "message": "مسار الملف"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ملء النماذج، إرسال البيانات، التفاعل مع عناصر النموذج"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "مرحبًا بالعالم"
   },
-  "History": {
-    "message": "السجل"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "التأثير"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "اعتراض وتعديل طلبات/استجابات الشبكة"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "الدردشة الحديثة"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "تعديل المعلمات عند طلب التغييرات"
-  },
   "Monthly_Credits": {
     "message": "الرصيد الشهري"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "لا توجد سجلات موافقة بعد."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "أداة رؤية الصفحة"
-  },
-  "Parameter_Modifications": {
-    "message": "تعديلات Parameter"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "للقراءة فقط"
   },
-  "Reason_optional": {
-    "message": "السبب (اختياري)"
-  },
   "Refreshes_in": {
     "message": "تحديث خلال"
-  },
-  "Reject": {
-    "message": "رفض"
-  },
-  "Reject_this_action": {
-    "message": "رفض هذا الإجراء"
   },
   "Remaining": {
     "message": "المتبقي:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "إزالة مفتاح API"
-  },
-  "Remove_modification": {
-    "message": "إزالة التعديل"
-  },
-  "Request_Changes": {
-    "message": "طلب تغييرات"
-  },
-  "Request_changes_to_this_action": {
-    "message": "طلب تغييرات لهذا الإجراء"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "فئة الخدمة"
   },
-  "Session": {
-    "message": "الجلسة"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "مستقر"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "الوقت"
   },
-  "Time_remaining": {
-    "message": "الوقت المتبقي"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "مدة الصلاحية للعناصر المخزنة مؤقتًا بالثواني (الافتراضي: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "أداة"
-  },
   "Tool_Timeout_ms": {
     "message": "مهلة الأداة (مللي ثانية)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "إعدادات الأدوات"
-  },
-  "Turn": {
-    "message": "دورة"
   },
   "UI_Theme": {
     "message": "سمة واجهة المستخدم"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "إجراء موافق عليه من المستخدم"
-  },
-  "User_decision": {
-    "message": "قرار المستخدم"
-  },
   "User_preferences_and_interface_settings": {
     "message": "تفضيلات المستخدم وإعدادات الواجهة"
-  },
-  "User_rejected_action": {
-    "message": "إجراء مرفوض من المستخدم"
-  },
-  "User_requested_modifications": {
-    "message": "تعديلات طلبها المستخدم"
   },
   "Using_extra_credits": {
     "message": "استخدام أرصدة إضافية"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "مفتاح API الخاص بك مشفر"
-  },
-  "Your_Decision": {
-    "message": "قرارك"
   },
   "optional": {
     "message": ""

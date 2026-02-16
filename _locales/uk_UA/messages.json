@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Доступ до сховища браузера (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Дія"
-  },
-  "Action_Details": {
-    "message": "Подробиці дії"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Додати зміну"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Розширені налаштування"
-  },
-  "Advanced_Options": {
-    "message": "Розширені параметри"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Історія затверджень"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Затвердити"
-  },
-  "Approve_this_action": {
-    "message": "Затвердити цю дію"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Отримати структуровані дані з будь‑якої веб‑сторінки за допомогою Browserx"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Закрити налаштування"
   },
-  "Command": {
-    "message": "Команда"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Контекст"
   },
   "Create_New_Tab": {
     "message": "Створити нову вкладку"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Термін дії (днів)"
   },
-  "Explain_your_decision": {
-    "message": "Поясніть своє рішення..."
-  },
   "Extension_Permission": {
     "message": "Розширення та дозволи"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Операції з файлами (Недоступно)"
   },
-  "File_Path": {
-    "message": "Шлях до файлу"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Заповнювати форми, надсилати дані, взаємодіяти з елементами форми"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Привіт, світ"
   },
-  "History": {
-    "message": "Історія"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Вплив"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Перехоплювати та змінювати мережеві запити/відповіді"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Сучасний чат"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Змінювати параметри при запиті змін"
-  },
   "Monthly_Credits": {
     "message": "Місячні кредити"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Історія схвалень ще відсутня."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Інструмент перегляду сторінки"
-  },
-  "Parameter_Modifications": {
-    "message": "Зміни параметрів"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Тільки для читання"
   },
-  "Reason_optional": {
-    "message": "Причина (необов’язково)"
-  },
   "Refreshes_in": {
     "message": "Оновлюється через"
-  },
-  "Reject": {
-    "message": "Відхилити"
-  },
-  "Reject_this_action": {
-    "message": "Відхилити цю дію"
   },
   "Remaining": {
     "message": "Залишилось:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Видалити API‑ключ"
-  },
-  "Remove_modification": {
-    "message": "Видалити зміну"
-  },
-  "Request_Changes": {
-    "message": "Запросити зміни"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Запросити зміни до цієї дії"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Рівень сервісу"
   },
-  "Session": {
-    "message": "Сесія"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Стабільний"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Час"
   },
-  "Time_remaining": {
-    "message": "Залишилося часу"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Термін життя кешованих елементів у секундах (за замовчуванням: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Інструмент"
-  },
   "Tool_Timeout_ms": {
     "message": "Тайм-аут інструмента (мс)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Налаштування інструментів"
-  },
-  "Turn": {
-    "message": "Переключити"
   },
   "UI_Theme": {
     "message": "Тема інтерфейсу"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Дія, схвалена користувачем"
-  },
-  "User_decision": {
-    "message": "Рішення користувача"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Налаштування користувача та інтерфейсу"
-  },
-  "User_rejected_action": {
-    "message": "Користувач відхилив дію"
-  },
-  "User_requested_modifications": {
-    "message": "Зміни, запитувані користувачем"
   },
   "Using_extra_credits": {
     "message": "Використання додаткових кредитів"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Ваш API‑ключ зашифровано"
-  },
-  "Your_Decision": {
-    "message": "Ваше рішення"
   },
   "optional": {
     "message": ""

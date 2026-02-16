@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "బ్రౌజర్ నిల్వను యాక్సెస్ చేయండి (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "చర్య"
-  },
-  "Action_Details": {
-    "message": "చర్య వివరాలు"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "సవరణను జోడించండి"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "అధునాతన కాన్ఫిగరేషన్"
-  },
-  "Advanced_Options": {
-    "message": "అధునాతన ఎంపికలు"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,17 +74,8 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "అనుమతి చరిత్ర"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "ఆమోదించండి"
-  },
-  "Approve_this_action": {
-    "message": "ఈ చర్యను ఆమోదించండి"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ఏదైనా వెబ్‌పేజీ నుండి నిర్మాణాత్మక డేటాను వెలికితీయడానికి $1$ ని అడగండి",
@@ -107,6 +86,9 @@
     }
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -175,9 +157,6 @@
   "Close_settings": {
     "message": "సెట్టింగ్స్‌ను మూసివేయండి"
   },
-  "Command": {
-    "message": "Command"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -210,9 +189,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "సందర్భం"
   },
   "Create_New_Tab": {
     "message": "కొత్త ట్యాబ్ సృష్టించండి"
@@ -319,9 +295,6 @@
   "Expire_after_days": {
     "message": "రోజుల తర్వాత గడువు"
   },
-  "Explain_your_decision": {
-    "message": "మీ నిర్ణయాన్ని వివరించండి..."
-  },
   "Extension_Permission": {
     "message": "విస్తరణ & అనుమతి"
   },
@@ -358,9 +331,6 @@
   "File_Operations_Not_Available": {
     "message": "ఫైల్ ఆపరేషన్లు (లభ్యం కాదు)"
   },
-  "File_Path": {
-    "message": "ఫైల్ మార్గం"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ఫార్మ్‌లను నింపండి, డేటాను సమర్పించండి, ఫార్మ్ అంశాలతో పరస్పర చర్య చేయండి"
   },
@@ -396,14 +366,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "చరిత్ర"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "ప్రభావం"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "నెట్‌వర్క్ అభ్యర్థనలు/ప్రతిస్పందనలను అంతరాయం చేసి మార్చండి"
@@ -510,9 +474,6 @@
   "Modern_Chat": {
     "message": "మోడర్న్ చాట్"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "మార్పులు అభ్యర్థించేటప్పుడు పరామితులను సవరించండి"
-  },
   "Monthly_Credits": {
     "message": "మాసిక క్రెడిట్లు"
   },
@@ -549,9 +510,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "ఇంకా ఆమోద చరిత్ర లేదు."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -584,9 +542,6 @@
   },
   "Page_Vision_Tool": {
     "message": "పేజీ విజన్ టూల్"
-  },
-  "Parameter_Modifications": {
-    "message": "పారామీటర్ సవరణలు"
   },
   "Pause_Queue": {
     "message": ""
@@ -639,17 +594,8 @@
   "Read_only": {
     "message": "వాచన‑మాత్రం"
   },
-  "Reason_optional": {
-    "message": "కారణం (ఐచ్ఛికం)"
-  },
   "Refreshes_in": {
     "message": "రిఫ్రెష్ అవుతుంది"
-  },
-  "Reject": {
-    "message": "నిరాకరించు"
-  },
-  "Reject_this_action": {
-    "message": "ఈ చర్యను తిరస్కరించండి"
   },
   "Remaining": {
     "message": "మిగిలినవి:"
@@ -659,15 +605,6 @@
   },
   "Remove_API_Key": {
     "message": "API కీని తీసివేయండి"
-  },
-  "Remove_modification": {
-    "message": "సవరణను తీసివేయండి"
-  },
-  "Request_Changes": {
-    "message": "మార్పులను అభ్యర్థించండి"
-  },
-  "Request_changes_to_this_action": {
-    "message": "ఈ చర్యకు మార్పులను అభ్యర్థించండి"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -738,9 +675,6 @@
   "Service_Tier": {
     "message": "సేవా స్థాయి"
   },
-  "Session": {
-    "message": "సెషన్"
-  },
   "Session_error": {
     "message": ""
   },
@@ -767,6 +701,9 @@
   },
   "Stable": {
     "message": "స్థిర"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -831,9 +768,6 @@
   "Time": {
     "message": "సమయం"
   },
-  "Time_remaining": {
-    "message": "మిగిలిన సమయం"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "క్యాష్ ఐటెమ్స్‌కు సెకన్లలో జీవితకాలం (డిఫాల్ట్: 3600)"
   },
@@ -846,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "సాధనం"
-  },
   "Tool_Timeout_ms": {
     "message": "సాధనం కోసం టైమౌట్ (ms)"
   },
@@ -857,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "సాధనాల సెట్టింగ్స్"
-  },
-  "Turn": {
-    "message": "మార్చండి"
   },
   "UI_Theme": {
     "message": "UI థీమ్"
@@ -903,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "వాడుకరి ఆమోదించిన చర్య"
-  },
-  "User_decision": {
-    "message": "వాడుకరి నిర్ణయం"
-  },
   "User_preferences_and_interface_settings": {
     "message": "వినియోగదారు అభిరుచులు మరియు ఇంటర్‌ఫేస్ సెట్టింగ్స్"
-  },
-  "User_rejected_action": {
-    "message": "వినియోగదారు తిరస్కరించిన చర్య"
-  },
-  "User_requested_modifications": {
-    "message": "వినియోగదారు అభ్యర్థించిన మార్పులు"
   },
   "Using_extra_credits": {
     "message": "అదనపు క్రెడిట్స్‌ను ఉపయోగించడం"
@@ -959,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "మీ API కీ ఎన్క్రిప్ట్ చేయబడింది"
-  },
-  "Your_Decision": {
-    "message": "మీ నిర్ణయం"
   },
   "optional": {
     "message": ""

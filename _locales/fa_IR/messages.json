@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "دسترسی به ذخیره‌سازی مرورگر (localStorage، sessionStorage، کوکی‌ها)"
   },
-  "Action": {
-    "message": "اقدام"
-  },
-  "Action_Details": {
-    "message": "جزئیات اقدام"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "افزودن تغییرات"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "پیکربندی پیشرفته"
-  },
-  "Advanced_Options": {
-    "message": "گزینه‌های پیشرفته"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "تاریخچه تأیید"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "تأیید"
-  },
-  "Approve_this_action": {
-    "message": "تأیید این اقدام"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "درخواست از Browserx برای استخراج داده‌های ساختاریافته از هر صفحه وب"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -175,9 +157,6 @@
   "Close_settings": {
     "message": "بستن تنظیمات"
   },
-  "Command": {
-    "message": "دستور"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -210,9 +189,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "متن"
   },
   "Create_New_Tab": {
     "message": "ایجاد برگه جدید"
@@ -319,9 +295,6 @@
   "Expire_after_days": {
     "message": "انقضا پس از روز"
   },
-  "Explain_your_decision": {
-    "message": "دلیل تصمیم خود را توضیح دهید..."
-  },
   "Extension_Permission": {
     "message": "افزونه و دسترسی"
   },
@@ -358,9 +331,6 @@
   "File_Operations_Not_Available": {
     "message": "عملیات فایل (در دسترس نیست)"
   },
-  "File_Path": {
-    "message": "مسیر فایل"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "پر کردن فرم‌ها، ارسال داده‌ها، تعامل با عناصر فرم"
   },
@@ -396,14 +366,8 @@
   "Hello_World": {
     "message": "سلام دنیا"
   },
-  "History": {
-    "message": "تاریخچه"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "تأثیر"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "دستگیری و تغییر درخواست‌ها/پاسخ‌های شبکه"
@@ -510,9 +474,6 @@
   "Modern_Chat": {
     "message": "چت پیشرفته"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "تغییر پارامترها هنگام درخواست تغییرات"
-  },
   "Monthly_Credits": {
     "message": "اعتبار ماهانه"
   },
@@ -549,9 +510,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "هنوز تاریخچه‌ای از تأییدها ثبت نشده است."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -584,9 +542,6 @@
   },
   "Page_Vision_Tool": {
     "message": "ابزار تحلیل صفحه"
-  },
-  "Parameter_Modifications": {
-    "message": "تغییرات پارامترها"
   },
   "Pause_Queue": {
     "message": ""
@@ -639,17 +594,8 @@
   "Read_only": {
     "message": "فقط‌خواندنی"
   },
-  "Reason_optional": {
-    "message": "دلیل (اختیاری)"
-  },
   "Refreshes_in": {
     "message": "به‌روزرسانی طی"
-  },
-  "Reject": {
-    "message": "رد کردن"
-  },
-  "Reject_this_action": {
-    "message": "رد این اقدام"
   },
   "Remaining": {
     "message": "مانده:"
@@ -659,15 +605,6 @@
   },
   "Remove_API_Key": {
     "message": "حذف کلید API"
-  },
-  "Remove_modification": {
-    "message": "حذف اصلاحیه"
-  },
-  "Request_Changes": {
-    "message": "درخواست تغییرات"
-  },
-  "Request_changes_to_this_action": {
-    "message": "درخواست تغییرات برای این عمل"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -738,9 +675,6 @@
   "Service_Tier": {
     "message": "سطح سرویس"
   },
-  "Session": {
-    "message": "جلسه"
-  },
   "Session_error": {
     "message": ""
   },
@@ -767,6 +701,9 @@
   },
   "Stable": {
     "message": "پایدار"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -831,9 +768,6 @@
   "Time": {
     "message": "زمان"
   },
-  "Time_remaining": {
-    "message": "زمان باقی‌مانده"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "زمان انقضای موارد کش بر حسب ثانیه (پیش‌فرض: 3600)"
   },
@@ -846,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "ابزار"
-  },
   "Tool_Timeout_ms": {
     "message": "مهلت ابزار (میلی‌ثانیه)"
   },
@@ -857,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "تنظیمات ابزارها"
-  },
-  "Turn": {
-    "message": "نوبت"
   },
   "UI_Theme": {
     "message": "تم رابط کاربری"
@@ -903,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "عملیات تأییدشده توسط کاربر"
-  },
-  "User_decision": {
-    "message": "تصمیم کاربر"
-  },
   "User_preferences_and_interface_settings": {
     "message": "تنظیمات ترجیحات کاربر و رابط کاربری"
-  },
-  "User_rejected_action": {
-    "message": "عملیات ردشده توسط کاربر"
-  },
-  "User_requested_modifications": {
-    "message": "تغییرات درخواست‌شده توسط کاربر"
   },
   "Using_extra_credits": {
     "message": "استفاده از اعتبار اضافی"
@@ -959,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "کلید API شما رمزگذاری شده است"
-  },
-  "Your_Decision": {
-    "message": "تصمیم شما"
   },
   "optional": {
     "message": ""

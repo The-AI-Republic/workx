@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "גישה לאחסון הדפדפן (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "פעולה"
-  },
-  "Action_Details": {
-    "message": "פרטי פעולה"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "הוסף שינוי"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "הגדרות מתקדמות"
-  },
-  "Advanced_Options": {
-    "message": "אפשרויות מתקדמות"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "היסטוריית אישורים"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "אשר"
-  },
-  "Approve_this_action": {
-    "message": "אשר פעולה זו"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "בקש מ-Browserx לחלץ נתונים מובנים מכל דף אינטרנט"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "סגור הגדרות"
   },
-  "Command": {
-    "message": "פקודה"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "הקשר"
   },
   "Create_New_Tab": {
     "message": "צור לשונית חדשה"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "תפוגה לאחר מספר ימים"
   },
-  "Explain_your_decision": {
-    "message": "הסבר את החלטתך..."
-  },
   "Extension_Permission": {
     "message": "הרחבה והרשאה"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "פעולות קובץ (לא זמינות)"
   },
-  "File_Path": {
-    "message": "נתיב קובץ"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "מילוי טפסים, שליחת נתונים, ופעולה עם רכיבי טופס"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "שלום עולם"
   },
-  "History": {
-    "message": "היסטוריה"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "השפעה"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "לחטוף ולשנות בקשות/תגובות רשת"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "שינוי פרמטרים בעת בקשת שינויים"
-  },
   "Monthly_Credits": {
     "message": "קרדיטים חודשיים"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "עדיין אין היסטוריית אישורים."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "כלי Page Vision"
-  },
-  "Parameter_Modifications": {
-    "message": "שינויים בפרמטרים"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "קריאה בלבד"
   },
-  "Reason_optional": {
-    "message": "סיבה (אופציונלית)"
-  },
   "Refreshes_in": {
     "message": "מתרענן בעוד"
-  },
-  "Reject": {
-    "message": "דחה"
-  },
-  "Reject_this_action": {
-    "message": "דחה פעולה זו"
   },
   "Remaining": {
     "message": "נותר:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "הסר מפתח API"
-  },
-  "Remove_modification": {
-    "message": "הסר שינוי"
-  },
-  "Request_Changes": {
-    "message": "בקש שינויים"
-  },
-  "Request_changes_to_this_action": {
-    "message": "בקש שינויים בפעולה זו"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "רמת שירות"
   },
-  "Session": {
-    "message": "סשן"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "יציב"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "זמן"
   },
-  "Time_remaining": {
-    "message": "זמן נותר"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "זמן חיים (TTL) לפריטים במטמון בשניות (ברירת מחדל: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "כלי"
-  },
   "Tool_Timeout_ms": {
     "message": "פסק זמן לכלי (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "הגדרות כלים"
-  },
-  "Turn": {
-    "message": "סובב"
   },
   "UI_Theme": {
     "message": "ערכת נושא לממשק"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "פעולה שאושרה על ידי המשתמש"
-  },
-  "User_decision": {
-    "message": "החלטת משתמש"
-  },
   "User_preferences_and_interface_settings": {
     "message": "העדפות משתמש והגדרות ממשק"
-  },
-  "User_rejected_action": {
-    "message": "פעולה שנדחתה על ידי המשתמש"
-  },
-  "User_requested_modifications": {
-    "message": "המשתמש ביקש שינויים"
   },
   "Using_extra_credits": {
     "message": "שימוש בנקודות נוספות"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "מפתח ה‑API שלך מוצפן"
-  },
-  "Your_Decision": {
-    "message": "ההחלטה שלך"
   },
   "optional": {
     "message": ""

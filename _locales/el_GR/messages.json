@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Πρόσβαση στην αποθήκευση του περιηγητή (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Δράση"
-  },
-  "Action_Details": {
-    "message": "Λεπτομέρειες Ενέργειας"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Προσθήκη Τροποποίησης"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Προηγμένη Διαμόρφωση"
-  },
-  "Advanced_Options": {
-    "message": "Προηγμένες Επιλογές"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Ιστορικό Εγκρίσεων"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Έγκριση"
-  },
-  "Approve_this_action": {
-    "message": "Έγκριση αυτής της ενέργειας"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Ζητήστε από το Browserx να εξάγει δομημένα δεδομένα από οποιαδήποτε ιστοσελίδα"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Κλείσιμο ρυθμίσεων"
   },
-  "Command": {
-    "message": "Εντολή"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Πλαίσιο"
   },
   "Create_New_Tab": {
     "message": "Δημιουργία νέας καρτέλας"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Λήξη μετά από ημέρες"
   },
-  "Explain_your_decision": {
-    "message": "Εξηγήστε την απόφασή σας..."
-  },
   "Extension_Permission": {
     "message": "Επέκταση και Δικαιώματα"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Λειτουργίες αρχείου (Δεν είναι διαθέσιμες)"
   },
-  "File_Path": {
-    "message": "Διαδρομή Αρχείου"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Συμπλήρωση φορμών, υποβολή δεδομένων, αλληλεπίδραση με στοιχεία φόρμας"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Γεια σου Κόσμε"
   },
-  "History": {
-    "message": "Ιστορικό"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Αντίκτυπο"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Παρεμβολή και τροποποίηση αιτημάτων/απαντήσεων δικτύου"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Σύγχρονη Συνομιλία"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Τροποποίηση παραμέτρων κατά την αίτηση για αλλαγές"
-  },
   "Monthly_Credits": {
     "message": "Μηνιαίες Πιστώσεις"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Δεν υπάρχει ακόμη ιστορικό εγκρίσεων."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Εργαλείο Όρασης Σελίδας"
-  },
-  "Parameter_Modifications": {
-    "message": "Τροποποιήσεις Παραμέτρων"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Μόνο για ανάγνωση"
   },
-  "Reason_optional": {
-    "message": "Αιτία (προαιρετικό)"
-  },
   "Refreshes_in": {
     "message": "Ανανεώνεται σε"
-  },
-  "Reject": {
-    "message": "Απόρριψη"
-  },
-  "Reject_this_action": {
-    "message": "Απόρριψε αυτήν την ενέργεια"
   },
   "Remaining": {
     "message": "Απομένει:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Αφαίρεση κλειδιού API"
-  },
-  "Remove_modification": {
-    "message": "Αφαίρεση τροποποίησης"
-  },
-  "Request_Changes": {
-    "message": "Αίτημα αλλαγών"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Αίτηση αλλαγών σε αυτήν την ενέργεια"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Επίπεδο Υπηρεσίας"
   },
-  "Session": {
-    "message": "Συνεδρία"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Σταθερό"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Χρόνος"
   },
-  "Time_remaining": {
-    "message": "Χρόνος που απομένει"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Χρόνος ζωής (TTL) για αντικείμενα cache σε δευτερόλεπτα (προεπιλογή: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Εργαλείο"
-  },
   "Tool_Timeout_ms": {
     "message": "Χρονικό όριο εργαλείου (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Ρυθμίσεις εργαλείων"
-  },
-  "Turn": {
-    "message": "Σειρά παίκτη"
   },
   "UI_Theme": {
     "message": "Θέμα UI"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Δράση που εγκρίθηκε από τον χρήστη"
-  },
-  "User_decision": {
-    "message": "Απόφαση χρήστη"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Προτιμήσεις χρήστη και ρυθμίσεις διεπαφής"
-  },
-  "User_rejected_action": {
-    "message": "Ο χρήστης απέρριψε τη δράση"
-  },
-  "User_requested_modifications": {
-    "message": "Τροποποιήσεις που ζήτησε ο χρήστης"
   },
   "Using_extra_credits": {
     "message": "Χρήση επιπλέον πιστώσεων"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Το κλειδί API σας είναι κρυπτογραφημένο"
-  },
-  "Your_Decision": {
-    "message": "Η απόφασή σας"
   },
   "optional": {
     "message": ""

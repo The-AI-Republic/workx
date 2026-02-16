@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Böngészőtároló elérése (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Művelet"
-  },
-  "Action_Details": {
-    "message": "Művelet részletei"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Módosítás hozzáadása"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Speciális beállítások"
-  },
-  "Advanced_Options": {
-    "message": "Haladó beállítások"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Jóváhagyási előzmények"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Jóváhagy"
-  },
-  "Approve_this_action": {
-    "message": "Művelet jóváhagyása"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "A Browserx képes strukturált adatot kinyerni bármely weboldalról"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Beállítások bezárása"
   },
-  "Command": {
-    "message": "Parancs"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Kontextus"
   },
   "Create_New_Tab": {
     "message": "Új lap létrehozása"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Lejárat napok után"
   },
-  "Explain_your_decision": {
-    "message": "Magyarázza meg döntését..."
-  },
   "Extension_Permission": {
     "message": "Bővítmény és engedély"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Fájlműveletek (Nem érhető el)"
   },
-  "File_Path": {
-    "message": "Fájl útvonal"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Űrlapok kitöltése, adatok beküldése, űrlapelemekkel való interakció"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Helló Világ"
   },
-  "History": {
-    "message": "Előzmények"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Hatás"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Hálózati kérések/válaszok elfogása és módosítása"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern csevegés"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Paraméterek módosítása változtatás kérésénél"
-  },
   "Monthly_Credits": {
     "message": "Havi kreditek"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Még nincs jóváhagyási előzmény."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Oldalelemző eszköz"
-  },
-  "Parameter_Modifications": {
-    "message": "Paraméter módosítások"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Csak olvasható"
   },
-  "Reason_optional": {
-    "message": "Indok (opcionális)"
-  },
   "Refreshes_in": {
     "message": "Frissítés: $1"
-  },
-  "Reject": {
-    "message": "Elutasít"
-  },
-  "Reject_this_action": {
-    "message": "Művelet elutasítása"
   },
   "Remaining": {
     "message": "Hátralévő:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "API kulcs eltávolítása"
-  },
-  "Remove_modification": {
-    "message": "Módosítás eltávolítása"
-  },
-  "Request_Changes": {
-    "message": "Változtatás kérése"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Változtatás kérése ehhez a művelethez"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Szolgáltatás szintje"
   },
-  "Session": {
-    "message": "Munkamenet"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Idő"
   },
-  "Time_remaining": {
-    "message": "Hátralévő idő"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "A gyorsítótárazott elemek élettartama másodpercben (alapértelmezett: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Eszköz"
-  },
   "Tool_Timeout_ms": {
     "message": "Eszköz időkorlát (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Eszközök beállításai"
-  },
-  "Turn": {
-    "message": "Bekapcsolás"
   },
   "UI_Theme": {
     "message": "Felhasználói felület témája"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Felhasználó által jóváhagyott művelet"
-  },
-  "User_decision": {
-    "message": "Felhasználói döntés"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Felhasználói beállítások és felületi beállítások"
-  },
-  "User_rejected_action": {
-    "message": "Felhasználó által elutasított művelet"
-  },
-  "User_requested_modifications": {
-    "message": "Felhasználó által kért módosítások"
   },
   "Using_extra_credits": {
     "message": "Extra kreditek használata"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Az API kulcsa titkosítva van"
-  },
-  "Your_Decision": {
-    "message": "Az Ön döntése"
   },
   "optional": {
     "message": ""

@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Tilgang til nettleserlagring (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Handling"
-  },
-  "Action_Details": {
-    "message": "Handlingsdetaljer"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Legg til endring"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "Avansert konfigurasjon"
-  },
-  "Advanced_Options": {
-    "message": "Avanserte alternativer"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Godkjenningshistorikk"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "Godkjenn"
-  },
-  "Approve_this_action": {
-    "message": "Godkjenn denne handlingen"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Be Browserx om å hente ut strukturert data fra en hvilken som helst nettside"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "Lukk innstillinger"
   },
-  "Command": {
-    "message": "Kommando"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Kontekst"
   },
   "Create_New_Tab": {
     "message": "Opprett ny fane"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "Utløper etter dager"
   },
-  "Explain_your_decision": {
-    "message": "Forklar beslutningen din…"
-  },
   "Extension_Permission": {
     "message": "Utvidelse & Tillatelse"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "Filoperasjoner (Ikke tilgjengelig)"
   },
-  "File_Path": {
-    "message": "Filsti"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Fyll ut skjemaer, send inn data, interager med skjemaelementer"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "Hei verden"
   },
-  "History": {
-    "message": "Historikk"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "Effekt"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Fang opp og endre nettverksforespørsler/svar"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "Moderne chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Endre parametre ved forespørsel om endringer"
-  },
   "Monthly_Credits": {
     "message": "Månedlige kreditter"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "Ingen godkjenningshistorikk ennå."
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "Sidevisningsverktøy"
-  },
-  "Parameter_Modifications": {
-    "message": "Parameterendringer"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "Skrivebeskyttet"
   },
-  "Reason_optional": {
-    "message": "Årsak (valgfritt)"
-  },
   "Refreshes_in": {
     "message": "Oppdateres om"
-  },
-  "Reject": {
-    "message": "Avslå"
-  },
-  "Reject_this_action": {
-    "message": "Avslå denne handlingen"
   },
   "Remaining": {
     "message": "Gjenstår:"
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "Fjern API-nøkkel"
-  },
-  "Remove_modification": {
-    "message": "Fjern endring"
-  },
-  "Request_Changes": {
-    "message": "Be om endringer"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Be om endringer i denne handlingen"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "Tjenestenivå"
   },
-  "Session": {
-    "message": "Sesjon"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "Tid"
   },
-  "Time_remaining": {
-    "message": "Gjenværende tid"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Levetid for hurtigbufferobjekter i sekunder (standard: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Verktøy"
-  },
   "Tool_Timeout_ms": {
     "message": "Verktøytimeout (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Verktøyinnstillinger"
-  },
-  "Turn": {
-    "message": "Vri"
   },
   "UI_Theme": {
     "message": "UI-tema"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Handling godkjent av bruker"
-  },
-  "User_decision": {
-    "message": "Brukerbeslutning"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Brukerpreferanser og grensesnittinnstillinger"
-  },
-  "User_rejected_action": {
-    "message": "Brukeravvist handling"
-  },
-  "User_requested_modifications": {
-    "message": "Brukerens forespurte endringer"
   },
   "Using_extra_credits": {
     "message": "Bruke ekstra kreditter"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "API-nøkkelen din er kryptert"
-  },
-  "Your_Decision": {
-    "message": "Din beslutning"
   },
   "optional": {
     "message": ""

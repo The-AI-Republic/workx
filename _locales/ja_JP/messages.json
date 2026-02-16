@@ -20,12 +20,6 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ブラウザストレージへのアクセス（localStorage、sessionStorage、クッキー）"
   },
-  "Action": {
-    "message": "アクション"
-  },
-  "Action_Details": {
-    "message": "アクション詳細"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
   },
@@ -34,9 +28,6 @@
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "変更を追加"
   },
   "Add_Server": {
     "message": ""
@@ -52,9 +43,6 @@
   },
   "Advanced_Configuration": {
     "message": "高度な設定"
-  },
-  "Advanced_Options": {
-    "message": "高度なオプション"
   },
   "Advanced_Settings": {
     "message": ""
@@ -86,22 +74,16 @@
   "Approval_Safety": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "承認履歴"
-  },
   "Approval_Mode": {
     "message": ""
-  },
-  "Approve": {
-    "message": "承認"
-  },
-  "Approve_this_action": {
-    "message": "このアクションを承認"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "任意のウェブページからBrowserxに構造化データを抽出させる"
   },
   "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available_Tools": {
@@ -170,9 +152,6 @@
   "Close_settings": {
     "message": "設定を閉じる"
   },
-  "Command": {
-    "message": "コマンド"
-  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -205,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "文脈"
   },
   "Create_New_Tab": {
     "message": "新しいタブを作成"
@@ -314,9 +290,6 @@
   "Expire_after_days": {
     "message": "有効期限（日数指定）"
   },
-  "Explain_your_decision": {
-    "message": "決定理由を説明…"
-  },
   "Extension_Permission": {
     "message": "拡張機能と権限"
   },
@@ -353,9 +326,6 @@
   "File_Operations_Not_Available": {
     "message": "ファイル操作（利用不可）"
   },
-  "File_Path": {
-    "message": "ファイルパス"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "フォーム入力、データ送信、フォーム要素操作"
   },
@@ -391,14 +361,8 @@
   "Hello_World": {
     "message": "こんにちは世界"
   },
-  "History": {
-    "message": "履歴"
-  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
-  },
-  "Impact": {
-    "message": "影響"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "ネットワークリクエストとレスポンスを傍受・改変"
@@ -505,9 +469,6 @@
   "Modern_Chat": {
     "message": "モダンチャット"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "変更要求時にパラメータを調整"
-  },
   "Monthly_Credits": {
     "message": "月間クレジット"
   },
@@ -544,9 +505,6 @@
   "No_active_sessions": {
     "message": ""
   },
-  "No_approval_history_yet": {
-    "message": "承認履歴はまだありません。"
-  },
   "No_completed_tasks_yet": {
     "message": ""
   },
@@ -579,9 +537,6 @@
   },
   "Page_Vision_Tool": {
     "message": "ページビジョンツール"
-  },
-  "Parameter_Modifications": {
-    "message": "パラメータ変更"
   },
   "Pause_Queue": {
     "message": ""
@@ -634,17 +589,8 @@
   "Read_only": {
     "message": "読み取り専用"
   },
-  "Reason_optional": {
-    "message": "理由（任意）"
-  },
   "Refreshes_in": {
     "message": "更新まで"
-  },
-  "Reject": {
-    "message": "拒否"
-  },
-  "Reject_this_action": {
-    "message": "この操作を拒否する"
   },
   "Remaining": {
     "message": "残り："
@@ -654,15 +600,6 @@
   },
   "Remove_API_Key": {
     "message": "APIキーを削除"
-  },
-  "Remove_modification": {
-    "message": "変更を削除"
-  },
-  "Request_Changes": {
-    "message": "変更を依頼する"
-  },
-  "Request_changes_to_this_action": {
-    "message": "この操作の変更を依頼する"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -733,9 +670,6 @@
   "Service_Tier": {
     "message": "サービス階層"
   },
-  "Session": {
-    "message": "セッション"
-  },
   "Session_error": {
     "message": ""
   },
@@ -762,6 +696,9 @@
   },
   "Stable": {
     "message": "安定版"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -826,9 +763,6 @@
   "Time": {
     "message": "時刻"
   },
-  "Time_remaining": {
-    "message": "残り時間"
-  },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "キャッシュ項目の有効期限（秒） (デフォルト: 3600)"
   },
@@ -841,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "ツール"
-  },
   "Tool_Timeout_ms": {
     "message": "ツールのタイムアウト (ms)"
   },
@@ -852,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "ツール設定"
-  },
-  "Turn": {
-    "message": "切り替え"
   },
   "UI_Theme": {
     "message": "UIテーマ"
@@ -898,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "ユーザーが承認した操作"
-  },
-  "User_decision": {
-    "message": "ユーザーの決定"
-  },
   "User_preferences_and_interface_settings": {
     "message": "ユーザー設定とインターフェース設定"
-  },
-  "User_rejected_action": {
-    "message": "ユーザーが拒否した操作"
-  },
-  "User_requested_modifications": {
-    "message": "ユーザーが修正を要求"
   },
   "Using_extra_credits": {
     "message": "追加クレジットを使用中"
@@ -954,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "APIキーは暗号化されています"
-  },
-  "Your_Decision": {
-    "message": "あなたの決定"
   },
   "optional": {
     "message": ""
