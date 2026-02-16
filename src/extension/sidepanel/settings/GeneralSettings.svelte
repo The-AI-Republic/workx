@@ -149,14 +149,10 @@
     const enabled = event.detail;
     currentPreferences.autoStartEnabled = enabled;
 
-    // Apply immediately via Tauri autostart plugin
+    // Sync OS-level autostart state immediately
     try {
-      const { enableAutoStart, disableAutoStart } = await import('@/desktop/autostart');
-      if (enabled) {
-        await enableAutoStart();
-      } else {
-        await disableAutoStart();
-      }
+      const { initializeAutoStart } = await import('@/desktop/autostart');
+      await initializeAutoStart(enabled);
     } catch (error) {
       console.warn('[GeneralSettings] Failed to update auto-start:', error);
     }
@@ -242,7 +238,7 @@
             <span class="switch-description">{$_t("Automatically start the app when you log in to your computer")}</span>
           </div>
           <Switch
-            state={currentPreferences.autoStartEnabled ?? true}
+            state={currentPreferences.autoStartEnabled ?? false}
             on:change={handleAutoStartChange}
           />
         </div>

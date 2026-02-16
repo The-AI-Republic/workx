@@ -137,6 +137,16 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // If launched via autostart (--autostarted flag), hide the window so the
+            // app starts minimized to the system tray. Users can open it from the tray.
+            let is_autostarted = std::env::args().any(|a| a == "--autostarted");
+            if is_autostarted {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+                println!("[Pi] Started via autostart — running in background");
+            }
+
             // Register the deep link protocol handler at runtime.
             // On Linux this creates/updates the .desktop file and registers with xdg-mime.
             // On Windows this creates the registry entries.

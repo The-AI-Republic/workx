@@ -42,7 +42,7 @@ async function initializeDesktop(): Promise<void> {
   // Initialize auto-start (non-critical, catch errors)
   try {
     const config = await AgentConfig.getInstance();
-    const autoStartEnabled = config.getConfig().preferences?.autoStartEnabled ?? true;
+    const autoStartEnabled = config.getConfig().preferences?.autoStartEnabled ?? false;
     await initializeAutoStart(autoStartEnabled);
     console.log('[Desktop] Auto-start initialized');
   } catch (error) {

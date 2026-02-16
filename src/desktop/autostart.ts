@@ -10,8 +10,8 @@
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 
 /**
- * Initialize auto-start based on user preference.
- * Syncs the OS-level autostart state with the stored preference.
+ * Sync OS-level autostart state with the desired preference.
+ * Only changes OS state when it differs from the desired state.
  *
  * @param shouldBeEnabled - Whether autostart should be enabled (from user preferences)
  */
@@ -30,29 +30,5 @@ export async function initializeAutoStart(shouldBeEnabled: boolean): Promise<voi
     }
   } catch (error) {
     console.error('[AutoStart] Failed to initialize auto-start:', error);
-  }
-}
-
-/**
- * Enable auto-start on OS login
- */
-export async function enableAutoStart(): Promise<void> {
-  try {
-    await enable();
-    console.log('[AutoStart] Enabled auto-start on login');
-  } catch (error) {
-    console.error('[AutoStart] Failed to enable auto-start:', error);
-  }
-}
-
-/**
- * Disable auto-start on OS login
- */
-export async function disableAutoStart(): Promise<void> {
-  try {
-    await disable();
-    console.log('[AutoStart] Disabled auto-start on login');
-  } catch (error) {
-    console.error('[AutoStart] Failed to disable auto-start:', error);
   }
 }
