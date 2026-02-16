@@ -57,11 +57,15 @@ export function isComposerConfigured(): boolean {
  */
 export async function loadPrompt(): Promise<string> {
   if (composer) {
-    const context: RuntimeContext = {
-      ...staticContext,
-      currentDateTime: new Date().toISOString(),
-    };
-    return composer.compose_main_instruction(configuredAgentType, context);
+    try {
+      const context: RuntimeContext = {
+        ...staticContext,
+        currentDateTime: new Date().toISOString(),
+      };
+      return composer.composeMainInstruction(configuredAgentType, context);
+    } catch (error) {
+      console.error('[PromptLoader] composeMainInstruction failed, falling back to default prompt:', error);
+    }
   }
   // Fallback: return static default prompt based on build mode
   if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {

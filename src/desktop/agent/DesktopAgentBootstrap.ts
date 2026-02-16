@@ -20,6 +20,7 @@ import { BrowserxAgent } from '@/core/BrowserxAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer } from '@/core/PromptLoader';
+import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
@@ -211,7 +212,7 @@ export class DesktopAgentBootstrap {
    * Called before agent.initialize() so the dynamic prompt includes OS/arch/shell.
    */
   private async configurePromptWithPlatformInfo(): Promise<void> {
-    const staticContext: Record<string, string> = {
+    const staticContext: Partial<RuntimeContext> = {
       browserConnection: 'mcp',
     };
 
@@ -221,6 +222,8 @@ export class DesktopAgentBootstrap {
       staticContext.os = platformInfo.os;
       staticContext.arch = platformInfo.arch;
       staticContext.osVersion = platformInfo.version;
+      // TODO: Heuristic-based shell detection — assumes default shell per OS.
+      // Actual shell detection requires a Rust-side Tauri command (out of scope).
       staticContext.shell = platformInfo.os === 'macos' ? 'zsh'
         : platformInfo.os === 'windows' ? 'powershell' : 'bash';
 
