@@ -18,7 +18,7 @@ import { ModelClientFactory } from './models/ModelClientFactory';
 import { UserNotifier } from './UserNotifier';
 import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions } from './PromptLoader';
+import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
@@ -148,6 +148,9 @@ export class BrowserxAgent {
       sessionId: this.session.conversationId
     });
 
+    // Configure PromptComposer for dynamic system prompt composition
+    await this.configurePromptComposition();
+
     // Load and set instructions
     const userInstructions = await loadUserInstructions();
     taskContext.setUserInstructions(userInstructions);
@@ -187,6 +190,33 @@ export class BrowserxAgent {
         );
       }
     });
+  }
+
+  /**
+   * Configure PromptComposer for dynamic system prompt composition.
+   * Detects agent type from build mode and sets basic context.
+   *
+   * In desktop mode, DesktopAgentBootstrap calls configurePromptComposer()
+   * with full platform context (OS, arch, shell, homeDir) BEFORE
+   * agent.initialize(), so this method skips re-configuration.
+   *
+   * In extension mode, this configures the browserx agent type.
+   */
+  private async configurePromptComposition(): Promise<void> {
+    // Skip if already configured (desktop bootstrap provides platform context)
+    if (isComposerConfigured()) {
+      console.log('[BrowserxAgent] PromptComposer already configured (by bootstrap)');
+      return;
+    }
+
+    const agentType = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
+      ? 'pi' as const
+      : 'browserx' as const;
+
+    configurePromptComposer(agentType, {
+      browserConnection: agentType === 'browserx' ? 'extension' : 'mcp',
+    });
+    console.log(`[BrowserxAgent] PromptComposer configured for agent type: ${agentType}`);
   }
 
   /**

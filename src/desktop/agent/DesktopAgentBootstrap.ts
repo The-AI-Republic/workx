@@ -19,6 +19,8 @@ import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelMan
 import { BrowserxAgent } from '@/core/BrowserxAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
+import { configurePromptComposer } from '@/core/PromptLoader';
+import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
@@ -63,7 +65,12 @@ export class DesktopAgentBootstrap {
       // DesktopMessageRouter provides this compatibility
       this.agent = new BrowserxAgent(config, this.messageRouter as any);
 
-      // 4. Initialize the agent (loads model client, tools, etc.)
+      // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
+      // This must happen first so BrowserxAgent.configurePromptComposition() sees
+      // the composer is already configured and skips re-configuration.
+      await this.configurePromptWithPlatformInfo();
+
+      // 5. Initialize the agent (loads model client, tools, etc.)
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
@@ -198,6 +205,36 @@ export class DesktopAgentBootstrap {
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not set up MCP tool registration:', error);
     }
+  }
+
+  /**
+   * Collect platform info from Tauri and configure PromptComposer for Pi agent.
+   * Called before agent.initialize() so the dynamic prompt includes OS/arch/shell.
+   */
+  private async configurePromptWithPlatformInfo(): Promise<void> {
+    const staticContext: Partial<RuntimeContext> = {
+      browserConnection: 'mcp',
+    };
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
+      staticContext.os = platformInfo.os;
+      staticContext.arch = platformInfo.arch;
+      staticContext.osVersion = platformInfo.version;
+      // TODO: Heuristic-based shell detection — assumes default shell per OS.
+      // Actual shell detection requires a Rust-side Tauri command (out of scope).
+      staticContext.shell = platformInfo.os === 'macos' ? 'zsh'
+        : platformInfo.os === 'windows' ? 'powershell' : 'bash';
+
+      const { homeDir } = await import('@tauri-apps/api/path');
+      staticContext.homeDir = await homeDir();
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
+    }
+
+    configurePromptComposer('pi', staticContext);
+    console.log('[DesktopAgentBootstrap] PromptComposer configured for pi with platform context');
   }
 
   /**
