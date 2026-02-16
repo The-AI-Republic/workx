@@ -119,15 +119,41 @@ describe('PolicyRulesEngine', () => {
   });
 
   describe('parameter pattern matching', () => {
-    it('should match parameter patterns as regex', () => {
+    it('should match parameter values (not keys) as regex', () => {
       const rules: PolicyRule[] = [
-        { type: 'allow', match: { tool: 'dom_tool', pattern: '"action"\\s*:\\s*"snapshot"' }, description: 'Allow snapshot' },
+        { type: 'allow', match: { tool: 'browser_dom', pattern: '^snapshot$' }, description: 'Allow snapshot' },
       ];
 
       const engine = new PolicyRulesEngine(rules);
 
-      expect(engine.evaluate('dom_tool', { action: 'snapshot' }, 0)).toBe('auto_approve');
-      expect(engine.evaluate('dom_tool', { action: 'click' }, 0)).toBeUndefined();
+      expect(engine.evaluate('browser_dom', { action: 'snapshot' }, 0)).toBe('auto_approve');
+      expect(engine.evaluate('browser_dom', { action: 'click' }, 0)).toBeUndefined();
+    });
+
+    it('should not match parameter keys, only values', () => {
+      const rules: PolicyRule[] = [
+        { type: 'deny', match: { tool: 'browser_dom', pattern: '^action$' }, description: 'Pattern matches key name' },
+      ];
+
+      const engine = new PolicyRulesEngine(rules);
+
+      // "action" is a parameter key, not a value — should not match
+      expect(engine.evaluate('browser_dom', { action: 'snapshot' }, 0)).toBeUndefined();
+      // But if "action" appears as a parameter value, it should match
+      expect(engine.evaluate('browser_dom', { type: 'action' }, 0)).toBe('deny');
+    });
+
+    it('should match across multiple parameter values', () => {
+      const rules: PolicyRule[] = [
+        { type: 'ask', match: { tool: 'browser_dom', pattern: '^click$' }, description: 'Ask for click' },
+      ];
+
+      const engine = new PolicyRulesEngine(rules);
+
+      // "click" appears as the action value
+      expect(engine.evaluate('browser_dom', { action: 'click', node_id: '1:42' }, 0)).toBe('ask_user');
+      // "click" does not appear in any value
+      expect(engine.evaluate('browser_dom', { action: 'scroll', node_id: '1:42' }, 0)).toBeUndefined();
     });
 
     it('should extract terminal commands for pattern matching', () => {

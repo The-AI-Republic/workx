@@ -70,7 +70,16 @@
   async function handleSave() {
     try {
       isSaving = true;
-      await chrome.storage.local.set({ 'approval_config': config });
+      // Use UPDATE_APPROVAL_CONFIG message to save to storage AND update ApprovalGate in-memory
+      await new Promise<void>((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { type: 'UPDATE_APPROVAL_CONFIG', config },
+          (response: any) => {
+            if (response?.success) resolve();
+            else reject(new Error(response?.error || 'Failed to update config'));
+          }
+        );
+      });
       isDirty = false;
       saveMessage = 'Settings saved successfully';
       saveMessageType = 'success';

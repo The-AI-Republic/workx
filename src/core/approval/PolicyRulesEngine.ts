@@ -40,25 +40,23 @@ export class PolicyRulesEngine {
     parameters: Record<string, any>,
     riskScore: number
   ): ApprovalDecision | undefined {
-    const paramString = JSON.stringify(parameters);
-
     // 1. Check deny rules first
     for (const rule of this.denyRules) {
-      if (this.matchesRule(rule, toolName, paramString, riskScore)) {
+      if (this.matchesRule(rule, toolName, parameters, riskScore)) {
         return 'deny';
       }
     }
 
     // 2. Check ask rules
     for (const rule of this.askRules) {
-      if (this.matchesRule(rule, toolName, paramString, riskScore)) {
+      if (this.matchesRule(rule, toolName, parameters, riskScore)) {
         return 'ask_user';
       }
     }
 
     // 3. Check allow rules
     for (const rule of this.allowRules) {
-      if (this.matchesRule(rule, toolName, paramString, riskScore)) {
+      if (this.matchesRule(rule, toolName, parameters, riskScore)) {
         return 'auto_approve';
       }
     }
@@ -73,7 +71,7 @@ export class PolicyRulesEngine {
   private matchesRule(
     rule: PolicyRule,
     toolName: string,
-    paramString: string,
+    parameters: Record<string, any>,
     riskScore: number
   ): boolean {
     const { match } = rule;
@@ -91,14 +89,18 @@ export class PolicyRulesEngine {
     if (match.pattern !== undefined) {
       try {
         const regex = new RegExp(match.pattern, 'i');
-        // For terminal tool, match against command parameter directly
         if (toolName === 'terminal') {
-          const command = this.extractCommand(paramString);
-          if (!regex.test(command) && !regex.test(paramString)) {
+          // Terminal: match against the command string directly
+          const command = typeof parameters.command === 'string' ? parameters.command : '';
+          if (!regex.test(command)) {
             return false;
           }
-        } else if (!regex.test(paramString)) {
-          return false;
+        } else {
+          // Non-terminal: match against parameter values only (not keys)
+          const values = this.extractParameterValues(parameters);
+          if (!values.some(v => regex.test(v))) {
+            return false;
+          }
         }
       } catch {
         // Invalid regex, rule doesn't match
@@ -135,14 +137,18 @@ export class PolicyRulesEngine {
   }
 
   /**
-   * Extract command string from serialized parameters (for terminal tool)
+   * Extract all leaf string values from parameters (excludes keys).
+   * This prevents patterns from accidentally matching JSON key names.
    */
-  private extractCommand(paramString: string): string {
-    try {
-      const params = JSON.parse(paramString);
-      return typeof params.command === 'string' ? params.command : '';
-    } catch {
-      return '';
+  private extractParameterValues(parameters: Record<string, any>): string[] {
+    const values: string[] = [];
+    for (const value of Object.values(parameters)) {
+      if (typeof value === 'string') {
+        values.push(value);
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        values.push(String(value));
+      }
     }
+    return values;
   }
 }

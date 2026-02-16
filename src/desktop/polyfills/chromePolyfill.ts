@@ -150,25 +150,30 @@ const runtimePolyfill = {
 
         case 'UPDATE_APPROVAL_CONFIG': {
           const config = (message as any).config;
-          // 1. Save to storage
-          storagePolyfill.local.get('approval_config').then(async (result) => {
-            const existing = (result as any)['approval_config'] || {};
-            const merged = { ...existing, ...config };
-            await storagePolyfill.local.set({ approval_config: merged });
-          });
-          // 2. Update ApprovalGate directly
-          import('../agent/DesktopAgentBootstrap').then(({ getDesktopAgentBootstrap }) => {
-            const agent = getDesktopAgentBootstrap().getAgent();
-            if (agent) {
-              const gate = agent.getToolRegistry().getApprovalGate();
-              if (gate) {
-                if (config.mode) gate.setMode(config.mode);
-                if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
-                if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+          (async () => {
+            try {
+              // 1. Save to storage
+              const result = await storagePolyfill.local.get('approval_config');
+              const existing = (result as any)['approval_config'] || {};
+              const merged = { ...existing, ...config };
+              await storagePolyfill.local.set({ approval_config: merged });
+              // 2. Update ApprovalGate directly
+              const { getDesktopAgentBootstrap } = await import('../agent/DesktopAgentBootstrap');
+              const agent = getDesktopAgentBootstrap().getAgent();
+              if (agent) {
+                const gate = agent.getToolRegistry().getApprovalGate();
+                if (gate) {
+                  if (config.mode) gate.setMode(config.mode);
+                  if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
+                  if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+                }
               }
+              responseCallback?.({ success: true });
+            } catch (error) {
+              console.error('[chromePolyfill] Failed to update approval config:', error);
+              responseCallback?.({ success: false, error: (error as Error).message });
             }
-          });
-          responseCallback?.({ success: true });
+          })();
           return;
         }
 

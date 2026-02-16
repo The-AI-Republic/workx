@@ -45,24 +45,24 @@ const extensionRules: PolicyRule[] = [
   // ALLOW read-only DOM operations
   {
     type: 'allow',
-    match: { tool: 'browser_dom', pattern: '"action"\\s*:\\s*"snapshot"' },
+    match: { tool: 'browser_dom', pattern: '^snapshot$' },
     description: 'DOM snapshot is read-only and safe',
   },
   {
     type: 'allow',
-    match: { tool: 'browser_dom', pattern: '"action"\\s*:\\s*"scroll"' },
+    match: { tool: 'browser_dom', pattern: '^scroll$' },
     description: 'DOM scroll is low-risk',
   },
 
   // ASK for interactive DOM operations
   {
     type: 'ask',
-    match: { tool: 'browser_dom', pattern: '"action"\\s*:\\s*"click"' },
+    match: { tool: 'browser_dom', pattern: '^click$' },
     description: 'DOM click requires approval',
   },
   {
     type: 'ask',
-    match: { tool: 'browser_dom', pattern: '"action"\\s*:\\s*"type"' },
+    match: { tool: 'browser_dom', pattern: '^type$' },
     description: 'DOM type requires approval',
   },
 ];
