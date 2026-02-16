@@ -97,4 +97,49 @@ describe('PromptLoader', () => {
     // user_instruction.md exists but may be empty
     expect(typeof instructions).toBe('string');
   });
+
+  it('falls back to default prompt when composeMainInstruction throws', async () => {
+    const { loadPrompt, configurePromptComposer } = await import('../../src/core/PromptLoader');
+    const PromptComposerModule = await import('../../src/prompts/PromptComposer');
+
+    // Configure the composer, then sabotage its method to throw
+    configurePromptComposer('browserx');
+    vi.spyOn(PromptComposerModule.PromptComposer.prototype, 'composeMainInstruction')
+      .mockImplementation(() => { throw new Error('fragment import failed'); });
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const prompt = await loadPrompt();
+
+    // Should fall back to default browserx prompt
+    expect(prompt).toContain('BrowserX');
+    expect(prompt).toContain('Core Directive');
+
+    // Should have logged the error
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('composeMainInstruction failed'),
+      expect.any(Error)
+    );
+  });
+
+  it('isComposerConfigured returns false before config, true after', async () => {
+    const { isComposerConfigured, configurePromptComposer } = await import('../../src/core/PromptLoader');
+
+    expect(isComposerConfigured()).toBe(false);
+
+    configurePromptComposer('browserx');
+
+    expect(isComposerConfigured()).toBe(true);
+  });
+
+  it('returns browserx default prompt (not pi) when composer is not configured', async () => {
+    const { loadPrompt } = await import('../../src/core/PromptLoader');
+
+    const prompt = await loadPrompt();
+
+    // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be browserx
+    expect(prompt).toContain('BrowserX');
+    expect(prompt).not.toContain('Pi');
+    expect(prompt).not.toContain('desktop automation agent');
+  });
 });

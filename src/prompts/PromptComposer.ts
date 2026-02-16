@@ -52,7 +52,7 @@ export class PromptComposer {
    * 4. Tool guidance + operation strategy (agent-specific, static for MVP)
    * 5. Task execution policies (shared)
    */
-  compose_main_instruction(agentType: AgentType, context?: RuntimeContext): string {
+  composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string {
     const sections: string[] = [];
 
     // 1. Agent identity & mission

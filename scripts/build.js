@@ -112,7 +112,8 @@ function build() {
       fs.mkdirSync(promptsDest, { recursive: true });
       fs.readdirSync(promptsSrc).forEach(file => {
         const srcFile = path.join(promptsSrc, file);
-        // Skip directories (e.g., fragments/) and non-file entries
+        // Skip directories (e.g., fragments/) — fragments are inlined by Vite ?raw
+        // imports at build time, so they don't need to be copied to dist
         if (!fs.statSync(srcFile).isFile()) return;
         fs.copyFileSync(srcFile, path.join(promptsDest, file));
       });

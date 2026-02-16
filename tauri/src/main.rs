@@ -19,6 +19,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
+use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Detect if the system is using a dark theme
@@ -116,6 +117,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostarted"])))
         .plugin(tauri_plugin_deep_link::init())
         // Single instance plugin handles deep links on Windows/Linux
         // When a second instance is launched with a deep link URL,
@@ -138,6 +140,16 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // If launched via autostart (--autostarted flag), hide the window so the
+            // app starts minimized to the system tray. Users can open it from the tray.
+            let is_autostarted = std::env::args().any(|a| a == "--autostarted");
+            if is_autostarted {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+                println!("[Pi] Started via autostart — running in background");
+            }
+
             // Register the deep link protocol handler at runtime.
             // On Linux this creates/updates the .desktop file and registers with xdg-mime.
             // On Windows this creates the registry entries.
@@ -160,7 +172,7 @@ fn main() {
             }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Open Pi", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
             // Detect initial theme

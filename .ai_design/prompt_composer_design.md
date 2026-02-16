@@ -52,7 +52,7 @@ Additionally, the compaction prompt lives in `src/core/compact/constants.ts` as 
                           ▼
 ┌────────────────────────────────────────────────────────────────┐
 │  src/prompts/PromptComposer.ts                                 │
-│  ├── compose_main_instruction(agentType, runtimeCtx) → string  │
+│  ├── composeMainInstruction(agentType, runtimeCtx) → string  │
 │  ├── composeCompactPrompt() → string                           │
 │  └── composeSummaryPrefix() → string                           │
 │                                                                │
@@ -65,7 +65,7 @@ Additionally, the compaction prompt lives in `src/core/compact/constants.ts` as 
 │  src/core/PromptLoader.ts  (single source of truth for agent)  │
 │                                                                │
 │  loadPrompt() {                                                │
-│    if (configured) → return composer.compose_main_instruction() │
+│    if (configured) → return composer.composeMainInstruction() │
 │    else → return default_browserx_agent_prompt.md (fallback)   │
 │  }                                                             │
 │                                                                │
@@ -87,7 +87,7 @@ Additionally, the compaction prompt lives in `src/core/compact/constants.ts` as 
 User sends message
   → processUserInputWithTask()
     → loadPrompt()                                    // PromptLoader
-      → PromptComposer.compose_main_instruction(      // called inside PromptLoader
+      → PromptComposer.composeMainInstruction(      // called inside PromptLoader
           agentType, { currentDateTime, os, ... })
       → returns composed prompt
     → taskContext.setBaseInstructions(prompt)
@@ -210,7 +210,7 @@ export class PromptComposer {
    * 4. Tool guidance + operation strategy (agent-specific, static for MVP)
    * 5. Task execution policies (shared)
    */
-  compose_main_instruction(agentType: AgentType, context?: RuntimeContext): string {
+  composeMainInstruction(agentType: AgentType, context?: RuntimeContext): string {
     const sections: string[] = [];
     sections.push(agentType === 'browserx' ? browserxIntro : piIntro);
     sections.push(this.buildRuntimeMetadata(agentType, context));
@@ -303,7 +303,7 @@ export async function loadPrompt(): Promise<string> {
       ...staticContext,
       currentDateTime: new Date().toISOString(),
     };
-    return composer.compose_main_instruction(agentType, context);
+    return composer.composeMainInstruction(agentType, context);
   }
   // Fallback: return static default prompt
   return defaultPrompt;
@@ -504,9 +504,9 @@ src/
 ## 9. Testing Strategy
 
 1. **Unit tests for PromptComposer**:
-   - `compose_main_instruction('browserx')` returns prompt with browserx identity and tools
-   - `compose_main_instruction('pi', runtimeCtx)` returns prompt with pi identity, OS metadata, and pi tools
-   - `compose_main_instruction('pi')` without context still returns valid prompt (graceful degradation)
+   - `composeMainInstruction('browserx')` returns prompt with browserx identity and tools
+   - `composeMainInstruction('pi', runtimeCtx)` returns prompt with pi identity, OS metadata, and pi tools
+   - `composeMainInstruction('pi')` without context still returns valid prompt (graceful degradation)
    - `composeCompactPrompt()` returns summarization prompt
    - `composeSummaryPrefix()` returns summary prefix
    - Verify no duplicate sections in composed output

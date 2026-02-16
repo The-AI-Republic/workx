@@ -1,26 +1,24 @@
 /**
  * Constants for chat history compaction
  *
- * Prompt content is managed by PromptComposer and loaded from fragment files.
- * This module re-exports them for backward compatibility.
+ * Prompt content loaded directly from fragment files via Vite ?raw imports.
  */
 
 import type { CompactionConfig } from './types';
-import { PromptComposer } from '../../prompts/PromptComposer';
-
-const _composer = new PromptComposer();
+import compactSummarization from '../../prompts/fragments/compact_summarization.md?raw';
+import compactSummaryPrefix from '../../prompts/fragments/compact_summary_prefix.md?raw';
 
 /**
  * Prompt sent to LLM for summarization.
  * Designed for LLM-to-LLM handoff context.
  */
-export const SUMMARIZATION_PROMPT = _composer.composeCompactPrompt();
+export const SUMMARIZATION_PROMPT = compactSummarization;
 
 /**
  * Prefix prepended to summary when added to history.
  * Used to identify summary messages and prevent re-summarization.
  */
-export const SUMMARY_PREFIX = _composer.composeSummaryPrefix();
+export const SUMMARY_PREFIX = compactSummaryPrefix;
 
 /**
  * Placeholder when no meaningful summary can be generated.
