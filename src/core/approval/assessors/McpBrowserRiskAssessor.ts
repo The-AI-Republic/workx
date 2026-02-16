@@ -56,7 +56,7 @@ export class McpBrowserRiskAssessor implements IRiskAssessor {
       score = mapped.score;
       factors.push(mapped.factor);
     } else if (action === 'click') {
-      score = 25;
+      score = 10;
       factors.push('Click action on page element');
 
       // Check for submit/payment indicators in element metadata only

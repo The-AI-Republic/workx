@@ -34,7 +34,7 @@ export class DomToolRiskAssessor implements IRiskAssessor {
         break;
 
       case 'click':
-        score = 25;
+        score = 10;
         factors.push('Click action on page element');
         break;
 

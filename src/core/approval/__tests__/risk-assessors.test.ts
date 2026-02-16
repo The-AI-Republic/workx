@@ -54,14 +54,14 @@ describe('DomToolRiskAssessor', () => {
     expect(result.action).toBe('auto_approve');
   });
 
-  it('should score click as 25 (low)', () => {
+  it('should score click as 10 (none)', () => {
     const result = assessor.assess('dom_tool', { action: 'click', node_id: '42' });
-    expect(result.score).toBe(25);
-    expect(result.level).toBe(RiskLevel.Low);
+    expect(result.score).toBe(10);
+    expect(result.level).toBe(RiskLevel.None);
     expect(result.action).toBe('auto_approve');
   });
 
-  it('should score click with submit/payment params as 25 (base only, semantic boost handled by enhancer)', () => {
+  it('should score click with submit/payment params as 10 (base only, semantic boost handled by enhancer)', () => {
     const result = assessor.assess('dom_tool', {
       action: 'click',
       node_id: '42',
@@ -69,8 +69,8 @@ describe('DomToolRiskAssessor', () => {
     });
     // DomToolRiskAssessor only scores base action type now;
     // SemanticElementEnhancer handles submit/payment boosting to avoid double-counting
-    expect(result.score).toBe(25);
-    expect(result.level).toBe(RiskLevel.Low);
+    expect(result.score).toBe(10);
+    expect(result.level).toBe(RiskLevel.None);
     expect(result.action).toBe('auto_approve');
   });
 
@@ -79,7 +79,7 @@ describe('DomToolRiskAssessor', () => {
       action: 'click',
       aria_label: 'Purchase now',
     });
-    expect(result.score).toBe(25); // base click score only
+    expect(result.score).toBe(10); // base click score only
   });
 
   it('should score type as 40 (medium)', () => {
@@ -202,9 +202,9 @@ describe('McpBrowserRiskAssessor', () => {
     expect(assessor.assess('browser__scroll', {}).score).toBe(0);
   });
 
-  it('should score click as 25', () => {
+  it('should score click as 10', () => {
     const result = assessor.assess('browser__click', { selector: '#btn' });
-    expect(result.score).toBe(25);
+    expect(result.score).toBe(10);
   });
 
   it('should score click on submit/payment as 70', () => {
@@ -237,6 +237,6 @@ describe('McpBrowserRiskAssessor', () => {
 
   it('should handle non-prefixed tool names', () => {
     const result = assessor.assess('click', {});
-    expect(result.score).toBe(25);
+    expect(result.score).toBe(10);
   });
 });
