@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIResponsesClient } from '@/models/client/OpenAIResponsesClient';
-import type { Prompt, ModelFamily, ModelProviderInfo } from '@/models/types';
+import { OpenAIResponsesClient } from '@/core/models/client/OpenAIResponsesClient';
+import type { Prompt, ModelFamily, ModelProviderInfo } from '@/core/models/types';
 
 describe('Edge Case: Azure Endpoint Detection', () => {
   let mockFetch: ReturnType<typeof vi.fn>;

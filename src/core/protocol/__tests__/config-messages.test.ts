@@ -10,7 +10,7 @@ import {
   createConfigMessage,
   isConfigMessage,
   handleConfigMessage
-} from '@/protocol/config-messages';
+} from '@/core/protocol/config-messages';
 import type { AgentConfigData } from '@/config/types';
 
 describe('Config Messages Protocol', () => {

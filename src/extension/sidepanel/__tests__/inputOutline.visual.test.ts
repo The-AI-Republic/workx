@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import TerminalInput from '@/sidepanel/components/TerminalInput.svelte';
+import TerminalInput from '@/extension/sidepanel/components/TerminalInput.svelte';
 
 describe('Input Outline - Visual Regression', () => {
   it('should have visible border in default state', () => {

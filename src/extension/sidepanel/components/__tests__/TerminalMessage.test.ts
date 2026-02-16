@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import TerminalMessage from '@/sidepanel/components/TerminalMessage.svelte';
+import TerminalMessage from '@/extension/sidepanel/components/TerminalMessage.svelte';
 
 describe('TerminalMessage - Color Mapping', () => {
   it('should render input type with text-term-blue class', () => {

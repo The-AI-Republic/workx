@@ -722,40 +722,40 @@ describe('Integration with ModelClient Base Class', () => {
     client = new TestModelClient();
   });
 
-  it('should validate requests and throw appropriate errors', () => {
-    expect(() => client.complete({ model: '', messages: [] })).toThrow(ModelClientError);
-    expect(() => client.complete({ model: 'test', messages: [] })).toThrow(ModelClientError);
-    expect(() => client.complete({
+  it('should validate requests and throw appropriate errors', async () => {
+    await expect(client.complete({ model: '', messages: [] })).rejects.toThrow(ModelClientError);
+    await expect(client.complete({ model: 'test', messages: [] })).rejects.toThrow(ModelClientError);
+    await expect(client.complete({
       model: 'test',
       messages: [{ role: 'invalid' as any, content: 'test' }]
-    })).toThrow(ModelClientError);
+    })).rejects.toThrow(ModelClientError);
   });
 
-  it('should handle tool message validation', () => {
-    expect(() => client.complete({
+  it('should handle tool message validation', async () => {
+    await expect(client.complete({
       model: 'test',
       messages: [{ role: 'tool', content: 'result' }] // Missing toolCallId
-    })).toThrow(ModelClientError);
+    })).rejects.toThrow(ModelClientError);
 
     // Should not throw with valid tool message
-    expect(() => client.complete({
+    await expect(client.complete({
       model: 'test',
       messages: [{ role: 'tool', content: 'result', toolCallId: 'call_123' }]
-    })).not.toThrow();
+    })).resolves.toBeDefined();
   });
 
-  it('should validate temperature and maxTokens', () => {
-    expect(() => client.complete({
+  it('should validate temperature and maxTokens', async () => {
+    await expect(client.complete({
       model: 'test',
       messages: [{ role: 'user', content: 'test' }],
       temperature: -1
-    })).toThrow(ModelClientError);
+    })).rejects.toThrow(ModelClientError);
 
-    expect(() => client.complete({
+    await expect(client.complete({
       model: 'test',
       messages: [{ role: 'user', content: 'test' }],
       maxTokens: 0
-    })).toThrow(ModelClientError);
+    })).rejects.toThrow(ModelClientError);
   });
 });
 

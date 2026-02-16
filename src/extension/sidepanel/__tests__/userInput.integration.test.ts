@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import App from '@/sidepanel/App.svelte';
+import App from '@/extension/sidepanel/App.svelte';
 
 // Mock chrome API for integration tests
 global.chrome = {

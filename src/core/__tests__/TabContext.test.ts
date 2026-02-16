@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
-import TabContext from '@/sidepanel/components/TabContext.svelte';
+import TabContext from '@/extension/sidepanel/components/common/TabContext.svelte';
 
 describe('TabContext Component', () => {
   // Mock chrome.tabs API

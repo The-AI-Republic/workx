@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/svelte';
-import App from '@/sidepanel/App.svelte';
+import App from '@/extension/sidepanel/App.svelte';
 import '@testing-library/jest-dom';
 
 // Mock the MessageRouter

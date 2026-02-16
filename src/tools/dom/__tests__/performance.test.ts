@@ -33,8 +33,8 @@ vi.mock('@/extension/tools/browser/ChromeDebuggerClient', () => ({
 // Helper to flatten tree structure for testing
 function flattenNodes(node: SerializedNode): SerializedNode[] {
   const result: SerializedNode[] = [node];
-  if (node.children) {
-    for (const child of node.children) {
+  if (node.kids) {
+    for (const child of node.kids) {
       result.push(...flattenNodes(child));
     }
   }

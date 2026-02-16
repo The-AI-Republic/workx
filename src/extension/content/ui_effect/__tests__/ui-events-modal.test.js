@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import App from '@/sidepanel/App.svelte';
+import App from '@/extension/sidepanel/App.svelte';
 
 // Mock MessageRouter
 vi.mock('../../src/core/MessageRouter', () => ({

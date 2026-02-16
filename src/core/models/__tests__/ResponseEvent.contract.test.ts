@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { ResponseEvent } from '@/models/types/ResponsesAPI';
+import type { ResponseEvent } from '@/core/models/types/ResponsesAPI';
 
 // Mock data for testing
 const mockItem = {

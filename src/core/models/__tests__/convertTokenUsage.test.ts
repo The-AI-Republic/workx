@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { OpenAIResponsesClient } from '@/models/client/OpenAIResponsesClient';
-import type { ModelFamily, ModelProviderInfo } from '@/models/types/ResponsesAPI';
-import type { ResponseCompletedUsage } from '@/models/types/ResponsesAPI';
+import { OpenAIResponsesClient } from '@/core/models/client/OpenAIResponsesClient';
+import type { ModelFamily, ModelProviderInfo } from '@/core/models/types/ResponsesAPI';
+import type { ResponseCompletedUsage } from '@/core/models/types/ResponsesAPI';
 
 describe('convertTokenUsage', () => {
   // Helper to create a test client

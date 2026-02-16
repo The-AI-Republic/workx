@@ -195,6 +195,7 @@ describe('BrowserxAgent', () => {
       getAllTools: vi.fn().mockReturnValue([]),
       cleanup: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
+      setApprovalGate: vi.fn(),
     };
 
     mockModelClientFactoryInstance = {

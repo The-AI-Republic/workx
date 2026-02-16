@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ClickableCache } from '../../../serializers/utils/ClickableCache';
-import { VirtualNode } from '../../../types';
+import type { VirtualNode } from '../../../types';
 
 describe('ClickableCache', () => {
   let cache: ClickableCache;

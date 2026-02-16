@@ -61,7 +61,7 @@ describe('DomSnapshot Flattening Logic', () => {
       expect(serialized.page.body.node_id).toBe(100); // backendNodeId
       expect(serialized.page.body.tag).toBe('button');
       expect(serialized.page.body.role).toBe('button');
-      expect(serialized.page.body['aria-label']).toBe('Submit Form');
+      expect(serialized.page.body.aria_label).toBe('Submit Form');
     });
 
     it('should keep non-semantic div with onclick handler', () => {
@@ -121,9 +121,9 @@ describe('DomSnapshot Flattening Logic', () => {
       expect(serialized.page.body.node_id).toBe(100); // backendNodeId
       expect(serialized.page.body.tag).toBe('form');
       expect(serialized.page.body.role).toBe('form');
-      expect(serialized.page.body.children).toBeDefined();
-      expect(serialized.page.body.children?.length).toBe(1);
-      expect(serialized.page.body.children?.[0].tag).toBe('input');
+      expect(serialized.page.body.kids).toBeDefined();
+      expect(serialized.page.body.kids?.length).toBe(1);
+      expect(serialized.page.body.kids?.[0].tag).toBe('input');
     });
   });
 
@@ -193,10 +193,10 @@ describe('DomSnapshot Flattening Logic', () => {
       const serialized = snapshot.serialize();
 
       // When multiple children, a minimal wrapper is kept for grouping
-      expect(serialized.page.body.children).toBeDefined();
-      expect(serialized.page.body.children?.length).toBe(2);
-      expect(serialized.page.body.children?.[0].tag).toBe('button');
-      expect(serialized.page.body.children?.[1].tag).toBe('button');
+      expect(serialized.page.body.kids).toBeDefined();
+      expect(serialized.page.body.kids?.length).toBe(2);
+      expect(serialized.page.body.kids?.[0].tag).toBe('button');
+      expect(serialized.page.body.kids?.[1].tag).toBe('button');
     });
 
     it('should hoist through nested structural wrappers', () => {
@@ -236,7 +236,7 @@ describe('DomSnapshot Flattening Logic', () => {
       // Both wrapper divs removed, button hoisted to root
       expect(serialized.page.body.node_id).toBe(102); // Button's backendNodeId
       expect(serialized.page.body.tag).toBe('button');
-      expect(serialized.page.body['aria-label']).toBe('Deep Button');
+      expect(serialized.page.body.aria_label).toBe('Deep Button');
     });
   });
 
@@ -277,10 +277,10 @@ describe('DomSnapshot Flattening Logic', () => {
 
       // Form is semantic container (kept)
       expect(serialized.page.body.tag).toBe('form');
-      expect(serialized.page.body.children).toBeDefined();
+      expect(serialized.page.body.kids).toBeDefined();
       // Empty div discarded, only button remains
-      expect(serialized.page.body.children?.length).toBe(1);
-      expect(serialized.page.body.children?.[0].tag).toBe('button');
+      expect(serialized.page.body.kids?.length).toBe(1);
+      expect(serialized.page.body.kids?.[0].tag).toBe('button');
     });
   });
 
@@ -346,13 +346,13 @@ describe('DomSnapshot Flattening Logic', () => {
       expect(serialized.page.body.role).toBe('form');
 
       // Should have 2 children: input and button (div and label removed)
-      expect(serialized.page.body.children?.length).toBe(2);
+      expect(serialized.page.body.kids?.length).toBe(2);
 
-      const children = serialized.page.body.children!;
+      const children = serialized.page.body.kids!;
       expect(children[0].tag).toBe('input');
-      expect(children[0].placeholder).toBe('Enter email');
+      expect(children[0].hint).toBe('Enter email');
       expect(children[1].tag).toBe('button');
-      expect(children[1]['aria-label']).toBe('Submit');
+      expect(children[1].aria_label).toBe('Submit');
     });
 
     it('should handle mixed semantic and structural content', () => {
@@ -416,11 +416,11 @@ describe('DomSnapshot Flattening Logic', () => {
       expect(serialized.page.body.role).toBe('navigation');
 
       // Should have 2 links (div and span removed)
-      expect(serialized.page.body.children?.length).toBe(2);
-      expect(serialized.page.body.children?.[0].tag).toBe('a');
-      expect(serialized.page.body.children?.[0].href).toBe('/home');
-      expect(serialized.page.body.children?.[1].tag).toBe('a');
-      expect(serialized.page.body.children?.[1].href).toBe('/about');
+      expect(serialized.page.body.kids?.length).toBe(2);
+      expect(serialized.page.body.kids?.[0].tag).toBe('a');
+      expect(serialized.page.body.kids?.[0].href).toBe('/home');
+      expect(serialized.page.body.kids?.[1].tag).toBe('a');
+      expect(serialized.page.body.kids?.[1].href).toBe('/about');
     });
   });
 });

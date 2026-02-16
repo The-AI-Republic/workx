@@ -8,9 +8,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ModelClient } from '@/models/ModelClient';
-import type { Prompt } from '@/models/types/ResponsesAPI';
-import type { ModelFamily, ModelProviderInfo } from '@/models/types/ResponsesAPI';
+import { ModelClient } from '@/core/models/ModelClient';
+import type { Prompt } from '@/core/models/types/ResponsesAPI';
+import type { ModelFamily, ModelProviderInfo } from '@/core/models/types/ResponsesAPI';
 
 // Mock configuration for testing (using snake_case from Phase 3.2)
 const mockConfig = {

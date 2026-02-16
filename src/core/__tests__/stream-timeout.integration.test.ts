@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ResponseStream, ResponseStreamError } from '@/models/ResponseStream';
-import type { ResponseEvent } from '@/models/types/ResponseEvent';
+import { ResponseStream, ResponseStreamError } from '@/core/models/ResponseStream';
+import type { ResponseEvent } from '@/core/models/types/ResponseEvent';
 
 describe('Edge Case: SSE Stream Timeout', () => {
   beforeEach(() => {

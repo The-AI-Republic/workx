@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Session } from '@/core/Session';
 import { ToolRegistry } from '@/tools/ToolRegistry';
 import { ApprovalManager } from '@/core/ApprovalManager';
-import { ModelClientFactory } from '@/models/ModelClientFactory';
+import { ModelClientFactory } from '@/core/models/ModelClientFactory';
 import { BrowserxAgent } from '@/core/BrowserxAgent';
 
 describe('Backward Compatibility', () => {

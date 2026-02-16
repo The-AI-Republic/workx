@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { SerializationPipeline } from '../../serializers/SerializationPipeline';
 import { DEFAULT_PIPELINE_CONFIG, BASELINE_PIPELINE_CONFIG } from '../../types';
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 
 describe('SerializationPipeline Integration', () => {
   const createTestTree = (): VirtualNode => {
@@ -121,9 +121,9 @@ describe('SerializationPipeline Integration', () => {
 
       const result = pipeline.execute(tree);
 
-      expect(result.metrics.totalNodes).toBeGreaterThan(0);
-      expect(result.metrics.compactionScore).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.compactionScore).toBeLessThanOrEqual(1);
+      expect(result.metrics!.totalNodes).toBeGreaterThan(0);
+      expect(result.metrics!.compactionScore).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.compactionScore).toBeLessThanOrEqual(1);
     });
   });
 
@@ -297,7 +297,7 @@ describe('SerializationPipeline Integration', () => {
       const fullPipeline = new SerializationPipeline(DEFAULT_PIPELINE_CONFIG);
       const fullResult = fullPipeline.execute(tree);
 
-      expect(fullResult.metrics.serializedNodes).toBeLessThan(baselineResult.metrics.serializedNodes);
+      expect(fullResult.metrics!.serializedNodes).toBeLessThan(baselineResult.metrics!.serializedNodes);
     });
 
     it('should achieve measurable token reduction', () => {
@@ -307,7 +307,7 @@ describe('SerializationPipeline Integration', () => {
       const result = pipeline.execute(tree);
 
       // Should achieve some token reduction
-      expect(result.metrics.tokenReductionRate).toBeGreaterThan(0);
+      expect(result.metrics!.tokenReductionRate).toBeGreaterThan(0);
     });
   });
 
@@ -341,10 +341,10 @@ describe('SerializationPipeline Integration', () => {
 
       const result = pipeline.execute(tree);
 
-      expect(result.metrics.stage1TimeMs).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.stage2TimeMs).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.stage3TimeMs).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.serializationTimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.stage1TimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.stage2TimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.stage3TimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.serializationTimeMs).toBeGreaterThanOrEqual(0);
     });
   });
 });

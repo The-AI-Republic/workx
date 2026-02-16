@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import '../../__test-utils__/chrome-storage-mock';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { SessionCacheManager } from '@/storage/SessionCacheManager';

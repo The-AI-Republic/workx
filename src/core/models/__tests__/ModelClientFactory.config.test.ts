@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ModelClientFactory } from '@/models/ModelClientFactory';
+import { ModelClientFactory } from '@/core/models/ModelClientFactory';
 import { AgentConfig } from '@/config/AgentConfig';
 
 describe('ModelClientFactory - AgentConfig Integration', () => {

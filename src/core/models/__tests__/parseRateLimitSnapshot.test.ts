@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { OpenAIResponsesClient } from '@/models/client/OpenAIResponsesClient';
-import type { ModelFamily, ModelProviderInfo } from '@/models/types/ResponsesAPI';
+import { OpenAIResponsesClient } from '@/core/models/client/OpenAIResponsesClient';
+import type { ModelFamily, ModelProviderInfo } from '@/core/models/types/ResponsesAPI';
 
 describe('parseRateLimitSnapshot', () => {
   // Helper to create a test client

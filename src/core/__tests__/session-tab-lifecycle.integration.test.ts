@@ -17,7 +17,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Session } from '@/core/Session';
 import { TabManager } from '@/core/TabManager';
 import type { SessionServices } from '@/core/Session';
-import { ModelClient } from '@/models/ModelClient';
+import { ModelClient } from '@/core/models/ModelClient';
 
 describe('Session Tab Lifecycle Integration Tests', () => {
   let chromeMock: any;

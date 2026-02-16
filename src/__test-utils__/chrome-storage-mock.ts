@@ -2,7 +2,7 @@
  * Chrome Storage Mock Helper for Testing
  * Provides a mock implementation of chrome.storage API for unit tests
  */
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 
 interface StorageArea {
   get(keys?: string | string[] | object | null, callback?: Function): Promise<any>;

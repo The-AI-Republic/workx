@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { OpenAIResponsesClient } from '@/models/client/OpenAIResponsesClient';
-import type { ModelFamily, ModelProviderInfo } from '@/models/types';
+import { OpenAIResponsesClient } from '@/core/models/client/OpenAIResponsesClient';
+import type { ModelFamily, ModelProviderInfo } from '@/core/models/types';
 
 describe('Edge Case: Missing Rate Limit Headers', () => {
   let client: OpenAIResponsesClient;

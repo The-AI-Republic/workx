@@ -16,7 +16,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TurnContext } from '@/core/TurnContext';
-import { ModelClient } from '@/models/ModelClient';
+import { ModelClient } from '@/core/models/ModelClient';
 
 describe('TurnContext Methods', () => {
   let mockModelClient: ModelClient;
