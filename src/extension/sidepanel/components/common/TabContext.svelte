@@ -286,22 +286,20 @@
         <div class="dropdown-item no-tabs">{$_t("No tabs available")}</div>
       {:else}
         <!-- "Create New Tab" option to unbind session from any tab -->
-        <Tooltip content={$_t("Create New Tab")} placement="right">
-          <div
-            class="dropdown-item new-tab-option"
-            class:selected={tabId === -1}
-            on:click={() => selectTab(-1)}
-            on:keydown={(e) => e.key === 'Enter' && selectTab(-1)}
-            role="button"
-            tabindex="0"
-            data-testid="tab-dropdown-new-tab"
-          >
-            <span class="tab-item-title">+ {$_t("Create New Tab")}</span>
-            {#if tabId === -1}
-              <span class="selected-indicator">✓</span>
-            {/if}
-          </div>
-        </Tooltip>
+        <div
+          class="dropdown-item new-tab-option"
+          class:selected={tabId === -1}
+          on:click={() => selectTab(-1)}
+          on:keydown={(e) => e.key === 'Enter' && selectTab(-1)}
+          role="button"
+          tabindex="0"
+          data-testid="tab-dropdown-new-tab"
+        >
+          <span class="tab-item-title">+ {$_t("Create New Tab")}</span>
+          {#if tabId === -1}
+            <span class="selected-indicator">✓</span>
+          {/if}
+        </div>
 
         <!-- Separator -->
         <div class="dropdown-separator"></div>
@@ -318,7 +316,9 @@
               tabindex="0"
               data-testid="tab-dropdown-item"
             >
-              <span class="tab-item-title">{#if tab.id === activeTabId}{$_t("(current)")} {/if}{tab.title || tab.url || 'Untitled'}</span>
+              <span class="tab-item-title">
+                {#if tab.id === activeTabId}{$_t("(current)")} {/if}{tab.title || tab.url || 'Untitled'}
+              </span>
               {#if tab.id === tabId}
                 <span class="selected-indicator">✓</span>
               {/if}

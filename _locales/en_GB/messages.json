@@ -1,7 +1,4 @@
 {
-  "_current_": {
-    "message": "(current)"
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Access browser storage (localStorage, sessionStorage, cookies)"
   },
@@ -220,6 +217,9 @@
   },
   "Current_Plan": {
     "message": "Current Plan:"
+  },
+  "Current_tab_marker": {
+    "message": "(current)"
   },
   "Daily_Credits": {
     "message": "Daily Credits"

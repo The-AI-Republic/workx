@@ -1,7 +1,4 @@
 {
-  "_current_": {
-    "message": ""
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "బ్రౌజర్ నిల్వను యాక్సెస్ చేయండి (localStorage, sessionStorage, cookies)"
   },
@@ -225,6 +222,9 @@
   },
   "Current_Plan": {
     "message": "ప్రస్తుత ప్లాన్:"
+  },
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "రోజువారీ క్రెడిట్లు"

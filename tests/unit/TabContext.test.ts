@@ -425,5 +425,48 @@ describe('TabContext Component', () => {
         expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
       });
     });
+
+    it('should display "(current)" marker on the active tab in dropdown', async () => {
+      const activeTab = { id: 100, title: 'Active Tab', url: 'https://active.com' };
+      const otherTab = { id: 200, title: 'Other Tab', url: 'https://other.com' };
+
+      (chrome.tabs.get as any).mockResolvedValue(activeTab);
+
+      // Mock query: return active tab for initial query, all tabs for dropdown
+      (chrome.tabs.query as any).mockImplementation((params: any) => {
+        if (params.active) {
+          return Promise.resolve([activeTab]);
+        }
+        return Promise.resolve([activeTab, otherTab]);
+      });
+
+      render(TabContext, {
+        props: { tabId: 100 },
+      });
+
+      // Wait for onActivated listener to be registered and initial active tab query to resolve
+      await waitFor(() => {
+        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
+      });
+
+      // Open dropdown by clicking the tab context display
+      const display = screen.getByTestId('tab-context-display');
+      display.click();
+
+      // Wait for dropdown to populate with tabs
+      await waitFor(() => {
+        const items = screen.getAllByTestId('tab-dropdown-item');
+        expect(items.length).toBe(2);
+      });
+
+      // Verify active tab shows "(current)" marker
+      const items = screen.getAllByTestId('tab-dropdown-item');
+      expect(items[0].textContent).toContain('(current)');
+      expect(items[0].textContent).toContain('Active Tab');
+
+      // Verify other tab does NOT show "(current)" marker
+      expect(items[1].textContent).not.toContain('(current)');
+      expect(items[1].textContent).toContain('Other Tab');
+    });
   });
 });

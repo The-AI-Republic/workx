@@ -1,7 +1,4 @@
 {
-  "_current_": {
-    "message": ""
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਸਟੋਰੇਜ (localStorage, sessionStorage, cookies) ਤੱਕ ਪਹੁੰਚ"
   },
@@ -220,6 +217,9 @@
   },
   "Current_Plan": {
     "message": "ਮੌਜੂਦਾ ਯੋਜਨਾ:"
+  },
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "ਦੈਨੀਕ ਕ੍ਰੈਡਿਟ"

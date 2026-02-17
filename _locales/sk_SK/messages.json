@@ -1,7 +1,4 @@
 {
-  "_current_": {
-    "message": ""
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Prístup k úložisku prehliadača (localStorage, sessionStorage, cookies)"
   },
@@ -220,6 +217,9 @@
   },
   "Current_Plan": {
     "message": "Aktuálny plán:"
+  },
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "Denné kredity"
