@@ -185,7 +185,7 @@ export class Session {
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        cwd: String(this.sessionState.getTabId()), // Use tabId as cwd for browser context
+        cwd: String(this.sessionState.getTabId()), // SessionMeta requires cwd; browser context uses tabId as identifier
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }

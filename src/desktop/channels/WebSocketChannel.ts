@@ -254,65 +254,77 @@ export class WebSocketChannel implements ChannelAdapter {
   }
 
   /**
-   * Convert internal event to WebSocket message
+   * Get the turnId for the most recently active turn, if any.
+   */
+  private getActiveTurnId(): string {
+    // Return the most recently tracked turn
+    for (const info of this.currentTurns.values()) {
+      return info.turnId;
+    }
+    return '';
+  }
+
+  /**
+   * Convert internal EventMsg to WebSocket outbound message.
+   *
+   * Maps from the core protocol EventMsg discriminated union to the
+   * WebSocket-specific message types. Only a subset of EventMsg types
+   * are relevant for WebSocket clients; the rest return null.
    */
   private eventToWSMessage(
     event: EventMsg
   ): WSOutboundMessage | null {
     const timestamp = Date.now();
-    // EventMsg types don't directly map to WS types; use loose typing for conversion
-    const evt = event as any;
+    const turnId = this.getActiveTurnId();
 
-    switch (evt.type) {
-      case 'assistant_chunk':
+    switch (event.type) {
+      case 'AgentMessageDelta':
         return {
           type: 'assistant_chunk',
-          turnId: evt.payload?.turnId,
-          content: evt.payload?.content,
+          turnId,
+          content: event.data.delta,
           timestamp,
         } as WSAssistantChunk;
 
-      case 'tool_use':
+      case 'ToolExecutionStart':
         return {
           type: 'tool_use',
-          turnId: evt.payload?.turnId,
-          tool: evt.payload?.tool,
-          input: evt.payload?.input,
-          toolUseId: evt.payload?.toolUseId,
+          turnId,
+          tool: event.data.tool_name,
+          input: {},
+          toolUseId: `tool-${event.data.start_time || Date.now()}`,
           timestamp,
         } as WSToolUse;
 
-      case 'tool_result':
+      case 'ToolExecutionEnd':
         return {
           type: 'tool_result',
-          turnId: evt.payload?.turnId,
-          toolUseId: evt.payload?.toolUseId,
-          result: evt.payload?.result,
-          success: evt.payload?.success ?? true,
-          error: evt.payload?.error,
+          turnId,
+          toolUseId: `tool-${timestamp}`,
+          result: event.data.success ? 'success' : 'failed',
+          success: event.data.success,
           timestamp,
         } as WSToolResult;
 
-      case 'assistant_complete':
+      case 'TaskComplete':
         return {
           type: 'assistant_turn_complete',
-          turnId: evt.payload?.turnId,
-          content: evt.payload?.content,
-          usage: evt.payload?.usage,
+          turnId,
+          content: event.data.last_agent_message || '',
           timestamp,
         } as WSAssistantTurnComplete;
 
-      case 'error':
+      case 'Error':
         return {
           type: 'error',
-          code: evt.payload?.code || 'ERROR',
-          message: evt.payload?.message || 'Unknown error',
-          turnId: evt.payload?.turnId,
+          code: event.data.code || 'ERROR',
+          message: event.data.message,
+          turnId,
           timestamp,
         } as WSError;
 
       default:
-        console.warn(`[WebSocketChannel] Unknown event type: ${evt.type}`);
+        // Most EventMsg types (reasoning, approval, etc.) don't need WS forwarding
         return null;
     }
   }
