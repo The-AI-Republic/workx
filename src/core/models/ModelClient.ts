@@ -458,8 +458,8 @@ export abstract class ModelClient {
 
         // Extract retry-after from error if available
         let retryAfter: number | undefined;
-        if (error.retryAfter) {
-          retryAfter = error.retryAfter;
+        if ((error as any)?.retryAfter) {
+          retryAfter = (error as any).retryAfter;
         }
 
         const delay = this.calculateBackoff(attempt, retryAfter);

@@ -247,7 +247,7 @@ export class MCPClient implements IMCPClientAdapter {
       const result = await Promise.race([callPromise, timeoutPromise]);
 
       // Debug log: tool call response (T062)
-      await this.debugLog(`Tool response: ${name}`, { isError: result.isError, contentCount: result.content?.length });
+      await this.debugLog(`Tool response: ${name}`, { isError: result.isError, contentCount: (result.content as any[])?.length });
 
       // Handle compatibility with different result formats
       if ('toolResult' in result) {

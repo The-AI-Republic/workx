@@ -36,6 +36,7 @@ export async function createBrowserController(tabId?: number): Promise<BrowserCo
     return new ExtensionBrowserController(tabId);
   } else {
     const { CDPBrowserController } = await import(
+      // @ts-expect-error - desktop-only module, resolved at build time
       '@/desktop/tools/browser/CDPBrowserController'
     );
     const controller = new CDPBrowserController();

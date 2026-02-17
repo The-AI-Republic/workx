@@ -243,7 +243,7 @@ export class AgentSession {
       this._metadata.tabGroupId = groupId;
 
       // Set group properties (name and color)
-      const colors: chrome.tabGroups.ColorEnum[] = ['blue', 'cyan', 'green', 'yellow', 'orange', 'pink', 'purple', 'red'];
+      const colors = ['blue', 'cyan', 'green', 'yellow', 'orange', 'pink', 'purple', 'red'] as chrome.tabGroups.Color[];
       const letterIndex = SESSION_LETTERS.indexOf(this._sessionLetter);
       const color = colors[letterIndex % colors.length];
 
@@ -352,7 +352,7 @@ export class AgentSession {
       if (tabs.length > 0) {
         const tabIds = tabs.map(t => t.id).filter((id): id is number => id !== undefined);
         if (tabIds.length > 0) {
-          await chrome.tabs.ungroup(tabIds);
+          await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
         }
       }
 

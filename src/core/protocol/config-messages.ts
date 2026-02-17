@@ -2,7 +2,7 @@
  * Chrome extension config messaging protocol types
  */
 
-import type { IAgentConfig, IModelConfig, IConfigChangeEvent } from '../config/types';
+import type { IAgentConfig, IModelConfig, IConfigChangeEvent } from '../../config/types';
 
 /**
  * Base message structure for all config messages

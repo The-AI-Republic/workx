@@ -10,11 +10,13 @@
 import type {
   ChannelAdapter,
   ChannelType,
-  SubmissionHandler,
   ConnectionState,
   SubmissionContext,
-  EventMsg,
 } from '@/core/channels/types';
+import type { EventMsg } from '@/core/protocol/events';
+
+/** WebSocket-specific submission handler (receives context only) */
+type WSSubmissionHandler = (context: SubmissionContext) => Promise<void>;
 import {
   WebSocketServer,
   type WebSocketServerConfig,
@@ -28,6 +30,7 @@ import type {
   WSToolUse,
   WSToolResult,
   WSError,
+  WSOutboundMessage,
 } from './websocket/types';
 import { isUserTurn, isCancel } from './websocket/types';
 
@@ -50,7 +53,7 @@ export class WebSocketChannel implements ChannelAdapter {
   readonly channelType: ChannelType = 'websocket';
 
   private server: WebSocketServer;
-  private submissionHandlers: SubmissionHandler[] = [];
+  private submissionHandlers: WSSubmissionHandler[] = [];
   private connectionState: ConnectionState = 'disconnected';
   private initialized = false;
   private currentTurns = new Map<string, { clientId: string; turnId: string }>();
@@ -93,7 +96,7 @@ export class WebSocketChannel implements ChannelAdapter {
   /**
    * Register a submission handler
    */
-  onSubmission(handler: SubmissionHandler): void {
+  onSubmission(handler: WSSubmissionHandler): void {
     this.submissionHandlers.push(handler);
   }
 
@@ -153,7 +156,7 @@ export class WebSocketChannel implements ChannelAdapter {
    */
   private async handleMessage(
     clientId: string,
-    message: Record<string, unknown>
+    message: Record<string, unknown> | { type: string }
   ): Promise<void> {
     if (isUserTurn(message as { type: string })) {
       const userTurn = message as unknown as WSUserTurn;
@@ -177,7 +180,7 @@ export class WebSocketChannel implements ChannelAdapter {
     this.currentTurns.set(turnId, { clientId, turnId });
 
     // Create submission context
-    const context: SubmissionContext = {
+    const context = {
       channelId: this.channelId,
       channelType: this.channelType,
       clientId,
@@ -189,7 +192,7 @@ export class WebSocketChannel implements ChannelAdapter {
         turnId,
       },
       timestamp: Date.now(),
-    };
+    } as unknown as SubmissionContext;
 
     // Send turn start event
     await this.server.send(clientId, {
@@ -246,7 +249,7 @@ export class WebSocketChannel implements ChannelAdapter {
         turnId: turnToCancel,
         success: true,
         timestamp: Date.now(),
-      });
+      } as WSOutboundMessage);
     }
   }
 
@@ -255,59 +258,61 @@ export class WebSocketChannel implements ChannelAdapter {
    */
   private eventToWSMessage(
     event: EventMsg
-  ): Record<string, unknown> | null {
+  ): WSOutboundMessage | null {
     const timestamp = Date.now();
+    // EventMsg types don't directly map to WS types; use loose typing for conversion
+    const evt = event as any;
 
-    switch (event.type) {
+    switch (evt.type) {
       case 'assistant_chunk':
         return {
           type: 'assistant_chunk',
-          turnId: event.payload?.turnId,
-          content: event.payload?.content,
+          turnId: evt.payload?.turnId,
+          content: evt.payload?.content,
           timestamp,
         } as WSAssistantChunk;
 
       case 'tool_use':
         return {
           type: 'tool_use',
-          turnId: event.payload?.turnId,
-          tool: event.payload?.tool,
-          input: event.payload?.input,
-          toolUseId: event.payload?.toolUseId,
+          turnId: evt.payload?.turnId,
+          tool: evt.payload?.tool,
+          input: evt.payload?.input,
+          toolUseId: evt.payload?.toolUseId,
           timestamp,
         } as WSToolUse;
 
       case 'tool_result':
         return {
           type: 'tool_result',
-          turnId: event.payload?.turnId,
-          toolUseId: event.payload?.toolUseId,
-          result: event.payload?.result,
-          success: event.payload?.success ?? true,
-          error: event.payload?.error,
+          turnId: evt.payload?.turnId,
+          toolUseId: evt.payload?.toolUseId,
+          result: evt.payload?.result,
+          success: evt.payload?.success ?? true,
+          error: evt.payload?.error,
           timestamp,
         } as WSToolResult;
 
       case 'assistant_complete':
         return {
           type: 'assistant_turn_complete',
-          turnId: event.payload?.turnId,
-          content: event.payload?.content,
-          usage: event.payload?.usage,
+          turnId: evt.payload?.turnId,
+          content: evt.payload?.content,
+          usage: evt.payload?.usage,
           timestamp,
         } as WSAssistantTurnComplete;
 
       case 'error':
         return {
           type: 'error',
-          code: event.payload?.code || 'ERROR',
-          message: event.payload?.message || 'Unknown error',
-          turnId: event.payload?.turnId,
+          code: evt.payload?.code || 'ERROR',
+          message: evt.payload?.message || 'Unknown error',
+          turnId: evt.payload?.turnId,
           timestamp,
         } as WSError;
 
       default:
-        console.warn(`[WebSocketChannel] Unknown event type: ${event.type}`);
+        console.warn(`[WebSocketChannel] Unknown event type: ${evt.type}`);
         return null;
     }
   }

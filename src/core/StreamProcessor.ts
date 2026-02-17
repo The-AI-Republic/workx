@@ -125,7 +125,7 @@ export class StreamProcessor {
   private reader: ReadableStreamDefaultReader | null = null;
   private updateCallbacks: ((update: UIUpdate) => void)[] = [];
   private responseEventCallbacks: ((event: ResponseEvent) => void)[] = [];
-  private updateTimer: number | null = null;
+  private updateTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingUpdates: UIUpdate[] = [];
   private config: Required<StreamConfig>;
   private metrics: StreamMetrics;

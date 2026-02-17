@@ -375,6 +375,8 @@ export const BASELINE_PIPELINE_CONFIG: PipelineConfig = {
   enablePaintOrderFilter: false,
   enableTextCollapsing: false,
   enableLayoutSimplification: false,
+  enableClickableTextAggregation: false,
+  enableAriaLabelCleaning: false,
   enableAttributeDeduplication: false,
   enablePropagatingBounds: false,
   enableIdRemapping: false,
@@ -451,6 +453,7 @@ export interface IIdRemapper {
   toSequentialId(backendNodeId: number): number | null;
   hasBackendId(backendNodeId: number): boolean;
   getNodeCount(): number;
+  getMappings(): Array<{ sequentialId: number; backendNodeId: number }>;
 }
 
 /**

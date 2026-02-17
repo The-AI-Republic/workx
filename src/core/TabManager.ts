@@ -31,7 +31,7 @@ export class TabManager {
   // Tab group management (merged from TabGroupManager - T014)
   private groupId: number | null = null;
   private readonly groupTitle = 'browserx';
-  private readonly groupColor: chrome.tabGroups.ColorEnum = 'blue';
+  private readonly groupColor: string = 'blue';
 
   // Event callbacks (stateless - just notify about tab events)
   private tabClosureCallbacks: TabClosureCallback[] = [];
@@ -77,7 +77,7 @@ export class TabManager {
    */
   private setupChromeEventListeners(): void {
     // Listen for tab closure
-    chrome.tabs.onRemoved.addListener((tabId: number, removeInfo: chrome.tabs.TabRemoveInfo) => {
+    chrome.tabs.onRemoved.addListener((tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => {
       console.log(`[TabManager] Tab ${tabId} closed`);
       this.notifyTabClosure(tabId);
     });
@@ -85,7 +85,7 @@ export class TabManager {
     // Listen for tab crashes
     chrome.tabs.onUpdated.addListener((
       tabId: number,
-      changeInfo: chrome.tabs.TabChangeInfo,
+      changeInfo: { status?: string; url?: string; pinned?: boolean; audible?: boolean; discarded?: boolean; autoDiscardable?: boolean; groupId?: number; favIconUrl?: string; title?: string },
       tab: chrome.tabs.Tab
     ) => {
       // Detect crashed or unresponsive tabs
@@ -194,7 +194,7 @@ export class TabManager {
         // Ensure it has the correct color
         await chrome.tabGroups.update(this.groupId, {
           title: this.groupTitle,
-          color: this.groupColor,
+          color: this.groupColor as chrome.tabGroups.Color,
         });
       } else {
         console.log('[TabManager] No existing BrowserX tab group found, will create on first tab');
@@ -232,7 +232,7 @@ export class TabManager {
       // Configure the group
       await chrome.tabGroups.update(groupId, {
         title: this.groupTitle,
-        color: this.groupColor,
+        color: this.groupColor as chrome.tabGroups.Color,
         collapsed: false,
       });
 
@@ -319,6 +319,10 @@ export class TabManager {
 
       if (candidateWindowId === undefined) {
         const newWindow = await chrome.windows.create({ focused: true });
+        if (!newWindow) {
+          console.warn('[TabManager] Failed to create a new window');
+          return null;
+        }
         candidateWindowId = newWindow.id ?? undefined;
       }
 
@@ -521,7 +525,7 @@ export class TabManager {
         const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
 
         if (tabIds.length > 0) {
-          await chrome.tabs.ungroup(tabIds);
+          await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
         }
       } catch (error) {
         console.error(`[TabManager] Failed to reset browserx group ${group.id}:`, error);
@@ -557,7 +561,7 @@ export class TabManager {
           const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
 
           if (tabIds.length > 0) {
-            await chrome.tabs.ungroup(tabIds);
+            await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
           }
         } catch (error) {
           console.error(`[TabManager] Failed to ungroup tabs from group ${group.id}:`, error);

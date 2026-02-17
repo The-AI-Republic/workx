@@ -348,11 +348,11 @@ export class TurnManager {
     // Guard MCP calls with capability check to prevent "is not a function" errors
     if (
       (enableAllTools || toolsConfig.mcpTools === true) &&
-      typeof this.session.getMcpTools === 'function'
+      typeof (this.session as any).getMcpTools === 'function'
     ) {
-      const mcpTools = await this.session.getMcpTools();
+      const mcpTools = await (this.session as any).getMcpTools();
       // Convert MCP tools to ModelClient format
-      const convertedMcpTools = mcpTools.map(tool => ({
+      const convertedMcpTools = mcpTools.map((tool: any) => ({
         type: 'function' as const,
         function: {
           name: tool.function.name,
@@ -371,14 +371,17 @@ export class TurnManager {
           // Custom tools would be loaded from registry or another source
           const customTool = this.toolRegistry.getTool(toolName);
           if (customTool) {
-            tools.push({
-              type: 'function',
-              function: {
-                name: customTool.name,
-                description: customTool.description,
-                parameters: customTool.parameters || {},
-              },
-            });
+            if (customTool.type === 'function') {
+              tools.push({
+                type: 'function',
+                function: {
+                  name: customTool.function.name,
+                  description: customTool.function.description,
+                  strict: customTool.function.strict ?? false,
+                  parameters: customTool.function.parameters || { type: 'object' as const, properties: {} },
+                },
+              });
+            }
           }
         }
       }
@@ -413,7 +416,7 @@ export class TurnManager {
 
     // Add synthetic aborted responses for missing calls
     const syntheticResponses = missingCallIds.map(callId => ({
-      type: 'function_call_output',
+      type: 'function_call_output' as const,
       call_id: callId,
       output: 'aborted',
     }));
@@ -475,12 +478,13 @@ export class TurnManager {
 
     // Convert input items to messages
     for (const item of prompt.input) {
-      if (item.role && item.content) {
+      const anyItem = item as any;
+      if (anyItem.role && anyItem.content) {
         messages.push({
-          role: item.role,
-          content: item.content,
-          toolCalls: item.toolCalls,
-          toolCallId: item.toolCallId,
+          role: anyItem.role,
+          content: anyItem.content,
+          toolCalls: anyItem.toolCalls,
+          toolCallId: anyItem.toolCallId,
         });
       }
     }
@@ -737,7 +741,7 @@ export class TurnManager {
     });
 
     try {
-      const result = await this.session.executeMcpTool(toolName, parameters);
+      const result = await (this.session as any).executeMcpTool(toolName, parameters);
 
       await this.emitEvent({
         type: 'McpToolCallEnd',
