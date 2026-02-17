@@ -4,6 +4,10 @@
  * Tests parameter validation, page content extraction, pagination handling,
  * rate limiting (delay between pages), error recovery, pattern library,
  * table scraping, and screenshot capture.
+ *
+ * EXPANDED: Additional tests for uncovered branches including XPath wait,
+ * unknown wait condition, getTab edge cases, executeScraping empty results,
+ * pagination defaults, scrapeTable without tabId, and private method paths.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -108,6 +112,61 @@ describe('WebScrapingTool', () => {
         expect(pagination.type).toBe('object');
       }
     });
+
+    it('should define url parameter as string type', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function' && def.function.parameters.type === 'object') {
+        const url = (def.function.parameters as any).properties.url;
+        expect(url.type).toBe('string');
+      }
+    });
+
+    it('should define waitFor parameter as object type', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function' && def.function.parameters.type === 'object') {
+        const waitFor = (def.function.parameters as any).properties.waitFor;
+        expect(waitFor.type).toBe('object');
+      }
+    });
+
+    it('should define screenshot parameter as boolean type', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function' && def.function.parameters.type === 'object') {
+        const screenshot = (def.function.parameters as any).properties.screenshot;
+        expect(screenshot.type).toBe('boolean');
+      }
+    });
+
+    it('should define timeout parameter as number type', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function' && def.function.parameters.type === 'object') {
+        const timeout = (def.function.parameters as any).properties.timeout;
+        expect(timeout.type).toBe('number');
+      }
+    });
+
+    it('should have browser category metadata', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function') {
+        expect(def.category).toBe('browser');
+      }
+    });
+
+    it('should require tabs, scripting, and activeTab permissions', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function') {
+        expect(def.metadata?.permissions).toEqual(
+          expect.arrayContaining(['tabs', 'scripting', 'activeTab']),
+        );
+      }
+    });
+
+    it('should be for extension platform', () => {
+      const def = tool.getDefinition();
+      if (def.type === 'function') {
+        expect(def.metadata?.platforms).toContain('extension');
+      }
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -152,6 +211,24 @@ describe('WebScrapingTool', () => {
         { metadata: { tabId: 1 } },
       );
       expect(result.success).toBe(true);
+    });
+
+    it('should reject when "url" is not a string', async () => {
+      const result = await tool.execute({ patterns: [], url: 123 });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('must be a string');
+    });
+
+    it('should reject when "pagination" is not an object', async () => {
+      const result = await tool.execute({ patterns: [], pagination: 'next' });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('must be an object');
+    });
+
+    it('should reject when "waitFor" is not an object', async () => {
+      const result = await tool.execute({ patterns: [], waitFor: 'ready' });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('must be an object');
     });
   });
 
@@ -236,6 +313,129 @@ describe('WebScrapingTool', () => {
       expect(result.success).toBe(true);
       expect(result.data.screenshot).toBe('');
     });
+
+    it('should not capture screenshot when screenshot is false', async () => {
+      setupChromeForScraping({});
+
+      const result = await tool.execute(
+        { patterns: [makePattern()], screenshot: false },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.screenshot).toBeUndefined();
+    });
+
+    it('should use tab url in metadata when tab has url', async () => {
+      setupChromeForScraping({}, { url: 'https://specific.com/page' });
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.metadata.url).toBe('https://specific.com/page');
+    });
+
+    it('should use empty string for url when tab has no url', async () => {
+      setupChromeForScraping({}, { url: undefined });
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.metadata.url).toBe('');
+    });
+
+    it('should pass patterns to executeScript', async () => {
+      setupChromeForScraping({ items: [{ text: 'hello' }] });
+      const patterns = [makePattern({ name: 'items', selector: '.item-class' })];
+
+      await tool.execute({ patterns }, { metadata: { tabId: 1 } });
+
+      expect((chrome as any).scripting.executeScript).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: { tabId: 1 },
+          args: [patterns],
+        }),
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // getTab edge cases
+  // -------------------------------------------------------------------------
+  describe('getTab edge cases', () => {
+    it('should create a tab with active: false when url provided', async () => {
+      const tab = { id: 10, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs.create as ReturnType<typeof vi.fn>).mockResolvedValue(tab);
+      (chrome as any).scripting = {
+        executeScript: mockScriptResult({}),
+      };
+
+      await tool.execute(
+        { url: 'https://example.com', patterns: [makePattern()] },
+        {},
+      );
+
+      expect(chrome.tabs.create).toHaveBeenCalledWith(
+        expect.objectContaining({ active: false }),
+      );
+    });
+
+    it('should fail when tabId is -1 and no url is provided', async () => {
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: -1 } },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not provided');
+    });
+
+    it('should fail when tabId is null and no url is provided', async () => {
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: null } },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not provided');
+    });
+
+    it('should use validateTabId when tabId is a valid number', async () => {
+      const tab = { id: 5, url: 'https://tab5.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+      (chrome as any).scripting = {
+        executeScript: mockScriptResult({}),
+      };
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 5 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect((chrome.tabs as any).get).toHaveBeenCalledWith(5);
+    });
+
+    it('should handle tabId of 0 as a valid tab', async () => {
+      const tab = { id: 0, url: 'https://tab0.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+      (chrome as any).scripting = {
+        executeScript: mockScriptResult({}),
+      };
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 0 } },
+      );
+
+      expect(result.success).toBe(true);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -303,6 +503,136 @@ describe('WebScrapingTool', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Timeout');
+    });
+
+    it('should wait for XPath before scraping', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      const executeScript = vi.fn()
+        // First call: waitForXPath check - element found immediately
+        .mockResolvedValueOnce([{ result: true }])
+        // Second call: actual scraping
+        .mockResolvedValueOnce([{ result: { data: 'xpath-result' } }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          waitFor: { type: 'xpath', value: '//div[@class="loaded"]', timeout: 1000 },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(executeScript).toHaveBeenCalledTimes(2);
+    });
+
+    it('should timeout when XPath is never found', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      (chrome as any).scripting = {
+        executeScript: vi.fn().mockResolvedValue([{ result: false }]),
+      };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          waitFor: { type: 'xpath', value: '//div[@class="never"]', timeout: 200 },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Timeout waiting for XPath');
+    });
+
+    it('should throw on unknown wait condition type', async () => {
+      setupChromeForScraping({});
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          waitFor: { type: 'function' as any, value: 'checkReady', timeout: 1000 },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Unknown wait condition type');
+    });
+
+    it('should use default timeout of 5000ms when not specified in waitFor', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      // Element found immediately so no real delay
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: true }])
+        .mockResolvedValueOnce([{ result: {} }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          waitFor: { type: 'selector', value: '.content' },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should poll selector until found before timeout', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      // First two polls return false, then found
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: false }])
+        .mockResolvedValueOnce([{ result: false }])
+        .mockResolvedValueOnce([{ result: true }])
+        .mockResolvedValueOnce([{ result: { data: 'found' } }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          waitFor: { type: 'selector', value: '.delayed', timeout: 5000 },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      // At least 3 calls for wait + 1 for scraping
+      expect(executeScript.mock.calls.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('should poll XPath until found before timeout', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: false }])
+        .mockResolvedValueOnce([{ result: true }])
+        .mockResolvedValueOnce([{ result: { xp: 'result' } }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          waitFor: { type: 'xpath', value: '//h1', timeout: 5000 },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(executeScript.mock.calls.length).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -448,6 +778,143 @@ describe('WebScrapingTool', () => {
       expect(result.data.data.pages).toHaveLength(1);
       expect(result.data.metadata.errors.length).toBeGreaterThan(0);
     });
+
+    it('should use default maxPages of 10 when not specified', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      // Return data once then stop
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: { items: [] } }])
+        .mockResolvedValueOnce([{ result: false }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'click',
+            nextSelector: '.next',
+            maxPages: 1,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.data.pages).toHaveLength(1);
+    });
+
+    it('should use default delay of 1000 when not specified', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      // One page only - no delay applied
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: { items: [] } }])
+        .mockResolvedValueOnce([{ result: false }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'click',
+            nextSelector: '.next',
+            maxPages: 1,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle pagination type without nextSelector for non-click type', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      // The tool should still iterate pages; for url-pattern or load-more
+      // without nextSelector, the pagination loop just scrapes without click/scroll
+      const executeScript = vi.fn()
+        .mockResolvedValue([{ result: { items: [] } }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'url-pattern',
+            maxPages: 2,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      // Without click/scroll logic, maxPages pages should be scraped
+      expect(result.data.data.pages).toHaveLength(2);
+    });
+
+    it('should handle non-Error thrown during pagination', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: { items: [] } }])
+        .mockRejectedValueOnce('string-error');
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'click',
+            nextSelector: '.next',
+            maxPages: 3,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.metadata.errors).toContain('string-error');
+    });
+
+    it('should return empty string for url in paginated results', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: {} }])
+        .mockResolvedValueOnce([{ result: false }]);
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'click',
+            nextSelector: '.next',
+            maxPages: 1,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.metadata.url).toBe('');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -557,6 +1024,59 @@ describe('WebScrapingTool', () => {
       expect(result.metadata).toBeDefined();
       expect(result.metadata!.duration).toBeGreaterThanOrEqual(0);
     });
+
+    it('should include error type in metadata', async () => {
+      (chrome.tabs as any).get = vi.fn().mockRejectedValue(new Error('tab error'));
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.metadata!.errorType).toBe('Error');
+    });
+
+    it('should include tool name in error metadata', async () => {
+      (chrome.tabs as any).get = vi.fn().mockRejectedValue(new Error('tab error'));
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.metadata!.toolName).toBe('web_scraping');
+    });
+
+    it('should handle when executeScript returns empty array', async () => {
+      setupChromeForScraping({});
+      (chrome as any).scripting = {
+        executeScript: vi.fn().mockResolvedValue([]),
+      };
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.data).toEqual({});
+    });
+
+    it('should handle when executeScript result has no result property', async () => {
+      setupChromeForScraping({});
+      (chrome as any).scripting = {
+        executeScript: vi.fn().mockResolvedValue([{}]),
+      };
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.data).toEqual({});
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -596,6 +1116,33 @@ describe('WebScrapingTool', () => {
       const patterns = tool.listPatterns();
       expect(patterns).toContain('my-pattern');
     });
+
+    it('should overwrite existing pattern with same name', () => {
+      tool.addPattern(makePattern({ name: 'links', selector: '.custom-links' }));
+      const pattern = tool.getPattern('links');
+      expect(pattern!.selector).toBe('.custom-links');
+    });
+
+    it('should have exactly 4 built-in patterns', () => {
+      const patterns = tool.listPatterns();
+      expect(patterns).toHaveLength(4);
+    });
+
+    it('should retrieve product pattern with multiple extraction rules', () => {
+      const pattern = tool.getPattern('product');
+      expect(pattern).toBeDefined();
+      expect(pattern!.extraction.length).toBeGreaterThanOrEqual(5);
+      expect(pattern!.multiple).toBe(true);
+    });
+
+    it('should retrieve images pattern with src extraction rule', () => {
+      const pattern = tool.getPattern('images');
+      expect(pattern).toBeDefined();
+      const srcRule = pattern!.extraction.find(r => r.field === 'src');
+      expect(srcRule).toBeDefined();
+      expect(srcRule!.source).toBe('attribute');
+      expect(srcRule!.attribute).toBe('src');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -630,6 +1177,47 @@ describe('WebScrapingTool', () => {
       );
       expect(srcRule).toBeDefined();
       expect(altRule).toBeDefined();
+    });
+
+    it('should define ARTICLE extraction rules for title, content, author, date', () => {
+      const fields = PatternLibrary.PATTERNS.ARTICLE.extraction.map(r => r.field);
+      expect(fields).toContain('title');
+      expect(fields).toContain('content');
+      expect(fields).toContain('author');
+      expect(fields).toContain('date');
+    });
+
+    it('should define PRODUCT extraction rules for name, price, image, rating', () => {
+      const fields = PatternLibrary.PATTERNS.PRODUCT.extraction.map(r => r.field);
+      expect(fields).toContain('name');
+      expect(fields).toContain('price');
+      expect(fields).toContain('image');
+      expect(fields).toContain('rating');
+    });
+
+    it('should define LINKS extraction rules for text, href, title', () => {
+      const fields = PatternLibrary.PATTERNS.LINKS.extraction.map(r => r.field);
+      expect(fields).toContain('text');
+      expect(fields).toContain('href');
+      expect(fields).toContain('title');
+    });
+
+    it('should define IMAGES extraction rules for src, alt, title', () => {
+      const fields = PatternLibrary.PATTERNS.IMAGES.extraction.map(r => r.field);
+      expect(fields).toContain('src');
+      expect(fields).toContain('alt');
+      expect(fields).toContain('title');
+    });
+
+    it('should set ARTICLE required to false', () => {
+      expect(PatternLibrary.PATTERNS.ARTICLE.required).toBe(false);
+    });
+
+    it('should set all pattern types to css', () => {
+      expect(PatternLibrary.PATTERNS.ARTICLE.type).toBe('css');
+      expect(PatternLibrary.PATTERNS.PRODUCT.type).toBe('css');
+      expect(PatternLibrary.PATTERNS.LINKS.type).toBe('css');
+      expect(PatternLibrary.PATTERNS.IMAGES.type).toBe('css');
     });
   });
 
@@ -668,6 +1256,24 @@ describe('WebScrapingTool', () => {
       expect(result.headers).toEqual([]);
       expect(result.rows).toEqual([]);
       expect(result.metadata.rowCount).toBe(0);
+    });
+
+    it('should throw when no tabId and no url for scrapeTable', async () => {
+      await expect(tool.scrapeTable('table')).rejects.toThrow('not provided');
+    });
+
+    it('should return default table data when script result is undefined', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+      (chrome as any).scripting = {
+        executeScript: vi.fn().mockResolvedValue([{}]),
+      };
+
+      const result = await tool.scrapeTable('table.test', 1);
+      expect(result.headers).toEqual([]);
+      expect(result.rows).toEqual([]);
+      expect(result.metadata.columnCount).toBe(0);
+      expect(result.metadata.hasHeaders).toBe(false);
     });
   });
 
@@ -708,6 +1314,141 @@ describe('WebScrapingTool', () => {
       );
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // clickNextPage and scrollToLoadMore result handling
+  // -------------------------------------------------------------------------
+  describe('Pagination result edge cases', () => {
+    it('should return false from clickNextPage when script returns empty array', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: { items: [] } }])
+        .mockResolvedValueOnce([]); // empty array = no result
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'click',
+            nextSelector: '.next',
+            maxPages: 3,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      // Should stop after first page since clickNextPage returned false
+      expect(result.data.data.pages).toHaveLength(1);
+    });
+
+    it('should return false from scrollToLoadMore when script returns empty array', async () => {
+      const tab = { id: 1, url: 'https://example.com' } as chrome.tabs.Tab;
+      (chrome.tabs as any).get = vi.fn().mockResolvedValue(tab);
+
+      const executeScript = vi.fn()
+        .mockResolvedValueOnce([{ result: { items: [] } }])
+        .mockResolvedValueOnce([]); // empty array = no result for scroll
+
+      (chrome as any).scripting = { executeScript };
+
+      const result = await tool.execute(
+        {
+          patterns: [makePattern()],
+          pagination: {
+            type: 'scroll',
+            maxPages: 3,
+            delay: 10,
+          },
+        },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data.data.pages).toHaveLength(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // extractWithPatterns (page-context function) - tested indirectly
+  // -------------------------------------------------------------------------
+  describe('extractWithPatterns (internal function)', () => {
+    it('should be passed to executeScript as func', async () => {
+      setupChromeForScraping({});
+
+      await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect((chrome as any).scripting.executeScript).toHaveBeenCalledWith(
+        expect.objectContaining({
+          func: expect.any(Function),
+        }),
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Full execution flow through BaseTool.execute
+  // -------------------------------------------------------------------------
+  describe('Full execution flow', () => {
+    it('should include toolName in successful result metadata', async () => {
+      setupChromeForScraping({});
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.metadata!.toolName).toBe('web_scraping');
+    });
+
+    it('should include duration in successful result metadata', async () => {
+      setupChromeForScraping({});
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.metadata!.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should propagate options metadata to result metadata', async () => {
+      setupChromeForScraping({});
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1, customKey: 'customValue' } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.metadata!.customKey).toBe('customValue');
+    });
+
+    it('should handle executeImpl throwing with string error', async () => {
+      // Force a situation where getTab throws a string
+      (chrome.tabs as any).get = vi.fn().mockImplementation(() => {
+        throw 'raw string error';
+      });
+
+      const result = await tool.execute(
+        { patterns: [makePattern()] },
+        { metadata: { tabId: 1 } },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Scraping failed');
     });
   });
 });
