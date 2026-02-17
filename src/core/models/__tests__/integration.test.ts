@@ -48,12 +48,12 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
   describe('Rate Limit Header Parsing', () => {
     it('should parse complete rate limit headers correctly', () => {
       const headers = {
-        'x-browserx-primary-used-percent': '75.5',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-primary-resets-in-seconds': '1800',
-        'x-browserx-secondary-used-percent': '45.2',
-        'x-browserx-secondary-window-minutes': '1440',
-        'x-browserx-secondary-resets-in-seconds': '43200',
+        'x-pi-primary-used-percent': '75.5',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-primary-resets-in-seconds': '1800',
+        'x-pi-secondary-used-percent': '45.2',
+        'x-pi-secondary-window-minutes': '1440',
+        'x-pi-secondary-resets-in-seconds': '43200',
       };
 
       const snapshot = rateLimitManager.updateFromHeaders(headers);
@@ -73,10 +73,10 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 
     it('should handle partial headers gracefully', () => {
       const headers = {
-        'x-browserx-primary-used-percent': '90.0',
+        'x-pi-primary-used-percent': '90.0',
         // Missing other primary headers
-        'x-browserx-secondary-used-percent': '30.0',
-        'x-browserx-secondary-window-minutes': '1440',
+        'x-pi-secondary-used-percent': '30.0',
+        'x-pi-secondary-window-minutes': '1440',
         // Missing secondary reset time
       };
 
@@ -97,9 +97,9 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 
     it('should ignore invalid header values', () => {
       const headers = {
-        'x-browserx-primary-used-percent': 'invalid',
-        'x-browserx-secondary-used-percent': '50.0',
-        'x-browserx-secondary-window-minutes': 'also-invalid',
+        'x-pi-primary-used-percent': 'invalid',
+        'x-pi-secondary-used-percent': '50.0',
+        'x-pi-secondary-window-minutes': 'also-invalid',
       };
 
       const snapshot = rateLimitManager.updateFromHeaders(headers);
@@ -117,12 +117,12 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 
       // First update
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '30.0',
+        'x-pi-primary-used-percent': '30.0',
       });
 
       // Second update
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '60.0',
+        'x-pi-primary-used-percent': '60.0',
       });
 
       const history = rateLimitManager.getHistory();
@@ -233,8 +233,8 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
   describe('Retry Logic with Rate Limits', () => {
     it('should recommend retry when usage is below threshold', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '60.0',
-        'x-browserx-primary-resets-in-seconds': '300',
+        'x-pi-primary-used-percent': '60.0',
+        'x-pi-primary-resets-in-seconds': '300',
       });
 
       expect(rateLimitManager.shouldRetry(80)).toBe(true);
@@ -247,8 +247,8 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 
     it('should discourage retry when approaching limits', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '95.0',
-        'x-browserx-primary-resets-in-seconds': '1800',
+        'x-pi-primary-used-percent': '95.0',
+        'x-pi-primary-resets-in-seconds': '1800',
       });
 
       expect(rateLimitManager.shouldRetry(80)).toBe(false);
@@ -260,8 +260,8 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 
     it('should calculate retry delay from reset time when available', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '70.0',
-        'x-browserx-primary-resets-in-seconds': '5', // 5 seconds
+        'x-pi-primary-used-percent': '70.0',
+        'x-pi-primary-resets-in-seconds': '5', // 5 seconds
       });
 
       const delay = rateLimitManager.calculateRetryDelay(1);
@@ -271,7 +271,7 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
 
     it('should use exponential backoff when no reset time available', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '50.0',
+        'x-pi-primary-used-percent': '50.0',
         // No reset time headers
       });
 
@@ -292,9 +292,9 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
         ok: true,
         headers: new Headers([
           ['content-type', 'text/event-stream'],
-          ['x-browserx-primary-used-percent', '65.0'],
-          ['x-browserx-primary-window-minutes', '60'],
-          ['x-browserx-primary-resets-in-seconds', '2400'],
+          ['x-pi-primary-used-percent', '65.0'],
+          ['x-pi-primary-window-minutes', '60'],
+          ['x-pi-primary-resets-in-seconds', '2400'],
         ]),
         body: new ReadableStream({
           start(controller) {
@@ -374,9 +374,9 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
     it('should handle rate limit threshold breaches during streaming', async () => {
       // Simulate escalating rate limit usage
       const updates = [
-        { 'x-browserx-primary-used-percent': '75.0' },
-        { 'x-browserx-primary-used-percent': '85.0' },
-        { 'x-browserx-primary-used-percent': '95.0', 'x-browserx-primary-resets-in-seconds': '1200' },
+        { 'x-pi-primary-used-percent': '75.0' },
+        { 'x-pi-primary-used-percent': '85.0' },
+        { 'x-pi-primary-used-percent': '95.0', 'x-pi-primary-resets-in-seconds': '1200' },
       ];
 
       const results = updates.map(headers => ({
@@ -428,9 +428,9 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
   describe('Error Handling and Edge Cases', () => {
     it('should handle malformed rate limit headers gracefully', () => {
       const malformedHeaders = {
-        'x-browserx-primary-used-percent': '', // Empty
-        'x-browserx-secondary-used-percent': 'NaN', // Invalid
-        'x-browserx-primary-window-minutes': '-5', // Negative
+        'x-pi-primary-used-percent': '', // Empty
+        'x-pi-secondary-used-percent': 'NaN', // Invalid
+        'x-pi-primary-window-minutes': '-5', // Negative
       };
 
       const snapshot = rateLimitManager.updateFromHeaders(malformedHeaders);
@@ -456,7 +456,7 @@ describe('Integration Tests - Rate Limiting & Token Tracking', () => {
       // Simulate rapid rate limit updates
       for (let i = 0; i < 100; i++) {
         rateLimitManager.updateFromHeaders({
-          'x-browserx-primary-used-percent': (i % 100).toString(),
+          'x-pi-primary-used-percent': (i % 100).toString(),
         });
       }
 
@@ -516,12 +516,12 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   describe('parseRateLimitSnapshot() - Complete Headers', () => {
     it('parses both primary and secondary windows with all fields', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '75.5',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-primary-resets-in-seconds': '1800',
-        'x-browserx-secondary-used-percent': '45.2',
-        'x-browserx-secondary-window-minutes': '1440',
-        'x-browserx-secondary-resets-in-seconds': '43200',
+        'x-pi-primary-used-percent': '75.5',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-primary-resets-in-seconds': '1800',
+        'x-pi-secondary-used-percent': '45.2',
+        'x-pi-secondary-window-minutes': '1440',
+        'x-pi-secondary-resets-in-seconds': '43200',
       });
 
       // Access protected method via test helper if available, or via stream response
@@ -572,9 +572,9 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   describe('parseRateLimitSnapshot() - Primary Window Only', () => {
     it('parses only primary window when secondary headers missing', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '82.0',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-primary-resets-in-seconds': '2400',
+        'x-pi-primary-used-percent': '82.0',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-primary-resets-in-seconds': '2400',
         // No secondary headers
       });
 
@@ -621,9 +621,9 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   describe('parseRateLimitSnapshot() - Partial Headers', () => {
     it('handles missing window_minutes field gracefully', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '65.0',
+        'x-pi-primary-used-percent': '65.0',
         // Missing window-minutes
-        'x-browserx-primary-resets-in-seconds': '1200',
+        'x-pi-primary-resets-in-seconds': '1200',
       });
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -665,8 +665,8 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
 
     it('handles missing resets_in_seconds field gracefully', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '55.5',
-        'x-browserx-primary-window-minutes': '60',
+        'x-pi-primary-used-percent': '55.5',
+        'x-pi-primary-window-minutes': '60',
         // Missing resets-in-seconds
       });
 
@@ -748,9 +748,9 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   describe('parseRateLimitSnapshot() - Field Name Preservation', () => {
     it('preserves snake_case field names', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '70.0',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-primary-resets-in-seconds': '1500',
+        'x-pi-primary-used-percent': '70.0',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-primary-resets-in-seconds': '1500',
       });
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -799,10 +799,10 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   describe('parseRateLimitSnapshot() - Numeric Validation', () => {
     it('handles invalid numeric values gracefully', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': 'invalid',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-secondary-used-percent': '45.0',
-        'x-browserx-secondary-window-minutes': 'NaN',
+        'x-pi-primary-used-percent': 'invalid',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-secondary-used-percent': '45.0',
+        'x-pi-secondary-window-minutes': 'NaN',
       });
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -848,9 +848,9 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
 
     it('handles negative values by skipping or treating as invalid', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '-10.0', // Invalid
-        'x-browserx-primary-window-minutes': '-60', // Invalid
-        'x-browserx-secondary-used-percent': '50.0', // Valid
+        'x-pi-primary-used-percent': '-10.0', // Invalid
+        'x-pi-primary-window-minutes': '-60', // Invalid
+        'x-pi-secondary-used-percent': '50.0', // Valid
       });
 
       global.fetch = vi.fn().mockResolvedValue({
@@ -894,8 +894,8 @@ describe('Rate Limit Parsing Integration - OpenAIChatCompletionClient', () => {
   describe('parseRateLimitSnapshot() - Integration with Event Stream', () => {
     it('yields RateLimits event before other response events', async () => {
       const headers = new Headers({
-        'x-browserx-primary-used-percent': '60.0',
-        'x-browserx-primary-window-minutes': '60',
+        'x-pi-primary-used-percent': '60.0',
+        'x-pi-primary-window-minutes': '60',
       });
 
       global.fetch = vi.fn().mockResolvedValue({

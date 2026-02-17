@@ -2,7 +2,7 @@
  * MCP Tool Adapter
  * Task: T032-T035, T038-T039, T042 [US2]
  *
- * Adapts MCP tools to browserx ToolDefinition format and creates
+ * Adapts MCP tools to Pi ToolDefinition format and creates
  * handlers that route tool calls through MCPManager.
  */
 
@@ -17,7 +17,7 @@ import type {
 import type { IRiskAssessor } from '../approval/types';
 
 /**
- * Adapts MCP tools to browserx ToolDefinition format.
+ * Adapts MCP tools to Pi ToolDefinition format.
  */
 export class MCPToolAdapter implements IMCPToolAdapter {
   /**

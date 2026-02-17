@@ -2,7 +2,7 @@
  * MCP Client Wrapper
  *
  * Wraps the official MCP SDK Client with our custom SSE transport.
- * Provides a simplified interface for browserx integration.
+ * Provides a simplified interface for Pi integration.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -41,7 +41,7 @@ export interface MCPClientOptions {
 }
 
 /**
- * MCPClient wraps the MCP SDK Client with browserx-specific functionality.
+ * MCPClient wraps the MCP SDK Client with Pi-specific functionality.
  *
  * Usage:
  * ```typescript
@@ -110,10 +110,10 @@ export class MCPClient implements IMCPClientAdapter {
 
       this.transport = new SSEClientTransport(transportOptions);
 
-      // Create MCP client with browserx identity
+      // Create MCP client with Pi identity
       this.client = new Client(
         {
-          name: 'browserx',
+          name: 'pi',
           version: '1.0.0',
         },
         {

@@ -317,7 +317,7 @@ describe('OpenAIChatCompletionClient', () => {
           type: 'json_schema',
           strict: true,
           schema: { type: 'object', properties: { answer: { type: 'string' } } },
-          name: 'browserx_output_schema',
+          name: 'pi_output_schema',
         },
       });
     });
@@ -337,8 +337,8 @@ describe('OpenAIChatCompletionClient', () => {
         status: 200,
         headers: {
           'Content-Type': 'text/event-stream',
-          'x-browserx-primary-used-percent': '25.5',
-          'x-browserx-primary-window-minutes': '60',
+          'x-pi-primary-used-percent': '25.5',
+          'x-pi-primary-window-minutes': '60',
         },
       });
     };
@@ -508,11 +508,11 @@ describe('OpenAIChatCompletionClient', () => {
           status: 200,
           headers: {
             'Content-Type': 'text/event-stream',
-            'x-browserx-primary-used-percent': '75.5',
-            'x-browserx-primary-window-minutes': '60',
-            'x-browserx-primary-reset-after-seconds': '3600',
-            'x-browserx-secondary-used-percent': '25.0',
-            'x-browserx-secondary-window-minutes': '1440',
+            'x-pi-primary-used-percent': '75.5',
+            'x-pi-primary-window-minutes': '60',
+            'x-pi-primary-reset-after-seconds': '3600',
+            'x-pi-secondary-used-percent': '25.0',
+            'x-pi-secondary-window-minutes': '1440',
           },
         }
       );

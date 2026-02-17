@@ -1,13 +1,13 @@
 /**
  * Desktop Agent Bootstrap
  *
- * Initializes and wires up the BrowserxAgent with the channel system for desktop mode.
+ * Initializes and wires up the PiAgent with the channel system for desktop mode.
  * In desktop mode, the agent runs directly in the WebView (same process as UI).
  *
  * Flow:
  * 1. Create ChannelManager (routes submissions to agent, events to channels)
  * 2. Create TauriChannel (receives submissions from UI, sends events to UI)
- * 3. Create BrowserxAgent (processes submissions, emits events)
+ * 3. Create PiAgent (processes submissions, emits events)
  * 4. Wire them together
  *
  * @module desktop/agent/DesktopAgentBootstrap
@@ -16,7 +16,7 @@
 import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
-import { BrowserxAgent } from '@/core/BrowserxAgent';
+import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer } from '@/core/PromptLoader';
@@ -37,7 +37,7 @@ let _instance: DesktopAgentBootstrap | null = null;
  * Manages the lifecycle of the agent and channel system in desktop mode.
  */
 export class DesktopAgentBootstrap {
-  private agent: BrowserxAgent | null = null;
+  private agent: PiAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private initialized = false;
@@ -54,19 +54,19 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for BrowserxAgent
+      // 1. Create the message router for PiAgent
       this.messageRouter = new DesktopMessageRouter('background');
 
       // 2. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create BrowserxAgent
-      // BrowserxAgent expects a MessageRouter with updateState method
+      // 3. Create PiAgent
+      // PiAgent expects a MessageRouter with updateState method
       // DesktopMessageRouter provides this compatibility
-      this.agent = new BrowserxAgent(config, this.messageRouter as any);
+      this.agent = new PiAgent(config, this.messageRouter as any);
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
-      // This must happen first so BrowserxAgent.configurePromptComposition() sees
+      // This must happen first so PiAgent.configurePromptComposition() sees
       // the composer is already configured and skips re-configuration.
       await this.configurePromptWithPlatformInfo();
 
@@ -137,7 +137,7 @@ export class DesktopAgentBootstrap {
   /**
    * Set up event forwarding from agent to channel
    *
-   * Uses BrowserxAgent's setEventDispatcher to route events through
+   * Uses PiAgent's setEventDispatcher to route events through
    * ChannelManager instead of chrome.runtime.sendMessage.
    */
   private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
@@ -146,7 +146,7 @@ export class DesktopAgentBootstrap {
       return;
     }
 
-    // Set the event dispatcher on BrowserxAgent
+    // Set the event dispatcher on PiAgent
     // Events will be routed through ChannelManager to TauriChannel
     this.agent.setEventDispatcher((event) => {
       // Dispatch event to the Tauri channel
@@ -240,7 +240,7 @@ export class DesktopAgentBootstrap {
   /**
    * Get the agent instance
    */
-  getAgent(): BrowserxAgent | null {
+  getAgent(): PiAgent | null {
     return this.agent;
   }
 

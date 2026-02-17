@@ -286,9 +286,9 @@ describe('Full Stream Lifecycle Integration', () => {
   describe('Rate limit headers integration', () => {
     it('yields RateLimits event from headers', async () => {
       const rateLimitHeaders = new Headers({
-        'x-browserx-primary-used-percent': '75.5',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-primary-reset-after-seconds': '1800',
+        'x-pi-primary-used-percent': '75.5',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-primary-reset-after-seconds': '1800',
       });
 
       global.fetch = vi.fn().mockResolvedValue({

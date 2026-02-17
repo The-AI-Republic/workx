@@ -6,7 +6,7 @@
 // Constants
 // ============================================================================
 
-export const DB_NAME = 'BrowserxRollouts';
+export const DB_NAME = 'PiRollouts';
 export const DB_VERSION = 2;
 export const STORE_ROLLOUTS = 'rollouts';
 export const STORE_ROLLOUT_ITEMS = 'rollout_items';

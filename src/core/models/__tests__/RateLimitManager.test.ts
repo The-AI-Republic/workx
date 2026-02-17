@@ -15,12 +15,12 @@ describe('RateLimitManager', () => {
   describe('Header Parsing', () => {
     it('should parse complete rate limit headers correctly', () => {
       const headers = {
-        'x-browserx-primary-used-percent': '75.5',
-        'x-browserx-primary-window-minutes': '60',
-        'x-browserx-primary-resets-in-seconds': '1800',
-        'x-browserx-secondary-used-percent': '45.2',
-        'x-browserx-secondary-window-minutes': '1440',
-        'x-browserx-secondary-resets-in-seconds': '43200',
+        'x-pi-primary-used-percent': '75.5',
+        'x-pi-primary-window-minutes': '60',
+        'x-pi-primary-resets-in-seconds': '1800',
+        'x-pi-secondary-used-percent': '45.2',
+        'x-pi-secondary-window-minutes': '1440',
+        'x-pi-secondary-resets-in-seconds': '43200',
       };
 
       const snapshot = rateLimitManager.updateFromHeaders(headers);
@@ -40,9 +40,9 @@ describe('RateLimitManager', () => {
 
     it('should handle partial headers gracefully', () => {
       const headers = {
-        'x-browserx-primary-used-percent': '90.0',
-        'x-browserx-secondary-used-percent': '30.0',
-        'x-browserx-secondary-window-minutes': '1440',
+        'x-pi-primary-used-percent': '90.0',
+        'x-pi-secondary-used-percent': '30.0',
+        'x-pi-secondary-window-minutes': '1440',
       };
 
       const snapshot = rateLimitManager.updateFromHeaders(headers);
@@ -62,9 +62,9 @@ describe('RateLimitManager', () => {
 
     it('should ignore invalid header values', () => {
       const headers = {
-        'x-browserx-primary-used-percent': 'invalid',
-        'x-browserx-secondary-used-percent': '50.0',
-        'x-browserx-secondary-window-minutes': 'also-invalid',
+        'x-pi-primary-used-percent': 'invalid',
+        'x-pi-secondary-used-percent': '50.0',
+        'x-pi-secondary-window-minutes': 'also-invalid',
       };
 
       const snapshot = rateLimitManager.updateFromHeaders(headers);
@@ -81,8 +81,8 @@ describe('RateLimitManager', () => {
   describe('Retry Logic', () => {
     it('should recommend retry when usage is below threshold', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '60.0',
-        'x-browserx-primary-resets-in-seconds': '300',
+        'x-pi-primary-used-percent': '60.0',
+        'x-pi-primary-resets-in-seconds': '300',
       });
 
       expect(rateLimitManager.shouldRetry(80)).toBe(true);
@@ -90,8 +90,8 @@ describe('RateLimitManager', () => {
 
     it('should discourage retry when approaching limits', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '95.0',
-        'x-browserx-primary-resets-in-seconds': '1800',
+        'x-pi-primary-used-percent': '95.0',
+        'x-pi-primary-resets-in-seconds': '1800',
       });
 
       expect(rateLimitManager.shouldRetry(80)).toBe(false);
@@ -99,8 +99,8 @@ describe('RateLimitManager', () => {
 
     it('should calculate retry delay from reset time when available', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '70.0',
-        'x-browserx-primary-resets-in-seconds': '5',
+        'x-pi-primary-used-percent': '70.0',
+        'x-pi-primary-resets-in-seconds': '5',
       });
 
       const delay = rateLimitManager.calculateRetryDelay(1);
@@ -110,7 +110,7 @@ describe('RateLimitManager', () => {
 
     it('should use exponential backoff when no reset time available', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '50.0',
+        'x-pi-primary-used-percent': '50.0',
       });
 
       const delay1 = rateLimitManager.calculateRetryDelay(1);
@@ -128,11 +128,11 @@ describe('RateLimitManager', () => {
       const startTime = Date.now();
 
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '30.0',
+        'x-pi-primary-used-percent': '30.0',
       });
 
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '60.0',
+        'x-pi-primary-used-percent': '60.0',
       });
 
       const history = rateLimitManager.getHistory();
@@ -147,8 +147,8 @@ describe('RateLimitManager', () => {
   describe('Summary Information', () => {
     it('should provide accurate summary of current status', () => {
       rateLimitManager.updateFromHeaders({
-        'x-browserx-primary-used-percent': '85.0',
-        'x-browserx-primary-resets-in-seconds': '600',
+        'x-pi-primary-used-percent': '85.0',
+        'x-pi-primary-resets-in-seconds': '600',
       });
 
       const summary = rateLimitManager.getSummary();

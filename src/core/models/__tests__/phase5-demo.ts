@@ -20,12 +20,12 @@ function demonstrateRateLimitManager() {
   // Simulate rate limit headers from an API response
   console.log('1. Parsing rate limit headers...');
   const headers = {
-    'x-browserx-primary-used-percent': '75.0',
-    'x-browserx-primary-window-minutes': '60',
-    'x-browserx-primary-resets-in-seconds': '1800',
-    'x-browserx-secondary-used-percent': '45.0',
-    'x-browserx-secondary-window-minutes': '1440',
-    'x-browserx-secondary-resets-in-seconds': '43200',
+    'x-pi-primary-used-percent': '75.0',
+    'x-pi-primary-window-minutes': '60',
+    'x-pi-primary-resets-in-seconds': '1800',
+    'x-pi-secondary-used-percent': '45.0',
+    'x-pi-secondary-window-minutes': '1440',
+    'x-pi-secondary-resets-in-seconds': '43200',
   };
 
   const snapshot = rateLimitManager.updateFromHeaders(headers);
@@ -131,15 +131,15 @@ function demonstrateIntegration() {
 
   const apiCalls = [
     {
-      rateLimitHeaders: { 'x-browserx-primary-used-percent': '45.0' },
+      rateLimitHeaders: { 'x-pi-primary-used-percent': '45.0' },
       tokenUsage: { input_tokens: 100, cached_input_tokens: 20, output_tokens: 80, reasoning_output_tokens: 5, total_tokens: 205 },
     },
     {
-      rateLimitHeaders: { 'x-browserx-primary-used-percent': '67.0', 'x-browserx-primary-resets-in-seconds': '900' },
+      rateLimitHeaders: { 'x-pi-primary-used-percent': '67.0', 'x-pi-primary-resets-in-seconds': '900' },
       tokenUsage: { input_tokens: 150, cached_input_tokens: 30, output_tokens: 120, reasoning_output_tokens: 8, total_tokens: 308 },
     },
     {
-      rateLimitHeaders: { 'x-browserx-primary-used-percent': '89.0', 'x-browserx-primary-resets-in-seconds': '600' },
+      rateLimitHeaders: { 'x-pi-primary-used-percent': '89.0', 'x-pi-primary-resets-in-seconds': '600' },
       tokenUsage: { input_tokens: 200, cached_input_tokens: 50, output_tokens: 160, reasoning_output_tokens: 12, total_tokens: 422 },
     },
   ];

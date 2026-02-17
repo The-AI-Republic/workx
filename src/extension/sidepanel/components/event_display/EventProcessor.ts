@@ -766,7 +766,7 @@ export class EventProcessor {
   /**
    * Send approval decision as a standard SUBMISSION.
    * This routes through the same pipeline for both extension and desktop,
-   * reaching BrowserxAgent.handleExecApproval() on all platforms.
+   * reaching PiAgent.handleExecApproval() on all platforms.
    */
   private sendApprovalDecision(
     id: string,
