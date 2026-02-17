@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "much access browser storage (localStorage, sessionStorage, cookies) wow"
   },
-  "Action": {
-    "message": "much action wow"
-  },
-  "Action_Details": {
-    "message": "much action details wow"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "much add modification wow"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "much advanced configuration wow"
-  },
-  "Advanced_Options": {
-    "message": "much advanced options wow"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "much agent execution tools wow"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "much allow agent to execute system commands (use with caution) wow"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "much allow content scripts to run on web pages wow"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "much allowed origins wow"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "much approval history wow"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "much approve wow"
-  },
-  "Approve_this_action": {
-    "message": "much approve this action wow"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "much ask Browserx to extract structured data from any webpage wow"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "such close settings wow"
   },
-  "Command": {
-    "message": "such command wow"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "such context wow"
   },
   "Create_New_Tab": {
     "message": "much create new tab wow"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "such execute commands wow"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "much expire after days wow"
-  },
-  "Explain_your_decision": {
-    "message": "very explain decision wow..."
   },
   "Extension_Permission": {
     "message": "such extension & permission wow"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "such extra credits wow, many bonus"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "much extract data: wow"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "such file operations wow (not available), very sad"
-  },
-  "File_Path": {
-    "message": "such file path wow"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "such fill forms, submit data, interact with form elements wow"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "hello world wow"
   },
-  "History": {
-    "message": "much history wow"
-  },
-  "Impact": {
-    "message": "such impact wow"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "much intercept and modify network stuff wow"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "such modern chat wow"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "such modify parameters when requesting changes wow"
-  },
   "Monthly_Credits": {
     "message": "such monthly credits wow"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "much navigation tool wow"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "very network intercept tool wow"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "much new conversation wow"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "such no approval history yet wow."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "very page vision tool wow"
   },
-  "Parameter_Modifications": {
-    "message": "such parameter modifications wow"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "pls type valid command wow"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "priority tier so fast, much price wow"
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "very quick action wow"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "much read-only wow"
   },
-  "Reason_optional": {
-    "message": "such reason (optional) wow"
-  },
   "Refreshes_in": {
     "message": "refreshes in, so soon wow"
-  },
-  "Reject": {
-    "message": "such reject wow"
-  },
-  "Reject_this_action": {
-    "message": "such reject this action wow"
   },
   "Remaining": {
     "message": "much remaining wow"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "much remove API Key wow"
   },
-  "Remove_modification": {
-    "message": "much remove modification wow"
-  },
-  "Request_Changes": {
-    "message": "much request changes wow"
-  },
-  "Request_changes_to_this_action": {
-    "message": "much request changes to this action wow"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "much service tier wow"
   },
-  "Session": {
-    "message": "much session wow"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "such stable wow"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "such terminal wow"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "much test connection wow"
   },
   "Testing": {
     "message": "such testing wow"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "such time wow"
-  },
-  "Time_remaining": {
-    "message": "time remaining wow"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "time-to-live for cached items in seconds (default: 3600) wow"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "very tool wow"
-  },
   "Tool_Timeout_ms": {
     "message": "much tool timeout (ms) wow"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "much tools settings wow"
-  },
-  "Turn": {
-    "message": "very turn wow"
   },
   "UI_Theme": {
     "message": "much UI theme wow"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "such user approved action wow"
-  },
-  "User_decision": {
-    "message": "much user decision wow"
-  },
   "User_preferences_and_interface_settings": {
     "message": "so user preferences and interface settings wow"
-  },
-  "User_rejected_action": {
-    "message": "very user rejected action wow"
-  },
-  "User_requested_modifications": {
-    "message": "much user requested modifications wow"
   },
   "Using_extra_credits": {
     "message": "so using extra credits wow"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "such welcome to Browserx wow"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "much workspace write wow"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "your API key is such encrypted wow"
-  },
-  "Your_Decision": {
-    "message": "such your decision wow"
   },
   "optional": {
     "message": ""

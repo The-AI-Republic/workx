@@ -7,6 +7,7 @@
   import { _t } from '../../lib/i18n';
   import SchedulerButton from '../scheduler/SchedulerButton.svelte';
   import SchedulerPopup from '../scheduler/SchedulerPopup.svelte';
+  import ApprovalModeIndicator from '../common/ApprovalModeIndicator.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -37,6 +38,9 @@
 
   <!-- Scheduler Button -->
   <SchedulerButton on:click={handleSchedulerClick} />
+
+  <!-- Approval Mode Indicator -->
+  <ApprovalModeIndicator />
 
   <!-- Spacer to push other buttons to the right -->
   <div class="flex-grow"></div>

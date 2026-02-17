@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "브라우저 저장소에 접근 (localStorage, sessionStorage, 쿠키)"
   },
-  "Action": {
-    "message": "작업"
-  },
-  "Action_Details": {
-    "message": "작업 상세"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "수정 추가"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "고급 구성"
-  },
-  "Advanced_Options": {
-    "message": "고급 옵션"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "에이전트 실행 도구"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "에이전트가 시스템 명령을 실행하도록 허용 (주의해서 사용하세요)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "콘텐츠 스크립트가 웹 페이지에서 실행되도록 허용"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "허용된 출처"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "승인 내역"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "승인"
-  },
-  "Approve_this_action": {
-    "message": "이 작업 승인"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx에 웹 페이지에서 구조화된 데이터를 추출하도록 요청"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "설정 닫기"
   },
-  "Command": {
-    "message": "명령"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "컨텍스트"
   },
   "Create_New_Tab": {
     "message": "새 탭 만들기"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "명령 실행"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "일 후 만료됨"
-  },
-  "Explain_your_decision": {
-    "message": "결정을 설명하십시오..."
   },
   "Extension_Permission": {
     "message": "확장 프로그램 및 권한"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "추가 크레딧"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "데이터 추출:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "파일 작업 (사용할 수 없음)"
-  },
-  "File_Path": {
-    "message": "파일 경로"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "양식 작성, 데이터 제출, 양식 요소 상호 작용"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "기록"
-  },
-  "Impact": {
-    "message": "임팩트"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "네트워크 요청/응답을 가로채고 수정"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "Modern Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "변경 요청 시 매개변수 수정"
-  },
   "Monthly_Credits": {
     "message": "월간 크레딧"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "탐색 도구"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "네트워크 인터셉트 도구"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "새 대화"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "아직 승인 기록이 없습니다."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "페이지 비전 도구"
   },
-  "Parameter_Modifications": {
-    "message": "매개변수 수정"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "유효한 명령을 입력해 주세요."
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "우선 순위 티어는 높은 가격으로 더 빠른 응답 시간을 제공합니다."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "빠른 액션"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "읽기 전용"
   },
-  "Reason_optional": {
-    "message": "사유 (선택 사항)"
-  },
   "Refreshes_in": {
     "message": "새로 고침까지"
-  },
-  "Reject": {
-    "message": "거부"
-  },
-  "Reject_this_action": {
-    "message": "이 작업을 거부하십시오"
   },
   "Remaining": {
     "message": "남은:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "API 키 삭제"
   },
-  "Remove_modification": {
-    "message": "수정 사항 삭제"
-  },
-  "Request_Changes": {
-    "message": "변경 요청"
-  },
-  "Request_changes_to_this_action": {
-    "message": "이 작업에 대한 변경 요청"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "서비스 등급"
   },
-  "Session": {
-    "message": "세션"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "안정"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "터미널"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "연결 테스트"
   },
   "Testing": {
     "message": "테스트 중..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "시간"
-  },
-  "Time_remaining": {
-    "message": "남은 시간"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "캐시 항목의 TTL(초) (기본값: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "도구"
-  },
   "Tool_Timeout_ms": {
     "message": "도구 제한 시간 (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "도구 설정"
-  },
-  "Turn": {
-    "message": "차례"
   },
   "UI_Theme": {
     "message": "UI 테마"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "사용자가 승인한 작업"
-  },
-  "User_decision": {
-    "message": "사용자 결정"
-  },
   "User_preferences_and_interface_settings": {
     "message": "사용자 환경설정 및 인터페이스 설정"
-  },
-  "User_rejected_action": {
-    "message": "사용자가 거부한 작업"
-  },
-  "User_requested_modifications": {
-    "message": "사용자가 요청한 수정 사항"
   },
   "Using_extra_credits": {
     "message": "추가 크레딧 사용 중"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx에 오신 것을 환영합니다"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "작업 공간 쓰기"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "API 키가 암호화되었습니다"
-  },
-  "Your_Decision": {
-    "message": "귀하의 결정"
   },
   "optional": {
     "message": ""

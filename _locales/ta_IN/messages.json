@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "உலாவி சேமிப்பு அணுகல் (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "செயல்"
-  },
-  "Action_Details": {
-    "message": "செயல் விவரங்கள்"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "மாற்றத்தைச் சேர்க்க"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "மேம்பட்ட உள்ளமைவு"
-  },
-  "Advanced_Options": {
-    "message": "மேம்பட்ட விருப்பங்கள்"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "ஏஜெண்ட் நிறைவேற்று கருவிகள்"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "ஏஜெண்ட் அமைப்புக் கட்டளைகளை இயக்க அனுமதிக்கவும் (கவனத்துடன் பயன்படுத்தவும்)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "வலைப்பக்கங்களில் உள்ளடக்க ஸ்கிரிப்டுகளை இயக்க அனுமதி"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "அனுமதிக்கப்பட்ட மூலங்கள்"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "அனுமதி வரலாறு"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "அனுமதி"
-  },
-  "Approve_this_action": {
-    "message": "இந்தச் செயலை அனுமதிக்கவும்"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx-ஐ எந்தவொரு வலைப்பக்கத்திலிருந்தும் கட்டமைக்கப்பட்ட தரவுகளைப் பிரித்தெடுக்கக் கேட்கவும்"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "அமைப்புகளை மூடு"
   },
-  "Command": {
-    "message": "கட்டளை"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "கான்டெக்ஸ்ட்"
   },
   "Create_New_Tab": {
     "message": "புதிய தாவலை உருவாக்கவும்"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "கட்டளைகளை செயல்படுத்து"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "நாட்களுக்குப் பிறகு காலாவதியாகும்"
-  },
-  "Explain_your_decision": {
-    "message": "உங்கள் முடிவை விளக்கவும்..."
   },
   "Extension_Permission": {
     "message": "விரிவாக்கம் & அனுமதி"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "கூடுதல் கிரெடிட்"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "தரவைப் பிரித்தெடுக்கவும்:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "கோப்பு செயல்பாடுகள் (கிடைக்கவில்லை)"
-  },
-  "File_Path": {
-    "message": "கோப்பு பாதை"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "படிவங்களை நிரப்பவும், தரவை சமர்ப்பிக்கவும், படிவ கூறுகளுடன் தொடர்பு கொள்ளவும்"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "வணக்கம் உலகம்"
   },
-  "History": {
-    "message": "வரலாறு"
-  },
-  "Impact": {
-    "message": "விளைவு"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "நெட்வொர்க் கோரிக்கைகள்/பதில்களை இடைமறித்து மாற்றுதல்"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "நவீன அரட்டை"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "மாற்றங்களைக் கோரும் போது அளவுருக்களை மாற்றுதல்"
-  },
   "Monthly_Credits": {
     "message": "மாதாந்திர கிரெடிட்கள்"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "வழிசெலுத்தல் கருவி"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "பிணைய இடைமறுப்புக் கருவி"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "புதிய உரையாடல்"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "இன்னும் ஒப்புதல் வரலாறு இல்லை."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "பக்க பார்வை கருவி"
   },
-  "Parameter_Modifications": {
-    "message": "அளவுரு மாற்றங்கள்"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "தயவுசெய்து செல்லுபடியாகும் கட்டளையை உள்ளிடவும்"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "முன்னுரிமை நிலை, அதிகமான விலையுடன் வேகமான பதில் நேரங்களை வழங்குகிறது."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "விரைவு செயல்"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "வாசிக்க மட்டும்"
   },
-  "Reason_optional": {
-    "message": "காரணம் (விருப்பம்)"
-  },
   "Refreshes_in": {
     "message": "புதுப்பித்தல்:"
-  },
-  "Reject": {
-    "message": "நிராகரிக்க"
-  },
-  "Reject_this_action": {
-    "message": "இந்த செயலை நிராகரிக்கவும்"
   },
   "Remaining": {
     "message": "மீதமுள்ளது:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "API Key-ஐ நீக்கு"
   },
-  "Remove_modification": {
-    "message": "மாற்றத்தை நீக்கவும்"
-  },
-  "Request_Changes": {
-    "message": "மாற்றங்களைக் கோரவும்"
-  },
-  "Request_changes_to_this_action": {
-    "message": "இந்தச் செயலுக்கு மாற்றங்களைக் கோரவும்"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "சேவை நிலை"
   },
-  "Session": {
-    "message": "அமர்வு"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "நிலையான"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "டெர்மினல்"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "இணைப்பு சோதனை"
   },
   "Testing": {
     "message": "சோதனை நடைபெறுகிறது..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "நேரம்"
-  },
-  "Time_remaining": {
-    "message": "மீதமுள்ள நேரம்"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "கேச் உருப்படிகளின் வாழ்நாள் (விநாடிகளில்) (இயல்புநிலை: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "கருவி"
-  },
   "Tool_Timeout_ms": {
     "message": "கருவி காலவரம்பு (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "கருவிகள் அமைப்புகள்"
-  },
-  "Turn": {
-    "message": "சுழற்சி"
   },
   "UI_Theme": {
     "message": "UI தீம்"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "பயனர் அங்கீகரித்த செயல்"
-  },
-  "User_decision": {
-    "message": "பயனர் முடிவு"
-  },
   "User_preferences_and_interface_settings": {
     "message": "பயனர் விருப்பங்கள் மற்றும் இடைமுக அமைப்புகள்"
-  },
-  "User_rejected_action": {
-    "message": "பயனர் நிராகரித்த செயல்"
-  },
-  "User_requested_modifications": {
-    "message": "பயனர் கோரிய மாற்றங்கள்"
   },
   "Using_extra_credits": {
     "message": "கூடுதல் கிரெடிட்களைப் பயன்படுத்துகிறது"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx-க்கு வரவேற்கிறோம்"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "பணியிடத்தில் எழுதுக"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "உங்கள் API விசை குறியாக்கம் செய்யப்பட்டுள்ளது"
-  },
-  "Your_Decision": {
-    "message": "உங்கள் முடிவு"
   },
   "optional": {
     "message": ""

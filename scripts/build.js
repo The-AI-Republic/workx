@@ -111,10 +111,11 @@ function build() {
       log('\n📝 Copying prompts...', colors.yellow);
       fs.mkdirSync(promptsDest, { recursive: true });
       fs.readdirSync(promptsSrc).forEach(file => {
-        fs.copyFileSync(
-          path.join(promptsSrc, file),
-          path.join(promptsDest, file)
-        );
+        const srcFile = path.join(promptsSrc, file);
+        // Skip directories (e.g., fragments/) — fragments are inlined by Vite ?raw
+        // imports at build time, so they don't need to be copied to dist
+        if (!fs.statSync(srcFile).isFile()) return;
+        fs.copyFileSync(srcFile, path.join(promptsDest, file));
       });
       log('  ✓ Copied prompts directory', colors.green);
     }

@@ -18,6 +18,9 @@ export interface PlatformCapabilities {
   /** Can register global hotkeys (desktop only) */
   hasGlobalHotkeys: boolean;
 
+  /** Can auto-start on OS login (desktop only) */
+  hasAutoStart: boolean;
+
   /** Has touch-optimized input (mobile only) */
   hasTouchInput: boolean;
 
@@ -35,6 +38,7 @@ export const platform: PlatformCapabilities = {
   // Desktop-only features
   hasSystemTray: __BUILD_MODE__ === 'desktop',
   hasGlobalHotkeys: __BUILD_MODE__ === 'desktop',
+  hasAutoStart: __BUILD_MODE__ === 'desktop',
 
   // Mobile-only features (for future use)
   hasTouchInput: false, // Will be: __BUILD_MODE__ === 'mobile'

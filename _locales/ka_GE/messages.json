@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ბრაუზერის მონაცემთა შენახვაზე წვდომა (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "მოქმედება"
-  },
-  "Action_Details": {
-    "message": "მოქმედების დეტალები"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "ცვლილების დამატება"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "მოწინავე კონფიგურაცია"
-  },
-  "Advanced_Options": {
-    "message": "მოწინავე პარამეტრები"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "აგენტის შესრულების ხელსაწყოები"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "მიეცით აგენტს სისტემური ბრძანებების შესრულების უფლება (გამოიყენეთ ფრთხილით)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "დაუშვით შინაარსის სკრიპტების გაშვება ვებგვერდებზე"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "დაშვებული წყაროები"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "დამტკიცების ისტორია"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "დამტკიცება"
-  },
-  "Approve_this_action": {
-    "message": "დამტკიცეთ ეს მოქმედება"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ვთხოვოთ Browserx-ს, რომ სტრუქტურირებული მონაცემები ნებისმიერი ვებგვერდიდან გამოვიყვანოს"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "პარამეტრების დახურვა"
   },
-  "Command": {
-    "message": "ბრძანება"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "კონტექსტი"
   },
   "Create_New_Tab": {
     "message": "ახალი ჩანართის შექმნა"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "ბრძანებების შესრულება"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "ვადის გასვლა დღეებში"
-  },
-  "Explain_your_decision": {
-    "message": "განმარტეთ თქვენი გადაწყვეტილება..."
   },
   "Extension_Permission": {
     "message": "გაფართოება და ნებართვა"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "დამატებითი კრედიტები"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "მონაცემების ამოღება:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "ფაილური ოპერაციები (მიუწვდომელია)"
-  },
-  "File_Path": {
-    "message": "ფაილის ბილიკი"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ფორმების შევსება, მონაცემების გადაგზავნა, ფორმის ელემენტებთან ურთიერთქმედება"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "ისტორია"
-  },
-  "Impact": {
-    "message": "გავლენა"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "ქსელის მოთხოვნების/პასუხების დაჭერა და შეცვლა"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "თანამედროვე ჩატი"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "პარამეტრების შეცვლა ცვლილებების მოთხოვნისას"
-  },
   "Monthly_Credits": {
     "message": "თვიური კრედიტები"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "ნავიგაციის ხელსაწყო"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "ქსელის ინტერსეპციის ხელსაწყო"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "ახალი საუბარი"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "დამტკიცების ისტორია ჯერ არ არსებობს."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "გვერდის ხედის ხელსაწყო"
   },
-  "Parameter_Modifications": {
-    "message": "პარამეტრების შეცვლები"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "გთხოვთ, აკრიფოთ სწორი ბრძანება"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "პრიორიტეტის დონე იძლევა უფრო სწრაფ პასუხებს, თუმცა უფრო მაღალი ფასით."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "სწრაფი მოქმედება"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "მხოლოდ კითხვის"
   },
-  "Reason_optional": {
-    "message": "მიზეზი (არასავალდებულო)"
-  },
   "Refreshes_in": {
     "message": "განახლდება"
-  },
-  "Reject": {
-    "message": "უარყოფა"
-  },
-  "Reject_this_action": {
-    "message": "ამ ქმედების უარყოფა"
   },
   "Remaining": {
     "message": "დარჩენილი:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "API გასაღების წაშლა"
   },
-  "Remove_modification": {
-    "message": "მოდიფიკაციის წაშლა"
-  },
-  "Request_Changes": {
-    "message": "ცვლილებების მოთხოვნა"
-  },
-  "Request_changes_to_this_action": {
-    "message": "ამ ქმედების შეცვლის მოთხოვნა"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "სერვისის დონე"
   },
-  "Session": {
-    "message": "სესია"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "სტაბილური"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "ტერმინალი"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "კავშირის ტესტირება"
   },
   "Testing": {
     "message": "ტესტირება..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "დრო"
-  },
-  "Time_remaining": {
-    "message": "დარჩენილი დრო"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "ქეშის ელემენტების სიცოცხლის დრო წამებში (ნაგულისხმევი: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "ხელსაწყო"
-  },
   "Tool_Timeout_ms": {
     "message": "ხელსაწყოს დროის ამოწურვა (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "ხელსაწყოების პარამეტრები"
-  },
-  "Turn": {
-    "message": "ტური"
   },
   "UI_Theme": {
     "message": "ინტერფეისის თემა"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "მომხმარებლის დამტკიცებული ქმედება"
-  },
-  "User_decision": {
-    "message": "მომხმარებლის გადაწყვეტილება"
-  },
   "User_preferences_and_interface_settings": {
     "message": "მომხმარებლის პრეფერენციები და ინტერფეისის პარამეტრები"
-  },
-  "User_rejected_action": {
-    "message": "მომხმარებლის უარყოფილი ქმედება"
-  },
-  "User_requested_modifications": {
-    "message": "მომხმარებლის მოთხოვნილი ცვლილებები"
   },
   "Using_extra_credits": {
     "message": "დამატებითი კრედიტების გამოყენება"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "მოგესალმებით Browserx-ში"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "სამუშაო სივრცის ჩაწერა"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "თქვენი API გასაღები დაშიფრულია"
-  },
-  "Your_Decision": {
-    "message": "თქვენი გადაწყვეტილება"
   },
   "optional": {
     "message": ""

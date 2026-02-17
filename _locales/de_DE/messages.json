@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Zugriff auf Browser‑Speicher (localStorage, sessionStorage, Cookies)"
   },
-  "Action": {
-    "message": "Aktion"
-  },
-  "Action_Details": {
-    "message": "Aktionsdetails"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Änderung hinzufügen"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Erweiterte Konfiguration"
-  },
-  "Advanced_Options": {
-    "message": "Erweiterte Optionen"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Agent‑Ausführungstools"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Erlauben Sie dem Agenten, Systembefehle auszuführen (mit Vorsicht verwenden)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Erlauben Sie Inhalts‑Skripten, auf Webseiten ausgeführt zu werden"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Zulässige Ursprünge"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Genehmigungsverlauf"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "Genehmigen"
-  },
-  "Approve_this_action": {
-    "message": "Diese Aktion genehmigen"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Bitten Sie Browserx, strukturierte Daten von jeder Webseite zu extrahieren"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "Einstellungen schließen"
   },
-  "Command": {
-    "message": "Befehl"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Kontext"
   },
   "Create_New_Tab": {
     "message": "Neuen Tab erstellen"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "Befehle ausführen"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Ablauf nach X Tagen"
-  },
-  "Explain_your_decision": {
-    "message": "Erklären Sie Ihre Entscheidung..."
   },
   "Extension_Permission": {
     "message": "Erweiterung & Berechtigung"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "Zusätzliche Credits"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Daten extrahieren:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "Dateioperationen (nicht verfügbar)"
-  },
-  "File_Path": {
-    "message": "Dateipfad"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Formulare ausfüllen, Daten übermitteln, mit Formularelementen interagieren"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Hallo Welt"
   },
-  "History": {
-    "message": "Verlauf"
-  },
-  "Impact": {
-    "message": "Auswirkung"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Netzwerkanfragen/-antworten abfangen und ändern"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "Moderner Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Parameter bei Änderungsanfragen anpassen"
-  },
   "Monthly_Credits": {
     "message": "Monatliche Guthaben"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "Navigationswerkzeug"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Netzwerk-Abfangwerkzeug"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "Neue Unterhaltung"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Noch keine Genehmigungshistorie vorhanden."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "Page Vision Tool"
   },
-  "Parameter_Modifications": {
-    "message": "Parameteränderungen"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "Bitte geben Sie einen gültigen Befehl ein"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Die Prioritätsstufe bietet schnellere Antwortzeiten bei höheren Preisen."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "Schnelle Aktion"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "Nur Lesen"
   },
-  "Reason_optional": {
-    "message": "Grund (optional)"
-  },
   "Refreshes_in": {
     "message": "Aktualisierung in"
-  },
-  "Reject": {
-    "message": "Ablehnen"
-  },
-  "Reject_this_action": {
-    "message": "Diese Aktion ablehnen"
   },
   "Remaining": {
     "message": "Verbleibend:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "API-Schlüssel entfernen"
   },
-  "Remove_modification": {
-    "message": "Änderung entfernen"
-  },
-  "Request_Changes": {
-    "message": "Änderungen anfordern"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Änderungen an dieser Aktion anfordern"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "Service-Tier"
   },
-  "Session": {
-    "message": "Sitzung"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Verbindung testen"
   },
   "Testing": {
     "message": "Testen..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "Zeit"
-  },
-  "Time_remaining": {
-    "message": "Verbleibende Zeit"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live für zwischengespeicherte Elemente in Sekunden (Standard: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Werkzeug"
-  },
   "Tool_Timeout_ms": {
     "message": "Werkzeug-Timeout (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Werkzeug-Einstellungen"
-  },
-  "Turn": {
-    "message": "Drehen"
   },
   "UI_Theme": {
     "message": "UI-Thema"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Vom Benutzer genehmigte Aktion"
-  },
-  "User_decision": {
-    "message": "Benutzerentscheid"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Benutzereinstellungen und Oberflächeneinstellungen"
-  },
-  "User_rejected_action": {
-    "message": "Vom Benutzer abgelehnte Aktion"
-  },
-  "User_requested_modifications": {
-    "message": "Vom Benutzer angeforderte Änderungen"
   },
   "Using_extra_credits": {
     "message": "Zusätzliche Credits verwenden"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Willkommen bei Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Schreib-Arbeitsbereich"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Ihr API‑Schlüssel ist verschlüsselt"
-  },
-  "Your_Decision": {
-    "message": "Ihre Entscheidung"
   },
   "optional": {
     "message": ""

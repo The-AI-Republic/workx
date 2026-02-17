@@ -147,6 +147,52 @@ const runtimePolyfill = {
           console.log('[chromePolyfill] SESSION_RESET received (desktop mode)');
           responseCallback?.({ success: true });
           return;
+
+        case 'UPDATE_APPROVAL_CONFIG': {
+          const config = (message as any).config;
+          (async () => {
+            try {
+              // 1. Save to storage
+              const result = await storagePolyfill.local.get('approval_config');
+              const existing = (result as any)['approval_config'] || {};
+              const merged = { ...existing, ...config };
+              await storagePolyfill.local.set({ approval_config: merged });
+              // 2. Update ApprovalGate directly
+              const { getDesktopAgentBootstrap } = await import('../agent/DesktopAgentBootstrap');
+              const agent = getDesktopAgentBootstrap().getAgent();
+              if (agent) {
+                const gate = agent.getToolRegistry().getApprovalGate();
+                if (gate) {
+                  if (config.mode) gate.setMode(config.mode);
+                  if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
+                  if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+                }
+              }
+              responseCallback?.({ success: true });
+            } catch (error) {
+              console.error('[chromePolyfill] Failed to update approval config:', error);
+              responseCallback?.({ success: false, error: (error as Error).message });
+            }
+          })();
+          return;
+        }
+
+        case 'SUBMISSION':
+          // Route SUBMISSION messages through 'browserx:submit' so TauriChannel
+          // picks them up and routes to agent.submitOperation().
+          // This ensures approval decisions (ExecApproval ops) work on desktop.
+          if (tauriEvent) {
+            const payload = (message as { payload?: unknown })?.payload;
+            tauriEvent.emit('browserx:submit', payload).then(() => {
+              responseCallback?.({ success: true });
+            }).catch((error) => {
+              console.error('[chromePolyfill] Failed to emit submission:', error);
+              responseCallback?.({ success: false, error: (error as Error).message });
+            });
+          } else {
+            responseCallback?.({ success: false, error: 'Tauri API not available' });
+          }
+          return;
       }
     }
 

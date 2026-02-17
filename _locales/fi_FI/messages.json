@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Pääsy selaimen tallennustilaan (localStorage, sessionStorage, evästeet)"
   },
-  "Action": {
-    "message": "Toiminto"
-  },
-  "Action_Details": {
-    "message": "Toiminnon tiedot"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Lisää muokkaus"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Lisäasetukset"
-  },
-  "Advanced_Options": {
-    "message": "Edistyneet valinnat"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Agentin suoritustyökalut"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Salli agentin suorittaa järjestelmäkomentoja (käytä varoen)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Salli sisältöskriptien suorittaminen verkkosivuilla"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Sallitut domainit"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "Hyväksymishistoria"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "Hyväksy"
-  },
-  "Approve_this_action": {
-    "message": "Hyväksy tämä toiminto"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Pyydä Browserx:ia poimimaan jäsenneltyä dataa mistä tahansa verkkosivusta"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "Sulje asetukset"
   },
-  "Command": {
-    "message": "Komento"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Konteksti"
   },
   "Create_New_Tab": {
     "message": "Luo uusi välilehti"
@@ -284,11 +284,11 @@
   "Execute_Commands": {
     "message": "Suorita komennot"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Vanhenemisaika (päivissä)"
-  },
-  "Explain_your_decision": {
-    "message": "Selitä päätöksesi..."
   },
   "Extension_Permission": {
     "message": "Laajennus ja oikeudet"
@@ -304,6 +304,9 @@
   },
   "Extra_Credits": {
     "message": "Lisäkrediitit"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Poimi tietoja:"
@@ -322,9 +325,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "Tiedostotoiminnot (Ei saatavilla)"
-  },
-  "File_Path": {
-    "message": "Tiedostopolku"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Täytä lomakkeita, lähetä tietoja, käsittele lomake-elementtejä"
@@ -361,11 +361,8 @@
   "Hello_World": {
     "message": "Hei maailma"
   },
-  "History": {
-    "message": "Historia"
-  },
-  "Impact": {
-    "message": "Vaikutus"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Kaappaa ja muokkaa verkkopyyntöjä/vastauksia"
@@ -472,9 +469,6 @@
   "Modern_Chat": {
     "message": "Moderni keskustelu"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Muokkaa parametreja, kun pyydetään muutoksia"
-  },
   "Monthly_Credits": {
     "message": "Kuukausikrediitit"
   },
@@ -490,6 +484,9 @@
   "Navigation_Tool": {
     "message": "Navigointityökalu"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Verkon sieppäystyökalu"
   },
@@ -499,14 +496,14 @@
   "New_Conversation": {
     "message": "Uusi keskustelu"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Hyväksymishistoriaa ei vielä ole."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -541,9 +538,6 @@
   "Page_Vision_Tool": {
     "message": "Sivun Vision-työkalu"
   },
-  "Parameter_Modifications": {
-    "message": "Parametrimuokkaukset"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -558,6 +552,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "Kirjoita kelvollinen komento"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Prioriteettitaso tarjoaa nopeammat vasteajat korkeammalla hinnalla."
@@ -583,20 +580,17 @@
   "Quick_action": {
     "message": "Pikatoiminto"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "Vain luku"
   },
-  "Reason_optional": {
-    "message": "Syy (valinnainen)"
-  },
   "Refreshes_in": {
     "message": "Päivittyy pian"
-  },
-  "Reject": {
-    "message": "Hylkää"
-  },
-  "Reject_this_action": {
-    "message": "Hylkää tämä toiminto"
   },
   "Remaining": {
     "message": "Jäljellä:"
@@ -607,16 +601,10 @@
   "Remove_API_Key": {
     "message": "Poista API-avain"
   },
-  "Remove_modification": {
-    "message": "Poista muokkaus"
-  },
-  "Request_Changes": {
-    "message": "Pyydä muutoksia"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Pyydä muutoksia tähän toimintaan"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -635,6 +623,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -679,9 +670,6 @@
   "Service_Tier": {
     "message": "Palvelutaso"
   },
-  "Session": {
-    "message": "Istunto"
-  },
   "Session_error": {
     "message": ""
   },
@@ -708,6 +696,9 @@
   },
   "Stable": {
     "message": "Vakaa"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,11 +742,17 @@
   "Terminal": {
     "message": "Pääte"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Testaa yhteys"
   },
   "Testing": {
     "message": "Testataan..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -765,9 +762,6 @@
   },
   "Time": {
     "message": "Aika"
-  },
-  "Time_remaining": {
-    "message": "Aikaa jäljellä"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Välimuistissa olevien kohteiden elinikä sekunteina (oletus: 3600)"
@@ -781,9 +775,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Työkalu"
-  },
   "Tool_Timeout_ms": {
     "message": "Työkalun aikakatkaisu (ms)"
   },
@@ -792,9 +783,6 @@
   },
   "Tools_Settings": {
     "message": "Työkalujen asetukset"
-  },
-  "Turn": {
-    "message": "Käännä"
   },
   "UI_Theme": {
     "message": "Käyttöliittymän teema"
@@ -838,20 +826,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Käyttäjän hyväksymä toiminto"
-  },
-  "User_decision": {
-    "message": "Käyttäjän päätös"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Käyttäjän asetukset ja käyttöliittymän asetukset"
-  },
-  "User_rejected_action": {
-    "message": "Käyttäjän hylkäämä toiminto"
-  },
-  "User_requested_modifications": {
-    "message": "Käyttäjän pyytämät muutokset"
   },
   "Using_extra_credits": {
     "message": "Käytetään lisäluottoja"
@@ -877,6 +853,12 @@
   "Welcome_to_Browserx": {
     "message": "Tervetuloa Browserxiin"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Työtilan kirjoitus"
   },
@@ -888,9 +870,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "API-avaimesi on salattu"
-  },
-  "Your_Decision": {
-    "message": "Päätöksesi"
   },
   "optional": {
     "message": ""

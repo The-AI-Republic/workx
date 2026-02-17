@@ -20,20 +20,14 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Pag-access sa storage sa browser (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Aksyon"
-  },
-  "Action_Details": {
-    "message": "Detalye sa Aksyon"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Active_Sessions": {
     "message": ""
   },
   "Add": {
     "message": ""
-  },
-  "Add_Modification": {
-    "message": "Pagdugang og Pag-usab"
   },
   "Add_Server": {
     "message": ""
@@ -44,17 +38,20 @@
   "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
+  "Additional_Bind_Mounts": {
+    "message": ""
+  },
   "Advanced_Configuration": {
     "message": "Abansadong Pag-configure"
-  },
-  "Advanced_Options": {
-    "message": "Abansadong mga Kapilian"
   },
   "Advanced_Settings": {
     "message": ""
   },
   "Agent_Execution_Tools": {
     "message": "Mga Himan sa Ahente"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Tugoti ang ahente nga magpadagan og mga command sa sistema (gamiton nga may pag-amping)"
@@ -65,23 +62,29 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Tugoti ang mga content script nga modagan sa mga web page"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Gitugot nga mga Origin"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_History": {
-    "message": "History sa Pag-apruba"
+  "Approval_Safety": {
+    "message": ""
   },
-  "Approve": {
-    "message": "Uyon"
-  },
-  "Approve_this_action": {
-    "message": "Uyoni kini nga aksyon"
+  "Approval_Mode": {
+    "message": ""
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Pangayoa ang Browserx nga mokuha og structured data gikan sa bisan unsang webpage"
+  },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
   },
   "Available_Tools": {
     "message": ""
@@ -149,8 +152,8 @@
   "Close_settings": {
     "message": "Isira ang mga Setting"
   },
-  "Command": {
-    "message": "Komando"
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
   },
   "Completed": {
     "message": ""
@@ -181,9 +184,6 @@
   },
   "Connecting": {
     "message": ""
-  },
-  "Context": {
-    "message": "Konteksto"
   },
   "Create_New_Tab": {
     "message": "Himoa ang Bag-ong Tab"
@@ -284,6 +284,9 @@
   "Execute_Commands": {
     "message": "Pagpatuman sa mga sugo"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Mawagtang human sa $1$ ka adlaw",
     "placeholders": {
@@ -291,9 +294,6 @@
         "content": "$1"
       }
     }
-  },
-  "Explain_your_decision": {
-    "message": "Ipahayag ang imong desisyon..."
   },
   "Extension_Permission": {
     "message": "Extension ug Permission"
@@ -309,6 +309,9 @@
   },
   "Extra_Credits": {
     "message": "Dugang nga Kredito"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Pagkuha sa Data:"
@@ -327,9 +330,6 @@
   },
   "File_Operations_Not_Available": {
     "message": "Mga Operasyon sa File (Dili Magamit)"
-  },
-  "File_Path": {
-    "message": "Dalan sa File"
   },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Pun-i ang mga porma, isumite ang datos, ug pakig-uban sa mga elemento sa porma"
@@ -366,11 +366,8 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "Kasaysayan"
-  },
-  "Impact": {
-    "message": "Epekto"
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Sikwaya ug usba ang mga network request/response"
@@ -477,9 +474,6 @@
   "Modern_Chat": {
     "message": "Modernong Chat"
   },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Usba ang mga parameter kung maghangyo og kausaban"
-  },
   "Monthly_Credits": {
     "message": "Kredito sa Buwan"
   },
@@ -495,6 +489,9 @@
   "Navigation_Tool": {
     "message": "Kasangkapan sa Pagnavigate"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Kasangkapan sa Pagintercept sa Network"
   },
@@ -504,14 +501,14 @@
   "New_Conversation": {
     "message": "Bag-ong Panag-istorya"
   },
+  "No_Access": {
+    "message": ""
+  },
   "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_active_sessions": {
     "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Wala pa’y kasaysayan sa pag-apruba."
   },
   "No_completed_tasks_yet": {
     "message": ""
@@ -546,9 +543,6 @@
   "Page_Vision_Tool": {
     "message": "Kasangkapan sa Paglantaw sa Pahina"
   },
-  "Parameter_Modifications": {
-    "message": "Mga Pag-usab sa Parameter"
-  },
   "Pause_Queue": {
     "message": ""
   },
@@ -563,6 +557,9 @@
   },
   "Please_type_a_valid_command": {
     "message": "Palihug i-type ang balidong command"
+  },
+  "Power": {
+    "message": ""
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Ang priority tier naghatag og mas paspas nga tubag apan mas mahal ang presyo."
@@ -588,20 +585,17 @@
   "Quick_action": {
     "message": "Dali nga aksyon"
   },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
+  },
   "Read_only": {
     "message": "Basahon ra"
   },
-  "Reason_optional": {
-    "message": "Rason (opsyonal)"
-  },
   "Refreshes_in": {
     "message": "Mag-refresh sulod sa:"
-  },
-  "Reject": {
-    "message": "Balibad"
-  },
-  "Reject_this_action": {
-    "message": "Ibalibad kini nga aksyon"
   },
   "Remaining": {
     "message": "Nabilin:"
@@ -612,16 +606,10 @@
   "Remove_API_Key": {
     "message": "Kuhaa ang API Key"
   },
-  "Remove_modification": {
-    "message": "Kuhaa ang Modipikasyon"
-  },
-  "Request_Changes": {
-    "message": "Pangayo og mga Pagbag-o"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Pangayo og mga pagbag-o niini nga aksyon"
-  },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
     "message": ""
   },
   "Result_Summary": {
@@ -640,6 +628,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -684,9 +675,6 @@
   "Service_Tier": {
     "message": "Tier sa Serbisyo"
   },
-  "Session": {
-    "message": "Sesyon"
-  },
   "Session_error": {
     "message": ""
   },
@@ -713,6 +701,9 @@
   },
   "Stable": {
     "message": "Stable"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -756,11 +747,17 @@
   "Terminal": {
     "message": "Terminal"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Test Connection"
   },
   "Testing": {
     "message": "Gisulayan..."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
@@ -770,9 +767,6 @@
   },
   "Time": {
     "message": "Oras"
-  },
-  "Time_remaining": {
-    "message": "Oras nga nabilin"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Oras nga mabuhi para sa mga cached nga butang sa segundo (default: 3600)"
@@ -786,9 +780,6 @@
   "Tokens": {
     "message": ""
   },
-  "Tool": {
-    "message": "Galamiton"
-  },
   "Tool_Timeout_ms": {
     "message": "Timeout sa Tool (ms)"
   },
@@ -797,9 +788,6 @@
   },
   "Tools_Settings": {
     "message": "Mga Setting sa Mga Galamiton"
-  },
-  "Turn": {
-    "message": "Turn"
   },
   "UI_Theme": {
     "message": "Tema sa UI"
@@ -843,20 +831,8 @@
   "User_Session": {
     "message": ""
   },
-  "User_approved_action": {
-    "message": "Aksyon nga gi-aprubahan sa user"
-  },
-  "User_decision": {
-    "message": "Desisyon sa user"
-  },
   "User_preferences_and_interface_settings": {
     "message": "Mga preperensya sa tiggamit ug mga setting sa interface"
-  },
-  "User_rejected_action": {
-    "message": "Aksyon nga gisalikway sa user"
-  },
-  "User_requested_modifications": {
-    "message": "Mga pag-usab nga gipangayo sa user"
   },
   "Using_extra_credits": {
     "message": "Paggamit og extra credits"
@@ -882,6 +858,12 @@
   "Welcome_to_Browserx": {
     "message": "Maayong pag-abot sa Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Workspace Write"
   },
@@ -893,9 +875,6 @@
   },
   "Your_API_key_is_encrypted": {
     "message": "Ang imong API key na-encrypt"
-  },
-  "Your_Decision": {
-    "message": "Imong desisyon"
   },
   "optional": {
     "message": ""
