@@ -79,7 +79,7 @@ describe('TerminalInput - Outline Visibility', () => {
   it('should verify CSS styles include border properties', () => {
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     // Check for border in .terminal-input

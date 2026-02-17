@@ -5,31 +5,12 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock chrome storage API
-const mockStorage = {
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn()
-};
-
-global.chrome = {
-  storage: {
-    local: mockStorage,
-    sync: {
-      get: vi.fn(),
-      set: vi.fn()
-    }
-  },
-  runtime: {
-    lastError: null,
-    getManifest: () => ({ version: '1.0.0' })
-  }
-};
-
 describe('Storage API Contract - saveApiKey', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    chrome.runtime.lastError = null;
+    if (chrome?.runtime) {
+      chrome.runtime.lastError = null;
+    }
   });
 
   describe('POST /storage/apikey', () => {
@@ -38,7 +19,7 @@ describe('Storage API Contract - saveApiKey', () => {
         apiKey: 'sk-1234567890abcdefghijklmnopqrstuvwxyz123'
       };
 
-      mockStorage.set.mockResolvedValue(undefined);
+      const setSpy = vi.spyOn(chrome.storage.local, 'set').mockResolvedValue(undefined);
 
       // Validate API key format
       const isValidFormat = apiKeyRequest.apiKey.startsWith('sk-') &&
@@ -57,53 +38,48 @@ describe('Storage API Contract - saveApiKey', () => {
         return;
       }
 
-      // Simulate saveApiKey operation
-      const response = await new Promise((resolve) => {
-        const apiKeyData = {
-          apiKey: apiKeyRequest.apiKey,
-          createdAt: Date.now(),
-          lastModified: Date.now(),
-          isValid: true
-        };
+      // Simulate saveApiKey operation using promise-based API
+      const apiKeyData = {
+        apiKey: apiKeyRequest.apiKey,
+        createdAt: Date.now(),
+        lastModified: Date.now(),
+        isValid: true
+      };
 
-        chrome.storage.local.set(
-          { openai_apikey: apiKeyData },
-          () => {
-            if (chrome.runtime.lastError) {
-              resolve({
-                status: 500,
-                data: {
-                  success: false,
-                  error: 'STORAGE_ERROR',
-                  message: chrome.runtime.lastError.message
-                }
-              });
-            } else {
-              resolve({
-                status: 200,
-                data: {
-                  success: true,
-                  message: 'API key saved successfully'
-                }
-              });
-            }
+      await chrome.storage.local.set({ openai_apikey: apiKeyData });
+
+      let response;
+      if (chrome.runtime.lastError) {
+        response = {
+          status: 500,
+          data: {
+            success: false,
+            error: 'STORAGE_ERROR',
+            message: chrome.runtime.lastError.message
           }
-        );
-      });
+        };
+      } else {
+        response = {
+          status: 200,
+          data: {
+            success: true,
+            message: 'API key saved successfully'
+          }
+        };
+      }
 
       expect(response.status).toBe(200);
       expect(response.data).toMatchObject({
         success: true,
         message: 'API key saved successfully'
       });
-      expect(mockStorage.set).toHaveBeenCalledWith(
+      expect(setSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           openai_apikey: expect.objectContaining({
             apiKey: apiKeyRequest.apiKey,
             isValid: true
           })
-        }),
-        expect.any(Function)
+        })
       );
     });
 
@@ -137,44 +113,46 @@ describe('Storage API Contract - saveApiKey', () => {
     });
 
     it('should return 507 when storage quota is exceeded', async () => {
-      mockStorage.set.mockImplementation((data, callback) => {
-        chrome.runtime.lastError = { message: 'QUOTA_EXCEEDED_ERR' };
-        callback();
-      });
+      vi.spyOn(chrome.storage.local, 'set').mockRejectedValue(new Error('QUOTA_EXCEEDED_ERR'));
 
       const apiKeyRequest = {
         apiKey: 'sk-1234567890abcdefghijklmnopqrstuvwxyz123'
       };
 
       // Simulate saveApiKey operation with quota error
-      const response = await new Promise((resolve) => {
-        chrome.storage.local.set(
-          { openai_apikey: { apiKey: apiKeyRequest.apiKey } },
-          () => {
-            if (chrome.runtime.lastError) {
-              if (chrome.runtime.lastError.message.includes('QUOTA')) {
-                resolve({
-                  status: 507,
-                  data: {
-                    success: false,
-                    error: 'QUOTA_EXCEEDED',
-                    message: 'Storage quota exceeded'
-                  }
-                });
-              } else {
-                resolve({
-                  status: 500,
-                  data: {
-                    success: false,
-                    error: 'STORAGE_ERROR',
-                    message: chrome.runtime.lastError.message
-                  }
-                });
-              }
-            }
-          }
+      let response;
+      try {
+        await chrome.storage.local.set(
+          { openai_apikey: { apiKey: apiKeyRequest.apiKey } }
         );
-      });
+        response = {
+          status: 200,
+          data: {
+            success: true,
+            message: 'API key saved successfully'
+          }
+        };
+      } catch (error) {
+        if (error.message.includes('QUOTA')) {
+          response = {
+            status: 507,
+            data: {
+              success: false,
+              error: 'QUOTA_EXCEEDED',
+              message: 'Storage quota exceeded'
+            }
+          };
+        } else {
+          response = {
+            status: 500,
+            data: {
+              success: false,
+              error: 'STORAGE_ERROR',
+              message: error.message
+            }
+          };
+        }
+      }
 
       expect(response.status).toBe(507);
       expect(response.data).toMatchObject({
@@ -184,8 +162,7 @@ describe('Storage API Contract - saveApiKey', () => {
     });
 
     it('should update existing API key', async () => {
-      // First, simulate existing key
-      mockStorage.get.mockResolvedValue({
+      const getSpy = vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({
         openai_apikey: {
           apiKey: 'sk-oldkey1234567890abcdefghijklmnopqrstuvwxyz',
           createdAt: Date.now() - 86400000, // 1 day ago
@@ -197,32 +174,27 @@ describe('Storage API Contract - saveApiKey', () => {
         apiKey: 'sk-newkey1234567890abcdefghijklmnopqrstuvwxyz'
       };
 
-      mockStorage.set.mockResolvedValue(undefined);
+      vi.spyOn(chrome.storage.local, 'set').mockResolvedValue(undefined);
 
-      // Simulate update operation
-      const response = await new Promise((resolve) => {
-        chrome.storage.local.get(['openai_apikey'], (existing) => {
-          const apiKeyData = {
-            apiKey: newApiKey.apiKey,
-            createdAt: existing.openai_apikey?.createdAt || Date.now(),
-            lastModified: Date.now(),
-            isValid: true
-          };
+      // Simulate update operation using promise-based API
+      const existing = await chrome.storage.local.get(['openai_apikey']);
 
-          chrome.storage.local.set(
-            { openai_apikey: apiKeyData },
-            () => {
-              resolve({
-                status: 200,
-                data: {
-                  success: true,
-                  message: 'API key updated successfully'
-                }
-              });
-            }
-          );
-        });
-      });
+      const apiKeyData = {
+        apiKey: newApiKey.apiKey,
+        createdAt: existing.openai_apikey?.createdAt || Date.now(),
+        lastModified: Date.now(),
+        isValid: true
+      };
+
+      await chrome.storage.local.set({ openai_apikey: apiKeyData });
+
+      const response = {
+        status: 200,
+        data: {
+          success: true,
+          message: 'API key updated successfully'
+        }
+      };
 
       expect(response.status).toBe(200);
       expect(response.data.success).toBe(true);

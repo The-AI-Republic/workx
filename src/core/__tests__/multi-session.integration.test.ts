@@ -8,9 +8,10 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 import type { SessionConfig } from '@/core/registry/types';
 
 // Mock dependencies
-vi.mock('../../src/core/BrowserxAgent', () => ({
+vi.mock('@/core/BrowserxAgent', () => ({
   BrowserxAgent: class MockBrowserxAgent {
     initialize = async () => undefined;
+    setEventDispatcher = (_fn: any) => {};
     getSession = () => ({
       conversationId: 'conv_test_' + Math.random().toString(36).slice(2),
       abortAllTasks: () => {},
@@ -23,17 +24,17 @@ vi.mock('../../src/core/BrowserxAgent', () => ({
   },
 }));
 
-vi.mock('../../src/config/AgentConfig', () => ({
+vi.mock('@/config/AgentConfig', () => ({
   AgentConfig: {
     getInstance: vi.fn().mockResolvedValue({}),
   },
 }));
 
-vi.mock('../../src/core/MessageRouter', () => ({
+vi.mock('@/core/MessageRouter', () => ({
   MessageRouter: vi.fn().mockImplementation(() => ({})),
 }));
 
-vi.mock('../../src/core/TabManager', () => ({
+vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: vi.fn(() => ({
       onTabClosure: vi.fn(() => vi.fn()),
@@ -57,7 +58,19 @@ describe('Multi-Session Integration', () => {
     AgentRegistry.resetInstance();
     vi.clearAllMocks();
 
-    mockConfig = {};
+    // Re-set chrome mock after clearAllMocks
+    global.chrome = {
+      runtime: {
+        sendMessage: vi.fn(() => Promise.resolve(undefined)),
+      },
+    } as any;
+
+    mockConfig = {
+      on: vi.fn(),
+      off: vi.fn(),
+      getConfig: vi.fn().mockReturnValue({}),
+      getModelConfig: vi.fn().mockReturnValue({ modelKey: 'test' }),
+    };
     mockRouter = {};
   });
 
@@ -166,7 +179,7 @@ describe('Multi-Session Integration', () => {
         })
       );
 
-      // Also verify stateChanged event (initializing → idle)
+      // Also verify stateChanged event (initializing -> idle)
       expect(events).toContainEqual(
         expect.objectContaining({
           type: 'session:stateChanged',

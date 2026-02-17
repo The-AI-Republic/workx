@@ -108,13 +108,14 @@ describe('calculateBackoff', () => {
       const delay20 = (client as any).calculateBackoff(20);
       const delay100 = (client as any).calculateBackoff(100);
 
-      // All should be capped at maxDelay (32000ms + jitter)
-      expect(delay10).toBeLessThanOrEqual(35200); // 32000 + 10% jitter
-      expect(delay20).toBeLessThanOrEqual(35200);
-      expect(delay100).toBeLessThanOrEqual(35200);
+      // All should be capped at maxDelay (30000ms + 10% jitter = 33000ms)
+      expect(delay10).toBeLessThanOrEqual(33000); // 30000 + 10% jitter
+      expect(delay20).toBeLessThanOrEqual(33000);
+      expect(delay100).toBeLessThanOrEqual(33000);
 
-      // For very high attempts, should be at the cap
-      expect(delay100).toBeGreaterThanOrEqual(32000);
+      // For very high attempts, should be near the cap (30000ms maxDelay + up to 10% jitter)
+      // The default maxDelay in ModelClient is 30000, not 32000
+      expect(delay100).toBeGreaterThanOrEqual(30000);
     });
 
     it('should not exceed maxDelay even with jitter', () => {
@@ -124,9 +125,9 @@ describe('calculateBackoff', () => {
       const delays = Array.from({ length: 100 }, () => (client as any).calculateBackoff(50));
 
       // With jitter, max should be maxDelay + (maxDelay * jitterPercent)
-      // Default: 32000 + (32000 * 0.1) = 35200ms
+      // Default: 30000 + (30000 * 0.1) = 33000ms
       delays.forEach((delay) => {
-        expect(delay).toBeLessThanOrEqual(35200);
+        expect(delay).toBeLessThanOrEqual(33000);
       });
     });
   });

@@ -1,12 +1,29 @@
 /**
  * ActiveTurn unit tests
- * Tests must fail until ActiveTurn is implemented (TDD)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ActiveTurn } from '../ActiveTurn';
 import { TaskKind } from '../types';
+import type { RunningTask } from '../types';
 import { ReviewDecision } from '../../../protocol/types';
+
+/**
+ * Helper to create a mock RunningTask matching the actual interface
+ */
+function createMockTask(
+  kind: TaskKind,
+  abortController: AbortController,
+  startTime?: number,
+): RunningTask {
+  return {
+    kind,
+    abortController,
+    task: {} as any, // SessionTask mock
+    promise: Promise.resolve(null),
+    startTime: startTime ?? Date.now(),
+  };
+}
 
 describe('ActiveTurn', () => {
   let activeTurn: ActiveTurn;
@@ -20,12 +37,7 @@ describe('ActiveTurn', () => {
       const taskId = 'task-1';
       const abortController = new AbortController();
 
-      activeTurn.addTask(taskId, {
-        handle: abortController,
-        kind: TaskKind.Regular,
-        startTime: Date.now(),
-        subId: taskId,
-      });
+      activeTurn.addTask(taskId, createMockTask(TaskKind.Regular, abortController));
 
       expect(activeTurn.hasTask(taskId)).toBe(true);
     });
@@ -38,12 +50,7 @@ describe('ActiveTurn', () => {
       const taskId = 'task-1';
       const abortController = new AbortController();
 
-      activeTurn.addTask(taskId, {
-        handle: abortController,
-        kind: TaskKind.Regular,
-        startTime: Date.now(),
-        subId: taskId,
-      });
+      activeTurn.addTask(taskId, createMockTask(TaskKind.Regular, abortController));
 
       const isEmpty = activeTurn.removeTask(taskId);
 
@@ -52,22 +59,11 @@ describe('ActiveTurn', () => {
     });
 
     it('should handle multiple tasks', () => {
-      const task1 = new AbortController();
-      const task2 = new AbortController();
+      const ac1 = new AbortController();
+      const ac2 = new AbortController();
 
-      activeTurn.addTask('task-1', {
-        handle: task1,
-        kind: TaskKind.Regular,
-        startTime: Date.now(),
-        subId: 'task-1',
-      });
-
-      activeTurn.addTask('task-2', {
-        handle: task2,
-        kind: TaskKind.Review,
-        startTime: Date.now(),
-        subId: 'task-2',
-      });
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Regular, ac1));
+      activeTurn.addTask('task-2', createMockTask(TaskKind.Review, ac2));
 
       expect(activeTurn.hasTask('task-1')).toBe(true);
       expect(activeTurn.hasTask('task-2')).toBe(true);
@@ -112,32 +108,21 @@ describe('ActiveTurn', () => {
 
   describe('Abort Operations', () => {
     it('should abort all tasks', () => {
-      const task1 = new AbortController();
-      const task2 = new AbortController();
+      const ac1 = new AbortController();
+      const ac2 = new AbortController();
 
-      const abortSpy1 = vi.spyOn(task1, 'abort');
-      const abortSpy2 = vi.spyOn(task2, 'abort');
+      const abortSpy1 = vi.spyOn(ac1, 'abort');
+      const abortSpy2 = vi.spyOn(ac2, 'abort');
 
-      activeTurn.addTask('task-1', {
-        handle: task1,
-        kind: TaskKind.Regular,
-        startTime: Date.now(),
-        subId: 'task-1',
-      });
-
-      activeTurn.addTask('task-2', {
-        handle: task2,
-        kind: TaskKind.Review,
-        startTime: Date.now(),
-        subId: 'task-2',
-      });
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Regular, ac1));
+      activeTurn.addTask('task-2', createMockTask(TaskKind.Review, ac2));
 
       activeTurn.abort();
 
       expect(abortSpy1).toHaveBeenCalled();
       expect(abortSpy2).toHaveBeenCalled();
-      expect(task1.signal.aborted).toBe(true);
-      expect(task2.signal.aborted).toBe(true);
+      expect(ac1.signal.aborted).toBe(true);
+      expect(ac2.signal.aborted).toBe(true);
     });
 
     it('should handle abort when no tasks exist', () => {
@@ -166,22 +151,11 @@ describe('ActiveTurn', () => {
 
   describe('Drain Operations', () => {
     it('should drain and return all tasks', () => {
-      const task1 = new AbortController();
-      const task2 = new AbortController();
+      const ac1 = new AbortController();
+      const ac2 = new AbortController();
 
-      activeTurn.addTask('task-1', {
-        handle: task1,
-        kind: TaskKind.Regular,
-        startTime: Date.now(),
-        subId: 'task-1',
-      });
-
-      activeTurn.addTask('task-2', {
-        handle: task2,
-        kind: TaskKind.Review,
-        startTime: Date.now(),
-        subId: 'task-2',
-      });
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Regular, ac1));
+      activeTurn.addTask('task-2', createMockTask(TaskKind.Review, ac2));
 
       const tasks = activeTurn.drain();
 
@@ -200,64 +174,37 @@ describe('ActiveTurn', () => {
     });
 
     it('should preserve task details when draining', () => {
-      const task = new AbortController();
+      const ac = new AbortController();
       const startTime = Date.now();
 
-      activeTurn.addTask('task-1', {
-        handle: task,
-        kind: TaskKind.Compact,
-        startTime,
-        subId: 'sub-1',
-      });
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Compact, ac, startTime));
 
       const tasks = activeTurn.drain();
       const drained = tasks.get('task-1');
 
       expect(drained).toBeDefined();
-      expect(drained?.handle).toBe(task);
+      expect(drained?.abortController).toBe(ac);
       expect(drained?.kind).toBe(TaskKind.Compact);
       expect(drained?.startTime).toBe(startTime);
-      expect(drained?.subId).toBe('sub-1');
     });
   });
 
   describe('Task Kinds', () => {
     it('should handle Regular tasks', () => {
-      const task = new AbortController();
-
-      activeTurn.addTask('task-1', {
-        handle: task,
-        kind: TaskKind.Regular,
-        startTime: Date.now(),
-        subId: 'task-1',
-      });
-
+      const ac = new AbortController();
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Regular, ac));
       expect(activeTurn.hasTask('task-1')).toBe(true);
     });
 
     it('should handle Review tasks', () => {
-      const task = new AbortController();
-
-      activeTurn.addTask('task-1', {
-        handle: task,
-        kind: TaskKind.Review,
-        startTime: Date.now(),
-        subId: 'task-1',
-      });
-
+      const ac = new AbortController();
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Review, ac));
       expect(activeTurn.hasTask('task-1')).toBe(true);
     });
 
     it('should handle Compact tasks', () => {
-      const task = new AbortController();
-
-      activeTurn.addTask('task-1', {
-        handle: task,
-        kind: TaskKind.Compact,
-        startTime: Date.now(),
-        subId: 'task-1',
-      });
-
+      const ac = new AbortController();
+      activeTurn.addTask('task-1', createMockTask(TaskKind.Compact, ac));
       expect(activeTurn.hasTask('task-1')).toBe(true);
     });
   });

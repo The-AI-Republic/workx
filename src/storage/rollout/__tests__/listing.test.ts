@@ -89,14 +89,11 @@ describe('Conversation Listing', () => {
       expect(true).toBe(true);
     });
 
-    it('should limit scan to MAX_SCAN = 100', async () => {
-      const page = await listConversations(200);
-
-      // Even if we request 200, scan should cap at 100
-      expect(page.numScanned).toBeLessThanOrEqual(100);
-      if (page.reachedCap) {
-        expect(page.numScanned).toBe(100);
-      }
+    it('should reject page sizes exceeding MAX_SCAN = 100', async () => {
+      // Page sizes > 100 should throw validation error
+      await expect(listConversations(200)).rejects.toThrow(
+        'Invalid page size: must be between 1 and 100'
+      );
     });
 
     it('should build nextCursor from last item', async () => {

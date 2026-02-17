@@ -4,41 +4,49 @@
  * Target: src/storage/rollout/cleanup.ts
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 
-// Note: Import will fail until cleanup.ts is implemented
 let cleanupExpired: () => Promise<number>;
+let RolloutWriter: any;
 
 try {
-  const module = await import('@/storage/rollout/cleanup');
-  cleanupExpired = module.cleanupExpired;
+  const cleanupModule = await import('@/storage/rollout/cleanup');
+  cleanupExpired = cleanupModule.cleanupExpired;
+  const writerModule = await import('@/storage/rollout/RolloutWriter');
+  RolloutWriter = writerModule.RolloutWriter;
 } catch {
-  // Expected to fail in TDD
   cleanupExpired = async () => {
     throw new Error('cleanup.ts not implemented yet');
   };
 }
 
+/**
+ * Helper: ensure the BrowserxRollouts DB exists with proper stores
+ * by creating and closing a RolloutWriter.
+ */
+async function ensureDatabase(): Promise<void> {
+  const writer = await RolloutWriter.create('00000000-0000-0000-0000-000000000000', 0);
+  await writer.close();
+}
+
 describe('TTL Cleanup', () => {
-  beforeEach(() => {
-    // Reset fake-indexeddb before each test
-    indexedDB = new IDBFactory();
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-10-01T12:00:00.000Z'));
+  beforeEach(async () => {
+    // @ts-ignore - Reset fake-indexeddb before each test
+    globalThis.indexedDB = new IDBFactory();
+    // Ensure the DB and stores exist before running cleanup
+    await ensureDatabase();
   });
 
   describe('cleanupExpired', () => {
     it('should delete rollouts where expiresAt < now', async () => {
       const count = await cleanupExpired();
-
-      // Should return count of deleted rollouts
       expect(typeof count).toBe('number');
       expect(count).toBeGreaterThanOrEqual(0);
     });
 
     it('should not delete permanent rollouts (expiresAt = undefined)', async () => {
-      // Test verifies permanent rollouts are preserved
       const count = await cleanupExpired();
       expect(count).toBeGreaterThanOrEqual(0);
     });
@@ -54,7 +62,6 @@ describe('TTL Cleanup', () => {
     });
 
     it('should cascade delete rollout_items when rollout deleted', async () => {
-      // Verify cascade deletion logic exists
       await expect(cleanupExpired()).resolves.toBeGreaterThanOrEqual(0);
     });
 
@@ -65,8 +72,7 @@ describe('TTL Cleanup', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle IndexedDB failures gracefully', async () => {
-      // Should handle errors without crashing
+    it('should handle IndexedDB with empty stores gracefully', async () => {
       await expect(cleanupExpired()).resolves.toBeDefined();
     });
 
@@ -77,45 +83,41 @@ describe('TTL Cleanup', () => {
 
   describe('Query Performance', () => {
     it('should use expiresAt index for efficient queries', async () => {
-      // This test verifies index-based queries
-      const start = Date.now();
+      const start = performance.now();
       await cleanupExpired();
-      const duration = Date.now() - start;
+      const duration = performance.now() - start;
 
-      // Should be fast even with many rollouts
       expect(duration).toBeLessThan(500);
     });
   });
 
   describe('Transaction Management', () => {
     it('should use readwrite transaction on both stores', async () => {
-      // Verify transaction handling exists
       await expect(cleanupExpired()).resolves.toBeGreaterThanOrEqual(0);
     });
 
     it('should commit transaction after cleanup', async () => {
       const count = await cleanupExpired();
-      // Verify transaction completed
       expect(count).toBeGreaterThanOrEqual(0);
     });
   });
 
   describe('Edge Cases', () => {
-    it('should handle rollout with expiresAt = 0', async () => {
-      // expiresAt = 0 (Jan 1, 1970) should be expired
+    it('should handle empty stores', async () => {
       const count = await cleanupExpired();
       expect(count).toBeGreaterThanOrEqual(0);
     });
 
-    it('should handle rollout with expiresAt = current timestamp', async () => {
-      // Edge case: exactly at expiration time
-      const count = await cleanupExpired();
-      expect(count).toBeGreaterThanOrEqual(0);
+    it('should handle multiple calls in sequence', async () => {
+      const count1 = await cleanupExpired();
+      const count2 = await cleanupExpired();
+      expect(count1).toBeGreaterThanOrEqual(0);
+      expect(count2).toBeGreaterThanOrEqual(0);
     });
 
-    it('should handle multiple expired rollouts', async () => {
+    it('should return 0 when no rollouts exist', async () => {
       const count = await cleanupExpired();
-      expect(count).toBeGreaterThanOrEqual(0);
+      expect(count).toBe(0);
     });
   });
 });

@@ -108,7 +108,11 @@ describe('SerializationPipeline Integration', () => {
 
     it('should provide IdRemapper with registered nodes', () => {
       const tree = createTestTree();
-      const pipeline = new SerializationPipeline();
+      // enableIdRemapping must be true for IdRemapper to be populated
+      const pipeline = new SerializationPipeline({
+        ...DEFAULT_PIPELINE_CONFIG,
+        enableIdRemapping: true
+      });
 
       const result = pipeline.execute(tree);
 
@@ -205,8 +209,10 @@ describe('SerializationPipeline Integration', () => {
       const pipeline = new SerializationPipeline();
       const result = pipeline.execute(tree);
 
-      // Redundant role should be removed
-      const hasRedundantRole = result.tree.attributes?.includes('button');
+      // Redundant role=button is removed (matches implicit role of <button>)
+      // Empty type='' is also removed
+      // Both attributes removed → attributes becomes undefined or empty
+      const hasRedundantRole = result.tree.attributes?.includes('button') ?? false;
       expect(hasRedundantRole).toBe(false);
     });
   });
@@ -214,7 +220,11 @@ describe('SerializationPipeline Integration', () => {
   describe('stage 3: payload optimization', () => {
     it('should assign sequential IDs', () => {
       const tree = createTestTree();
-      const pipeline = new SerializationPipeline();
+      // enableIdRemapping must be true for sequential ID assignment
+      const pipeline = new SerializationPipeline({
+        ...DEFAULT_PIPELINE_CONFIG,
+        enableIdRemapping: true
+      });
 
       const result = pipeline.execute(tree);
 

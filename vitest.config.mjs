@@ -4,6 +4,9 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [svelte({ hot: false })],
+  define: {
+    __BUILD_MODE__: JSON.stringify('extension'),
+  },
   test: {
     globals: true,
     environment: 'jsdom',

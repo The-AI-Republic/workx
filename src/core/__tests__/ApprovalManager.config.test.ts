@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ApprovalManager } from '@/core/ApprovalManager';
 import { AgentConfig } from '@/config/AgentConfig';
 
 describe('ApprovalManager - AgentConfig Integration', () => {
   describe('Constructor', () => {
-    it('should accept optional AgentConfig parameter as first argument', () => {
-      const config = AgentConfig.getInstance();
+    it('should accept optional AgentConfig parameter as first argument', async () => {
+      const config = await AgentConfig.getInstance();
 
       // This should not throw
       expect(() => new ApprovalManager(config)).not.toThrow();
@@ -18,8 +18,8 @@ describe('ApprovalManager - AgentConfig Integration', () => {
       expect(() => new ApprovalManager(undefined, undefined)).not.toThrow();
     });
 
-    it('should store config reference when provided', () => {
-      const config = AgentConfig.getInstance();
+    it('should store config reference when provided', async () => {
+      const config = await AgentConfig.getInstance();
       const approvalManager = new ApprovalManager(config);
 
       // @ts-expect-error - accessing private property for testing
@@ -29,8 +29,7 @@ describe('ApprovalManager - AgentConfig Integration', () => {
 
   describe('Config Usage', () => {
     it('should use config for default policy', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+      const config = await AgentConfig.getInstance();
 
       const approvalManager = new ApprovalManager(config);
 
@@ -40,8 +39,7 @@ describe('ApprovalManager - AgentConfig Integration', () => {
     });
 
     it('should use config for auto approve list', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+      const config = await AgentConfig.getInstance();
 
       const approvalManager = new ApprovalManager(config);
 
@@ -51,8 +49,7 @@ describe('ApprovalManager - AgentConfig Integration', () => {
     });
 
     it('should use config for approval timeout', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+      const config = await AgentConfig.getInstance();
 
       const approvalManager = new ApprovalManager(config);
 

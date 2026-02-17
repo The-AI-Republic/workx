@@ -38,6 +38,11 @@ describe('SSE Processing Performance', () => {
   };
 
   // Helper to generate SSE data for N events
+  // Note: We do NOT include 'data: [DONE]' because processSSE checks for [DONE]
+  // before processing events in the same batch. Since we enqueue all data in one
+  // chunk, including [DONE] would cause all events to be skipped. The stream ends
+  // naturally via controller.close() and processSSE handles that through the reader's
+  // done flag.
   const generateSSEData = (eventCount: number): string => {
     const events = [
       'data: {"type":"response.created","response":{}}\n\n',
@@ -52,7 +57,6 @@ describe('SSE Processing Performance', () => {
     events.push(
       'data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_tokens":100,"output_tokens":50,"total_tokens":150}}}\n\n'
     );
-    events.push('data: [DONE]\n\n');
 
     return events.join('');
   };
@@ -200,7 +204,6 @@ describe('SSE Processing Performance', () => {
       largeEvents.push(
         'data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_tokens":100,"output_tokens":50,"total_tokens":150}}}\n\n'
       );
-      largeEvents.push('data: [DONE]\n\n');
 
       const largeSseData = largeEvents.join('');
       const largeStream = createSSEStream(largeSseData);
@@ -264,8 +267,7 @@ describe('SSE Processing Performance', () => {
 
       // Repeat for volume
       const fullData = mixedEvents.join('').repeat(100) +
-        'data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_tokens":100,"output_tokens":50,"total_tokens":150}}}\n\n' +
-        'data: [DONE]\n\n';
+        'data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_tokens":100,"output_tokens":50,"total_tokens":150}}}\n\n';
 
       const stream = createSSEStream(fullData);
 

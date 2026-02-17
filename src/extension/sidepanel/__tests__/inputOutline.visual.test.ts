@@ -21,7 +21,7 @@ describe('Input Outline - Visual Regression', () => {
     // Check styles.css for border definition
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     // Visual verification: border should be defined
@@ -43,7 +43,7 @@ describe('Input Outline - Visual Regression', () => {
     // Check styles.css for focus state
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     // Visual verification: focus state should have bright green border and box-shadow
@@ -55,7 +55,7 @@ describe('Input Outline - Visual Regression', () => {
   it('should verify border properties are correct', () => {
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     // Check for required border properties
@@ -68,7 +68,7 @@ describe('Input Outline - Visual Regression', () => {
   it('should verify outline:none is removed from default state', () => {
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     // Extract .terminal-input block (not :focus)
@@ -103,7 +103,7 @@ describe('Input Outline - Visual Regression', () => {
     // Verify against actual CSS
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     expect(stylesContent).toContain('1px solid');

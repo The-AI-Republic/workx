@@ -100,7 +100,7 @@ describe('PromptLoader', () => {
 
   it('falls back to default prompt when composeMainInstruction throws', async () => {
     const { loadPrompt, configurePromptComposer } = await import('@/core/PromptLoader');
-    const PromptComposerModule = await import('../../src/prompts/PromptComposer');
+    const PromptComposerModule = await import('@/prompts/PromptComposer');
 
     // Configure the composer, then sabotage its method to throw
     configurePromptComposer('browserx');

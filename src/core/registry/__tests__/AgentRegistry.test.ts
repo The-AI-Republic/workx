@@ -25,41 +25,34 @@ const mockAgentFactory = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../src/core/BrowserxAgent', () => ({
+vi.mock('@/core/BrowserxAgent', () => ({
   BrowserxAgent: class MockBrowserxAgent {
-    initialize = mockAgentFactory.createMockAgent().initialize;
+    initialize = vi.fn().mockResolvedValue(undefined);
     getSession = mockAgentFactory.createMockAgent().getSession;
-    submitOperation = mockAgentFactory.createMockAgent().submitOperation;
-    cleanup = mockAgentFactory.createMockAgent().cleanup;
+    submitOperation = vi.fn().mockResolvedValue('sub_123');
+    cleanup = vi.fn();
+    setEventDispatcher = vi.fn();
     agentId = 'agent_mock';
   },
 }));
 
-vi.mock('../../../src/config/AgentConfig', () => ({
+vi.mock('@/config/AgentConfig', () => ({
   AgentConfig: {
     getInstance: vi.fn().mockResolvedValue({}),
   },
 }));
 
-vi.mock('../../../src/core/MessageRouter', () => ({
+vi.mock('@/core/MessageRouter', () => ({
   MessageRouter: vi.fn().mockImplementation(() => ({})),
 }));
 
-vi.mock('../../../src/core/TabManager', () => ({
+vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: vi.fn(() => ({
       onTabClosure: vi.fn(() => vi.fn()),
     })),
   },
 }));
-
-// Mock chrome API - must return a Promise with .catch method
-const mockSendMessage = vi.fn(() => Promise.resolve(undefined));
-global.chrome = {
-  runtime: {
-    sendMessage: mockSendMessage,
-  },
-} as any;
 
 describe('AgentRegistry', () => {
   let mockConfig: any;
@@ -68,6 +61,16 @@ describe('AgentRegistry', () => {
   beforeEach(() => {
     AgentRegistry.resetInstance();
     vi.clearAllMocks();
+
+    // Must set chrome mock AFTER vi.clearAllMocks() to avoid mockReset clearing the implementation
+    Object.defineProperty(globalThis, 'chrome', {
+      value: {
+        runtime: {
+          sendMessage: vi.fn(() => Promise.resolve(undefined)),
+        },
+      },
+      writable: true,
+    });
 
     mockConfig = {};
     mockRouter = {};

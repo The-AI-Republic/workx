@@ -7,8 +7,6 @@
 import { describe, it, expect } from 'vitest';
 import type { RolloutItem, SessionMetaLine, CompactedItem, TurnContextItem } from '@/storage/rollout/types';
 
-// Note: Import will fail until policy.ts is implemented
-// This is expected for TDD - tests fail first
 let isPersistedRolloutItem: (item: RolloutItem) => boolean;
 let shouldPersistResponseItem: (item: any) => boolean;
 let shouldPersistEventMsg: (event: any) => boolean;
@@ -19,7 +17,6 @@ try {
   shouldPersistResponseItem = policy.shouldPersistResponseItem;
   shouldPersistEventMsg = policy.shouldPersistEventMsg;
 } catch {
-  // Expected to fail in TDD - tests written before implementation
   isPersistedRolloutItem = () => {
     throw new Error('policy.ts not implemented yet');
   };
@@ -72,10 +69,10 @@ describe('Persistence Policy', () => {
     });
 
     it('should filter ResponseItem based on shouldPersistResponseItem', () => {
-      // Message type - should persist
+      // message type - should persist (lowercase per actual policy)
       const messageItem: RolloutItem = {
         type: 'response_item',
-        payload: { type: 'Message', content: 'Hello' },
+        payload: { type: 'message', content: 'Hello' },
       };
       expect(isPersistedRolloutItem(messageItem)).toBe(true);
 
@@ -105,36 +102,37 @@ describe('Persistence Policy', () => {
   });
 
   describe('shouldPersistResponseItem', () => {
-    it('should persist Message type', () => {
-      expect(shouldPersistResponseItem({ type: 'Message', content: 'test' })).toBe(true);
+    // Note: response item types use lowercase/snake_case per the actual policy
+    it('should persist message type', () => {
+      expect(shouldPersistResponseItem({ type: 'message', content: 'test' })).toBe(true);
     });
 
-    it('should persist Reasoning type', () => {
-      expect(shouldPersistResponseItem({ type: 'Reasoning', thinking: 'test' })).toBe(true);
+    it('should persist reasoning type', () => {
+      expect(shouldPersistResponseItem({ type: 'reasoning', thinking: 'test' })).toBe(true);
     });
 
-    it('should persist LocalShellCall type', () => {
-      expect(shouldPersistResponseItem({ type: 'LocalShellCall', command: 'ls' })).toBe(true);
+    it('should persist local_shell_call type', () => {
+      expect(shouldPersistResponseItem({ type: 'local_shell_call', command: 'ls' })).toBe(true);
     });
 
-    it('should persist FunctionCall type', () => {
-      expect(shouldPersistResponseItem({ type: 'FunctionCall', name: 'test' })).toBe(true);
+    it('should persist function_call type', () => {
+      expect(shouldPersistResponseItem({ type: 'function_call', name: 'test' })).toBe(true);
     });
 
-    it('should persist FunctionCallOutput type', () => {
-      expect(shouldPersistResponseItem({ type: 'FunctionCallOutput', output: 'test' })).toBe(true);
+    it('should persist function_call_output type', () => {
+      expect(shouldPersistResponseItem({ type: 'function_call_output', output: 'test' })).toBe(true);
     });
 
-    it('should persist CustomToolCall type', () => {
-      expect(shouldPersistResponseItem({ type: 'CustomToolCall', tool: 'test' })).toBe(true);
+    it('should persist custom_tool_call type', () => {
+      expect(shouldPersistResponseItem({ type: 'custom_tool_call', tool: 'test' })).toBe(true);
     });
 
-    it('should persist CustomToolCallOutput type', () => {
-      expect(shouldPersistResponseItem({ type: 'CustomToolCallOutput', output: 'test' })).toBe(true);
+    it('should persist custom_tool_call_output type', () => {
+      expect(shouldPersistResponseItem({ type: 'custom_tool_call_output', output: 'test' })).toBe(true);
     });
 
-    it('should persist WebSearchCall type', () => {
-      expect(shouldPersistResponseItem({ type: 'WebSearchCall', query: 'test' })).toBe(true);
+    it('should persist web_search_call type', () => {
+      expect(shouldPersistResponseItem({ type: 'web_search_call', query: 'test' })).toBe(true);
     });
 
     it('should not persist Other type', () => {
@@ -220,10 +218,10 @@ describe('Persistence Policy', () => {
             cliVersion: '1.0.0',
           } as SessionMetaLine,
         },
-        // Should persist
+        // Should persist (lowercase type per policy)
         {
           type: 'response_item',
-          payload: { type: 'Message', content: 'Hello' },
+          payload: { type: 'message', content: 'Hello' },
         },
         // Should NOT persist
         {

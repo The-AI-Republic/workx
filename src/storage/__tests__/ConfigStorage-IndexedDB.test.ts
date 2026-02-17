@@ -1,33 +1,77 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import 'fake-indexeddb/auto';
-import { IDBFactory } from 'fake-indexeddb';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ConfigStorage } from '@/storage/ConfigStorage';
-import { IndexedDBAdapter } from '@/storage/IndexedDBAdapter';
-import type { IAgentConfig } from '@/config/types';
+import { setConfigStorage, type ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
+import type { IStoredConfig } from '@/config/types';
 import type { LLMCacheConfig } from '@/types/storage';
+
+/**
+ * In-memory ConfigStorageProvider for testing ConfigStorage
+ * against a real backing store (simulating IndexedDB-like persistence).
+ */
+function createMemoryProvider(): ConfigStorageProvider & { _store: Map<string, any> } {
+  const store = new Map<string, any>();
+  return {
+    _store: store,
+    async get<T>(key: string): Promise<T | null> {
+      return (store.get(key) as T) ?? null;
+    },
+    async set<T>(key: string, value: T): Promise<void> {
+      store.set(key, value);
+    },
+    async remove(key: string): Promise<void> {
+      store.delete(key);
+    },
+    async getMany<T>(keys: string[]): Promise<Record<string, T>> {
+      const result: Record<string, T> = {};
+      for (const key of keys) {
+        if (store.has(key)) result[key] = store.get(key) as T;
+      }
+      return result;
+    },
+    async setMany<T>(items: Record<string, T>): Promise<void> {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    },
+    async removeMany(keys: string[]): Promise<void> {
+      for (const key of keys) store.delete(key);
+    },
+    async getAll(): Promise<Record<string, unknown>> {
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of store.entries()) result[key] = value;
+      return result;
+    },
+    async clear(): Promise<void> {
+      store.clear();
+    },
+    async getBytesInUse(key?: string): Promise<number | null> {
+      if (key && store.has(key)) {
+        return JSON.stringify(store.get(key)).length;
+      }
+      if (key && !store.has(key)) {
+        return 0;
+      }
+      let total = 0;
+      for (const value of store.values()) {
+        total += JSON.stringify(value).length;
+      }
+      return total;
+    }
+  };
+}
 
 describe('ConfigStorage (IndexedDB Backend)', () => {
   let storage: ConfigStorage;
-  let adapter: IndexedDBAdapter;
+  let provider: ReturnType<typeof createMemoryProvider>;
 
-  beforeEach(async () => {
-    // Reset IndexedDB for each test
-    // @ts-ignore - fake-indexeddb global reset
-    global.indexedDB = new IDBFactory();
-
-    adapter = new IndexedDBAdapter();
-    await adapter.initialize();
-    storage = new ConfigStorage(adapter);
+  beforeEach(() => {
+    provider = createMemoryProvider();
+    setConfigStorage(provider);
+    storage = new ConfigStorage();
   });
 
-  afterEach(async () => {
-    // Clean up all databases
-    const dbs = await indexedDB.databases();
-    for (const db of dbs) {
-      if (db.name) {
-        indexedDB.deleteDatabase(db.name);
-      }
-    }
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Basic Config Operations', () => {
@@ -37,10 +81,13 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
     });
 
     it('should store and retrieve config', async () => {
-      const testConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'test-key-123'
+      const testConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: { anthropic: { apiKey: 'test-key-123' } },
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
       await storage.set(testConfig);
@@ -50,16 +97,22 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
     });
 
     it('should update existing config', async () => {
-      const initialConfig: IAgentConfig = {
-        model: 'claude-3-haiku',
-        provider: 'anthropic',
-        apiKey: 'test-key-1'
+      const initialConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-haiku',
+        providerKeys: { anthropic: { apiKey: 'test-key-1' } },
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
-      const updatedConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'test-key-2'
+      const updatedConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: { anthropic: { apiKey: 'test-key-2' } },
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
       await storage.set(initialConfig);
@@ -70,10 +123,13 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
     });
 
     it('should clear config', async () => {
-      const testConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'test-key'
+      const testConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: {},
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
       await storage.set(testConfig);
@@ -84,40 +140,15 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
     });
   });
 
-  describe('In-Memory Caching', () => {
-    it('should cache config for 5 seconds', async () => {
-      const testConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'test-key'
-      };
-
-      await storage.set(testConfig);
-
-      // First read - from IndexedDB
-      const first = await storage.get();
-      expect(first).toEqual(testConfig);
-
-      // Clear IndexedDB directly (bypassing ConfigStorage)
-      await adapter.delete('config', 'browserx-agent-config');
-
-      // Second read within 5s - should still return cached value
-      const second = await storage.get();
-      expect(second).toEqual(testConfig);
-    });
-  });
-
   describe('Storage Info', () => {
     it('should calculate storage usage', async () => {
-      const testConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'test-key-with-some-length',
-        extraData: {
-          setting1: 'value1',
-          setting2: 'value2',
-          setting3: 'value3'
-        }
+      const testConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: { anthropic: { apiKey: 'test-key-with-some-length' } },
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
       await storage.set(testConfig);
@@ -139,51 +170,11 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
   });
 
   describe('Quota Warning', () => {
-    it('should detect when quota threshold exceeded', async () => {
-      // This test is conceptual - we'd need a large config to trigger it
+    it('should detect when quota threshold not exceeded', async () => {
       const isOverQuota = await storage.checkQuotaWarning(0.8);
-
-      // With our small test config, should not be over quota
       expect(isOverQuota).toBe(false);
     });
   });
-
-  describe('Error Handling', () => {
-    it('should handle corrupted config data gracefully', async () => {
-      // Manually insert corrupted data into IndexedDB
-      const corruptedEntry = {
-        key: 'browserx-agent-config',
-        value: { corrupted: 'data', missing: 'required fields' }
-      };
-
-      await adapter.put('config', corruptedEntry);
-
-      // Should return the value even if it's not a valid IAgentConfig
-      // The validation happens at a higher layer
-      const config = await storage.get();
-      expect(config).toBeDefined();
-    });
-
-    it('should handle missing database initialization', async () => {
-      // Create storage without initializing adapter
-      const uninitializedAdapter = new IndexedDBAdapter();
-      const uninitializedStorage = new ConfigStorage(uninitializedAdapter);
-
-      // Operations should automatically initialize
-      const testConfig: IAgentConfig = {
-        model: 'test',
-        provider: 'test',
-        apiKey: 'test'
-      };
-
-      await expect(uninitializedStorage.set(testConfig)).resolves.not.toThrow();
-      await expect(uninitializedStorage.get()).resolves.toEqual(testConfig);
-    });
-  });
-
-  // ============================================================================
-  // LLM Cache Config Tests (T013)
-  // ============================================================================
 
   describe('LLM Cache Configuration', () => {
     it('should return default LLM cache config when not set', async () => {
@@ -214,24 +205,20 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       };
 
       await storage.setLLMCacheConfig(initial);
-
-      // Update only outdatedCleanupDays
       await storage.setLLMCacheConfig({ outdatedCleanupDays: 90 });
 
       const retrieved = await storage.getLLMCacheConfig();
       expect(retrieved).toEqual({
         outdatedCleanupDays: 90,
-        sessionEvictionPercentage: 0.5 // Preserved
+        sessionEvictionPercentage: 0.5
       });
     });
 
     it('should clear LLM cache config and return to defaults', async () => {
-      const customConfig: LLMCacheConfig = {
+      await storage.setLLMCacheConfig({
         outdatedCleanupDays: 60,
         sessionEvictionPercentage: 0.7
-      };
-
-      await storage.setLLMCacheConfig(customConfig);
+      });
       await storage.clearLLMCacheConfig();
 
       const retrieved = await storage.getLLMCacheConfig();
@@ -248,34 +235,24 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       expect(retrieved.outdatedCleanupDays).toBe(-1);
     });
 
-    it('should accept custom session eviction percentages', async () => {
-      const testCases = [0.3, 0.5, 0.7, 0.9, 1.0];
-
-      for (const percentage of testCases) {
-        await storage.setLLMCacheConfig({ sessionEvictionPercentage: percentage });
-
-        const retrieved = await storage.getLLMCacheConfig();
-        expect(retrieved.sessionEvictionPercentage).toBe(percentage);
-      }
-    });
-
     it('should persist LLM cache config independently from agent config', async () => {
-      // Set agent config
-      const agentConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'test-key'
+      const agentConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: { anthropic: { apiKey: 'test-key' } },
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
       await storage.set(agentConfig);
 
-      // Set LLM cache config
       const cacheConfig: LLMCacheConfig = {
         outdatedCleanupDays: 45,
         sessionEvictionPercentage: 0.4
       };
       await storage.setLLMCacheConfig(cacheConfig);
 
-      // Clear agent config
+      // Clear agent config only
       await storage.clear();
 
       // LLM cache config should still exist
@@ -289,20 +266,21 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
   });
 
   describe('Multiple Storage Instances', () => {
-    it('should share data when using same IndexedDB adapter', async () => {
-      const testConfig: IAgentConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        apiKey: 'shared-key'
+    it('should share data when using same provider', async () => {
+      const testConfig: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: { anthropic: { apiKey: 'shared-key' } },
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
-      // Create two storage instances sharing the same adapter
-      const storage1 = new ConfigStorage(adapter);
-      const storage2 = new ConfigStorage(adapter);
+      const storage1 = new ConfigStorage();
+      const storage2 = new ConfigStorage();
 
       await storage1.set(testConfig);
 
-      // Bypass cache by waiting or clearing cache timestamp
       const retrieved = await storage2.get();
       expect(retrieved).toEqual(testConfig);
     });

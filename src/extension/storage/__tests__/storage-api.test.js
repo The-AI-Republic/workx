@@ -5,30 +5,13 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock chrome storage API
-const mockStorage = {
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn()
-};
-
-global.chrome = {
-  storage: {
-    local: mockStorage,
-    sync: {
-      get: vi.fn(),
-      set: vi.fn()
-    }
-  },
-  runtime: {
-    lastError: null
-  }
-};
-
 describe('Storage API Contract - getApiKey', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    chrome.runtime.lastError = null;
+    // Ensure chrome.runtime.lastError is clean
+    if (chrome?.runtime) {
+      chrome.runtime.lastError = null;
+    }
   });
 
   describe('GET /storage/apikey', () => {
@@ -40,34 +23,33 @@ describe('Storage API Contract - getApiKey', () => {
         isValid: true
       };
 
-      mockStorage.get.mockResolvedValue({
+      // Mock the get method on whatever chrome.storage.local is after setup
+      vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({
         openai_apikey: storedData
       });
 
-      // Simulate getApiKey operation
-      const response = await new Promise((resolve) => {
-        chrome.storage.local.get(['openai_apikey'], (result) => {
-          if (result.openai_apikey) {
-            resolve({
-              status: 200,
-              data: {
-                exists: true,
-                maskedKey: result.openai_apikey.apiKey.substring(0, 6) + '***',
-                createdAt: result.openai_apikey.createdAt,
-                lastModified: result.openai_apikey.lastModified
-              }
-            });
-          } else {
-            resolve({
-              status: 404,
-              data: {
-                exists: false,
-                maskedKey: null
-              }
-            });
+      // Simulate getApiKey operation using promise-based API
+      const result = await chrome.storage.local.get(['openai_apikey']);
+      let response;
+      if (result.openai_apikey) {
+        response = {
+          status: 200,
+          data: {
+            exists: true,
+            maskedKey: result.openai_apikey.apiKey.substring(0, 6) + '***',
+            createdAt: result.openai_apikey.createdAt,
+            lastModified: result.openai_apikey.lastModified
           }
-        });
-      });
+        };
+      } else {
+        response = {
+          status: 404,
+          data: {
+            exists: false,
+            maskedKey: null
+          }
+        };
+      }
 
       expect(response.status).toBe(200);
       expect(response.data).toMatchObject({
@@ -79,31 +61,29 @@ describe('Storage API Contract - getApiKey', () => {
     });
 
     it('should return 404 when no API key exists', async () => {
-      mockStorage.get.mockResolvedValue({});
+      vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({});
 
-      // Simulate getApiKey operation
-      const response = await new Promise((resolve) => {
-        chrome.storage.local.get(['openai_apikey'], (result) => {
-          if (result.openai_apikey) {
-            resolve({
-              status: 200,
-              data: {
-                exists: true,
-                maskedKey: result.openai_apikey.apiKey.substring(0, 6) + '***'
-              }
-            });
-          } else {
-            resolve({
-              status: 404,
-              data: {
-                exists: false,
-                maskedKey: null,
-                error: 'KEY_NOT_FOUND'
-              }
-            });
+      // Simulate getApiKey operation using promise-based API
+      const result = await chrome.storage.local.get(['openai_apikey']);
+      let response;
+      if (result.openai_apikey) {
+        response = {
+          status: 200,
+          data: {
+            exists: true,
+            maskedKey: result.openai_apikey.apiKey.substring(0, 6) + '***'
           }
-        });
-      });
+        };
+      } else {
+        response = {
+          status: 404,
+          data: {
+            exists: false,
+            maskedKey: null,
+            error: 'KEY_NOT_FOUND'
+          }
+        };
+      }
 
       expect(response.status).toBe(404);
       expect(response.data).toMatchObject({
@@ -115,23 +95,19 @@ describe('Storage API Contract - getApiKey', () => {
 
     it('should handle storage errors gracefully', async () => {
       chrome.runtime.lastError = { message: 'Storage error occurred' };
-      mockStorage.get.mockImplementation((keys, callback) => {
-        callback({});
-      });
 
       // Simulate getApiKey operation with error
-      const response = await new Promise((resolve) => {
-        if (chrome.runtime.lastError) {
-          resolve({
-            status: 500,
-            data: {
-              success: false,
-              error: 'STORAGE_ERROR',
-              message: chrome.runtime.lastError.message
-            }
-          });
-        }
-      });
+      let response;
+      if (chrome.runtime.lastError) {
+        response = {
+          status: 500,
+          data: {
+            success: false,
+            error: 'STORAGE_ERROR',
+            message: chrome.runtime.lastError.message
+          }
+        };
+      }
 
       expect(response.status).toBe(500);
       expect(response.data).toMatchObject({

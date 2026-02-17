@@ -4,8 +4,9 @@
  * Target: src/storage/rollout/RolloutRecorder.ts
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import type {
   RolloutRecorderParams,
   ConversationId,
@@ -35,8 +36,10 @@ describe('RolloutRecorder', () => {
 
   beforeEach(() => {
     indexedDB = new IDBFactory();
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-10-01T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('Section 1: Constructor (create mode) - T010', () => {
@@ -149,12 +152,15 @@ describe('RolloutRecorder', () => {
 
   describe('Section 2: Constructor (resume mode) - T011', () => {
     beforeEach(async () => {
-      // Create a rollout first
+      // Create a rollout and trigger lazy initialization by recording an item
       const params: RolloutRecorderParams = {
         type: 'create',
         conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'Message', content: 'init' } },
+      ]);
       await recorder.shutdown();
     });
 
@@ -473,12 +479,16 @@ describe('RolloutRecorder', () => {
       }
     });
 
-    it('should handle empty rollout', async () => {
+    it('should handle rollout with only session meta', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
         conversationId,
       };
       const recorder = await RolloutRecorder.create(params);
+      // Trigger lazy initialization by recording a single item
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'Message', content: 'only item' } },
+      ]);
       await recorder.shutdown();
 
       const history = await RolloutRecorder.getRolloutHistory(conversationId);
@@ -488,18 +498,34 @@ describe('RolloutRecorder', () => {
 
   describe('Section 9: cleanupExpired() static method - T018', () => {
     it('should delete expired rollouts', async () => {
+      // Create a rollout first so the DB/stores exist
+      const params: RolloutRecorderParams = { type: 'create', conversationId };
+      const recorder = await RolloutRecorder.create(params);
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'Message', content: 'test' } },
+      ]);
+      await recorder.shutdown();
+
       const count = await RolloutRecorder.cleanupExpired();
       expect(typeof count).toBe('number');
       expect(count).toBeGreaterThanOrEqual(0);
     });
 
     it('should return count of deleted rollouts', async () => {
+      // Create a rollout first so the DB/stores exist
+      const params: RolloutRecorderParams = { type: 'create', conversationId };
+      const recorder = await RolloutRecorder.create(params);
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'Message', content: 'test' } },
+      ]);
+      await recorder.shutdown();
+
       const count = await RolloutRecorder.cleanupExpired();
       expect(count).toBeGreaterThanOrEqual(0);
     });
 
     it('should preserve permanent rollouts', async () => {
-      // Create permanent rollout
+      // Create permanent rollout and trigger initialization
       const params: RolloutRecorderParams = {
         type: 'create',
         conversationId,
@@ -508,6 +534,9 @@ describe('RolloutRecorder', () => {
         storage: { rolloutTTL: 'permanent' },
       };
       const recorder = await RolloutRecorder.create(params, config);
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'Message', content: 'permanent' } },
+      ]);
       await recorder.shutdown();
 
       // Cleanup should not delete permanent rollouts
@@ -519,6 +548,14 @@ describe('RolloutRecorder', () => {
     });
 
     it('should cascade delete rollout items', async () => {
+      // Create a rollout first so the DB/stores exist
+      const params: RolloutRecorderParams = { type: 'create', conversationId };
+      const recorder = await RolloutRecorder.create(params);
+      await recorder.recordItems([
+        { type: 'response_item', payload: { type: 'Message', content: 'test' } },
+      ]);
+      await recorder.shutdown();
+
       const count = await RolloutRecorder.cleanupExpired();
       expect(count).toBeGreaterThanOrEqual(0);
     });

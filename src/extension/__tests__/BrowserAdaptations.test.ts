@@ -279,14 +279,14 @@ describe('Browser Adaptations Contract Compliance', () => {
         ['x-browserx-primary-reset-after-seconds', '45'],
       ]);
 
-      const parseFloat = (key: string): number | null => {
+      const parseHeaderFloat = (key: string): number | null => {
         const value = headers.get(key);
         if (!value) return null;
-        const parsed = parseFloat(value);
+        const parsed = Number.parseFloat(value);
         return isFinite(parsed) ? parsed : null;
       };
 
-      const usedPercent = parseFloat('x-browserx-primary-used-percent');
+      const usedPercent = parseHeaderFloat('x-browserx-primary-used-percent');
       expect(usedPercent).toBe(75.5);
     });
 

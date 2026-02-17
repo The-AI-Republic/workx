@@ -29,7 +29,7 @@ const mockIndexedDBAdapter = {
 };
 
 // Mock BrowserxAgent with class
-vi.mock('../../src/core/BrowserxAgent', () => {
+vi.mock('@/core/BrowserxAgent', () => {
   return {
     BrowserxAgent: class MockBrowserxAgent {
       async initialize() {
@@ -38,6 +38,7 @@ vi.mock('../../src/core/BrowserxAgent', () => {
       async cleanup() {
         return undefined;
       }
+      setEventDispatcher = vi.fn();
       getSession() {
         return {
           conversationId: `conv_${Date.now()}`,
@@ -81,7 +82,7 @@ const mockTabManager = {
   reset: vi.fn().mockResolvedValue(undefined),
 };
 
-vi.mock('../../src/core/TabManager', () => ({
+vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: () => mockTabManager,
   },
@@ -125,8 +126,24 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
     // Reset singleton
     AgentRegistry.resetInstance();
 
-    // Setup chrome mock
-    global.chrome = mockChrome as any;
+    // Setup chrome mock AFTER vi.clearAllMocks() to avoid mockReset issues
+    Object.defineProperty(globalThis, 'chrome', {
+      value: {
+        tabs: {
+          group: vi.fn().mockResolvedValue(1),
+          ungroup: vi.fn().mockResolvedValue(undefined),
+          query: vi.fn().mockResolvedValue([]),
+          get: vi.fn(),
+        },
+        tabGroups: {
+          update: vi.fn().mockResolvedValue(undefined),
+        },
+        runtime: {
+          sendMessage: vi.fn(() => Promise.resolve(undefined)),
+        },
+      },
+      writable: true,
+    });
 
     // Reset mock implementations
     mockIndexedDBAdapter.getAll.mockResolvedValue([]);

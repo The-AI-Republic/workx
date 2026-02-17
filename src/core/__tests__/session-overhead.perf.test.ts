@@ -9,9 +9,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
 // Mock BrowserxAgent with class
-vi.mock('../../src/core/BrowserxAgent', () => {
+vi.mock('@/core/BrowserxAgent', () => {
   return {
     BrowserxAgent: class MockBrowserxAgent {
+      config: any;
+      constructor(config: any, router: any) {
+        this.config = config;
+      }
       async initialize() {
         // Simulate minimal initialization time
         await new Promise(resolve => setTimeout(resolve, 5));
@@ -20,6 +24,7 @@ vi.mock('../../src/core/BrowserxAgent', () => {
       async cleanup() {
         return undefined;
       }
+      setEventDispatcher(_fn: any) {}
       getSession() {
         return {
           conversationId: `conv_${Date.now()}`,
@@ -45,7 +50,7 @@ const mockTabManager = {
   reset: vi.fn().mockResolvedValue(undefined),
 };
 
-vi.mock('../../src/core/TabManager', () => ({
+vi.mock('@/core/TabManager', () => ({
   TabManager: {
     getInstance: () => mockTabManager,
   },
@@ -60,7 +65,12 @@ const mockChrome = {
 
 describe('Session Creation Performance (SC-006)', () => {
   let registry: AgentRegistry;
-  const mockConfig = {};
+  const mockConfig = {
+    on: vi.fn(),
+    off: vi.fn(),
+    getConfig: vi.fn().mockReturnValue({}),
+    getModelConfig: vi.fn().mockReturnValue({ modelKey: 'test' }),
+  };
   const mockRouter = {};
 
   beforeEach(() => {

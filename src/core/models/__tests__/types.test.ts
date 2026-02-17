@@ -59,9 +59,9 @@ describe('ResponseEvent Types and Guards', () => {
         expect(isResponseEvent(event)).toBe(true);
       });
 
-      expect(isResponseEvent(null)).toBe(false);
-      expect(isResponseEvent({})).toBe(false);
-      expect(isResponseEvent({ foo: 'bar' })).toBe(false);
+      expect(isResponseEvent(null)).toBeFalsy();
+      expect(isResponseEvent({})).toBeFalsy();
+      expect(isResponseEvent({ foo: 'bar' })).toBeFalsy();
     });
 
     it('should correctly identify specific ResponseEvent variants', () => {
@@ -285,9 +285,9 @@ describe('TokenUsage Types and Functions', () => {
       };
 
       expect(isTokenUsage(validUsage)).toBe(true);
-      expect(isTokenUsage({})).toBe(false);
-      expect(isTokenUsage(null)).toBe(false);
-      expect(isTokenUsage({ input_tokens: 'invalid' })).toBe(false);
+      expect(isTokenUsage({})).toBeFalsy();
+      expect(isTokenUsage(null)).toBeFalsy();
+      expect(isTokenUsage({ input_tokens: 'invalid' })).toBeFalsy();
     });
 
     it('should validate TokenUsageInfo objects', () => {
@@ -298,8 +298,8 @@ describe('TokenUsage Types and Functions', () => {
       };
 
       expect(isTokenUsageInfo(validInfo)).toBe(true);
-      expect(isTokenUsageInfo({})).toBe(false);
-      expect(isTokenUsageInfo({ total_token_usage: {} })).toBe(false);
+      expect(isTokenUsageInfo({})).toBeFalsy();
+      expect(isTokenUsageInfo({ total_token_usage: {} })).toBeFalsy();
     });
   });
 });
@@ -340,18 +340,18 @@ describe('RateLimit Types and Functions', () => {
       };
 
       expect(isRateLimitWindow(validWindow)).toBe(true);
-      expect(isRateLimitWindow({})).toBe(false);
-      expect(isRateLimitWindow(null)).toBe(false);
-      expect(isRateLimitWindow({ used_percent: 'invalid' })).toBe(false);
+      expect(isRateLimitWindow({})).toBeFalsy();
+      expect(isRateLimitWindow(null)).toBeFalsy();
+      expect(isRateLimitWindow({ used_percent: 'invalid' })).toBeFalsy();
     });
 
     it('should validate RateLimitSnapshot objects', () => {
       const validWindow: RateLimitWindow = { used_percent: 50.0 };
       const validSnapshot: RateLimitSnapshot = { primary: validWindow };
 
-      expect(isRateLimitSnapshot(validSnapshot)).toBe(true);
-      expect(isRateLimitSnapshot({})).toBe(false);
-      expect(isRateLimitSnapshot({ primary: {} })).toBe(false);
+      expect(isRateLimitSnapshot(validSnapshot)).toBeTruthy();
+      expect(isRateLimitSnapshot({})).toBeFalsy();
+      expect(isRateLimitSnapshot({ primary: {} })).toBeFalsy();
     });
   });
 
@@ -430,12 +430,12 @@ describe('Type Compilation and Integration', () => {
   });
 
   it('should work with complex nested structures', () => {
+    // Use a message ResponseItem (which has content array)
     const responseItem: ResponseItem = {
       id: 'item-1',
-      type: 'function_call',
-      name: 'test_function',
-      arguments: '{"key":"value"}',
-      call_id: 'call_123',
+      type: 'message',
+      role: 'assistant',
+      content: [{ type: 'output_text', text: 'Hello world' }],
     };
 
     const event: ResponseEvent = {

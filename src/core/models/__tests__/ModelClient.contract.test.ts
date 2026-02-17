@@ -11,39 +11,37 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ModelClient } from '@/core/models/ModelClient';
 import type { Prompt } from '@/core/models/types/ResponsesAPI';
 import type { ModelFamily, ModelProviderInfo } from '@/core/models/types/ResponsesAPI';
+import type { ResponseEvent } from '@/core/models/types/ResponseEvent';
+import type { RateLimitSnapshot } from '@/core/models/types/RateLimits';
 
 // Mock configuration for testing (using snake_case from Phase 3.2)
-const mockConfig = {
-  apiKey: 'test-key',
-  baseUrl: 'https://api.openai.com/v1',
-  conversationId: 'test-conversation-id',
-  modelFamily: {
-    family: 'gpt-4',
-    base_instructions: 'You are a helpful assistant',
-    supports_reasoning_summaries: false,
-    needs_special_apply_patch_instructions: false,
-  } as ModelFamily,
-  provider: {
-    name: 'openai',
-    base_url: 'https://api.openai.com/v1',
-    wire_api: 'Responses',
-    request_max_retries: 3,
-    stream_idle_timeout_ms: 30000,
-    requires_openai_auth: true,
-  } as ModelProviderInfo,
+const mockProvider: ModelProviderInfo = {
+  name: 'openai',
+  base_url: 'https://api.openai.com/v1',
+  wire_api: 'Responses',
+  request_max_retries: 3,
+  stream_idle_timeout_ms: 30000,
+  requires_openai_auth: true,
+};
+
+const mockModelFamily: ModelFamily = {
+  family: 'gpt-4',
+  base_instructions: 'You are a helpful assistant',
+  supports_reasoning_summaries: false,
+  needs_special_apply_patch_instructions: false,
 };
 
 // Create a concrete test implementation of ModelClient for testing
 class TestModelClient extends ModelClient {
-  constructor(config: any) {
-    super(config);
+  constructor() {
+    super();
   }
 
   async complete(): Promise<any> {
     throw new Error('Not implemented');
   }
 
-  async *stream(): AsyncGenerator<any> {
+  async stream(): Promise<any> {
     throw new Error('Not implemented');
   }
 
@@ -55,8 +53,8 @@ class TestModelClient extends ModelClient {
     throw new Error('Not implemented');
   }
 
-  getProvider(): string {
-    return 'openai';
+  getProvider(): ModelProviderInfo {
+    return mockProvider;
   }
 
   getModel(): string {
@@ -67,8 +65,16 @@ class TestModelClient extends ModelClient {
     // No-op for test
   }
 
-  getContextWindow(): number | undefined {
-    return 8192;
+  getAutoCompactTokenLimit(): number | undefined {
+    return 6400;
+  }
+
+  getModelFamily(): any {
+    return mockModelFamily;
+  }
+
+  getAuthManager(): any {
+    return undefined;
   }
 
   getReasoningEffort(): any {
@@ -86,28 +92,50 @@ class TestModelClient extends ModelClient {
   setReasoningSummary(summary: any): void {
     // No-op for test
   }
+
+  protected async *streamResponses(request: any): AsyncGenerator<ResponseEvent> {
+    throw new Error('Not implemented');
+  }
+
+  protected async *streamChat(request: any): AsyncGenerator<ResponseEvent> {
+    throw new Error('Not implemented');
+  }
+
+  protected async *attemptStreamResponses(request: any, attempt: number): AsyncGenerator<ResponseEvent> {
+    throw new Error('Not implemented');
+  }
+
+  protected async *processSSE(stream: ReadableStream<Uint8Array>): AsyncGenerator<ResponseEvent> {
+    yield { type: 'Created' } as ResponseEvent;
+  }
+
+  protected parseRateLimitSnapshot(headers?: Headers): RateLimitSnapshot | undefined {
+    return undefined;
+  }
 }
 
 describe('ModelClient Contract Compliance', () => {
   let client: TestModelClient;
 
   beforeEach(() => {
-    client = new TestModelClient(mockConfig);
+    client = new TestModelClient();
   });
 
   describe('Required Methods - Rust client.rs:74-445', () => {
     it('should have getModelContextWindow() method (Rust: get_model_context_window)', () => {
-      // Note: Currently named getContextWindow(), should be renamed to getModelContextWindow()
-      expect(client.getContextWindow).toBeDefined();
-      expect(typeof client.getContextWindow).toBe('function');
+      expect(client.getModelContextWindow).toBeDefined();
+      expect(typeof client.getModelContextWindow).toBe('function');
 
-      const result = client.getContextWindow();
+      const result = client.getModelContextWindow();
       expect(result === undefined || typeof result === 'number').toBe(true);
     });
 
     it('should have getAutoCompactTokenLimit() method (Rust: get_auto_compact_token_limit)', () => {
-      // This method is missing in current implementation - expected to fail
-      expect((client as any).getAutoCompactTokenLimit).toBeDefined();
+      expect(client.getAutoCompactTokenLimit).toBeDefined();
+      expect(typeof client.getAutoCompactTokenLimit).toBe('function');
+
+      const result = client.getAutoCompactTokenLimit();
+      expect(result === undefined || typeof result === 'number').toBe(true);
     });
 
     it('should have stream() method (Rust: stream)', () => {
@@ -116,13 +144,15 @@ describe('ModelClient Contract Compliance', () => {
     });
 
     it('should have streamResponses() method (Rust: stream_responses)', () => {
-      // This should be a separate method - may not exist yet
+      // Protected method - accessible via (client as any)
       expect((client as any).streamResponses).toBeDefined();
+      expect(typeof (client as any).streamResponses).toBe('function');
     });
 
     it('should have attemptStreamResponses() method (Rust: attempt_stream_responses)', () => {
-      // This is internal retry logic - expected to be missing
+      // Protected method - accessible via (client as any)
       expect((client as any).attemptStreamResponses).toBeDefined();
+      expect(typeof (client as any).attemptStreamResponses).toBe('function');
     });
 
     it('should have getProvider() method (Rust: get_provider)', () => {
@@ -130,12 +160,9 @@ describe('ModelClient Contract Compliance', () => {
       expect(typeof client.getProvider).toBe('function');
 
       const provider = client.getProvider();
-      expect(typeof provider).toBe('string');
-    });
-
-    it('should have getOtelEventManager() method (Rust: get_otel_event_manager)', () => {
-      // This is telemetry - may not be needed in browser
-      expect((client as any).getOtelEventManager).toBeDefined();
+      // getProvider() returns ModelProviderInfo object, not a string
+      expect(typeof provider).toBe('object');
+      expect(typeof provider.name).toBe('string');
     });
 
     it('should have getModel() method (Rust: get_model)', () => {
@@ -147,8 +174,8 @@ describe('ModelClient Contract Compliance', () => {
     });
 
     it('should have getModelFamily() method (Rust: get_model_family)', () => {
-      // Expected to be missing in current implementation
-      expect((client as any).getModelFamily).toBeDefined();
+      expect(client.getModelFamily).toBeDefined();
+      expect(typeof client.getModelFamily).toBe('function');
     });
 
     it('should have getReasoningEffort() method (Rust: get_reasoning_effort)', () => {
@@ -162,21 +189,24 @@ describe('ModelClient Contract Compliance', () => {
     });
 
     it('should have getAuthManager() method (Rust: get_auth_manager)', () => {
-      // Expected to be missing in current implementation
-      expect((client as any).getAuthManager).toBeDefined();
+      expect(client.getAuthManager).toBeDefined();
+      expect(typeof client.getAuthManager).toBe('function');
     });
 
     it('should have processSSE() method (Rust: process_sse)', () => {
-      // This is internal SSE processing - expected to be missing as abstract method
+      // Protected method - accessible via (client as any)
       expect((client as any).processSSE).toBeDefined();
+      expect(typeof (client as any).processSSE).toBe('function');
     });
   });
 
   describe('Method Signature Validation', () => {
-    it('should have async generator return type for stream()', async () => {
-      const streamResult = client.stream({} as Prompt);
-      expect(streamResult).toBeDefined();
-      expect(typeof streamResult[Symbol.asyncIterator]).toBe('function');
+    it('should return ModelProviderInfo from getProvider()', () => {
+      const provider = client.getProvider();
+      expect(provider).toBeDefined();
+      expect(provider.name).toBe('openai');
+      expect(provider.base_url).toBe('https://api.openai.com/v1');
+      expect(provider.wire_api).toBe('Responses');
     });
 
     it('should accept Prompt parameter for stream methods', () => {
@@ -185,8 +215,12 @@ describe('ModelClient Contract Compliance', () => {
         tools: [],
       };
 
-      // Should not throw when called with Prompt
-      expect(() => client.stream(prompt)).not.toThrow();
+      // stream() is async and returns a Promise - verify it can be called
+      // The promise will reject because this is a test stub, but calling it shouldn't throw synchronously
+      const result = client.stream(prompt);
+      expect(result).toBeInstanceOf(Promise);
+      // Suppress the unhandled rejection from the test stub
+      result.catch(() => {});
     });
   });
 
@@ -216,30 +250,35 @@ describe('ModelClient Contract Compliance', () => {
   });
 
   describe('Contract Summary', () => {
-    it('should have all 13 Rust methods (some currently missing)', () => {
+    it('should have all required Rust methods', () => {
       const requiredMethods = [
-        'getContextWindow',        // Should be: getModelContextWindow
-        'getAutoCompactTokenLimit', // Missing
-        'stream',                   // ✓
-        'streamResponses',          // May be missing as separate method
-        'attemptStreamResponses',   // Missing (internal)
-        'getProvider',              // ✓ (but wrong return type)
-        'getOtelEventManager',      // Missing (optional)
-        'getModel',                 // ✓
-        'getModelFamily',           // Missing
-        'getReasoningEffort',       // ✓
-        'getReasoningSummary',      // ✓
-        'getAuthManager',           // Missing
-        'processSSE',               // Missing (internal)
+        'getModelContextWindow',
+        'getAutoCompactTokenLimit',
+        'stream',
+        'streamResponses',       // Protected
+        'attemptStreamResponses', // Protected
+        'getProvider',
+        'getModel',
+        'getModelFamily',
+        'getReasoningEffort',
+        'getReasoningSummary',
+        'getAuthManager',
+        'processSSE',            // Protected
       ];
 
       const presentMethods = requiredMethods.filter(method => {
         return typeof (client as any)[method] === 'function';
       });
 
-      // This test documents the gap - expect it to fail until refactoring complete
       console.log(`Present: ${presentMethods.length}/${requiredMethods.length} methods`);
-      console.log('Missing methods:', requiredMethods.filter(m => !presentMethods.includes(m)));
+
+      // All required methods should be present
+      expect(presentMethods.length).toBe(requiredMethods.length);
+
+      const missingMethods = requiredMethods.filter(m => !presentMethods.includes(m));
+      if (missingMethods.length > 0) {
+        console.log('Missing methods:', missingMethods);
+      }
     });
   });
 });

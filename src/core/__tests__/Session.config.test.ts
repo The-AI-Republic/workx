@@ -4,8 +4,8 @@ import { AgentConfig } from '@/config/AgentConfig';
 
 describe('Session - AgentConfig Integration', () => {
   describe('Constructor', () => {
-    it('should accept optional AgentConfig parameter as first argument', () => {
-      const config = AgentConfig.getInstance();
+    it('should accept optional AgentConfig parameter as first argument', async () => {
+      const config = await AgentConfig.getInstance();
 
       // This should not throw
       expect(() => new Session(config)).not.toThrow();
@@ -19,8 +19,8 @@ describe('Session - AgentConfig Integration', () => {
       expect(() => new Session(undefined, false)).not.toThrow();
     });
 
-    it('should store config reference when provided', () => {
-      const config = AgentConfig.getInstance();
+    it('should store config reference when provided', async () => {
+      const config = await AgentConfig.getInstance();
       const session = new Session(config);
 
       // @ts-expect-error - accessing private property for testing
@@ -30,8 +30,7 @@ describe('Session - AgentConfig Integration', () => {
 
   describe('Config Usage', () => {
     it('should use config for default model', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+      const config = await AgentConfig.getInstance();
 
       const session = new Session(config);
 
@@ -41,8 +40,7 @@ describe('Session - AgentConfig Integration', () => {
     });
 
     it('should use config for default cwd', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+      const config = await AgentConfig.getInstance();
 
       const session = new Session(config);
 
@@ -52,8 +50,7 @@ describe('Session - AgentConfig Integration', () => {
     });
 
     it('should use config for storage enabled', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+      const config = await AgentConfig.getInstance();
 
       const session = new Session(config);
 

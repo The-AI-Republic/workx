@@ -6,12 +6,14 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { RolloutRecorder } from '@/storage/rollout';
 import type { RolloutRecorderParams, RolloutItem, ConversationId } from '@/storage/rollout/types';
 
 describe('Rollout Performance Tests', () => {
   beforeEach(() => {
-    indexedDB = new IDBFactory();
+    // @ts-ignore - Reset fake-indexeddb
+    globalThis.indexedDB = new IDBFactory();
   });
 
   describe('Write Performance', () => {
@@ -26,7 +28,7 @@ describe('Rollout Performance Tests', () => {
 
       const items: RolloutItem[] = Array.from({ length: 10 }, (_, i) => ({
         type: 'response_item' as const,
-        payload: { type: 'Message', content: `Message ${i}` },
+        payload: { type: 'message', content: `Message ${i}` },
       }));
 
       const start = performance.now();
@@ -51,7 +53,7 @@ describe('Rollout Performance Tests', () => {
 
       const items: RolloutItem[] = Array.from({ length: 100 }, (_, i) => ({
         type: 'response_item' as const,
-        payload: { type: 'Message', content: `Message ${i}` },
+        payload: { type: 'message', content: `Message ${i}` },
       }));
 
       const start = performance.now();
@@ -81,7 +83,7 @@ describe('Rollout Performance Tests', () => {
       for (let i = 0; i < 10; i++) {
         const items: RolloutItem[] = Array.from({ length: batchSize }, (_, j) => ({
           type: 'response_item' as const,
-          payload: { type: 'Message', content: `Batch ${i} Message ${j}` },
+          payload: { type: 'message', content: `Batch ${i} Message ${j}` },
         }));
         await recorder.recordItems(items);
       }
@@ -149,12 +151,19 @@ describe('Rollout Performance Tests', () => {
         };
         createPromises.push(
           RolloutRecorder.create(params, config).then(async (recorder) => {
+            // Must call recordItems to trigger lazy initialization (writes metadata to DB)
+            await recorder.recordItems([
+              { type: 'response_item', payload: { type: 'message', content: `Item ${i}` } },
+            ]);
             await recorder.shutdown();
           })
         );
       }
 
       await Promise.all(createPromises);
+
+      // Small delay to ensure expiresAt < Date.now() for TTL=0 rollouts
+      await new Promise(r => setTimeout(r, 10));
 
       // Measure cleanup time
       const start = performance.now();
@@ -185,7 +194,7 @@ describe('Rollout Performance Tests', () => {
       for (let i = 0; i < totalItems / batchSize; i++) {
         const items: RolloutItem[] = Array.from({ length: batchSize }, (_, j) => ({
           type: 'response_item' as const,
-          payload: { type: 'Message', content: `Batch ${i} Item ${j}` },
+          payload: { type: 'message', content: `Batch ${i} Item ${j}` },
         }));
         await recorder.recordItems(items);
       }

@@ -32,20 +32,7 @@ describe('MessageInput Component', () => {
 
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
       expect(textarea).toBeDefined();
-      expect(textarea.placeholder).toBe('Enter command...');
-    });
-
-    it('should have terminal prompt symbol', () => {
-      const { container } = render(MessageInput, {
-        props: {
-          value: '',
-          onSubmit: () => {},
-        },
-      });
-
-      const prompt = container.querySelector('.terminal-prompt');
-      expect(prompt).toBeDefined();
-      expect(prompt?.textContent).toContain('>');
+      expect(textarea.placeholder).toBe('>> Enter command...');
     });
   });
 
@@ -216,7 +203,7 @@ describe('MessageInput Component', () => {
       });
 
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-      expect(textarea.placeholder).toBe('Enter command...');
+      expect(textarea.placeholder).toBe('>> Enter command...');
     });
   });
 

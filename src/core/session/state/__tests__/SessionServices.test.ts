@@ -1,11 +1,9 @@
 /**
  * SessionServices factory tests
- * Tests must fail until SessionServices is implemented (TDD)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createSessionServices } from '../SessionServices';
-import type { SessionServices } from '../types';
+import { createSessionServices, type SessionServices } from '../SessionServices';
 
 describe('SessionServices Factory', () => {
   describe('createSessionServices', () => {
@@ -25,19 +23,19 @@ describe('SessionServices Factory', () => {
       // Test mode might use mock services
     });
 
-    it('should use provided conversation store', async () => {
-      const mockStore = {
-        save: vi.fn(),
-        load: vi.fn(),
-        delete: vi.fn(),
+    it('should use provided rollout', async () => {
+      const mockRollout = {
+        recordItems: vi.fn(),
+        flush: vi.fn(),
+        shutdown: vi.fn(),
       };
 
       const services = await createSessionServices(
-        { conversationStore: mockStore as any },
+        { rollout: mockRollout as any },
         false
       );
 
-      expect(services.conversationStore).toBe(mockStore);
+      expect(services.rollout).toBe(mockRollout);
     });
 
     it('should use provided notifier', async () => {
@@ -55,24 +53,13 @@ describe('SessionServices Factory', () => {
       expect(services.notifier).toBe(mockNotifier);
     });
 
-    it('should use provided rollout recorder', async () => {
-      const mockRecorder = {
-        record: vi.fn(),
-      };
-
-      const services = await createSessionServices(
-        { rolloutRecorder: mockRecorder as any },
-        false
-      );
-
-      expect(services.rolloutRecorder).toBe(mockRecorder);
-    });
-
     it('should use provided DOM service', async () => {
       const mockDOMService = {
         querySelector: vi.fn(),
+        querySelectorAll: vi.fn(),
         click: vi.fn(),
         getText: vi.fn(),
+        setAttribute: vi.fn(),
       };
 
       const services = await createSessionServices(
@@ -88,6 +75,8 @@ describe('SessionServices Factory', () => {
         getCurrentTab: vi.fn(),
         openTab: vi.fn(),
         closeTab: vi.fn(),
+        updateTab: vi.fn(),
+        listTabs: vi.fn(),
       };
 
       const services = await createSessionServices(
@@ -129,8 +118,8 @@ describe('SessionServices Factory', () => {
 
       expect(services.notifier).toBe(mockNotifier);
       expect(services.showRawAgentReasoning).toBe(true);
-      // Other services should have defaults
-      expect(services.conversationStore).toBeDefined();
+      // rollout defaults to null when not provided
+      expect(services.rollout).toBeNull();
     });
 
     it('should create independent service instances', async () => {
@@ -158,17 +147,9 @@ describe('SessionServices Factory', () => {
       expect(typeof services.showRawAgentReasoning).toBe('boolean');
     });
 
-    it('should have optional conversation store', () => {
-      if (services.conversationStore) {
-        expect(typeof services.conversationStore.save).toBe('function');
-        expect(typeof services.conversationStore.load).toBe('function');
-      }
-    });
-
-    it('should have optional rollout recorder', () => {
-      if (services.rolloutRecorder) {
-        expect(typeof services.rolloutRecorder.record).toBe('function');
-      }
+    it('should have rollout property (null by default)', () => {
+      // rollout is null by default, initialized by Session
+      expect(services.rollout).toBeNull();
     });
 
     it('should have optional DOM service', () => {

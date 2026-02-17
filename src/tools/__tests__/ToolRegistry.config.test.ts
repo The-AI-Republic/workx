@@ -1,64 +1,61 @@
 import { describe, it, expect } from 'vitest';
 import { ToolRegistry } from '@/tools/ToolRegistry';
-import { AgentConfig } from '@/config/AgentConfig';
 
-describe('ToolRegistry - AgentConfig Integration', () => {
+describe('ToolRegistry - Constructor and Configuration', () => {
   describe('Constructor', () => {
-    it('should accept optional AgentConfig parameter as first argument', () => {
-      const config = AgentConfig.getInstance();
-
-      // This should not throw
-      expect(() => new ToolRegistry(config)).not.toThrow();
-      expect(() => new ToolRegistry(config, undefined)).not.toThrow();
-    });
-
-    it('should work without config (backward compatibility)', () => {
+    it('should create instance without arguments', () => {
       expect(() => new ToolRegistry()).not.toThrow();
-      expect(() => new ToolRegistry(undefined)).not.toThrow();
-      expect(() => new ToolRegistry(undefined, undefined)).not.toThrow();
     });
 
-    it('should store config reference when provided', () => {
-      const config = AgentConfig.getInstance();
-      const registry = new ToolRegistry(config);
+    it('should accept optional eventCollector parameter', () => {
+      const collector = { collect: () => {} };
+      expect(() => new ToolRegistry(collector)).not.toThrow();
+    });
 
-      // @ts-expect-error - accessing private property for testing
-      expect(registry.config).toBe(config);
+    it('should start with no registered tools', async () => {
+      const registry = new ToolRegistry();
+      const result = await registry.discover();
+      expect(result.tools).toEqual([]);
+      expect(result.total).toBe(0);
     });
   });
 
-  describe('Config Usage', () => {
-    it('should use config for enabled tools', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+  describe('Tool Registration', () => {
+    it('should register and discover a function tool', async () => {
+      const registry = new ToolRegistry();
+      const toolDef = {
+        type: 'function' as const,
+        function: {
+          name: 'test_tool',
+          description: 'A test tool',
+          strict: false,
+          parameters: { type: 'object', properties: {} },
+        },
+      };
 
-      const registry = new ToolRegistry(config);
+      await registry.register(toolDef, async () => ({ success: true }));
 
-      // These methods should exist after implementation
-      expect(registry.getEnabledTools).toBeDefined();
-      expect(Array.isArray(registry.getEnabledTools())).toBe(true);
+      const result = await registry.discover();
+      expect(result.total).toBe(1);
+      expect(result.tools[0]).toEqual(toolDef);
     });
 
-    it('should use config for tool timeout', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
+    it('should reject duplicate tool registration', async () => {
+      const registry = new ToolRegistry();
+      const toolDef = {
+        type: 'function' as const,
+        function: {
+          name: 'dup_tool',
+          description: 'A duplicate tool',
+          strict: false,
+          parameters: { type: 'object', properties: {} },
+        },
+      };
 
-      const registry = new ToolRegistry(config);
-
-      // These methods should exist after implementation
-      expect(registry.getToolTimeout).toBeDefined();
-      expect(typeof registry.getToolTimeout()).toBe('number');
-    });
-
-    it('should use config for sandbox policy', async () => {
-      const config = AgentConfig.getInstance();
-      await config.initialize();
-
-      const registry = new ToolRegistry(config);
-
-      // These methods should exist after implementation
-      expect(registry.getSandboxPolicy).toBeDefined();
-      expect(registry.getSandboxPolicy()).toBeDefined();
+      await registry.register(toolDef, async () => ({ success: true }));
+      await expect(
+        registry.register(toolDef, async () => ({ success: true }))
+      ).rejects.toThrow("Tool 'dup_tool' is already registered");
     });
   });
 });

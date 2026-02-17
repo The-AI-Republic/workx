@@ -4,11 +4,37 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import '../../__test-utils__/chrome-storage-mock';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { SessionCacheManager } from '@/storage/SessionCacheManager';
 import { IndexedDBAdapter, STORE_NAMES } from '@/storage/IndexedDBAdapter';
+import type { LLMCacheConfig } from '@/types/storage';
+
+/**
+ * Mock ConfigStorage that stores LLM cache config in memory
+ * to avoid chrome.storage.local dependency
+ */
+class MockConfigStorage {
+  private llmConfig: LLMCacheConfig = {
+    outdatedCleanupDays: 30,
+    sessionEvictionPercentage: 0.5,
+  };
+
+  async getLLMCacheConfig(): Promise<LLMCacheConfig> {
+    return { ...this.llmConfig };
+  }
+
+  async setLLMCacheConfig(config: Partial<LLMCacheConfig>): Promise<void> {
+    this.llmConfig = { ...this.llmConfig, ...config };
+  }
+
+  async clearLLMCacheConfig(): Promise<void> {
+    this.llmConfig = {
+      outdatedCleanupDays: 30,
+      sessionEvictionPercentage: 0.5,
+    };
+  }
+}
 
 describe('Session Cleanup Integration Tests', () => {
   let manager: SessionCacheManager;
@@ -21,7 +47,9 @@ describe('Session Cleanup Integration Tests', () => {
     adapter = new IndexedDBAdapter();
     await adapter.initialize();
 
-    manager = new SessionCacheManager(adapter);
+    // Use mock ConfigStorage to avoid chrome.storage.local dependency
+    const mockConfigStorage = new MockConfigStorage();
+    manager = new SessionCacheManager(adapter, mockConfigStorage as any);
     await manager.initialize();
   });
 

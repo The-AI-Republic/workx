@@ -7,8 +7,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Session } from '../../../Session';
 import { TaskKind } from '../types';
-import type { InputItem } from '../../protocol/types';
-import { ReviewDecision } from '../../../protocol/types';
+import type { InputItem, ReviewDecision } from '../../protocol/types';
 
 describe('Turn Execution Integration', () => {
   let session: Session;
@@ -91,14 +90,14 @@ describe('Turn Execution Integration', () => {
       const approvalPromise = new Promise<ReviewDecision>((resolve) => {
         setTimeout(() => {
           approvalResolved = true;
-          resolve(ReviewDecision.Approve);
+          resolve('approve');
         }, 10);
       });
 
       const decision = await approvalPromise;
 
       expect(approvalResolved).toBe(true);
-      expect(decision).toBe(ReviewDecision.Approve);
+      expect(decision).toBe('approve');
     });
   });
 
@@ -147,7 +146,7 @@ describe('Turn Execution Integration', () => {
 
       // Turn 2 - verify context preserved
       const context = session.getTurnContext();
-      expect(context.model).toBe('gpt-4');
+      expect(context.getModel()).toBe('gpt-4');
     });
   });
 

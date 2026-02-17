@@ -36,6 +36,8 @@ vi.mock('uuid', () => ({
 vi.mock('../PromptLoader', () => ({
   loadPrompt: vi.fn(async () => 'base-instructions'),
   loadUserInstructions: vi.fn(async () => 'user-instructions'),
+  isComposerConfigured: vi.fn(() => false),
+  configurePromptComposer: vi.fn(),
 }));
 
 vi.mock('../../tools/registerPlatformTools', () => ({

@@ -8,6 +8,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { SessionCacheManager, CACHE_CONSTANTS } from '@/storage/SessionCacheManager';
 import { IndexedDBAdapter } from '@/storage/IndexedDBAdapter';
+import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 
 describe('Cache Performance Benchmarks', () => {
   let manager: SessionCacheManager;
@@ -16,6 +17,20 @@ describe('Cache Performance Benchmarks', () => {
   beforeEach(async () => {
     // @ts-ignore
     global.indexedDB = new IDBFactory();
+
+    // Set up ConfigStorageProvider so getLLMCacheConfig() works during auto-eviction
+    const memStore = new Map<string, any>();
+    setConfigStorage({
+      async get<T>(key: string) { return (memStore.get(key) as T) ?? null; },
+      async set<T>(key: string, value: T) { memStore.set(key, value); },
+      async remove(key: string) { memStore.delete(key); },
+      async getMany<T>(keys: string[]) { const r: Record<string, T> = {}; for (const k of keys) { if (memStore.has(k)) r[k] = memStore.get(k); } return r; },
+      async setMany<T>(items: Record<string, T>) { for (const [k, v] of Object.entries(items)) memStore.set(k, v); },
+      async removeMany(keys: string[]) { for (const k of keys) memStore.delete(k); },
+      async getAll() { const r: Record<string, unknown> = {}; for (const [k, v] of memStore.entries()) r[k] = v; return r; },
+      async clear() { memStore.clear(); },
+      async getBytesInUse() { return 0; },
+    });
 
     adapter = new IndexedDBAdapter();
     await adapter.initialize();

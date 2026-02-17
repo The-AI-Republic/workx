@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { OpenAIChatCompletionClient } from '@/models/OpenAIChatCompletionClient';
+import { OpenAIChatCompletionClient } from '@/core/models/client/OpenAIChatCompletionClient';
 
 // Mock OpenAI client to avoid browser safety check in tests
 vi.mock('openai', () => {

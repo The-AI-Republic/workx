@@ -1,48 +1,66 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-
-// These imports will initially fail because the implementations don't exist yet
 import { ConfigStorage } from '@/storage/ConfigStorage';
-import type { AgentConfigData, ConfigProfile } from '@/config/types';
+import type { IStoredConfig } from '@/config/types';
+import { setConfigStorage, type ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
-// Mock Chrome storage API
-const mockStorageLocal = {
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn(),
-  clear: vi.fn(),
-  onChanged: {
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    hasListener: vi.fn()
-  }
-};
-
-const mockStorageSync = {
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn(),
-  clear: vi.fn(),
-  onChanged: {
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    hasListener: vi.fn()
-  }
-};
-
-// @ts-ignore - Mock Chrome API
-global.chrome = {
-  storage: {
-    local: mockStorageLocal,
-    sync: mockStorageSync
-  }
-};
+// In-memory mock for ConfigStorageProvider
+function createMockProvider(): ConfigStorageProvider & { _store: Map<string, any> } {
+  const store = new Map<string, any>();
+  return {
+    _store: store,
+    async get<T>(key: string): Promise<T | null> {
+      return (store.get(key) as T) ?? null;
+    },
+    async set<T>(key: string, value: T): Promise<void> {
+      store.set(key, value);
+    },
+    async remove(key: string): Promise<void> {
+      store.delete(key);
+    },
+    async getMany<T>(keys: string[]): Promise<Record<string, T>> {
+      const result: Record<string, T> = {};
+      for (const key of keys) {
+        if (store.has(key)) result[key] = store.get(key) as T;
+      }
+      return result;
+    },
+    async setMany<T>(items: Record<string, T>): Promise<void> {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    },
+    async removeMany(keys: string[]): Promise<void> {
+      for (const key of keys) store.delete(key);
+    },
+    async getAll(): Promise<Record<string, unknown>> {
+      const result: Record<string, unknown> = {};
+      for (const [key, value] of store.entries()) result[key] = value;
+      return result;
+    },
+    async clear(): Promise<void> {
+      store.clear();
+    },
+    async getBytesInUse(key?: string): Promise<number | null> {
+      if (key && store.has(key)) {
+        return JSON.stringify(store.get(key)).length;
+      }
+      let total = 0;
+      for (const value of store.values()) {
+        total += JSON.stringify(value).length;
+      }
+      return total;
+    }
+  };
+}
 
 describe('ConfigStorage', () => {
   let storage: ConfigStorage;
+  let mockProvider: ReturnType<typeof createMockProvider>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
+    mockProvider = createMockProvider();
+    setConfigStorage(mockProvider);
     storage = new ConfigStorage();
   });
 
@@ -51,362 +69,115 @@ describe('ConfigStorage', () => {
   });
 
   describe('Configuration Persistence', () => {
-    it('should save configuration to Chrome storage', async () => {
-      const config: AgentConfigData = {
-        model: 'claude-3-5-sonnet-20241022',
-        approval_policy: 'on-request',
-        sandbox_policy: { mode: 'read-only' },
-        cwd: '/workspace'
-      };
-
-      mockStorageSync.set.mockResolvedValue(undefined);
-
-      await storage.saveConfig(config);
-
-      expect(mockStorageSync.set).toHaveBeenCalledWith({
-        'browserx-agent-config': config
-      });
-    });
-
-    it('should load configuration from Chrome storage', async () => {
-      const expectedConfig: AgentConfigData = {
-        model: 'claude-3-haiku-20240307',
-        approval_policy: 'never',
-        sandbox_policy: { mode: 'workspace-write', network_access: true }
-      };
-
-      mockStorageSync.get.mockResolvedValue({
-        'browserx-agent-config': expectedConfig
-      });
-
-      const config = await storage.loadConfig();
-
-      expect(mockStorageSync.get).toHaveBeenCalledWith('browserx-agent-config');
-      expect(config).toEqual(expectedConfig);
-    });
-
-    it('should return default configuration when none exists', async () => {
-      mockStorageSync.get.mockResolvedValue({});
-
-      const config = await storage.loadConfig();
-
-      expect(config).toEqual(storage.getDefaultConfig());
-    });
-
-    it('should handle Chrome storage errors gracefully', async () => {
-      const storageError = new Error('Chrome storage unavailable');
-      mockStorageSync.get.mockRejectedValue(storageError);
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const config = await storage.loadConfig();
-
-      expect(config).toEqual(storage.getDefaultConfig());
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to load config from storage:', storageError);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should validate loaded configuration', async () => {
-      const invalidConfig = {
-        model: 'invalid-model',
-        approval_policy: 'invalid-policy'
-      };
-
-      mockStorageSync.get.mockResolvedValue({
-        'browserx-agent-config': invalidConfig
-      });
-
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const config = await storage.loadConfig();
-
-      expect(config).toEqual(storage.getDefaultConfig());
-      expect(consoleSpy).toHaveBeenCalledWith('Invalid config loaded from storage, using defaults');
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('Profile Management', () => {
-    it('should save configuration profiles', async () => {
-      const profiles: Record<string, ConfigProfile> = {
-        default: {
-          name: 'default',
-          config: {
-            model: 'claude-3-5-sonnet-20241022',
-            approval_policy: 'on-request',
-            sandbox_policy: { mode: 'read-only' }
-          },
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        },
-        development: {
-          name: 'development',
-          config: {
-            model: 'claude-3-haiku-20240307',
-            approval_policy: 'never',
-            sandbox_policy: { mode: 'workspace-write' }
-          },
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        }
-      };
-
-      mockStorageLocal.set.mockResolvedValue(undefined);
-
-      await storage.saveProfiles(profiles);
-
-      expect(mockStorageLocal.set).toHaveBeenCalledWith({
-        'browserx-config-profiles': profiles
-      });
-    });
-
-    it('should load configuration profiles', async () => {
-      const profiles: Record<string, ConfigProfile> = {
-        default: {
-          name: 'default',
-          config: {
-            model: 'claude-3-5-sonnet-20241022',
-            approval_policy: 'on-request',
-            sandbox_policy: { mode: 'read-only' }
-          },
-          createdAt: 1640995200000,
-          updatedAt: 1640995200000
-        }
-      };
-
-      mockStorageLocal.get.mockResolvedValue({
-        'browserx-config-profiles': profiles
-      });
-
-      const loadedProfiles = await storage.loadProfiles();
-
-      expect(mockStorageLocal.get).toHaveBeenCalledWith('browserx-config-profiles');
-      expect(loadedProfiles).toEqual(profiles);
-    });
-
-    it('should return default profile when none exist', async () => {
-      mockStorageLocal.get.mockResolvedValue({});
-
-      const profiles = await storage.loadProfiles();
-
-      expect(profiles).toHaveProperty('default');
-      expect(profiles.default.name).toBe('default');
-      expect(profiles.default.config).toEqual(storage.getDefaultConfig());
-    });
-
-    it('should save active profile selection', async () => {
-      mockStorageLocal.set.mockResolvedValue(undefined);
-
-      await storage.saveActiveProfile('development');
-
-      expect(mockStorageLocal.set).toHaveBeenCalledWith({
-        'browserx-active-profile': 'development'
-      });
-    });
-
-    it('should load active profile selection', async () => {
-      mockStorageLocal.get.mockResolvedValue({
-        'browserx-active-profile': 'development'
-      });
-
-      const activeProfile = await storage.loadActiveProfile();
-
-      expect(mockStorageLocal.get).toHaveBeenCalledWith('browserx-active-profile');
-      expect(activeProfile).toBe('development');
-    });
-
-    it('should default to "default" profile when none selected', async () => {
-      mockStorageLocal.get.mockResolvedValue({});
-
-      const activeProfile = await storage.loadActiveProfile();
-
-      expect(activeProfile).toBe('default');
-    });
-  });
-
-  describe('Storage Events', () => {
-    it('should listen for storage changes', () => {
-      const callback = vi.fn();
-
-      storage.onConfigChanged(callback);
-
-      expect(mockStorageSync.onChanged.addListener).toHaveBeenCalledWith(
-        expect.any(Function)
-      );
-    });
-
-    it('should notify callback when config changes', async () => {
-      const callback = vi.fn();
-      let storageListener: Function;
-
-      mockStorageSync.onChanged.addListener.mockImplementation((listener) => {
-        storageListener = listener;
-      });
-
-      storage.onConfigChanged(callback);
-
-      // Simulate storage change
-      const changes = {
-        'browserx-agent-config': {
-          newValue: {
-            model: 'claude-3-haiku-20240307',
-            approval_policy: 'never'
-          },
-          oldValue: {
-            model: 'claude-3-5-sonnet-20241022',
-            approval_policy: 'on-request'
-          }
-        }
-      };
-
-      storageListener!(changes, 'sync');
-
-      expect(callback).toHaveBeenCalledWith(changes['browserx-agent-config'].newValue);
-    });
-
-    it('should not notify for non-config storage changes', async () => {
-      const callback = vi.fn();
-      let storageListener: Function;
-
-      mockStorageSync.onChanged.addListener.mockImplementation((listener) => {
-        storageListener = listener;
-      });
-
-      storage.onConfigChanged(callback);
-
-      // Simulate non-config storage change
-      const changes = {
-        'some-other-key': {
-          newValue: 'new-value',
-          oldValue: 'old-value'
-        }
-      };
-
-      storageListener!(changes, 'sync');
-
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it('should remove storage change listener', () => {
-      const callback = vi.fn();
-
-      storage.onConfigChanged(callback);
-      storage.removeConfigListener(callback);
-
-      expect(mockStorageSync.onChanged.removeListener).toHaveBeenCalled();
-    });
-  });
-
-  describe('Storage Quota and Limits', () => {
-    it('should handle storage quota exceeded errors', async () => {
-      const config: AgentConfigData = {
-        model: 'claude-3-5-sonnet-20241022',
-        approval_policy: 'on-request',
-        sandbox_policy: { mode: 'read-only' }
-      };
-
-      const quotaError = new Error('QUOTA_BYTES_PER_ITEM quota exceeded');
-      mockStorageSync.set.mockRejectedValue(quotaError);
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      await expect(storage.saveConfig(config)).rejects.toThrow('QUOTA_BYTES_PER_ITEM quota exceeded');
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should calculate storage usage', async () => {
-      const config: AgentConfigData = {
-        model: 'claude-3-5-sonnet-20241022',
-        approval_policy: 'on-request',
-        sandbox_policy: { mode: 'read-only' }
-      };
-
-      const storageSize = await storage.getStorageSize(config);
-
-      expect(typeof storageSize).toBe('number');
-      expect(storageSize).toBeGreaterThan(0);
-    });
-
-    it('should warn when approaching storage limits', async () => {
-      const largeConfig = {
-        model: 'claude-3-5-sonnet-20241022',
-        approval_policy: 'on-request',
-        sandbox_policy: { mode: 'read-only' },
-        // Add large data to simulate approaching limits
-        largeData: 'x'.repeat(7000) // Chrome sync storage has 8KB item limit
-      };
-
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      await storage.saveConfig(largeConfig as any);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Config size approaching storage limit')
-      );
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('Migration and Compatibility', () => {
-    it('should migrate old config format', async () => {
-      const oldConfig = {
-        // Old format without proper typing
-        model: 'claude-3-5-sonnet-20241022',
-        approvalPolicy: 'on-request', // Old camelCase
-        sandboxMode: 'read-only' // Old simplified format
-      };
-
-      mockStorageSync.get.mockResolvedValue({
-        'browserx-agent-config': oldConfig
-      });
-
-      const config = await storage.loadConfig();
-
-      expect(config).toEqual({
-        model: 'claude-3-5-sonnet-20241022',
-        approval_policy: 'on-request',
-        sandbox_policy: { mode: 'read-only' }
-      });
-    });
-
-    it('should handle version compatibility', async () => {
-      const configWithVersion = {
+    it('should save configuration via set()', async () => {
+      const config: IStoredConfig = {
         version: '1.0.0',
-        model: 'claude-3-5-sonnet-20241022',
-        approval_policy: 'on-request',
-        sandbox_policy: { mode: 'read-only' }
+        selectedModelKey: 'openai:gpt-4',
+        providerKeys: {},
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
       };
 
-      mockStorageSync.get.mockResolvedValue({
-        'browserx-agent-config': configWithVersion
-      });
+      await storage.set(config);
 
-      const config = await storage.loadConfig();
-
-      expect(config.version).toBe('1.0.0');
+      const stored = mockProvider._store.get('agent_config');
+      expect(stored).toEqual(config);
     });
 
-    it('should clear corrupted storage data', async () => {
-      const corruptedData = 'invalid-json-string';
+    it('should load configuration via get()', async () => {
+      const config: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'anthropic:claude-3-5-sonnet',
+        providerKeys: {},
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
+      };
 
-      mockStorageSync.get.mockResolvedValue({
-        'browserx-agent-config': corruptedData
+      mockProvider._store.set('agent_config', config);
+
+      const result = await storage.get();
+      expect(result).toEqual(config);
+    });
+
+    it('should return null when no configuration exists', async () => {
+      const result = await storage.get();
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Clear Configuration', () => {
+    it('should clear config and version keys', async () => {
+      mockProvider._store.set('agent_config', { version: '1.0.0' });
+      mockProvider._store.set('config_version', '1.0.0');
+
+      await storage.clear();
+
+      expect(mockProvider._store.has('agent_config')).toBe(false);
+      expect(mockProvider._store.has('config_version')).toBe(false);
+    });
+  });
+
+  describe('Storage Info', () => {
+    it('should return storage info with used bytes and quota', async () => {
+      const config: IStoredConfig = {
+        version: '1.0.0',
+        selectedModelKey: 'openai:gpt-4',
+        providerKeys: {},
+        preferences: {} as any,
+        cache: {} as any,
+        extension: {} as any,
+      };
+
+      mockProvider._store.set('agent_config', config);
+
+      const info = await storage.getStorageInfo();
+      expect(info.used).toBeGreaterThan(0);
+      expect(info.quota).toBe(10485760); // 10MB
+      expect(typeof info.percentUsed).toBe('number');
+    });
+
+    it('should return zero used when empty', async () => {
+      const info = await storage.getStorageInfo();
+      // getBytesInUse returns 0 for empty store for a specific key
+      expect(info.used).toBe(0);
+    });
+  });
+
+  describe('Quota Warning', () => {
+    it('should return false when under threshold', async () => {
+      const overThreshold = await storage.checkQuotaWarning(0.8);
+      expect(overThreshold).toBe(false);
+    });
+  });
+
+  describe('LLM Cache Config', () => {
+    it('should return default LLM cache config when not set', async () => {
+      const config = await storage.getLLMCacheConfig();
+      expect(config).toEqual({
+        outdatedCleanupDays: 30,
+        sessionEvictionPercentage: 0.5,
       });
+    });
 
-      mockStorageSync.remove.mockResolvedValue(undefined);
+    it('should save and load LLM cache config', async () => {
+      await storage.setLLMCacheConfig({ outdatedCleanupDays: 7 });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const config = await storage.getLLMCacheConfig();
+      expect(config.outdatedCleanupDays).toBe(7);
+      expect(config.sessionEvictionPercentage).toBe(0.5); // default preserved
+    });
 
-      const config = await storage.loadConfig();
+    it('should clear LLM cache config', async () => {
+      await storage.setLLMCacheConfig({ outdatedCleanupDays: 7 });
+      await storage.clearLLMCacheConfig();
 
-      expect(config).toEqual(storage.getDefaultConfig());
-      expect(mockStorageSync.remove).toHaveBeenCalledWith('browserx-agent-config');
-
-      consoleSpy.mockRestore();
+      const config = await storage.getLLMCacheConfig();
+      expect(config).toEqual({
+        outdatedCleanupDays: 30,
+        sessionEvictionPercentage: 0.5,
+      });
     });
   });
 });

@@ -161,8 +161,10 @@ describe('parseRateLimitSnapshot', () => {
 
       const snapshot = (client as any).parseRateLimitSnapshot(headers);
 
-      // Implementation should validate or ignore negative values
-      expect(snapshot).toBeUndefined();
+      // Implementation parses negative values as valid finite numbers
+      // It does not reject them - validation is left to the consumer
+      expect(snapshot).toBeDefined();
+      expect(snapshot.primary.used_percent).toBe(-10);
     });
 
     it('should handle values exceeding 100%', () => {

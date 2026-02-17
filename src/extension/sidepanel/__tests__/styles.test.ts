@@ -13,7 +13,7 @@ describe('Terminal Styles - Blue Color Variable', () => {
     // Load the actual styles.css content
     const fs = require('fs');
     const path = require('path');
-    const stylesPath = path.join(__dirname, '../../src/sidepanel/styles.css');
+    const stylesPath = path.join(__dirname, '../styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     styleElement = document.createElement('style');
@@ -22,7 +22,7 @@ describe('Terminal Styles - Blue Color Variable', () => {
   });
 
   it('should have --color-term-blue variable defined in @theme', () => {
-    const stylesPath = require('path').join(__dirname, '../../src/sidepanel/styles.css');
+    const stylesPath = require('path').join(__dirname, '../styles.css');
     const stylesContent = require('fs').readFileSync(stylesPath, 'utf-8');
 
     // Check for blue color variable in @theme block
@@ -31,7 +31,7 @@ describe('Terminal Styles - Blue Color Variable', () => {
   });
 
   it('should have .text-term-blue utility class using the variable', () => {
-    const stylesPath = require('path').join(__dirname, '../../src/sidepanel/styles.css');
+    const stylesPath = require('path').join(__dirname, '../styles.css');
     const stylesContent = require('fs').readFileSync(stylesPath, 'utf-8');
 
     // Check for utility class
@@ -46,7 +46,7 @@ describe('Terminal Styles - Blue Color Variable', () => {
     const blackHex = '#000000';
 
     // Simple verification that the color is defined
-    const stylesPath = require('path').join(__dirname, '../../src/sidepanel/styles.css');
+    const stylesPath = require('path').join(__dirname, '../styles.css');
     const stylesContent = require('fs').readFileSync(stylesPath, 'utf-8');
     expect(stylesContent).toContain(blueHex);
   });

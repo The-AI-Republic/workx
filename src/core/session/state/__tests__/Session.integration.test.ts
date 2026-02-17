@@ -196,30 +196,24 @@ describe('Session Integration (Refactored)', () => {
       const context = session.getTurnContext();
 
       expect(context).toBeDefined();
-      expect(context.cwd).toBeDefined();
+      expect(context.getApprovalPolicy()).toBeDefined();
     });
 
     it('should update turn context', () => {
-      const updates = {
-        model: 'gpt-4',
-        cwd: '/test/path',
-      };
-
-      session.updateTurnContext(updates);
+      session.updateTurnContext({ model: 'gpt-4' });
 
       const context = session.getTurnContext();
-      expect(context.model).toBe('gpt-4');
-      expect(context.cwd).toBe('/test/path');
+      expect(context.getModel()).toBe('gpt-4');
     });
 
     it('should preserve unchanged context fields', () => {
-      const originalContext = session.getTurnContext();
+      const originalPolicy = session.getTurnContext().getApprovalPolicy();
 
       session.updateTurnContext({ model: 'new-model' });
 
       const newContext = session.getTurnContext();
-      expect(newContext.model).toBe('new-model');
-      expect(newContext.cwd).toBe(originalContext.cwd);
+      expect(newContext.getModel()).toBe('new-model');
+      expect(newContext.getApprovalPolicy()).toBe(originalPolicy);
     });
   });
 

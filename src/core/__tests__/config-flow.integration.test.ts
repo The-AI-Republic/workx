@@ -1,70 +1,49 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { BrowserxAgent } from '@/core/BrowserxAgent';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentConfig } from '@/config/AgentConfig';
+import { Session } from '@/core/Session';
+import { ApprovalManager } from '@/core/ApprovalManager';
 
 describe('Config Propagation Integration', () => {
   let config: AgentConfig;
 
   beforeEach(async () => {
-    config = AgentConfig.getInstance();
-    await config.initialize();
+    config = await AgentConfig.getInstance();
   });
 
   describe('Full Config Flow', () => {
-    it('should propagate config through all components via BrowserxAgent', async () => {
-      // Create agent with config
-      const agent = new BrowserxAgent(config);
-      await agent.initialize();
-
-      // Get components
-      const session = agent.getSession();
-      const toolRegistry = agent.getToolRegistry();
-      const approvalManager = agent.getApprovalManager();
+    it('should propagate config through Session and ApprovalManager', async () => {
+      // Create components with config
+      const session = new Session(config);
+      const approvalManager = new ApprovalManager(config);
 
       // All components should have config
       // @ts-expect-error - accessing private property for testing
       expect(session.config).toBeDefined();
       // @ts-expect-error - accessing private property for testing
-      expect(toolRegistry.config).toBeDefined();
-      // @ts-expect-error - accessing private property for testing
       expect(approvalManager.config).toBeDefined();
     });
 
-    it('should initialize ModelClientFactory with config', async () => {
-      // Create agent with config
-      const agent = new BrowserxAgent(config);
+    it('should create Session with config without errors', async () => {
+      const session = new Session(config);
 
-      // Initialize should not throw
-      await expect(agent.initialize()).resolves.not.toThrow();
-
-      // ModelClientFactory should be initialized (indirectly verify through agent)
-      expect(agent).toBeDefined();
+      // Session should be created successfully
+      expect(session).toBeDefined();
+      expect(session.getSessionId()).toBeDefined();
     });
 
-    it('should allow BrowserxAgent to work without config (backward compat)', async () => {
-      // Create agent without config
-      const agent = new BrowserxAgent();
+    it('should allow Session to work without config (backward compat)', () => {
+      // Create session without config
+      const session = new Session();
 
-      // Should not throw
-      await expect(agent.initialize()).resolves.not.toThrow();
-
-      // Components should still work
-      const session = agent.getSession();
-      const toolRegistry = agent.getToolRegistry();
-      const approvalManager = agent.getApprovalManager();
-
+      // Should still work
       expect(session).toBeDefined();
-      expect(toolRegistry).toBeDefined();
-      expect(approvalManager).toBeDefined();
+      expect(session.getSessionId()).toBeDefined();
     });
   });
 
   describe('Component Config Usage', () => {
     it('should use config values in components', async () => {
-      const agent = new BrowserxAgent(config);
-      await agent.initialize();
-
-      const session = agent.getSession();
+      const session = new Session(config);
 
       // After implementation, these should return config values
       if (typeof session.getDefaultModel === 'function') {

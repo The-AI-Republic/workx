@@ -5,36 +5,18 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock chrome storage API
-const mockStorage = {
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn()
-};
-
-global.chrome = {
-  storage: {
-    local: mockStorage,
-    sync: {
-      get: vi.fn(),
-      set: vi.fn()
-    }
-  },
-  runtime: {
-    lastError: null
-  }
-};
-
 describe('Storage API Contract - deleteApiKey', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    chrome.runtime.lastError = null;
+    if (chrome?.runtime) {
+      chrome.runtime.lastError = null;
+    }
   });
 
   describe('DELETE /storage/apikey', () => {
     it('should return 200 when API key is deleted successfully', async () => {
       // Simulate existing key
-      mockStorage.get.mockResolvedValue({
+      const getSpy = vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({
         openai_apikey: {
           apiKey: 'sk-1234567890abcdefghijklmnopqrstuvwxyz',
           createdAt: Date.now(),
@@ -42,87 +24,80 @@ describe('Storage API Contract - deleteApiKey', () => {
         }
       });
 
-      mockStorage.remove.mockResolvedValue(undefined);
+      // Add remove mock to storage.local
+      chrome.storage.local.remove = vi.fn().mockResolvedValue(undefined);
 
-      // Simulate deleteApiKey operation
-      const response = await new Promise((resolve) => {
-        // First check if key exists
-        chrome.storage.local.get(['openai_apikey'], (result) => {
-          if (result.openai_apikey) {
-            // Key exists, proceed with deletion
-            chrome.storage.local.remove(['openai_apikey'], () => {
-              if (chrome.runtime.lastError) {
-                resolve({
-                  status: 500,
-                  data: {
-                    success: false,
-                    error: 'STORAGE_ERROR',
-                    message: chrome.runtime.lastError.message
-                  }
-                });
-              } else {
-                resolve({
-                  status: 200,
-                  data: {
-                    success: true,
-                    message: 'API key deleted successfully'
-                  }
-                });
-              }
-            });
-          } else {
-            // No key to delete
-            resolve({
-              status: 404,
-              data: {
-                success: false,
-                error: 'KEY_NOT_FOUND',
-                message: 'No API key to delete'
-              }
-            });
+      // Simulate deleteApiKey operation using promise-based API
+      const result = await chrome.storage.local.get(['openai_apikey']);
+      let response;
+
+      if (result.openai_apikey) {
+        // Key exists, proceed with deletion
+        await chrome.storage.local.remove(['openai_apikey']);
+        if (chrome.runtime.lastError) {
+          response = {
+            status: 500,
+            data: {
+              success: false,
+              error: 'STORAGE_ERROR',
+              message: chrome.runtime.lastError.message
+            }
+          };
+        } else {
+          response = {
+            status: 200,
+            data: {
+              success: true,
+              message: 'API key deleted successfully'
+            }
+          };
+        }
+      } else {
+        response = {
+          status: 404,
+          data: {
+            success: false,
+            error: 'KEY_NOT_FOUND',
+            message: 'No API key to delete'
           }
-        });
-      });
+        };
+      }
 
       expect(response.status).toBe(200);
       expect(response.data).toMatchObject({
         success: true,
         message: 'API key deleted successfully'
       });
-      expect(mockStorage.remove).toHaveBeenCalledWith(
-        ['openai_apikey'],
-        expect.any(Function)
-      );
+      expect(chrome.storage.local.remove).toHaveBeenCalledWith(['openai_apikey']);
     });
 
     it('should return 404 when no API key exists to delete', async () => {
-      mockStorage.get.mockResolvedValue({});
+      vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({});
+      chrome.storage.local.remove = vi.fn().mockResolvedValue(undefined);
 
-      // Simulate deleteApiKey operation
-      const response = await new Promise((resolve) => {
-        chrome.storage.local.get(['openai_apikey'], (result) => {
-          if (result.openai_apikey) {
-            chrome.storage.local.remove(['openai_apikey'], () => {
-              resolve({
-                status: 200,
-                data: {
-                  success: true,
-                  message: 'API key deleted successfully'
-                }
-              });
-            });
-          } else {
-            resolve({
-              status: 404,
-              data: {
-                success: false,
-                error: 'KEY_NOT_FOUND',
-                message: 'No API key to delete'
-              }
-            });
+      // Simulate deleteApiKey operation using promise-based API
+      const result = await chrome.storage.local.get(['openai_apikey']);
+      let response;
+
+      if (result.openai_apikey) {
+        await chrome.storage.local.remove(['openai_apikey']);
+        response = {
+          status: 200,
+          data: {
+            success: true,
+            message: 'API key deleted successfully'
           }
-        });
-      });
+        };
+      } else {
+        response = {
+          status: 404,
+          data: {
+            success: false,
+            error: 'KEY_NOT_FOUND',
+            message: 'No API key to delete'
+          }
+        };
+      }
 
       expect(response.status).toBe(404);
       expect(response.data).toMatchObject({
@@ -130,48 +105,43 @@ describe('Storage API Contract - deleteApiKey', () => {
         error: 'KEY_NOT_FOUND',
         message: 'No API key to delete'
       });
-      expect(mockStorage.remove).not.toHaveBeenCalled();
+      expect(chrome.storage.local.remove).not.toHaveBeenCalled();
     });
 
     it('should handle storage errors during deletion', async () => {
-      mockStorage.get.mockResolvedValue({
+      vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({
         openai_apikey: {
           apiKey: 'sk-1234567890abcdefghijklmnopqrstuvwxyz'
         }
       });
 
-      mockStorage.remove.mockImplementation((keys, callback) => {
-        chrome.runtime.lastError = { message: 'Storage operation failed' };
-        callback();
-      });
+      chrome.storage.local.remove = vi.fn().mockRejectedValue(new Error('Storage operation failed'));
 
-      // Simulate deleteApiKey operation with error
-      const response = await new Promise((resolve) => {
-        chrome.storage.local.get(['openai_apikey'], (result) => {
-          if (result.openai_apikey) {
-            chrome.storage.local.remove(['openai_apikey'], () => {
-              if (chrome.runtime.lastError) {
-                resolve({
-                  status: 500,
-                  data: {
-                    success: false,
-                    error: 'STORAGE_ERROR',
-                    message: chrome.runtime.lastError.message
-                  }
-                });
-              } else {
-                resolve({
-                  status: 200,
-                  data: {
-                    success: true,
-                    message: 'API key deleted successfully'
-                  }
-                });
-              }
-            });
-          }
-        });
-      });
+      // Simulate deleteApiKey operation with error using promise-based API
+      const result = await chrome.storage.local.get(['openai_apikey']);
+      let response;
+
+      if (result.openai_apikey) {
+        try {
+          await chrome.storage.local.remove(['openai_apikey']);
+          response = {
+            status: 200,
+            data: {
+              success: true,
+              message: 'API key deleted successfully'
+            }
+          };
+        } catch (error) {
+          response = {
+            status: 500,
+            data: {
+              success: false,
+              error: 'STORAGE_ERROR',
+              message: error.message
+            }
+          };
+        }
+      }
 
       expect(response.status).toBe(500);
       expect(response.data).toMatchObject({
@@ -182,29 +152,19 @@ describe('Storage API Contract - deleteApiKey', () => {
     });
 
     it('should verify key is actually removed after deletion', async () => {
-      mockStorage.get
-        .mockResolvedValueOnce({
-          openai_apikey: { apiKey: 'sk-test' }
-        })
-        .mockResolvedValueOnce({}); // After deletion
+      chrome.storage.local.remove = vi.fn().mockResolvedValue(undefined);
 
-      mockStorage.remove.mockResolvedValue(undefined);
+      // After deletion, get should return empty result
+      vi.spyOn(chrome.storage.local, 'get').mockResolvedValue({});
 
-      // Perform deletion
-      await new Promise((resolve) => {
-        chrome.storage.local.remove(['openai_apikey'], () => {
-          resolve();
-        });
-      });
+      // Perform deletion using promise-based API
+      await chrome.storage.local.remove(['openai_apikey']);
 
       // Verify key is gone
-      const verifyResponse = await new Promise((resolve) => {
-        chrome.storage.local.get(['openai_apikey'], (result) => {
-          resolve({
-            keyExists: !!result.openai_apikey
-          });
-        });
-      });
+      const result = await chrome.storage.local.get(['openai_apikey']);
+      const verifyResponse = {
+        keyExists: !!result.openai_apikey
+      };
 
       expect(verifyResponse.keyExists).toBe(false);
     });

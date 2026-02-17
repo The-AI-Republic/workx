@@ -170,6 +170,22 @@ describe('RolloutWriter', () => {
     });
 
     it('should update rollouts metadata (itemCount, updated)', async () => {
+      // First, seed a metadata record in the rollouts store so addItems can update it
+      const db = writer.db;
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('rollouts', 'readwrite');
+        const store = tx.objectStore('rollouts');
+        store.put({
+          id: rolloutId,
+          created: Date.now(),
+          updated: Date.now(),
+          itemCount: 0,
+          status: 'active',
+        });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+
       const items: RolloutItem[] = [
         { type: 'response_item', payload: { type: 'Message', content: '1' } },
         { type: 'response_item', payload: { type: 'Message', content: '2' } },
@@ -179,11 +195,10 @@ describe('RolloutWriter', () => {
       await writer.flush();
 
       // Verify metadata updated
-      const db = writer.db;
-      const tx = db.transaction('rollouts', 'readonly');
-      const store = tx.objectStore('rollouts');
+      const tx2 = db.transaction('rollouts', 'readonly');
+      const store2 = tx2.objectStore('rollouts');
       const metadata = await new Promise<any>((resolve) => {
-        const request = store.get(rolloutId);
+        const request = store2.get(rolloutId);
         request.onsuccess = () => resolve(request.result);
       });
 

@@ -41,7 +41,7 @@ describe('StorageTool', () => {
 
       expect(definition.type).toBe('function');
       if (definition.type === 'function') {
-        expect(definition.function.name).toBe('llm_cache');
+        expect(definition.function.name).toBe('cache_storage_tool');
         expect(definition.function.description).toContain('Cache intermediate results');
         expect(definition.function.description).toContain('200MB');
         expect(definition.function.parameters).toBeDefined();

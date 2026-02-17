@@ -76,7 +76,7 @@ describe('MCPManager Platform Features', () => {
   });
 
   afterEach(() => {
-    delete (globalThis as any).chrome;
+    (globalThis as any).chrome = undefined;
     MCPManager.resetInstance();
   });
 

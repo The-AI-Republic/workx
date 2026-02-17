@@ -58,20 +58,20 @@ describe('DomSnapshot Flattening Logic', () => {
       const snapshot = new DomSnapshot(vdom, mockPageContext, mockStats);
       const serialized = snapshot.serialize();
 
-      expect(serialized.page.body.node_id).toBe(100); // backendNodeId
+      expect(serialized.page.body.node_id).toBe('0:100'); // frame:backendNodeId
       expect(serialized.page.body.tag).toBe('button');
       expect(serialized.page.body.role).toBe('button');
       expect(serialized.page.body.aria_label).toBe('Submit Form');
     });
 
-    it('should keep non-semantic div with onclick handler', () => {
+    it('should keep non-semantic button with onclick handler', () => {
       const vdom: VirtualNode = {
         nodeId: 1,
         backendNodeId: 100,
         nodeType: NODE_TYPE_ELEMENT,
-        nodeName: 'DIV',
-        localName: 'div',
-        tier: 'non-semantic', // Has onclick but no proper role
+        nodeName: 'BUTTON',
+        localName: 'button',
+        tier: 'non-semantic', // Has onclick but no proper a11y role
         interactionType: 'click',
         heuristics: {
           hasOnClick: true,
@@ -85,8 +85,8 @@ describe('DomSnapshot Flattening Logic', () => {
       const snapshot = new DomSnapshot(vdom, mockPageContext, mockStats);
       const serialized = snapshot.serialize();
 
-      expect(serialized.page.body.node_id).toBe(100); // backendNodeId
-      expect(serialized.page.body.tag).toBe('div');
+      expect(serialized.page.body.node_id).toBe('0:100'); // frame:backendNodeId
+      expect(serialized.page.body.tag).toBe('button');
       // Non-semantic nodes are kept because they're interactive
     });
   });
@@ -118,7 +118,7 @@ describe('DomSnapshot Flattening Logic', () => {
       const snapshot = new DomSnapshot(vdom, mockPageContext, mockStats);
       const serialized = snapshot.serialize();
 
-      expect(serialized.page.body.node_id).toBe(100); // backendNodeId
+      expect(serialized.page.body.node_id).toBe('0:100'); // frame:backendNodeId
       expect(serialized.page.body.tag).toBe('form');
       expect(serialized.page.body.role).toBe('form');
       expect(serialized.page.body.kids).toBeDefined();
@@ -154,7 +154,7 @@ describe('DomSnapshot Flattening Logic', () => {
       const serialized = snapshot.serialize();
 
       // Div wrapper removed, button hoisted to root
-      expect(serialized.page.body.node_id).toBe(101); // Button's backendNodeId, not div's
+      expect(serialized.page.body.node_id).toBe('0:101'); // Button's node_id, not div's
       expect(serialized.page.body.tag).toBe('button');
       expect(serialized.page.body.role).toBe('button');
     });
@@ -234,7 +234,7 @@ describe('DomSnapshot Flattening Logic', () => {
       const serialized = snapshot.serialize();
 
       // Both wrapper divs removed, button hoisted to root
-      expect(serialized.page.body.node_id).toBe(102); // Button's backendNodeId
+      expect(serialized.page.body.node_id).toBe('0:102'); // Button's node_id
       expect(serialized.page.body.tag).toBe('button');
       expect(serialized.page.body.aria_label).toBe('Deep Button');
     });
