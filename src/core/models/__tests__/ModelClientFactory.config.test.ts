@@ -9,25 +9,8 @@ describe('ModelClientFactory - AgentConfig Integration', () => {
     // Reset the AgentConfig singleton between tests so each test gets a fresh instance
     (AgentConfig as any).instance = null;
 
-    // Mock chrome.storage.local.get to return empty object (no stored config)
-    // This allows AgentConfig.initialize() to succeed with defaults
-    vi.mocked(chrome.storage.local.get).mockImplementation((...args: any[]) => {
-      const callback = args[args.length - 1];
-      if (typeof callback === 'function') {
-        callback({});
-        return undefined as any;
-      }
-      return Promise.resolve({});
-    });
-
-    vi.mocked(chrome.storage.local.set).mockImplementation((...args: any[]) => {
-      const callback = args[args.length - 1];
-      if (typeof callback === 'function') {
-        callback();
-        return undefined as any;
-      }
-      return Promise.resolve();
-    });
+    // chrome.storage.local is a full MockStorageArea (from setup.ts)
+    // that already handles get/set correctly — no mocking needed.
 
     // AgentConfig.getInstance() is async and calls initialize() internally
     config = await AgentConfig.getInstance();

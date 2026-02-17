@@ -2,7 +2,7 @@
  * Chrome Storage Mock Helper for Testing
  * Provides a mock implementation of chrome.storage API for unit tests
  */
-import { vi, beforeEach } from 'vitest';
+import { vi } from 'vitest';
 
 interface StorageArea {
   get(keys?: string | string[] | object | null, callback?: Function): Promise<any>;
@@ -151,19 +151,6 @@ const mockChromeStorage = {
   }
 };
 
-// Setup global chrome mock
-if (typeof global !== 'undefined') {
-  (global as any).chrome = {
-    ...(global as any).chrome,
-    storage: mockChromeStorage,
-    runtime: {
-      lastError: null,
-      id: 'test-extension-id',
-      getURL: (path: string) => `chrome-extension://test-extension-id/${path}`
-    }
-  };
-}
-
 // Export for use in tests
 export { mockChromeStorage, MockStorageArea };
 
@@ -187,9 +174,3 @@ export function getChromeStorageData(area: 'sync' | 'local' | 'session'): Record
   return (mockChromeStorage[area] as any)._getAllData();
 }
 
-// Auto-reset before each test if using Vitest
-if (typeof beforeEach !== 'undefined') {
-  beforeEach(() => {
-    resetChromeStorageMock();
-  });
-}

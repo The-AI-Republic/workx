@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../../../core/storage/ConfigStorageProvider', () => ({
   isConfigStorageInitialized: vi.fn(() => false),
@@ -18,56 +18,12 @@ vi.mock('../types', async (importOriginal) => {
 
 import { ScreenshotFileManager } from '../ScreenshotFileManager';
 
+// Helper to directly inspect / seed the MockStorageArea backing chrome.storage.local
+const localStorage = () => chrome.storage.local as any;
+
 describe('ScreenshotFileManager', () => {
-  let storageData: Record<string, any>;
-
-  beforeEach(() => {
-    storageData = {};
-
-    // Provide working implementations for chrome.storage.local stubs
-    // that the global setup.ts defines as bare vi.fn()
-    (chrome.storage.local.get as ReturnType<typeof vi.fn>).mockImplementation(
-      async (keys?: string | string[] | object | null) => {
-        if (!keys || keys === null) {
-          return { ...storageData };
-        }
-        if (typeof keys === 'string') {
-          const result: Record<string, any> = {};
-          if (keys in storageData) {
-            result[keys] = storageData[keys];
-          }
-          return result;
-        }
-        if (Array.isArray(keys)) {
-          const result: Record<string, any> = {};
-          keys.forEach((key: string) => {
-            if (key in storageData) {
-              result[key] = storageData[key];
-            }
-          });
-          return result;
-        }
-        return {};
-      }
-    );
-
-    (chrome.storage.local.set as ReturnType<typeof vi.fn>).mockImplementation(
-      async (items: Record<string, any>) => {
-        Object.assign(storageData, items);
-      }
-    );
-
-    // chrome.storage.local.remove is not provided by setup.ts,
-    // so define it on the object directly
-    (chrome.storage.local as any).remove = vi.fn(
-      async (keys: string | string[]) => {
-        const keysArray = Array.isArray(keys) ? keys : [keys];
-        keysArray.forEach((key) => {
-          delete storageData[key];
-        });
-      }
-    );
-  });
+  // chrome.storage.local is a full MockStorageArea (from setup.ts)
+  // that already handles get/set/remove correctly — no mocking needed.
 
   describe('saveScreenshot', () => {
     it('should save base64 data to storage', async () => {
@@ -75,10 +31,8 @@ describe('ScreenshotFileManager', () => {
 
       await ScreenshotFileManager.saveScreenshot(base64Data);
 
-      expect(chrome.storage.local.set).toHaveBeenCalledWith({
-        screenshot_cache: base64Data,
-      });
-      expect(storageData['screenshot_cache']).toBe(base64Data);
+      const allData = localStorage()._getAllData();
+      expect(allData['screenshot_cache']).toBe(base64Data);
     });
 
     it('should throw when data exceeds MAX_SCREENSHOT_SIZE_MB', async () => {
@@ -96,7 +50,7 @@ describe('ScreenshotFileManager', () => {
   describe('getScreenshot', () => {
     it('should retrieve previously saved screenshot data', async () => {
       const base64Data = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAA';
-      storageData['screenshot_cache'] = base64Data;
+      localStorage()._setData({ screenshot_cache: base64Data });
 
       const result = await ScreenshotFileManager.getScreenshot();
 
@@ -112,20 +66,18 @@ describe('ScreenshotFileManager', () => {
 
   describe('deleteScreenshot', () => {
     it('should remove the screenshot from storage', async () => {
-      storageData['screenshot_cache'] = 'someBase64Data';
+      localStorage()._setData({ screenshot_cache: 'someBase64Data' });
 
       await ScreenshotFileManager.deleteScreenshot();
 
-      expect((chrome.storage.local as any).remove).toHaveBeenCalledWith(
-        'screenshot_cache'
-      );
-      expect(storageData['screenshot_cache']).toBeUndefined();
+      const allData = localStorage()._getAllData();
+      expect(allData['screenshot_cache']).toBeUndefined();
     });
   });
 
   describe('hasScreenshot', () => {
     it('should return true when a screenshot exists in storage', async () => {
-      storageData['screenshot_cache'] = 'someBase64Data';
+      localStorage()._setData({ screenshot_cache: 'someBase64Data' });
 
       const result = await ScreenshotFileManager.hasScreenshot();
 

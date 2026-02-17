@@ -101,6 +101,7 @@ export default [
       'vite.config.ts',
       'vitest.config.ts',
       'vite.config.*.mjs',
+      'vite.config.*.mts',
       'vitest.config.mjs',
       'eslint.config.js',
     ],

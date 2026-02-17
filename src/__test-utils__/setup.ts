@@ -1,10 +1,17 @@
 /**
- * Test setup for model tests
+ * Test setup — single source of truth for the global `chrome` mock.
+ *
+ * This file is referenced by vitest.config.mjs `setupFiles` so it runs
+ * before every test file.  It combines the simple stub object that most
+ * tests need with the richer MockStorageArea implementation from
+ * chrome-storage-mock.ts.
  */
 
 import { beforeEach, vi } from 'vitest';
+import { mockChromeStorage, resetChromeStorageMock } from './chrome-storage-mock';
 
-// Mock Chrome APIs that might be used in model classes
+// Unified chrome mock — uses the full MockStorageArea for storage while
+// keeping lightweight stubs for runtime / tabs / etc.
 const mockChrome = {
   runtime: {
     sendMessage: vi.fn(),
@@ -12,19 +19,11 @@ const mockChrome = {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+    lastError: null as any,
+    id: 'test-extension-id',
+    getURL: vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`),
   },
-  storage: {
-    local: {
-      get: vi.fn(),
-      set: vi.fn(),
-      clear: vi.fn(),
-    },
-    sync: {
-      get: vi.fn(),
-      set: vi.fn(),
-      clear: vi.fn(),
-    },
-  },
+  storage: mockChromeStorage,
   tabs: {
     query: vi.fn(),
     create: vi.fn(),
@@ -33,16 +32,16 @@ const mockChrome = {
   },
 };
 
-// Set up global mocks
 beforeEach(() => {
-  // Reset all mocks before each test
-  vi.clearAllMocks();
-
-  // Mock global chrome object
+  // Install chrome on globalThis
   Object.defineProperty(globalThis, 'chrome', {
     value: mockChrome,
     writable: true,
+    configurable: true,
   });
+
+  // Reset storage data & runtime.lastError
+  resetChromeStorageMock();
 
   // Mock fetch for API calls
   global.fetch = vi.fn();
