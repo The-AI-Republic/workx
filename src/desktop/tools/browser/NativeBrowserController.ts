@@ -476,10 +476,12 @@ export class NativeBrowserController implements BrowserController {
 
   async select(selector: string, ...values: string[]): Promise<void> {
     this.ensureConnected();
+    const escapedSelector = JSON.stringify(selector);
+    const escapedValues = JSON.stringify(values);
     await this.evaluate(`(() => {
-      const el = document.querySelector('${selector}');
-      if (!el) throw new Error('Element not found: ${selector}');
-      ${JSON.stringify(values)}.forEach(v => {
+      const el = document.querySelector(${escapedSelector});
+      if (!el) throw new Error('Element not found: ' + ${escapedSelector});
+      ${escapedValues}.forEach(v => {
         for (const opt of el.options) { if (opt.value === v) opt.selected = true; }
       });
       el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -488,19 +490,37 @@ export class NativeBrowserController implements BrowserController {
 
   async focus(selector: string): Promise<void> {
     this.ensureConnected();
-    await this.evaluate(`document.querySelector('${selector}')?.focus()`);
+    const node = await this.findElement(selector);
+    if (!node) throw new Error(`Element not found: ${selector}`);
+    await this.client.sendCommand('DOM.focus', { nodeId: node.nodeId });
   }
 
   async hover(selector: string): Promise<void> {
     this.ensureConnected();
     const node = await this.findElement(selector);
     if (!node) throw new Error(`Element not found: ${selector}`);
+
+    // Get element center position for mouse event dispatch
+    const boxModel = await this.client.sendCommand<{
+      model: { content: number[] };
+    }>('DOM.getBoxModel', { nodeId: node.nodeId });
+
+    const content = boxModel.model.content;
+    const x = (content[0] + content[2]) / 2;
+    const y = (content[1] + content[5]) / 2;
+
+    await this.client.sendCommand('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x,
+      y,
+    });
   }
 
   async scroll(target: string | { x: number; y: number }): Promise<void> {
     this.ensureConnected();
     if (typeof target === 'string') {
-      await this.evaluate(`document.querySelector('${target}')?.scrollIntoView({ behavior: 'smooth', block: 'center' })`);
+      const escapedSelector = JSON.stringify(target);
+      await this.evaluate(`document.querySelector(${escapedSelector})?.scrollIntoView({ behavior: 'smooth', block: 'center' })`);
     } else {
       await this.evaluate(`window.scrollTo({ left: ${target.x}, top: ${target.y}, behavior: 'smooth' })`);
     }
