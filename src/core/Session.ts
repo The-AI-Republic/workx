@@ -180,12 +180,15 @@ export class Session {
     if (!this.services?.rollout) return;
 
     // Record session metadata to rollout
+    // Include both cwd (for desktop) and tabId (for extension) so the
+    // session can be restored correctly in either runtime mode.
+    const tabId = this.sessionState.getTabId();
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        cwd: String(this.sessionState.getTabId()), // SessionMeta requires cwd; browser context uses tabId as identifier
+        ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
