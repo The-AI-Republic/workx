@@ -132,7 +132,7 @@ describe('Browser Tools Contracts', () => {
               data: {
                 action: request.action,
                 selector: request.selector,
-                tab_id: request.tabId,
+                options: { tab_id: request.tabId },
               },
             },
           });
@@ -314,7 +314,7 @@ describe('Browser Tools Contracts', () => {
               type: 'StorageActionStart',
               data: {
                 action: request.action,
-                storage_type: request.storageType,
+                area: request.storageType,
                 key: request.key,
               },
             },
@@ -466,7 +466,7 @@ describe('Browser Tools Contracts', () => {
               data: {
                 action: request.action,
                 url: request.url,
-                tab_id: request.tabId,
+                options: { tab_id: request.tabId },
               },
             },
           });
