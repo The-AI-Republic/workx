@@ -124,8 +124,8 @@ describe('Scheduler', () => {
     emitter = vi.fn();
 
     // Default storage state: idle
-    storage.getSchedulerState.mockResolvedValue(createMockState());
-    storage.getTaskCounts.mockResolvedValue({
+    vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState());
+    vi.mocked(storage.getTaskCounts).mockResolvedValue({
       draftCount: 0,
       scheduledCount: 0,
       missedCount: 0,
@@ -208,7 +208,7 @@ describe('Scheduler', () => {
   describe('createDraftTask', () => {
     it('should create a draft task and return its id', async () => {
       const task = createMockTask({ id: 'draft-1' });
-      storage.createTask.mockResolvedValue(task);
+      vi.mocked(storage.createTask).mockResolvedValue(task);
 
       const id = await scheduler.createDraftTask('Write a report');
       expect(id).toBe('draft-1');
@@ -216,7 +216,7 @@ describe('Scheduler', () => {
     });
 
     it('should not set an alarm for draft tasks', async () => {
-      storage.createTask.mockResolvedValue(createMockTask());
+      vi.mocked(storage.createTask).mockResolvedValue(createMockTask());
       await scheduler.createDraftTask('Draft task');
       expect(alarms.createTaskAlarm).not.toHaveBeenCalled();
     });
@@ -230,7 +230,7 @@ describe('Scheduler', () => {
     it('should create a task with a scheduled time', async () => {
       const futureTime = Date.now() + 60000;
       const task = createMockTask({ id: 'sched-1', scheduledTime: futureTime, status: 'scheduled' });
-      storage.createTask.mockResolvedValue(task);
+      vi.mocked(storage.createTask).mockResolvedValue(task);
 
       const id = await scheduler.scheduleTask('Run analysis', futureTime);
       expect(id).toBe('sched-1');
@@ -240,7 +240,7 @@ describe('Scheduler', () => {
     it('should create an alarm for the scheduled task', async () => {
       const futureTime = Date.now() + 60000;
       const task = createMockTask({ id: 'sched-2', scheduledTime: futureTime });
-      storage.createTask.mockResolvedValue(task);
+      vi.mocked(storage.createTask).mockResolvedValue(task);
 
       await scheduler.scheduleTask('Scheduled task', futureTime);
       expect(alarms.createTaskAlarm).toHaveBeenCalledWith('sched-2', futureTime);
@@ -275,7 +275,7 @@ describe('Scheduler', () => {
   describe('scheduleExistingTask', () => {
     it('should schedule a draft task', async () => {
       const futureTime = Date.now() + 60000;
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
 
       await scheduler.scheduleExistingTask('task-1', futureTime);
 
@@ -288,7 +288,7 @@ describe('Scheduler', () => {
 
     it('should emit a status change event (draft -> scheduled)', async () => {
       const futureTime = Date.now() + 60000;
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
 
       await scheduler.scheduleExistingTask('task-1', futureTime);
 
@@ -302,21 +302,21 @@ describe('Scheduler', () => {
     });
 
     it('should throw if task is not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
       await expect(scheduler.scheduleExistingTask('missing', Date.now() + 60000)).rejects.toThrow(
         'Task not found: missing'
       );
     });
 
     it('should throw if task is not in draft status', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'running' }));
       await expect(scheduler.scheduleExistingTask('task-1', Date.now() + 60000)).rejects.toThrow(
         'Cannot schedule task in running status'
       );
     });
 
     it('should throw if scheduled time is in the past', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'draft' }));
       await expect(scheduler.scheduleExistingTask('task-1', Date.now() - 1000)).rejects.toThrow(
         'Scheduled time must be in the future'
       );
@@ -329,33 +329,33 @@ describe('Scheduler', () => {
 
   describe('triggerTask', () => {
     it('should throw if task not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
       await expect(scheduler.triggerTask('missing')).rejects.toThrow('Task not found: missing');
     });
 
     it('should throw if task status does not allow triggering', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'running' }));
       await expect(scheduler.triggerTask('task-1')).rejects.toThrow(
         'Cannot trigger task in running status'
       );
     });
 
     it('should throw for completed tasks', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'completed' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'completed' }));
       await expect(scheduler.triggerTask('task-1')).rejects.toThrow(
         'Cannot trigger task in completed status'
       );
     });
 
     it('should throw for failed tasks', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'failed' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'failed' }));
       await expect(scheduler.triggerTask('task-1')).rejects.toThrow(
         'Cannot trigger task in failed status'
       );
     });
 
     it('should throw for cancelled tasks', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'cancelled' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'cancelled' }));
       await expect(scheduler.triggerTask('task-1')).rejects.toThrow(
         'Cannot trigger task in cancelled status'
       );
@@ -363,24 +363,24 @@ describe('Scheduler', () => {
 
     it('should clear alarm if task was scheduled', async () => {
       const task = createMockTask({ id: 'task-1', status: 'scheduled' });
-      storage.getTask.mockResolvedValue(task);
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: null }));
+      vi.mocked(storage.getTask).mockResolvedValue(task);
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: null }));
 
       await scheduler.triggerTask('task-1');
       expect(alarms.clearTaskAlarm).toHaveBeenCalledWith('task-1');
     });
 
     it('should not clear alarm if task was a draft', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'draft' }));
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: null }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'draft' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: null }));
 
       await scheduler.triggerTask('task-1');
       expect(alarms.clearTaskAlarm).not.toHaveBeenCalled();
     });
 
     it('should queue task as waiting if another task is running', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-2', status: 'draft' }));
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-2', status: 'draft' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: 'task-1' }));
 
       await scheduler.triggerTask('task-2');
 
@@ -396,10 +396,10 @@ describe('Scheduler', () => {
 
     it('should execute immediately if no task is running', async () => {
       const task = createMockTask({ id: 'task-1', status: 'draft' });
-      storage.getTask
+      vi.mocked(storage.getTask)
         .mockResolvedValueOnce(task) // triggerTask lookup
         .mockResolvedValueOnce(task); // executeTask lookup
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: null }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: null }));
 
       await scheduler.triggerTask('task-1');
 
@@ -412,10 +412,10 @@ describe('Scheduler', () => {
 
     it('should allow triggering missed tasks', async () => {
       const task = createMockTask({ id: 'task-m', status: 'missed' });
-      storage.getTask
+      vi.mocked(storage.getTask)
         .mockResolvedValueOnce(task)
         .mockResolvedValueOnce(task);
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: null }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: null }));
 
       await scheduler.triggerTask('task-m');
 
@@ -432,12 +432,12 @@ describe('Scheduler', () => {
 
   describe('executeTask', () => {
     it('should throw if task not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
       await expect(scheduler.executeTask('missing')).rejects.toThrow('Task not found: missing');
     });
 
     it('should create an AgentSession via registry when available', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -448,7 +448,7 @@ describe('Scheduler', () => {
     });
 
     it('should store task-session mapping on success', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -457,7 +457,7 @@ describe('Scheduler', () => {
 
     it('should use legacy session ID when registry.createSession fails', async () => {
       registry.createSession.mockRejectedValue(new Error('Session creation failed'));
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -469,7 +469,7 @@ describe('Scheduler', () => {
 
     it('should use legacy session ID when registry is null', async () => {
       const s = new Scheduler(storage, alarms);
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await s.executeTask('task-1');
 
@@ -481,7 +481,7 @@ describe('Scheduler', () => {
 
     it('should use legacy session ID when canCreateSession returns false', async () => {
       registry.canCreateSession.mockReturnValue(false);
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -493,7 +493,7 @@ describe('Scheduler', () => {
     });
 
     it('should update task status to running', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -504,7 +504,7 @@ describe('Scheduler', () => {
     });
 
     it('should set scheduler state with currentTaskId', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -514,7 +514,7 @@ describe('Scheduler', () => {
     });
 
     it('should emit task status change and state change events', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
 
       await scheduler.executeTask('task-1');
 
@@ -533,7 +533,7 @@ describe('Scheduler', () => {
     });
 
     it('should show a browser notification', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', input: 'Hello world' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', input: 'Hello world' }));
 
       await scheduler.executeTask('task-1');
 
@@ -548,7 +548,7 @@ describe('Scheduler', () => {
     });
 
     it('should open a new browser tab', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
@@ -645,14 +645,14 @@ describe('Scheduler', () => {
     const result = createMockResult();
 
     it('should throw if task not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
       await expect(scheduler.completeTask('missing', result)).rejects.toThrow(
         'Task not found: missing'
       );
     });
 
     it('should throw if task is not in running status', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'draft' }));
       await expect(scheduler.completeTask('task-1', result)).rejects.toThrow(
         'Cannot complete task in draft status'
       );
@@ -660,7 +660,7 @@ describe('Scheduler', () => {
 
     it('should clean up the agent session', async () => {
       const task = createMockTask({ id: 'task-1', status: 'running' });
-      storage.getTask.mockResolvedValue(task);
+      vi.mocked(storage.getTask).mockResolvedValue(task);
       (scheduler as any).taskSessions.set('task-1', 'session-x');
 
       await scheduler.completeTask('task-1', result);
@@ -669,7 +669,7 @@ describe('Scheduler', () => {
     });
 
     it('should update task with completed status and result', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
 
       await scheduler.completeTask('task-1', result);
 
@@ -684,7 +684,7 @@ describe('Scheduler', () => {
     });
 
     it('should clear currentTaskId from scheduler state', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
 
       await scheduler.completeTask('task-1', result);
 
@@ -692,7 +692,7 @@ describe('Scheduler', () => {
     });
 
     it('should emit status change (running -> completed)', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
 
       await scheduler.completeTask('task-1', result);
 
@@ -706,8 +706,8 @@ describe('Scheduler', () => {
     });
 
     it('should process the queue after completion', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.completeTask('task-1', result);
 
@@ -722,19 +722,19 @@ describe('Scheduler', () => {
 
   describe('failTask', () => {
     it('should throw if task not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
       await expect(scheduler.failTask('missing', 'err')).rejects.toThrow('Task not found: missing');
     });
 
     it('should throw if task is not running', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'scheduled' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'scheduled' }));
       await expect(scheduler.failTask('task-1', 'err')).rejects.toThrow(
         'Cannot fail task in scheduled status'
       );
     });
 
     it('should clean up the agent session', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
       (scheduler as any).taskSessions.set('task-1', 'session-y');
 
       await scheduler.failTask('task-1', 'Something broke');
@@ -743,7 +743,7 @@ describe('Scheduler', () => {
     });
 
     it('should update task with failed status and error', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
 
       await scheduler.failTask('task-1', 'Timeout exceeded');
 
@@ -758,7 +758,7 @@ describe('Scheduler', () => {
     });
 
     it('should clear currentTaskId from scheduler state', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
 
       await scheduler.failTask('task-1', 'err');
 
@@ -766,7 +766,7 @@ describe('Scheduler', () => {
     });
 
     it('should emit status change (running -> failed)', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
 
       await scheduler.failTask('task-1', 'err');
 
@@ -780,8 +780,8 @@ describe('Scheduler', () => {
     });
 
     it('should process the queue after failure', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.failTask('task-1', 'err');
 
@@ -795,33 +795,33 @@ describe('Scheduler', () => {
 
   describe('cancelTask', () => {
     it('should throw if task not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
       await expect(scheduler.cancelTask('missing')).rejects.toThrow('Task not found: missing');
     });
 
     it('should throw if task is already completed', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'completed' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'completed' }));
       await expect(scheduler.cancelTask('task-1')).rejects.toThrow(
         'Cannot cancel task in completed status'
       );
     });
 
     it('should throw if task is already failed', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'failed' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'failed' }));
       await expect(scheduler.cancelTask('task-1')).rejects.toThrow(
         'Cannot cancel task in failed status'
       );
     });
 
     it('should throw if task is already cancelled', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'cancelled' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'cancelled' }));
       await expect(scheduler.cancelTask('task-1')).rejects.toThrow(
         'Cannot cancel task in cancelled status'
       );
     });
 
     it('should clear alarm when cancelling a scheduled task', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'scheduled' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'scheduled' }));
 
       await scheduler.cancelTask('task-1');
 
@@ -829,7 +829,7 @@ describe('Scheduler', () => {
     });
 
     it('should not clear alarm for non-scheduled tasks', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ status: 'draft' }));
 
       await scheduler.cancelTask('task-1');
 
@@ -837,7 +837,7 @@ describe('Scheduler', () => {
     });
 
     it('should clean up session and clear state when cancelling a running task', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
       (scheduler as any).taskSessions.set('task-1', 'session-z');
 
       await scheduler.cancelTask('task-1');
@@ -847,7 +847,7 @@ describe('Scheduler', () => {
     });
 
     it('should update task status to cancelled with completedAt', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
 
       await scheduler.cancelTask('task-1');
 
@@ -861,7 +861,7 @@ describe('Scheduler', () => {
     });
 
     it('should emit status change event', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'waiting' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'waiting' }));
 
       await scheduler.cancelTask('task-1');
 
@@ -875,8 +875,8 @@ describe('Scheduler', () => {
     });
 
     it('should process queue after cancelling a running task', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.cancelTask('task-1');
 
@@ -887,9 +887,9 @@ describe('Scheduler', () => {
     });
 
     it('should not process queue after cancelling a non-running task', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', status: 'draft' }));
       // Reset to track only calls after cancel
-      storage.getSchedulerState.mockClear();
+      vi.mocked(storage.getSchedulerState).mockClear();
 
       await scheduler.cancelTask('task-1');
 
@@ -905,7 +905,7 @@ describe('Scheduler', () => {
 
   describe('processSchedulerTaskQueue', () => {
     it('should not process when paused', async () => {
-      storage.getSchedulerState.mockResolvedValue(createMockState({ isPaused: true }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ isPaused: true }));
 
       await scheduler.processSchedulerTaskQueue();
 
@@ -914,7 +914,7 @@ describe('Scheduler', () => {
 
     it('should not process when offline', async () => {
       Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
-      storage.getSchedulerState.mockResolvedValue(createMockState());
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState());
 
       await scheduler.processSchedulerTaskQueue();
 
@@ -922,7 +922,7 @@ describe('Scheduler', () => {
     });
 
     it('should not process when a task is already running', async () => {
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: 'task-x' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: 'task-x' }));
 
       await scheduler.processSchedulerTaskQueue();
 
@@ -931,9 +931,9 @@ describe('Scheduler', () => {
 
     it('should execute next task from queue', async () => {
       const nextTask = createMockTask({ id: 'queued-1', status: 'waiting' });
-      storage.getSchedulerState.mockResolvedValue(createMockState());
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(nextTask);
-      storage.getTask.mockResolvedValue(nextTask);
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState());
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(nextTask);
+      vi.mocked(storage.getTask).mockResolvedValue(nextTask);
 
       await scheduler.processSchedulerTaskQueue();
 
@@ -944,8 +944,8 @@ describe('Scheduler', () => {
     });
 
     it('should do nothing when queue is empty', async () => {
-      storage.getSchedulerState.mockResolvedValue(createMockState());
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState());
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.processSchedulerTaskQueue();
 
@@ -1011,7 +1011,7 @@ describe('Scheduler', () => {
     });
 
     it('should immediately process the queue after resuming', async () => {
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.resumeSchedulerTaskQueue();
 
@@ -1032,11 +1032,11 @@ describe('Scheduler', () => {
 
     it('should trigger a scheduled task when task alarm fires', async () => {
       const task = createMockTask({ id: 'task-abc', status: 'scheduled' });
-      storage.getTask
+      vi.mocked(storage.getTask)
         .mockResolvedValueOnce(task) // handleAlarm lookup
         .mockResolvedValueOnce(task) // triggerTask lookup
         .mockResolvedValueOnce(task); // executeTask lookup
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: null }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: null }));
 
       await scheduler.handleAlarm('scheduler-task-task-abc');
 
@@ -1045,7 +1045,7 @@ describe('Scheduler', () => {
     });
 
     it('should not trigger if task is not in scheduled status', async () => {
-      storage.getTask.mockResolvedValue(createMockTask({ id: 'task-abc', status: 'completed' }));
+      vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-abc', status: 'completed' }));
 
       await scheduler.handleAlarm('scheduler-task-task-abc');
 
@@ -1054,7 +1054,7 @@ describe('Scheduler', () => {
     });
 
     it('should not trigger if task is not found', async () => {
-      storage.getTask.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(null);
 
       await scheduler.handleAlarm('scheduler-task-task-abc');
 
@@ -1062,8 +1062,8 @@ describe('Scheduler', () => {
     });
 
     it('should process queue when queue processor alarm fires', async () => {
-      storage.getSchedulerState.mockResolvedValue(createMockState());
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState());
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.handleAlarm('scheduler-task-queue-processor');
 
@@ -1077,7 +1077,7 @@ describe('Scheduler', () => {
 
   describe('detectMissedTasks', () => {
     it('should return empty array when no overdue tasks', async () => {
-      storage.getOverdueScheduledTasks.mockResolvedValue([]);
+      vi.mocked(storage.getOverdueScheduledTasks).mockResolvedValue([]);
 
       const missed = await scheduler.detectMissedTasks();
 
@@ -1089,7 +1089,7 @@ describe('Scheduler', () => {
         createMockTask({ id: 't1', status: 'scheduled' }),
         createMockTask({ id: 't2', status: 'scheduled' }),
       ];
-      storage.getOverdueScheduledTasks.mockResolvedValue(overdue);
+      vi.mocked(storage.getOverdueScheduledTasks).mockResolvedValue(overdue);
 
       await scheduler.detectMissedTasks();
 
@@ -1099,7 +1099,7 @@ describe('Scheduler', () => {
 
     it('should clear alarms for overdue tasks', async () => {
       const overdue = [createMockTask({ id: 't1', status: 'scheduled' })];
-      storage.getOverdueScheduledTasks.mockResolvedValue(overdue);
+      vi.mocked(storage.getOverdueScheduledTasks).mockResolvedValue(overdue);
 
       await scheduler.detectMissedTasks();
 
@@ -1111,7 +1111,7 @@ describe('Scheduler', () => {
         createMockTask({ id: 't1', status: 'scheduled' }),
         createMockTask({ id: 't2', status: 'scheduled' }),
       ];
-      storage.getOverdueScheduledTasks.mockResolvedValue(overdue);
+      vi.mocked(storage.getOverdueScheduledTasks).mockResolvedValue(overdue);
 
       await scheduler.detectMissedTasks();
 
@@ -1125,7 +1125,7 @@ describe('Scheduler', () => {
 
     it('should return the list of overdue tasks', async () => {
       const overdue = [createMockTask({ id: 't1' })];
-      storage.getOverdueScheduledTasks.mockResolvedValue(overdue);
+      vi.mocked(storage.getOverdueScheduledTasks).mockResolvedValue(overdue);
 
       const result = await scheduler.detectMissedTasks();
 
@@ -1140,8 +1140,8 @@ describe('Scheduler', () => {
 
   describe('getSchedulerState', () => {
     it('should return combined state and counts', async () => {
-      storage.getSchedulerState.mockResolvedValue(createMockState({ isPaused: true, currentTaskId: null }));
-      storage.getTaskCounts.mockResolvedValue({
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ isPaused: true, currentTaskId: null }));
+      vi.mocked(storage.getTaskCounts).mockResolvedValue({
         draftCount: 2,
         scheduledCount: 3,
         missedCount: 1,
@@ -1170,11 +1170,11 @@ describe('Scheduler', () => {
         scheduledTime: 5000,
         createdAt: 1000,
       });
-      storage.getSchedulerState.mockResolvedValue(
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
         createMockState({ currentTaskId: 'running-1' })
       );
-      storage.getTask.mockResolvedValue(runningTask);
-      storage.getTaskCounts.mockResolvedValue({
+      vi.mocked(storage.getTask).mockResolvedValue(runningTask);
+      vi.mocked(storage.getTaskCounts).mockResolvedValue({
         draftCount: 0,
         scheduledCount: 0,
         missedCount: 0,
@@ -1194,11 +1194,11 @@ describe('Scheduler', () => {
     });
 
     it('should return null runningTask when current task not found', async () => {
-      storage.getSchedulerState.mockResolvedValue(
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
         createMockState({ currentTaskId: 'orphan-task' })
       );
-      storage.getTask.mockResolvedValue(null);
-      storage.getTaskCounts.mockResolvedValue({
+      vi.mocked(storage.getTask).mockResolvedValue(null);
+      vi.mocked(storage.getTaskCounts).mockResolvedValue({
         draftCount: 0,
         scheduledCount: 0,
         missedCount: 0,
@@ -1278,7 +1278,7 @@ describe('Scheduler', () => {
 
   describe('emitStateChange (private)', () => {
     it('should emit state with isPaused and currentTaskId', async () => {
-      storage.getSchedulerState.mockResolvedValue(
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
         createMockState({ isPaused: true, currentTaskId: 'task-x' })
       );
 
@@ -1345,16 +1345,16 @@ describe('Scheduler', () => {
       const task = createMockTask({ id: 'lifecycle-1', status: 'scheduled', scheduledTime: futureTime });
 
       // Schedule
-      storage.createTask.mockResolvedValue(task);
+      vi.mocked(storage.createTask).mockResolvedValue(task);
       const id = await scheduler.scheduleTask('Full lifecycle', futureTime);
       expect(id).toBe('lifecycle-1');
 
       // Alarm fires -> triggerTask
-      storage.getTask.mockResolvedValue(task);
-      storage.getSchedulerState.mockResolvedValue(createMockState({ currentTaskId: null }));
+      vi.mocked(storage.getTask).mockResolvedValue(task);
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentTaskId: null }));
 
       // triggerTask -> executeTask chain: getTask is called twice
-      storage.getTask
+      vi.mocked(storage.getTask)
         .mockResolvedValueOnce(task) // handleAlarm -> triggerTask lookup
         .mockResolvedValueOnce(task); // triggerTask -> executeTask lookup
 
@@ -1362,8 +1362,8 @@ describe('Scheduler', () => {
 
       // Complete
       const runningTask = { ...task, status: 'running' as const };
-      storage.getTask.mockResolvedValue(runningTask);
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(null);
+      vi.mocked(storage.getTask).mockResolvedValue(runningTask);
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(null);
 
       await scheduler.completeTask('lifecycle-1', createMockResult());
 
@@ -1379,16 +1379,16 @@ describe('Scheduler', () => {
       const task2 = createMockTask({ id: 't2', status: 'waiting' });
 
       // Complete task 1
-      storage.getTask.mockResolvedValueOnce(task1); // completeTask lookup
-      storage.getNextTaskInSchedulerTaskQueue.mockResolvedValue(task2);
+      vi.mocked(storage.getTask).mockResolvedValueOnce(task1); // completeTask lookup
+      vi.mocked(storage.getNextTaskInSchedulerTaskQueue).mockResolvedValue(task2);
 
       // After clearing current task, processQueue finds task2
-      storage.getSchedulerState
+      vi.mocked(storage.getSchedulerState)
         .mockResolvedValueOnce(createMockState()) // emitStateChange in completeTask
         .mockResolvedValueOnce(createMockState({ currentTaskId: null })); // processSchedulerTaskQueue
 
       // executeTask will call getTask for task2
-      storage.getTask.mockResolvedValueOnce(task2);
+      vi.mocked(storage.getTask).mockResolvedValueOnce(task2);
 
       await scheduler.completeTask('t1', createMockResult());
 
@@ -1401,7 +1401,7 @@ describe('Scheduler', () => {
 
     it('should handle cancelling a scheduled task and scheduling a new one', async () => {
       const scheduledTask = createMockTask({ id: 'sched-1', status: 'scheduled' });
-      storage.getTask.mockResolvedValue(scheduledTask);
+      vi.mocked(storage.getTask).mockResolvedValue(scheduledTask);
 
       // Cancel
       await scheduler.cancelTask('sched-1');
@@ -1414,7 +1414,7 @@ describe('Scheduler', () => {
       // Schedule a new one
       const futureTime = Date.now() + 120000;
       const newTask = createMockTask({ id: 'sched-2' });
-      storage.createTask.mockResolvedValue(newTask);
+      vi.mocked(storage.createTask).mockResolvedValue(newTask);
 
       await scheduler.scheduleTask('New scheduled task', futureTime);
       expect(alarms.createTaskAlarm).toHaveBeenCalledWith('sched-2', futureTime);

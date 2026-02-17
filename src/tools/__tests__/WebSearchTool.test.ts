@@ -7,7 +7,7 @@
  * debug mode, maxResults capping, and edge cases.
  */
 
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { WebSearchTool } from '@/tools/WebSearchTool';
 import type { WebSearchToolRequest } from '@/tools/WebSearchTool';
 import type { BaseToolOptions } from '@/tools/BaseTool';
@@ -667,7 +667,7 @@ describe('WebSearchTool', () => {
           call[2]?.expression?.includes('isAdElement'),
       );
       expect(extractionCall).toBeDefined();
-      expect(extractionCall[2].expression).toContain(')(10)');
+      expect(extractionCall![2].expression).toContain(')(10)');
     });
 
     it('should respect provided maxResults value', async () => {
@@ -680,7 +680,7 @@ describe('WebSearchTool', () => {
           call[2]?.expression?.includes('isAdElement'),
       );
       expect(extractionCall).toBeDefined();
-      expect(extractionCall[2].expression).toContain(')(5)');
+      expect(extractionCall![2].expression).toContain(')(5)');
     });
 
     it('should cap maxResults at 20', async () => {
@@ -693,7 +693,7 @@ describe('WebSearchTool', () => {
           call[2]?.expression?.includes('isAdElement'),
       );
       expect(extractionCall).toBeDefined();
-      expect(extractionCall[2].expression).toContain(')(20)');
+      expect(extractionCall![2].expression).toContain(')(20)');
     });
 
     it('should use 10 when maxResults is 0 (falsy)', async () => {
@@ -707,7 +707,7 @@ describe('WebSearchTool', () => {
       );
       expect(extractionCall).toBeDefined();
       // 0 is falsy, so || 10 gives 10, then Math.min(10, 20) = 10
-      expect(extractionCall[2].expression).toContain(')(10)');
+      expect(extractionCall![2].expression).toContain(')(10)');
     });
   });
 
@@ -1064,7 +1064,7 @@ describe('WebSearchTool', () => {
           call[1] === 'Runtime.evaluate' &&
           call[2]?.expression?.includes('isAdElement'),
       );
-      expect(extractionCall[2].expression).toContain(')(7)');
+      expect(extractionCall![2].expression).toContain(')(7)');
     });
 
     it('should use returnByValue: true for extraction', async () => {
@@ -1076,7 +1076,7 @@ describe('WebSearchTool', () => {
           call[1] === 'Runtime.evaluate' &&
           call[2]?.expression?.includes('isAdElement'),
       );
-      expect(extractionCall[2].returnByValue).toBe(true);
+      expect(extractionCall![2].returnByValue).toBe(true);
     });
 
     it('should use returnByValue: true for consent dismissal', async () => {
@@ -1088,7 +1088,7 @@ describe('WebSearchTool', () => {
           call[1] === 'Runtime.evaluate' &&
           call[2]?.expression?.includes('reject all'),
       );
-      expect(consentCall[2].returnByValue).toBe(true);
+      expect(consentCall![2].returnByValue).toBe(true);
     });
   });
 });

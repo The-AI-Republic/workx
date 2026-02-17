@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { DomPlugin, type DomPluginContext, type DomPluginResult } from '../DomPlugin';
 import type { VirtualNode } from '../../types';
 

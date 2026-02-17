@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NumericCompactor } from '../optimizers/NumericCompactor';
 import type { VirtualNode } from '../../types';
 
@@ -6,13 +6,14 @@ import type { VirtualNode } from '../../types';
  * Helper: create a minimal VirtualNode for testing
  */
 function makeNode(overrides: Partial<VirtualNode> & { backendNodeId: number }): VirtualNode {
+  const { backendNodeId, ...rest } = overrides;
   return {
-    nodeId: overrides.backendNodeId,
-    backendNodeId: overrides.backendNodeId,
+    nodeId: backendNodeId,
+    backendNodeId,
     nodeType: 1,
     nodeName: 'DIV',
     tier: 'structural',
-    ...overrides,
+    ...rest,
   };
 }
 

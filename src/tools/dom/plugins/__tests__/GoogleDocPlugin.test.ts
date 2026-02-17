@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GoogleDocPlugin, googleDocPlugin } from '../GoogleDocPlugin';
 import type { DomPluginContext, DomPluginResult } from '../DomPlugin';
 import type { VirtualNode } from '../../types';

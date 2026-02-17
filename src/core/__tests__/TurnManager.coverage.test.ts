@@ -398,7 +398,8 @@ describe('TurnManager - getErrorCause', () => {
 
   it('should return cause from an Error with cause', () => {
     const inner = new Error('root cause');
-    const outer = new Error('wrapper', { cause: inner });
+    const outer = new Error('wrapper');
+    (outer as any).cause = inner;
     const cause = (tm as any).getErrorCause(outer);
     expect(cause).toBe(inner);
   });
@@ -465,8 +466,10 @@ describe('TurnManager - extractStreamErrorSummary', () => {
 
   it('should traverse cause chain and return deepest description', () => {
     const root = new Error('root cause');
-    const middle = new Error('middle', { cause: root });
-    const outer = new Error('outer', { cause: middle });
+    const middle = new Error('middle');
+    (middle as any).cause = root;
+    const outer = new Error('outer');
+    (outer as any).cause = middle;
     const summary = (tm as any).extractStreamErrorSummary(outer);
     expect(summary).toBe('root cause');
   });
@@ -486,7 +489,8 @@ describe('TurnManager - extractStreamErrorSummary', () => {
 
   it('should not loop infinitely on circular cause chains', () => {
     const a = new Error('a');
-    const b = new Error('b', { cause: a });
+    const b = new Error('b');
+    (b as any).cause = a;
     // Manually create a circular cause chain
     (a as any).cause = b;
     // Should terminate and return a description (not hang)
