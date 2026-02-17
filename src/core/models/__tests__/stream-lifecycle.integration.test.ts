@@ -45,6 +45,7 @@ describe('Full Stream Lifecycle Integration', () => {
     mockModelFamily = {
       family: 'gpt-4',
       base_instructions: 'You are a helpful assistant.',
+      supports_reasoning: false,
       supports_reasoning_summaries: false,
       needs_special_apply_patch_instructions: false,
     };
@@ -84,7 +85,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(sseData);
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Say hello' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Say hello' }] }],
         tools: [],
       };
 
@@ -128,7 +129,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(buildChatCompletionsSSE(chunks));
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Test' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] }],
         tools: [],
       };
 
@@ -160,7 +161,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(sseData);
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Test' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] }],
         tools: [],
       };
 
@@ -201,7 +202,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(sseData);
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Solve this problem' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Solve this problem' }] }],
         tools: [],
       };
 
@@ -238,7 +239,7 @@ describe('Full Stream Lifecycle Integration', () => {
       );
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Test' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] }],
         tools: [],
       };
 
@@ -262,7 +263,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(sseData);
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Test' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] }],
         tools: [],
       };
 
@@ -301,7 +302,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(sseData);
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Test' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] }],
         tools: [],
       };
 
@@ -344,7 +345,7 @@ describe('Full Stream Lifecycle Integration', () => {
       global.fetch = mockFetchWithSSE(buildChatCompletionsSSE(chunks));
 
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'Test' }],
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] }],
         tools: [],
       };
 

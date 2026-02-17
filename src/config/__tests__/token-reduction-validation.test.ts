@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { Session } from '@/core/Session';
 import { compressSnapshot } from '@/core/session/state/SnapshotCompressor';
-import type { ResponseItem } from '@/protocol/types';
+import type { ResponseItem } from '@/core/protocol/types';
 
 describe('Token Reduction Validation', () => {
   /**
@@ -32,7 +32,7 @@ describe('Token Reduction Validation', () => {
       }));
 
     return {
-      type: 'function_call_output',
+      type: 'function_call_output' as const,
       call_id: callId,
       output: JSON.stringify({
         success: true,
@@ -67,7 +67,7 @@ describe('Token Reduction Validation', () => {
 
       // Calculate total size without compression
       const uncompressedSize = snapshots.reduce(
-        (sum, snapshot) => sum + snapshot.output.length,
+        (sum, snapshot) => sum + (snapshot as any).output.length,
         0
       );
 
@@ -78,7 +78,7 @@ describe('Token Reduction Validation', () => {
 
       // Calculate total size with compression
       const compressedSize = compressedSnapshots.reduce(
-        (sum, snapshot) => sum + snapshot.output.length,
+        (sum, snapshot) => sum + (snapshot as any).output.length,
         0
       );
 

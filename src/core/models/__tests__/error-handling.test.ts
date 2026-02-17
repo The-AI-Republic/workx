@@ -38,7 +38,7 @@ class TestModelClient extends ModelClient {
     return this.withRetry(() => this.mockComplete());
   }
 
-  async *stream(request: any): AsyncGenerator<any> {
+  async *stream(request: any): any {
     this.validateRequest(request);
     yield* this.mockStream();
   }
@@ -120,8 +120,8 @@ class TestModelClient extends ModelClient {
     yield* this.stream(request);
   }
 
-  protected async *attemptStreamResponses(request: any, attempt: number): AsyncGenerator<any> {
-    yield* this.stream(request);
+  protected async attemptStreamResponses(request: any, attempt: number): Promise<any> {
+    return this.stream(request) as any;
   }
 
   protected async *processSSE(stream: ReadableStream<Uint8Array>): AsyncGenerator<any> {
@@ -475,7 +475,7 @@ describe('Error Type Guards', () => {
 
 describe('Error Recovery and Retry Logic', () => {
   let client: TestModelClient;
-  let mockComplete: vi.Mock;
+  let mockComplete: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockComplete = vi.fn();

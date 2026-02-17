@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventProcessor } from '@/extension/sidepanel/components/event_display/EventProcessor';
-import type { Event } from '@/protocol/types';
+import type { Event } from '@/core/protocol/types';
 
 describe('EventProcessor Contract Tests', () => {
   let processor: EventProcessor;
@@ -69,7 +69,6 @@ describe('EventProcessor Contract Tests', () => {
         data: {
           session_id: 'exec_001',
           command: 'ls -la',
-          cwd: '/home/user',
         },
       },
     };
@@ -197,7 +196,6 @@ describe('EventProcessor Contract Tests', () => {
         type: 'TaskStarted',
         data: {
           model: 'claude-sonnet-4-5',
-          cwd: '/workspace',
         },
       },
     };
@@ -219,7 +217,9 @@ describe('EventProcessor Contract Tests', () => {
           token_usage: {
             total: {
               input_tokens: 1234,
+              cached_input_tokens: 0,
               output_tokens: 567,
+              reasoning_output_tokens: 0,
               total_tokens: 1801,
             },
           },
@@ -242,7 +242,7 @@ describe('EventProcessor Contract Tests', () => {
       id: 'evt_reasoning_1',
       msg: {
         type: 'AgentReasoning',
-        data: { reasoning: 'Thinking about the problem...' },
+        data: { content: 'Thinking about the problem...', reasoning: 'Thinking about the problem...' },
       },
     };
 
@@ -279,6 +279,7 @@ describe('EventProcessor Contract Tests', () => {
         type: 'McpToolCallEnd',
         data: {
           call_id: 'tool_001',
+          tool_name: 'Read',
           result: 'File contents',
           duration_ms: 15,
         },
@@ -299,6 +300,7 @@ describe('EventProcessor Contract Tests', () => {
       msg: {
         type: 'ExecApprovalRequest',
         data: {
+          id: 'approval_001',
           command: 'rm -rf /',
           explanation: 'This will delete all files',
         },
@@ -322,6 +324,13 @@ describe('EventProcessor Contract Tests', () => {
         data: {
           info: {
             total_token_usage: {
+              input_tokens: 1234,
+              cached_input_tokens: 500,
+              output_tokens: 678,
+              reasoning_output_tokens: 123,
+              total_tokens: 2035,
+            },
+            last_token_usage: {
               input_tokens: 1234,
               cached_input_tokens: 500,
               output_tokens: 678,
@@ -369,7 +378,6 @@ describe('EventProcessor Contract Tests', () => {
         data: {
           session_id: 'cmd_001',
           command: 'echo test',
-          cwd: '/home',
         },
       },
     };

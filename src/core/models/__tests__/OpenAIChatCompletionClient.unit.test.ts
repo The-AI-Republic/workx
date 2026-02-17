@@ -41,13 +41,14 @@ describe('OpenAIChatCompletionClient - Text Accumulation', () => {
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
+        supports_reasoning: false,
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
         name: 'OpenAI',
         base_url: 'https://api.openai.com/v1',
-        wire_api: 'ChatCompletions',
+        wire_api: 'Chat',
         requires_openai_auth: true,
       },
     });
@@ -205,13 +206,14 @@ describe('OpenAIChatCompletionClient - Event Conversion Integration', () => {
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
+        supports_reasoning: false,
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
         name: 'OpenAI',
         base_url: 'https://api.openai.com/v1',
-        wire_api: 'ChatCompletions',
+        wire_api: 'Chat',
         requires_openai_auth: true,
       },
     });
@@ -248,13 +250,14 @@ describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
+        supports_reasoning: false,
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
         name: 'OpenAI',
         base_url: 'https://api.openai.com/v1',
-        wire_api: 'ChatCompletions',
+        wire_api: 'Chat',
         requires_openai_auth: true,
       },
     });
@@ -368,7 +371,7 @@ describe('OpenAIChatCompletionClient - Tool Call Handling', () => {
         function: { name: 'tool2', arguments: '{"arg2": "value2"}' },
       });
 
-      const toolCallsArray = Array.from(client['chatCompletionToolCalls'].values());
+      const toolCallsArray = Array.from(client['chatCompletionToolCalls'].values()) as any[];
       expect(toolCallsArray.length).toBe(2);
       expect(toolCallsArray[0].function.name).toBe('tool1');
       expect(toolCallsArray[1].function.name).toBe('tool2');
@@ -391,13 +394,14 @@ describe('OpenAIChatCompletionClient - Multi-Turn Mixed Content', () => {
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
+        supports_reasoning: false,
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
         name: 'OpenAI',
         base_url: 'https://api.openai.com/v1',
-        wire_api: 'ChatCompletions',
+        wire_api: 'Chat',
         requires_openai_auth: true,
       },
     });
@@ -475,13 +479,14 @@ describe('OpenAIChatCompletionClient - Payload Conversion', () => {
       modelFamily: {
         family: 'gpt-4o',
         base_instructions: 'You are a helpful assistant.',
+        supports_reasoning: false,
         supports_reasoning_summaries: false,
         needs_special_apply_patch_instructions: false,
       },
       provider: {
         name: 'OpenAI',
         base_url: 'https://api.openai.com/v1',
-        wire_api: 'ChatCompletions',
+        wire_api: 'Chat',
         requires_openai_auth: true,
       },
     });

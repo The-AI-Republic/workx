@@ -729,7 +729,7 @@ describe('BaseTool', () => {
 
     it('should return the tab when chrome.tabs.get resolves', async () => {
       const mockTab = { id: 42, url: 'https://example.com' } as chrome.tabs.Tab;
-      vi.mocked(chrome.tabs.get).mockResolvedValue(mockTab);
+      (vi.mocked(chrome.tabs.get) as any).mockResolvedValue(mockTab);
 
       const tab = await tool.callValidateTabId(42);
       expect(tab).toBe(mockTab);
@@ -752,7 +752,7 @@ describe('BaseTool', () => {
   describe('getActiveTab()', () => {
     it('should return the first active tab', async () => {
       const mockTab = { id: 1, active: true } as chrome.tabs.Tab;
-      vi.mocked(chrome.tabs.query).mockResolvedValue([mockTab]);
+      (vi.mocked(chrome.tabs.query) as any).mockResolvedValue([mockTab]);
 
       const tab = await tool.callGetActiveTab();
       expect(tab).toBe(mockTab);
@@ -760,7 +760,7 @@ describe('BaseTool', () => {
     });
 
     it('should throw when no active tab is found', async () => {
-      vi.mocked(chrome.tabs.query).mockResolvedValue([]);
+      (vi.mocked(chrome.tabs.query) as any).mockResolvedValue([]);
 
       await expect(tool.callGetActiveTab()).rejects.toThrow('No active tab found');
     });
@@ -922,11 +922,11 @@ describe('BaseTool', () => {
         if (params.type === 'object') {
           expect(params.required).toEqual(['url']);
           expect(params.additionalProperties).toBe(false);
-          expect(params.properties.url).toEqual({
+          expect(params.properties!.url).toEqual({
             type: 'string',
             description: 'The URL',
           });
-          expect(params.properties.wait).toEqual({
+          expect(params.properties!.wait).toEqual({
             type: 'boolean',
             description: 'Wait for load',
           });
@@ -949,7 +949,7 @@ describe('BaseTool', () => {
       });
 
       if (def.type === 'function' && def.function.parameters.type === 'object') {
-        const tagsProp = def.function.parameters.properties.tags;
+        const tagsProp = def.function.parameters.properties!.tags;
         expect(tagsProp.type).toBe('array');
         if (tagsProp.type === 'array') {
           expect(tagsProp.items).toEqual({ type: 'string', description: 'A tag' });
@@ -969,10 +969,10 @@ describe('BaseTool', () => {
       });
 
       if (def.type === 'function' && def.function.parameters.type === 'object') {
-        const settingsProp = def.function.parameters.properties.settings;
+        const settingsProp = def.function.parameters.properties!.settings;
         expect(settingsProp.type).toBe('object');
         if (settingsProp.type === 'object') {
-          expect(settingsProp.properties.mode).toEqual({
+          expect(settingsProp.properties!.mode).toEqual({
             type: 'string',
             description: 'Mode',
           });

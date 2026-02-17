@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Session } from '@/core/Session';
-import type { ResponseItem } from '@/protocol/types';
+import type { ResponseItem } from '@/core/protocol/types';
 import { isDOMSnapshotOutput, isCompressedSnapshot } from '@/core/session/state/SnapshotCompressor';
 
 describe('Snapshot Compression Integration', () => {

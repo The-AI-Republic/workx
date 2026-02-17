@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+// @ts-ignore -- jsdom has no type declarations in this project
 import { JSDOM } from 'jsdom';
 
 describe('Terminal Styles - Blue Color Variable', () => {

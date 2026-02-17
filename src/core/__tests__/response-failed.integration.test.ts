@@ -8,7 +8,7 @@
  * **Functional Requirement**: FR-012 (parse error.message from response.failed)
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { OpenAIResponsesClient } from '@/core/models/client/OpenAIResponsesClient';
 import { ModelClientError } from '@/core/models/ModelClient';
 import type { ModelFamily, ModelProviderInfo } from '@/core/models/types';
@@ -19,14 +19,16 @@ describe('Edge Case: response.failed SSE Event', () => {
   beforeEach(() => {
     client = new OpenAIResponsesClient({
       apiKey: 'test-key',
+      conversationId: 'test',
       modelFamily: {
         family: 'gpt-4',
+        base_instructions: '',
+        supports_reasoning: false,
         supports_reasoning_summaries: false,
-        supports_extended_thinking: false,
+        needs_special_apply_patch_instructions: false,
       } as ModelFamily,
       provider: {
         name: 'openai',
-        api_base_url: 'https://api.openai.com/v1',
         wire_api: 'Responses',
         requires_openai_auth: true,
       } as ModelProviderInfo,
@@ -50,7 +52,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     // When: Processing SSE
     try {
       const events = [];
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         events.push(event);
       }
       expect.fail('Should have thrown error');
@@ -74,7 +76,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     });
 
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown');
@@ -96,7 +98,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     });
 
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown');
@@ -135,7 +137,7 @@ describe('Edge Case: response.failed SSE Event', () => {
 
     const events = [];
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         events.push(event);
       }
       expect.fail('Should have thrown');
@@ -165,7 +167,7 @@ describe('Edge Case: response.failed SSE Event', () => {
 
     // When: Processing SSE
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown');
@@ -188,7 +190,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     });
 
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown');
@@ -209,7 +211,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     });
 
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown or handled gracefully');
@@ -236,7 +238,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     const startTime = Date.now();
 
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown');
@@ -262,7 +264,7 @@ describe('Edge Case: response.failed SSE Event', () => {
     });
 
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         // Should not yield events
       }
       expect.fail('Should have thrown');
@@ -295,7 +297,7 @@ describe('Edge Case: response.failed SSE Event', () => {
 
     const events = [];
     try {
-      for await (const event of client.processSSE(failedStream)) {
+      for await (const event of (client as any).processSSE(failedStream)) {
         events.push(event);
       }
       expect.fail('Should have thrown');

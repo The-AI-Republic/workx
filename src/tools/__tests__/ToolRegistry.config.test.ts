@@ -29,7 +29,7 @@ describe('ToolRegistry - Constructor and Configuration', () => {
           name: 'test_tool',
           description: 'A test tool',
           strict: false,
-          parameters: { type: 'object', properties: {} },
+          parameters: { type: 'object' as const, properties: {} },
         },
       };
 
@@ -48,7 +48,7 @@ describe('ToolRegistry - Constructor and Configuration', () => {
           name: 'dup_tool',
           description: 'A duplicate tool',
           strict: false,
-          parameters: { type: 'object', properties: {} },
+          parameters: { type: 'object' as const, properties: {} },
         },
       };
 

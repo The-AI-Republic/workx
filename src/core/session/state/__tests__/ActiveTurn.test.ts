@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ActiveTurn } from '../ActiveTurn';
 import { TaskKind } from '../types';
 import type { RunningTask } from '../types';
-import { ReviewDecision } from '../../../protocol/types';
+import type { ReviewDecision } from '../../../protocol/types';
 
 /**
  * Helper to create a mock RunningTask matching the actual interface
@@ -83,7 +83,7 @@ describe('ActiveTurn', () => {
 
   describe('Turn State Delegation', () => {
     it('should delegate pending approval insertion to TurnState', () => {
-      const resolver = vi.fn<[ReviewDecision], void>();
+      const resolver = vi.fn() as any;
       const executionId = 'exec-1';
 
       activeTurn.insertPendingApproval(executionId, resolver);
@@ -94,8 +94,8 @@ describe('ActiveTurn', () => {
 
     it('should delegate pending input operations to TurnState', () => {
       const input = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Test' }],
+        type: 'text' as const,
+        text: 'Test',
       };
 
       activeTurn.pushPendingInput(input);
@@ -130,10 +130,10 @@ describe('ActiveTurn', () => {
     });
 
     it('should clear pending approvals and input on abort', () => {
-      const resolver = vi.fn<[ReviewDecision], void>();
+      const resolver = vi.fn() as any;
       const input = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Test' }],
+        type: 'text' as const,
+        text: 'Test',
       };
 
       activeTurn.insertPendingApproval('exec-1', resolver);

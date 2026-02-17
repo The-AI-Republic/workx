@@ -260,9 +260,9 @@ describe('Session', () => {
 
         const history = session.getConversationHistory();
         expect(history.items).toHaveLength(3);
-        expect(history.items[0].role).toBe('user');
-        expect(history.items[1].role).toBe('assistant');
-        expect(history.items[2].role).toBe('user');
+        expect((history.items[0] as any).role).toBe('user');
+        expect((history.items[1] as any).role).toBe('assistant');
+        expect((history.items[2] as any).role).toBe('user');
       });
     });
 
@@ -323,7 +323,7 @@ describe('Session', () => {
 
         const last = session.getLastMessage();
         expect(last).toBeDefined();
-        expect(last!.role).toBe('assistant');
+        expect((last as any)!.role).toBe('assistant');
       });
     });
 
@@ -340,7 +340,7 @@ describe('Session', () => {
 
         const entry = session.getHistoryEntry(-1);
         expect(entry).toBeDefined();
-        expect(entry!.role).toBe('assistant');
+        expect((entry as any)!.role).toBe('assistant');
       });
 
       it('should return the first item for offset equal to negative length', async () => {
@@ -349,7 +349,7 @@ describe('Session', () => {
 
         const entry = session.getHistoryEntry(-2);
         expect(entry).toBeDefined();
-        expect(entry!.role).toBe('user');
+        expect((entry as any)!.role).toBe('user');
       });
 
       it('should return undefined when offset exceeds history length', async () => {
@@ -426,8 +426,8 @@ describe('Session', () => {
 
       const history = imported.getConversationHistory();
       expect(history.items).toHaveLength(2);
-      expect(history.items[0].role).toBe('user');
-      expect(history.items[1].role).toBe('assistant');
+      expect((history.items[0] as any).role).toBe('user');
+      expect((history.items[1] as any).role).toBe('assistant');
     });
 
     it('should preserve conversationId through import', async () => {
@@ -805,8 +805,8 @@ describe('Session', () => {
       const result = await session.buildTurnInputWithHistory(newItems);
 
       expect(result).toHaveLength(4);
-      expect(result[0].role).toBe('user');
-      expect(result[1].role).toBe('assistant');
+      expect((result[0] as any).role).toBe('user');
+      expect((result[1] as any).role).toBe('assistant');
       expect(result[2].role).toBe('user');
       expect(result[3].role).toBe('assistant');
     });
@@ -834,8 +834,8 @@ describe('Session', () => {
       const result = await session.turnInputWithHistory(extra);
 
       expect(result).toHaveLength(2);
-      expect(result[0].role).toBe('user');
-      expect(result[1].role).toBe('assistant');
+      expect((result[0] as any).role).toBe('user');
+      expect((result[1] as any).role).toBe('assistant');
     });
   });
 

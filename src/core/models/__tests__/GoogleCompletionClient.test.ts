@@ -635,7 +635,7 @@ describe('GoogleCompletionClient', () => {
     it('should handle string content in messages', async () => {
       const prompt: Prompt = {
         input: [
-          { type: 'message', role: 'user', content: 'Plain string' },
+          { type: 'message', role: 'user', content: 'Plain string' } as any,
         ],
         tools: [],
       };
@@ -753,6 +753,7 @@ describe('GoogleCompletionClient', () => {
           {
             type: 'message',
             role: 'assistant',
+            content: [],
             tool_calls: [
               {
                 id: 'call_fn',
@@ -829,7 +830,7 @@ describe('GoogleCompletionClient', () => {
   describe('Request formatting - tool mapping', () => {
     it('should map function tools to functionDeclarations', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -854,7 +855,7 @@ describe('GoogleCompletionClient', () => {
 
     it('should set toolConfig with AUTO mode when tools are present', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -887,7 +888,7 @@ describe('GoogleCompletionClient', () => {
 
     it('should filter out non-function tool types', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           { type: 'web_search' } as any,
           {
@@ -918,7 +919,7 @@ describe('GoogleCompletionClient', () => {
   describe('Request formatting - schema sanitization', () => {
     it('should remove title from schema', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -942,7 +943,7 @@ describe('GoogleCompletionClient', () => {
     it('should truncate descriptions longer than 1024 characters', async () => {
       const longDesc = 'x'.repeat(2000);
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -970,7 +971,7 @@ describe('GoogleCompletionClient', () => {
 
     it('should add empty properties and additionalProperties to object types without properties', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -994,7 +995,7 @@ describe('GoogleCompletionClient', () => {
 
     it('should set additionalProperties to false for objects with properties (when not already set)', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -1020,7 +1021,7 @@ describe('GoogleCompletionClient', () => {
 
     it('should recursively sanitize nested properties', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -1054,7 +1055,7 @@ describe('GoogleCompletionClient', () => {
 
     it('should recursively sanitize array items', async () => {
       const prompt: Prompt = {
-        input: [{ type: 'message', role: 'user', content: 'hi' }],
+        input: [{ type: 'message', role: 'user', content: 'hi' } as any],
         tools: [
           {
             type: 'function',
@@ -1646,7 +1647,7 @@ describe('GoogleCompletionClient', () => {
           {
             type: 'message',
             role: 'assistant',
-            content: 'I need to call a tool',
+            content: [{ type: 'output_text', text: 'I need to call a tool' }],
             tool_calls: [
               {
                 id: 'call_str',
@@ -1675,6 +1676,7 @@ describe('GoogleCompletionClient', () => {
           {
             type: 'message',
             role: 'assistant',
+            content: [],
             tool_calls: [
               {
                 id: 'call_obj',

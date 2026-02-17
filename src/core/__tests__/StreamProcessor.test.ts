@@ -594,9 +594,7 @@ describe('StreamProcessor', () => {
           {
             type: 'RateLimits',
             snapshot: {
-              requestsRemaining: 50,
-              tokensRemaining: 10000,
-              resetTime: 1000,
+              primary: { used_percent: 50, window_minutes: 60, resets_in_seconds: 1000 },
             },
           },
         ]),
@@ -614,7 +612,7 @@ describe('StreamProcessor', () => {
         { type: 'ReasoningSummaryPartAdded' },
         {
           type: 'RateLimits',
-          snapshot: { requestsRemaining: 50, tokensRemaining: 10000, resetTime: 1000 },
+          snapshot: { primary: { used_percent: 50, window_minutes: 60, resets_in_seconds: 1000 } },
         },
       ];
 

@@ -20,7 +20,7 @@ describe('Error Recovery', () => {
 
   it('should detect when listener not registered', async () => {
     // Simulate "receiving end does not exist" error
-    chromeMock.tabs.sendMessage.mockImplementation((tabId, message, callback) => {
+    chromeMock.tabs.sendMessage.mockImplementation((tabId: number, message: any, callback: any) => {
       chromeMock.runtime.lastError = { message: 'Could not establish connection. Receiving end does not exist.' };
       callback();
     });
@@ -37,13 +37,13 @@ describe('Error Recovery', () => {
     }).catch(e => e);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.message).toContain('Could not establish connection');
+    expect((error as Error).message).toContain('Could not establish connection');
   });
 
   it('should retry with exponential backoff', async () => {
     const attempts: number[] = [];
 
-    chromeMock.tabs.sendMessage.mockImplementation((tabId, message, callback) => {
+    chromeMock.tabs.sendMessage.mockImplementation((tabId: number, message: any, callback: any) => {
       attempts.push(Date.now());
       if (attempts.length < 3) {
         chromeMock.runtime.lastError = { message: 'Could not establish connection' };
@@ -84,7 +84,7 @@ describe('Error Recovery', () => {
   });
 
   it('should fail after max retries', async () => {
-    chromeMock.tabs.sendMessage.mockImplementation((tabId, message, callback) => {
+    chromeMock.tabs.sendMessage.mockImplementation((tabId: number, message: any, callback: any) => {
       chromeMock.runtime.lastError = { message: 'Could not establish connection' };
       callback();
     });

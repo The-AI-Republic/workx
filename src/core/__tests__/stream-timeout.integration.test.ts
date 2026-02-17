@@ -57,16 +57,14 @@ describe('Edge Case: SSE Stream Timeout', () => {
 
     // Add events periodically
     setTimeout(() => {
-      stream.addEvent({ type: 'Created', response: { id: 'resp-1' } });
+      stream.addEvent({ type: 'Created' } as any);
     }, 50);
 
     setTimeout(() => {
       stream.addEvent({
         type: 'OutputTextDelta',
         delta: 'Hello',
-        item_id: 'item-1',
-        content_index: 0,
-      });
+      } as any);
     }, 100);
 
     setTimeout(() => {
@@ -122,7 +120,7 @@ describe('Edge Case: SSE Stream Timeout', () => {
 
     // Add first event quickly
     setTimeout(() => {
-      stream.addEvent({ type: 'Created', response: { id: 'resp-1' } });
+      stream.addEvent({ type: 'Created' } as any);
     }, 10);
 
     // Don't add second event - will timeout waiting
@@ -209,13 +207,11 @@ describe('Edge Case: SSE Stream Timeout', () => {
     });
 
     // Add events and complete quickly
-    stream.addEvent({ type: 'Created', response: { id: 'resp-1' } });
+    stream.addEvent({ type: 'Created' } as any);
     stream.addEvent({
       type: 'OutputTextDelta',
       delta: 'Test',
-      item_id: 'item-1',
-      content_index: 0,
-    });
+    } as any);
     stream.complete();
 
     // Should complete successfully without timeout

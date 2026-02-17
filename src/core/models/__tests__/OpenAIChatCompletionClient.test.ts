@@ -39,6 +39,7 @@ describe('OpenAIChatCompletionClient', () => {
   const mockModelFamily: ModelFamily = {
     family: 'gpt-4o',
     base_instructions: 'You are a helpful assistant.',
+    supports_reasoning: false,
     supports_reasoning_summaries: true,
     needs_special_apply_patch_instructions: false,
   };

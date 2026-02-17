@@ -14,6 +14,8 @@ describe('MCPClient Resources', () => {
     url: 'https://example.com/mcp',
     enabled: true,
     timeout: 30000,
+    transport: 'sse',
+    platform: 'shared',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,
@@ -144,7 +146,7 @@ describe('MCPManager Resources', () => {
       };
 
       expect(response.uri).toBeDefined();
-      expect(response.text || response.blob).toBeDefined();
+      expect(response.text || (response as any).blob).toBeDefined();
     });
   });
 });

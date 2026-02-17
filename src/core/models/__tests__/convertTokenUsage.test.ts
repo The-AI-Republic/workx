@@ -8,7 +8,15 @@
 import { describe, it, expect } from 'vitest';
 import { OpenAIResponsesClient } from '@/core/models/client/OpenAIResponsesClient';
 import type { ModelFamily, ModelProviderInfo } from '@/core/models/types/ResponsesAPI';
-import type { ResponseCompletedUsage } from '@/core/models/types/ResponsesAPI';
+
+/** Local type matching the private ResponseCompletedUsage in OpenAIResponsesClient */
+type ResponseCompletedUsage = {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  input_tokens_details?: { cached_tokens: number };
+  output_tokens_details?: { reasoning_tokens: number };
+};
 
 describe('convertTokenUsage', () => {
   // Helper to create a test client
@@ -16,6 +24,7 @@ describe('convertTokenUsage', () => {
     const modelFamily: ModelFamily = {
       family: 'gpt-4',
       base_instructions: 'You are a helpful assistant.',
+      supports_reasoning: false,
       supports_reasoning_summaries: false,
       needs_special_apply_patch_instructions: false,
     };
@@ -24,6 +33,7 @@ describe('convertTokenUsage', () => {
       name: 'openai',
       base_url: 'https://api.openai.com/v1',
       wire_api: 'Responses',
+      requires_openai_auth: true,
       request_max_retries: 3,
     };
 
@@ -113,7 +123,7 @@ describe('convertTokenUsage', () => {
         output_tokens: 50,
         total_tokens: 150,
         input_tokens_details: {
-          // cached_tokens missing
+          cached_tokens: undefined as unknown as number,
         },
       };
 
@@ -130,7 +140,7 @@ describe('convertTokenUsage', () => {
         output_tokens: 50,
         total_tokens: 150,
         output_tokens_details: {
-          // reasoning_tokens missing
+          reasoning_tokens: undefined as unknown as number,
         },
       };
 

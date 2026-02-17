@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Session } from '../../../Session';
 import { SessionState } from '../SessionState';
-import type { InputItem } from '../../protocol/types';
+import type { InputItem } from '../../../protocol/types';
 
 describe('Persistence Integration', () => {
   describe('Session Export/Import Round-Trip', () => {
@@ -49,8 +49,8 @@ describe('Persistence Integration', () => {
       const importedHistory = imported.getConversationHistory();
 
       expect(importedHistory.items.length).toBe(originalHistory.items.length);
-      expect(importedHistory.items[0].content).toEqual(
-        originalHistory.items[0].content
+      expect((importedHistory.items[0] as any).content).toEqual(
+        (originalHistory.items[0] as any).content
       );
     });
 
@@ -125,15 +125,11 @@ describe('Persistence Integration', () => {
 
     it('should preserve history through export/import', () => {
       const items = [
-        { role: 'user' as const, content: 'Message 1', timestamp: Date.now() },
-        {
-          role: 'assistant' as const,
-          content: 'Response 1',
-          timestamp: Date.now(),
-        },
+        { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Message 1' }] },
+        { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Response 1' }] },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
 
       const exported = state.export();
       const imported = SessionState.import(exported);
@@ -142,7 +138,7 @@ describe('Persistence Integration', () => {
       const importedSnapshot = imported.historySnapshot();
 
       expect(importedSnapshot.length).toBe(originalSnapshot.length);
-      expect(importedSnapshot[0].content).toBe(originalSnapshot[0].content);
+      expect((importedSnapshot[0] as any).content).toEqual((originalSnapshot[0] as any).content);
     });
 
     it('should preserve token info through export/import', () => {
@@ -189,7 +185,7 @@ describe('Persistence Integration', () => {
       // Populate all fields
       state.recordItems([
         { role: 'user' as const, content: 'Test', timestamp: Date.now() },
-      ]);
+      ] as any);
       state.addTokenUsage(200);
       state.updateRateLimits({ remaining_requests: 500 });
       state.addApprovedCommand('test-command');
@@ -235,13 +231,13 @@ describe('Persistence Integration', () => {
       const state1 = new SessionState();
       state1.recordItems([
         { role: 'user' as const, content: 'Original', timestamp: Date.now() },
-      ]);
+      ] as any);
 
       const state2 = state1.deepCopy();
 
       state2.recordItems([
         { role: 'user' as const, content: 'Modified', timestamp: Date.now() },
-      ]);
+      ] as any);
 
       expect(state1.historySnapshot().length).toBe(1);
       expect(state2.historySnapshot().length).toBe(2);
@@ -292,7 +288,7 @@ describe('Persistence Integration', () => {
       const imported = Session.import(exported);
 
       const history = imported.getConversationHistory();
-      const content = history.items[0].content;
+      const content = (history.items[0] as any).content;
 
       // content is an array of content parts [{type: 'input_text', text: '...'}]
       const contentStr = JSON.stringify(content);

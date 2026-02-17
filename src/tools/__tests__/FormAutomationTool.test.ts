@@ -123,7 +123,7 @@ describe('FormAutomationTool', () => {
       if (def.type === 'function') {
         const params = def.function.parameters;
         if (params.type === 'object') {
-          const keys = Object.keys(params.properties);
+          const keys = Object.keys(params.properties!);
           expect(keys).toEqual(
             expect.arrayContaining([
               'url',

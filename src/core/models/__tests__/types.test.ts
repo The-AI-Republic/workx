@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
 // ResponseEvent types and guards
-import {
+import type {
   ResponseEvent,
+} from '../types/ResponseEvent';
+import {
   isResponseEvent,
   isCreated,
   isOutputItemDone,
@@ -15,12 +17,14 @@ import {
   isRateLimits,
 } from '../types/ResponseEvent';
 
-import type { ResponseItem, ContentItem } from '../../../protocol/types';
+import type { ResponseItem, ContentItem } from '../../protocol/types';
 
 // TokenUsage types and functions
-import {
+import type {
   TokenUsage,
   TokenUsageInfo,
+} from '../types/TokenUsage';
+import {
   createEmptyTokenUsage,
   createEmptyTokenUsageInfo,
   aggregateTokenUsage,
@@ -31,9 +35,11 @@ import {
 } from '../types/TokenUsage';
 
 // RateLimit types and functions
-import {
+import type {
   RateLimitSnapshot,
   RateLimitWindow,
+} from '../types/RateLimits';
+import {
   createEmptyRateLimitSnapshot,
   createRateLimitWindow,
   createRateLimitSnapshot,
@@ -445,8 +451,8 @@ describe('Type Compilation and Integration', () => {
 
     expect(isOutputItemDone(event)).toBe(true);
     if (isOutputItemDone(event)) {
-      expect(event.item.id).toBe('item-1');
-      expect(Array.isArray(event.item.content)).toBe(true);
+      expect((event.item as any).id).toBe('item-1');
+      expect(Array.isArray((event.item as any).content)).toBe(true);
     }
   });
 });

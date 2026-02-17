@@ -59,7 +59,7 @@ describe('CacheManager (IndexedDB Backend)', () => {
       // Verify data is in IndexedDB
       const entry = await adapter.get('rollout_cache', 'persistent-key');
       expect(entry).toBeDefined();
-      expect(entry?.entry.value).toEqual(testData);
+      expect((entry as any)?.entry.value).toEqual(testData);
     });
 
     it('should delete data from both memory and IndexedDB', async () => {

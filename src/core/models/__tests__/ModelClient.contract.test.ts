@@ -13,6 +13,7 @@ import type { Prompt } from '@/core/models/types/ResponsesAPI';
 import type { ModelFamily, ModelProviderInfo } from '@/core/models/types/ResponsesAPI';
 import type { ResponseEvent } from '@/core/models/types/ResponseEvent';
 import type { RateLimitSnapshot } from '@/core/models/types/RateLimits';
+import { ResponseStream } from '@/core/models/ResponseStream';
 
 // Mock configuration for testing (using snake_case from Phase 3.2)
 const mockProvider: ModelProviderInfo = {
@@ -27,6 +28,7 @@ const mockProvider: ModelProviderInfo = {
 const mockModelFamily: ModelFamily = {
   family: 'gpt-4',
   base_instructions: 'You are a helpful assistant',
+  supports_reasoning: false,
   supports_reasoning_summaries: false,
   needs_special_apply_patch_instructions: false,
 };
@@ -41,7 +43,7 @@ class TestModelClient extends ModelClient {
     throw new Error('Not implemented');
   }
 
-  async stream(): Promise<any> {
+  async stream(prompt: Prompt): Promise<any> {
     throw new Error('Not implemented');
   }
 
@@ -101,7 +103,7 @@ class TestModelClient extends ModelClient {
     throw new Error('Not implemented');
   }
 
-  protected async *attemptStreamResponses(request: any, attempt: number): AsyncGenerator<ResponseEvent> {
+  protected async attemptStreamResponses(attempt: number, payload: any): Promise<ResponseStream> {
     throw new Error('Not implemented');
   }
 

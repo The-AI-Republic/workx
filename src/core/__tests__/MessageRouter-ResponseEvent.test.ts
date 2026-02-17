@@ -130,7 +130,7 @@ describe('MessageRouter ResponseEvent Integration', () => {
         expectedType: MessageType.RESPONSE_WEB_SEARCH_CALL_BEGIN
       },
       {
-        event: { type: 'RateLimits', snapshot: { requestsRemaining: 100 } },
+        event: { type: 'RateLimits', snapshot: { primary: { used_percent: 10, window_minutes: 60, resets_in_seconds: 300 } } },
         expectedType: MessageType.RESPONSE_RATE_LIMITS
       }
     ];

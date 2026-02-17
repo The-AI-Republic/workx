@@ -84,7 +84,7 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       const testConfig: IStoredConfig = {
         version: '1.0.0',
         selectedModelKey: 'anthropic:claude-3-5-sonnet',
-        providerKeys: { anthropic: { apiKey: 'test-key-123' } },
+        providerKeys: { anthropic: { id: 'anthropic', apiKey: 'test-key-123' } },
         preferences: {} as any,
         cache: {} as any,
         extension: {} as any,
@@ -100,7 +100,7 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       const initialConfig: IStoredConfig = {
         version: '1.0.0',
         selectedModelKey: 'anthropic:claude-3-haiku',
-        providerKeys: { anthropic: { apiKey: 'test-key-1' } },
+        providerKeys: { anthropic: { id: 'anthropic', apiKey: 'test-key-1' } },
         preferences: {} as any,
         cache: {} as any,
         extension: {} as any,
@@ -109,7 +109,7 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       const updatedConfig: IStoredConfig = {
         version: '1.0.0',
         selectedModelKey: 'anthropic:claude-3-5-sonnet',
-        providerKeys: { anthropic: { apiKey: 'test-key-2' } },
+        providerKeys: { anthropic: { id: 'anthropic', apiKey: 'test-key-2' } },
         preferences: {} as any,
         cache: {} as any,
         extension: {} as any,
@@ -145,7 +145,7 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       const testConfig: IStoredConfig = {
         version: '1.0.0',
         selectedModelKey: 'anthropic:claude-3-5-sonnet',
-        providerKeys: { anthropic: { apiKey: 'test-key-with-some-length' } },
+        providerKeys: { anthropic: { id: 'anthropic', apiKey: 'test-key-with-some-length' } },
         preferences: {} as any,
         cache: {} as any,
         extension: {} as any,
@@ -239,7 +239,7 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       const agentConfig: IStoredConfig = {
         version: '1.0.0',
         selectedModelKey: 'anthropic:claude-3-5-sonnet',
-        providerKeys: { anthropic: { apiKey: 'test-key' } },
+        providerKeys: { anthropic: { id: 'anthropic', apiKey: 'test-key' } },
         preferences: {} as any,
         cache: {} as any,
         extension: {} as any,
@@ -270,7 +270,7 @@ describe('ConfigStorage (IndexedDB Backend)', () => {
       const testConfig: IStoredConfig = {
         version: '1.0.0',
         selectedModelKey: 'anthropic:claude-3-5-sonnet',
-        providerKeys: { anthropic: { apiKey: 'shared-key' } },
+        providerKeys: { anthropic: { id: 'anthropic', apiKey: 'shared-key' } },
         preferences: {} as any,
         cache: {} as any,
         extension: {} as any,

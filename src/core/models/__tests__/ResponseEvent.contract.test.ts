@@ -31,7 +31,7 @@ const mockSnapshot = {
     window_minutes: 1,
     resets_in_seconds: 30,
   },
-  secondary: null,
+  secondary: undefined,
 };
 
 describe('ResponseEvent Contract Compliance', () => {

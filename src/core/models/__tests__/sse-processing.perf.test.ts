@@ -18,6 +18,7 @@ describe('SSE Processing Performance', () => {
     const modelFamily: ModelFamily = {
       family: 'gpt-4',
       base_instructions: 'You are a helpful assistant.',
+      supports_reasoning: false,
       supports_reasoning_summaries: false,
       needs_special_apply_patch_instructions: false,
     };
@@ -26,6 +27,7 @@ describe('SSE Processing Performance', () => {
       name: 'openai',
       base_url: 'https://api.openai.com/v1',
       wire_api: 'Responses',
+      requires_openai_auth: true,
       request_max_retries: 3,
     };
 

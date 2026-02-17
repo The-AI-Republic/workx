@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Session } from '../../../Session';
-import type { InputItem } from '../../protocol/types';
+import type { InputItem } from '../../../protocol/types';
 
 describe('Session Integration (Refactored)', () => {
   let session: Session;
@@ -258,9 +258,9 @@ describe('Session Integration (Refactored)', () => {
       session.setEventEmitter(emitter);
 
       const event = {
-        event_id: 'test-event',
-        msg: { type: 'text' as const, text: 'Test' },
-      };
+        id: 'test-event',
+        msg: { type: 'AgentMessage', data: { message: 'Test' } },
+      } as any;
 
       await session.emitEvent(event);
 
@@ -269,9 +269,9 @@ describe('Session Integration (Refactored)', () => {
 
     it('should not throw when emitting without emitter', async () => {
       const event = {
-        event_id: 'test-event',
-        msg: { type: 'text' as const, text: 'Test' },
-      };
+        id: 'test-event',
+        msg: { type: 'AgentMessage', data: { message: 'Test' } },
+      } as any;
 
       await expect(session.emitEvent(event)).resolves.not.toThrow();
     });

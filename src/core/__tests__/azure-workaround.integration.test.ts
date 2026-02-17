@@ -43,9 +43,10 @@ function createPrompt(): Prompt {
   return {
     input: [
       {
-        type: 'user_input',
-        content: 'Test message',
-      },
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: 'Test message' }],
+      } as any,
     ],
     tools: [],
   };

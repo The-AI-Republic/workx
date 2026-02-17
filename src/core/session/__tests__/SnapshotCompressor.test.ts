@@ -15,7 +15,7 @@ import {
   compressSnapshot,
   COMPRESSED_SNAPSHOT_PLACEHOLDER,
 } from '@/core/session/state/SnapshotCompressor';
-import type { ResponseItem } from '@/protocol/types';
+import type { ResponseItem } from '@/core/protocol/types';
 
 describe('SnapshotCompressor', () => {
   describe('isDOMSnapshotOutput', () => {
@@ -241,9 +241,9 @@ describe('SnapshotCompressor', () => {
       const compressed = compressSnapshot(originalSnapshot);
 
       expect(compressed.type).toBe('function_call_output');
-      expect(compressed.call_id).toBe('call_original');
+      expect((compressed as any).call_id).toBe('call_original');
 
-      const parsed = JSON.parse(compressed.output);
+      const parsed = JSON.parse((compressed as any).output);
       expect(parsed.success).toBe(true);
       expect(parsed.metadata.toolName).toBe('browser_dom');
       expect(parsed.data.page.context.url).toBe('https://example.com');
@@ -271,7 +271,7 @@ describe('SnapshotCompressor', () => {
       };
 
       const compressed = compressSnapshot(snapshotWithMetadata);
-      const parsed = JSON.parse(compressed.output);
+      const parsed = JSON.parse((compressed as any).output);
 
       expect(parsed.data.page.context.url).toBe(
         'https://github.com/anthropics/claude'
@@ -371,7 +371,7 @@ describe('SnapshotCompressor', () => {
       const compressed = compressSnapshot(largeSnapshot);
 
       const originalSize = largeSnapshot.output.length;
-      const compressedSize = compressed.output.length;
+      const compressedSize = (compressed as any).output.length;
 
       // Compressed should be significantly smaller
       expect(compressedSize).toBeLessThan(originalSize * 0.5);

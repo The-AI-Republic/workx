@@ -61,6 +61,7 @@ describe('Backward Compatibility', () => {
         function: {
           name: 'test-tool',
           description: 'Test tool',
+          strict: false,
           parameters: { type: 'object', properties: {} }
         }
       }, async () => ({ success: true }))).resolves.not.toThrow();

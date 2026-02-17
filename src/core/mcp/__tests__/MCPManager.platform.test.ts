@@ -68,7 +68,7 @@ vi.mock('../../utils/encryption', () => ({
 describe('MCPManager Platform Features', () => {
   beforeEach(() => {
     (globalThis as any).chrome = mockChromeStorage;
-    vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID);
+    vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID as any);
     Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     uuidCounter = 0;
     vi.clearAllMocks();
