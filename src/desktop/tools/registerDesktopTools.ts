@@ -19,6 +19,10 @@ import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
 import { invoke } from '@tauri-apps/api/core';
+import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
+import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowserRiskAssessor';
+import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
+import type { IRiskAssessor } from '../../core/approval/types';
 
 /**
  * Check if a tool supports the given platform based on its metadata
@@ -58,8 +62,13 @@ export async function registerDesktopToolsImpl(
     toolsConfig.dom_tool === true ||
     toolsConfig.navigation_tool === true;
 
+  // Risk assessors for desktop tools
+  const mcpBrowserAssessor = new McpBrowserRiskAssessor();
+  const terminalAssessor = new TerminalRiskAssessor();
+  const staticAssessor = new StaticRiskAssessor();
+
   // Helper to register a BaseTool instance
-  const registerTool = async (toolName: string, toolInstance: any) => {
+  const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor) => {
     if (registry.getTool(toolName)) {
       return;
     }
@@ -79,7 +88,7 @@ export async function registerDesktopToolsImpl(
           toolName: context.toolName,
         },
       });
-    });
+    }, riskAssessor);
   };
 
   // ──────────────────────────────────────────────────────────────────────
@@ -123,7 +132,7 @@ export async function registerDesktopToolsImpl(
 
           if (connection && connection.tools.length > 0) {
             // Register all discovered tools with prefixed names (browser__click, etc.)
-            await registerMCPTools(mcpManager, 'browser', connection.tools, registry);
+            await registerMCPTools(mcpManager, 'browser', connection.tools, registry, mcpBrowserAssessor);
           } else {
             console.warn('[registerDesktopTools] Browser server connected but no tools discovered');
           }
@@ -142,13 +151,13 @@ export async function registerDesktopToolsImpl(
   // Register cross-platform tools
   // ──────────────────────────────────────────────────────────────────────
 
-  // Planning tool - always enabled
+  // Planning tool - always enabled (zero risk)
   const planningTool = new PlanningTool();
-  await registerTool('planning_tool', planningTool);
+  await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
 
-  // Web search tool
+  // Web search tool (zero risk)
   const webSearchTool = new WebSearchTool();
-  await registerTool('web_search', webSearchTool);
+  await registerTool('web_search', webSearchTool, new StaticRiskAssessor(0));
 
   // ──────────────────────────────────────────────────────────────────────
   // Register terminal tool (desktop only)
@@ -198,7 +207,8 @@ export async function registerDesktopToolsImpl(
           userConfirmed?: boolean;
           sandboxed?: boolean;
         });
-      }
+      },
+      terminalAssessor
     );
   }
 }

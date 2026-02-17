@@ -1125,7 +1125,7 @@
     flex-direction: column;
     height: 100%;
     min-height: 0; /* Important for nested flex overflow */
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
   }
@@ -1489,6 +1489,7 @@
     --browserx-warning: #ffff00;
     background: var(--browserx-background);
     border: 1px solid var(--browserx-border);
+    color-scheme: dark;
   }
 
   /* ChatGPT theme for settings modal - use modern light/dark colors */
@@ -1507,5 +1508,6 @@
     border: 1px solid var(--browserx-border);
     border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    color-scheme: light;
   }
 </style>

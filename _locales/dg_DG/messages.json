@@ -1,30 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "much general in-browser AI agent for work tasks wow"
-  },
   "_current_": {
     "message": ""
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "much API key configuration wow"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "much API keys encrypted and stored locally in browser. never sent to external servers except for API calls wow"
   },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "much access browser storage (localStorage, sessionStorage, cookies) wow"
   },
   "Action": {
     "message": "much action wow"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "much action details wow"
@@ -35,6 +20,9 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "much add modification wow"
   },
@@ -42,9 +30,6 @@
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -83,8 +68,26 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "much API key configuration wow"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "much API keys encrypted and stored locally in browser. never sent to external servers except for API calls wow"
+  },
   "Approval_History": {
     "message": "much approval history wow"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "much approve wow"
@@ -98,11 +101,14 @@
   "Auto_default": {
     "message": ""
   },
-  "Available_Tools": {
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "much available: wow"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "much back wow"
@@ -116,20 +122,20 @@
   "Beta": {
     "message": "much beta wow"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "much browser automation tool toggles wow"
+  },
   "Browser_Tools": {
     "message": "much browser tools wow"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "much browser automation tool toggles wow"
+  "Cache_behavior_and_data_retention": {
+    "message": "such cache behavior and data retention wow"
   },
   "Cache_Settings": {
     "message": "much cache settings wow"
   },
   "Cache_TTL_seconds": {
     "message": "very cache ttl (seconds) wow"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "such cache behavior and data retention wow"
   },
   "Cancel": {
     "message": "such cancel wow"
@@ -185,13 +191,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -214,9 +220,6 @@
   },
   "Current_Plan": {
     "message": "very current plan: wow"
-  },
-  "DOM_Tool": {
-    "message": "such DOM tool wow"
   },
   "Daily_Credits": {
     "message": "very daily credits wow"
@@ -245,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "much display token consumption (input/output tokens) when tasks complete wow"
   },
+  "DOM_Tool": {
+    "message": "such DOM tool wow"
+  },
   "Duration": {
     "message": ""
   },
@@ -257,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "much enable all tools wow"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "much enable cache wow"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "much enable caching to improve performance by storing frequently accessed data wow"
   },
   "Enable_Compression": {
     "message": "very enable compression wow"
@@ -266,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "much enable content scripts wow"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "much enable extension wow"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "much enable caching to improve performance by storing frequently accessed data wow"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -311,17 +317,23 @@
   "Explain_your_decision": {
     "message": "very explain decision wow..."
   },
-  "Extension_Permission": {
-    "message": "such extension & permission wow"
-  },
-  "Extension_Permission_Settings": {
-    "message": "very extension & permission settings wow"
-  },
   "Extension_Configuration": {
     "message": "much extension configuration wow"
   },
   "Extension_configuration_and_permissions": {
     "message": "very extension config and permissions wow"
+  },
+  "extension_description": {
+    "message": "much general in-browser AI agent for work tasks wow"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "such extension & permission wow"
+  },
+  "Extension_Permission_Settings": {
+    "message": "very extension & permission settings wow"
   },
   "Extra_Credits": {
     "message": "such extra credits wow, many bonus"
@@ -365,11 +377,11 @@
   "General": {
     "message": "such general wow"
   },
-  "General_Settings": {
-    "message": "much general settings wow"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "much general settings wow"
   },
   "Get_Started": {
     "message": "much get started wow"
@@ -400,12 +412,6 @@
   "Keyboard_Shortcuts": {
     "message": "much keyboard shortcuts wow"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "such LLM go direct to APIs wow"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "such LLM go through AI Republic wow"
-  },
   "Language": {
     "message": "such language wow"
   },
@@ -418,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "such list of allowed origins (one per line). supports wildcards (*) wow"
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "such LLM go direct to APIs wow"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "such LLM go through AI Republic wow"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -429,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "much loading settings... wow"
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -445,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "such login to get free credits wow"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "very low credits remaining wow"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "such manage browser tabs (open, close, switch, query) wow"
@@ -486,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "such maximum time (in milliseconds) a tool can run before timeout (default: 30000) wow"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -532,9 +544,6 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
@@ -542,6 +551,9 @@
     "message": "such no approval history yet wow."
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -564,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "open side panel wow:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "such organization wow"
@@ -610,23 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "very quick action wow"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "much quick start wow"
   },
-  "Quick_action": {
-    "message": "very quick action wow"
+  "Read_only": {
+    "message": "much read-only wow"
   },
   "Read_Only": {
     "message": ""
   },
   "Read_Write": {
     "message": ""
-  },
-  "Read_only": {
-    "message": "much read-only wow"
   },
   "Reason_optional": {
     "message": "such reason (optional) wow"
@@ -712,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "much security & privacy wow"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "so security level for tool execution environment wow"
+  },
+  "Security_Privacy": {
+    "message": "much security & privacy wow"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "so select the AI model to use for conversations. wow"
@@ -727,6 +742,9 @@
   "Service_Tier": {
     "message": "much service tier wow"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "much session wow"
   },
@@ -734,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -756,6 +777,9 @@
   },
   "Stable": {
     "message": "such stable wow"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -808,14 +832,14 @@
   "Testing": {
     "message": "such testing wow"
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "the agent is currently using backend mode wow. llm requests will route through ai republic server very secure wow. your conversations are processed securely through our infrastructure much wow"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
-  },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "the agent is currently using backend mode wow. llm requests will route through ai republic server very secure wow. your conversations are processed securely through our infrastructure much wow"
   },
   "Time": {
     "message": "such time wow"
@@ -853,9 +877,6 @@
   "UI_Theme": {
     "message": "much UI theme wow"
   },
-  "URL": {
-    "message": "such URL wow"
-  },
   "Unable_to_load_credit_information": {
     "message": "so unable to load credit information wow"
   },
@@ -880,20 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "so upgrade your subscription to explore world's most powerful models wow"
   },
+  "URL": {
+    "message": "such URL wow"
+  },
   "Use_Context_Menu": {
     "message": "much use context menu: wow"
   },
   "Use_Own_API_Key": {
     "message": "very use own API key wow"
   },
-  "User_Center": {
-    "message": "much user center wow"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "such user approved action wow"
+  },
+  "User_Center": {
+    "message": "much user center wow"
   },
   "User_decision": {
     "message": "much user decision wow"
@@ -906,6 +927,9 @@
   },
   "User_requested_modifications": {
     "message": "much user requested modifications wow"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "so using extra credits wow"
@@ -951,14 +975,5 @@
   },
   "Your_Decision": {
     "message": "such your decision wow"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }

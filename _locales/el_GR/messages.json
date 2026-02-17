@@ -1,30 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "Γενικός πράκτορας AI εντός του προγράμματος περιήγησης για επαγγελματικές εργασίες"
-  },
   "_current_": {
     "message": ""
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "Διαμόρφωση Κλειδιού API"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "Τα κλειδιά API κρυπτογραφούνται και αποθηκεύονται τοπικά στον περιηγητή σας. Δεν αποστέλλονται ποτέ σε εξωτερικούς διακομιστές, εκτός από κλήσεις API."
   },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Πρόσβαση στην αποθήκευση του περιηγητή (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "Δράση"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "Λεπτομέρειες Ενέργειας"
@@ -35,6 +20,9 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Προσθήκη Τροποποίησης"
   },
@@ -42,9 +30,6 @@
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -83,8 +68,26 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "Διαμόρφωση Κλειδιού API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Τα κλειδιά API κρυπτογραφούνται και αποθηκεύονται τοπικά στον περιηγητή σας. Δεν αποστέλλονται ποτέ σε εξωτερικούς διακομιστές, εκτός από κλήσεις API."
+  },
   "Approval_History": {
     "message": "Ιστορικό Εγκρίσεων"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "Έγκριση"
@@ -98,11 +101,14 @@
   "Auto_default": {
     "message": ""
   },
-  "Available_Tools": {
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "Διαθέσιμο:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "Πίσω"
@@ -116,20 +122,20 @@
   "Beta": {
     "message": "Beta"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "Διακόπτες αυτοματοποίησης περιηγητή"
+  },
   "Browser_Tools": {
     "message": "Εργαλεία Περιηγητή"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Διακόπτες αυτοματοποίησης περιηγητή"
+  "Cache_behavior_and_data_retention": {
+    "message": "Συμπεριφορά προσωρινής αποθήκευσης και διατήρηση δεδομένων"
   },
   "Cache_Settings": {
     "message": "Ρυθμίσεις προσωρινής αποθήκευσης"
   },
   "Cache_TTL_seconds": {
     "message": "Cache TTL (δευτερόλεπτα)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "Συμπεριφορά προσωρινής αποθήκευσης και διατήρηση δεδομένων"
   },
   "Cancel": {
     "message": "Ακύρωση"
@@ -185,13 +191,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -214,9 +220,6 @@
   },
   "Current_Plan": {
     "message": "Τρέχων Σχέδιο:"
-  },
-  "DOM_Tool": {
-    "message": "Εργαλείο DOM"
   },
   "Daily_Credits": {
     "message": "Ημερήσιες Πιστώσεις"
@@ -245,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "Εμφάνιση κατανάλωσης token (εισερχόμενα/εξερχόμενα token) όταν ολοκληρωθούν οι εργασίες"
   },
+  "DOM_Tool": {
+    "message": "Εργαλείο DOM"
+  },
   "Duration": {
     "message": ""
   },
@@ -257,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "Ενεργοποίηση όλων των εργαλείων"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "Ενεργοποίηση προσωρινής μνήμης"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Ενεργοποίηση της προσωρινής αποθήκευσης (cache) για βελτίωση της απόδοσης, αποθηκεύοντας δεδομένα στα οποία γίνεται συχνή πρόσβαση."
   },
   "Enable_Compression": {
     "message": "Ενεργοποίηση συμπίεσης"
@@ -266,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "Ενεργοποίηση σεναρίων περιεχομένου"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "Ενεργοποίηση επέκτασης"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Ενεργοποίηση της προσωρινής αποθήκευσης (cache) για βελτίωση της απόδοσης, αποθηκεύοντας δεδομένα στα οποία γίνεται συχνή πρόσβαση."
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -311,17 +317,23 @@
   "Explain_your_decision": {
     "message": "Εξηγήστε την απόφασή σας..."
   },
-  "Extension_Permission": {
-    "message": "Επέκταση και Δικαιώματα"
-  },
-  "Extension_Permission_Settings": {
-    "message": "Ρυθμίσεις επέκτασης και δικαιωμάτων"
-  },
   "Extension_Configuration": {
     "message": "Διαμόρφωση επέκτασης"
   },
   "Extension_configuration_and_permissions": {
     "message": "Διαμόρφωση επέκτασης και δικαιώματα"
+  },
+  "extension_description": {
+    "message": "Γενικός πράκτορας AI εντός του προγράμματος περιήγησης για επαγγελματικές εργασίες"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "Επέκταση και Δικαιώματα"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Ρυθμίσεις επέκτασης και δικαιωμάτων"
   },
   "Extra_Credits": {
     "message": "Επιπλέον Πίστωση"
@@ -365,11 +377,11 @@
   "General": {
     "message": "Γενικά"
   },
-  "General_Settings": {
-    "message": "Γενικές Ρυθμίσεις"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "Γενικές Ρυθμίσεις"
   },
   "Get_Started": {
     "message": "Ξεκινήστε"
@@ -400,12 +412,6 @@
   "Keyboard_Shortcuts": {
     "message": "Συντομεύσεις Πληκτρολογίου"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "Τα αιτήματα LLM πηγαίνουν απευθείας στα API των παρόχων"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "Τα αιτήματα LLM δρομολογούνται μέσω του backend του AI Republic"
-  },
   "Language": {
     "message": "Γλώσσα"
   },
@@ -418,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Λίστα επιτρεπόμενων προελεύσεων (μία ανά γραμμή). Υποστηρίζει wildcards (*)."
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Τα αιτήματα LLM πηγαίνουν απευθείας στα API των παρόχων"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Τα αιτήματα LLM δρομολογούνται μέσω του backend του AI Republic"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -429,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "Φόρτωση ρυθμίσεων..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -445,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "Συνδεθείτε για να λάβετε δωρεάν μονάδες"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "Χαμηλό υπόλοιπο πιστώσεων"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Διαχείριση καρτελών προγράμματος περιήγησης (άνοιγμα, κλείσιμο, εναλλαγή, ερώτηση)"
@@ -486,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Μέγιστος χρόνος (σε χιλιοστά του δευτερολέπτου) που μπορεί να εκτελείται ένα εργαλείο πριν λήξει το χρονικό όριο (προεπιλογή: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -532,9 +544,6 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
@@ -542,6 +551,9 @@
     "message": "Δεν υπάρχει ακόμη ιστορικό εγκρίσεων."
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -564,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "Άνοιγμα Πλευρικού Πάνελ:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "Οργανισμός"
@@ -610,23 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "Γρήγορη ενέργεια"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "Γρήγορη Έναρξη"
   },
-  "Quick_action": {
-    "message": "Γρήγορη ενέργεια"
+  "Read_only": {
+    "message": "Μόνο για ανάγνωση"
   },
   "Read_Only": {
     "message": ""
   },
   "Read_Write": {
     "message": ""
-  },
-  "Read_only": {
-    "message": "Μόνο για ανάγνωση"
   },
   "Reason_optional": {
     "message": "Αιτία (προαιρετικό)"
@@ -712,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "Ασφάλεια & Απόρρητο"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Επίπεδο ασφαλείας για το περιβάλλον εκτέλεσης εργαλείων"
+  },
+  "Security_Privacy": {
+    "message": "Ασφάλεια & Απόρρητο"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Επιλέξτε το μοντέλο AI για τις συνομιλίες."
@@ -727,6 +742,9 @@
   "Service_Tier": {
     "message": "Επίπεδο Υπηρεσίας"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "Συνεδρία"
   },
@@ -734,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -756,6 +777,9 @@
   },
   "Stable": {
     "message": "Σταθερό"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -808,14 +832,14 @@
   "Testing": {
     "message": "Δοκιμή..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Ο πράκτορας χρησιμοποιεί αυτή τη στιγμή λειτουργία backend. Τα αιτήματα LLM θα δρομολογηθούν μέσω του διακομιστή AI Republic. Οι συνομιλίες σας υποβάλλονται σε επεξεργασία με ασφάλεια μέσω της υποδομής μας."
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
-  },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "Ο πράκτορας χρησιμοποιεί αυτή τη στιγμή λειτουργία backend. Τα αιτήματα LLM θα δρομολογηθούν μέσω του διακομιστή AI Republic. Οι συνομιλίες σας υποβάλλονται σε επεξεργασία με ασφάλεια μέσω της υποδομής μας."
   },
   "Time": {
     "message": "Χρόνος"
@@ -853,9 +877,6 @@
   "UI_Theme": {
     "message": "Θέμα UI"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "Δεν ήταν δυνατή η φόρτωση των πληροφοριών πίστωσης"
   },
@@ -880,20 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Αναβαθμίστε τη συνδρομή σας για να εξερευνήσετε τα πιο ισχυρά μοντέλα του κόσμου"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "Χρήση του μενού περιβάλλοντος:"
   },
   "Use_Own_API_Key": {
     "message": "Χρήση δικού σας κλειδιού API"
   },
-  "User_Center": {
-    "message": "Κέντρο χρήστη"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "Δράση που εγκρίθηκε από τον χρήστη"
+  },
+  "User_Center": {
+    "message": "Κέντρο χρήστη"
   },
   "User_decision": {
     "message": "Απόφαση χρήστη"
@@ -906,6 +927,9 @@
   },
   "User_requested_modifications": {
     "message": "Τροποποιήσεις που ζήτησε ο χρήστης"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "Χρήση επιπλέον πιστώσεων"
@@ -951,14 +975,5 @@
   },
   "Your_Decision": {
     "message": "Η απόφασή σας"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }

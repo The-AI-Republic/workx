@@ -53,9 +53,11 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@a2a-js/sdk": "^0.3.10",
     "@google/genai": "^1.30.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-deep-link": "^2.4.7",
     "@tauri-apps/plugin-global-shortcut": "^2.3.1",
     "@tauri-apps/plugin-notification": "^2.3.3",

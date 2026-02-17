@@ -1,30 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "কাজের জন্য সাধারণ ব্রাউজার-ভিত্তিক AI এজেন্ট"
-  },
   "_current_": {
     "message": ""
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "API কী কনফিগারেশন"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API কী গুলি এনক্রিপ্ট করা হয় এবং আপনার ব্রাউজারে লোকালভাবে সংরক্ষিত হয়। API কল ব্যতীত এগুলি কখনই বাহ্যিক সার্ভারে পাঠানো হয় না।"
   },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ব্রাউজার স্টোরেজে প্রবেশ (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "অ্যাকশন"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "অ্যাকশন বিবরণ"
@@ -35,6 +20,9 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "পরিবর্তন যোগ করুন"
   },
@@ -42,9 +30,6 @@
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -83,8 +68,26 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API কী কনফিগারেশন"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API কী গুলি এনক্রিপ্ট করা হয় এবং আপনার ব্রাউজারে লোকালভাবে সংরক্ষিত হয়। API কল ব্যতীত এগুলি কখনই বাহ্যিক সার্ভারে পাঠানো হয় না।"
+  },
   "Approval_History": {
     "message": "অনুমোদন ইতিহাস"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "অনুমোদন"
@@ -98,11 +101,14 @@
   "Auto_default": {
     "message": ""
   },
-  "Available_Tools": {
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "উপলব্ধ:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "পিছনে"
@@ -116,20 +122,20 @@
   "Beta": {
     "message": "বেটা"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "ব্রাউজার অটোমেশন টুল টগলস"
+  },
   "Browser_Tools": {
     "message": "ব্রাউজার সরঞ্জাম"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "ব্রাউজার অটোমেশন টুল টগলস"
+  "Cache_behavior_and_data_retention": {
+    "message": "ক্যাশের আচরণ এবং ডেটা সংরক্ষণ"
   },
   "Cache_Settings": {
     "message": "ক্যাশ সেটিংস"
   },
   "Cache_TTL_seconds": {
     "message": "ক্যাশ TTL (সেকেন্ড)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "ক্যাশের আচরণ এবং ডেটা সংরক্ষণ"
   },
   "Cancel": {
     "message": "বাতিল"
@@ -185,13 +191,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -214,9 +220,6 @@
   },
   "Current_Plan": {
     "message": "বর্তমান প্ল্যান:"
-  },
-  "DOM_Tool": {
-    "message": "DOM টুল"
   },
   "Daily_Credits": {
     "message": "দৈনিক ক্রেডিট"
@@ -245,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "কাজ শেষ হলে টোকেন ব্যবহারের তথ্য (ইনপুট/আউটপুট টোকেন) প্রদর্শন করুন"
   },
+  "DOM_Tool": {
+    "message": "DOM টুল"
+  },
   "Duration": {
     "message": ""
   },
@@ -257,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "সব টুল সক্রিয় করুন"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "ক্যাশ সক্রিয় করুন"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "প্রায়ই ব্যবহৃত ডেটা সংরক্ষণ করে পারফরম্যান্স উন্নত করতে ক্যাশিং সক্রিয় করুন"
   },
   "Enable_Compression": {
     "message": "কম্প্রেশন সক্রিয় করুন"
@@ -266,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "কন্টেন্ট স্ক্রিপ্ট সক্রিয় করুন"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "এক্সটেনশন সক্রিয় করুন"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "প্রায়ই ব্যবহৃত ডেটা সংরক্ষণ করে পারফরম্যান্স উন্নত করতে ক্যাশিং সক্রিয় করুন"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -311,17 +317,23 @@
   "Explain_your_decision": {
     "message": "আপনার সিদ্ধান্ত ব্যাখ্যা করুন..."
   },
-  "Extension_Permission": {
-    "message": "এক্সটেনশন ও অনুমতি"
-  },
-  "Extension_Permission_Settings": {
-    "message": "এক্সটেনশন ও অনুমতি সেটিংস"
-  },
   "Extension_Configuration": {
     "message": "এক্সটেনশন কনফিগারেশন"
   },
   "Extension_configuration_and_permissions": {
     "message": "এক্সটেনশন কনফিগারেশন এবং অনুমতি"
+  },
+  "extension_description": {
+    "message": "কাজের জন্য সাধারণ ব্রাউজার-ভিত্তিক AI এজেন্ট"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "এক্সটেনশন ও অনুমতি"
+  },
+  "Extension_Permission_Settings": {
+    "message": "এক্সটেনশন ও অনুমতি সেটিংস"
   },
   "Extra_Credits": {
     "message": "অতিরিক্ত ক্রেডিট"
@@ -365,11 +377,11 @@
   "General": {
     "message": "সাধারণ"
   },
-  "General_Settings": {
-    "message": "সাধারণ সেটিংস"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "কাজের জন্য সাধারণ ইন-ব্রাউজার AI এজেন্ট"
+  },
+  "General_Settings": {
+    "message": "সাধারণ সেটিংস"
   },
   "Get_Started": {
     "message": "শুরু করুন"
@@ -400,12 +412,6 @@
   "Keyboard_Shortcuts": {
     "message": "Keyboard Shortcuts"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM অনুরোধ সরাসরি প্রদানকারী API-তে যায়"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM অনুরোধ AI Republic ব্যাকএন্ডের মাধ্যমে রুট হয়"
-  },
   "Language": {
     "message": "ভাষা"
   },
@@ -418,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "অনুমোদিত উত্সের তালিকা (প্রতি লাইনে একটি)। ওয়াইল্ডকার্ড (*) সমর্থন করে।"
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM অনুরোধ সরাসরি প্রদানকারী API-তে যায়"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM অনুরোধ AI Republic ব্যাকএন্ডের মাধ্যমে রুট হয়"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -429,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "সেটিংস লোড হচ্ছে..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -445,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "ফ্রি ক্রেডিট পেতে লগইন করুন"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "কম ক্রেডিট বাকি আছে"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ব্রাউজার ট্যাব পরিচালনা (খোলা, বন্ধ, পরিবর্তন, কোয়েরি)"
@@ -486,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "টাইমআউটের আগে টুল চালানোর সর্বোচ্চ সময় (মিলিসেকেন্ডে) (ডিফল্ট: ৩০০০০)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -532,9 +544,6 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
@@ -542,6 +551,9 @@
     "message": "এখনো কোনো অনুমোদন ইতিহাস নেই।"
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -564,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "সাইড প্যানেল খুলুন:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "প্রতিষ্ঠান"
@@ -610,23 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "দ্রুত ক্রিয়া"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "দ্রুত শুরু"
   },
-  "Quick_action": {
-    "message": "দ্রুত ক্রিয়া"
+  "Read_only": {
+    "message": "শুধু পড়ার জন্য"
   },
   "Read_Only": {
     "message": ""
   },
   "Read_Write": {
     "message": ""
-  },
-  "Read_only": {
-    "message": "শুধু পড়ার জন্য"
   },
   "Reason_optional": {
     "message": "কারণ (ঐচ্ছিক)"
@@ -712,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "নিরাপত্তা ও গোপনীয়তা"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "টুল চালানোর পরিবেশের নিরাপত্তা স্তর"
+  },
+  "Security_Privacy": {
+    "message": "নিরাপত্তা ও গোপনীয়তা"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "কথোপকথনের জন্য AI মডেল নির্বাচন করুন।"
@@ -727,6 +742,9 @@
   "Service_Tier": {
     "message": "সেবা স্তর"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "সেশন"
   },
@@ -734,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -756,6 +777,9 @@
   },
   "Stable": {
     "message": "স্থিতিশীল"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -808,14 +832,14 @@
   "Testing": {
     "message": "পরীক্ষা চলছে..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "এজেন্ট বর্তমানে ব্যাকএন্ড মোড ব্যবহার করছে। LLM অনুরোধগুলি AI Republic সার্ভারের মাধ্যমে রাউট করা হবে। আপনার কথোপকথনগুলি আমাদের অবকাঠামোর মাধ্যমে নিরাপদে প্রক্রিয়াকৃত হবে।"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
-  },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "এজেন্ট বর্তমানে ব্যাকএন্ড মোড ব্যবহার করছে। LLM অনুরোধগুলি AI Republic সার্ভারের মাধ্যমে রাউট করা হবে। আপনার কথোপকথনগুলি আমাদের অবকাঠামোর মাধ্যমে নিরাপদে প্রক্রিয়াকৃত হবে।"
   },
   "Time": {
     "message": "সময়"
@@ -858,9 +882,6 @@
   "UI_Theme": {
     "message": "ইউআই থিম"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "ক্রেডিট তথ্য লোড করা যায়নি"
   },
@@ -885,20 +906,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "বিশ্বের সবচেয়ে শক্তিশালী মডেল ব্যবহার করতে আপনার সাবস্ক্রিপশন আপগ্রেড করুন"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "কন্টেক্সট মেনু ব্যবহার করুন:"
   },
   "Use_Own_API_Key": {
     "message": "নিজের API কী ব্যবহার করুন"
   },
-  "User_Center": {
-    "message": "ব্যবহারকারী ড্যাশবোর্ড"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "ব্যবহারকারী অনুমোদিত ক্রিয়া"
+  },
+  "User_Center": {
+    "message": "ব্যবহারকারী ড্যাশবোর্ড"
   },
   "User_decision": {
     "message": "ব্যবহারকারী সিদ্ধান্ত"
@@ -911,6 +932,9 @@
   },
   "User_requested_modifications": {
     "message": "ব্যবহারকারীর অনুরোধকৃত পরিবর্তনসমূহ"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "অতিরিক্ত ক্রেডিট ব্যবহার করা"
@@ -956,14 +980,5 @@
   },
   "Your_Decision": {
     "message": "আপনার সিদ্ধান্ত"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }

@@ -18,10 +18,17 @@ import { ModelClientFactory } from './models/ModelClientFactory';
 import { UserNotifier } from './UserNotifier';
 import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
-import { loadPrompt, loadUserInstructions } from './PromptLoader';
+import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
+import { ApprovalGate } from './approval/ApprovalGate';
+import { PolicyRulesEngine } from './approval/PolicyRulesEngine';
+import { getDefaultRules } from './approval/defaultRules';
+import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivityEnhancer';
+import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
+import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
+import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
 
 /**
  * Main agent class managing the submission and event queues
@@ -61,7 +68,7 @@ export class BrowserxAgent {
     // Initialize components with config
     this.modelClientFactory = new ModelClientFactory();
     this.toolRegistry = new ToolRegistry();
-    this.approvalManager = new ApprovalManager(this.config);
+    this.approvalManager = new ApprovalManager(this.config, (event) => this.emitEvent(event.msg));
     this.diffTracker = new DiffTracker();
     this.userNotifier = new UserNotifier();
 
@@ -131,6 +138,39 @@ export class BrowserxAgent {
       supportsImage: modelData.model.supportsImage
     });
 
+    // Initialize approval gate for risk-based tool call interception
+    const platform = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
+      ? 'desktop' as const
+      : 'extension' as const;
+    const policyEngine = new PolicyRulesEngine(getDefaultRules(platform));
+    const approvalGate = new ApprovalGate(this.approvalManager, policyEngine);
+    approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+    if (platform === 'extension') {
+      approvalGate.addEnhancer(new SemanticElementEnhancer());
+    } else {
+      approvalGate.addEnhancer(new SensitivePathEnhancer());
+    }
+
+    // Connect config storage for history tracking (I2)
+    const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+    approvalGate.setConfigStorage(configStorage);
+
+    // Load stored approval config and apply to gate (I1)
+    try {
+      const storedConfig = await configStorage.loadConfig();
+      approvalGate.setMode(storedConfig.mode);
+      approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+      approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+    } catch (error) {
+      console.warn('[BrowserxAgent] Failed to load approval config, using defaults:', error);
+    }
+
+    // Note: Approval config sync is handled via UPDATE_APPROVAL_CONFIG message pattern
+    // (service-worker.ts and chromePolyfill.ts), not chrome.storage.onChanged,
+    // to support desktop mode where storage.onChanged is not available.
+
+    this.toolRegistry.setApprovalGate(approvalGate);
+
     // In desktop mode, browser tools come from MCP (chrome-devtools-mcp).
     // Enable mcpTools so TurnManager includes them in the tool list and
     // allows the MCP fallback execution path.
@@ -147,6 +187,9 @@ export class BrowserxAgent {
     const taskContext = new TurnContext(modelClient, {
       sessionId: this.session.conversationId
     });
+
+    // Configure PromptComposer for dynamic system prompt composition
+    await this.configurePromptComposition();
 
     // Load and set instructions
     const userInstructions = await loadUserInstructions();
@@ -187,6 +230,33 @@ export class BrowserxAgent {
         );
       }
     });
+  }
+
+  /**
+   * Configure PromptComposer for dynamic system prompt composition.
+   * Detects agent type from build mode and sets basic context.
+   *
+   * In desktop mode, DesktopAgentBootstrap calls configurePromptComposer()
+   * with full platform context (OS, arch, shell, homeDir) BEFORE
+   * agent.initialize(), so this method skips re-configuration.
+   *
+   * In extension mode, this configures the browserx agent type.
+   */
+  private async configurePromptComposition(): Promise<void> {
+    // Skip if already configured (desktop bootstrap provides platform context)
+    if (isComposerConfigured()) {
+      console.log('[BrowserxAgent] PromptComposer already configured (by bootstrap)');
+      return;
+    }
+
+    const agentType = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
+      ? 'pi' as const
+      : 'browserx' as const;
+
+    configurePromptComposer(agentType, {
+      browserConnection: agentType === 'browserx' ? 'extension' : 'mcp',
+    });
+    console.log(`[BrowserxAgent] PromptComposer configured for agent type: ${agentType}`);
   }
 
   /**
@@ -453,7 +523,8 @@ export class BrowserxAgent {
               if (connection && connection.tools.length > 0) {
                 // Lazily register tools if they weren't registered at startup
                 if (!this.toolRegistry.getTool(`browser__${connection.tools[0].name}`)) {
-                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry);
+                  const { McpBrowserRiskAssessor } = await import('./approval/assessors/McpBrowserRiskAssessor');
+                  await registerMCPTools(mcpManager, 'browser', connection.tools, this.toolRegistry, new McpBrowserRiskAssessor());
                 }
               } else {
                 const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
@@ -798,16 +869,77 @@ export class BrowserxAgent {
 
   /**
    * Handle exec approval
+   * Unified handler for both extension and desktop platforms.
+   * Routes decisions to ApprovalManager (risk-based approvals) and Session (protocol-level).
    */
   private async handleExecApproval(op: Extract<Op, { type: 'ExecApproval' }>): Promise<void> {
-    // Resolve the pending approval through Session
-    await this.session.notifyApproval(op.id, op.decision);
+    const decision = op.decision === 'approve' ? 'approve' : 'reject';
+
+    // Capture pending approval data before handleDecision removes it
+    let toolName = '';
+    let params: Record<string, any> = {};
+    let domain: string | undefined;
+    let riskScore: number | undefined;
+    if (op.remember) {
+      const pending = this.approvalManager.getApproval(op.id);
+      if (pending) {
+        toolName = pending.request?.metadata?.toolName || '';
+        params = pending.request?.details?.parameters || {};
+        domain = pending.request?.metadata?.domain;
+        riskScore = pending.request?.metadata?.riskScore;
+      } else {
+        console.warn(`[BrowserxAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
+      }
+    }
+
+    // Resolve through both approval paths. Either or both may have a pending
+    // request for this ID depending on which subsystem initiated the approval.
+    // Use try-catch to ensure one path's failure doesn't block the other.
+
+    let riskBasedResolved = false;
+    try {
+      await this.approvalManager.handleDecision({
+        id: op.id,
+        decision,
+        timestamp: Date.now(),
+        reason: op.alternativeText || (decision === 'reject' ? 'Denied by user' : undefined),
+      });
+      riskBasedResolved = true;
+    } catch (error) {
+      console.warn(`[BrowserxAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
+    }
+
+    let protocolResolved = false;
+    try {
+      await this.session.notifyApproval(op.id, op.decision);
+      protocolResolved = true;
+    } catch (error) {
+      console.warn(`[BrowserxAgent] Session.notifyApproval failed for ${op.id}:`, error);
+    }
+
+    if (!riskBasedResolved && !protocolResolved) {
+      console.error(`[BrowserxAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
+    }
+
+    // Remember decision for this session if requested
+    if (op.remember && toolName) {
+      const approvalGate = this.toolRegistry.getApprovalGate();
+      if (approvalGate) {
+        approvalGate.rememberDecision(
+          toolName,
+          params,
+          decision === 'approve' ? 'auto_approve' : 'deny',
+          domain,
+          riskScore,
+        );
+      }
+    }
 
     // Emit event
     this.emitEvent({
       type: 'BackgroundEvent',
       data: {
-        message: `Execution ${op.decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
+        message: `Execution ${decision === 'approve' ? 'approved' : 'rejected'}: ${op.id}`,
         level: 'info',
       },
     });

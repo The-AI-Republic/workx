@@ -1,30 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "業務タスク向けの汎用ブラウザ内 AI エージェント"
-  },
   "_current_": {
     "message": ""
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "APIキー設定"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "APIキーは暗号化され、ブラウザにローカル保存されます。API呼び出し以外で外部サーバーに送信されることはありません。"
   },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ブラウザストレージへのアクセス（localStorage、sessionStorage、クッキー）"
   },
   "Action": {
     "message": "アクション"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "アクション詳細"
@@ -35,6 +20,9 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "変更を追加"
   },
@@ -42,9 +30,6 @@
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -83,8 +68,26 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "APIキー設定"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "APIキーは暗号化され、ブラウザにローカル保存されます。API呼び出し以外で外部サーバーに送信されることはありません。"
+  },
   "Approval_History": {
     "message": "承認履歴"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "承認"
@@ -98,11 +101,14 @@
   "Auto_default": {
     "message": ""
   },
-  "Available_Tools": {
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "利用可能："
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "戻る"
@@ -116,20 +122,20 @@
   "Beta": {
     "message": "ベータ"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "ブラウザ自動化ツールの切替"
+  },
   "Browser_Tools": {
     "message": "ブラウザツール"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "ブラウザ自動化ツールの切替"
+  "Cache_behavior_and_data_retention": {
+    "message": "キャッシュの動作とデータ保持"
   },
   "Cache_Settings": {
     "message": "キャッシュ設定"
   },
   "Cache_TTL_seconds": {
     "message": "キャッシュTTL（秒）"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "キャッシュの動作とデータ保持"
   },
   "Cancel": {
     "message": "キャンセル"
@@ -185,13 +191,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -214,9 +220,6 @@
   },
   "Current_Plan": {
     "message": "現在のプラン："
-  },
-  "DOM_Tool": {
-    "message": "DOMツール"
   },
   "Daily_Credits": {
     "message": "1日あたりのクレジット"
@@ -245,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "タスク完了時にトークン消費量（入力/出力トークン）を表示"
   },
+  "DOM_Tool": {
+    "message": "DOMツール"
+  },
   "Duration": {
     "message": ""
   },
@@ -257,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "すべてのツールを有効化"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "キャッシュを有効化"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "頻繁にアクセスされるデータを保存し、パフォーマンスを向上させるにはキャッシュを有効化"
   },
   "Enable_Compression": {
     "message": "圧縮を有効化"
@@ -266,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "コンテンツスクリプトを有効化"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "拡張機能を有効化"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "頻繁にアクセスされるデータを保存し、パフォーマンスを向上させるにはキャッシュを有効化"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -311,17 +317,23 @@
   "Explain_your_decision": {
     "message": "決定理由を説明…"
   },
-  "Extension_Permission": {
-    "message": "拡張機能と権限"
-  },
-  "Extension_Permission_Settings": {
-    "message": "拡張機能と権限の設定"
-  },
   "Extension_Configuration": {
     "message": "拡張機能の設定"
   },
   "Extension_configuration_and_permissions": {
     "message": "拡張機能の設定と権限"
+  },
+  "extension_description": {
+    "message": "業務タスク向けの汎用ブラウザ内 AI エージェント"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "拡張機能と権限"
+  },
+  "Extension_Permission_Settings": {
+    "message": "拡張機能と権限の設定"
   },
   "Extra_Credits": {
     "message": "追加クレジット"
@@ -365,11 +377,11 @@
   "General": {
     "message": "全般"
   },
-  "General_Settings": {
-    "message": "全般設定"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "全般設定"
   },
   "Get_Started": {
     "message": "開始する"
@@ -400,12 +412,6 @@
   "Keyboard_Shortcuts": {
     "message": "キーボードショートカット"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM リクエストはプロバイダー API に直接送信"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM リクエストは AI Republic のバックエンドを経由"
-  },
   "Language": {
     "message": "言語"
   },
@@ -418,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "許可されたオリジンのリスト（1 行につき 1 つ）。ワイルドカード (*) をサポート"
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM リクエストはプロバイダー API に直接送信"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM リクエストは AI Republic のバックエンドを経由"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -429,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "設定を読み込み中..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -445,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "ログインして無料クレジットを取得"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "クレジット残量が少ない"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ブラウザタブの管理（開く、閉じる、切り替え、検索）"
@@ -486,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "ツールがタイムアウトになるまでの最大時間（ミリ秒、デフォルト: 30000）"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -532,9 +544,6 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
@@ -542,6 +551,9 @@
     "message": "承認履歴はまだありません。"
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -564,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "サイドパネルを開く:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "組織"
@@ -610,23 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "クイックアクション"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "クイックスタート"
   },
-  "Quick_action": {
-    "message": "クイックアクション"
+  "Read_only": {
+    "message": "読み取り専用"
   },
   "Read_Only": {
     "message": ""
   },
   "Read_Write": {
     "message": ""
-  },
-  "Read_only": {
-    "message": "読み取り専用"
   },
   "Reason_optional": {
     "message": "理由（任意）"
@@ -712,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "セキュリティとプライバシー"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "ツール実行環境のセキュリティレベル"
+  },
+  "Security_Privacy": {
+    "message": "セキュリティとプライバシー"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "会話に使用するAIモデルを選択してください。"
@@ -727,6 +742,9 @@
   "Service_Tier": {
     "message": "サービス階層"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "セッション"
   },
@@ -734,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -756,6 +777,9 @@
   },
   "Stable": {
     "message": "安定版"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -808,14 +832,14 @@
   "Testing": {
     "message": "テスト中..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "エージェントは現在バックエンドモードを使用しています。LLM リクエストは AI Republic サーバーを経由してルーティングされます。会話は当社のインフラストラクチャを通じて安全に処理されます。"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
-  },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "エージェントは現在バックエンドモードを使用しています。LLM リクエストは AI Republic サーバーを経由してルーティングされます。会話は当社のインフラストラクチャを通じて安全に処理されます。"
   },
   "Time": {
     "message": "時刻"
@@ -853,9 +877,6 @@
   "UI_Theme": {
     "message": "UIテーマ"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "クレジット情報を読み込めません"
   },
@@ -880,20 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "最も強力なモデルを利用するにはプランをアップグレードしてください"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "コンテキストメニューを使用:"
   },
   "Use_Own_API_Key": {
     "message": "独自のAPIキーを使用"
   },
-  "User_Center": {
-    "message": "ユーザーセンター"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "ユーザーが承認した操作"
+  },
+  "User_Center": {
+    "message": "ユーザーセンター"
   },
   "User_decision": {
     "message": "ユーザーの決定"
@@ -906,6 +927,9 @@
   },
   "User_requested_modifications": {
     "message": "ユーザーが修正を要求"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "追加クレジットを使用中"
@@ -951,14 +975,5 @@
   },
   "Your_Decision": {
     "message": "あなたの決定"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }
