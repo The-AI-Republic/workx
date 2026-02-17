@@ -12,14 +12,20 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/__test-utils__/setup.ts'],
     coverage: {
+      provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts'],
       exclude: [
-        'node_modules/',
-        'dist/',
-        '**/*.config.ts',
-        '**/*.config.mjs',
+        'src/__test-utils__/**',
+        'src/**/contracts/**',
+        'src/**/__tests__/**',
+        'src/**/welcome/**',
+        'src/desktop/**',
+        'src/extension/**',
+        'src/tests/**',
         '**/*.d.ts',
-        'src/__test-utils__/**'
+        '**/*.test.ts',
+        '**/*.spec.ts',
       ]
     },
     include: [
