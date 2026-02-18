@@ -30,7 +30,7 @@ export class TabManager {
 
   // Tab group management (merged from TabGroupManager - T014)
   private groupId: number | null = null;
-  private readonly groupTitle = 'pi';
+  private readonly groupTitle = 'browserx';
   private readonly groupColor: chrome.tabGroups.ColorEnum = 'blue';
 
   // Event callbacks (stateless - just notify about tab events)
