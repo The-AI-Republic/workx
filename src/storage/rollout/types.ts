@@ -66,9 +66,11 @@ export interface SessionMeta {
   id: ConversationId;
   /** Session start time (ISO 8601) */
   timestamp: string;
-  /** Current working directory */
-  cwd: string;
-  /** Originator of the session (e.g., "cli", "chrome-extension") */
+  /** Current working directory (desktop mode) */
+  cwd?: string;
+  /** Browser tab ID (extension mode) */
+  tabId?: number;
+  /** Originator of the session (e.g., "cli", "chrome-extension", "desktop") */
   originator: string;
   /** CLI/extension version */
   cliVersion: string;
@@ -110,8 +112,10 @@ export type ReasoningSummary = 'auto' | 'always' | 'never';
  * Context information about a conversation turn.
  */
 export interface TurnContextItem {
-  /** Working directory for this turn */
-  cwd: string;
+  /** Working directory for this turn (desktop mode) */
+  cwd?: string;
+  /** Browser tab ID for this turn (extension mode) */
+  tabId?: number;
   /** Approval policy */
   approvalPolicy: AskForApproval;
   /** Sandbox policy */

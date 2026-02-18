@@ -536,13 +536,16 @@ export interface ToolUnregisteredEvent {
 
 export interface ToolExecutionStartEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
   turn_id?: string;
   start_time?: number;
+  params?: Record<string, unknown>;
 }
 
 export interface ToolExecutionEndEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
   success: boolean;
   duration?: number;
