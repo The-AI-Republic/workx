@@ -522,19 +522,6 @@
       const selectedItem = modelSelectionItems.find((item) => item.modelId === modelId);
       if (!selectedItem) throw new Error('Model not found');
 
-      const previousModelKey = selectedModelKey;
-
-      if (
-        !confirm('The model switch will clear the current conversation. Do you want to continue?')
-      ) {
-        modelSelectionItems = modelSelectionItems.map((item) => ({
-          ...item,
-          selected: item.modelId === previousModelKey,
-        }));
-        isModelSwitching = false;
-        return;
-      }
-
       if (selectedItem.supportsImage === false) {
         alert(
           `Model "${selectedItem.modelName}" does not support image input. Some tools will be disabled.`
@@ -556,7 +543,7 @@
       notifyConfigUpdate();
 
       const message = apiKey
-        ? `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`
+        ? `Model changed to ${selectedItem.modelName}. Conversation preserved.`
         : `Model changed to ${selectedItem.modelName}. Please configure your API key.`;
       showMessage(message, apiKey ? 'success' : 'info');
     } catch (error) {

@@ -56,6 +56,7 @@ export class BrowserxAgent {
   private userNotifier: UserNotifier;
   private messageRouter: MessageRouter;
   private eventDispatcher: EventDispatcher | null = null;
+  private pendingModelKey: string | null = null;
 
   constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
@@ -273,42 +274,35 @@ export class BrowserxAgent {
 
   /**
    * Handle model configuration changes
-   * Reinitializes session when model changes
+   * Preserves conversation history and updates the model client in-place.
+   * If a task is running, defers the switch until the next user submission.
    */
   private async handleModelConfigChange(event: IConfigChangeEvent): Promise<void> {
     const oldModelId = event.oldValue;
     const newModelId = event.newValue;
 
-    // Reinitialize session when model changes
-    if (oldModelId !== newModelId) {
-      try {
-        // Shutdown existing session
-        await this.session.shutdown();
+    if (oldModelId === newModelId) return;
 
-        // Clear conversation history
-        this.session.clearHistory();
-
-        // Create new model client for the selected model
-        const modelClient = await this.modelClientFactory.createClientForCurrentModel();
-
-        // Create new TurnContext with updated model
-        const taskContext = new TurnContext(modelClient, {});
-        const userInstructions = await loadUserInstructions();
-        taskContext.setUserInstructions(userInstructions);
-        const baseInstructions = await loadPrompt();
-        taskContext.setBaseInstructions(baseInstructions);
-
-        // Update session with new turn context
-        this.session.setTurnContext(taskContext);
-
-        // Reinitialize session
-        await this.session.initializeSession('create', this.session.conversationId, this.config);
-      } catch (error) {
-        console.error('Failed to reinitialize session after model change:', error);
-      }
+    // Check if a task is currently running
+    if (this.session.getRunningTasks().size > 0) {
+      // Defer the model switch until the next user submission
+      this.pendingModelKey = newModelId;
+      return;
     }
 
-    // Note: UI update is handled by Settings.svelte success message
+    // No task running — apply model switch immediately
+    try {
+      const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+      this.session.getTurnContext().setModelClient(modelClient);
+    } catch (error) {
+      console.error('Failed to switch model:', error);
+      this.emitEvent({
+        type: 'Error',
+        data: {
+          message: `Failed to switch model: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        },
+      });
+    }
   }
 
   /**
@@ -732,6 +726,17 @@ export class BrowserxAgent {
 
       // Handle tab binding/creation/switching
       await this.handleTabBinding(submissionContext);
+
+      // Apply pending model switch before processing the new submission
+      if (this.pendingModelKey !== null) {
+        try {
+          const newClient = await this.modelClientFactory.createClientForCurrentModel();
+          this.session.getTurnContext().setModelClient(newClient);
+        } catch (error) {
+          console.error('Failed to apply pending model switch:', error);
+        }
+        this.pendingModelKey = null;
+      }
 
       // Convert input items to InputItem format for SessionTask
       const inputItems: InputItem[] = items.map(item => ({
