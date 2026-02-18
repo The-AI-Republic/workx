@@ -210,6 +210,165 @@ describe('TurnContext Methods', () => {
     });
   });
 
+  describe('setModelClient()', () => {
+    it('should replace the model client so getModelClient() returns the new client', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      // Verify original client is returned
+      expect(context.getModelClient()).toBe(mockModelClient);
+
+      // Create a new mock ModelClient
+      const newModelClient = {
+        getModel: vi.fn().mockReturnValue('new-model'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(16384),
+        getReasoningEffort: vi.fn().mockReturnValue(undefined),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: true }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      // Replace the client
+      context.setModelClient(newModelClient);
+
+      // getModelClient() should return the new client, not the original
+      expect(context.getModelClient()).toBe(newModelClient);
+      expect(context.getModelClient()).not.toBe(mockModelClient);
+    });
+
+    it('should cause getModel() to return the new model after setModelClient', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      // Verify original model
+      expect(context.getModel()).toBe('test-model');
+      expect(mockModelClient.getModel).toHaveBeenCalled();
+
+      // Create new client with different model
+      const newModelClient = {
+        getModel: vi.fn().mockReturnValue('gpt-4o'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(128000),
+        getReasoningEffort: vi.fn().mockReturnValue(undefined),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: false }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      context.setModelClient(newModelClient);
+
+      // getModel() should now delegate to the new client
+      expect(context.getModel()).toBe('gpt-4o');
+      expect(newModelClient.getModel).toHaveBeenCalled();
+    });
+
+    it('should return the new client instance after setModelClient', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      const newModelClient = {
+        getModel: vi.fn().mockReturnValue('claude-opus-4-20250514'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(200000),
+        getReasoningEffort: vi.fn().mockReturnValue('high'),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: true }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      context.setModelClient(newModelClient);
+
+      // The returned client should be the exact same object reference
+      const returnedClient = context.getModelClient();
+      expect(returnedClient).toBe(newModelClient);
+
+      // Verify delegated methods also work through the new client
+      expect(context.getModelContextWindow()).toBe(200000);
+      expect(newModelClient.getModelContextWindow).toHaveBeenCalled();
+    });
+
+    it('should allow multiple successive setModelClient calls', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      const secondClient = {
+        getModel: vi.fn().mockReturnValue('model-2'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(4096),
+        getReasoningEffort: vi.fn().mockReturnValue(undefined),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: false }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      const thirdClient = {
+        getModel: vi.fn().mockReturnValue('model-3'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(32000),
+        getReasoningEffort: vi.fn().mockReturnValue(undefined),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: false }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      context.setModelClient(secondClient);
+      expect(context.getModel()).toBe('model-2');
+      expect(context.getModelClient()).toBe(secondClient);
+
+      context.setModelClient(thirdClient);
+      expect(context.getModel()).toBe('model-3');
+      expect(context.getModelClient()).toBe(thirdClient);
+      expect(context.getModelClient()).not.toBe(secondClient);
+    });
+
+    it('should not affect other TurnContext properties when replacing the client', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'preserve-session',
+        baseInstructions: 'base instructions',
+        userInstructions: 'user instructions',
+        approvalPolicy: 'never',
+        sandboxPolicy: { mode: 'read-only' },
+        browserEnvironmentPolicy: 'clean',
+        reviewMode: true,
+      });
+
+      const newModelClient = {
+        getModel: vi.fn().mockReturnValue('replacement-model'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(64000),
+        getReasoningEffort: vi.fn().mockReturnValue(undefined),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: false }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      context.setModelClient(newModelClient);
+
+      // All other properties should remain unchanged
+      expect(context.getSessionId()).toBe('preserve-session');
+      expect(context.getBaseInstructions()).toBe('base instructions');
+      expect(context.getUserInstructions()).toBe('user instructions');
+      expect(context.getApprovalPolicy()).toBe('never');
+      expect(context.getSandboxPolicy()).toEqual({ mode: 'read-only' });
+      expect(context.getBrowserEnvironmentPolicy()).toBe('clean');
+      expect(context.isReviewMode()).toBe(true);
+
+      // But model-related methods should reflect the new client
+      expect(context.getModel()).toBe('replacement-model');
+    });
+  });
+
   describe('Breaking Changes: cwd and tabId removal', () => {
     it('should not have getCwd method', () => {
       const context = new TurnContext(mockModelClient);

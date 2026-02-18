@@ -91,15 +91,15 @@
 
 **Purpose**: Tests, validation, and cleanup
 
-- [ ] T012 [P] Create unit tests for `TurnContext.setModelClient()` in tests/unit/core/TurnContext.test.ts (or new file if TurnContext tests don't exist). Test: (1) setModelClient replaces the client, (2) getModel() returns new model after set, (3) getModelClient() returns new client after set.
+- [X] T012 [P] Create unit tests for `TurnContext.setModelClient()` in tests/unit/core/TurnContext.test.ts (or new file if TurnContext tests don't exist). Test: (1) setModelClient replaces the client, (2) getModel() returns new model after set, (3) getModelClient() returns new client after set.
 
-- [ ] T013 [P] Create unit tests for the rewritten `handleModelConfigChange()` in tests/unit/core/BrowserxAgent.model-switch.test.ts (new file). Test: (1) model switch without active task applies immediately, (2) model switch with active task stores pendingModelKey, (3) pendingModelKey is applied on next submission, (4) rapid switches A→B→C resolves to C, (5) conversation history is NOT cleared on model switch.
+- [X] T013 [P] Create unit tests for the rewritten `handleModelConfigChange()` in tests/unit/core/BrowserxAgent.model-switch.test.ts (new file). Test: (1) model switch without active task applies immediately, (2) model switch with active task stores pendingModelKey, (3) pendingModelKey is applied on next submission, (4) rapid switches A→B→C resolves to C, (5) conversation history is NOT cleared on model switch.
 
-- [ ] T014 [P] Create integration test for seamless model switch flow in tests/integration/seamless-model-switch.test.ts (new file). Test the end-to-end flow: create a session, record some conversation history, trigger a model config change event, verify history is preserved, verify TurnContext has new model. If possible, test that the ResponseItem modelKey annotation is persisted through the rollout recorder.
+- [X] T014 [P] Create integration test for seamless model switch flow in tests/integration/seamless-model-switch.test.ts (new file). Test the end-to-end flow: create a session, record some conversation history, trigger a model config change event, verify history is preserved, verify TurnContext has new model. If possible, test that the ResponseItem modelKey annotation is persisted through the rollout recorder.
 
-- [ ] T015 Run `npm test && npm run lint` to verify all existing tests still pass and no lint errors are introduced. Fix any type errors from the ResponseItem change (callers constructing message-type ResponseItems may need to handle the new optional field).
+- [X] T015 Run `npm test && npm run lint` to verify all existing tests still pass and no lint errors are introduced. Fix any type errors from the ResponseItem change (callers constructing message-type ResponseItems may need to handle the new optional field).
 
-- [ ] T016 Run quickstart.md validation: manually verify Test 1 (basic switch), Test 2 (mid-task switch), Test 3 (model indicator), and Test 4 (cross-provider switch) pass as described.
+- [X] T016 Run quickstart.md validation: manually verify Test 1 (basic switch), Test 2 (mid-task switch), Test 3 (model indicator), and Test 4 (cross-provider switch) pass as described.
 
 ---
 
