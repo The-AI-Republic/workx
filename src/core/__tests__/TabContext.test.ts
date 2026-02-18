@@ -429,6 +429,36 @@ describe('TabContext Component', () => {
   });
 
   describe('Active Tab Tracking', () => {
+    // Note: Svelte 4 onMount callbacks are not fired in JSDOM.
+    // We use the same renderWithOnMount pattern from "Tab Title Updates".
+
+    async function renderWithOnMountForActiveTab(props: { tabId: number }) {
+      const onMountSpy = vi.spyOn(svelteModule, 'onMount');
+      const onDestroySpy = vi.spyOn(svelteModule, 'onDestroy');
+
+      const result = render(TabContext, { props });
+
+      // Wait for initial reactive render
+      await waitFor(() => {
+        screen.getByTestId('tab-context-display');
+      });
+
+      // Manually invoke all captured onMount callbacks
+      for (const call of onMountSpy.mock.calls) {
+        if (typeof call[0] === 'function') {
+          call[0]();
+        }
+      }
+
+      await tick();
+
+      return { ...result, onMountSpy, onDestroySpy };
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it('should register onActivated listener on mount', async () => {
       (chrome.tabs.get as any).mockResolvedValue({
         id: 123,
@@ -436,13 +466,9 @@ describe('TabContext Component', () => {
         url: 'https://example.com',
       });
 
-      render(TabContext, {
-        props: { tabId: 123 },
-      });
+      await renderWithOnMountForActiveTab({ tabId: 123 });
 
-      await waitFor(() => {
-        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
-      });
+      expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
     });
 
     it('should clean up onActivated listener on unmount', async () => {
@@ -452,15 +478,16 @@ describe('TabContext Component', () => {
         url: 'https://example.com',
       });
 
-      const { unmount } = render(TabContext, {
-        props: { tabId: 123 },
-      });
+      const { onDestroySpy } = await renderWithOnMountForActiveTab({ tabId: 123 });
 
-      await waitFor(() => {
-        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
-      });
+      expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
 
-      unmount();
+      // Manually invoke onDestroy callbacks
+      for (const call of onDestroySpy.mock.calls) {
+        if (typeof call[0] === 'function') {
+          call[0]();
+        }
+      }
 
       expect(chrome.tabs.onActivated.removeListener).toHaveBeenCalled();
     });
@@ -472,13 +499,9 @@ describe('TabContext Component', () => {
         url: 'https://example.com',
       });
 
-      render(TabContext, {
-        props: { tabId: 123 },
-      });
+      await renderWithOnMountForActiveTab({ tabId: 123 });
 
-      await waitFor(() => {
-        expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
-      });
+      expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
     });
 
     it('should display "(current)" marker on the active tab in dropdown', async () => {
@@ -495,14 +518,10 @@ describe('TabContext Component', () => {
         return Promise.resolve([activeTab, otherTab]);
       });
 
-      render(TabContext, {
-        props: { tabId: 100 },
-      });
+      await renderWithOnMountForActiveTab({ tabId: 100 });
 
-      // Wait for onActivated listener to be registered and initial active tab query to resolve
-      await waitFor(() => {
-        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
-      });
+      // Allow the query promise in onMount to resolve
+      await tick();
 
       // Open dropdown by clicking the tab context display
       const display = screen.getByTestId('tab-context-display');
