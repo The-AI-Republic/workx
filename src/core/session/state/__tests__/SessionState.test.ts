@@ -26,12 +26,12 @@ describe('SessionState', () => {
         { role: 'assistant' as const, content: 'Hi there!', timestamp: Date.now() },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
 
       const snapshot = state.historySnapshot();
       expect(snapshot).toHaveLength(2);
-      expect(snapshot[0].content).toBe('Hello');
-      expect(snapshot[1].content).toBe('Hi there!');
+      expect((snapshot[0] as any).content).toBe('Hello');
+      expect((snapshot[1] as any).content).toBe('Hi there!');
     });
 
     it('should append items to existing history', () => {
@@ -42,8 +42,8 @@ describe('SessionState', () => {
         { role: 'assistant' as const, content: 'Second', timestamp: Date.now() },
       ];
 
-      state.recordItems(items1);
-      state.recordItems(items2);
+      state.recordItems(items1 as any);
+      state.recordItems(items2 as any);
 
       const snapshot = state.historySnapshot();
       expect(snapshot).toHaveLength(2);
@@ -54,13 +54,13 @@ describe('SessionState', () => {
         { role: 'user' as const, content: 'Original', timestamp: Date.now() },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
 
       const snapshot1 = state.historySnapshot();
-      snapshot1[0].content = 'Modified';
+      (snapshot1[0] as any).content = 'Modified';
 
       const snapshot2 = state.historySnapshot();
-      expect(snapshot2[0].content).toBe('Original');
+      expect((snapshot2[0] as any).content).toBe('Original');
     });
 
     it('should return full conversation history object', () => {
@@ -68,7 +68,7 @@ describe('SessionState', () => {
         { role: 'user' as const, content: 'Test', timestamp: Date.now() },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
 
       const history = state.getConversationHistory();
       expect(history).toHaveProperty('items');
@@ -213,7 +213,7 @@ describe('SessionState', () => {
         { role: 'user' as const, content: 'Test', timestamp: Date.now() },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
       state.addTokenUsage(100);
       state.addApprovedCommand('npm test');
 
@@ -230,7 +230,7 @@ describe('SessionState', () => {
         { role: 'user' as const, content: 'Original', timestamp: Date.now() },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
       state.addTokenUsage(200);
       state.addApprovedCommand('git commit');
 
@@ -240,7 +240,7 @@ describe('SessionState', () => {
       const reimported = imported.export();
 
       expect(reimported.history.items).toHaveLength(1);
-      expect(reimported.history.items[0].content).toBe('Original');
+      expect((reimported.history.items[0] as any).content).toBe('Original');
       expect(reimported.tokenInfo?.total_tokens).toBe(200);
       expect(reimported.approvedCommands).toContain('git commit');
     });
@@ -257,7 +257,7 @@ describe('SessionState', () => {
       state.recordItems([
         { role: 'user' as const, content: 'User msg', timestamp: Date.now() },
         { role: 'assistant' as const, content: 'AI msg', timestamp: Date.now() },
-      ]);
+      ] as any);
       state.addTokenUsage(150);
       state.updateRateLimits({
         remaining_requests: 500,
@@ -283,7 +283,7 @@ describe('SessionState', () => {
         { role: 'user' as const, content: 'Original', timestamp: Date.now() },
       ];
 
-      state.recordItems(items);
+      state.recordItems(items as any);
       state.addTokenUsage(100);
 
       const copy = state.deepCopy();
@@ -291,7 +291,7 @@ describe('SessionState', () => {
       // Modify original
       state.recordItems([
         { role: 'assistant' as const, content: 'More', timestamp: Date.now() },
-      ]);
+      ] as any);
       state.addTokenUsage(50);
 
       // Verify copy unchanged

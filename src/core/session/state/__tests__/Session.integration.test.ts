@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Session } from '../../../Session';
-import type { InputItem } from '../../protocol/types';
+import type { InputItem } from '../../../protocol/types';
 
 describe('Session Integration (Refactored)', () => {
   let session: Session;
@@ -196,30 +196,24 @@ describe('Session Integration (Refactored)', () => {
       const context = session.getTurnContext();
 
       expect(context).toBeDefined();
-      expect(context.cwd).toBeDefined();
+      expect(context.getApprovalPolicy()).toBeDefined();
     });
 
     it('should update turn context', () => {
-      const updates = {
-        model: 'gpt-4',
-        cwd: '/test/path',
-      };
-
-      session.updateTurnContext(updates);
+      session.updateTurnContext({ model: 'gpt-4' });
 
       const context = session.getTurnContext();
-      expect(context.model).toBe('gpt-4');
-      expect(context.cwd).toBe('/test/path');
+      expect(context.getModel()).toBe('gpt-4');
     });
 
     it('should preserve unchanged context fields', () => {
-      const originalContext = session.getTurnContext();
+      const originalPolicy = session.getTurnContext().getApprovalPolicy();
 
       session.updateTurnContext({ model: 'new-model' });
 
       const newContext = session.getTurnContext();
-      expect(newContext.model).toBe('new-model');
-      expect(newContext.cwd).toBe(originalContext.cwd);
+      expect(newContext.getModel()).toBe('new-model');
+      expect(newContext.getApprovalPolicy()).toBe(originalPolicy);
     });
   });
 
@@ -264,9 +258,9 @@ describe('Session Integration (Refactored)', () => {
       session.setEventEmitter(emitter);
 
       const event = {
-        event_id: 'test-event',
-        msg: { type: 'text' as const, text: 'Test' },
-      };
+        id: 'test-event',
+        msg: { type: 'AgentMessage', data: { message: 'Test' } },
+      } as any;
 
       await session.emitEvent(event);
 
@@ -275,9 +269,9 @@ describe('Session Integration (Refactored)', () => {
 
     it('should not throw when emitting without emitter', async () => {
       const event = {
-        event_id: 'test-event',
-        msg: { type: 'text' as const, text: 'Test' },
-      };
+        id: 'test-event',
+        msg: { type: 'AgentMessage', data: { message: 'Test' } },
+      } as any;
 
       await expect(session.emitEvent(event)).resolves.not.toThrow();
     });

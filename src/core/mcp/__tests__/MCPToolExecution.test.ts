@@ -16,7 +16,7 @@ describe('MCP Tool Execution Integration', () => {
 
   const mockRegistry: IToolRegistry = {
     register: vi.fn(async (definition: ToolDefinition, handler: ToolHandler) => {
-      const name = definition.type === 'function' ? definition.function.name : 'unknown';
+      const name = definition.type === 'function' ? (definition as any).function.name : 'unknown';
       registeredTools.set(name, { definition, handler });
     }),
     unregister: vi.fn(async (name: string) => {
@@ -78,7 +78,7 @@ describe('MCP Tool Execution Integration', () => {
       const tool = registeredTools.get('github__search');
       expect(tool).toBeDefined();
 
-      const result = await tool!.handler({ query: 'test' });
+      const result = await (tool!.handler as any)({ query: 'test' });
 
       expect(mockManager.executeTool).toHaveBeenCalledWith('github__search', { query: 'test' });
       expect(result).toBe('Found 10 results');
@@ -134,13 +134,13 @@ describe('MCP Tool Execution Integration', () => {
 
       // Adapt tool
       const definition = adapter.adaptTool(tool, 'weather');
-      expect(definition.function.name).toBe('weather__get_weather');
+      expect((definition as any).function.name).toBe('weather__get_weather');
 
       // Create handler
       const handler = adapter.createHandler(mockManager, 'weather', 'get_weather');
 
       // Execute
-      const result = await handler({ location: 'New York' });
+      const result = await (handler as any)({ location: 'New York' });
 
       expect(result).toBe('Weather in New York: 72°F, Sunny');
       expect(mockManager.executeTool).toHaveBeenCalledWith('weather__get_weather', {
@@ -160,7 +160,7 @@ describe('MCP Tool Execution Integration', () => {
 
       const handler = adapter.createHandler(mockManager, 'api', 'call');
 
-      await expect(handler({})).rejects.toThrow('API rate limit exceeded');
+      await expect((handler as any)({})).rejects.toThrow('API rate limit exceeded');
     });
 
     it('should handle connection errors', async () => {
@@ -172,7 +172,7 @@ describe('MCP Tool Execution Integration', () => {
 
       const handler = adapter.createHandler(mockManager, 'api', 'call');
 
-      await expect(handler({})).rejects.toThrow('Server disconnected');
+      await expect((handler as any)({})).rejects.toThrow('Server disconnected');
     });
 
     it('should handle complex multi-content results', async () => {
@@ -191,7 +191,7 @@ describe('MCP Tool Execution Integration', () => {
       } as unknown as IMCPManager;
 
       const handler = adapter.createHandler(mockManager, 'search', 'query');
-      const result = await handler({ q: 'test' });
+      const result = await (handler as any)({ q: 'test' });
 
       expect(result).toContain('## Search Results');
       expect(result).toContain('1. Result one');
@@ -220,7 +220,7 @@ describe('MCP Tool Execution Integration', () => {
 
       const definition = adapter.adaptTool(tool, 'fs');
 
-      expect((definition.function.parameters as any).required).toEqual(['path', 'content']);
+      expect(((definition as any).function.parameters as any).required).toEqual(['path', 'content']);
     });
 
     it('should preserve nested schema structures', () => {
@@ -248,8 +248,8 @@ describe('MCP Tool Execution Integration', () => {
 
       const definition = adapter.adaptTool(tool, 'server');
 
-      expect((definition.function.parameters as any).properties?.config?.type).toBe('object');
-      expect((definition.function.parameters as any).properties?.config?.properties?.array?.type).toBe('array');
+      expect(((definition as any).function.parameters as any).properties?.config?.type).toBe('object');
+      expect(((definition as any).function.parameters as any).properties?.config?.properties?.array?.type).toBe('array');
     });
   });
 });

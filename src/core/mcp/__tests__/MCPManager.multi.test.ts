@@ -98,7 +98,7 @@ vi.mock('../../utils/encryption', () => ({
 describe('MCPManager Multi-Server', () => {
   beforeEach(() => {
     (globalThis as any).chrome = mockChromeStorage;
-    vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID);
+    vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID as any);
 
     // Clear mock storage
     Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
@@ -145,7 +145,7 @@ describe('MCPManager Multi-Server', () => {
   });
 
   afterEach(() => {
-    delete (globalThis as any).chrome;
+    (globalThis as any).chrome = undefined;
     MCPManager.resetInstance();
   });
 

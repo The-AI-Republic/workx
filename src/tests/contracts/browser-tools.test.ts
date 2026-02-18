@@ -189,7 +189,7 @@ describe('Browser Tools Contracts', () => {
               const attrValue = mockElement.attributes[request.attribute || 'id'] || null;
               return {
                 success: true,
-                data: { attribute: attrValue },
+                data: { attribute: attrValue ?? undefined },
               };
 
             case 'getText':

@@ -18,7 +18,7 @@
     "test": "vitest",
     "test:all": "vitest run",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.svelte",
+    "lint": "eslint src",
     "format": "prettier --write 'src/**/*.{ts,svelte,html,css}'"
   },
   "keywords": [],

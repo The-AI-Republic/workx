@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-const DIST_DIR = resolve(__dirname, '../../../dist');
+const DIST_DIR = resolve(__dirname, '../../../../dist');
 const CONTENT_JS = resolve(DIST_DIR, 'content.js');
 const CONTENT_MAP = resolve(DIST_DIR, 'content.js.map');
 
@@ -126,7 +126,7 @@ describe('Source Map Contract', () => {
 
   describe('Build configuration validation', () => {
     it('should set sourcemap: true in vite.config.content.mjs', () => {
-      const configPath = resolve(__dirname, '../../../vite.config.content.mjs');
+      const configPath = resolve(__dirname, '../../../../vite.config.content.mjs');
 
       if (!existsSync(configPath)) {
         throw new Error('vite.config.content.mjs not found');

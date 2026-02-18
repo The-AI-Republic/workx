@@ -1,27 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "ਕੰਮ ਦੇ ਕਾਰਜਾਂ ਲਈ ਤੁਹਾਡੇ ਬਰਾਊਜ਼ਰ ਅੰਦਰਲਾ AI ਏਜੈਂਟ"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "API ਕੁੰਜੀ ਸੰਰਚਨਾ"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API ਕੁੰਜੀਆਂ ਨੂੰ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ ਜਾਂਦਾ ਹੈ ਅਤੇ ਤੁਹਾਡੇ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਲੋਕਲ ਤੌਰ 'ਤੇ ਸਟੋਰ ਕੀਤਾ ਜਾਂਦਾ ਹੈ। ਇਹਨਾਂ ਨੂੰ ਕਦੇ ਵੀ ਬਾਹਰੀ ਸਰਵਰਾਂ ਨੂੰ ਨਹੀਂ ਭੇਜਿਆ ਜਾਂਦਾ, ਸਿਵਾਏ API ਕਾਲਾਂ ਦੇ।"
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਸਟੋਰੇਜ (localStorage, sessionStorage, cookies) ਤੱਕ ਪਹੁੰਚ"
   },
+  "Action": {
+    "message": "ਕਾਰਵਾਈ"
+  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
+  },
+  "Action_Details": {
+    "message": "ਕਾਰਵਾਈ ਵੇਰਵੇ"
   },
   "Active_Sessions": {
     "message": ""
@@ -29,13 +17,16 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
+  "Add_Modification": {
+    "message": "ਸੋਧ ਜੋੜੋ"
+  },
   "Add_Server": {
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -43,6 +34,9 @@
   },
   "Advanced_Configuration": {
     "message": "ਉੱਨਤ ਸੰਰਚਨਾ"
+  },
+  "Advanced_Options": {
+    "message": "ਉੱਨਤ ਵਿਕਲਪ"
   },
   "Advanced_Settings": {
     "message": ""
@@ -71,11 +65,32 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_Safety": {
+  "API_Key": {
     "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API ਕੁੰਜੀ ਸੰਰਚਨਾ"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API ਕੁੰਜੀਆਂ ਨੂੰ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ ਜਾਂਦਾ ਹੈ ਅਤੇ ਤੁਹਾਡੇ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਲੋਕਲ ਤੌਰ 'ਤੇ ਸਟੋਰ ਕੀਤਾ ਜਾਂਦਾ ਹੈ। ਇਹਨਾਂ ਨੂੰ ਕਦੇ ਵੀ ਬਾਹਰੀ ਸਰਵਰਾਂ ਨੂੰ ਨਹੀਂ ਭੇਜਿਆ ਜਾਂਦਾ, ਸਿਵਾਏ API ਕਾਲਾਂ ਦੇ।"
+  },
+  "Approval_History": {
+    "message": "ਮਨਜ਼ੂਰੀ ਇਤਿਹਾਸ"
   },
   "Approval_Mode": {
     "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
+  },
+  "Approve": {
+    "message": "ਮਨਜ਼ੂਰ ਕਰੋ"
+  },
+  "Approve_this_action": {
+    "message": "ਇਸ ਕਾਰਵਾਈ ਨੂੰ ਮਨਜ਼ੂਰ ਕਰੋ"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ਕਿਸੇ ਵੀ ਵੈੱਬਪੇਜ ਤੋਂ ਸੰਰਚਿਤ ਡਾਟਾ ਕੱਢਣ ਲਈ Browserx ਨੂੰ ਕਹਿੰਦੇ ਹੋ"
@@ -86,11 +101,11 @@
   "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Available": {
     "message": "ਉਪਲਬਧ:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "ਪਿੱਛੇ"
@@ -104,20 +119,20 @@
   "Beta": {
     "message": "ਬੀਟਾ"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "ਬ੍ਰਾਊਜ਼ਰ ਆਟੋਮੇਸ਼ਨ ਟੂਲ ਟੌਗਲਜ਼"
+  },
   "Browser_Tools": {
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਟੂਲਜ਼"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "ਬ੍ਰਾਊਜ਼ਰ ਆਟੋਮੇਸ਼ਨ ਟੂਲ ਟੌਗਲਜ਼"
+  "Cache_behavior_and_data_retention": {
+    "message": "ਕੈਸ਼ ਵਿਹਾਰ ਅਤੇ ਡਾਟਾ ਰੱਖ-ਰਖਾਅ"
   },
   "Cache_Settings": {
     "message": "ਕੈਸ਼ ਸੈਟਿੰਗਜ਼"
   },
   "Cache_TTL_seconds": {
     "message": "ਕੈਸ਼ TTL (ਸੈਕੰਡ)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "ਕੈਸ਼ ਵਿਹਾਰ ਅਤੇ ਡਾਟਾ ਰੱਖ-ਰਖਾਅ"
   },
   "Cancel": {
     "message": "ਰੱਦ ਕਰੋ"
@@ -152,6 +167,9 @@
   "Close_settings": {
     "message": "ਸੈਟਿੰਗਜ਼ ਬੰਦ ਕਰੋ"
   },
+  "Command": {
+    "message": "ਕਮਾਂਡ"
+  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -170,13 +188,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -184,6 +202,9 @@
   },
   "Connecting": {
     "message": ""
+  },
+  "Context": {
+    "message": "ਸੰਦਰਭ"
   },
   "Create_New_Tab": {
     "message": "ਨਵਾਂ ਟੈਬ ਬਣਾਓ"
@@ -197,8 +218,8 @@
   "Current_Plan": {
     "message": "ਮੌਜੂਦਾ ਯੋਜਨਾ:"
   },
-  "DOM_Tool": {
-    "message": "DOM ਸਾਧਨ"
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "ਦੈਨੀਕ ਕ੍ਰੈਡਿਟ"
@@ -227,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "ਟਾਸਕ ਪੂਰੇ ਹੋਣ ’ਤੇ ਟੋਕਨ ਖਪਤ (ਇਨਪੁੱਟ/ਆਉਟਪੁੱਟ ਟੋਕਨ) ਦਿਖਾਓ"
   },
+  "DOM_Tool": {
+    "message": "DOM ਸਾਧਨ"
+  },
   "Duration": {
     "message": ""
   },
@@ -239,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "ਸਾਰੇ ਟੂਲ ਚਾਲੂ ਕਰੋ"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "ਕੈਸ਼ ਚਾਲੂ ਕਰੋ"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "ਅਕਸਰ ਪਹੁੰਚੀ ਜਾਣ ਵਾਲੀ ਡਾਟਾ ਨੂੰ ਸਟੋਰ ਕਰਕੇ ਪ੍ਰਦਰਸ਼ਨ ਸੁਧਾਰਣ ਲਈ ਕੈਸ਼ਿੰਗ ਚਾਲੂ ਕਰੋ"
   },
   "Enable_Compression": {
     "message": "ਕੰਪ੍ਰੈਸ਼ਨ ਚਾਲੂ ਕਰੋ"
@@ -248,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "ਕੰਟੈਂਟ ਸਕ੍ਰਿਪਟਸ ਚਾਲੂ ਕਰੋ"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "ਐਕਸਟੈਂਸ਼ਨ ਚਾਲੂ ਕਰੋ"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "ਅਕਸਰ ਪਹੁੰਚੀ ਜਾਣ ਵਾਲੀ ਡਾਟਾ ਨੂੰ ਸਟੋਰ ਕਰਕੇ ਪ੍ਰਦਰਸ਼ਨ ਸੁਧਾਰਣ ਲਈ ਕੈਸ਼ਿੰਗ ਚਾਲੂ ਕਰੋ"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -290,17 +314,26 @@
   "Expire_after_days": {
     "message": "ਦਿਨਾਂ ਬਾਅਦ ਮਿਆਦ ਖਤਮ ਹੋਵੇ"
   },
-  "Extension_Permission": {
-    "message": "ਐਕਸਟੈਂਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀ"
-  },
-  "Extension_Permission_Settings": {
-    "message": "ਐਕਸਟੈਂਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀ ਸੈਟਿੰਗਸ"
+  "Explain_your_decision": {
+    "message": "ਆਪਣਾ ਫੈਸਲਾ ਸਮਝਾਓ..."
   },
   "Extension_Configuration": {
     "message": "ਐਕਸਟੈਂਸ਼ਨ ਕਨਫਿਗਰੇਸ਼ਨ"
   },
   "Extension_configuration_and_permissions": {
     "message": "ਐਕਸਟੈਂਸ਼ਨ ਕਨਫਿਗਰੇਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀਆਂ"
+  },
+  "extension_description": {
+    "message": "ਕੰਮ ਦੇ ਕਾਰਜਾਂ ਲਈ ਤੁਹਾਡੇ ਬਰਾਊਜ਼ਰ ਅੰਦਰਲਾ AI ਏਜੈਂਟ"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "ਐਕਸਟੈਂਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀ"
+  },
+  "Extension_Permission_Settings": {
+    "message": "ਐਕਸਟੈਂਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀ ਸੈਟਿੰਗਸ"
   },
   "Extra_Credits": {
     "message": "ਵਾਧੂ ਕ੍ਰੈਡਿਟਸ"
@@ -326,6 +359,9 @@
   "File_Operations_Not_Available": {
     "message": "ਫਾਈਲ ਕਾਰਵਾਈਆਂ (ਉਪਲਬਧ ਨਹੀਂ)"
   },
+  "File_Path": {
+    "message": "ਫਾਈਲ ਪੰਥ"
+  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ਫਾਰਮ ਭਰੋ, ਡਾਟਾ ਸਬਮਿਟ ਕਰੋ, ਫਾਰਮ ਅੰਸ਼ਾਂ ਨਾਲ ਇੰਟਰੈਕਟ ਕਰੋ"
   },
@@ -341,11 +377,11 @@
   "General": {
     "message": "ਆਮ"
   },
-  "General_Settings": {
-    "message": "ਜਨਰਲ ਸੈਟਿੰਗਸ"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "ਕੰਮ ਦੇ ਕਾਰਜਾਂ ਲਈ ਬਰਾਊਜ਼ਰ-ਅੰਦਰ ਆਮ AI ਏਜੈਂਟ"
+  },
+  "General_Settings": {
+    "message": "ਜਨਰਲ ਸੈਟਿੰਗਸ"
   },
   "Get_Started": {
     "message": "ਸ਼ੁਰੂ ਕਰੋ"
@@ -361,20 +397,20 @@
   "Hello_World": {
     "message": "ਹੈਲੋ ਵਰਲਡ"
   },
+  "History": {
+    "message": "ਇਤਿਹਾਸ"
+  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
+  },
+  "Impact": {
+    "message": "ਅਸਰ"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "ਨੈੱਟਵਰਕ ਰਿਕਵੈਸਟ/ਰਿਸਪਾਂਸ ਨੂੰ ਇੰਟਰਸੈਪਟ ਅਤੇ ਸੋਧੋ"
   },
   "Keyboard_Shortcuts": {
     "message": "ਕੀਬੋਰਡ ਸ਼ਾਰਟਕੱਟ"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM ਰਿਕਵੈਸਟਸ ਸਿੱਧੇ ਪ੍ਰੋਵਾਈਡਰ APIਜ਼ ਨੂੰ ਜਾਂਦੇ ਹਨ"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM ਰਿਕਵੈਸਟਸ AI Republic ਬੈਕਐਂਡ ਰਾਹੀਂ ਜਾਂਦੇ ਹਨ"
   },
   "Language": {
     "message": "ਭਾਸ਼ਾ"
@@ -388,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "ਮਨਜ਼ੂਰ ਕੀਤੇ ਮੂਲਾਂ ਦੀ ਸੂਚੀ (ਹਰ ਲਾਈਨ ਵਿੱਚ ਇੱਕ). ਵਾਇਲਡਕਾਰਡ (*) ਨੂੰ ਸਮਰਥਨ ਕਰਦੀ ਹੈ।"
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM ਰਿਕਵੈਸਟਸ ਸਿੱਧੇ ਪ੍ਰੋਵਾਈਡਰ APIਜ਼ ਨੂੰ ਜਾਂਦੇ ਹਨ"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM ਰਿਕਵੈਸਟਸ AI Republic ਬੈਕਐਂਡ ਰਾਹੀਂ ਜਾਂਦੇ ਹਨ"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -399,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "ਸੈਟਿੰਗਾਂ ਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -415,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "ਮੁਫ਼ਤ ਕ੍ਰੈਡਿਟ ਪ੍ਰਾਪਤ ਕਰਨ ਲਈ ਲਾਗਇਨ ਕਰੋ"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "ਕ੍ਰੈਡਿਟ ਘੱਟ ਰਹਿ ਗਏ ਹਨ"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਟੈਬਾਂ ਨੂੰ ਪ੍ਰਬੰਧਿਤ ਕਰੋ (ਖੋਲ੍ਹੋ, ਬੰਦ ਕਰੋ, ਬਦਲੋ, ਖੋਜੋ)"
@@ -457,6 +493,12 @@
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "ਟਾਈਮਆਉਟ ਤੋਂ ਪਹਿਲਾਂ ਟੂਲ ਚੱਲਣ ਦਾ ਅਧਿਕਤਮ ਸਮਾਂ (ਮਿਲੀਸੈਕੰਡ ਵਿੱਚ) (ਡਿਫਾਲਟ: 30000)"
   },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
   "Missed": {
     "message": ""
   },
@@ -468,6 +510,9 @@
   },
   "Modern_Chat": {
     "message": "ਆਧੁਨਿਕ ਚੈਟ"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "ਬਦਲਾਅ ਮੰਗਣ ਸਮੇਂ ਪੈਰਾਮੀਟਰਾਂ ਸੋਧੋ"
   },
   "Monthly_Credits": {
     "message": "ਮਾਸਿਕ ਕ੍ਰੈਡਿਟ"
@@ -499,13 +544,16 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
+  "No_approval_history_yet": {
+    "message": "ਹਾਲੇ ਕੋਈ ਮਨਜ਼ੂਰੀ ਇਤਿਹਾਸ ਨਹੀਂ।"
+  },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -529,6 +577,9 @@
   "Open_Side_Panel": {
     "message": "ਸਾਈਡ ਪੈਨਲ ਖੋਲ੍ਹੋ:"
   },
+  "optional": {
+    "message": ""
+  },
   "Organization": {
     "message": "ਸੰਗਠਨ"
   },
@@ -537,6 +588,9 @@
   },
   "Page_Vision_Tool": {
     "message": "ਪੇਜ ਵਿਜ਼ਨ ਟੂਲ"
+  },
+  "Parameter_Modifications": {
+    "message": "ਪੈਰਾਮੀਟਰ ਤਬਦੀਲੀਆਂ"
   },
   "Pause_Queue": {
     "message": ""
@@ -571,14 +625,17 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "ਤੇਜ਼ ਕਾਰਵਾਈ"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "ਤੇਜ਼ ਸ਼ੁਰੂਆਤ"
   },
-  "Quick_action": {
-    "message": "ਤੇਜ਼ ਕਾਰਵਾਈ"
+  "Read_only": {
+    "message": "ਪੜ੍ਹਨ-ਲਈ-ਕੇਵਲ"
   },
   "Read_Only": {
     "message": ""
@@ -586,11 +643,17 @@
   "Read_Write": {
     "message": ""
   },
-  "Read_only": {
-    "message": "ਪੜ੍ਹਨ-ਲਈ-ਕੇਵਲ"
+  "Reason_optional": {
+    "message": "ਕਾਰਨ (ਵਿਕਲਪਿਕ)"
   },
   "Refreshes_in": {
     "message": "ਨਵੀਂਕਰਨ ਵਿੱਚ"
+  },
+  "Reject": {
+    "message": "ਰੱਦ ਕਰੋ"
+  },
+  "Reject_this_action": {
+    "message": "ਇਸ ਕਾਰਵਾਈ ਨੂੰ ਰੱਦ ਕਰੋ"
   },
   "Remaining": {
     "message": "ਬਾਕੀ:"
@@ -600,6 +663,15 @@
   },
   "Remove_API_Key": {
     "message": "API ਕੁੰਜੀ ਹਟਾਓ"
+  },
+  "Remove_modification": {
+    "message": "ਸੋਧ ਹਟਾਓ"
+  },
+  "Request_Changes": {
+    "message": "ਬਦਲਾਅ ਦੀ ਬੇਨਤੀ ਕਰੋ"
+  },
+  "Request_changes_to_this_action": {
+    "message": "ਇਸ ਕਾਰਵਾਈ ਲਈ ਬਦਲਾਅ ਦੀ ਬੇਨਤੀ ਕਰੋ"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -655,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "ਸੁਰੱਖਿਆ ਅਤੇ ਗੋਪਨੀਯਤਾ"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "ਟੂਲ ਐਕਸੀਕਿਊਸ਼ਨ ਵਾਤਾਵਰਣ ਲਈ ਸੁਰੱਖਿਆ ਪੱਧਰ"
+  },
+  "Security_Privacy": {
+    "message": "ਸੁਰੱਖਿਆ ਅਤੇ ਗੋਪਨੀਯਤਾ"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "ਗੱਲਬਾਤ ਲਈ ਵਰਤਣ ਵਾਲਾ AI ਮਾਡਲ ਚੁਣੋ।"
@@ -670,10 +742,19 @@
   "Service_Tier": {
     "message": "ਸੇਵਾ ਪੱਧਰ"
   },
+  "session": {
+    "message": ""
+  },
+  "Session": {
+    "message": "ਸੈਸ਼ਨ"
+  },
   "Session_error": {
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -751,17 +832,20 @@
   "Testing": {
     "message": "ਪਰੀਖਿਆ ਜਾ ਰਹੀ ਹੈ..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "ਏਜੈਂਟ ਇਸ ਵੇਲੇ ਬੈਕਐਂਡ ਮੋਡ ਵਰਤ ਰਿਹਾ ਹੈ। LLM ਬੇਨਤੀਆਂ AI Republic ਸਰਵਰ ਰਾਹੀਂ ਭੇਜੀਆਂ ਜਾਣਗੀਆਂ। ਤੁਹਾਡੀਆਂ ਗੱਲਬਾਤਾਂ ਸਾਡੇ ਬੁਨਿਆਦੀ ਢਾਂਚੇ ਰਾਹੀਂ ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਸੰਭਾਲੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
   },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "ਏਜੈਂਟ ਇਸ ਵੇਲੇ ਬੈਕਐਂਡ ਮੋਡ ਵਰਤ ਰਿਹਾ ਹੈ। LLM ਬੇਨਤੀਆਂ AI Republic ਸਰਵਰ ਰਾਹੀਂ ਭੇਜੀਆਂ ਜਾਣਗੀਆਂ। ਤੁਹਾਡੀਆਂ ਗੱਲਬਾਤਾਂ ਸਾਡੇ ਬੁਨਿਆਦੀ ਢਾਂਚੇ ਰਾਹੀਂ ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਸੰਭਾਲੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।"
-  },
   "Time": {
     "message": "ਸਮਾਂ"
+  },
+  "Time_remaining": {
+    "message": "ਬਾਕੀ ਸਮਾਂ"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "ਕੈਸ਼ ਕੀਤੇ ਆਈਟਮਾਂ ਦੀ ਜੀਵਨ ਸਮਾਂ (ਸੈਕੰਡ) (ਮੂਲ: 3600)"
@@ -775,6 +859,9 @@
   "Tokens": {
     "message": ""
   },
+  "Tool": {
+    "message": "ਟੂਲ"
+  },
   "Tool_Timeout_ms": {
     "message": "ਟੂਲ ਟਾਈਮਆਉਟ (ms)"
   },
@@ -784,11 +871,11 @@
   "Tools_Settings": {
     "message": "ਟੂਲ ਸੈਟਿੰਗਜ਼"
   },
+  "Turn": {
+    "message": "ਮੋੜ"
+  },
   "UI_Theme": {
     "message": "UI ਥੀਮ"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Unable_to_load_credit_information": {
     "message": "ਕ੍ਰੈਡਿਟ ਜਾਣਕਾਰੀ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ"
@@ -814,20 +901,35 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "ਦੁਨੀਆ ਦੇ ਸਭ ਤੋਂ ਸ਼ਕਤੀਸ਼ਾਲੀ ਮਾਡਲਾਂ ਦੀ ਖੋਜ ਲਈ ਆਪਣੀ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਅਪਗਰੇਡ ਕਰੋ"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "ਸੰਦਰਭ ਮੀਨੂ ਵਰਤੋ:"
   },
   "Use_Own_API_Key": {
     "message": "ਆਪਣਾ API ਕੁੰਜੀ ਵਰਤੋ"
   },
+  "User_approved_action": {
+    "message": "ਉਪਭੋਗਤਾ ਦੁਆਰਾ ਮਨਜ਼ੂਰ ਕੀਤੀ ਕਾਰਵਾਈ"
+  },
   "User_Center": {
     "message": "ਉਪਭੋਗਤਾ ਕੇਂਦਰ"
   },
-  "User_Session": {
-    "message": ""
+  "User_decision": {
+    "message": "ਉਪਭੋਗਤਾ ਦਾ ਫੈਸਲਾ"
   },
   "User_preferences_and_interface_settings": {
     "message": "ਉਪਭੋਗਤਾ ਦੀਆਂ ਪਸੰਦਾਂ ਅਤੇ ਇੰਟਰਫੇਸ ਸੈਟਿੰਗਾਂ"
+  },
+  "User_rejected_action": {
+    "message": "ਉਪਭੋਗਤਾ ਦੁਆਰਾ ਰੱਦ ਕੀਤੀ ਕਾਰਵਾਈ"
+  },
+  "User_requested_modifications": {
+    "message": "ਉਪਭੋਗਤਾ ਦੁਆਰਾ ਮੰਗੇ ਗਏ ਸੋਧਾਂ"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "ਵਾਧੂ ਕ੍ਰੈਡਿਟ ਦੀ ਵਰਤੋਂ"
@@ -871,13 +973,7 @@
   "Your_API_key_is_encrypted": {
     "message": "ਤੁਹਾਡੀ API ਕੁੰਜੀ ਇਨਕ੍ਰਿਪਟ ਕੀਤੀ ਗਈ ਹੈ"
   },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+  "Your_Decision": {
+    "message": "ਤੁਹਾਡਾ ਫੈਸਲਾ"
   }
 }

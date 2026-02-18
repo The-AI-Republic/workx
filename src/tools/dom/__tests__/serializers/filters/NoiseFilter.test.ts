@@ -5,7 +5,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { NoiseFilter } from '../../../serializers/filters/NoiseFilter';
-import { VirtualNode, NODE_TYPE_COMMENT } from '../../../types';
+import type { VirtualNode } from '../../../types';
+import { NODE_TYPE_COMMENT } from '../../../types';
 
 describe('NoiseFilter', () => {
   const filter = new NoiseFilter();
