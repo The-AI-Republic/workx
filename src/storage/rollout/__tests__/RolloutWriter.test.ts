@@ -40,13 +40,13 @@ describe('RolloutWriter', () => {
   });
 
   describe('Initialization', () => {
-    it('should create IndexedDB database "BrowserxRollouts" version 1', async () => {
+    it('should create IndexedDB database "PiRollouts" version 1', async () => {
       writer = await RolloutWriter.create(rolloutId);
       expect(writer).toBeDefined();
 
       // Verify database exists
       const dbs = await indexedDB.databases();
-      const dbExists = dbs.some((db: any) => db.name === 'BrowserxRollouts');
+      const dbExists = dbs.some((db: any) => db.name === 'PiRollouts');
       expect(dbExists).toBe(true);
     });
 

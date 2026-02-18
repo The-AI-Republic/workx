@@ -25,8 +25,8 @@ const mockAgentFactory = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/core/BrowserxAgent', () => ({
-  BrowserxAgent: class MockBrowserxAgent {
+vi.mock('@/core/PiAgent', () => ({
+  PiAgent: class MockPiAgent {
     initialize = vi.fn().mockResolvedValue(undefined);
     getSession = mockAgentFactory.createMockAgent().getSession;
     submitOperation = vi.fn().mockResolvedValue('sub_123');

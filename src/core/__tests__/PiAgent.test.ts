@@ -1,7 +1,7 @@
 /**
- * Unit Tests: BrowserxAgent
+ * Unit Tests: PiAgent
  *
- * Covers the public API of BrowserxAgent with fully mocked dependencies.
+ * Covers the public API of PiAgent with fully mocked dependencies.
  * All external modules (AgentConfig, Session, ModelClientFactory, ToolRegistry,
  * MessageRouter, UserNotifier, ApprovalManager, DiffTracker, TurnContext,
  * RegularTask, PromptLoader, registerPlatformTools, TabManager) are mocked
@@ -94,7 +94,7 @@ declare const __BUILD_MODE__: string;
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { BrowserxAgent } from '../BrowserxAgent';
+import { PiAgent } from '../PiAgent';
 import { AgentConfig } from '../../config/AgentConfig';
 import { MessageRouter } from '../MessageRouter';
 import type { Op } from '../protocol/types';
@@ -145,10 +145,10 @@ function createMockRouter(): MessageRouter {
 // Test Suite
 // ---------------------------------------------------------------------------
 
-describe('BrowserxAgent', () => {
+describe('PiAgent', () => {
   let config: AgentConfig;
   let router: MessageRouter;
-  let agent: BrowserxAgent;
+  let agent: PiAgent;
 
   beforeEach(() => {
     uuidCounter = 0;
@@ -241,7 +241,7 @@ describe('BrowserxAgent', () => {
 
     config = createMockConfig();
     router = createMockRouter();
-    agent = new BrowserxAgent(config, router);
+    agent = new PiAgent(config, router);
   });
 
   // =========================================================================
@@ -254,7 +254,7 @@ describe('BrowserxAgent', () => {
     });
 
     it('should use the provided agentId when one is supplied', () => {
-      const custom = new BrowserxAgent(config, router, undefined, 'my-agent');
+      const custom = new PiAgent(config, router, undefined, 'my-agent');
       expect(custom.agentId).toBe('my-agent');
     });
 

@@ -2,9 +2,9 @@
  * Contract Test: ModelClient Interface Compliance
  *
  * This test validates that the TypeScript ModelClient implementation
- * matches the Rust ModelClient struct from browserx-rs/core/src/client.rs
+ * matches the Rust ModelClient struct from pi-rs/core/src/client.rs
  *
- * Rust Reference: browserx-rs/core/src/client.rs Lines 74-445
+ * Rust Reference: pi-rs/core/src/client.rs Lines 74-445
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
