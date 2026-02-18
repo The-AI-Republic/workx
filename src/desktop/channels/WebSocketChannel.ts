@@ -57,6 +57,9 @@ export class WebSocketChannel implements ChannelAdapter {
   private connectionState: ConnectionState = 'disconnected';
   private initialized = false;
   private currentTurns = new Map<string, { clientId: string; turnId: string }>();
+  private lastActiveTurnId: string | null = null;
+  /** Maps tool call_id → generated toolUseId for correlating start/end events */
+  private pendingToolUseIds = new Map<string, string>();
 
   constructor(config?: Partial<WebSocketServerConfig>) {
     this.server = new WebSocketServer(config);
@@ -138,6 +141,8 @@ export class WebSocketChannel implements ChannelAdapter {
 
     this.submissionHandlers = [];
     this.currentTurns.clear();
+    this.lastActiveTurnId = null;
+    this.pendingToolUseIds.clear();
     this.connectionState = 'disconnected';
     this.initialized = false;
 
@@ -178,6 +183,7 @@ export class WebSocketChannel implements ChannelAdapter {
 
     // Track the turn
     this.currentTurns.set(turnId, { clientId, turnId });
+    this.lastActiveTurnId = turnId;
 
     // Create submission context
     const context = {
@@ -243,6 +249,9 @@ export class WebSocketChannel implements ChannelAdapter {
 
     if (turnToCancel) {
       this.currentTurns.delete(turnToCancel);
+      if (this.lastActiveTurnId === turnToCancel) {
+        this.lastActiveTurnId = null;
+      }
 
       await this.server.send(clientId, {
         type: 'cancel_ack',
@@ -254,14 +263,25 @@ export class WebSocketChannel implements ChannelAdapter {
   }
 
   /**
-   * Get the turnId for the most recently active turn, if any.
+   * Generate a stable tool use ID for correlating start/end events.
+   * Uses call_id from the event when available, otherwise generates one
+   * from tool_name + timestamp and tracks it for later lookup.
    */
-  private getActiveTurnId(): string {
-    // Return the most recently tracked turn
-    for (const info of this.currentTurns.values()) {
-      return info.turnId;
-    }
-    return '';
+  private trackToolUseId(callId: string | undefined, toolName: string): string {
+    const toolUseId = callId || `tool-${toolName}-${Date.now()}`;
+    // Store keyed by call_id if present, otherwise by tool_name as fallback
+    this.pendingToolUseIds.set(callId || toolName, toolUseId);
+    return toolUseId;
+  }
+
+  /**
+   * Retrieve the toolUseId previously generated for a tool execution.
+   */
+  private resolveToolUseId(callId: string | undefined, toolName: string): string {
+    const key = callId || toolName;
+    const toolUseId = this.pendingToolUseIds.get(key) || `tool-${toolName}-unknown`;
+    this.pendingToolUseIds.delete(key);
+    return toolUseId;
   }
 
   /**
@@ -275,7 +295,12 @@ export class WebSocketChannel implements ChannelAdapter {
     event: EventMsg
   ): WSOutboundMessage | null {
     const timestamp = Date.now();
-    const turnId = this.getActiveTurnId();
+    const turnId = this.lastActiveTurnId;
+
+    // Drop events when there's no active turn — no client to route them to
+    if (!turnId) {
+      return null;
+    }
 
     switch (event.type) {
       case 'AgentMessageDelta':
@@ -286,27 +311,36 @@ export class WebSocketChannel implements ChannelAdapter {
           timestamp,
         } as WSAssistantChunk;
 
-      case 'ToolExecutionStart':
+      case 'ToolExecutionStart': {
+        const toolUseId = this.trackToolUseId(event.data.call_id, event.data.tool_name);
         return {
           type: 'tool_use',
           turnId,
           tool: event.data.tool_name,
-          input: {},
-          toolUseId: `tool-${event.data.start_time || Date.now()}`,
+          input: event.data.params || {},
+          toolUseId,
           timestamp,
         } as WSToolUse;
+      }
 
-      case 'ToolExecutionEnd':
+      case 'ToolExecutionEnd': {
+        const toolUseId = this.resolveToolUseId(event.data.call_id, event.data.tool_name);
         return {
           type: 'tool_result',
           turnId,
-          toolUseId: `tool-${timestamp}`,
+          toolUseId,
           result: event.data.success ? 'success' : 'failed',
           success: event.data.success,
           timestamp,
         } as WSToolResult;
+      }
 
       case 'TaskComplete':
+        // Turn is complete — clean up tracking state
+        if (turnId) {
+          this.currentTurns.delete(turnId);
+          this.lastActiveTurnId = null;
+        }
         return {
           type: 'assistant_turn_complete',
           turnId,

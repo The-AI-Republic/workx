@@ -522,7 +522,7 @@ export class NativeBrowserController implements BrowserController {
       const escapedSelector = JSON.stringify(target);
       await this.evaluate(`document.querySelector(${escapedSelector})?.scrollIntoView({ behavior: 'smooth', block: 'center' })`);
     } else {
-      await this.evaluate(`window.scrollTo({ left: ${target.x}, top: ${target.y}, behavior: 'smooth' })`);
+      await this.evaluate(`window.scrollTo({ left: ${Number(target.x)}, top: ${Number(target.y)}, behavior: 'smooth' })`);
     }
   }
 
