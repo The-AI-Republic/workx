@@ -265,6 +265,14 @@ export class TurnContext {
   }
 
   /**
+   * Replace the model client instance.
+   * Used for cross-provider model switching where setModel() alone is insufficient.
+   */
+  setModelClient(client: ModelClient): void {
+    this.modelClient = client;
+  }
+
+  /**
    * Get model client
    */
   getModelClient(): ModelClient {

@@ -212,6 +212,8 @@ export type ResponseItem =
       /** Gemini thought signature for maintaining reasoning context across turns */
       thoughtSignature?: string;
     }>;
+    /** Composite key identifying which model generated this message (format: "providerId:modelId") */
+    modelKey?: string;
   }
   | {
     type: 'reasoning';
