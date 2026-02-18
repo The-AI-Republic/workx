@@ -149,6 +149,9 @@
     <!-- Header outside bubble for user messages in chatgpt theme -->
     <div class="message-header">
       <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}:</span>
+      {#if event.title !== 'user' && event.modelKey}
+        <span class="model-indicator">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
+      {/if}
       <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
     </div>
     <div class="message-container">
@@ -336,6 +339,12 @@
     font-size: 0.7rem;
   }
 
+  .model-indicator {
+    color: #6b7280;
+    font-size: 0.65rem;
+    font-style: italic;
+  }
+
   .message-content {
     /* No border or background - clean layout */
   }
@@ -403,6 +412,10 @@
   }
 
   .message-bubble-container.chatgpt .message-time {
+    color: var(--chat-text-muted, #8e8ea0);
+  }
+
+  .message-bubble-container.chatgpt .model-indicator {
     color: var(--chat-text-muted, #8e8ea0);
   }
 
