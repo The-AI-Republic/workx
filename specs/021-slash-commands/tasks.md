@@ -24,7 +24,7 @@
 
 **Purpose**: Create the commands module directory and placeholder files
 
-- [ ] T001 Create `src/extension/sidepanel/commands/` directory with empty files: `CommandRegistry.ts`, `builtinCommands.ts`, `index.ts`
+- [x] T001 Create `src/extension/sidepanel/commands/` directory with empty files: `CommandRegistry.ts`, `builtinCommands.ts`, `index.ts`
 
 ---
 
