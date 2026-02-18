@@ -3,6 +3,7 @@
  */
 
 import { SUMMARY_PREFIX, TRUNCATION_MARKER } from './constants';
+import type { ResponseItem } from '../protocol/types';
 
 /**
  * Approximate token count using word count heuristic.
@@ -131,4 +132,44 @@ export function extractTextFromContent(
   }
 
   return pieces.join('\n');
+}
+
+/**
+ * Estimate total token count for a set of ResponseItems plus optional
+ * instruction text and tool schema overhead.
+ *
+ * Uses 1 token ≈ 4 characters heuristic (consistent with CompactService.estimateTokens).
+ *
+ * @param items - Conversation history + new input items
+ * @param instructionsLength - Character length of base + user instructions (optional)
+ * @param toolCount - Number of tool definitions to account for (optional, ~500 tokens each)
+ * @returns Estimated token count (always >= 0)
+ */
+export function estimateRequestTokens(
+  items: ResponseItem[],
+  instructionsLength?: number,
+  toolCount?: number
+): number {
+  let totalChars = 0;
+
+  for (const item of items) {
+    if (item.type === 'message' && Array.isArray(item.content)) {
+      for (const contentItem of item.content) {
+        if (
+          (contentItem.type === 'input_text' ||
+            contentItem.type === 'output_text' ||
+            contentItem.type === 'text') &&
+          contentItem.text
+        ) {
+          totalChars += contentItem.text.length;
+        }
+      }
+    }
+  }
+
+  let estimate = Math.ceil(totalChars / 4);
+  estimate += Math.ceil((instructionsLength ?? 0) / 4);
+  estimate += (toolCount ?? 0) * 500;
+
+  return estimate;
 }
