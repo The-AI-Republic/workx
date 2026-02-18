@@ -34,8 +34,8 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Implement Command, CommandRegistration, FilteredCommand types and CommandRegistry singleton class (Map-based storage, register, get, getAll, filter, has methods with case-insensitive lowercase normalization) in `src/extension/sidepanel/commands/CommandRegistry.ts` per contract `specs/021-slash-commands/contracts/command-registry.ts`
-- [ ] T003 Create public API module that exports the CommandRegistry singleton instance and re-exports types in `src/extension/sidepanel/commands/index.ts`
+- [x] T002 Implement Command, CommandRegistration, FilteredCommand types and CommandRegistry singleton class (Map-based storage, register, get, getAll, filter, has methods with case-insensitive lowercase normalization) in `src/extension/sidepanel/commands/CommandRegistry.ts` per contract `specs/021-slash-commands/contracts/command-registry.ts`
+- [x] T003 Create public API module that exports the CommandRegistry singleton instance and re-exports types in `src/extension/sidepanel/commands/index.ts`
 
 **Checkpoint**: CommandRegistry is importable and functional — user story implementation can now begin
 

@@ -1,2 +1,7 @@
-// Commands module public API - placeholder for Phase 2
-export {};
+export { commandRegistry, parseCommandInput } from './CommandRegistry';
+export type {
+  Command,
+  CommandRegistration,
+  FilteredCommand,
+  ParsedCommandInput,
+} from './CommandRegistry';
