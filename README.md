@@ -1,4 +1,4 @@
-# Pi
+# Pi (Personal AI)
 
 **AI-Powered Personal Assistant - Chrome Extension & Desktop App**
 

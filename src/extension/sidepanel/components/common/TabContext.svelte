@@ -42,7 +42,7 @@
   // Tab update listener reference for cleanup
   let tabUpdateListener: ((tabId: number, changeInfo: { title?: string }, tab: chrome.tabs.Tab) => void) | null = null;
 
-  // Active tab tracking for "(current)" marker
+  // Active tab tracking for "(active)" marker
   let activeTabId: number = -1;
   let activeTabListener: ((activeInfo: chrome.tabs.TabActiveInfo) => void) | null = null;
 
@@ -117,7 +117,7 @@
   }
 
   /**
-   * Handle active tab change for "(current)" marker
+   * Handle active tab change for "(active)" marker
    */
   function handleTabActivated(activeInfo: chrome.tabs.TabActiveInfo): void {
     activeTabId = activeInfo.tabId;
@@ -306,7 +306,7 @@
 
         <!-- List of available tabs -->
         {#each availableTabs as tab (tab.id)}
-          <Tooltip content={tab.title || tab.url || 'Untitled'} placement="right">
+          <Tooltip content={tab.title || tab.url || 'Untitled'} placement="top">
             <div
               class="dropdown-item"
               class:selected={tab.id === tabId}
@@ -317,7 +317,7 @@
               data-testid="tab-dropdown-item"
             >
               <span class="tab-item-title">
-                {#if tab.id === activeTabId}{$_t("(current)")} {/if}{tab.title || tab.url || 'Untitled'}
+                {#if tab.id === activeTabId}<span class="active-tab-marker">{$_t("(active)")}</span> {/if}{tab.title || tab.url || 'Untitled'}
               </span>
               {#if tab.id === tabId}
                 <span class="selected-indicator">✓</span>
@@ -459,6 +459,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     margin-right: 8px;
+  }
+
+  :global(.active-tab-marker) {
+    color: #60a5fa;
+    font-weight: bold;
   }
 
   .selected-indicator {

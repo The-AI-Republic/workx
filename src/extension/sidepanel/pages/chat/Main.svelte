@@ -965,7 +965,7 @@
     <div class="content-container">
         <!-- Status Line -->
         <div class="status-line flex justify-between mb-2">
-          <TerminalMessage type="system" content={platform.platformName === 'extension' ? "Browserx (Alpha)" : "Pi: Your personal AI (Alpha)"} />
+          <TerminalMessage type="system" content={platform.platformName === 'extension' ? "Browserx (Alpha)" : "Apple Pi: Your personal AI (Alpha)"} />
           <div class="flex items-center space-x-2">
             {#if isProcessing}
               <TerminalMessage type="warning" content="[PROCESSING]" />
