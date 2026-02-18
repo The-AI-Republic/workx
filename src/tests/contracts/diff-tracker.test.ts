@@ -130,7 +130,7 @@ describe('DiffTracker Contract', () => {
                 change_id: request.changeId,
                 type: request.type,
                 operation: request.operation,
-                target: request.target,
+                target: request.target as any,
               },
             },
           });
@@ -138,9 +138,9 @@ describe('DiffTracker Contract', () => {
           const diff: ChangeDiff = {
             before: request.before,
             after: request.after,
-            delta: this.calculateDelta(request.before, request.after),
-            size: this.calculateSize(request.before, request.after),
-            checksum: this.generateChecksum(request.after),
+            delta: (mockDiffTracker as any).calculateDelta(request.before, request.after),
+            size: (mockDiffTracker as any).calculateSize(request.before, request.after),
+            checksum: (mockDiffTracker as any).generateChecksum(request.after),
           };
 
           const result: DiffResult = {
@@ -177,22 +177,24 @@ describe('DiffTracker Contract', () => {
           return 0;
         },
 
-        calculateDelta(before: any, after: any): any {
-          if (!before) return { type: 'create', value: after };
-          if (!after) return { type: 'delete', value: before };
-          return { type: 'update', from: before, to: after };
-        },
+      } as unknown as DiffTracker;
 
-        calculateSize(before: any, after: any): number {
-          const beforeSize = before ? JSON.stringify(before).length : 0;
-          const afterSize = after ? JSON.stringify(after).length : 0;
-          return Math.abs(afterSize - beforeSize);
-        },
+      // Attach helper methods to mock
+      (mockDiffTracker as any).calculateDelta = (before: any, after: any): any => { // eslint-disable-line @typescript-eslint/no-unused-vars
+        if (!before) return { type: 'create', value: after };
+        if (!after) return { type: 'delete', value: before };
+        return { type: 'update', from: before, to: after };
+      };
 
-        generateChecksum(data: any): string {
-          if (!data) return '';
-          return btoa(JSON.stringify(data)).slice(0, 8);
-        },
+      (mockDiffTracker as any).calculateSize = (before: any, after: any): number => {
+        const beforeSize = before ? JSON.stringify(before).length : 0;
+        const afterSize = after ? JSON.stringify(after).length : 0;
+        return Math.abs(afterSize - beforeSize);
+      };
+
+      (mockDiffTracker as any).generateChecksum = (data: any): string => {
+        if (!data) return '';
+        return btoa(JSON.stringify(data)).slice(0, 8);
       };
 
       const request: AddChangeRequest = {
@@ -277,6 +279,8 @@ describe('DiffTracker Contract', () => {
               data: {
                 change_id: request.changeId,
                 type: request.type,
+                operation: request.operation,
+                target: request.target as any,
               },
             },
           });

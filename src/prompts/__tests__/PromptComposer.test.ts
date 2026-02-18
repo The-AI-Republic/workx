@@ -8,43 +8,43 @@ import { PromptComposer } from '../PromptComposer';
 describe('PromptComposer', () => {
   const composer = new PromptComposer();
 
-  describe('compose_main_instruction', () => {
+  describe('composeMainInstruction', () => {
     it('should include approval policies fragment for browserx agent', () => {
-      const prompt = composer.compose_main_instruction('browserx');
+      const prompt = composer.composeMainInstruction('browserx');
       expect(prompt).toContain('Action Approval System');
     });
 
     it('should include approval policies fragment for pi agent', () => {
-      const prompt = composer.compose_main_instruction('pi');
+      const prompt = composer.composeMainInstruction('pi');
       expect(prompt).toContain('Action Approval System');
     });
 
     it('should mention actions that require approval', () => {
-      const prompt = composer.compose_main_instruction('browserx');
+      const prompt = composer.composeMainInstruction('browserx');
       expect(prompt).toContain('typically require approval');
       expect(prompt).toContain('Financial operations');
     });
 
     it('should mention actions that are auto-approved', () => {
-      const prompt = composer.compose_main_instruction('browserx');
+      const prompt = composer.composeMainInstruction('browserx');
       expect(prompt).toContain('auto-approved');
       expect(prompt).toContain('DOM snapshots');
     });
 
     it('should include denial handling instructions', () => {
-      const prompt = composer.compose_main_instruction('browserx');
+      const prompt = composer.composeMainInstruction('browserx');
       expect(prompt).toContain('denied');
       expect(prompt).toContain('alternative approaches');
     });
 
     it('should include safety fragment', () => {
-      const prompt = composer.compose_main_instruction('browserx');
+      const prompt = composer.composeMainInstruction('browserx');
       // Safety fragment should be present (different from approval)
       expect(prompt.length).toBeGreaterThan(100);
     });
 
     it('should include task policies fragment', () => {
-      const prompt = composer.compose_main_instruction('browserx');
+      const prompt = composer.composeMainInstruction('browserx');
       // Both task policies and approval policies should be present
       // Approval policies should come after task policies
       const taskIdx = prompt.indexOf('Task');

@@ -2,7 +2,7 @@
  * Test utilities for model tests
  */
 
-import { vi } from 'vitest';
+import { vi, expect } from 'vitest';
 
 /**
  * Creates a mock fetch response

@@ -79,7 +79,7 @@ export class TerminalRiskAssessor implements IRiskAssessor {
 
     // Split on shell chaining operators and evaluate each part independently
     // to prevent safe commands from masking dangerous ones (e.g. "ls; sudo rm -rf foo")
-    const parts = unquoted.split(/\s*(?:&&|\|\||[;&])\s*/).filter(p => p.trim());
+    const parts = unquoted.split(/\s*(?:&&|\|\||[;&])\s*/).filter((p: string) => p.trim());
     let score = 20; // Default baseline
 
     for (const part of parts) {

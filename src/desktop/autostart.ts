@@ -7,6 +7,7 @@
  * @module desktop/autostart
  */
 
+// @ts-ignore - Tauri plugin, types may not be available in all build modes
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 
 /**

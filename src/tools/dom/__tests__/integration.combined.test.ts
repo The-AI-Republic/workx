@@ -609,10 +609,13 @@ describe('Integration: Combined Shadow DOM and Iframe', () => {
     const domService = await DomService.forTab(mockTabId);
     const snapshot = await domService.buildSnapshot();
 
-    // All nodes should be captured (CDP with pierce:true captures everything)
+    // Nested iframes beyond depth 1 are skipped:
+    // Main frame: HTML(1), BODY(2), IFRAME(3) = 3 nodes
+    // First iframe: #document(4), HTML(5), BODY(6), BUTTON(7), IFRAME(8) = 5 nodes
+    // Nested iframe (depth 2) is skipped entirely
     const stats = snapshot.getStats();
-    expect(stats.totalNodes).toBe(12);
-    expect(stats.interactiveNodes).toBe(2);
+    expect(stats.totalNodes).toBe(8);
+    expect(stats.interactiveNodes).toBe(1); // Only button in first iframe
 
     const serialized = snapshot.serialize();
     const nodes = flattenNodes(serialized.page.body);
@@ -621,9 +624,9 @@ describe('Integration: Combined Shadow DOM and Iframe', () => {
     const firstButton = nodes.find(n => n.aria_label === 'First Level Button');
     expect(firstButton).toBeDefined();
 
-    // Nested button should also be present (CDP captures all levels)
+    // Nested button in depth-2 iframe is skipped (iframeDepth > 1)
     const nestedButton = nodes.find(n => n.aria_label === 'Nested Level Button');
-    expect(nestedButton).toBeDefined();
+    expect(nestedButton).toBeUndefined();
   });
 
   it('should handle CDP failures gracefully for shadow/iframe data', async () => {

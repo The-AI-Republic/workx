@@ -322,9 +322,9 @@ describe('SSEEventParser', () => {
       expect(allEvents).toHaveLength(5);
       expect(allEvents[0].type).toBe('Created');
       expect(allEvents[1].type).toBe('OutputTextDelta');
-      expect(allEvents[1].delta).toBe('Hello');
+      expect((allEvents[1] as any).delta).toBe('Hello');
       expect(allEvents[2].type).toBe('OutputTextDelta');
-      expect(allEvents[2].delta).toBe(' world');
+      expect((allEvents[2] as any).delta).toBe(' world');
       expect(allEvents[3].type).toBe('OutputItemDone');
       expect(allEvents[4].type).toBe('Completed');
     });

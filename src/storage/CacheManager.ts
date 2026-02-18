@@ -437,8 +437,8 @@ export class CacheManager {
         }
       };
 
-      this.compressionWorker.addEventListener('message', handler);
-      this.compressionWorker.postMessage({ action: 'compress', data });
+      this.compressionWorker!.addEventListener('message', handler);
+      this.compressionWorker!.postMessage({ action: 'compress', data });
     });
   }
 
@@ -462,8 +462,8 @@ export class CacheManager {
         }
       };
 
-      this.compressionWorker.addEventListener('message', handler);
-      this.compressionWorker.postMessage({ action: 'decompress', data });
+      this.compressionWorker!.addEventListener('message', handler);
+      this.compressionWorker!.postMessage({ action: 'decompress', data });
     });
   }
 

@@ -185,7 +185,7 @@ export class Session {
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        tabId: this.sessionState.getTabId(), // Replaced cwd with tabId
+        cwd: String(this.sessionState.getTabId()), // Use tabId as cwd for browser context
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -350,7 +350,7 @@ export class Session {
    */
   getMessagesByType(type: 'user' | 'agent' | 'system'): ResponseItem[] {
     const role = type === 'user' ? 'user' : type === 'system' ? 'system' : 'assistant';
-    return this.sessionState.historySnapshot().filter(item => item.role === role);
+    return this.sessionState.historySnapshot().filter(item => item.type === 'message' && item.role === role);
   }
 
   /**
@@ -620,7 +620,9 @@ export class Session {
    */
   async searchMessages(query: string): Promise<ResponseItem[]> {
     return this.sessionState.historySnapshot().filter(item => {
-      const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+      const content = item.type === 'message'
+        ? (typeof item.content === 'string' ? item.content : JSON.stringify(item.content))
+        : JSON.stringify(item);
       return content.toLowerCase().includes(query.toLowerCase());
     });
   }

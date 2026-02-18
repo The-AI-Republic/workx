@@ -89,13 +89,13 @@ export class WebSearchTool extends BaseTool {
 
     try {
       // Create a tiny popup window and immediately minimize it
-      searchWindow = await chrome.windows.create({
+      searchWindow = (await chrome.windows.create({
         url: 'about:blank',
         type: 'popup',
         width: 100,
         height: 100,
         focused: false,
-      });
+      })) ?? null;
 
       // Immediately minimize the window to hide it
       if (searchWindow?.id) {
