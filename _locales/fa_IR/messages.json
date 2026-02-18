@@ -1,27 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "عامل هوش مصنوعی عمومی درون مرورگر برای وظایف کاری"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "پیکربندی کلید API"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "کلیدهای API رمزگذاری شده و به‌صورت محلی در مرورگر شما ذخیره می‌شوند. آن‌ها هرگز به سرورهای خارجی ارسال نمی‌شوند، به‌جز هنگام فراخوانی API."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "دسترسی به ذخیره‌سازی مرورگر (localStorage، sessionStorage، کوکی‌ها)"
   },
+  "Action": {
+    "message": "اقدام"
+  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
+  },
+  "Action_Details": {
+    "message": "جزئیات اقدام"
   },
   "Active_Sessions": {
     "message": ""
@@ -29,13 +17,16 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
+  "Add_Modification": {
+    "message": "افزودن تغییرات"
+  },
   "Add_Server": {
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -43,6 +34,9 @@
   },
   "Advanced_Configuration": {
     "message": "پیکربندی پیشرفته"
+  },
+  "Advanced_Options": {
+    "message": "گزینه‌های پیشرفته"
   },
   "Advanced_Settings": {
     "message": ""
@@ -71,11 +65,32 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_Safety": {
+  "API_Key": {
     "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "پیکربندی کلید API"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "کلیدهای API رمزگذاری شده و به‌صورت محلی در مرورگر شما ذخیره می‌شوند. آن‌ها هرگز به سرورهای خارجی ارسال نمی‌شوند، به‌جز هنگام فراخوانی API."
+  },
+  "Approval_History": {
+    "message": "تاریخچه تأیید"
   },
   "Approval_Mode": {
     "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
+  },
+  "Approve": {
+    "message": "تأیید"
+  },
+  "Approve_this_action": {
+    "message": "تأیید این اقدام"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "درخواست از Browserx برای استخراج داده‌های ساختاریافته از هر صفحه وب"
@@ -86,11 +101,11 @@
   "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Available": {
     "message": "در دسترس:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "بازگشت"
@@ -104,20 +119,20 @@
   "Beta": {
     "message": "بتا"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "تغییر وضعیت ابزارهای خودکار مرورگر"
+  },
   "Browser_Tools": {
     "message": "ابزارهای مرورگر"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "تغییر وضعیت ابزارهای خودکار مرورگر"
+  "Cache_behavior_and_data_retention": {
+    "message": "رفتار کش و نگهداری داده‌ها"
   },
   "Cache_Settings": {
     "message": "تنظیمات کش"
   },
   "Cache_TTL_seconds": {
     "message": "کش TTL (ثانیه)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "رفتار کش و نگهداری داده‌ها"
   },
   "Cancel": {
     "message": "لغو"
@@ -157,6 +172,9 @@
   "Close_settings": {
     "message": "بستن تنظیمات"
   },
+  "Command": {
+    "message": "دستور"
+  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -175,13 +193,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -189,6 +207,9 @@
   },
   "Connecting": {
     "message": ""
+  },
+  "Context": {
+    "message": "متن"
   },
   "Create_New_Tab": {
     "message": "ایجاد برگه جدید"
@@ -202,8 +223,8 @@
   "Current_Plan": {
     "message": "پلن فعلی:"
   },
-  "DOM_Tool": {
-    "message": "ابزار DOM"
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "اعتبارهای روزانه"
@@ -232,6 +253,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "نمایش مصرف توکن (توکن‌های ورودی/خروجی) هنگام تکمیل وظایف"
   },
+  "DOM_Tool": {
+    "message": "ابزار DOM"
+  },
   "Duration": {
     "message": ""
   },
@@ -244,8 +268,14 @@
   "Enable_All_Tools": {
     "message": "فعال‌سازی همه ابزارها"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "فعال‌سازی کش"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "فعال‌سازی کش برای بهبود عملکرد با ذخیره‌سازی داده‌های پرکاربرد"
   },
   "Enable_Compression": {
     "message": "فعال‌سازی فشرده‌سازی"
@@ -253,19 +283,13 @@
   "Enable_Content_Scripts": {
     "message": "فعال‌سازی اسکریپت‌های محتوا"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "فعال‌سازی افزونه"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "فعال‌سازی کش برای بهبود عملکرد با ذخیره‌سازی داده‌های پرکاربرد"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -295,17 +319,26 @@
   "Expire_after_days": {
     "message": "انقضا پس از روز"
   },
-  "Extension_Permission": {
-    "message": "افزونه و دسترسی"
-  },
-  "Extension_Permission_Settings": {
-    "message": "تنظیمات افزونه و دسترسی"
+  "Explain_your_decision": {
+    "message": "دلیل تصمیم خود را توضیح دهید..."
   },
   "Extension_Configuration": {
     "message": "پیکربندی افزونه"
   },
   "Extension_configuration_and_permissions": {
     "message": "پیکربندی افزونه و دسترسی‌ها"
+  },
+  "extension_description": {
+    "message": "عامل هوش مصنوعی عمومی درون مرورگر برای وظایف کاری"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "افزونه و دسترسی"
+  },
+  "Extension_Permission_Settings": {
+    "message": "تنظیمات افزونه و دسترسی"
   },
   "Extra_Credits": {
     "message": "اعتبار اضافی"
@@ -331,6 +364,9 @@
   "File_Operations_Not_Available": {
     "message": "عملیات فایل (در دسترس نیست)"
   },
+  "File_Path": {
+    "message": "مسیر فایل"
+  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "پر کردن فرم‌ها، ارسال داده‌ها، تعامل با عناصر فرم"
   },
@@ -346,11 +382,11 @@
   "General": {
     "message": "عمومی"
   },
-  "General_Settings": {
-    "message": "تنظیمات عمومی"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "عامل هوش مصنوعی عمومی در مرورگر برای وظایف کاری"
+  },
+  "General_Settings": {
+    "message": "تنظیمات عمومی"
   },
   "Get_Started": {
     "message": "شروع کنید"
@@ -366,20 +402,20 @@
   "Hello_World": {
     "message": "سلام دنیا"
   },
+  "History": {
+    "message": "تاریخچه"
+  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
+  },
+  "Impact": {
+    "message": "تأثیر"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "دستگیری و تغییر درخواست‌ها/پاسخ‌های شبکه"
   },
   "Keyboard_Shortcuts": {
     "message": "کلیدهای میانبر"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "درخواست‌های LLM مستقیماً به APIهای ارائه‌دهنده ارسال می‌شوند"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "درخواست‌های LLM از طریق بک‌اند AI Republic مسیردهی می‌شوند"
   },
   "Language": {
     "message": "زبان"
@@ -393,7 +429,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "فهرست مبدأهای مجاز (هر کدام در یک خط). از کاراکترهای جایگزین (*) پشتیبانی می‌کند."
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "درخواست‌های LLM مستقیماً به APIهای ارائه‌دهنده ارسال می‌شوند"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "درخواست‌های LLM از طریق بک‌اند AI Republic مسیردهی می‌شوند"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -404,9 +449,6 @@
   },
   "Loading_settings": {
     "message": "در حال بارگذاری تنظیمات..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -420,20 +462,14 @@
   "Login_to_get_free_credits": {
     "message": "برای دریافت اعتبار رایگان وارد شوید"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "اعتبار باقیمانده کم"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "مدیریت زبانه‌های مرورگر (باز کردن، بستن، جابجایی، پرس‌وجو)"
@@ -462,6 +498,12 @@
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "حداکثر زمان (به میلی‌ثانیه) اجرای ابزار قبل از تایم‌اوت (پیش‌فرض: ۳۰۰۰۰)"
   },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
   "Missed": {
     "message": ""
   },
@@ -473,6 +515,9 @@
   },
   "Modern_Chat": {
     "message": "چت پیشرفته"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "تغییر پارامترها هنگام درخواست تغییرات"
   },
   "Monthly_Credits": {
     "message": "اعتبار ماهانه"
@@ -504,13 +549,16 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
+  "No_approval_history_yet": {
+    "message": "هنوز تاریخچه‌ای از تأییدها ثبت نشده است."
+  },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -534,6 +582,9 @@
   "Open_Side_Panel": {
     "message": "باز کردن پنل کناری:"
   },
+  "optional": {
+    "message": ""
+  },
   "Organization": {
     "message": "سازمان"
   },
@@ -542,6 +593,9 @@
   },
   "Page_Vision_Tool": {
     "message": "ابزار تحلیل صفحه"
+  },
+  "Parameter_Modifications": {
+    "message": "تغییرات پارامترها"
   },
   "Pause_Queue": {
     "message": ""
@@ -576,14 +630,17 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "اقدام سریع"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "شروع سریع"
   },
-  "Quick_action": {
-    "message": "اقدام سریع"
+  "Read_only": {
+    "message": "فقط‌خواندنی"
   },
   "Read_Only": {
     "message": ""
@@ -591,11 +648,17 @@
   "Read_Write": {
     "message": ""
   },
-  "Read_only": {
-    "message": "فقط‌خواندنی"
+  "Reason_optional": {
+    "message": "دلیل (اختیاری)"
   },
   "Refreshes_in": {
     "message": "به‌روزرسانی طی"
+  },
+  "Reject": {
+    "message": "رد کردن"
+  },
+  "Reject_this_action": {
+    "message": "رد این اقدام"
   },
   "Remaining": {
     "message": "مانده:"
@@ -605,6 +668,15 @@
   },
   "Remove_API_Key": {
     "message": "حذف کلید API"
+  },
+  "Remove_modification": {
+    "message": "حذف اصلاحیه"
+  },
+  "Request_Changes": {
+    "message": "درخواست تغییرات"
+  },
+  "Request_changes_to_this_action": {
+    "message": "درخواست تغییرات برای این عمل"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -660,11 +732,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "امنیت و حریم خصوصی"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "سطح امنیت محیط اجرای ابزار"
+  },
+  "Security_Privacy": {
+    "message": "امنیت و حریم خصوصی"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "مدل هوش مصنوعی مورد استفاده برای گفتگوها را انتخاب کنید."
@@ -675,10 +747,19 @@
   "Service_Tier": {
     "message": "سطح سرویس"
   },
+  "session": {
+    "message": ""
+  },
+  "Session": {
+    "message": "جلسه"
+  },
   "Session_error": {
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -756,17 +837,20 @@
   "Testing": {
     "message": "در حال آزمایش..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "عامل در حال حاضر از حالت بک‌اند (Backend) استفاده می‌کند. درخواست‌های LLM از طریق سرور AI Republic مسیردهی می‌شوند. گفتگوهای شما به‌صورت ایمن از طریق زیرساخت ما پردازش می‌شوند."
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
   },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "عامل در حال حاضر از حالت بک‌اند (Backend) استفاده می‌کند. درخواست‌های LLM از طریق سرور AI Republic مسیردهی می‌شوند. گفتگوهای شما به‌صورت ایمن از طریق زیرساخت ما پردازش می‌شوند."
-  },
   "Time": {
     "message": "زمان"
+  },
+  "Time_remaining": {
+    "message": "زمان باقی‌مانده"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "زمان انقضای موارد کش بر حسب ثانیه (پیش‌فرض: 3600)"
@@ -780,6 +864,9 @@
   "Tokens": {
     "message": ""
   },
+  "Tool": {
+    "message": "ابزار"
+  },
   "Tool_Timeout_ms": {
     "message": "مهلت ابزار (میلی‌ثانیه)"
   },
@@ -789,11 +876,11 @@
   "Tools_Settings": {
     "message": "تنظیمات ابزارها"
   },
+  "Turn": {
+    "message": "نوبت"
+  },
   "UI_Theme": {
     "message": "تم رابط کاربری"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Unable_to_load_credit_information": {
     "message": "بارگذاری اطلاعات اعتبار ناموفق بود"
@@ -819,20 +906,35 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "اشتراک خود را ارتقاء دهید تا به قدرتمندترین مدل‌های جهان دسترسی پیدا کنید"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "استفاده از منوی زمینه:"
   },
   "Use_Own_API_Key": {
     "message": "استفاده از کلید API شخصی"
   },
+  "User_approved_action": {
+    "message": "عملیات تأییدشده توسط کاربر"
+  },
   "User_Center": {
     "message": "مرکز کاربر"
   },
-  "User_Session": {
-    "message": ""
+  "User_decision": {
+    "message": "تصمیم کاربر"
   },
   "User_preferences_and_interface_settings": {
     "message": "تنظیمات ترجیحات کاربر و رابط کاربری"
+  },
+  "User_rejected_action": {
+    "message": "عملیات ردشده توسط کاربر"
+  },
+  "User_requested_modifications": {
+    "message": "تغییرات درخواست‌شده توسط کاربر"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "استفاده از اعتبار اضافی"
@@ -876,13 +978,7 @@
   "Your_API_key_is_encrypted": {
     "message": "کلید API شما رمزگذاری شده است"
   },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+  "Your_Decision": {
+    "message": "تصمیم شما"
   }
 }

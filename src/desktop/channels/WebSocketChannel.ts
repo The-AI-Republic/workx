@@ -10,11 +10,13 @@
 import type {
   ChannelAdapter,
   ChannelType,
-  SubmissionHandler,
   ConnectionState,
   SubmissionContext,
-  EventMsg,
 } from '@/core/channels/types';
+import type { EventMsg } from '@/core/protocol/events';
+
+/** WebSocket-specific submission handler (receives context only) */
+type WSSubmissionHandler = (context: SubmissionContext) => Promise<void>;
 import {
   WebSocketServer,
   type WebSocketServerConfig,
@@ -28,6 +30,7 @@ import type {
   WSToolUse,
   WSToolResult,
   WSError,
+  WSOutboundMessage,
 } from './websocket/types';
 import { isUserTurn, isCancel } from './websocket/types';
 
@@ -50,10 +53,13 @@ export class WebSocketChannel implements ChannelAdapter {
   readonly channelType: ChannelType = 'websocket';
 
   private server: WebSocketServer;
-  private submissionHandlers: SubmissionHandler[] = [];
+  private submissionHandlers: WSSubmissionHandler[] = [];
   private connectionState: ConnectionState = 'disconnected';
   private initialized = false;
   private currentTurns = new Map<string, { clientId: string; turnId: string }>();
+  private lastActiveTurnId: string | null = null;
+  /** Maps tool call_id → generated toolUseId for correlating start/end events */
+  private pendingToolUseIds = new Map<string, string>();
 
   constructor(config?: Partial<WebSocketServerConfig>) {
     this.server = new WebSocketServer(config);
@@ -93,7 +99,7 @@ export class WebSocketChannel implements ChannelAdapter {
   /**
    * Register a submission handler
    */
-  onSubmission(handler: SubmissionHandler): void {
+  onSubmission(handler: WSSubmissionHandler): void {
     this.submissionHandlers.push(handler);
   }
 
@@ -135,6 +141,8 @@ export class WebSocketChannel implements ChannelAdapter {
 
     this.submissionHandlers = [];
     this.currentTurns.clear();
+    this.lastActiveTurnId = null;
+    this.pendingToolUseIds.clear();
     this.connectionState = 'disconnected';
     this.initialized = false;
 
@@ -153,7 +161,7 @@ export class WebSocketChannel implements ChannelAdapter {
    */
   private async handleMessage(
     clientId: string,
-    message: Record<string, unknown>
+    message: Record<string, unknown> | { type: string }
   ): Promise<void> {
     if (isUserTurn(message as { type: string })) {
       const userTurn = message as unknown as WSUserTurn;
@@ -175,9 +183,10 @@ export class WebSocketChannel implements ChannelAdapter {
 
     // Track the turn
     this.currentTurns.set(turnId, { clientId, turnId });
+    this.lastActiveTurnId = turnId;
 
     // Create submission context
-    const context: SubmissionContext = {
+    const context = {
       channelId: this.channelId,
       channelType: this.channelType,
       clientId,
@@ -189,7 +198,7 @@ export class WebSocketChannel implements ChannelAdapter {
         turnId,
       },
       timestamp: Date.now(),
-    };
+    } as unknown as SubmissionContext;
 
     // Send turn start event
     await this.server.send(clientId, {
@@ -240,74 +249,116 @@ export class WebSocketChannel implements ChannelAdapter {
 
     if (turnToCancel) {
       this.currentTurns.delete(turnToCancel);
+      if (this.lastActiveTurnId === turnToCancel) {
+        this.lastActiveTurnId = null;
+      }
 
       await this.server.send(clientId, {
         type: 'cancel_ack',
         turnId: turnToCancel,
         success: true,
         timestamp: Date.now(),
-      });
+      } as WSOutboundMessage);
     }
   }
 
   /**
-   * Convert internal event to WebSocket message
+   * Generate a stable tool use ID for correlating start/end events.
+   * Uses call_id from the event when available, otherwise generates one
+   * from tool_name + timestamp and tracks it for later lookup.
+   */
+  private trackToolUseId(callId: string | undefined, toolName: string): string {
+    const toolUseId = callId || `tool-${toolName}-${Date.now()}`;
+    // Store keyed by call_id if present, otherwise by tool_name as fallback
+    this.pendingToolUseIds.set(callId || toolName, toolUseId);
+    return toolUseId;
+  }
+
+  /**
+   * Retrieve the toolUseId previously generated for a tool execution.
+   */
+  private resolveToolUseId(callId: string | undefined, toolName: string): string {
+    const key = callId || toolName;
+    const toolUseId = this.pendingToolUseIds.get(key) || `tool-${toolName}-unknown`;
+    this.pendingToolUseIds.delete(key);
+    return toolUseId;
+  }
+
+  /**
+   * Convert internal EventMsg to WebSocket outbound message.
+   *
+   * Maps from the core protocol EventMsg discriminated union to the
+   * WebSocket-specific message types. Only a subset of EventMsg types
+   * are relevant for WebSocket clients; the rest return null.
    */
   private eventToWSMessage(
     event: EventMsg
-  ): Record<string, unknown> | null {
+  ): WSOutboundMessage | null {
     const timestamp = Date.now();
+    const turnId = this.lastActiveTurnId;
+
+    // Drop events when there's no active turn — no client to route them to
+    if (!turnId) {
+      return null;
+    }
 
     switch (event.type) {
-      case 'assistant_chunk':
+      case 'AgentMessageDelta':
         return {
           type: 'assistant_chunk',
-          turnId: event.payload?.turnId,
-          content: event.payload?.content,
+          turnId,
+          content: event.data.delta,
           timestamp,
         } as WSAssistantChunk;
 
-      case 'tool_use':
+      case 'ToolExecutionStart': {
+        const toolUseId = this.trackToolUseId(event.data.call_id, event.data.tool_name);
         return {
           type: 'tool_use',
-          turnId: event.payload?.turnId,
-          tool: event.payload?.tool,
-          input: event.payload?.input,
-          toolUseId: event.payload?.toolUseId,
+          turnId,
+          tool: event.data.tool_name,
+          input: event.data.params || {},
+          toolUseId,
           timestamp,
         } as WSToolUse;
+      }
 
-      case 'tool_result':
+      case 'ToolExecutionEnd': {
+        const toolUseId = this.resolveToolUseId(event.data.call_id, event.data.tool_name);
         return {
           type: 'tool_result',
-          turnId: event.payload?.turnId,
-          toolUseId: event.payload?.toolUseId,
-          result: event.payload?.result,
-          success: event.payload?.success ?? true,
-          error: event.payload?.error,
+          turnId,
+          toolUseId,
+          result: event.data.success ? 'success' : 'failed',
+          success: event.data.success,
           timestamp,
         } as WSToolResult;
+      }
 
-      case 'assistant_complete':
+      case 'TaskComplete':
+        // Turn is complete — clean up tracking state
+        if (turnId) {
+          this.currentTurns.delete(turnId);
+          this.lastActiveTurnId = null;
+        }
         return {
           type: 'assistant_turn_complete',
-          turnId: event.payload?.turnId,
-          content: event.payload?.content,
-          usage: event.payload?.usage,
+          turnId,
+          content: event.data.last_agent_message || '',
           timestamp,
         } as WSAssistantTurnComplete;
 
-      case 'error':
+      case 'Error':
         return {
           type: 'error',
-          code: event.payload?.code || 'ERROR',
-          message: event.payload?.message || 'Unknown error',
-          turnId: event.payload?.turnId,
+          code: event.data.code || 'ERROR',
+          message: event.data.message,
+          turnId,
           timestamp,
         } as WSError;
 
       default:
-        console.warn(`[WebSocketChannel] Unknown event type: ${event.type}`);
+        // Most EventMsg types (reasoning, approval, etc.) don't need WS forwarding
         return null;
     }
   }

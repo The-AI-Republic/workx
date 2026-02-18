@@ -92,6 +92,7 @@ const DEFAULT_OPTIONS: ExecuteOptions = {
  */
 export class TerminalTool {
   private defaultCwd: string | null = null;
+  private securityFilter: SecurityFilter;
   private sandboxManager: SandboxManager;
 
   constructor(securityConfig?: Partial<SecurityConfig>) {

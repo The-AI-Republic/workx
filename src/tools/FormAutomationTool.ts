@@ -433,12 +433,12 @@ export class FormAutomationTool extends BaseTool {
       }
 
       // Use placeholder as fallback
-      return (input as HTMLInputElement).placeholder || input.name || undefined;
+      return (input as HTMLInputElement).placeholder || (input as HTMLInputElement).name || undefined;
     }
 
     function generateSelector(element: HTMLElement): string {
       if (element.id) return `#${element.id}`;
-      if (element.name) return `[name="${element.name}"]`;
+      if ((element as HTMLInputElement).name) return `[name="${(element as HTMLInputElement).name}"]`;
 
       // Generate path-based selector
       const path = [];
@@ -553,7 +553,7 @@ export class FormAutomationTool extends BaseTool {
             break;
 
           case 'select':
-            (element as HTMLSelectElement).value = field.value;
+            (element as unknown as HTMLSelectElement).value = field.value;
             break;
 
           case 'file':

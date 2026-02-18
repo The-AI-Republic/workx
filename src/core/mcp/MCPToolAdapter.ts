@@ -203,7 +203,7 @@ export async function registerMCPTools(
       await registry.register(definition, handler, riskAssessor);
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
-      console.warn(`[MCPToolAdapter] Failed to register tool ${definition.function.name}:`, error);
+      console.warn(`[MCPToolAdapter] Failed to register tool ${definition.type === 'function' ? definition.function.name : definition.type}:`, error);
     }
   }
 }

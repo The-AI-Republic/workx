@@ -264,7 +264,7 @@ export class EventQueue extends PriorityQueue<Event> {
 export class QueueProcessor {
   private submissionQueue: SubmissionQueue;
   private eventQueue: EventQueue;
-  private processingInterval?: number;
+  private processingInterval?: ReturnType<typeof setInterval>;
   private batchSize: number;
 
   constructor(

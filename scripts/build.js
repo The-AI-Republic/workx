@@ -120,11 +120,6 @@ function build() {
       log('  ✓ Copied prompts directory', colors.green);
     }
 
-    // Extract i18n translation keys
-    log('\n🌐 Extracting i18n translations...', colors.yellow);
-    const { extractI18n } = require('./extract-i18n.js');
-    extractI18n();
-
     // Copy _locales directory (required for i18n)
     const localesPath = path.join(__dirname, '..', '_locales');
     if (fs.existsSync(localesPath)) {

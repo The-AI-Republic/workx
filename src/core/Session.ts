@@ -180,12 +180,15 @@ export class Session {
     if (!this.services?.rollout) return;
 
     // Record session metadata to rollout
+    // Include both cwd (for desktop) and tabId (for extension) so the
+    // session can be restored correctly in either runtime mode.
+    const tabId = this.sessionState.getTabId();
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        tabId: this.sessionState.getTabId(), // Replaced cwd with tabId
+        ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -350,7 +353,7 @@ export class Session {
    */
   getMessagesByType(type: 'user' | 'agent' | 'system'): ResponseItem[] {
     const role = type === 'user' ? 'user' : type === 'system' ? 'system' : 'assistant';
-    return this.sessionState.historySnapshot().filter(item => item.role === role);
+    return this.sessionState.historySnapshot().filter(item => item.type === 'message' && item.role === role);
   }
 
   /**
@@ -620,7 +623,9 @@ export class Session {
    */
   async searchMessages(query: string): Promise<ResponseItem[]> {
     return this.sessionState.historySnapshot().filter(item => {
-      const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+      const content = item.type === 'message'
+        ? (typeof item.content === 'string' ? item.content : JSON.stringify(item.content))
+        : JSON.stringify(item);
       return content.toLowerCase().includes(query.toLowerCase());
     });
   }

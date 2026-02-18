@@ -18,6 +18,8 @@ describe('MCPClient', () => {
     url: 'https://example.com/mcp',
     enabled: true,
     timeout: 30000,
+    transport: 'sse',
+    platform: 'shared',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,

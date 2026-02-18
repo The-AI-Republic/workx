@@ -4,23 +4,31 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [svelte({ hot: false })],
+  define: {
+    __BUILD_MODE__: JSON.stringify('extension'),
+  },
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [],
+    setupFiles: ['src/__test-utils__/setup.ts'],
     coverage: {
+      provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts'],
       exclude: [
-        'node_modules/',
-        'dist/',
-        '**/*.config.ts',
+        'src/__test-utils__/**',
+        'src/**/contracts/**',
+        'src/**/__tests__/**',
+        'src/**/welcome/**',
+        'src/desktop/**',
+        'src/extension/**',
+        'src/tests/**',
         '**/*.d.ts',
-        'tests/**'
+        '**/*.test.ts',
+        '**/*.spec.ts',
       ]
     },
     include: [
-      'tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-      'src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
       'src/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
     ],
     mockReset: true,
