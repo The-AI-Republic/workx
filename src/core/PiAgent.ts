@@ -1,5 +1,5 @@
 /**
- * Main Browserx agent class
+ * Main Pi agent class
  * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
  */
 
@@ -41,7 +41,7 @@ import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
  */
 export type EventDispatcher = (event: Event) => void | Promise<void>;
 
-export class BrowserxAgent {
+export class PiAgent {
   private _agentId: string;
   private nextId: number = 1;
   private submissionQueue: Submission[] = [];
@@ -74,7 +74,7 @@ export class BrowserxAgent {
 
     // Initialize session with config and toolRegistry
     this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
-    // Wire up session event emitter to BrowserxAgent's event queue
+    // Wire up session event emitter to PiAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
 
     // Setup event processing for notifications
@@ -107,7 +107,7 @@ export class BrowserxAgent {
 
     if (!modelData) {
       const errorMsg = `Selected model ${selectedModelKey} not found`;
-      console.error('[BrowserxAgent]', errorMsg);
+      console.error('[PiAgent]', errorMsg);
       throw new Error(errorMsg);
     }
 
@@ -118,7 +118,7 @@ export class BrowserxAgent {
 
       if (!apiKey || !apiKey.trim()) {
         const warningMsg = `No API key configured for provider: ${modelData.provider.name}. Please configure API key in Settings.`;
-        console.warn('[BrowserxAgent]', warningMsg);
+        console.warn('[PiAgent]', warningMsg);
 
         // Emit warning event for UI
         this.emitEvent({
@@ -162,7 +162,7 @@ export class BrowserxAgent {
       approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
       approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
     } catch (error) {
-      console.warn('[BrowserxAgent] Failed to load approval config, using defaults:', error);
+      console.warn('[PiAgent] Failed to load approval config, using defaults:', error);
     }
 
     // Note: Approval config sync is handled via UPDATE_APPROVAL_CONFIG message pattern
@@ -240,12 +240,12 @@ export class BrowserxAgent {
    * with full platform context (OS, arch, shell, homeDir) BEFORE
    * agent.initialize(), so this method skips re-configuration.
    *
-   * In extension mode, this configures the browserx agent type.
+   * In extension mode, this configures the extension agent type.
    */
   private async configurePromptComposition(): Promise<void> {
     // Skip if already configured (desktop bootstrap provides platform context)
     if (isComposerConfigured()) {
-      console.log('[BrowserxAgent] PromptComposer already configured (by bootstrap)');
+      console.log('[PiAgent] PromptComposer already configured (by bootstrap)');
       return;
     }
 
@@ -256,7 +256,7 @@ export class BrowserxAgent {
     configurePromptComposer(agentType, {
       browserConnection: agentType === 'browserx' ? 'extension' : 'mcp',
     });
-    console.log(`[BrowserxAgent] PromptComposer configured for agent type: ${agentType}`);
+    console.log(`[PiAgent] PromptComposer configured for agent type: ${agentType}`);
   }
 
   /**
@@ -330,7 +330,7 @@ export class BrowserxAgent {
       // Update session with new turn context
       this.session.setTurnContext(taskContext);
     } catch (error) {
-      console.error('[BrowserxAgent] Failed to refresh model client:', error);
+      console.error('[PiAgent] Failed to refresh model client:', error);
     }
   }
 
@@ -528,7 +528,7 @@ export class BrowserxAgent {
                 }
               } else {
                 const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
-                console.warn(`[BrowserxAgent] ${warnMsg}`);
+                console.warn(`[PiAgent] ${warnMsg}`);
                 this.emitEvent({
                   type: 'BackgroundEvent',
                   data: { message: warnMsg, level: 'warning' },
@@ -536,7 +536,7 @@ export class BrowserxAgent {
               }
             } else {
               const warnMsg = 'Builtin browser server not found in MCPManager. Browser tools will be unavailable.';
-              console.warn(`[BrowserxAgent] ${warnMsg}`);
+              console.warn(`[PiAgent] ${warnMsg}`);
               this.emitEvent({
                 type: 'BackgroundEvent',
                 data: { message: warnMsg, level: 'warning' },
@@ -544,7 +544,7 @@ export class BrowserxAgent {
             }
           } catch (mcpError) {
             const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
-            console.error(`[BrowserxAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
+            console.error(`[PiAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
             this.emitEvent({
               type: 'BackgroundEvent',
               data: {
@@ -579,7 +579,7 @@ export class BrowserxAgent {
             // Update session's tabId (SessionState is the source of truth)
             this.session.setTabId(createdTabId);
 
-            // Add tab to BrowserX group
+            // Add tab to Pi group
             await tabManager.addTabToGroup(createdTabId);
 
             // Notify UI of tab binding update
@@ -680,7 +680,7 @@ export class BrowserxAgent {
           // Update session's tabId (SessionState is the source of truth)
           this.session.setTabId(newTabId);
 
-          // Add new tab to BrowserX group
+          // Add new tab to Pi group
           await tabManager.addTabToGroup(newTabId);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
@@ -888,7 +888,7 @@ export class BrowserxAgent {
         domain = pending.request?.metadata?.domain;
         riskScore = pending.request?.metadata?.riskScore;
       } else {
-        console.warn(`[BrowserxAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
+        console.warn(`[PiAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
       }
     }
 
@@ -906,7 +906,7 @@ export class BrowserxAgent {
       });
       riskBasedResolved = true;
     } catch (error) {
-      console.warn(`[BrowserxAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
+      console.warn(`[PiAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
     }
 
     let protocolResolved = false;
@@ -914,11 +914,11 @@ export class BrowserxAgent {
       await this.session.notifyApproval(op.id, op.decision);
       protocolResolved = true;
     } catch (error) {
-      console.warn(`[BrowserxAgent] Session.notifyApproval failed for ${op.id}:`, error);
+      console.warn(`[PiAgent] Session.notifyApproval failed for ${op.id}:`, error);
     }
 
     if (!riskBasedResolved && !protocolResolved) {
-      console.error(`[BrowserxAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
+      console.error(`[PiAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
     }
 
     // Remember decision for this session if requested
@@ -1104,7 +1104,7 @@ export class BrowserxAgent {
    * Set the event dispatcher
    *
    * This MUST be called before using the agent. The dispatcher routes events
-   * to UI channels via ChannelManager. This makes BrowserxAgent platform-agnostic.
+   * to UI channels via ChannelManager. This makes PiAgent platform-agnostic.
    *
    * @param dispatcher - Function to dispatch events to UI channels
    */
@@ -1134,10 +1134,10 @@ export class BrowserxAgent {
       try {
         this.eventDispatcher(event);
       } catch (error) {
-        console.error('[BrowserxAgent] Event dispatcher error:', error);
+        console.error('[PiAgent] Event dispatcher error:', error);
       }
     } else {
-      console.warn('[BrowserxAgent] No event dispatcher set - event not delivered to UI');
+      console.warn('[PiAgent] No event dispatcher set - event not delivered to UI');
     }
   }
 

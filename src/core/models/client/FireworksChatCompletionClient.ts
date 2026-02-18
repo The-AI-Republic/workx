@@ -1,5 +1,5 @@
 /**
- * Fireworks AI Chat Completion API client implementation for browserx-chrome
+ * Fireworks AI Chat Completion API client implementation for pi
  * Extends OpenAIChatCompletionClient for Fireworks-specific behavior
  *
  * Key Fireworks Features:

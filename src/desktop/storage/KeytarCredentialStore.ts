@@ -16,9 +16,9 @@ import { invoke } from '@tauri-apps/api/core';
 import type { CredentialStore } from '@/core/storage/CredentialStore';
 
 /**
- * Service name prefix for BrowserX credentials
+ * Service name prefix for Pi credentials
  */
-const SERVICE_PREFIX = 'browserx';
+const SERVICE_PREFIX = 'pi';
 
 /**
  * Format the full service name

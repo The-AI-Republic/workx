@@ -8,7 +8,7 @@
  * - Session-aware message routing
  */
 
-import { BrowserxAgent } from '../../core/BrowserxAgent';
+import { PiAgent } from '../../core/PiAgent';
 import { MessageRouter, MessageType } from '../../core/MessageRouter';
 import { AuthManager } from '../../core/models/types/Auth';
 import type { Submission } from '../../core/protocol/types';
@@ -69,7 +69,7 @@ import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts'
  * This variable is kept only for backward compatibility during migration.
  * All new code should use AgentRegistry to access agent instances.
  */
-let agent: BrowserxAgent | null = null;
+let agent: PiAgent | null = null;
 let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
 let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
@@ -279,7 +279,7 @@ async function initializeSessionPersistence(): Promise<void> {
  * @param message The incoming message with optional sessionId
  * @returns The agent to use for this message
  */
-function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): BrowserxAgent | null {
+function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): PiAgent | null {
   // Feature 015: Route by sessionId if provided, otherwise use primary session
   // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
   const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
@@ -436,7 +436,7 @@ function setupMessageHandlers(): void {
     }
 
     // Recreate agent with resumed session
-    agent = new BrowserxAgent(agentConfig!, router!, {
+    agent = new PiAgent(agentConfig!, router!, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -637,7 +637,7 @@ function setupMessageHandlers(): void {
           await agent.cleanup();
         }
 
-        agent = new BrowserxAgent(agentConfig, router!);
+        agent = new PiAgent(agentConfig, router!);
 
         // Set up event dispatcher for chrome extension mode
         agent.setEventDispatcher((event) => {

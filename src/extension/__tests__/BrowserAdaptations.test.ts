@@ -274,9 +274,9 @@ describe('Browser Adaptations Contract Compliance', () => {
   describe('Rate Limit Header Parsing', () => {
     it('should parse rate limit headers matching Rust logic', () => {
       const headers = new Map([
-        ['x-browserx-primary-used-percent', '75.5'],
-        ['x-browserx-primary-window-minutes', '1'],
-        ['x-browserx-primary-reset-after-seconds', '45'],
+        ['x-pi-primary-used-percent', '75.5'],
+        ['x-pi-primary-window-minutes', '1'],
+        ['x-pi-primary-reset-after-seconds', '45'],
       ]);
 
       const parseHeaderFloat = (key: string): number | null => {
@@ -286,7 +286,7 @@ describe('Browser Adaptations Contract Compliance', () => {
         return isFinite(parsed) ? parsed : null;
       };
 
-      const usedPercent = parseHeaderFloat('x-browserx-primary-used-percent');
+      const usedPercent = parseHeaderFloat('x-pi-primary-used-percent');
       expect(usedPercent).toBe(75.5);
     });
 
@@ -297,7 +297,7 @@ describe('Browser Adaptations Contract Compliance', () => {
         return headers.get(key) ?? null;
       };
 
-      expect(getValue('x-browserx-primary-used-percent')).toBeNull();
+      expect(getValue('x-pi-primary-used-percent')).toBeNull();
     });
   });
 

@@ -8,10 +8,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
-// Mock BrowserxAgent with class
-vi.mock('@/core/BrowserxAgent', () => {
+// Mock PiAgent with class
+vi.mock('@/core/PiAgent', () => {
   return {
-    BrowserxAgent: class MockBrowserxAgent {
+    PiAgent: class MockPiAgent {
       config: any;
       constructor(config: any, router: any) {
         this.config = config;
@@ -133,7 +133,7 @@ describe('Session Creation Performance (SC-006)', () => {
     console.log(`[Performance] Per-session overheads: ${overheads.map(o => o.toFixed(2)).join('ms, ')}ms`);
 
     // Registry operations should have minimal overhead (map insertions, event emissions)
-    // The main time should be BrowserxAgent.initialize() which we mocked to ~5ms
+    // The main time should be PiAgent.initialize() which we mocked to ~5ms
     expect(avgOverhead).toBeLessThan(50); // Allow some variance in test environment
   });
 

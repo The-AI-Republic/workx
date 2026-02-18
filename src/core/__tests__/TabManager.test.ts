@@ -92,7 +92,7 @@ describe('TabManager', () => {
 
     it('should call reset() during initialization to clean up existing groups', async () => {
       await createInitializedTabManager();
-      // reset() queries for collapsed and expanded browserx groups
+      // reset() queries for collapsed and expanded pi groups
       expect(chrome.tabGroups.query).toHaveBeenCalledWith({ title: 'browserx', collapsed: true });
       expect(chrome.tabGroups.query).toHaveBeenCalledWith({ title: 'browserx', collapsed: false });
     });
@@ -491,7 +491,7 @@ describe('TabManager', () => {
       expect(chrome.tabs.ungroup).not.toHaveBeenCalled();
     });
 
-    it('should ungroup tab when it belongs to the browserx group', async () => {
+    it('should ungroup tab when it belongs to the pi group', async () => {
       const tm = await createInitializedTabManager();
       (chrome.tabs.get as any).mockResolvedValue({ id: 10, groupId: 77 });
       (chrome.tabs.ungroup as any).mockResolvedValue(undefined);
@@ -538,7 +538,7 @@ describe('TabManager', () => {
       await expect(tm.reset()).resolves.toBeUndefined();
     });
 
-    it('should set groupId to null when no browserx groups exist', async () => {
+    it('should set groupId to null when no pi groups exist', async () => {
       const tm = await createInitializedTabManager();
       (tm as any).groupId = 10;
 
@@ -648,7 +648,7 @@ describe('TabManager', () => {
       await expect(tm.clearAllTabsFromGroup()).resolves.toBeUndefined();
     });
 
-    it('should set groupId to null when no browserx groups exist', async () => {
+    it('should set groupId to null when no pi groups exist', async () => {
       const tm = await createInitializedTabManager();
       (tm as any).groupId = 5;
 
@@ -657,7 +657,7 @@ describe('TabManager', () => {
       expect((tm as any).groupId).toBeNull();
     });
 
-    it('should ungroup tabs from all browserx groups', async () => {
+    it('should ungroup tabs from all pi groups', async () => {
       const tm = await createInitializedTabManager();
       (tm as any).groupId = 1;
 
