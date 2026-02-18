@@ -66,8 +66,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Add keyboard navigation support to `src/extension/sidepanel/components/CommandDropdown.svelte` — accept new props: `on:navigate` (dispatches {direction: 'up'|'down'}), `on:select` (dispatches selected command), `on:dismiss` (dispatches void). Add visual highlight styling for the selectedIndex item (distinct background color, theme-aware). Ensure highlighted item scrolls into view if list is longer than visible area.
-- [ ] T009 [US2] Enhance keyboard handling in `src/extension/sidepanel/components/MessageInput.svelte` — when isCommandMode is true, intercept ArrowUp (decrement selectedIndex with wrap to last), ArrowDown (increment selectedIndex with wrap to first), Enter (execute command at selectedIndex from filteredCommands), Escape (exit command mode, close dropdown, retain input text and focus). Prevent default behavior for these keys when in command mode so they don't move the textarea cursor.
+- [x] T008 [US2] Add keyboard navigation support to `src/extension/sidepanel/components/CommandDropdown.svelte` — accept new props: `on:navigate` (dispatches {direction: 'up'|'down'}), `on:select` (dispatches selected command), `on:dismiss` (dispatches void). Add visual highlight styling for the selectedIndex item (distinct background color, theme-aware). Ensure highlighted item scrolls into view if list is longer than visible area.
+- [x] T009 [US2] Enhance keyboard handling in `src/extension/sidepanel/components/MessageInput.svelte` — when isCommandMode is true, intercept ArrowUp (decrement selectedIndex with wrap to last), ArrowDown (increment selectedIndex with wrap to first), Enter (execute command at selectedIndex from filteredCommands), Escape (exit command mode, close dropdown, retain input text and focus). Prevent default behavior for these keys when in command mode so they don't move the textarea cursor.
 
 **Checkpoint**: User Stories 1 AND 2 are independently functional — full keyboard-driven command flow works
 
@@ -81,7 +81,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Add mouse interaction to `src/extension/sidepanel/components/CommandDropdown.svelte` — add `on:mouseenter` handler on each command item that dispatches a `hover` event with the item index (parent updates selectedIndex). Add `on:click` handler on each command item that dispatches the `select` event. Ensure hover highlight overrides keyboard highlight and vice versa (both update the same selectedIndex). Update `src/extension/sidepanel/components/MessageInput.svelte` to handle the `hover` event from dropdown by updating selectedIndex.
+- [x] T010 [US3] Add mouse interaction to `src/extension/sidepanel/components/CommandDropdown.svelte` — add `on:mouseenter` handler on each command item that dispatches a `hover` event with the item index (parent updates selectedIndex). Add `on:click` handler on each command item that dispatches the `select` event. Ensure hover highlight overrides keyboard highlight and vice versa (both update the same selectedIndex). Update `src/extension/sidepanel/components/MessageInput.svelte` to handle the `hover` event from dropdown by updating selectedIndex.
 
 **Checkpoint**: User Stories 1, 2, AND 3 are all independently functional — keyboard and mouse navigation both work
 
@@ -95,8 +95,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T011 [P] [US4] Create CommandError.svelte in `src/extension/sidepanel/components/CommandError.svelte` — renders an inline error message above the input field. Props: `message` (string), `visible` (boolean). Absolute positioning above the parent container. z-index 40. Theme-aware styling (red/error tones adapted to terminal and chatgpt themes). Fade-in animation on appear.
-- [ ] T012 [US4] Enhance `src/extension/sidepanel/components/MessageInput.svelte` — when command mode submit fails (registry.get() returns undefined for the parsed command name), set errorMessage state to a descriptive string (e.g., "Unknown command: /foobar. Type / to see available commands."). Start a 60-second setTimeout to clear errorMessage (FR-008). On any new input (keydown that produces a character), immediately clear errorMessage and cancel the timeout (FR-009). Import and render CommandError.svelte when errorMessage is non-null. Clean up timeout on component destroy.
+- [x] T011 [P] [US4] Create CommandError.svelte in `src/extension/sidepanel/components/CommandError.svelte` — renders an inline error message above the input field. Props: `message` (string), `visible` (boolean). Absolute positioning above the parent container. z-index 40. Theme-aware styling (red/error tones adapted to terminal and chatgpt themes). Fade-in animation on appear.
+- [x] T012 [US4] Enhance `src/extension/sidepanel/components/MessageInput.svelte` — when command mode submit fails (registry.get() returns undefined for the parsed command name), set errorMessage state to a descriptive string (e.g., "Unknown command: /foobar. Type / to see available commands."). Start a 60-second setTimeout to clear errorMessage (FR-008). On any new input (keydown that produces a character), immediately clear errorMessage and cancel the timeout (FR-009). Import and render CommandError.svelte when errorMessage is non-null. Clean up timeout on component destroy.
 
 **Checkpoint**: User Stories 1–4 all work — invalid commands show helpful error messages
 
@@ -110,7 +110,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T013 [US5] Finalize registration validation in `src/extension/sidepanel/commands/CommandRegistry.ts` — ensure register() validates: name is non-empty (throw Error), name contains only alphanumeric characters and hyphens (throw Error with message showing invalid chars), description is non-empty (throw Error), action is a function (throw Error), duplicate name rejected with descriptive Error. Verify that registering a new command requires <10 lines (SC-004). Add a `reset()` method for testing purposes (clears all commands from the Map).
+- [x] T013 [US5] Finalize registration validation in `src/extension/sidepanel/commands/CommandRegistry.ts` — ensure register() validates: name is non-empty (throw Error), name contains only alphanumeric characters and hyphens (throw Error with message showing invalid chars), description is non-empty (throw Error), action is a function (throw Error), duplicate name rejected with descriptive Error. Verify that registering a new command requires <10 lines (SC-004). Add a `reset()` method for testing purposes (clears all commands from the Map).
 
 **Checkpoint**: All 5 user stories are complete and independently functional
 
@@ -120,9 +120,9 @@
 
 **Purpose**: Edge cases, adaptive positioning, and final quality improvements
 
-- [ ] T014 [P] Add adaptive dropdown positioning in `src/extension/sidepanel/components/CommandDropdown.svelte` — calculate available space above and below the input field, render dropdown above if insufficient space below (FR-017). Use `getBoundingClientRect()` on the input container and compare against viewport height.
-- [ ] T015 [P] Handle paste edge case in `src/extension/sidepanel/components/MessageInput.svelte` — add a `paste` event handler that detects if the field was empty before paste and the pasted content starts with "/", then enter command mode and trigger filtering with the pasted text after "/".
-- [ ] T016 Add "no matching commands" empty state to `src/extension/sidepanel/components/CommandDropdown.svelte` — when filteredCommands is empty and the dropdown is visible, show a subtle "No matching commands" message instead of an empty dropdown. Theme-aware muted text styling.
+- [x] T014 [P] Add adaptive dropdown positioning in `src/extension/sidepanel/components/CommandDropdown.svelte` — calculate available space above and below the input field, render dropdown above if insufficient space below (FR-017). Use `getBoundingClientRect()` on the input container and compare against viewport height.
+- [x] T015 [P] Handle paste edge case in `src/extension/sidepanel/components/MessageInput.svelte` — add a `paste` event handler that detects if the field was empty before paste and the pasted content starts with "/", then enter command mode and trigger filtering with the pasted text after "/".
+- [x] T016 Add "no matching commands" empty state to `src/extension/sidepanel/components/CommandDropdown.svelte` — when filteredCommands is empty and the dropdown is visible, show a subtle "No matching commands" message instead of an empty dropdown. Theme-aware muted text styling.
 
 ---
 

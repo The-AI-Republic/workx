@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, afterUpdate, onMount } from 'svelte';
   import type { FilteredCommand } from '../commands';
   import { uiTheme, type UITheme } from '../stores/themeStore';
 
@@ -13,14 +13,49 @@
   }>();
 
   let currentTheme: UITheme = 'terminal';
+  let dropdownEl: HTMLDivElement;
+  let renderAbove = true;
 
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
+
+  // Scroll selected item into view when selectedIndex changes
+  afterUpdate(() => {
+    if (!visible || !dropdownEl) return;
+    const items = dropdownEl.querySelectorAll('[role="option"]');
+    const selected = items[selectedIndex];
+    if (selected) {
+      selected.scrollIntoView({ block: 'nearest' });
+    }
+  });
+
+  // Adaptive positioning: check space above vs below
+  function updatePosition(): void {
+    if (!dropdownEl?.parentElement) return;
+    const parentRect = dropdownEl.parentElement.getBoundingClientRect();
+    const spaceAbove = parentRect.top;
+    const spaceBelow = window.innerHeight - parentRect.bottom;
+    // Prefer rendering above; only render below if insufficient space above
+    renderAbove = spaceAbove >= 200 || spaceAbove > spaceBelow;
+  }
+
+  // Recalculate position when dropdown becomes visible
+  $: if (visible) {
+    // Use setTimeout to ensure DOM is rendered before measuring
+    setTimeout(updatePosition, 0);
+  }
 </script>
 
 {#if visible && commands.length > 0}
-  <div class="command-dropdown {currentTheme}" role="listbox" aria-label="Available commands">
+  <div
+    class="command-dropdown {currentTheme}"
+    class:above={renderAbove}
+    class:below={!renderAbove}
+    bind:this={dropdownEl}
+    role="listbox"
+    aria-label="Available commands"
+  >
     {#each commands as item, i}
       <div
         class="command-item"
@@ -39,7 +74,12 @@
     {/each}
   </div>
 {:else if visible && commands.length === 0}
-  <div class="command-dropdown {currentTheme}" role="listbox">
+  <div
+    class="command-dropdown {currentTheme}"
+    class:above={renderAbove}
+    class:below={!renderAbove}
+    role="listbox"
+  >
     <div class="command-item empty">No matching commands</div>
   </div>
 {/if}
@@ -47,18 +87,27 @@
 <style>
   .command-dropdown {
     position: absolute;
-    bottom: 100%;
     left: 0;
     right: 0;
     z-index: 50;
     max-height: 200px;
     overflow-y: auto;
     border-radius: 4px;
-    margin-bottom: 4px;
 
     /* Terminal theme defaults */
     background-color: rgba(0, 0, 0, 0.95);
     border: 1px solid var(--color-term-dim-green, #00cc00);
+  }
+
+  /* Adaptive positioning */
+  .command-dropdown.above {
+    bottom: 100%;
+    margin-bottom: 4px;
+  }
+
+  .command-dropdown.below {
+    top: 100%;
+    margin-top: 4px;
   }
 
   .command-item {
