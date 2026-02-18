@@ -1,27 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "適用於工作任務的通用瀏覽器內 AI 助理"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "API 金鑰設定"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API 金鑰會在瀏覽器本機加密儲存，除 API 請求外不會傳送至外部伺服器。"
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "存取瀏覽器儲存 (localStorage、sessionStorage、cookies)"
   },
+  "Action": {
+    "message": "操作"
+  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
+  },
+  "Action_Details": {
+    "message": "操作細節"
   },
   "Active_Sessions": {
     "message": ""
@@ -29,13 +17,16 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
+  "Add_Modification": {
+    "message": "新增修改"
+  },
   "Add_Server": {
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -43,6 +34,9 @@
   },
   "Advanced_Configuration": {
     "message": "進階設定"
+  },
+  "Advanced_Options": {
+    "message": "進階選項"
   },
   "Advanced_Settings": {
     "message": ""
@@ -71,11 +65,32 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_Safety": {
+  "API_Key": {
     "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API 金鑰設定"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API 金鑰會在瀏覽器本機加密儲存，除 API 請求外不會傳送至外部伺服器。"
+  },
+  "Approval_History": {
+    "message": "批准紀錄"
   },
   "Approval_Mode": {
     "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
+  },
+  "Approve": {
+    "message": "核准"
+  },
+  "Approve_this_action": {
+    "message": "批准此操作"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "請求 Browserx 從任何網頁提取結構化資料"
@@ -86,11 +101,11 @@
   "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Available": {
     "message": "可用："
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "返回"
@@ -104,20 +119,20 @@
   "Beta": {
     "message": "測試版"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "瀏覽器自動化工具切換"
+  },
   "Browser_Tools": {
     "message": "瀏覽器工具"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "瀏覽器自動化工具切換"
+  "Cache_behavior_and_data_retention": {
+    "message": "快取行為與資料保留"
   },
   "Cache_Settings": {
     "message": "快取設定"
   },
   "Cache_TTL_seconds": {
     "message": "快取 TTL（秒）"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "快取行為與資料保留"
   },
   "Cancel": {
     "message": "取消"
@@ -152,6 +167,9 @@
   "Close_settings": {
     "message": "關閉設定"
   },
+  "Command": {
+    "message": "指令"
+  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -170,13 +188,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -184,6 +202,9 @@
   },
   "Connecting": {
     "message": ""
+  },
+  "Context": {
+    "message": "上下文"
   },
   "Create_New_Tab": {
     "message": "建立新分頁"
@@ -197,8 +218,8 @@
   "Current_Plan": {
     "message": "目前方案："
   },
-  "DOM_Tool": {
-    "message": "DOM 工具"
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "每日點數"
@@ -227,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "任務完成時顯示代幣消耗（輸入/輸出代幣）"
   },
+  "DOM_Tool": {
+    "message": "DOM 工具"
+  },
   "Duration": {
     "message": ""
   },
@@ -239,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "啟用所有工具"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "啟用快取"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "啟用快取以儲存常用資料，提升效能"
   },
   "Enable_Compression": {
     "message": "啟用壓縮"
@@ -248,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "啟用內容腳本"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "啟用擴充功能"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "啟用快取以儲存常用資料，提升效能"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -290,17 +314,26 @@
   "Expire_after_days": {
     "message": "過期天數"
   },
-  "Extension_Permission": {
-    "message": "擴充功能與權限"
-  },
-  "Extension_Permission_Settings": {
-    "message": "擴充功能與權限設定"
+  "Explain_your_decision": {
+    "message": "說明您的決定…"
   },
   "Extension_Configuration": {
     "message": "擴充功能設定"
   },
   "Extension_configuration_and_permissions": {
     "message": "擴充功能設定與權限"
+  },
+  "extension_description": {
+    "message": "適用於工作任務的通用瀏覽器內 AI 助理"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "擴充功能與權限"
+  },
+  "Extension_Permission_Settings": {
+    "message": "擴充功能與權限設定"
   },
   "Extra_Credits": {
     "message": "額外點數"
@@ -326,6 +359,9 @@
   "File_Operations_Not_Available": {
     "message": "檔案操作（不可用）"
   },
+  "File_Path": {
+    "message": "檔案路徑"
+  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "填寫表單、提交資料、與表單元件互動"
   },
@@ -341,11 +377,11 @@
   "General": {
     "message": "一般"
   },
-  "General_Settings": {
-    "message": "一般設定"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "適用於工作任務的瀏覽器內 AI 代理"
+  },
+  "General_Settings": {
+    "message": "一般設定"
   },
   "Get_Started": {
     "message": "開始使用"
@@ -361,20 +397,20 @@
   "Hello_World": {
     "message": "你好，世界"
   },
+  "History": {
+    "message": "歷史記錄"
+  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
+  },
+  "Impact": {
+    "message": "影響"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "攔截並修改網路請求/回應"
   },
   "Keyboard_Shortcuts": {
     "message": "鍵盤快捷鍵"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM 請求直接發送至提供者 API"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM 請求會透過 AI Republic 後端傳送"
   },
   "Language": {
     "message": "語言"
@@ -388,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "允許來源清單（每行一個）。支援萬用字元 (*)。"
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM 請求直接發送至提供者 API"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM 請求會透過 AI Republic 後端傳送"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -399,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "載入設定中..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -415,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "登入以獲取免費點數"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "剩餘點數偏低"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "管理瀏覽器分頁（開啟、關閉、切換、查詢）"
@@ -457,6 +493,12 @@
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "工具執行逾時前的最大時間（毫秒）（預設值：30000）"
   },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
   "Missed": {
     "message": ""
   },
@@ -468,6 +510,9 @@
   },
   "Modern_Chat": {
     "message": "Modern Chat (保留原文)"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "在請求變更時修改參數"
   },
   "Monthly_Credits": {
     "message": "每月點數"
@@ -499,13 +544,16 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
+  "No_approval_history_yet": {
+    "message": "尚無批准歷史"
+  },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -529,6 +577,9 @@
   "Open_Side_Panel": {
     "message": "開啟側邊面板："
   },
+  "optional": {
+    "message": ""
+  },
   "Organization": {
     "message": "組織"
   },
@@ -537,6 +588,9 @@
   },
   "Page_Vision_Tool": {
     "message": "頁面視覺工具"
+  },
+  "Parameter_Modifications": {
+    "message": "參數修改"
   },
   "Pause_Queue": {
     "message": ""
@@ -571,14 +625,17 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "快速操作"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "快速開始"
   },
-  "Quick_action": {
-    "message": "快速操作"
+  "Read_only": {
+    "message": "唯讀"
   },
   "Read_Only": {
     "message": ""
@@ -586,11 +643,17 @@
   "Read_Write": {
     "message": ""
   },
-  "Read_only": {
-    "message": "唯讀"
+  "Reason_optional": {
+    "message": "原因（選填）"
   },
   "Refreshes_in": {
     "message": "刷新於"
+  },
+  "Reject": {
+    "message": "拒絕"
+  },
+  "Reject_this_action": {
+    "message": "拒絕此操作"
   },
   "Remaining": {
     "message": "剩餘："
@@ -600,6 +663,15 @@
   },
   "Remove_API_Key": {
     "message": "移除 API 金鑰"
+  },
+  "Remove_modification": {
+    "message": "移除修改"
+  },
+  "Request_Changes": {
+    "message": "請求變更"
+  },
+  "Request_changes_to_this_action": {
+    "message": "請求對此操作進行變更"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -655,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "安全與隱私"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "工具執行環境的安全等級"
+  },
+  "Security_Privacy": {
+    "message": "安全與隱私"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "選擇對話使用的 AI 模型。"
@@ -670,10 +742,19 @@
   "Service_Tier": {
     "message": "服務等級"
   },
+  "session": {
+    "message": ""
+  },
+  "Session": {
+    "message": "工作階段"
+  },
   "Session_error": {
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -751,17 +832,20 @@
   "Testing": {
     "message": "測試中..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "代理目前使用後端模式。LLM 請求將透過 AI Republic 伺服器路由。您的對話將透過我們的基礎設施安全處理。"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
   },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "代理目前使用後端模式。LLM 請求將透過 AI Republic 伺服器路由。您的對話將透過我們的基礎設施安全處理。"
-  },
   "Time": {
     "message": "時間"
+  },
+  "Time_remaining": {
+    "message": "剩餘時間"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "快取項目的存活時間（秒）（預設：3600）"
@@ -775,6 +859,9 @@
   "Tokens": {
     "message": ""
   },
+  "Tool": {
+    "message": "工具"
+  },
   "Tool_Timeout_ms": {
     "message": "工具逾時 (毫秒)"
   },
@@ -784,11 +871,11 @@
   "Tools_Settings": {
     "message": "工具設定"
   },
+  "Turn": {
+    "message": "開啟/關閉"
+  },
   "UI_Theme": {
     "message": "介面主題"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Unable_to_load_credit_information": {
     "message": "無法載入信用資訊"
@@ -814,20 +901,35 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "升級您的訂閱以探索全球最強大的模型"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "使用右鍵功能表："
   },
   "Use_Own_API_Key": {
     "message": "使用自訂 API 金鑰"
   },
+  "User_approved_action": {
+    "message": "使用者已批准的操作"
+  },
   "User_Center": {
     "message": "使用者中心"
   },
-  "User_Session": {
-    "message": ""
+  "User_decision": {
+    "message": "使用者決策"
   },
   "User_preferences_and_interface_settings": {
     "message": "使用者偏好與介面設定"
+  },
+  "User_rejected_action": {
+    "message": "使用者拒絕的操作"
+  },
+  "User_requested_modifications": {
+    "message": "使用者請求的修改"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "使用額外信用"
@@ -871,13 +973,7 @@
   "Your_API_key_is_encrypted": {
     "message": "您的 API 金鑰已加密"
   },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+  "Your_Decision": {
+    "message": "您的決定"
   }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
-import TabContext from '../../src/sidepanel/components/TabContext.svelte';
+import TabContext from '../../src/extension/sidepanel/components/common/TabContext.svelte';
 
 describe('TabContext Component', () => {
   // Mock chrome.tabs API
@@ -8,7 +8,12 @@ describe('TabContext Component', () => {
     global.chrome = {
       tabs: {
         get: vi.fn(),
+        query: vi.fn().mockResolvedValue([]),
         onUpdated: {
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+        },
+        onActivated: {
           addListener: vi.fn(),
           removeListener: vi.fn(),
         },
@@ -365,6 +370,103 @@ describe('TabContext Component', () => {
 
       // Should have been called twice (once for each tabId)
       expect((chrome.tabs.get as any).mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('Active Tab Tracking', () => {
+    it('should register onActivated listener on mount', async () => {
+      (chrome.tabs.get as any).mockResolvedValue({
+        id: 123,
+        title: 'Test Tab',
+        url: 'https://example.com',
+      });
+
+      render(TabContext, {
+        props: { tabId: 123 },
+      });
+
+      await waitFor(() => {
+        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
+      });
+    });
+
+    it('should clean up onActivated listener on unmount', async () => {
+      (chrome.tabs.get as any).mockResolvedValue({
+        id: 123,
+        title: 'Test Tab',
+        url: 'https://example.com',
+      });
+
+      const { unmount } = render(TabContext, {
+        props: { tabId: 123 },
+      });
+
+      await waitFor(() => {
+        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
+      });
+
+      unmount();
+
+      expect(chrome.tabs.onActivated.removeListener).toHaveBeenCalled();
+    });
+
+    it('should query initial active tab on mount', async () => {
+      (chrome.tabs.get as any).mockResolvedValue({
+        id: 123,
+        title: 'Test Tab',
+        url: 'https://example.com',
+      });
+
+      render(TabContext, {
+        props: { tabId: 123 },
+      });
+
+      await waitFor(() => {
+        expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+      });
+    });
+
+    it('should display "(current)" marker on the active tab in dropdown', async () => {
+      const activeTab = { id: 100, title: 'Active Tab', url: 'https://active.com' };
+      const otherTab = { id: 200, title: 'Other Tab', url: 'https://other.com' };
+
+      (chrome.tabs.get as any).mockResolvedValue(activeTab);
+
+      // Mock query: return active tab for initial query, all tabs for dropdown
+      (chrome.tabs.query as any).mockImplementation((params: any) => {
+        if (params.active) {
+          return Promise.resolve([activeTab]);
+        }
+        return Promise.resolve([activeTab, otherTab]);
+      });
+
+      render(TabContext, {
+        props: { tabId: 100 },
+      });
+
+      // Wait for onActivated listener to be registered and initial active tab query to resolve
+      await waitFor(() => {
+        expect(chrome.tabs.onActivated.addListener).toHaveBeenCalled();
+      });
+
+      // Open dropdown by clicking the tab context display
+      const display = screen.getByTestId('tab-context-display');
+      display.click();
+
+      // Wait for dropdown to populate with tabs
+      await waitFor(() => {
+        const items = screen.getAllByTestId('tab-dropdown-item');
+        expect(items.length).toBe(2);
+      });
+
+      // Verify active tab shows "(current)" marker
+      const items = screen.getAllByTestId('tab-dropdown-item');
+      expect(items[0].textContent).toContain('(current)');
+      expect(items[0].textContent).toContain('Active Tab');
+
+      // Verify other tab does NOT show "(current)" marker
+      expect(items[1].textContent).not.toContain('(current)');
+      expect(items[1].textContent).toContain('Other Tab');
     });
   });
 });

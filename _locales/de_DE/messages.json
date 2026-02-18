@@ -1,27 +1,15 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "Allgemeiner Browser-AI-Agent für Arbeitsaufgaben"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "API‑Schlüssel-Konfiguration"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API‑Schlüssel werden verschlüsselt und lokal in Ihrem Browser gespeichert. Sie werden niemals an externe Server gesendet, außer bei API‑Aufrufen."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Zugriff auf Browser‑Speicher (localStorage, sessionStorage, Cookies)"
   },
+  "Action": {
+    "message": "Aktion"
+  },
   "Action_approval_mode_trusted_domains_ris_003b": {
     "message": ""
+  },
+  "Action_Details": {
+    "message": "Aktionsdetails"
   },
   "Active_Sessions": {
     "message": ""
@@ -29,13 +17,16 @@
   "Add": {
     "message": ""
   },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
+  "Add_Modification": {
+    "message": "Änderung hinzufügen"
+  },
   "Add_Server": {
     "message": ""
   },
   "Add_Task": {
-    "message": ""
-  },
-  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Additional_Bind_Mounts": {
@@ -43,6 +34,9 @@
   },
   "Advanced_Configuration": {
     "message": "Erweiterte Konfiguration"
+  },
+  "Advanced_Options": {
+    "message": "Erweiterte Optionen"
   },
   "Advanced_Settings": {
     "message": ""
@@ -71,11 +65,32 @@
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
-  "Approval_Safety": {
+  "API_Key": {
     "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API‑Schlüssel-Konfiguration"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API‑Schlüssel werden verschlüsselt und lokal in Ihrem Browser gespeichert. Sie werden niemals an externe Server gesendet, außer bei API‑Aufrufen."
+  },
+  "Approval_History": {
+    "message": "Genehmigungsverlauf"
   },
   "Approval_Mode": {
     "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
+  },
+  "Approve": {
+    "message": "Genehmigen"
+  },
+  "Approve_this_action": {
+    "message": "Diese Aktion genehmigen"
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Bitten Sie Browserx, strukturierte Daten von jeder Webseite zu extrahieren"
@@ -86,11 +101,11 @@
   "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Available": {
     "message": "Verfügbar:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "Zurück"
@@ -104,20 +119,20 @@
   "Beta": {
     "message": "Beta"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "Browser-Automatisierungstools (Schalter)"
+  },
   "Browser_Tools": {
     "message": "Browser‑Tools"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Browser-Automatisierungstools (Schalter)"
+  "Cache_behavior_and_data_retention": {
+    "message": "Cache‑Verhalten und Datenaufbewahrung"
   },
   "Cache_Settings": {
     "message": "Cache-Einstellungen"
   },
   "Cache_TTL_seconds": {
     "message": "Cache‑TTL (Sekunden)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "Cache‑Verhalten und Datenaufbewahrung"
   },
   "Cancel": {
     "message": "Abbrechen"
@@ -152,6 +167,9 @@
   "Close_settings": {
     "message": "Einstellungen schließen"
   },
+  "Command": {
+    "message": "Befehl"
+  },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
     "message": ""
   },
@@ -170,13 +188,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -184,6 +202,9 @@
   },
   "Connecting": {
     "message": ""
+  },
+  "Context": {
+    "message": "Kontext"
   },
   "Create_New_Tab": {
     "message": "Neuen Tab erstellen"
@@ -197,8 +218,8 @@
   "Current_Plan": {
     "message": "Aktueller Plan:"
   },
-  "DOM_Tool": {
-    "message": "DOM‑Tool"
+  "Current_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "Tägliche Credits"
@@ -227,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "Tokenverbrauch anzeigen (Eingabe-/Ausgabetoken), wenn Aufgaben abgeschlossen sind"
   },
+  "DOM_Tool": {
+    "message": "DOM‑Tool"
+  },
   "Duration": {
     "message": ""
   },
@@ -239,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "Alle Werkzeuge aktivieren"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "Cache aktivieren"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Caching aktivieren, um die Leistung zu verbessern, indem häufig abgerufene Daten gespeichert werden"
   },
   "Enable_Compression": {
     "message": "Kompression aktivieren"
@@ -248,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "Inhalts‑Skripte aktivieren"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "Erweiterung aktivieren"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Caching aktivieren, um die Leistung zu verbessern, indem häufig abgerufene Daten gespeichert werden"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -290,17 +314,26 @@
   "Expire_after_days": {
     "message": "Ablauf nach X Tagen"
   },
-  "Extension_Permission": {
-    "message": "Erweiterung & Berechtigung"
-  },
-  "Extension_Permission_Settings": {
-    "message": "Einstellungen für Erweiterung & Berechtigung"
+  "Explain_your_decision": {
+    "message": "Erklären Sie Ihre Entscheidung..."
   },
   "Extension_Configuration": {
     "message": "Erweiterungskonfiguration"
   },
   "Extension_configuration_and_permissions": {
     "message": "Erweiterungskonfiguration und Berechtigungen"
+  },
+  "extension_description": {
+    "message": "Allgemeiner Browser-AI-Agent für Arbeitsaufgaben"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "Erweiterung & Berechtigung"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Einstellungen für Erweiterung & Berechtigung"
   },
   "Extra_Credits": {
     "message": "Zusätzliche Credits"
@@ -326,6 +359,9 @@
   "File_Operations_Not_Available": {
     "message": "Dateioperationen (nicht verfügbar)"
   },
+  "File_Path": {
+    "message": "Dateipfad"
+  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Formulare ausfüllen, Daten übermitteln, mit Formularelementen interagieren"
   },
@@ -341,11 +377,11 @@
   "General": {
     "message": "Allgemein"
   },
-  "General_Settings": {
-    "message": "Allgemeine Einstellungen"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "Allgemeiner KI-Agent im Browser für Arbeitsaufgaben"
+  },
+  "General_Settings": {
+    "message": "Allgemeine Einstellungen"
   },
   "Get_Started": {
     "message": "Loslegen"
@@ -361,20 +397,20 @@
   "Hello_World": {
     "message": "Hallo Welt"
   },
+  "History": {
+    "message": "Verlauf"
+  },
   "How_the_workspace_directory_is_mounted_i_46c1": {
     "message": ""
+  },
+  "Impact": {
+    "message": "Auswirkung"
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Netzwerkanfragen/-antworten abfangen und ändern"
   },
   "Keyboard_Shortcuts": {
     "message": "Tastenkombinationen"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM-Anfragen gehen direkt zu den Anbieter-APIs"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM-Anfragen werden über das AI Republic-Backend geleitet"
   },
   "Language": {
     "message": "Sprache"
@@ -388,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Liste der erlaubten Ursprünge (je einer pro Zeile). Unterstützt Platzhalter (*)."
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-Anfragen gehen direkt zu den Anbieter-APIs"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-Anfragen werden über das AI Republic-Backend geleitet"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -399,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "Lade Einstellungen..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -415,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "Melden Sie sich an, um kostenlose Guthaben zu erhalten"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "Wenig Guthaben übrig"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Browser‑Tabs verwalten (öffnen, schließen, wechseln, abfragen)"
@@ -457,6 +493,12 @@
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximale Laufzeit (in Millisekunden) für ein Tool, bevor ein Timeout erfolgt (Standard: 30000)"
   },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
   "Missed": {
     "message": ""
   },
@@ -468,6 +510,9 @@
   },
   "Modern_Chat": {
     "message": "Moderner Chat"
+  },
+  "Modify_parameters_when_requesting_change_268e": {
+    "message": "Parameter bei Änderungsanfragen anpassen"
   },
   "Monthly_Credits": {
     "message": "Monatliche Guthaben"
@@ -499,13 +544,16 @@
   "No_Access": {
     "message": ""
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
-  },
   "No_active_sessions": {
     "message": ""
   },
+  "No_approval_history_yet": {
+    "message": "Noch keine Genehmigungshistorie vorhanden."
+  },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -529,6 +577,9 @@
   "Open_Side_Panel": {
     "message": "Seitenleiste öffnen:"
   },
+  "optional": {
+    "message": ""
+  },
   "Organization": {
     "message": "Organisation"
   },
@@ -537,6 +588,9 @@
   },
   "Page_Vision_Tool": {
     "message": "Page Vision Tool"
+  },
+  "Parameter_Modifications": {
+    "message": "Parameteränderungen"
   },
   "Pause_Queue": {
     "message": ""
@@ -571,14 +625,17 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "Schnelle Aktion"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "Schnellstart"
   },
-  "Quick_action": {
-    "message": "Schnelle Aktion"
+  "Read_only": {
+    "message": "Nur Lesen"
   },
   "Read_Only": {
     "message": ""
@@ -586,11 +643,17 @@
   "Read_Write": {
     "message": ""
   },
-  "Read_only": {
-    "message": "Nur Lesen"
+  "Reason_optional": {
+    "message": "Grund (optional)"
   },
   "Refreshes_in": {
     "message": "Aktualisierung in"
+  },
+  "Reject": {
+    "message": "Ablehnen"
+  },
+  "Reject_this_action": {
+    "message": "Diese Aktion ablehnen"
   },
   "Remaining": {
     "message": "Verbleibend:"
@@ -600,6 +663,15 @@
   },
   "Remove_API_Key": {
     "message": "API-Schlüssel entfernen"
+  },
+  "Remove_modification": {
+    "message": "Änderung entfernen"
+  },
+  "Request_Changes": {
+    "message": "Änderungen anfordern"
+  },
+  "Request_changes_to_this_action": {
+    "message": "Änderungen an dieser Aktion anfordern"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
@@ -655,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "Sicherheit & Datenschutz"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Sicherheitsstufe für die Ausführungsumgebung des Werkzeugs"
+  },
+  "Security_Privacy": {
+    "message": "Sicherheit & Datenschutz"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Wählen Sie das KI-Modell für Unterhaltungen aus."
@@ -670,10 +742,19 @@
   "Service_Tier": {
     "message": "Service-Tier"
   },
+  "session": {
+    "message": ""
+  },
+  "Session": {
+    "message": "Sitzung"
+  },
   "Session_error": {
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -751,17 +832,20 @@
   "Testing": {
     "message": "Testen..."
   },
+  "The_agent_is_currently_using_backend_mod_2d4c": {
+    "message": "Der Agent verwendet derzeit den Backend-Modus. LLM-Anfragen werden über den AI Republic-Server geleitet. Ihre Unterhaltungen werden sicher über unsere Infrastruktur verarbeitet."
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
     "message": ""
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
     "message": ""
   },
-  "The_agent_is_currently_using_backend_mod_2d4c": {
-    "message": "Der Agent verwendet derzeit den Backend-Modus. LLM-Anfragen werden über den AI Republic-Server geleitet. Ihre Unterhaltungen werden sicher über unsere Infrastruktur verarbeitet."
-  },
   "Time": {
     "message": "Zeit"
+  },
+  "Time_remaining": {
+    "message": "Verbleibende Zeit"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live für zwischengespeicherte Elemente in Sekunden (Standard: 3600)"
@@ -775,6 +859,9 @@
   "Tokens": {
     "message": ""
   },
+  "Tool": {
+    "message": "Werkzeug"
+  },
   "Tool_Timeout_ms": {
     "message": "Werkzeug-Timeout (ms)"
   },
@@ -784,11 +871,11 @@
   "Tools_Settings": {
     "message": "Werkzeug-Einstellungen"
   },
+  "Turn": {
+    "message": "Drehen"
+  },
   "UI_Theme": {
     "message": "UI-Thema"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Unable_to_load_credit_information": {
     "message": "Kreditinformationen konnten nicht geladen werden"
@@ -814,20 +901,35 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Upgraden Sie Ihr Abonnement, um die leistungsstärksten Modelle der Welt zu nutzen"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "Kontextmenü verwenden:"
   },
   "Use_Own_API_Key": {
     "message": "Eigenen API-Schlüssel verwenden"
   },
+  "User_approved_action": {
+    "message": "Vom Benutzer genehmigte Aktion"
+  },
   "User_Center": {
     "message": "Benutzerzentrum"
   },
-  "User_Session": {
-    "message": ""
+  "User_decision": {
+    "message": "Benutzerentscheid"
   },
   "User_preferences_and_interface_settings": {
     "message": "Benutzereinstellungen und Oberflächeneinstellungen"
+  },
+  "User_rejected_action": {
+    "message": "Vom Benutzer abgelehnte Aktion"
+  },
+  "User_requested_modifications": {
+    "message": "Vom Benutzer angeforderte Änderungen"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "Zusätzliche Credits verwenden"
@@ -871,13 +973,7 @@
   "Your_API_key_is_encrypted": {
     "message": "Ihr API‑Schlüssel ist verschlüsselt"
   },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+  "Your_Decision": {
+    "message": "Ihre Entscheidung"
   }
 }
