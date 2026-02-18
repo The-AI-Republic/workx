@@ -20,6 +20,15 @@ import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
 
 /**
+ * Optional MCP capability interface for sessions that support MCP tools.
+ * Used for runtime duck-typing of Session subclasses with MCP support.
+ */
+interface MCPCapableSession {
+  getMcpTools(): Promise<ToolDefinition[]>;
+  executeMcpTool(name: string, params: any): Promise<any>;
+}
+
+/**
  * Result of processing a single response item
  */
 export interface ProcessedResponseItem {
@@ -346,13 +355,14 @@ export class TurnManager {
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
+    const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
     if (
       (enableAllTools || toolsConfig.mcpTools === true) &&
-      typeof this.session.getMcpTools === 'function'
+      typeof mcpSession.getMcpTools === 'function'
     ) {
-      const mcpTools = await this.session.getMcpTools();
+      const mcpTools = await mcpSession.getMcpTools();
       // Convert MCP tools to ModelClient format
-      const convertedMcpTools = mcpTools.map(tool => ({
+      const convertedMcpTools = mcpTools.map((tool: any) => ({
         type: 'function' as const,
         function: {
           name: tool.function.name,
@@ -371,14 +381,17 @@ export class TurnManager {
           // Custom tools would be loaded from registry or another source
           const customTool = this.toolRegistry.getTool(toolName);
           if (customTool) {
-            tools.push({
-              type: 'function',
-              function: {
-                name: customTool.name,
-                description: customTool.description,
-                parameters: customTool.parameters || {},
-              },
-            });
+            if (customTool.type === 'function') {
+              tools.push({
+                type: 'function',
+                function: {
+                  name: customTool.function.name,
+                  description: customTool.function.description,
+                  strict: customTool.function.strict ?? false,
+                  parameters: customTool.function.parameters || { type: 'object' as const, properties: {} },
+                },
+              });
+            }
           }
         }
       }
@@ -413,7 +426,7 @@ export class TurnManager {
 
     // Add synthetic aborted responses for missing calls
     const syntheticResponses = missingCallIds.map(callId => ({
-      type: 'function_call_output',
+      type: 'function_call_output' as const,
       call_id: callId,
       output: 'aborted',
     }));
@@ -475,12 +488,11 @@ export class TurnManager {
 
     // Convert input items to messages
     for (const item of prompt.input) {
-      if (item.role && item.content) {
+      if (item.type === 'message') {
         messages.push({
           role: item.role,
           content: item.content,
-          toolCalls: item.toolCalls,
-          toolCallId: item.toolCallId,
+          toolCalls: item.tool_calls,
         });
       }
     }
@@ -737,7 +749,11 @@ export class TurnManager {
     });
 
     try {
-      const result = await this.session.executeMcpTool(toolName, parameters);
+      const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
+      if (typeof mcpSession.executeMcpTool !== 'function') {
+        throw new Error(`MCP tool execution not available on this session`);
+      }
+      const result = await mcpSession.executeMcpTool(toolName, parameters);
 
       await this.emitEvent({
         type: 'McpToolCallEnd',

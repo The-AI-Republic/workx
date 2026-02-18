@@ -56,6 +56,24 @@ export interface SubmissionContext {
 export type SubmissionHandler = (op: Op, context: SubmissionContext) => Promise<void>;
 
 /**
+ * Channel connection state
+ */
+export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+/**
+ * Channel adapter interface for different transport mechanisms
+ */
+export interface ChannelAdapter {
+  readonly channelId: string;
+  readonly channelType: ChannelType;
+  initialize(): Promise<void>;
+  onSubmission(handler: SubmissionHandler | ((...args: any[]) => Promise<void>)): void;
+  sendEvent(event: EventMsg, targetClientId?: string): Promise<void>;
+  getConnectionState(): ConnectionState;
+  close(): Promise<void>;
+}
+
+/**
  * Channel registration info
  */
 export interface ChannelInfo {

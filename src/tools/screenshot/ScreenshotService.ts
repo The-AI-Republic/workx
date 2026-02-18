@@ -163,7 +163,7 @@ export class ScreenshotService {
 
     // Create send command wrapper
     const sendCommand = async <T = any>(method: string, params?: any): Promise<T> => {
-      return await chrome.debugger.sendCommand({ tabId }, method, params);
+      return await chrome.debugger.sendCommand({ tabId }, method, params) as T;
     };
 
     return new ScreenshotService(tabId, sendCommand);

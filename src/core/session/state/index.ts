@@ -9,7 +9,6 @@ export {
   createSessionServices,
   type SessionServices,
   type UserNotifier,
-  type RolloutRecorder,
   type DOMService,
   type TabManager,
 } from './SessionServices';

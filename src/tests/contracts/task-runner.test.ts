@@ -5,7 +5,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventCollector, createMockSubmission, createMockUserTurn, waitFor, createDeferred } from '../utils/test-helpers';
-import { Submission, Event, EventMsg } from '../../core/protocol/types';
+import type { Submission, Event, EventMsg } from '../../core/protocol/types';
+
+type ToolCall = { id: string; type: string; function: { name: string; arguments: string } };
 
 // Define TaskRunner contract interface
 interface TaskResult {
@@ -191,7 +193,6 @@ describe('TaskRunner Contract', () => {
               data: {
                 code: 'TASK_FAILED',
                 message: 'Task execution failed',
-                details: { reason: 'API error' },
               },
             },
           });
@@ -414,7 +415,6 @@ describe('TaskRunner Contract', () => {
                 data: {
                   code: 'EXECUTION_ERROR',
                   message: error.message,
-                  details: { stack: error.stack },
                 },
               },
             });

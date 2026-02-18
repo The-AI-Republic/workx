@@ -3,6 +3,8 @@
  * Provides mock implementations of Chrome extension APIs
  */
 
+import { vi } from 'vitest';
+
 export const chromeMock = {
   runtime: {
     sendMessage: vi.fn().mockResolvedValue(undefined),
@@ -122,7 +124,7 @@ export class MessageChannelMock {
         new Promise(resolve => {
           const sendResponse = (response: any) => resolve(response);
           const result = listener(message, sender, sendResponse);
-          if (result !== true) {
+          if (result as unknown !== true) {
             resolve(undefined);
           }
         })

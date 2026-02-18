@@ -417,8 +417,9 @@ export class EventProcessor {
     }
 
     if (msg.type === 'McpToolCallBegin') {
+      const callId = msg.data.call_id as string;
       const state: OperationState = {
-        callId: msg.data.call_id,
+        callId,
         type: 'tool',
         startTime: new Date(),
         buffer: '',
@@ -427,13 +428,13 @@ export class EventProcessor {
           toolParams: msg.data.params,
         },
       };
-      this.operationMetadata.set(msg.data.call_id, state);
+      this.operationMetadata.set(callId, state);
       return null;
     }
 
     if (msg.type === 'PatchApplyBegin') {
       const state: OperationState = {
-        callId: msg.data.session_id,
+        callId: msg.data.session_id as string,
         type: 'patch',
         startTime: new Date(),
         buffer: '',
@@ -441,14 +442,14 @@ export class EventProcessor {
           filesChanged: msg.data.num_files,
         },
       };
-      this.operationMetadata.set(msg.data.session_id, state);
+      this.operationMetadata.set(msg.data.session_id as string, state);
       return null;
     }
 
     // Handle End events
     if (msg.type === 'ExecCommandEnd') {
-      const state = this.operationMetadata.get(msg.data.session_id);
-      this.operationMetadata.delete(msg.data.session_id);
+      const state = this.operationMetadata.get(msg.data.session_id as string);
+      this.operationMetadata.delete(msg.data.session_id as string);
 
       if (!state) {
         // Orphaned End event - create standalone event
@@ -469,7 +470,7 @@ export class EventProcessor {
       const metadata: EventMetadata = {
         command: state.metadata.command as string,
         exitCode: msg.data.exit_code,
-        workingDir: state.metadata.workingDir as string,
+        tabId: state.metadata.tabId as number | undefined,
         duration: msg.data.duration_ms || duration,
       };
 
@@ -488,8 +489,8 @@ export class EventProcessor {
     }
 
     if (msg.type === 'McpToolCallEnd') {
-      const state = this.operationMetadata.get(msg.data.call_id);
-      this.operationMetadata.delete(msg.data.call_id);
+      const state = this.operationMetadata.get(msg.data.call_id as string);
+      this.operationMetadata.delete(msg.data.call_id as string);
 
       const duration = state ? new Date().getTime() - state.startTime.getTime() : 0;
       const metadata: EventMetadata = {
@@ -514,8 +515,8 @@ export class EventProcessor {
     }
 
     if (msg.type === 'PatchApplyEnd') {
-      const state = this.operationMetadata.get(msg.data.session_id);
-      this.operationMetadata.delete(msg.data.session_id);
+      const state = this.operationMetadata.get(msg.data.session_id as string);
+      this.operationMetadata.delete(msg.data.session_id as string);
 
       const duration = state ? new Date().getTime() - state.startTime.getTime() : 0;
 
@@ -766,7 +767,7 @@ export class EventProcessor {
   /**
    * Send approval decision as a standard SUBMISSION.
    * This routes through the same pipeline for both extension and desktop,
-   * reaching BrowserxAgent.handleExecApproval() on all platforms.
+   * reaching PiAgent.handleExecApproval() on all platforms.
    */
   private sendApprovalDecision(
     id: string,
@@ -811,7 +812,7 @@ export class EventProcessor {
         category: 'plan',
         timestamp: new Date(),
         title: 'Task Plan',
-        content: planData, // Pass the full plan data to PlanEvent component
+        content: planData as unknown as string, // Pass the full plan data to PlanEvent component
         style: { textColor: 'text-cyan-400' },
         collapsible: false,
       };
@@ -871,7 +872,7 @@ export class EventProcessor {
       category: 'system',
       timestamp: new Date(),
       title: msg.type,
-      content: JSON.stringify(msg.data || {}, null, 2),
+      content: JSON.stringify((msg as any).data || {}, null, 2),
       style: STYLE_PRESETS.dimmed,
       collapsible: true,
       collapsed: true,

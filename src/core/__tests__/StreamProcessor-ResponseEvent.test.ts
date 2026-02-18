@@ -119,9 +119,7 @@ describe('StreamProcessor ResponseEvent Integration', () => {
       yield {
         type: 'RateLimits',
         snapshot: {
-          requestsRemaining: 100,
-          tokensRemaining: 50000,
-          resetTime: Date.now() + 60000
+          primary: { used_percent: 10, window_minutes: 60, resets_in_seconds: 300 },
         }
       };
     }

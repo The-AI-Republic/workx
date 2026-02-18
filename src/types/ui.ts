@@ -251,7 +251,7 @@ export interface ProcessedEvent {
   timestamp: Date;                     // When event occurred
 
   // Display
-  title: string;                       // Header text (e.g., "browserx", "exec ls", "tool Read")
+  title: string;                       // Header text (e.g., "pi", "exec ls", "tool Read")
   content: string | ContentBlock[];    // Main content (text or structured)
   style: EventStyle;                   // Visual styling category
 

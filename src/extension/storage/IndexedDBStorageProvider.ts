@@ -227,8 +227,8 @@ export class IndexedDBStorageProvider implements StorageProvider {
         if (options?.orderBy) {
           const order = options.order || 'asc';
           results.sort((a, b) => {
-            const aVal = (a as Record<string, unknown>)[options.orderBy!];
-            const bVal = (b as Record<string, unknown>)[options.orderBy!];
+            const aVal = (a as Record<string, unknown>)[options.orderBy!] as string | number;
+            const bVal = (b as Record<string, unknown>)[options.orderBy!] as string | number;
             if (aVal < bVal) return order === 'asc' ? -1 : 1;
             if (aVal > bVal) return order === 'asc' ? 1 : -1;
             return 0;
@@ -280,8 +280,8 @@ export class IndexedDBStorageProvider implements StorageProvider {
         if (filter.orderBy) {
           const order = filter.order || 'asc';
           results.sort((a, b) => {
-            const aVal = (a as Record<string, unknown>)[filter.orderBy!];
-            const bVal = (b as Record<string, unknown>)[filter.orderBy!];
+            const aVal = (a as Record<string, unknown>)[filter.orderBy!] as string | number;
+            const bVal = (b as Record<string, unknown>)[filter.orderBy!] as string | number;
             if (aVal < bVal) return order === 'asc' ? -1 : 1;
             if (aVal > bVal) return order === 'asc' ? 1 : -1;
             return 0;

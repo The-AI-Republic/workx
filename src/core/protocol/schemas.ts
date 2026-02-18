@@ -90,7 +90,7 @@ const UserInputOpSchema = z.object({
 const UserTurnOpSchema = z.object({
   type: z.literal('UserTurn'),
   items: z.array(InputItemSchema),
-  cwd: z.string(),
+  tabId: z.number(),
   approval_policy: AskForApprovalSchema,
   sandbox_policy: SandboxPolicySchema,
   model: z.string(),
@@ -100,7 +100,7 @@ const UserTurnOpSchema = z.object({
 
 const OverrideTurnContextOpSchema = z.object({
   type: z.literal('OverrideTurnContext'),
-  cwd: z.string().optional(),
+  tabId: z.number().optional(),
   approval_policy: AskForApprovalSchema.optional(),
   sandbox_policy: SandboxPolicySchema.optional(),
   model: z.string().optional(),
@@ -215,5 +215,5 @@ export function validateEvent(data: unknown): data is import('./types').Event {
  * Parse and validate an event
  */
 export function parseEvent(data: unknown): import('./types').Event {
-  return EventSchema.parse(data);
+  return EventSchema.parse(data) as import('./types').Event;
 }

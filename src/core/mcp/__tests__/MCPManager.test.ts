@@ -74,7 +74,7 @@ describe('MCPManager', () => {
     (globalThis as any).chrome = mockChromeStorage;
 
     // Mock crypto.randomUUID (it's read-only in some environments)
-    vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID);
+    vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID as any);
 
     // Clear mock storage
     Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
@@ -90,7 +90,7 @@ describe('MCPManager', () => {
   });
 
   afterEach(() => {
-    delete (globalThis as any).chrome;
+    (globalThis as any).chrome = undefined;
     MCPManager.resetInstance();
   });
 
@@ -110,6 +110,8 @@ describe('MCPManager', () => {
           url: 'https://github.example.com',
           enabled: true,
           timeout: 30000,
+          transport: 'sse' as const,
+          platform: 'shared' as const,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },

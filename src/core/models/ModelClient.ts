@@ -1,5 +1,5 @@
 /**
- * Model Client base interface and types for browserx-chrome
+ * Model Client base interface and types for pi
  */
 
 import type { ToolDefinition } from '../../tools/BaseTool';
@@ -332,8 +332,8 @@ export abstract class ModelClient {
    * Supports both primary and secondary rate limit windows.
    *
    * **Header Format**:
-   * - Primary: `x-browserx-primary-used-percent`, `x-browserx-primary-window-minutes`, `x-browserx-primary-resets-in-seconds`
-   * - Secondary: `x-browserx-secondary-used-percent`, `x-browserx-secondary-window-minutes`, `x-browserx-secondary-resets-in-seconds`
+   * - Primary: `x-pi-primary-used-percent`, `x-pi-primary-window-minutes`, `x-pi-primary-resets-in-seconds`
+   * - Secondary: `x-pi-secondary-used-percent`, `x-pi-secondary-window-minutes`, `x-pi-secondary-resets-in-seconds`
    *
    * @param headers HTTP response headers from fetch()
    * @returns RateLimitSnapshot if rate limit headers present, undefined otherwise
@@ -458,8 +458,8 @@ export abstract class ModelClient {
 
         // Extract retry-after from error if available
         let retryAfter: number | undefined;
-        if (error.retryAfter) {
-          retryAfter = error.retryAfter;
+        if ((error as any)?.retryAfter) {
+          retryAfter = (error as any).retryAfter;
         }
 
         const delay = this.calculateBackoff(attempt, retryAfter);

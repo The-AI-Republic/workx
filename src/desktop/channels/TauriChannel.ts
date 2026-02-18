@@ -2,7 +2,7 @@
  * Tauri Channel Adapter
  *
  * Desktop-mode implementation of ChannelAdapter for Tauri windows.
- * Communicates between the frontend UI and the BrowserxAgent via Tauri events.
+ * Communicates between the frontend UI and the PiAgent via Tauri events.
  *
  * In desktop mode, both the UI and the agent run in the same WebView process.
  * This channel uses Tauri's event system for decoupled communication.
@@ -38,11 +38,11 @@ interface SubmissionMessage {
  * TauriChannel implements ChannelAdapter for Tauri desktop windows
  *
  * Flow:
- * 1. UI emits 'browserx:submit' events with Op + context
+ * 1. UI emits 'pi:submit' events with Op + context
  * 2. TauriChannel receives and routes to registered submission handler
- * 3. Handler (ChannelManager → BrowserxAgent) processes the submission
- * 4. BrowserxAgent emits events via ChannelManager → TauriChannel.sendEvent()
- * 5. TauriChannel emits 'browserx:event' for UI to receive
+ * 3. Handler (ChannelManager → PiAgent) processes the submission
+ * 4. PiAgent emits events via ChannelManager → TauriChannel.sendEvent()
+ * 5. TauriChannel emits 'pi:event' for UI to receive
  *
  * @example
  * ```typescript
@@ -83,7 +83,7 @@ export class TauriChannel implements ChannelAdapter {
 
     try {
       // Listen for submissions from the UI
-      const unlistenSubmit = await listen<SubmissionMessage>('browserx:submit', async (event) => {
+      const unlistenSubmit = await listen<SubmissionMessage>('pi:submit', async (event) => {
         console.log('[TauriChannel] Received submission:', event.payload);
         await this.handleSubmission(event.payload);
       });
@@ -91,7 +91,7 @@ export class TauriChannel implements ChannelAdapter {
 
       // Listen for connection state changes (from Rust backend if applicable)
       const unlistenConnection = await listen<ConnectionState>(
-        'browserx:connection',
+        'pi:connection',
         (event) => {
           this.connectionState = event.payload;
           console.log('[TauriChannel] Connection state:', this.connectionState);
@@ -148,7 +148,7 @@ export class TauriChannel implements ChannelAdapter {
     console.log('[TauriChannel] Sending event:', event.type);
 
     try {
-      await emit('browserx:event', event);
+      await emit('pi:event', event);
     } catch (error) {
       console.error('[TauriChannel] Failed to send event:', error);
       throw error;

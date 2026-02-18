@@ -1,10 +1,18 @@
-# BrowserX
+# Pi
 
 **AI-Powered Personal Assistant - Chrome Extension & Desktop App**
 
-BrowserX is a privacy-preserving, general-purpose AI personal assistant available as both a **Chrome extension (BrowserX)** and a **desktop application (Pi)**. The agent operates entirely within the user's local environment, interpreting natural language commands and autonomously performing tasks across web browsing, file management, and more. All interactions occur client-side, ensuring that sensitive data never leaves your machine.
+Pi is a privacy-preserving, general-purpose AI personal assistant available as both a **Chrome extension (BrowserX)** and a **desktop application (Apple Pi)**. The agent operates entirely within the user's local environment, interpreting natural language commands and autonomously performing tasks across web browsing, file management, and more. All interactions occur client-side, ensuring that sensitive data never leaves your machine.
 
-![BrowserX UI Screenshot](/src/static/browserx_UI.png)
+## Naming Convention
+
+| Name | Usage | Context |
+|------|-------|---------|
+| **Pi** | Project/repo name | Git repository, package name, internal references |
+| **BrowserX** | Chrome extension name | Extension store listing, extension UI, browser branding |
+| **Apple Pi** | Desktop app name | Desktop application UI, window title, installer |
+
+![Pi UI Screenshot](/src/static/pi_UI.png)
 
 ---
 
@@ -13,7 +21,7 @@ BrowserX is a privacy-preserving, general-purpose AI personal assistant availabl
 | App | Platform | Description | Best For |
 |-----|----------|-------------|----------|
 | **BrowserX** | Chrome Extension | Browser-based agent with web automation | Quick web tasks, browsing assistance |
-| **Pi** | Desktop (Win/Mac/Linux) | Native application with full system access | Terminal commands, file operations, advanced automation |
+| **Apple Pi** | Desktop (Win/Mac/Linux) | Native application with full system access | Terminal commands, file operations, advanced automation |
 
 ---
 
@@ -27,7 +35,7 @@ BrowserX is a privacy-preserving, general-purpose AI personal assistant availabl
 
 **Current Status:** Alpha Testing
 
-BrowserX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code is publicly available for transparency and educational purposes, but this project is **not open source** at this time.
+Pi is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code is publicly available for transparency and educational purposes, but this project is **not open source** at this time.
 
 **Usage Restrictions:**
 - Personal evaluation and learning: ✅ Allowed
@@ -101,8 +109,8 @@ cp .env.example src/desktop/.env
 
 1. **Clone the repository:**
    ```bash
-   git clone git@github.com:The-AI-Republic/browserx.git
-   cd browserx
+   git clone git@github.com:The-AI-Republic/pi.git
+   cd pi
    ```
 
 2. **Install dependencies:**
@@ -135,7 +143,7 @@ cp .env.example src/desktop/.env
 
 ---
 
-### Pi (Desktop App)
+### Apple Pi (Desktop App)
 
 #### Prerequisites (Ubuntu/Linux)
 ```bash
@@ -190,7 +198,7 @@ cp .env.example src/desktop/.env
 npm run tauri:dev
 ```
 
-This will start the Vite frontend server and launch the Pi desktop window with hot-reload enabled.
+This will start the Vite frontend server and launch the Apple Pi desktop window with hot-reload enabled.
 
 #### Environment Variables (Linux)
 
@@ -328,7 +336,7 @@ We welcome collaboration from the developer community and business partners.
 
 ### Areas of Interest
 - **Investment opportunities:** Strategic partnerships and funding discussions
-- **Enterprise adoption:** Integrating BrowserX/Pi into organizational workflows
+- **Enterprise adoption:** Integrating BrowserX/Apple Pi into organizational workflows
 - **Collaboration:** Bug reports, feature suggestions, and feedback
 
 ### How You Can Help
