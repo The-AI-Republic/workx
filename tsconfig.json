@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "types": ["chrome", "vite/client", "svelte"],
+    "types": ["chrome", "vite/client", "svelte", "node"],
     "sourceMap": true,
     "outDir": "dist",
     "baseUrl": ".",

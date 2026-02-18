@@ -31,6 +31,7 @@
     "@testing-library/svelte": "^5.2.8",
     "@types/chrome": "^0.1.12",
     "@types/marked": "^5.0.2",
+    "@types/node": "^25.2.3",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
     "@vitest/ui": "^3.2.4",
