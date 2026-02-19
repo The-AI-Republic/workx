@@ -23,6 +23,7 @@
     ],
     "longDescription": "Pi - AI-powered personal assistant agent",
     "shortDescription": "Pi - Personal Assistant",
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "linux": {
       "deb": {
@@ -60,6 +61,15 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "pubkey": "REPLACE_WITH_PUBLIC_KEY",
+      "endpoints": [
+        "https://github.com/The-AI-Republic/browserx/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     },
     "deep-link": {
       "desktop": {
