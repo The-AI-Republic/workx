@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS-universal
+            runner: macos-latest
+            target: universal-apple-darwin
+          - name: Windows-x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Linux-x64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building version: $TAG"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Sync version into config files
+        run: node scripts/sync-version.js ${{ steps.version.outputs.version }}
+
+      - name: Create desktop .env from example
+        shell: bash
+        run: cp .env.example src/desktop/.env
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target == 'universal-apple-darwin' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tauri/target
+          key: ${{ matrix.runner }}-cargo-${{ hashFiles('tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.runner }}-cargo-
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build (macOS universal)
+        if: matrix.target == 'universal-apple-darwin'
+        working-directory: tauri
+        run: cargo tauri build --target universal-apple-darwin
+
+      - name: Build (Windows / Linux)
+        if: matrix.target != 'universal-apple-darwin'
+        working-directory: tauri
+        run: cargo tauri build --target ${{ matrix.target }}
+
+      # --- Upload artifacts to the GitHub Release ---
+
+      - name: Upload macOS .dmg
+        if: matrix.target == 'universal-apple-darwin'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg \
+            --clobber
+
+      - name: Upload Windows .exe (NSIS)
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe \
+            --clobber
+
+      - name: Upload Linux .deb and .AppImage
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb \
+            tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage \
+            --clobber
