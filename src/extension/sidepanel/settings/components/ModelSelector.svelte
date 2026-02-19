@@ -8,6 +8,7 @@
   import type { ConfiguredFeatures } from '@/config/types';
   import { userStore } from '../../stores/userStore';
   import Tooltip from '../../components/common/Tooltip.svelte';
+  import { t, _t } from '../../lib/i18n';
 
   // Props
   export let selectedModel: string;
@@ -269,10 +270,10 @@
   $: currentModelDisplay = currentModelData
     ? `${currentModelData.modelName} - ${currentModelData.providerName}`
     : disabled && modelSelectionItems.length === 0
-      ? 'Loading...'
+      ? t('Loading...')
       : modelSelectionItems.length > 0
-        ? `Unknown model (${selectedModel})`
-        : 'No models available';
+        ? t('Unknown model ($1$)', { substitutions: [selectedModel] })
+        : t('No models available');
 
   $: if (typeof window !== 'undefined') {
     if (isOpen) {
@@ -289,7 +290,7 @@
   class="model-selector relative"
   role="listbox"
   aria-expanded={isOpen}
-  aria-label="Select model: {currentModelDisplay}"
+  aria-label={$_t('Select model: $1$', { substitutions: [currentModelDisplay] })}
   aria-disabled={disabled}
   on:keydown={handleKeyDown}
   tabindex={disabled ? -1 : 0}
@@ -336,7 +337,7 @@
           isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
 
         <Tooltip
-          content="Please upgrade the plan to unblock world's most advanced models"
+          content={$_t("Please upgrade the plan to unblock world's most advanced models")}
           disabled={!isLockedForFreeUser}
           placement="top"
           trigger="mouseenter click"
@@ -421,11 +422,11 @@
                         {#if !isLockedForFreeUser}
                           <div class="provider-tooltip">
                             {#if provider.pricing}
-                              <div class="tooltip-line">In: {provider.pricing.inputToken}</div>
-                              <div class="tooltip-line">Out: {provider.pricing.outputToken}</div>
+                              <div class="tooltip-line">{$_t('In:')} {provider.pricing.inputToken}</div>
+                              <div class="tooltip-line">{$_t('Out:')} {provider.pricing.outputToken}</div>
                             {:else}
                               <div class="tooltip-line">
-                                {provider.contextWindow.toLocaleString()} tokens
+                                {provider.contextWindow.toLocaleString()} {$_t('tokens')}
                               </div>
                             {/if}
                           </div>
@@ -436,7 +437,7 @@
                       <span
                         class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                       >
-                        Selected
+                        {$_t('Selected')}
                       </span>
                     {/if}
                   </div>
@@ -456,14 +457,14 @@
                   </span>
                   {#if firstProvider.apiKey && !isLockedForFreeUser}
                     <span class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
-                      Configured
+                      {$_t('Configured')}
                     </span>
                   {/if}
                   {#if isSelectedModelName && !isLockedForFreeUser}
                     <span
                       class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                     >
-                      Selected
+                      {$_t('Selected')}
                     </span>
                   {/if}
                 {/if}
@@ -477,7 +478,7 @@
                     <line x1="12" y1="8" x2="12" y2="12"></line>
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                   </svg>
-                  Please select a provider
+                  {$_t('Please select a provider')}
                 </div>
               {/if}
 
@@ -489,8 +490,8 @@
                   {#if displayProvider.pricing}
                     <div class="mt-2 flex items-center justify-between gap-2">
                       <div class="text-xs text-gray-400">
-                        <div>Input: {displayProvider.pricing.inputToken}</div>
-                        <div>Output: {displayProvider.pricing.outputToken}</div>
+                        <div>{$_t('Input:')} {displayProvider.pricing.inputToken}</div>
+                        <div>{$_t('Output:')} {displayProvider.pricing.outputToken}</div>
                       </div>
                       <a
                         href={displayProvider.pricing.link}
@@ -498,7 +499,7 @@
                         rel="noopener noreferrer"
                         class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
                         on:click={(e) => e.stopPropagation()}
-                        aria-label="View pricing details"
+                        aria-label={$_t("View pricing details")}
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -512,14 +513,14 @@
                     </div>
                   {:else}
                     <div class="mt-1 text-xs text-gray-400">
-                      {displayProvider.contextWindow.toLocaleString()} tokens
+                      {displayProvider.contextWindow.toLocaleString()} {$_t('tokens')}
                     </div>
                   {/if}
                 {:else if firstProvider.pricing}
                   <div class="mt-2 flex items-center justify-between gap-2">
                     <div class="text-xs text-gray-400">
-                      <div>Input: {firstProvider.pricing.inputToken}</div>
-                      <div>Output: {firstProvider.pricing.outputToken}</div>
+                      <div>{$_t('Input:')} {firstProvider.pricing.inputToken}</div>
+                      <div>{$_t('Output:')} {firstProvider.pricing.outputToken}</div>
                     </div>
                     <a
                       href={firstProvider.pricing.link}
@@ -527,7 +528,7 @@
                       rel="noopener noreferrer"
                       class="flex-shrink-0 text-cyan-400 hover:text-cyan-300 transition-colors"
                       on:click={(e) => e.stopPropagation()}
-                      aria-label="View pricing details"
+                      aria-label={$_t("View pricing details")}
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -541,7 +542,7 @@
                   </div>
                 {:else}
                   <div class="mt-1 text-xs text-gray-400">
-                    {firstProvider.contextWindow.toLocaleString()} tokens
+                    {firstProvider.contextWindow.toLocaleString()} {$_t('tokens')}
                   </div>
                 {/if}
               {/if}

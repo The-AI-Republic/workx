@@ -4,6 +4,7 @@
    */
   import type { ProcessedEvent } from '@/types/ui';
   import { truncateOutput } from '@/utils/formatters';
+  import { _t } from '../../lib/i18n';
 
   export let event: ProcessedEvent;
   export let maxLines: number = 20;
@@ -31,14 +32,14 @@
       class="text-cyan-400 text-xs mt-2 hover:underline"
       on:click={() => (showAll = true)}
     >
-      Show all
+      {$_t("Show all")}
     </button>
   {:else if showAll}
     <button
       class="text-cyan-400 text-xs mt-2 hover:underline"
       on:click={() => (showAll = false)}
     >
-      Show less
+      {$_t("Show less")}
     </button>
   {/if}
 </div>

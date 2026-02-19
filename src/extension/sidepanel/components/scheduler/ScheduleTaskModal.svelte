@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
 
   export let show: boolean = false;
   export let input: string = '';
@@ -108,7 +108,7 @@
 
     // Validate input
     if (!taskInput) {
-      errorMessage = 'Please enter a task description';
+      errorMessage = t('Please enter a task description');
       return;
     }
 
@@ -117,7 +117,7 @@
 
     // Must be at least 1 minute in the future
     if (scheduledTime <= now + 60000) {
-      errorMessage = 'Scheduled time must be at least 1 minute in the future';
+      errorMessage = t('Scheduled time must be at least 1 minute in the future');
       return;
     }
 

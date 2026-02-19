@@ -14,7 +14,7 @@
   } from '@/core/a2a/types';
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/a2a/A2AConfig';
   import { sendMessage, MessageType } from '../lib/messaging';
-  import { _t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
 
@@ -74,7 +74,7 @@
       await Promise.all([loadAgents(), loadConnections(), loadSkills(), loadDebugLogging()]);
     } catch (error) {
       console.error('[A2ASettings] Failed to load data:', error);
-      saveMessage = 'Failed to load A2A settings';
+      saveMessage = t('Failed to load A2A settings');
       saveMessageType = 'error';
     } finally {
       isLoading = false;
@@ -94,7 +94,7 @@
     debugLogging = target.checked;
     try {
       await setDebugLogging(debugLogging);
-      saveMessage = debugLogging ? 'Debug logging enabled' : 'Debug logging disabled';
+      saveMessage = debugLogging ? t('Debug logging enabled') : t('Debug logging disabled');
       saveMessageType = 'success';
       setTimeout(() => {
         saveMessage = '';
@@ -102,7 +102,7 @@
       }, 3000);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      saveMessage = `Failed to save debug logging setting: ${errorMsg}`;
+      saveMessage = t('Failed to save debug logging setting: $1$', { substitutions: [errorMsg] });
       saveMessageType = 'error';
     }
   }
@@ -202,17 +202,17 @@
   async function handleSaveAgent() {
     // Validate form
     if (!formName.trim()) {
-      formError = 'Agent name is required';
+      formError = t('Agent name is required');
       return;
     }
     if (!formUrl.trim()) {
-      formError = 'Agent URL is required';
+      formError = t('Agent URL is required');
       return;
     }
 
     // Validate name format (alphanumeric + hyphens)
     if (!/^[a-zA-Z0-9-]+$/.test(formName)) {
-      formError = 'Agent name can only contain letters, numbers, and hyphens';
+      formError = t('Agent name can only contain letters, numbers, and hyphens');
       return;
     }
 
@@ -220,11 +220,11 @@
     try {
       const url = new URL(formUrl);
       if (!['http:', 'https:'].includes(url.protocol)) {
-        formError = 'URL must use http or https protocol';
+        formError = t('URL must use http or https protocol');
         return;
       }
     } catch {
-      formError = 'Invalid URL format';
+      formError = t('Invalid URL format');
       return;
     }
 
@@ -285,7 +285,7 @@
       closeAgentForm();
       await loadAgents();
 
-      saveMessage = editingAgentId ? 'Agent updated successfully' : 'Agent added successfully';
+      saveMessage = editingAgentId ? t('Agent updated successfully') : t('Agent added successfully');
       saveMessageType = 'success';
       setTimeout(() => {
         saveMessage = '';
@@ -300,7 +300,7 @@
   }
 
   async function handleRemoveAgent(agentId: string) {
-    if (!confirm('Are you sure you want to remove this agent?')) {
+    if (!confirm(t('Are you sure you want to remove this agent?'))) {
       return;
     }
 
@@ -318,7 +318,7 @@
       await loadConnections();
       await loadSkills();
 
-      saveMessage = 'Agent removed successfully';
+      saveMessage = t('Agent removed successfully');
       saveMessageType = 'success';
       setTimeout(() => {
         saveMessage = '';
@@ -326,7 +326,7 @@
       }, 3000);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      saveMessage = `Failed to remove agent: ${errorMsg}`;
+      saveMessage = t('Failed to remove agent: $1$', { substitutions: [errorMsg] });
       saveMessageType = 'error';
     }
   }
@@ -345,7 +345,7 @@
       await loadConnections();
       await loadSkills();
 
-      saveMessage = 'Connected successfully';
+      saveMessage = t('Connected successfully');
       saveMessageType = 'success';
       setTimeout(() => {
         saveMessage = '';
@@ -353,7 +353,7 @@
       }, 3000);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      saveMessage = `Failed to connect: ${errorMsg}`;
+      saveMessage = t('Failed to connect: $1$', { substitutions: [errorMsg] });
       saveMessageType = 'error';
     }
   }
@@ -372,7 +372,7 @@
       await loadConnections();
       await loadSkills();
 
-      saveMessage = 'Disconnected successfully';
+      saveMessage = t('Disconnected successfully');
       saveMessageType = 'success';
       setTimeout(() => {
         saveMessage = '';
@@ -380,7 +380,7 @@
       }, 3000);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      saveMessage = `Failed to disconnect: ${errorMsg}`;
+      saveMessage = t('Failed to disconnect: $1$', { substitutions: [errorMsg] });
       saveMessageType = 'error';
     }
   }
@@ -444,7 +444,7 @@
                       <div class="agent-header">
                         <span class="agent-name">{agent.name}</span>
                         <span class="status-badge {getStatusBadgeClass(connection?.status || 'disconnected')}">
-                          {connection?.status || 'disconnected'}
+                          {connection?.status ? $_t(connection.status) : $_t('disconnected')}
                         </span>
                         {#if agent.trusted}
                           <span class="trusted-badge">{$_t("trusted")}</span>

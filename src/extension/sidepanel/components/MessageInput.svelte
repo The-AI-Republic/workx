@@ -6,10 +6,10 @@
   import ChatHistoryPopup from './chat/ChatHistoryPopup.svelte';
   import { uiTheme, type UITheme } from '../stores/themeStore';
   import { platform } from '../stores/platformStore';
-  import { _t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
 
   export let value: string = '';
-  export let placeholder: string = '>> Enter command...';
+  export let placeholder: string = t('>> Enter command...');
   export let onSubmit: (value: string) => void = () => {};
   export let onStop: () => void = () => {};
   export let onSelectConversation: (conversationId: string) => void = () => {};
@@ -120,7 +120,7 @@
         <button
           class="new-conv-button"
           on:click={onNewConversation}
-          aria-label="Start New Conversation"
+          aria-label={$_t("Start New Conversation")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="new-conv-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 5C5.34315 5 4 6.34315 4 8V16C4 17.6569 5.34315 19 7 19H17C18.6569 19 20 17.6569 20 16V12.5C20 11.9477 20.4477 11.5 21 11.5C21.5523 11.5 22 11.9477 22 12.5V16C22 18.7614 19.7614 21 17 21H7C4.23858 21 2 18.7614 2 16V8C2 5.23858 4.23858 3 7 3H10.5C11.0523 3 11.5 3.44772 11.5 4C11.5 4.55228 11.0523 5 10.5 5H7Z"/>
@@ -165,7 +165,7 @@
               on:pointerup={handlePointerUp}
               on:pointerleave={handlePointerLeave}
               disabled={!isProcessing && !value.trim()}
-              aria-label={isProcessing ? 'Stop the current task' : 'Long press to schedule task'}
+              aria-label={isProcessing ? $_t('Stop the current task') : $_t('Long press to schedule task')}
             >
               {#if isProcessing}
                 <!-- Stop Icon (Square) -->

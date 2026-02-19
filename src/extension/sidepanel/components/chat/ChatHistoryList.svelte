@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { RolloutRecorder, type ConversationItem, type Cursor } from '@/storage/rollout';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { _t } from '../../lib/i18n';
 
   // Props
   export let onSelectConversation: (conversationId: string) => void = () => {};
@@ -183,7 +184,7 @@
   {#if isLoading}
     <div class="loading-state">
       <span class="loading-spinner"></span>
-      <span>Loading history...</span>
+      <span>{$_t("Loading history...")}</span>
     </div>
   {:else if error}
     <div class="error-state">
@@ -192,14 +193,14 @@
     </div>
   {:else if conversations.length === 0}
     <div class="empty-state">
-      <span>No chat history yet</span>
+      <span>{$_t("No chat history yet")}</span>
     </div>
   {:else}
     <div class="categories-container">
       <!-- Today -->
       {#if categorized.today.length > 0}
         <div class="category">
-          <div class="category-header">Today</div>
+          <div class="category-header">{$_t("Today")}</div>
           {#each categorized.today as item (item.id)}
             <button
               class="history-item"
@@ -215,7 +216,7 @@
       <!-- Yesterday -->
       {#if categorized.yesterday.length > 0}
         <div class="category">
-          <div class="category-header">Yesterday</div>
+          <div class="category-header">{$_t("Yesterday")}</div>
           {#each categorized.yesterday as item (item.id)}
             <button
               class="history-item"
@@ -231,7 +232,7 @@
       <!-- Past Week -->
       {#if categorized.pastWeek.length > 0}
         <div class="category">
-          <div class="category-header">Past Week</div>
+          <div class="category-header">{$_t("Past Week")}</div>
           {#each categorized.pastWeek as item (item.id)}
             <button
               class="history-item"
@@ -247,7 +248,7 @@
       <!-- Past Month -->
       {#if categorized.pastMonth.length > 0}
         <div class="category">
-          <div class="category-header">Past Month</div>
+          <div class="category-header">{$_t("Past Month")}</div>
           {#each categorized.pastMonth as item (item.id)}
             <button
               class="history-item"
@@ -263,7 +264,7 @@
       <!-- Older -->
       {#if categorized.older.length > 0 || hasMoreOlder}
         <div class="category">
-          <div class="category-header">Older</div>
+          <div class="category-header">{$_t("Older")}</div>
           {#each categorized.older as item (item.id)}
             <button
               class="history-item"
@@ -282,9 +283,9 @@
             >
               {#if isLoadingMore}
                 <span class="loading-spinner small"></span>
-                Loading...
+                {$_t("Loading...")}
               {:else}
-                Load more
+                {$_t("Load more")}
               {/if}
             </button>
           {/if}

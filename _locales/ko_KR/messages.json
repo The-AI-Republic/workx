@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "업무 작업을 위한 일반적인 브라우저 내 AI 에이전트"
+  },
+  "1_API_Key": {
+    "message": "$1$ API 키",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API 키가 성공적으로 제거되었습니다",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} 작업이 브라우저가 닫힌 동안 예정된 시간을 놓쳤습니다."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - 정확도가 감소할 수 있습니다)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(활성)"
+  },
+  "multiple_files": {
+    "message": "(여러 파일)"
+  },
+  "no_output": {
+    "message": "(출력 없음)"
+  },
+  "no_result": {
+    "message": "(결과 없음)"
+  },
+  "patch_details": {
+    "message": "(패치 세부 정보)"
+  },
+  "Enter_command": {
+    "message": ">> 명령 입력..."
+  },
+  "A2A_Agents": {
+    "message": "A2A 에이전트"
+  },
+  "API_Key": {
+    "message": "API 키"
+  },
+  "API_Key_Configuration": {
+    "message": "API 키 구성"
+  },
+  "API_Version": {
+    "message": "API 버전"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "백엔드 모드에서는 API 키 편집이 비활성화됩니다"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "인증용 API 키 (암호화 저장)"
+  },
+  "API_key_has_expired": {
+    "message": "API 키가 만료되었습니다"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API 키에 권한이 부족합니다"
+  },
+  "API_key_saved_successfully": {
+    "message": "API 키가 성공적으로 저장되었습니다!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API 키는 암호화되어 브라우저에 로컬로 저장됩니다. API 호출을 제외하고 외부 서버로 전송되지 않습니다."
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "브라우저 저장소에 접근 (localStorage, sessionStorage, 쿠키)"
   },
-  "Action": {
-    "message": "작업"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "작업 상세"
+    "message": "작업 승인 모드, 신뢰 도메인, 위험 설정"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "활성 세션"
   },
   "Add": {
-    "message": ""
+    "message": "추가"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "수정 추가"
+  "Add_Agent": {
+    "message": "에이전트 추가"
   },
   "Add_Server": {
-    "message": ""
+    "message": "서버 추가"
   },
   "Add_Task": {
-    "message": ""
+    "message": "작업 추가"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "외부 도구에 연결하기 위해 서버를 추가합니다."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "외부 스킬에 연결하기 위해 에이전트를 추가합니다."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "추가 바인드 마운트"
   },
   "Advanced_Configuration": {
     "message": "고급 구성"
   },
-  "Advanced_Options": {
-    "message": "고급 옵션"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "고급 설정"
+  },
+  "Agent": {
+    "message": "에이전트"
   },
   "Agent_Execution_Tools": {
     "message": "에이전트 실행 도구"
   },
+  "Agent_Turn_Complete": {
+    "message": "에이전트 턴 완료"
+  },
+  "Agent_URL_is_required": {
+    "message": "에이전트 URL이 필요합니다."
+  },
+  "Agent_added_successfully": {
+    "message": "에이전트가 성공적으로 추가되었습니다."
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "에이전트 이름은 영문자, 숫자 및 하이픈만 포함할 수 있습니다."
+  },
+  "Agent_name_is_required": {
+    "message": "에이전트 이름이 필요합니다."
+  },
+  "Agent_not_initialized": {
+    "message": "에이전트가 초기화되지 않았습니다."
+  },
+  "Agent_removed_successfully": {
+    "message": "에이전트가 성공적으로 제거되었습니다."
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "에이전트 턴이 성공적으로 완료되었습니다."
+  },
+  "Agent_updated_successfully": {
+    "message": "에이전트가 성공적으로 업데이트되었습니다."
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "이 도메인에서는 모든 작업이 자동 승인됩니다."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "이 도메인에서는 모든 작업이 거부됩니다."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "모든 명령은 OS 네이티브 샌드박스 내에서 실행됩니다. 쓰기는 워크스페이스 디렉터리로 제한됩니다."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "에이전트가 시스템 명령을 실행하도록 허용 (주의해서 사용하세요)"
@@ -57,58 +168,108 @@
     "message": "콘텐츠 스크립트가 웹 페이지에서 실행되도록 허용"
   },
   "Allowed": {
-    "message": ""
+    "message": "허용됨"
   },
   "Allowed_Origins": {
     "message": "허용된 출처"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "영숫자와 하이픈만 허용됩니다 (1-50자)"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "항상 승인"
   },
-  "API_Key_Configuration": {
-    "message": "API 키 구성"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API 키는 암호화되어 브라우저에 로컬로 저장됩니다. API 호출을 제외하고 외부 서버로 전송되지 않습니다."
-  },
-  "Approval_History": {
-    "message": "승인 내역"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: 개인 AI (Alpha)"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "승인 및 안전"
+  },
+  "Approval_Mode": {
+    "message": "승인 모드"
+  },
+  "Approval_Required": {
+    "message": "승인 필요"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "승인 필요: 패치 적용"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "승인 필요: 명령 실행"
   },
   "Approve": {
     "message": "승인"
   },
-  "Approve_this_action": {
-    "message": "이 작업 승인"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "다음 경로에 대한 변경 승인: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "다음 명령 실행 승인: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "이 작업을 취소하시겠습니까?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "이 에이전트를 제거하시겠습니까?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "귀하의 $1$ API 키를 제거하시겠습니까?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx에 웹 페이지에서 구조화된 데이터를 추출하도록 요청"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "중위험 이상(위험도 > 30)에 대해 요청합니다. 대부분의 사용자에게 권장됩니다."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "고위험 작업에만 요청합니다(위험도 > 60). 숙련된 사용자용입니다."
+  },
+  "Auth_Type": {
+    "message": "인증 유형"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "인증 자격 증명(암호화 저장됨)"
+  },
+  "Authentication_failed": {
+    "message": "인증에 실패했습니다"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "에이전트 인증 방법"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "자동 (기본)"
+  },
+  "Auto_approve_everything": {
+    "message": "모두 자동 승인"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "모두 자동 승인합니다. 거부 규칙은 여전히 적용됩니다. 위험을 감수하고 사용하십시오."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "자동 승인됨 -- 시간 초과"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "컴퓨터에 로그인하면 앱을 자동으로 시작합니다."
+  },
+  "Available_Skills": {
+    "message": "사용 가능한 스킬"
+  },
+  "Available_Tools": {
+    "message": "사용 가능한 도구"
   },
   "Available": {
     "message": "사용 가능:"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "뒤로"
+  },
+  "Back_to_Model_Config": {
+    "message": "모델 설정으로 돌아가기"
   },
   "Backend_Mode": {
     "message": "백엔드 모드"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "백엔드 모드 활성화"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "백엔드를 사용할 수 없습니다. 잠시 기다렸다가 다시 시도하십시오."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "백엔드 서버 오류 - 나중에 다시 시도하십시오."
+  },
+  "Backoff_Multiplier": {
+    "message": "백오프 배수"
+  },
+  "Balanced": {
+    "message": "균형"
+  },
+  "Base_URL": {
+    "message": "기본 URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "이 공급자에 대해 기본 URL이 구성되지 않았습니다."
+  },
+  "Bearer_Token": {
+    "message": "베어러 토큰"
+  },
   "Beta": {
     "message": "베타"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "브라우저 자동화 도구 토글"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "바인드 마운트 경로는 절대 경로여야 합니다."
+  },
+  "Blocked_Domains": {
+    "message": "차단된 도메인"
   },
   "Browser_Tools": {
     "message": "브라우저 도구"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "캐시 동작 및 데이터 보존"
+  "Browser_automation_tool_toggles": {
+    "message": "브라우저 자동화 도구 토글"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "현재 작업 디렉터리:"
   },
   "Cache_Settings": {
     "message": "캐시 설정"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "캐시 TTL (초)"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "캐시 동작 및 데이터 보존"
+  },
   "Cancel": {
     "message": "취소"
   },
+  "Cancelled": {
+    "message": "취소됨"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "작업을 실행할 수 없습니다: ${providerName}에 대한 API 키가 설정되지 않았습니다. 설정 → 모델 구성으로 이동하여 API 키를 추가하십시오."
+  },
+  "Cannot_select_model_1": {
+    "message": "모델을 선택할 수 없습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "메시지를 보낼 수 없습니다: $1$에 대한 API 키가 설정되지 않았습니다. 설정 버튼을 클릭하고 API 키를 구성하십시오.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "기능"
+  },
   "Chat_History": {
     "message": "채팅 기록"
+  },
+  "Checking_agent_status": {
+    "message": "에이전트 상태 확인 중..."
   },
   "Choose_AI_Model": {
     "message": "AI 모델 선택"
@@ -159,22 +387,37 @@
     "message": "도구 모음의 Browserx 아이콘을 클릭하거나 Alt+Shift+C를 누르세요"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "로그인 취소하려면 클릭하십시오"
   },
   "Click_to_select_a_model": {
     "message": "모델을 선택하려면 클릭하세요"
   },
+  "Close": {
+    "message": "닫기"
+  },
   "Close_settings": {
     "message": "설정 닫기"
+  },
+  "Collapse": {
+    "message": "접기"
+  },
+  "Command_Approval_Required": {
+    "message": "명령 승인 필요"
+  },
+  "Command_completed": {
+    "message": "명령이 완료되었습니다"
   },
   "Command": {
     "message": "명령"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "명령은 호스트에서 직접 실행됩니다. 보안 필터가 여전히 적용됩니다."
   },
   "Completed": {
-    "message": ""
+    "message": "완료됨"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "완료: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "저장 공간 절약을 위해 캐시 데이터를 압축합니다"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "AI 모델 및 API 키 구성"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "설정에서 API 키를 구성하십시오"
+  },
+  "Configured": {
+    "message": "구성됨"
+  },
+  "Configured_Agents": {
+    "message": "구성된 에이전트"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "구성된 서버"
   },
   "Connect": {
-    "message": ""
+    "message": "연결"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "외부 에이전트 스킬을 사용하여 기능을 확장하려면 에이전트 간 (A2A) 프로토콜 에이전트에 연결합니다."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "외부 도구를 사용하여 에이전트를 확장하려면 모델 컨텍스트 프로토콜 (MCP) 서버에 연결합니다."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "스킬을 발견하려면 A2A 에이전트에 연결합니다."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "도구를 발견하려면 MCP 서버에 연결합니다."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "외부 MCP 도구 서버에 연결"
   },
   "Connected": {
     "message": "연결됨"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "연결에 성공했습니다"
   },
-  "Context": {
-    "message": "컨텍스트"
+  "Connecting": {
+    "message": "연결 중..."
+  },
+  "Connection_error": {
+    "message": "연결 오류"
+  },
+  "Connection_failed_1": {
+    "message": "연결 실패: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "연결 실패: 기본 URL이 구성되지 않았습니다"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "연결 실패: 선택한 모델 구성 누락"
+  },
+  "Connection_successful": {
+    "message": "연결 성공!"
+  },
+  "Connection_test_failed_1": {
+    "message": "연결 테스트 실패: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "연결 테스트 실패: API 키가 유효하지 않습니다"
+  },
+  "Connection_test_successful": {
+    "message": "연결 테스트 성공!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "연결 테스트 성공! (API 키가 유효합니다)"
+  },
+  "Connection_was_refused": {
+    "message": "연결이 거부되었습니다"
+  },
+  "Connection_was_reset": {
+    "message": "연결이 재설정되었습니다"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "콘텐츠가 정책을 위반합니다: ${contentType} 콘텐츠는 허용되지 않습니다"
+  },
+  "Context_Window": {
+    "message": "컨텍스트 창"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "컨텍스트 압축됨: 저장된 토큰 ~$1$k",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "에이전트가 승인 요청을 얼마나 적극적으로 할지 제어합니다."
   },
   "Create_New_Tab": {
     "message": "새 탭 만들기"
   },
   "Created": {
-    "message": ""
+    "message": "생성됨"
+  },
+  "Creator": {
+    "message": "생성자"
   },
   "Credit_Details": {
     "message": "크레딧 세부 정보"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "현재 플랜:"
   },
-  "Active_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "DNS 조회 실패"
+  },
+  "DOM_Tool": {
+    "message": "DOM 도구"
   },
   "Daily_Credits": {
     "message": "일일 크레딧"
@@ -228,10 +552,34 @@
     "message": "데이터 추출 도구"
   },
   "Date": {
-    "message": ""
+    "message": "날짜"
   },
   "Days_until_expiration": {
     "message": "만료까지 남은 일수"
+  },
+  "Debug_logging_disabled": {
+    "message": "디버그 로그 비활성화"
+  },
+  "Debug_logging_enabled": {
+    "message": "디버그 로그 활성화"
+  },
+  "Default": {
+    "message": "기본값"
+  },
+  "Deny": {
+    "message": "거부"
+  },
+  "Deprecated": {
+    "message": "사용 중단됨"
+  },
+  "Deprecation_Message": {
+    "message": "사용 중단 메시지"
+  },
+  "Description": {
+    "message": "설명"
+  },
+  "Desktop_mode": {
+    "message": "데스크톱 모드"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republic에서 개발 및 지원함"
@@ -240,37 +588,43 @@
     "message": "변경 사항 폐기"
   },
   "Disconnect": {
-    "message": ""
+    "message": "연결 끊기"
+  },
+  "Disconnected_successfully": {
+    "message": "연결이 성공적으로 끊겼습니다"
   },
   "Dismiss": {
-    "message": ""
+    "message": "해제"
+  },
+  "Dismiss_notification": {
+    "message": "알림 해제"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "작업 완료 시 토큰 사용량(입력/출력 토큰) 표시"
   },
-  "DOM_Tool": {
-    "message": "DOM 도구"
+  "Draft": {
+    "message": "초안"
   },
   "Duration": {
-    "message": ""
+    "message": "기간"
+  },
+  "ERROR": {
+    "message": "오류"
   },
   "Edit": {
-    "message": ""
+    "message": "편집"
+  },
+  "Edit_Agent": {
+    "message": "에이전트 편집"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "서버 편집"
   },
   "Enable_All_Tools": {
     "message": "모든 도구 활성화"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "캐시 활성화"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "자주 접근하는 데이터를 저장하여 성능을 개선하는 캐싱 활성화"
   },
   "Enable_Compression": {
     "message": "압축 활성화"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "콘텐츠 스크립트 활성화"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "확장 프로그램 활성화"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "연결된 MCP 서버에서 모델 컨텍스트 프로토콜 도구를 활성화합니다"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Browserx 시작 시 자동 연결을 활성화합니다"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "자주 접근하는 데이터를 저장하여 성능을 개선하는 캐싱 활성화"
+  },
+  "Enable_debug_logging": {
+    "message": "디버그 로그를 활성화합니다"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "에이전트의 웹 검색 기능을 활성화하십시오"
   },
   "Enabled": {
-    "message": ""
+    "message": "활성화됨"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "필요한 경우 API 키를 입력하십시오"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "API 키 또는 베어러 토큰을 입력하십시오"
   },
   "Enter_your_LLM_API_key": {
     "message": "LLM API 키를 입력하십시오"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "작업을 입력하십시오..."
   },
   "Error": {
-    "message": ""
+    "message": "오류"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "오류: 에이전트에 연결되지 않았습니다. 페이지를 새로 고침하십시오."
   },
   "Execute_Commands": {
     "message": "명령 실행"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "실행 모드"
+  },
+  "Exit_Code": {
+    "message": "종료 코드:"
+  },
+  "Expand": {
+    "message": "확장"
   },
   "Expire_after_days": {
     "message": "일 후 만료됨"
   },
-  "Explain_your_decision": {
-    "message": "결정을 설명하십시오..."
+  "Explain_this_info_selectionText": {
+    "message": "다음 내용을 설명하십시오: ${info.selectionText}"
   },
-  "Extension_Configuration": {
-    "message": "확장 프로그램 구성"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "확장 프로그램 구성 및 권한"
-  },
-  "extension_description": {
-    "message": "업무 작업을 위한 일반적인 브라우저 내 AI 에이전트"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "Browserx로 설명하기"
   },
   "Extension_Permission": {
     "message": "확장 프로그램 및 권한"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "확장 프로그램 및 권한 설정"
   },
+  "Extension_Configuration": {
+    "message": "확장 프로그램 구성"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "확장 프로그램 구성 및 권한"
+  },
   "Extra_Credits": {
     "message": "추가 크레딧"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "샌드박스 내에서 접근 가능한 추가 디렉터리"
   },
   "Extract_Data": {
     "message": "데이터 추출:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Browserx로 데이터 추출"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "페이지에서 특정 데이터 패턴 추출"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "이 페이지에서 구조화된 데이터를 추출"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "웹 페이지에서 구조화된 데이터 추출"
   },
+  "Failed": {
+    "message": "실패"
+  },
+  "Failed_to_change_model_1": {
+    "message": "모델 변경에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "연결에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "새 탭 생성에 실패했습니다. 다시 시도해 주세요."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "브라우저 탭 생성에 실패했습니다: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "연결 해제에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "A2A 설정 로드에 실패했습니다"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "대화 로드에 실패했습니다. 다시 시도해 주세요."
+  },
   "Failed_to_load_preferences": {
     "message": "설정을 불러오지 못했습니다"
+  },
+  "Failed_to_load_settings": {
+    "message": "설정 로드에 실패했습니다"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "API 키 제거에 실패했습니다"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "에이전트 제거에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "API 키 저장에 실패했습니다"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "디버그 로그 설정 저장에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "설정을 저장하지 못했습니다"
   },
+  "Failed_to_save_settings_1": {
+    "message": "설정 저장에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "저장에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "메시지 전송에 실패했습니다. 다시 시도해 주세요."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "새 대화 시작에 실패했습니다. 다시 시도해 주세요."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "작업 중지에 실패했습니다. 다시 시도해 주세요."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "탭 ${newTabId}(으)로 전환에 실패했습니다: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "연결 테스트에 실패했습니다"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "API 모드 업데이트에 실패했습니다"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "서비스 티어 업데이트에 실패했습니다: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "파일 변경 승인 필요합니다"
+  },
   "File_Operations_Not_Available": {
     "message": "파일 작업 (사용할 수 없음)"
   },
-  "File_Path": {
-    "message": "파일 경로"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "양식 작성, 데이터 제출, 양식 요소 상호 작용"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "양식 자동화 도구"
@@ -372,16 +856,16 @@
     "message": "전체 접근 (위험)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "전체 입력"
   },
   "General": {
     "message": "일반"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "일반 설정"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "시작하기"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "기록"
+  "Hide_API_key": {
+    "message": "API 키 숨기기"
+  },
+  "High_Speed": {
+    "message": "고속"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "워크스페이스 디렉터리가 샌드박스에 마운트되는 방식"
   },
-  "Impact": {
-    "message": "임팩트"
+  "Image_Input": {
+    "message": "이미지 입력"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "다음 텍스트를 개선하세요: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Browserx로 개선하기"
+  },
+  "In": {
+    "message": "위치:"
+  },
+  "Incompatible_features": {
+    "message": "호환되지 않는 기능:"
+  },
+  "Initial_Delay": {
+    "message": "초기 지연"
+  },
+  "Input_Token_Price": {
+    "message": "입력 토큰 가격"
+  },
+  "Input": {
+    "message": "입력:"
+  },
+  "Input_1": {
+    "message": "입력: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "네트워크 요청/응답을 가로채고 수정"
   },
+  "Invalid_API_key": {
+    "message": "잘못된 API 키"
+  },
+  "Invalid_API_key_provided": {
+    "message": "제공된 API 키가 유효하지 않습니다"
+  },
+  "Invalid_URL_format": {
+    "message": "URL 형식이 유효하지 않습니다"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "제출 형식이 유효하지 않습니다: op 필드가 누락되었습니다"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "제출 형식이 유효하지 않습니다: op에 type 필드가 누락되었습니다"
+  },
   "Keyboard_Shortcuts": {
     "message": "키보드 단축키"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM 요청이 제공자 API로 직접 전송"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM 요청이 AI Republic 백엔드를 통해 라우팅"
   },
   "Language": {
     "message": "언어"
@@ -419,37 +956,52 @@
     "message": "자세히 알아보기"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "비워 두면 기존 값을 유지합니다"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "허용된 출처 목록(한 줄에 하나씩). 와일드카드(*)를 지원합니다."
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM 요청이 제공자 API로 직접 전송"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM 요청이 AI Republic 백엔드를 통해 라우팅"
-  },
   "Load_More": {
-    "message": ""
+    "message": "더 불러오기"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "더 불러오기"
+  },
+  "Loading_configuration": {
+    "message": "구성을 로드 중..."
   },
   "Loading_credits": {
     "message": "크레딧을 불러오는 중..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "세부 정보를 로드 중..."
+  },
+  "Loading_history": {
+    "message": "기록을 로드 중..."
   },
   "Loading_settings": {
     "message": "설정을 불러오는 중..."
   },
+  "Loading_tabs": {
+    "message": "탭을 로드 중..."
+  },
+  "Loading": {
+    "message": "로드 중..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "디버깅을 위해 A2A 프로토콜 메시지를 브라우저 콘솔에 기록합니다"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "디버깅을 위해 MCP 프로토콜 메시지를 브라우저 콘솔에 기록합니다"
+  },
+  "Log_in_to_your_account": {
+    "message": "계정에 로그인하십시오"
+  },
+  "Logged_in": {
+    "message": "로그인되었습니다"
   },
   "Logging_in": {
-    "message": ""
+    "message": "로그인 중..."
   },
   "Login": {
     "message": "로그인"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "로그인하여 무료 크레딧을 받으세요"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "길게 눌러 작업을 예약합니다"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "보내기 버튼을 길게 눌러 작업을 예약합니다"
   },
   "Low_credits_remaining": {
     "message": "크레딧이 거의 남지 않았습니다"
+  },
+  "MCP_Servers": {
+    "message": "MCP 서버"
+  },
+  "MCP_Tools": {
+    "message": "MCP 도구"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "브라우저 탭 관리(열기, 닫기, 전환, 조회)"
@@ -479,40 +1037,102 @@
     "message": "최대 캐시 크기(MB)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "최대 동시 세션"
+  },
+  "Max_Delay": {
+    "message": "최대 지연"
+  },
+  "Max_Output": {
+    "message": "최대 출력"
+  },
+  "Max_Output_Tokens": {
+    "message": "최대 출력 토큰"
+  },
+  "Max_Retries": {
+    "message": "최대 재시도"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "최대 캐시 크기(메가바이트) (기본값: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "예약 작업을 포함한 병렬 에이전트 세션의 최대 수"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "최대 5개의 에이전트에 도달했습니다"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "최대 5개의 서버에 도달했습니다"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "도구 실행 제한 시간(밀리초, 기본값: 30000)"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "중위험 이상"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "메시지 서비스를 사용할 수 없습니다"
   },
   "Missed": {
-    "message": ""
+    "message": "누락"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "누락된 예약 작업"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "모델 \"$1$\"은(는) 이미지 입력을 지원하지 않습니다. 일부 도구가 비활성화됩니다.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "모델 설정"
   },
+  "Model_Configuration": {
+    "message": "모델 구성"
+  },
+  "Model_Key_API": {
+    "message": "모델 키 (API)"
+  },
+  "Model_Name": {
+    "message": "모델 이름"
+  },
   "Model_Selection": {
     "message": "모델 선택"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "기본 구성에서 로드된 모델 및 제공자 설정 (읽기 전용)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "모델이 $1$(으)로 변경되었습니다. API 키를 구성해 주세요.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "모델이 $1$(으)로 변경되었습니다. 세션이 재초기화됩니다.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "모델:"
+  },
+  "Model_1": {
+    "message": "모델: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Modern Chat"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "변경 요청 시 매개변수 수정"
   },
   "Monthly_Credits": {
     "message": "월간 크레딧"
@@ -521,7 +1141,7 @@
     "message": "추가 설정"
   },
   "Name": {
-    "message": ""
+    "message": "이름"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "페이지 탐색, 링크 클릭, 브라우저 탐색 처리"
@@ -530,10 +1150,16 @@
     "message": "탐색 도구"
   },
   "Network_Access": {
-    "message": ""
+    "message": "네트워크 액세스"
   },
   "Network_Intercept_Tool": {
     "message": "네트워크 인터셉트 도구"
+  },
+  "Network_error": {
+    "message": "네트워크 오류"
+  },
+  "Network_error_occurred": {
+    "message": "네트워크 오류가 발생했습니다"
   },
   "Never_expire_permanent": {
     "message": "만료 없음(영구적)"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "새 대화"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "아직 A2A 에이전트가 구성되지 않았습니다."
+  },
   "No_Access": {
-    "message": ""
+    "message": "액세스 없음"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "아직 승인 기록이 없습니다."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "구성된 액세스가 없습니다"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "아직 MCP 서버가 구성되지 않았습니다."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "액세스가 구성되지 않았습니다. 로그인하거나 API 키를 구성해 주세요."
+  },
+  "No_active_sessions": {
+    "message": "활성 세션이 없습니다"
+  },
+  "No_chat_history_yet": {
+    "message": "아직 채팅 기록이 없습니다"
+  },
+  "No_completed_tasks_yet": {
+    "message": "아직 완료된 작업이 없습니다"
+  },
+  "No_models_available": {
+    "message": "사용 가능한 모델이 없습니다"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "사용 가능한 모델이 없습니다. 구성을 확인해 주세요."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "예약된 작업이 없습니다"
+  },
+  "No_scheduled_time": {
+    "message": "예약된 시간이 없습니다"
+  },
+  "No_skills_available": {
+    "message": "사용 가능한 스킬이 없습니다."
+  },
+  "No_steps_in_plan": {
+    "message": "계획에 단계가 없습니다"
   },
   "No_tabs_available": {
     "message": "사용 가능한 탭이 없습니다"
   },
+  "No_time_set": {
+    "message": "시간이 설정되지 않음"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "사용 가능한 도구가 없습니다."
+  },
+  "None": {
+    "message": "없음"
   },
   "Not_Connected": {
     "message": "연결되지 않음"
+  },
+  "Notification": {
+    "message": "알림"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "배포 데이터가 만료되기까지의 일수 (기본값: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "오프라인 - 연결 시 작업이 실행됩니다"
+  },
+  "Older": {
+    "message": "이전"
+  },
+  "Only_high_risk_actions": {
+    "message": "고위험 작업만"
+  },
+  "Open_1_settings": {
+    "message": "열기 $1$ 설정",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "사이드 패널 열기:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "조직"
+  },
+  "Organization_ID": {
+    "message": "조직 ID"
+  },
+  "Out": {
+    "message": "출력:"
+  },
+  "Output_Token_Price": {
+    "message": "출력 토큰 가격"
+  },
+  "Output": {
+    "message": "출력:"
+  },
+  "Output_1": {
+    "message": "출력: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "페이지 액션 도구"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "페이지 비전 도구"
   },
-  "Parameter_Modifications": {
-    "message": "매개변수 수정"
+  "Past_Month": {
+    "message": "지난 달"
+  },
+  "Past_Week": {
+    "message": "지난 주"
+  },
+  "Patch_applied_successfully": {
+    "message": "패치가 성공적으로 적용되었습니다"
+  },
+  "Patch_for_1_file_s": {
+    "message": "파일 $1$에 대한 패치",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "대기열 일시 정지"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "페이지 액션 수행 (스크롤, 스크린샷, 대기)"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "캐시를 저장소에 영구 보관"
   },
+  "Plan_1_step_s": {
+    "message": "계획: $1$ 단계",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "설정에서 API 키를 확인하십시오."
+  },
+  "Please_enter_a_task_description": {
+    "message": "작업 설명을 입력해 주세요."
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "먼저 API 키를 입력해 주세요."
+  },
   "Please_input_a_valid_API_key": {
     "message": "유효한 API 키를 입력해 주세요."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "AI 에이전트를 계속 사용하려면 다시 로그인해 주세요."
+  },
+  "Please_select_a_provider": {
+    "message": "제공자를 선택해 주세요."
   },
   "Please_type_a_valid_command": {
     "message": "유효한 명령을 입력해 주세요."
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "전 세계에서 가장 진보된 모델의 차단을 해제하려면 플랜을 업그레이드해 주세요."
+  },
   "Power": {
-    "message": ""
+    "message": "전원"
+  },
+  "Pricing_Information": {
+    "message": "가격 정보"
+  },
+  "Pricing_Page": {
+    "message": "가격 페이지"
+  },
+  "Priority": {
+    "message": "우선 순위"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "우선 순위 티어는 높은 가격으로 더 빠른 응답 시간을 제공합니다."
   },
+  "Processing": {
+    "message": "처리 중..."
+  },
+  "Protocol": {
+    "message": "프로토콜"
+  },
   "Provider": {
     "message": "제공자"
+  },
+  "Provider_Configuration": {
+    "message": "제공자 구성"
+  },
+  "Provider_ID": {
+    "message": "제공자 ID"
+  },
+  "Provider_Name": {
+    "message": "제공자 이름"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM(문서 객체 모델) 조회 및 조작"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "대기열이 일시 중지되었습니다."
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "빠른 액션"
+    "message": "대기 중"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "빠른 일정"
   },
   "Quick_Start": {
     "message": "빠른 시작"
   },
+  "Quick_action": {
+    "message": "빠른 액션"
+  },
+  "Read_Only": {
+    "message": "읽기 전용"
+  },
+  "Read_Write": {
+    "message": "읽기/쓰기"
+  },
   "Read_only": {
     "message": "읽기 전용"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "추론"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "추론 노력"
   },
-  "Reason_optional": {
-    "message": "사유 (선택 사항)"
+  "Reasoning_Summaries": {
+    "message": "추론 요약"
+  },
+  "Reasoning_levels": {
+    "message": "추론 수준:"
+  },
+  "Reasoning_1": {
+    "message": "추론: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "새로 고침까지"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "거부"
   },
-  "Reject_this_action": {
-    "message": "이 작업을 거부하십시오"
+  "Release_Date": {
+    "message": "출시 날짜"
+  },
+  "Release_date_unknown": {
+    "message": "출시 날짜를 알 수 없음"
+  },
+  "Released": {
+    "message": "출시됨:"
   },
   "Remaining": {
     "message": "남은:"
   },
   "Remove": {
-    "message": ""
+    "message": "제거"
   },
   "Remove_API_Key": {
     "message": "API 키 삭제"
   },
-  "Remove_modification": {
-    "message": "수정 사항 삭제"
+  "Request_Timeout": {
+    "message": "요청 시간 초과"
   },
-  "Request_Changes": {
-    "message": "변경 요청"
-  },
-  "Request_changes_to_this_action": {
-    "message": "이 작업에 대한 변경 요청"
+  "Request_timed_out": {
+    "message": "요청이 시간 초과되었습니다"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "요청 시간 초과 (밀리초, 5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "요청 시간 초과 (밀리초, 5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "요청이 중단되었습니다"
+  },
+  "Response_failed": {
+    "message": "응답 실패"
   },
   "Restricted": {
-    "message": ""
+    "message": "제한됨"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "결과 요약"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "대기열 재개"
+  },
+  "Retry_Configuration": {
+    "message": "재시도 구성"
+  },
+  "Retrying": {
+    "message": "재시도 중"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "텍스트를 오른쪽 클릭하여 Browserx로 설명하거나 개선하십시오"
+  },
+  "Risk_Score": {
+    "message": "위험 점수:"
   },
   "Rollout_Expiration": {
     "message": "배포 만료"
   },
   "Run_Now": {
-    "message": ""
+    "message": "지금 실행"
   },
   "Running": {
-    "message": ""
+    "message": "실행 중"
+  },
+  "STREAM_ERROR": {
+    "message": "스트림 오류"
   },
   "Safe": {
-    "message": ""
+    "message": "안전"
   },
   "Sandbox_Policy": {
     "message": "샌드박스 정책"
   },
   "Save_API_Key": {
     "message": "API 키 저장"
+  },
+  "Save_Changes": {
+    "message": "변경 사항 저장"
   },
   "Save_Settings": {
     "message": "설정 저장"
@@ -713,25 +1511,48 @@
     "message": "저장 중..."
   },
   "Schedule": {
-    "message": ""
+    "message": "일정"
   },
   "Schedule_A_New_Task": {
-    "message": ""
+    "message": "새 작업 일정"
   },
   "Scheduled": {
-    "message": ""
+    "message": "예약됨"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "예약된 작업"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "예약된 작업 시작"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "예약된 작업들"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "예약 시간은 최소 1분 뒤여야 합니다"
+  },
+  "Search_complete": {
+    "message": "검색 완료"
+  },
+  "Searching": {
+    "message": "검색 중..."
+  },
+  "Security_Privacy": {
+    "message": "보안 및 개인정보"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "도구 실행 환경의 보안 등급"
   },
-  "Security_Privacy": {
-    "message": "보안 및 개인정보"
+  "Select_Model": {
+    "message": "모델 선택"
+  },
+  "Select_model_1": {
+    "message": "모델 선택: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "대화에 사용할 AI 모델을 선택하세요."
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "인터페이스에 사용할 언어를 선택하세요."
   },
+  "Selected": {
+    "message": "선택됨"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "선택된 모델 구성 누락"
+  },
+  "Send": {
+    "message": "보내기"
+  },
   "Service_Tier": {
     "message": "서비스 등급"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "세션"
+  "Service_tier_updated_to_1": {
+    "message": "서비스 등급이 $1$(으)로 업데이트되었습니다",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "세션 오류"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "세션이 만료되었습니다 - AI 에이전트를 계속 사용하려면 다시 로그인해 주세요"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "세션 제한에 도달했습니다. 새로운 작업이 대기열에 추가됩니다."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "롤아웃 데이터가 만료되는 시점을 설정합니다"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "설정이 성공적으로 저장되었습니다"
   },
+  "Show_API_key": {
+    "message": "API 키 보기"
+  },
+  "Show_all": {
+    "message": "전체 보기"
+  },
+  "Show_less": {
+    "message": "간략히 보기"
+  },
   "Show_token_usage_in_tasks": {
     "message": "작업에서 토큰 사용량 표시하기"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "계정에 로그인하세요"
   },
+  "Skills": {
+    "message": "스킬"
+  },
   "Stable": {
     "message": "안정"
   },
+  "Standard_capabilities": {
+    "message": "표준 기능"
+  },
+  "Start_New_Conversation": {
+    "message": "새 대화 시작"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "로그인 시 시작"
   },
   "Status": {
-    "message": ""
+    "message": "상태"
+  },
+  "Stop_Agent": {
+    "message": "에이전트 중지"
+  },
+  "Stop_the_current_task": {
+    "message": "현재 작업 중지"
   },
   "Stop_the_current_task_run": {
     "message": "현재 작업 실행을 중지합니다"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "브라우저 세션 간에 캐시 데이터를 영구 저장합니다"
   },
+  "Suggest_Alternative": {
+    "message": "대안 제시"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "백엔드 모드로 전환되었습니다. LLM 요청이 AI Republic 서버를 통해 라우팅됩니다."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "직접 API 모드로 전환되었습니다. API 키를 설정해 주세요."
+  },
+  "System": {
+    "message": "시스템"
+  },
   "Tab_Tool": {
     "message": "탭 도구"
   },
+  "Tab_unavailable": {
+    "message": "탭을 사용할 수 없습니다"
+  },
+  "Take_Over": {
+    "message": "인계받기"
+  },
   "Task": {
-    "message": ""
+    "message": "작업"
   },
   "Task_Details": {
-    "message": ""
+    "message": "작업 세부 정보"
+  },
+  "Task_Failed": {
+    "message": "작업 실패"
   },
   "Task_History": {
-    "message": ""
+    "message": "작업 기록"
   },
   "Task_ID": {
-    "message": ""
+    "message": "작업 ID"
+  },
+  "Task_Plan": {
+    "message": "작업 계획"
+  },
+  "Task_cancelled_by_user": {
+    "message": "사용자에 의해 작업이 취소되었습니다"
+  },
+  "Task_complete": {
+    "message": "작업이 완료되었습니다"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "작업이 $1$ 회(턴) 안에 완료되었습니다",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "작업이 실패했습니다"
+  },
+  "Task_started": {
+    "message": "작업이 시작되었습니다"
   },
   "Terminal": {
     "message": "터미널"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "터미널 샌드박스"
   },
   "Test_Connection": {
     "message": "연결 테스트"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "테스트 중..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "A2A 에이전트 엔드포인트 URL (http 또는 https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "AI는 위험 평가에 따라 명령별로 샌드박스 사용 여부를 결정합니다."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "MCP 서버 엔드포인트 URL (http 또는 https)"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "에이전트가 현재 백엔드 모드를 사용 중입니다. LLM 요청은 AI Republic 서버를 통해 라우팅됩니다. 대화 내용은 당사 인프라를 통해 안전하게 처리됩니다."
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "모델 전환 시 현재 대화가 초기화됩니다. 계속하시겠습니까?"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "서버에 오류가 발생했습니다. 나중에 다시 시도해 주세요."
   },
   "Time": {
     "message": "시간"
-  },
-  "Time_remaining": {
-    "message": "남은 시간"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "캐시 항목의 TTL(초) (기본값: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "시간 초과 (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "AI 에이전트를 사용하려면 다음 중 하나를 선택하십시오:"
+  },
+  "Today": {
+    "message": "오늘"
   },
   "Toggle_side_panel": {
     "message": "사이드 패널 표시/숨기기"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "자체 API 키 사용 전환"
   },
-  "Tool": {
-    "message": "도구"
+  "Token_Usage": {
+    "message": "토큰 사용량"
+  },
+  "Tokens": {
+    "message": "토큰:"
+  },
+  "Tokens_1": {
+    "message": "토큰: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "도구 제한 시간 (ms)"
+  },
+  "Tool_name": {
+    "message": "도구 이름:"
+  },
+  "Tool": {
+    "message": "도구"
   },
   "Tools": {
     "message": "도구"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "도구 설정"
   },
-  "Turn": {
-    "message": "차례"
+  "Trusted": {
+    "message": "신뢰됨"
+  },
+  "Trusted_Domains": {
+    "message": "신뢰된 도메인"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "신뢰된 에이전트는 기술 호출 시 자동 승인됩니다"
+  },
+  "Turns": {
+    "message": "턴:"
+  },
+  "Type_alternative_instructions": {
+    "message": "대체 지시사항을 입력하세요..."
   },
   "UI_Theme": {
     "message": "UI 테마"
   },
+  "URL": {
+    "message": "URL"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL은 http 또는 https 프로토콜을 사용해야 합니다"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "에이전트 상태를 확인할 수 없습니다"
+  },
   "Unable_to_load_credit_information": {
     "message": "크레딧 정보를 불러올 수 없습니다"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "백엔드 서버에 연결할 수 없습니다 - 연결을 확인해 주세요"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도해 주세요."
+  },
+  "Unknown_Event": {
+    "message": "알 수 없는 이벤트"
+  },
+  "Unknown_error": {
+    "message": "알 수 없는 오류"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "에이전트 상태 확인 중 알 수 없는 오류"
+  },
+  "Unknown_error_occurred": {
+    "message": "알 수 없는 오류가 발생했습니다"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "작업 실행 중 알 수 없는 오류가 발생했습니다"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "제출 처리 중 알 수 없는 오류가 발생했습니다"
+  },
+  "Unknown_model_1": {
+    "message": "알 수 없는 모델 ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "저장되지 않은 변경 사항"
   },
+  "Untitled": {
+    "message": "제목 없음"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "예정"
   },
   "Update": {
-    "message": ""
+    "message": "업데이트"
   },
   "Update_Channel": {
     "message": "업데이트 채널"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "프리미엄으로 업그레이드"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "가장 강력한 모델을 탐색하려면 업그레이드하십시오"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "전 세계에서 가장 강력한 모델을 사용하려면 구독을 업그레이드하세요"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Use_Context_Menu": {
     "message": "컨텍스트 메뉴 사용:"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "내 API 키 사용"
   },
-  "User_approved_action": {
-    "message": "사용자가 승인한 작업"
-  },
   "User_Center": {
     "message": "사용자 센터"
   },
-  "User_decision": {
-    "message": "사용자 결정"
+  "User_Session": {
+    "message": "사용자 세션"
   },
   "User_preferences_and_interface_settings": {
     "message": "사용자 환경설정 및 인터페이스 설정"
   },
-  "User_rejected_action": {
-    "message": "사용자가 거부한 작업"
-  },
-  "User_requested_modifications": {
-    "message": "사용자가 요청한 수정 사항"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "추가 크레딧 사용 중"
+  },
+  "Verbosity": {
+    "message": "자세도"
+  },
+  "Verbosity_Control": {
+    "message": "자세도 제어"
+  },
+  "Verbosity_Levels": {
+    "message": "자세도 수준"
+  },
+  "Verbosity_levels": {
+    "message": "자세도 수준:"
+  },
+  "Version": {
+    "message": "버전"
   },
   "View_Chat_History": {
     "message": "채팅 기록 보기"
   },
   "View_History": {
-    "message": ""
+    "message": "기록 보기"
   },
   "View_Session": {
-    "message": ""
+    "message": "세션 보기"
+  },
+  "View_pricing_details": {
+    "message": "가격 세부 정보 보기"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "페이지 내용 및 레이아웃 시각 분석"
+  },
+  "Waiting_for_approval": {
+    "message": "승인 대기 중"
   },
   "Web_Scraping_Tool": {
     "message": "웹 스크래핑 도구"
@@ -956,13 +1950,22 @@
     "message": "Browserx에 오신 것을 환영합니다"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "샌드박스 명령이 네트워크에 접근할 수 있는지 여부"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "작업 공간 접근"
   },
   "Workspace_Write": {
     "message": "작업 공간 쓰기"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "어제"
+  },
+  "You": {
+    "message": "귀하"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "저장되지 않은 변경 사항이 있습니다. 삭제하시겠습니까?"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "API 키가 암호화되었습니다"
   },
-  "Your_Decision": {
-    "message": "귀하의 결정"
+  "Your_personal_AI_assistant": {
+    "message": "귀하의 개인 AI 어시스턴트"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "세션이 만료되었습니다. 다시 로그인해 주세요."
+  },
+  "DISCONNECTED": {
+    "message": "[연결 끊김]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[오류: 스트림이 중단되었습니다]"
+  },
+  "NO_ACCESS": {
+    "message": "[접근 불가]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[API 키 없음 - 설정을 클릭하세요]"
+  },
+  "PROCESSING": {
+    "message": "[처리 중]"
+  },
+  "available": {
+    "message": "사용 가능"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "캐시됨"
+  },
+  "detailed_thinking": {
+    "message": "상세한 사고"
+  },
+  "disconnected": {
+    "message": "연결 끊김"
+  },
+  "exec_unknown_command": {
+    "message": "exec (알 수 없는 명령)"
+  },
+  "optional": {
+    "message": "선택 사항"
+  },
+  "remaining": {
+    "message": "남은"
+  },
+  "session": {
+    "message": "세션"
+  },
+  "sessions": {
+    "message": "세션"
+  },
+  "streaming": {
+    "message": "스트리밍 중..."
+  },
+  "thinking": {
+    "message": "생각 중"
+  },
+  "tokens": {
+    "message": "토큰"
+  },
+  "trusted": {
+    "message": "신뢰된"
+  },
+  "user": {
+    "message": "사용자"
+  },
+  "web_search": {
+    "message": "웹 검색"
   }
 }
