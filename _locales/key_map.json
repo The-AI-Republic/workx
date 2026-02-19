@@ -1,5 +1,5 @@
 {
-  "(current)": "Current_tab_marker",
+  "(active)": "Active_tab_marker",
   "Access browser storage (localStorage, sessionStorage, cookies)": "Access_browser_storage_localStorage_sess_f762",
   "Action": "Action",
   "Action approval mode, trusted domains, risk settings": "Action_approval_mode_trusted_domains_ris_003b",
