@@ -11,6 +11,7 @@
   import type { ProcessedEvent } from '@/types/ui';
   import type { UpdatePlanArgs, PlanItemArg } from '@/core/protocol/events';
   import { StepStatus } from '@/core/protocol/events';
+  import { _t } from '../../lib/i18n';
 
   export let event: ProcessedEvent;
 
@@ -75,6 +76,6 @@
       {/each}
     </ul>
   {:else}
-    <p class="text-gray-500 italic">No steps in plan</p>
+    <p class="text-gray-500 italic">{$_t("No steps in plan")}</p>
   {/if}
 </div>

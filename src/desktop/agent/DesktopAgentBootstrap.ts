@@ -25,6 +25,7 @@ import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
+import { t } from '@/extension/sidepanel/lib/i18n';
 
 /**
  * Singleton instance
@@ -104,7 +105,7 @@ export class DesktopAgentBootstrap {
       // This routes submissions from channels to the agent
       const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
         if (!this.agent) {
-          throw new Error('Agent not initialized');
+          throw new Error(t('Agent not initialized'));
         }
 
         console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
@@ -349,7 +350,7 @@ export class DesktopAgentBootstrap {
     if (!this.agent) {
       return {
         ready: false,
-        message: 'Agent not initialized',
+        message: t('Agent not initialized'),
         authMode: 'none' as const,
       };
     }

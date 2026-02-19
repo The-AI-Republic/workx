@@ -6,6 +6,7 @@
  */
 
 import { writable, type Writable } from 'svelte/store';
+import { t } from '../lib/i18n';
 
 /**
  * Agent state interface
@@ -26,7 +27,7 @@ export interface AgentState {
 const DEFAULT_STATE: AgentState = {
   ready: false,
   authMode: 'none',
-  message: 'Checking agent status...',
+  message: t('Checking agent status...'),
 };
 
 /**
@@ -71,7 +72,7 @@ function createAgentStore() {
       set({
         ready: false,
         authMode: 'none',
-        message: message || 'No access configured. Please log in or configure an API key.',
+        message: message || t('No access configured. Please log in or configure an API key.'),
         provider,
         model,
       });
@@ -102,7 +103,7 @@ function createAgentStore() {
     setLoading: () => {
       update((state) => ({
         ...state,
-        message: 'Checking agent status...',
+        message: t('Checking agent status...'),
       }));
     },
 

@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Универсален AI агент в браузъра за работни задачи"
+  },
+  "1_API_Key": {
+    "message": "$1$ API ключ",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API key е премахнат успешно",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} задача(и) пропуснаха планираното време, докато браузърът беше затворен."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - точността може да бъде намалена)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(активен)"
+  },
+  "multiple_files": {
+    "message": "(множество файлове)"
+  },
+  "no_output": {
+    "message": "(няма изход)"
+  },
+  "no_result": {
+    "message": "(няма резултат)"
+  },
+  "patch_details": {
+    "message": "(детайли за пач)"
+  },
+  "Enter_command": {
+    "message": ">> Въведете команда..."
+  },
+  "A2A_Agents": {
+    "message": "A2A агенти"
+  },
+  "API_Key": {
+    "message": "API ключ"
+  },
+  "API_Key_Configuration": {
+    "message": "Конфигурация на API ключ"
+  },
+  "API_Version": {
+    "message": "API версия"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Редактирането на API ключ е деактивирано в режим на бекенд"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "API ключ за удостоверяване (съхранен криптиран)"
+  },
+  "API_key_has_expired": {
+    "message": "API ключът е изтекъл"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API ключът има недостатъчни права"
+  },
+  "API_key_saved_successfully": {
+    "message": "API ключът е запазен успешно!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API ключовете са криптирани и съхранявани локално в браузъра ви. Никога не се изпращат към външни сървъри, освен при API заявки."
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Достъп до съхранение в браузъра (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Действие"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "Подробности за действието"
+    "message": "Режим за одобрение на действия, доверени домейни, настройки за риск"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "Активни сесии"
   },
   "Add": {
-    "message": ""
+    "message": "Добави"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "Добавяне на модификация"
+  "Add_Agent": {
+    "message": "Добави агент"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Добави сървър"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Добави задача"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "Добавете сървър за свързване към външни инструменти."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Добавете агент за свързване към външни умения."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Допълнителни bind монтирания"
   },
   "Advanced_Configuration": {
     "message": "Разширена конфигурация"
   },
-  "Advanced_Options": {
-    "message": "Разширени опции"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Разширени настройки"
+  },
+  "Agent": {
+    "message": "Агент"
   },
   "Agent_Execution_Tools": {
     "message": "Инструменти за изпълнение на агент"
   },
+  "Agent_Turn_Complete": {
+    "message": "Ходът на агента завършен"
+  },
+  "Agent_URL_is_required": {
+    "message": "Необходим е URL на агента"
+  },
+  "Agent_added_successfully": {
+    "message": "Агентът е добавен успешно"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Името на агента може да съдържа само букви, цифри и тирета"
+  },
+  "Agent_name_is_required": {
+    "message": "Необходимо е име на агент"
+  },
+  "Agent_not_initialized": {
+    "message": "Агентът не е инициализиран"
+  },
+  "Agent_removed_successfully": {
+    "message": "Агентът е премахнат успешно"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Ходът на агента е завършен успешно"
+  },
+  "Agent_updated_successfully": {
+    "message": "Агентът е актуализиран успешно"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Всички действия се одобряват автоматично за тези домейни."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Всички действия са отказани за тези домейни."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "Всички команди се изпълняват в OS‑нативна пясъчница. Записите са ограничени до директорията на работното пространство."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Позволяване на агента да изпълнява системни команди (използвайте внимателно)"
@@ -57,58 +168,108 @@
     "message": "Позволяване на скриптове за съдържание да се изпълняват на уеб страници"
   },
   "Allowed": {
-    "message": ""
+    "message": "Разрешено"
   },
   "Allowed_Origins": {
     "message": "Разрешени източници"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Само буквено-цифрови знаци и тирета (1‑50 знака)"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "Винаги одобри"
   },
-  "API_Key_Configuration": {
-    "message": "Конфигурация на API ключ"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API ключовете са криптирани и съхранявани локално в браузъра ви. Никога не се изпращат към външни сървъри, освен при API заявки."
-  },
-  "Approval_History": {
-    "message": "История на одобренията"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: Вашият личен AI (Alpha)"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "Одобрение и безопасност"
+  },
+  "Approval_Mode": {
+    "message": "Режим на одобрение"
+  },
+  "Approval_Required": {
+    "message": "Необходимо одобрение"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Необходимо одобрение: Прилагане на пач"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Необходимо одобрение: Изпълнение на команда"
   },
   "Approve": {
     "message": "Одобри"
   },
-  "Approve_this_action": {
-    "message": "Одобрете това действие"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Одобрете промените в: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Одобрете изпълнението: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Сигурни ли сте, че искате да отмените тази задача?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Сигурни ли сте, че искате да премахнете този агент?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Сигурни ли сте, че искате да премахнете вашия $1$ API ключ?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Помолете Browserx да извлече структурирани данни от всяка уеб страница"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Питане за среден риск и по-висок (риск > 30). Препоръчва се за повечето потребители."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Питане само за действия с висок риск (риск > 60). За опитни потребители."
+  },
+  "Auth_Type": {
+    "message": "Тип удостоверяване"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Удостоверителни данни (съхранени криптирани)"
+  },
+  "Authentication_failed": {
+    "message": "Неуспешно удостоверяване"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Метод за удостоверяване за агента"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "Авто (по подразбиране)"
+  },
+  "Auto_approve_everything": {
+    "message": "Автоматично одобряване на всичко"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Автоматично одобряване на всичко. Правилата за отказ остават в сила. Използвайте на свой риск."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Автоматично одобрено – изтече времето"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "Автоматично стартиране на приложението при влизане в компютъра"
+  },
+  "Available_Skills": {
+    "message": "Налични умения"
+  },
+  "Available_Tools": {
+    "message": "Налични инструменти"
   },
   "Available": {
     "message": "Налично:"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "Назад"
+  },
+  "Back_to_Model_Config": {
+    "message": "Назад към конфигурацията на модела"
   },
   "Backend_Mode": {
     "message": "Режим на бекенд"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "Активен режим на бекенд"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Сървърът не е достъпен. Моля, изчакайте момент и опитайте отново."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Грешка в сървъра – моля, опитайте отново по-късно"
+  },
+  "Backoff_Multiplier": {
+    "message": "Множител за изчакване"
+  },
+  "Balanced": {
+    "message": "Баланс"
+  },
+  "Base_URL": {
+    "message": "Базов URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Базовият URL не е конфигуриран за този доставчик"
+  },
+  "Bearer_Token": {
+    "message": "Bearer токен"
+  },
   "Beta": {
     "message": "Бета"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Превключватели за инструменти за автоматизация на браузъра"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Пътят за bind mount трябва да е абсолютен"
+  },
+  "Blocked_Domains": {
+    "message": "Блокирани домейни"
   },
   "Browser_Tools": {
     "message": "Инструменти за браузъра"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "Поведение на кеша и запазване на данни"
+  "Browser_automation_tool_toggles": {
+    "message": "Превключватели за инструменти за автоматизация на браузъра"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Алфа)"
+  },
+  "CWD": {
+    "message": "Текуща директория:"
   },
   "Cache_Settings": {
     "message": "Настройки на кеша"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "TTL на кеша (секунди)"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "Поведение на кеша и запазване на данни"
+  },
   "Cancel": {
     "message": "Отмени"
   },
+  "Cancelled": {
+    "message": "Отменено"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Не може да се изпълни задачата: Не е конфигуриран API ключ за ${providerName}. Моля, отидете в Настройки → Конфигурация на модел и добавете вашия API ключ."
+  },
+  "Cannot_select_model_1": {
+    "message": "Не може да се избере модел: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Не може да се изпрати съобщение: Не е конфигуриран API ключ за $1$. Моля, натиснете бутона Настройки и конфигурирайте вашия API ключ.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Възможности"
+  },
   "Chat_History": {
     "message": "История на чата"
+  },
+  "Checking_agent_status": {
+    "message": "Проверка на състоянието на агента..."
   },
   "Choose_AI_Model": {
     "message": "Изберете модел на изкуствен интелект"
@@ -159,22 +387,37 @@
     "message": "Щракнете върху иконата Browserx в лентата с инструменти или натиснете Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "Кликнете, за да отмените входа"
   },
   "Click_to_select_a_model": {
     "message": "Щракнете, за да изберете модел"
   },
+  "Close": {
+    "message": "Затвори"
+  },
   "Close_settings": {
     "message": "Затвори настройките"
+  },
+  "Collapse": {
+    "message": "Свий"
+  },
+  "Command_Approval_Required": {
+    "message": "Необходимо е одобрение за команда"
+  },
+  "Command_completed": {
+    "message": "Командата е изпълнена"
   },
   "Command": {
     "message": "Команда"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "Командите се изпълняват директно на хоста. Сигурностният филтър все още се прилага."
   },
   "Completed": {
-    "message": ""
+    "message": "Завършено"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Завършено: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Компресиране на кешираните данни за спестяване на дисково пространство"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Конфигурирайте AI модел и API ключове"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Конфигурирайте API ключ в Настройки"
+  },
+  "Configured": {
+    "message": "Конфигурирано"
+  },
+  "Configured_Agents": {
+    "message": "Конфигурирани агенти"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Конфигурирани сървъри"
   },
   "Connect": {
-    "message": ""
+    "message": "Свързване"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Свържете се с агент‑към‑агент (A2A) протоколни агенти, за да разширите възможностите с външни умения на агентите."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Свържете се със сървъри за протокола Model Context (MCP), за да разширите агента с външни инструменти."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Свържете се с A2A агент, за да откриете умения."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "Свържете се с MCP сървър, за да откриете инструменти."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "Свържете се с външни сървъри за MCP инструменти"
   },
   "Connected": {
     "message": "Свързано"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Успешно свързване"
   },
-  "Context": {
-    "message": "Контекст"
+  "Connecting": {
+    "message": "Свързване..."
+  },
+  "Connection_error": {
+    "message": "Грешка при свързване"
+  },
+  "Connection_failed_1": {
+    "message": "Неуспешно свързване: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Неуспешно свързване: Основният URL не е конфигуриран"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Неуспешно свързване: липсва избрана конфигурация на модела"
+  },
+  "Connection_successful": {
+    "message": "Свързването е успешно!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Тестът за свързване не успя: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Тестът за свързване не успя: Невалиден API ключ"
+  },
+  "Connection_test_successful": {
+    "message": "Тестът за свързване е успешен!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Тестът за свързване е успешен! (API ключът е валиден)"
+  },
+  "Connection_was_refused": {
+    "message": "Връзката беше отказана"
+  },
+  "Connection_was_reset": {
+    "message": "Връзката беше нулирана"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Съдържанието нарушава политиката: съдържание от тип ${contentType} не е разрешено"
+  },
+  "Context_Window": {
+    "message": "Контекстен прозорец"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Контекст компресиран: спестени ~$1$k токена",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Контролира колко настойчиво агентът иска одобрение."
   },
   "Create_New_Tab": {
     "message": "Създаване на нов таб"
   },
   "Created": {
-    "message": ""
+    "message": "Създадено"
+  },
+  "Creator": {
+    "message": "Създател"
   },
   "Credit_Details": {
     "message": "Детайли за кредитите"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "Текущ план:"
   },
-  "Active_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "Неуспешно DNS търсене"
+  },
+  "DOM_Tool": {
+    "message": "DOM инструмент"
   },
   "Daily_Credits": {
     "message": "Дневни кредити"
@@ -228,10 +552,34 @@
     "message": "Инструмент за извличане на данни"
   },
   "Date": {
-    "message": ""
+    "message": "Дата"
   },
   "Days_until_expiration": {
     "message": "Дни до изтичане"
+  },
+  "Debug_logging_disabled": {
+    "message": "Дебъг логването е изключено"
+  },
+  "Debug_logging_enabled": {
+    "message": "Дебъг логването е включено"
+  },
+  "Default": {
+    "message": "По подразбиране"
+  },
+  "Deny": {
+    "message": "Отказ"
+  },
+  "Deprecated": {
+    "message": "Остарял"
+  },
+  "Deprecation_Message": {
+    "message": "Съобщение за остаряване"
+  },
+  "Description": {
+    "message": "Описание"
+  },
+  "Desktop_mode": {
+    "message": "Режим за настолен компютър"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Разработено и поддържано от AI Republic"
@@ -240,37 +588,43 @@
     "message": "Отхвърляне на промените"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Прекъсване"
+  },
+  "Disconnected_successfully": {
+    "message": "Успешно прекъсване"
   },
   "Dismiss": {
-    "message": ""
+    "message": "Отхвърляне"
+  },
+  "Dismiss_notification": {
+    "message": "Отхвърляне на известието"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Показване на консумацията на токени (входни/изходни токени) при завършване на задачите"
   },
-  "DOM_Tool": {
-    "message": "DOM инструмент"
+  "Draft": {
+    "message": "Чернова"
   },
   "Duration": {
-    "message": ""
+    "message": "Продължителност"
+  },
+  "ERROR": {
+    "message": "ГРЕШКА"
   },
   "Edit": {
-    "message": ""
+    "message": "Редактиране"
+  },
+  "Edit_Agent": {
+    "message": "Редактиране на агент"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Редактиране на сървър"
   },
   "Enable_All_Tools": {
     "message": "Активиране на всички инструменти"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "Активиране на кеша"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Активиране на кеширане за подобряване на производителността чрез съхранение на често достъпвани данни"
   },
   "Enable_Compression": {
     "message": "Активиране на компресията"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "Активиране на скриптовете за съдържание"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "Активиране на разширението"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Активиране на инструменти за Model Context Protocol от свързани MCP сървъри"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Активиране на автоматично свързване при стартиране на browserx"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Активиране на кеширане за подобряване на производителността чрез съхранение на често достъпвани данни"
+  },
+  "Enable_debug_logging": {
+    "message": "Активиране на дебъг логване"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Активиране на възможностите за уеб търсене за агента"
   },
   "Enabled": {
-    "message": ""
+    "message": "Активирано"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Въведете API ключ, ако е необходимо"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Въведете API ключ или токен за достъп"
   },
   "Enter_your_LLM_API_key": {
     "message": "Въведете вашия LLM API ключ"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Въведете вашата задача..."
   },
   "Error": {
-    "message": ""
+    "message": "Грешка"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Грешка: Не сте свързани с агент. Моля, обновете страницата."
   },
   "Execute_Commands": {
     "message": "Изпълняване на команди"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Режим на изпълнение"
+  },
+  "Exit_Code": {
+    "message": "Код за изход:"
+  },
+  "Expand": {
+    "message": "Разширяване"
   },
   "Expire_after_days": {
     "message": "Изтича след дни"
   },
-  "Explain_your_decision": {
-    "message": "Обяснете решението..."
+  "Explain_this_info_selectionText": {
+    "message": "Обясни това: ${info.selectionText}"
   },
-  "Extension_Configuration": {
-    "message": "Конфигурация на разширението"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "Конфигурация и разрешения за разширението"
-  },
-  "extension_description": {
-    "message": "Универсален AI агент в браузъра за работни задачи"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "Обясни с Browserx"
   },
   "Extension_Permission": {
     "message": "Разширение и разрешение"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "Настройки за разширение и разрешения"
   },
+  "Extension_Configuration": {
+    "message": "Конфигурация на разширението"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Конфигурация и разрешения за разширението"
+  },
   "Extra_Credits": {
     "message": "Допълнителни кредити"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Допълнителни директории, достъпни в sandbox"
   },
   "Extract_Data": {
     "message": "Извличане на данни:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Извличане на данни с Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Извличане на конкретни модели данни от страници"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "Извличане на структурирани данни от тази страница"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "Извличане на структурирани данни от уеб страници"
   },
+  "Failed": {
+    "message": "Неуспешно"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Неуспешна промяна на модела: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Неуспешно свързване: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Неуспешно създаване на нов раздел. Моля, опитайте отново."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Неуспешно създаване на браузърен раздел: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Неуспешно прекъсване: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Неуспешно зареждане на настройките за A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Неуспешно зареждане на разговора. Моля, опитайте отново."
+  },
   "Failed_to_load_preferences": {
     "message": "Неуспешно зареждане на предпочитанията"
+  },
+  "Failed_to_load_settings": {
+    "message": "Неуспешно зареждане на настройките"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Неуспешно премахване на API ключ"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Неуспешно премахване на агент: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Неуспешно запазване на API ключ"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Неуспешно запазване на настройката за дебъг логване: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "Неуспешно запазване на настройките"
   },
+  "Failed_to_save_settings_1": {
+    "message": "Неуспешно запазване на настройките: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Неуспешно запазване: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Неуспешно изпращане на съобщение. Моля, опитайте отново."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Неуспешно стартиране на нов разговор. Моля, опитайте отново."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Неуспешно спиране на задачата. Моля, опитайте отново."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Неуспешно превключване към раздел ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Неуспешно тестване на връзката"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Неуспешно актуализиране на API режим"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Неуспешно актуализиране на ниво на услугата: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Необходима е одобрение за промяна на файл"
+  },
   "File_Operations_Not_Available": {
     "message": "Файлови операции (недостъпни)"
   },
-  "File_Path": {
-    "message": "Път до файл"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Попълване на форми, изпращане на данни, взаимодействие с елементи на формата"
+  },
+  "Flex": {
+    "message": "Гъвкав"
   },
   "Form_Automation_Tool": {
     "message": "Инструмент за автоматизация на форми"
@@ -372,16 +856,16 @@
     "message": "Пълен достъп (опасно)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "Пълен вход"
   },
   "General": {
     "message": "Общи"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "Общи настройки"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "Започнете"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "Здравей свят"
   },
-  "History": {
-    "message": "История"
+  "Hide_API_key": {
+    "message": "Скриване на API ключ"
+  },
+  "High_Speed": {
+    "message": "Висока скорост"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "Как директорията на работното пространство се монтира в пясъчната кутия"
   },
-  "Impact": {
-    "message": "Въздействие"
+  "Image_Input": {
+    "message": "Въвеждане на изображение"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Подобри този текст: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Подобри с Browserx"
+  },
+  "In": {
+    "message": "В:"
+  },
+  "Incompatible_features": {
+    "message": "Несъвместими функции:"
+  },
+  "Initial_Delay": {
+    "message": "Начално закъснение"
+  },
+  "Input_Token_Price": {
+    "message": "Цена на входния токен"
+  },
+  "Input": {
+    "message": "Вход:"
+  },
+  "Input_1": {
+    "message": "Вход: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Прехващане и модифициране на мрежови заявки/отговори"
   },
+  "Invalid_API_key": {
+    "message": "Невалиден API ключ"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Невалиден API ключ"
+  },
+  "Invalid_URL_format": {
+    "message": "Невалиден формат на URL"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Невалиден формат на заявка: липсва поле op"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Невалиден формат на заявка: op липсва поле type"
+  },
   "Keyboard_Shortcuts": {
     "message": "Клавишни комбинации"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM заявките се изпращат директно към API‑тата на доставчика"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM заявките се пренасочват през бекенда на AI Republic"
   },
   "Language": {
     "message": "Език"
@@ -419,37 +956,52 @@
     "message": "Научете повече"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Оставете празно, за да запазите текущото"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Списък с разрешени източници (по един на ред). Поддържа шаблони (*)."
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM заявките се изпращат директно към API‑тата на доставчика"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM заявките се пренасочват през бекенда на AI Republic"
-  },
   "Load_More": {
-    "message": ""
+    "message": "Зареди още"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "Зареди още"
+  },
+  "Loading_configuration": {
+    "message": "Зареждане на конфигурацията..."
   },
   "Loading_credits": {
     "message": "Зареждане на кредити..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "Зареждане на детайлите..."
+  },
+  "Loading_history": {
+    "message": "Зареждане на историята..."
   },
   "Loading_settings": {
     "message": "Зареждане на настройките..."
   },
+  "Loading_tabs": {
+    "message": "Зареждане на разделите..."
+  },
+  "Loading": {
+    "message": "Зареждане..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Записване на A2A протокол съобщения в конзолата на браузъра за отстраняване на грешки"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Записване на MCP протокол съобщения в конзолата на браузъра за отстраняване на грешки"
+  },
+  "Log_in_to_your_account": {
+    "message": "Влезте в акаунта си"
+  },
+  "Logged_in": {
+    "message": "Влезли сте"
   },
   "Logging_in": {
-    "message": ""
+    "message": "Влизане..."
   },
   "Login": {
     "message": "Вход"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "Влезте, за да получите безплатни кредити"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Задръжте натиснато, за да планирате задача"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "Задръжте бутона за изпращане, за да планирате задача"
   },
   "Low_credits_remaining": {
     "message": "Остават малко кредити"
+  },
+  "MCP_Servers": {
+    "message": "MCP сървъри"
+  },
+  "MCP_Tools": {
+    "message": "MCP инструменти"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Управление на раздели в браузъра (отваряне, затваряне, превключване, търсене)"
@@ -479,40 +1037,102 @@
     "message": "Максимален размер на кеша (МБ)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "Максимален брой едновременни сесии"
+  },
+  "Max_Delay": {
+    "message": "Максимално закъснение"
+  },
+  "Max_Output": {
+    "message": "Максимален изход"
+  },
+  "Max_Output_Tokens": {
+    "message": "Максимален брой токени за изход"
+  },
+  "Max_Retries": {
+    "message": "Максимален брой опити"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Максимален размер на кеша в мегабайти (по подразбиране: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "Максимален брой паралелни сесии на агент, включително планирани задачи"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Достигнат е максимум от 5 агента"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Достигнат е максимум от 5 сървъра"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Максимално време (в милисекунди), за което инструментът може да работи преди таймаут (по подразбиране: 30000)"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "Среден риск и по-висок"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "Съобщителната услуга не е достъпна"
   },
   "Missed": {
-    "message": ""
+    "message": "Пропуснато"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Пропуснати планирани задачи"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Моделът \"$1$\" не поддържа вход за изображения. Някои инструменти ще бъдат деактивирани.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Конфигурация на модела"
   },
+  "Model_Configuration": {
+    "message": "Конфигурация на модела"
+  },
+  "Model_Key_API": {
+    "message": "Ключ за модел (API)"
+  },
+  "Model_Name": {
+    "message": "Име на модела"
+  },
   "Model_Selection": {
     "message": "Избор на модел"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Настройките на модела и доставчика са заредени от подразбиращата се конфигурация (само за четене)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Моделът е променен на $1$. Моля, конфигурирайте вашия API ключ.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Моделът е променен на $1$. Сесията ще бъде преинициализирана.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Модел:"
+  },
+  "Model_1": {
+    "message": "Модел: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Модерен чат"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Промяна на параметрите при поискване на промени"
   },
   "Monthly_Credits": {
     "message": "Месечни кредити"
@@ -521,7 +1141,7 @@
     "message": "Още настройки"
   },
   "Name": {
-    "message": ""
+    "message": "Име"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Навигиране в страници, кликване върху връзки, обработка на браузърната навигация"
@@ -530,10 +1150,16 @@
     "message": "Навигационен инструмент"
   },
   "Network_Access": {
-    "message": ""
+    "message": "Мрежов достъп"
   },
   "Network_Intercept_Tool": {
     "message": "Инструмент за прихващане на мрежа"
+  },
+  "Network_error": {
+    "message": "Грешка в мрежата"
+  },
+  "Network_error_occurred": {
+    "message": "Възникна грешка в мрежата"
   },
   "Never_expire_permanent": {
     "message": "Никога не изтича (постоянно)"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "Нов разговор"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "Все още не са конфигурирани A2A агенти."
+  },
   "No_Access": {
-    "message": ""
+    "message": "Няма достъп"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Все още няма история на одобрения."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "Не е конфигуриран достъп"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "Все още не са конфигурирани MCP сървъри."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Не е конфигуриран достъп. Моля, влезте или конфигурирайте API ключ."
+  },
+  "No_active_sessions": {
+    "message": "Няма активни сесии"
+  },
+  "No_chat_history_yet": {
+    "message": "Все още няма история на чата"
+  },
+  "No_completed_tasks_yet": {
+    "message": "Все още няма завършени задачи"
+  },
+  "No_models_available": {
+    "message": "Няма налични модели"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Няма налични модели. Моля, проверете конфигурацията."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Няма планирани задачи"
+  },
+  "No_scheduled_time": {
+    "message": "Няма зададено време"
+  },
+  "No_skills_available": {
+    "message": "Няма налични умения."
+  },
+  "No_steps_in_plan": {
+    "message": "Няма стъпки в плана"
   },
   "No_tabs_available": {
     "message": "Няма налични раздели"
   },
+  "No_time_set": {
+    "message": "Не е зададено време"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Няма налични инструменти."
+  },
+  "None": {
+    "message": "Няма"
   },
   "Not_Connected": {
     "message": "Не е свързан"
+  },
+  "Notification": {
+    "message": "Известие"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Брой дни преди данните за разгръщане да изтече срокът им (по подразбиране: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "Офлайн – задачите ще се изпълнят при свързване"
+  },
+  "Older": {
+    "message": "По-стари"
+  },
+  "Only_high_risk_actions": {
+    "message": "Само действия с висок риск"
+  },
+  "Open_1_settings": {
+    "message": "Отвори настройките за $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Отвори страничен панел:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "Организация"
+  },
+  "Organization_ID": {
+    "message": "ID на организацията"
+  },
+  "Out": {
+    "message": "Изход:"
+  },
+  "Output_Token_Price": {
+    "message": "Цена на токен за изход"
+  },
+  "Output": {
+    "message": "Изход:"
+  },
+  "Output_1": {
+    "message": "Изход: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "Инструмент за действия на страница"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "Инструмент за визуален анализ на страница"
   },
-  "Parameter_Modifications": {
-    "message": "Модификации на параметри"
+  "Past_Month": {
+    "message": "Последен месец"
+  },
+  "Past_Week": {
+    "message": "Последна седмица"
+  },
+  "Patch_applied_successfully": {
+    "message": "Пачът е приложен успешно"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Пач за $1$ файл(а)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Пауза на опашката"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Изпълнение на действия върху страница (превъртане, екранна снимка, изчакване)"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "Запазване на кеша в хранилище"
   },
+  "Plan_1_step_s": {
+    "message": "План: $1$ стъпка(и)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Моля, проверете вашия API ключ в настройките."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Моля, въведете описание на задачата"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Моля, първо въведете API ключ"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Моля, въведете валиден API ключ."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Моля, влезте отново, за да продължите да използвате AI агента."
+  },
+  "Please_select_a_provider": {
+    "message": "Моля, изберете доставчик"
   },
   "Please_type_a_valid_command": {
     "message": "Моля, въведете валидна команда"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Моля, надстройте плана, за да отключите най-напредналите модели в света"
+  },
   "Power": {
-    "message": ""
+    "message": "Мощност"
+  },
+  "Pricing_Information": {
+    "message": "Информация за ценообразуване"
+  },
+  "Pricing_Page": {
+    "message": "Страница с цени"
+  },
+  "Priority": {
+    "message": "Приоритет"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Приоритетният слой осигурява по-бързи времена за отговор при по-висока цена."
   },
+  "Processing": {
+    "message": "Обработване..."
+  },
+  "Protocol": {
+    "message": "Протокол"
+  },
   "Provider": {
     "message": "Доставчик"
+  },
+  "Provider_Configuration": {
+    "message": "Конфигурация на доставчика"
+  },
+  "Provider_ID": {
+    "message": "ID на доставчика"
+  },
+  "Provider_Name": {
+    "message": "Име на доставчика"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Запитване и манипулиране на DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Опашката е паузирана"
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "Бързо действие"
+    "message": "На опашка"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Бързо планиране"
   },
   "Quick_Start": {
     "message": "Бърз старт"
   },
+  "Quick_action": {
+    "message": "Бързо действие"
+  },
+  "Read_Only": {
+    "message": "Само за четене"
+  },
+  "Read_Write": {
+    "message": "Четене и писане"
+  },
   "Read_only": {
     "message": "Само за четене"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "Разсъждение"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "Разсъждателни усилия"
   },
-  "Reason_optional": {
-    "message": "Причина (по избор)"
+  "Reasoning_Summaries": {
+    "message": "Обобщения на разсъждения"
+  },
+  "Reasoning_levels": {
+    "message": "Нива на разсъждение:"
+  },
+  "Reasoning_1": {
+    "message": "Разсъждение: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Обновява след:"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "Отхвърли"
   },
-  "Reject_this_action": {
-    "message": "Отхвърли това действие"
+  "Release_Date": {
+    "message": "Дата на издаване"
+  },
+  "Release_date_unknown": {
+    "message": "Неизвестна дата на издаване"
+  },
+  "Released": {
+    "message": "Издадено:"
   },
   "Remaining": {
     "message": "Остава:"
   },
   "Remove": {
-    "message": ""
+    "message": "Премахни"
   },
   "Remove_API_Key": {
     "message": "Премахни API ключ"
   },
-  "Remove_modification": {
-    "message": "Премахни промяна"
+  "Request_Timeout": {
+    "message": "Време за изчакване на заявка"
   },
-  "Request_Changes": {
-    "message": "Поискай промени"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Поискай промени в това действие"
+  "Request_timed_out": {
+    "message": "Заявката изтече"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Време за изчакване на заявка в милисекунди (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Време за изчакване на заявка в милисекунди (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Заявката беше прекъсната"
+  },
+  "Response_failed": {
+    "message": "Отговорът е неуспешен"
   },
   "Restricted": {
-    "message": ""
+    "message": "Ограничено"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Обобщение на резултата"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Възобнови опашката"
+  },
+  "Retry_Configuration": {
+    "message": "Конфигурация за повторен опит"
+  },
+  "Retrying": {
+    "message": "Повтаря се"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Щракнете с десния бутон върху всеки текст, за да го обясните или подобрите с Browserx"
+  },
+  "Risk_Score": {
+    "message": "Оценка на риска:"
   },
   "Rollout_Expiration": {
     "message": "Изтичане на разгръщането"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Изпълни сега"
   },
   "Running": {
-    "message": ""
+    "message": "Изпълнява се"
+  },
+  "STREAM_ERROR": {
+    "message": "ГРЕШКА В ПОТОКА"
   },
   "Safe": {
-    "message": ""
+    "message": "Сигурно"
   },
   "Sandbox_Policy": {
     "message": "Политика за сигурна среда (Sandbox)"
   },
   "Save_API_Key": {
     "message": "Запази API ключ"
+  },
+  "Save_Changes": {
+    "message": "Запази промените"
   },
   "Save_Settings": {
     "message": "Запази настройките"
@@ -713,25 +1511,48 @@
     "message": "Записване..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Планирай"
   },
   "Schedule_A_New_Task": {
-    "message": ""
+    "message": "Планирай нова задача"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Планирано"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Планирана задача"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Планираната задача стартира"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Планирани задачи"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Планираното време трябва да бъде поне 1 минута в бъдещето"
+  },
+  "Search_complete": {
+    "message": "Търсенето завърши"
+  },
+  "Searching": {
+    "message": "Търсене..."
+  },
+  "Security_Privacy": {
+    "message": "Сигурност и поверителност"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Ниво на сигурност на средата за инструменти"
   },
-  "Security_Privacy": {
-    "message": "Сигурност и поверителност"
+  "Select_Model": {
+    "message": "Избери модел"
+  },
+  "Select_model_1": {
+    "message": "Избери модел: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Изберете AI модел за разговори."
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Изберете предпочитания език за интерфейса"
   },
+  "Selected": {
+    "message": "Избрано"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Липсва конфигурация за избрания модел"
+  },
+  "Send": {
+    "message": "Изпрати"
+  },
   "Service_Tier": {
     "message": "Ниво на услугата"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "Сесия"
+  "Service_tier_updated_to_1": {
+    "message": "Нивото на услугата е актуализирано до $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "Грешка в сесията"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Сесията изтече – моля, влезте отново, за да продължите да използвате AI агента"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "Достигнат е лимитът за сесии. Новите задачи ще се поставят на опашка."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Задайте кога данните от разгръщането трябва да изтекат"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Настройките са запазени успешно"
   },
+  "Show_API_key": {
+    "message": "Показване на API ключ"
+  },
+  "Show_all": {
+    "message": "Показване на всички"
+  },
+  "Show_less": {
+    "message": "Показване на по-малко"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Показване на използваните токени в задачи"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Влезте в профила си"
   },
+  "Skills": {
+    "message": "Умения"
+  },
   "Stable": {
     "message": "Стабилна"
   },
+  "Standard_capabilities": {
+    "message": "Стандартни възможности"
+  },
+  "Start_New_Conversation": {
+    "message": "Започване на нов разговор"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "Започване при влизане"
   },
   "Status": {
-    "message": ""
+    "message": "Състояние"
+  },
+  "Stop_Agent": {
+    "message": "Спиране на агента"
+  },
+  "Stop_the_current_task": {
+    "message": "Спиране на текущата задача"
   },
   "Stop_the_current_task_run": {
     "message": "Спри текущото изпълнение на задачата"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Постоянно съхраняване на кешовите данни между сесиите на браузъра"
   },
+  "Suggest_Alternative": {
+    "message": "Предложи алтернатива"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Превключено в бекенд режим. Заявките към LLM ще се изпращат през сървъра на AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Превключено в директен API режим. Моля, конфигурирайте вашия API ключ."
+  },
+  "System": {
+    "message": "Система"
+  },
   "Tab_Tool": {
     "message": "Инструмент за раздели"
   },
+  "Tab_unavailable": {
+    "message": "Разделът не е достъпен"
+  },
+  "Take_Over": {
+    "message": "Поемане"
+  },
   "Task": {
-    "message": ""
+    "message": "Задача"
   },
   "Task_Details": {
-    "message": ""
+    "message": "Детайли на задачата"
+  },
+  "Task_Failed": {
+    "message": "Задачата е неуспешна"
   },
   "Task_History": {
-    "message": ""
+    "message": "История на задачите"
   },
   "Task_ID": {
-    "message": ""
+    "message": "ID на задачата"
+  },
+  "Task_Plan": {
+    "message": "План на задачата"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Задачата е отменена от потребителя"
+  },
+  "Task_complete": {
+    "message": "Задачата е завършена"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Задачата е завършена след $1$ ход(а)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Задачата е неуспешна"
+  },
+  "Task_started": {
+    "message": "Задачата е стартирана"
   },
   "Terminal": {
     "message": "Терминал"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "Терминален Sandbox"
   },
   "Test_Connection": {
     "message": "Тествай връзката"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "Тестване..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "URL на крайна точка на A2A агент (http или https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "AI решава за всяка команда дали да използва пясъчник въз основа на оценка на риска."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "URL на крайна точка на MCP сървъра (http или https)"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Агентът в момента използва бекенд режим. Заявките към LLM ще се маршрутизират през сървъра на AI Republic. Вашите разговори се обработват сигурно чрез нашата инфраструктура."
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Смяната на модела ще изчисти текущия разговор. Желаете ли да продължите?"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Сървърът срещна грешка. Моля, опитайте отново по-късно."
   },
   "Time": {
     "message": "Време"
-  },
-  "Time_remaining": {
-    "message": "Оставащо време"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Време за живеене (TTL) на кешираните елементи в секунди (по подразбиране: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Таймаут (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "За да използвате AI агента, моля, изберете едно от следните:"
+  },
+  "Today": {
+    "message": "Днес"
   },
   "Toggle_side_panel": {
     "message": "Превключи страничния панел"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "Превключване на използване на собствен API ключ"
   },
-  "Tool": {
-    "message": "Инструмент"
+  "Token_Usage": {
+    "message": "Използване на токени"
+  },
+  "Tokens": {
+    "message": "Токени:"
+  },
+  "Tokens_1": {
+    "message": "Токени: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Време за изчакване на инструмента (ms)"
+  },
+  "Tool_name": {
+    "message": "Име на инструмента:"
+  },
+  "Tool": {
+    "message": "Инструмент"
   },
   "Tools": {
     "message": "Инструменти"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "Настройки на инструментите"
   },
-  "Turn": {
-    "message": "Превключване"
+  "Trusted": {
+    "message": "Доверен"
+  },
+  "Trusted_Domains": {
+    "message": "Доверени домейни"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Доверените агенти се одобряват автоматично за извикване на умения"
+  },
+  "Turns": {
+    "message": "Ходове:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Въведете алтернативни инструкции..."
   },
   "UI_Theme": {
     "message": "Тема на интерфейса"
   },
+  "URL": {
+    "message": "URL"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL трябва да използва http или https протокол"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Не може да се провери състоянието на агента"
+  },
   "Unable_to_load_credit_information": {
     "message": "Не може да се зареди кредитната информация"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Не може да се достигне бекенд сървъра – моля, проверете връзката си"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Не може да се достигне сървъра. Моля, проверете връзката си и опитайте отново."
+  },
+  "Unknown_Event": {
+    "message": "Неизвестно събитие"
+  },
+  "Unknown_error": {
+    "message": "Неизвестна грешка"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Неизвестна грешка при проверка на състоянието на агента"
+  },
+  "Unknown_error_occurred": {
+    "message": "Възникна неизвестна грешка"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Възникна неизвестна грешка по време на изпълнението на задачата"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Неизвестна грешка при обработка на изпращането"
+  },
+  "Unknown_model_1": {
+    "message": "Неизвестен модел ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Незаписани промени"
   },
+  "Untitled": {
+    "message": "Неозаглавено"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Предстоящи"
   },
   "Update": {
-    "message": ""
+    "message": "Актуализиране"
   },
   "Update_Channel": {
     "message": "Канал за актуализации"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "Надстройте до Премиум"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Надстройте, за да изследвате най-мощните модели в света"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Надстройте абонамента си, за да изследвате най-мощните модели в света"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Use_Context_Menu": {
     "message": "Използвайте контекстно меню:"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "Използвайте собствен API ключ"
   },
-  "User_approved_action": {
-    "message": "Действие, одобрено от потребителя"
-  },
   "User_Center": {
     "message": "Потребителски център"
   },
-  "User_decision": {
-    "message": "Решение на потребителя"
+  "User_Session": {
+    "message": "Потребителска сесия"
   },
   "User_preferences_and_interface_settings": {
     "message": "Потребителски предпочитания и настройки на интерфейса"
   },
-  "User_rejected_action": {
-    "message": "Потребителят отхвърли действието"
-  },
-  "User_requested_modifications": {
-    "message": "Промени, поискани от потребителя"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "Използване на допълнителни кредити"
+  },
+  "Verbosity": {
+    "message": "Вербалност"
+  },
+  "Verbosity_Control": {
+    "message": "Контрол на вербалността"
+  },
+  "Verbosity_Levels": {
+    "message": "Нива на вербалност"
+  },
+  "Verbosity_levels": {
+    "message": "Нива на вербалност:"
+  },
+  "Version": {
+    "message": "Версия"
   },
   "View_Chat_History": {
     "message": "Преглед на историята на чата"
   },
   "View_History": {
-    "message": ""
+    "message": "Преглед на историята"
   },
   "View_Session": {
-    "message": ""
+    "message": "Преглед на сесията"
+  },
+  "View_pricing_details": {
+    "message": "Преглед на ценовите детайли"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Визуален анализ на съдържанието и оформлението на страницата"
+  },
+  "Waiting_for_approval": {
+    "message": "Очаква одобрение"
   },
   "Web_Scraping_Tool": {
     "message": "Инструмент за уеб скрейпинг"
@@ -956,13 +1950,22 @@
     "message": "Добре дошъл в Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "Дали изолирани команди могат да достъпват мрежата"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "Достъп до работното пространство"
   },
   "Workspace_Write": {
     "message": "Запис в работно пространство"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Вчера"
+  },
+  "You": {
+    "message": "Вие"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Имате незапазени промени. Искате ли да ги отхвърлите?"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Вашият API ключ е криптиран"
   },
-  "Your_Decision": {
-    "message": "Вашето решение"
+  "Your_personal_AI_assistant": {
+    "message": "Вашият личен AI асистент"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Сесията ви е изтекла. Моля, влезте отново."
+  },
+  "DISCONNECTED": {
+    "message": "[РАЗКАЧЕН]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Грешка: Потокът е прекъснат]"
+  },
+  "NO_ACCESS": {
+    "message": "[НЯМА ДОСТЪП]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[НЯМА API КЛЮЧ - КЛИКНЕТЕ НА НАСТРОЙКИ]"
+  },
+  "PROCESSING": {
+    "message": "[ОБРАБОТВАНЕ]"
+  },
+  "available": {
+    "message": "налично"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "кеширано"
+  },
+  "detailed_thinking": {
+    "message": "подробно мислене"
+  },
+  "disconnected": {
+    "message": "разкачен"
+  },
+  "exec_unknown_command": {
+    "message": "exec (неизвестна команда)"
+  },
+  "optional": {
+    "message": "по избор"
+  },
+  "remaining": {
+    "message": "оставащи"
+  },
+  "session": {
+    "message": "сесия"
+  },
+  "sessions": {
+    "message": "сесии"
+  },
+  "streaming": {
+    "message": "стрийминг..."
+  },
+  "thinking": {
+    "message": "мислене"
+  },
+  "tokens": {
+    "message": "токени"
+  },
+  "trusted": {
+    "message": "доверен"
+  },
+  "user": {
+    "message": "потребител"
+  },
+  "web_search": {
+    "message": "уеб търсене"
   }
 }

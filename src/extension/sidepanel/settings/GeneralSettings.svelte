@@ -5,7 +5,7 @@
   import { uiTheme, type UITheme } from '../stores/themeStore';
   import { showTokenUsage } from '../stores/tokenUsageStore';
   import Switch from '../components/common/Switch.svelte';
-  import { _t, getCurrentLocale, setLocale } from '../lib/i18n';
+  import { t, _t, getCurrentLocale, setLocale } from '../lib/i18n';
   import supportedLanguages from '../../../../_locales/supported_languages.json';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
   import { platform } from '../stores/platformStore';
@@ -89,7 +89,7 @@
       }, 3000);
     } catch (error) {
       console.error('[GeneralSettings] Failed to save preferences:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const errorMsg = error instanceof Error ? error.message : t('Unknown error');
       saveMessage = t('Failed to save settings') + `: ${errorMsg}`;
       saveMessageType = 'error';
 

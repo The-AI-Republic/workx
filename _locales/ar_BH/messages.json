@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "وكيل ذكاء اصطناعي عام داخل المتصفح لمهام العمل"
+  },
+  "1_API_Key": {
+    "message": "$1$ مفتاح API",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ مفتاح API تم إزالته بنجاح",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} مهمة(ات) فاتت وقتها المحدد بينما كان المتصفح مغلقًا."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - قد تقل الدقة)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(نشط)"
+  },
+  "multiple_files": {
+    "message": "(ملفات متعددة)"
+  },
+  "no_output": {
+    "message": "(بدون إخراج)"
+  },
+  "no_result": {
+    "message": "(بدون نتيجة)"
+  },
+  "patch_details": {
+    "message": "(تفاصيل التصحيح)"
+  },
+  "Enter_command": {
+    "message": ">> أدخل الأمر..."
+  },
+  "A2A_Agents": {
+    "message": "وكلاء A2A"
+  },
+  "API_Key": {
+    "message": "مفتاح API"
+  },
+  "API_Key_Configuration": {
+    "message": "تكوين مفتاح API"
+  },
+  "API_Version": {
+    "message": "إصدار API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "تحرير مفتاح API معطل في وضع الخلفية"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "مفتاح API للمصادقة (مخزن مشفرًا)"
+  },
+  "API_key_has_expired": {
+    "message": "انتهت صلاحية مفتاح API"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "مفتاح API لا يملك أذونات كافية"
+  },
+  "API_key_saved_successfully": {
+    "message": "تم حفظ مفتاح API بنجاح!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "يتم تشفير مفاتيح API وتخزينها محليًا في متصفحك. لا تُرسل هذه المفاتيح أبدًا إلى خوادم خارجية إلا عند إجراء استدعاءات API."
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "الوصول إلى تخزين المتصفح (localStorage، sessionStorage، cookies)"
   },
-  "Action": {
-    "message": "إجراء"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "تفاصيل الإجراء"
+    "message": "وضع موافقة الإجراء، النطاقات الموثوقة، إعدادات المخاطر"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "الجلسات النشطة"
   },
   "Add": {
-    "message": ""
+    "message": "إضافة"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "إضافة تعديل"
+  "Add_Agent": {
+    "message": "إضافة وكيل"
   },
   "Add_Server": {
-    "message": ""
+    "message": "إضافة خادم"
   },
   "Add_Task": {
-    "message": ""
+    "message": "إضافة مهمة"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "أضف خادمًا للاتصال بالأدوات الخارجية."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "أضف وكيلًا للاتصال بالمهارات الخارجية."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "نقاط ربط إضافية"
   },
   "Advanced_Configuration": {
     "message": "تكوين متقدم"
   },
-  "Advanced_Options": {
-    "message": "خيارات متقدمة"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "الإعدادات المتقدمة"
+  },
+  "Agent": {
+    "message": "وكيل"
   },
   "Agent_Execution_Tools": {
     "message": "أدوات تنفيذ المهام للوكيل"
   },
+  "Agent_Turn_Complete": {
+    "message": "انتهاء دور الوكيل"
+  },
+  "Agent_URL_is_required": {
+    "message": "عنوان URL للوكيل مطلوب"
+  },
+  "Agent_added_successfully": {
+    "message": "تم إضافة الوكيل بنجاح"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "يجب أن يحتوي اسم الوكيل على أحرف وأرقام وشرطات فقط"
+  },
+  "Agent_name_is_required": {
+    "message": "اسم الوكيل مطلوب"
+  },
+  "Agent_not_initialized": {
+    "message": "الوكيل غير مهيأ"
+  },
+  "Agent_removed_successfully": {
+    "message": "تم إزالة الوكيل بنجاح"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "اكتمل دور الوكيل بنجاح"
+  },
+  "Agent_updated_successfully": {
+    "message": "تم تحديث الوكيل بنجاح"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "جميع الإجراءات تُوافق تلقائيًا على هذه النطاقات."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "جميع الإجراءات تُرفض على هذه النطاقات."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "جميع الأوامر تُنفّذ داخل صندوق عزل أصلي لنظام التشغيل. الكتابة مقصورة على دليل مساحة العمل."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "السماح للوكيل بتنفيذ أوامر النظام (استخدم بحذر)"
@@ -57,58 +168,108 @@
     "message": "السماح للنصوص البرمجية للمحتوى بالتشغيل على صفحات الويب"
   },
   "Allowed": {
-    "message": ""
+    "message": "مسموح"
   },
   "Allowed_Origins": {
     "message": "النطاقات المسموح بها"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "أحرف أبجدية رقمية وشرطات فقط (1-50 حرفًا)"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "الموافقة دائمًا"
   },
-  "API_Key_Configuration": {
-    "message": "تكوين مفتاح API"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "يتم تشفير مفاتيح API وتخزينها محليًا في متصفحك. لا تُرسل هذه المفاتيح أبدًا إلى خوادم خارجية إلا عند إجراء استدعاءات API."
-  },
-  "Approval_History": {
-    "message": "سجل الموافقات"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: الذكاء الاصطناعي الشخصي الخاص بك (ألفا)"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "الموافقة والسلامة"
+  },
+  "Approval_Mode": {
+    "message": "وضع الموافقة"
+  },
+  "Approval_Required": {
+    "message": "الموافقة مطلوبة"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "الموافقة مطلوبة: تطبيق التصحيح"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "الموافقة مطلوبة: تنفيذ الأمر"
   },
   "Approve": {
     "message": "الموافقة"
   },
-  "Approve_this_action": {
-    "message": "الموافقة على هذا الإجراء"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "الموافقة على التغييرات في: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "الموافقة على التنفيذ: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "هل أنت متأكد أنك تريد إلغاء هذه المهمة؟"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "هل أنت متأكد أنك تريد إزالة هذا الوكيل؟"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "هل أنت متأكد أنك تريد إزالة مفتاح API الخاص بـ $1$؟",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "اطلب من Browserx استخراج بيانات مُهيكلة من أي صفحة ويب"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "اطلب للأعمال ذات المخاطر المتوسطة وما فوق (المخاطر > 30). يُنصح به لمعظم المستخدمين."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "اطلب فقط للأعمال ذات المخاطر العالية (المخاطر > 60). للمستخدمين ذوي الخبرة."
+  },
+  "Auth_Type": {
+    "message": "نوع المصادقة"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "بيانات اعتماد المصادقة (مخزنة مشفّرة)"
+  },
+  "Authentication_failed": {
+    "message": "فشل المصادقة"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "طريقة المصادقة للوكيل"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "تلقائي (افتراضي)"
+  },
+  "Auto_approve_everything": {
+    "message": "الموافقة التلقائية على كل شيء"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "الموافقة التلقائية على كل شيء. لا تزال قواعد الرفض سارية. استخدم على مسؤوليتك الخاصة."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "تمت الموافقة تلقائيًا -- تم الوصول إلى مهلة الانتظار"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "بدء التطبيق تلقائيًا عند تسجيل الدخول إلى جهاز الكمبيوتر"
+  },
+  "Available_Skills": {
+    "message": "المهارات المتاحة"
+  },
+  "Available_Tools": {
+    "message": "الأدوات المتاحة"
   },
   "Available": {
     "message": "متاح:"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "رجوع"
+  },
+  "Back_to_Model_Config": {
+    "message": "العودة إلى إعداد النموذج"
   },
   "Backend_Mode": {
     "message": "وضع الخلفية"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "وضع الخلفية مفعّل"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "الخلفية غير متاحة. يرجى الانتظار لحظة ثم المحاولة مرة أخرى."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "خطأ في خادم الخلفية - يرجى المحاولة لاحقًا"
+  },
+  "Backoff_Multiplier": {
+    "message": "معامل التراجع"
+  },
+  "Balanced": {
+    "message": "متوازن"
+  },
+  "Base_URL": {
+    "message": "عنوان URL الأساسي"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "لم يتم تكوين عنوان URL الأساسي لهذا الموفر"
+  },
+  "Bearer_Token": {
+    "message": "رمز الحامل"
+  },
   "Beta": {
     "message": "تجريبي"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "مفاتيح أتمتة المتصفح"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "يجب أن يكون مسار الربط مطلقًا"
+  },
+  "Blocked_Domains": {
+    "message": "النطاقات المحجوبة"
   },
   "Browser_Tools": {
     "message": "أدوات المتصفح"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "سلوك التخزين المؤقت واحتفاظ البيانات"
+  "Browser_automation_tool_toggles": {
+    "message": "مفاتيح أتمتة المتصفح"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (ألفا)"
+  },
+  "CWD": {
+    "message": "دليل العمل الحالي:"
   },
   "Cache_Settings": {
     "message": "إعدادات التخزين المؤقت"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "مدة التخزين المؤقت (ثوانٍ)"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "سلوك التخزين المؤقت واحتفاظ البيانات"
+  },
   "Cancel": {
     "message": "إلغاء"
   },
+  "Cancelled": {
+    "message": "تم الإلغاء"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "لا يمكن تنفيذ المهمة: لا يوجد مفتاح API مُكوّن لـ ${providerName}. يرجى الانتقال إلى الإعدادات → تكوين النموذج وإضافة مفتاح API الخاص بك."
+  },
+  "Cannot_select_model_1": {
+    "message": "لا يمكن اختيار النموذج: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "لا يمكن إرسال الرسالة: لا يوجد مفتاح API مُكوّن لـ $1$. يرجى النقر على زر الإعدادات وتكوين مفتاح API الخاص بك.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "القدرات"
+  },
   "Chat_History": {
     "message": "سجل الدردشة"
+  },
+  "Checking_agent_status": {
+    "message": "جارٍ فحص حالة الوكيل..."
   },
   "Choose_AI_Model": {
     "message": "اختر نموذج الذكاء الاصطناعي"
@@ -159,22 +387,37 @@
     "message": "انقر على أيقونة Browserx في شريط الأدوات أو اضغط Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "انقر لإلغاء تسجيل الدخول"
   },
   "Click_to_select_a_model": {
     "message": "انقر لتحديد نموذج"
   },
+  "Close": {
+    "message": "إغلاق"
+  },
   "Close_settings": {
     "message": "إغلاق الإعدادات"
+  },
+  "Collapse": {
+    "message": "طي"
+  },
+  "Command_Approval_Required": {
+    "message": "مطلوب موافقة على الأمر"
+  },
+  "Command_completed": {
+    "message": "اكتمل الأمر"
   },
   "Command": {
     "message": "أمر"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "تُنفّذ الأوامر مباشرة على المضيف. لا يزال مرشح الأمان ساريًا."
   },
   "Completed": {
-    "message": ""
+    "message": "اكتمل"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "اكتمل: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "ضغط البيانات المخزنة لتوفير مساحة التخزين"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "تكوين نموذج الذكاء الاصطناعي ومفاتيح API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "قم بتكوين مفتاح API في الإعدادات"
+  },
+  "Configured": {
+    "message": "مُكوّن"
+  },
+  "Configured_Agents": {
+    "message": "الوكلاء المُكوّنون"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "الخوادم المُكوّنة"
   },
   "Connect": {
-    "message": ""
+    "message": "الاتصال"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "الاتصال بوكلاء بروتوكول الوكيل إلى الوكيل (A2A) لتوسيع القدرات بمهارات الوكيل الخارجية."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "الاتصال بخوادم بروتوكول سياق النموذج (MCP) لتوسيع الوكيل بالأدوات الخارجية."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "الاتصال بوكيل A2A لاكتشاف المهارات."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "الاتصال بخادم MCP لاكتشاف الأدوات."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "الاتصال بخوادم أدوات MCP الخارجية"
   },
   "Connected": {
     "message": "متصل"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "تم الاتصال بنجاح"
   },
-  "Context": {
-    "message": "السياق"
+  "Connecting": {
+    "message": "جارٍ الاتصال..."
+  },
+  "Connection_error": {
+    "message": "خطأ في الاتصال"
+  },
+  "Connection_failed_1": {
+    "message": "فشل الاتصال: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "فشل الاتصال: لم يتم تكوين عنوان URL الأساسي"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "فشل الاتصال: تكوين النموذج المختار مفقود"
+  },
+  "Connection_successful": {
+    "message": "تم الاتصال بنجاح!"
+  },
+  "Connection_test_failed_1": {
+    "message": "فشل اختبار الاتصال: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "فشل اختبار الاتصال: مفتاح API غير صالح"
+  },
+  "Connection_test_successful": {
+    "message": "نجاح اختبار الاتصال!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "نجاح اختبار الاتصال! (مفتاح API صالح)"
+  },
+  "Connection_was_refused": {
+    "message": "تم رفض الاتصال"
+  },
+  "Connection_was_reset": {
+    "message": "تم إعادة ضبط الاتصال"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "المحتوى ينتهك السياسة: محتوى ${contentType} غير مسموح به"
+  },
+  "Context_Window": {
+    "message": "نافذة السياق"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "السياق مضغوط: تم توفير ~$1$k من الرموز",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "يتحكم في مدى إلحاح الوكيل عند طلب الموافقة."
   },
   "Create_New_Tab": {
     "message": "إنشاء علامة تبويب جديدة"
   },
   "Created": {
-    "message": ""
+    "message": "تم الإنشاء"
+  },
+  "Creator": {
+    "message": "المنشئ"
   },
   "Credit_Details": {
     "message": "تفاصيل الرصيد"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "الخطة الحالية:"
   },
-  "Active_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "فشل استعلام DNS"
+  },
+  "DOM_Tool": {
+    "message": "أداة DOM"
   },
   "Daily_Credits": {
     "message": "الأرصدة اليومية"
@@ -228,10 +552,34 @@
     "message": "أداة استخراج البيانات"
   },
   "Date": {
-    "message": ""
+    "message": "التاريخ"
   },
   "Days_until_expiration": {
     "message": "الأيام المتبقية حتى انتهاء الصلاحية"
+  },
+  "Debug_logging_disabled": {
+    "message": "تم تعطيل تسجيل التصحيح"
+  },
+  "Debug_logging_enabled": {
+    "message": "تم تمكين تسجيل التصحيح"
+  },
+  "Default": {
+    "message": "افتراضي"
+  },
+  "Deny": {
+    "message": "رفض"
+  },
+  "Deprecated": {
+    "message": "متقادم"
+  },
+  "Deprecation_Message": {
+    "message": "رسالة الإهمال"
+  },
+  "Description": {
+    "message": "الوصف"
+  },
+  "Desktop_mode": {
+    "message": "وضع سطح المكتب"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "تم تطويره ودعمه من قبل AI Republic"
@@ -240,37 +588,43 @@
     "message": "تجاهل التغييرات"
   },
   "Disconnect": {
-    "message": ""
+    "message": "قطع الاتصال"
+  },
+  "Disconnected_successfully": {
+    "message": "تم قطع الاتصال بنجاح"
   },
   "Dismiss": {
-    "message": ""
+    "message": "تجاهل"
+  },
+  "Dismiss_notification": {
+    "message": "تجاهل الإشعار"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "عرض استهلاك الرموز (الرموز المدخلة/المخرجة) عند إكمال المهام"
   },
-  "DOM_Tool": {
-    "message": "أداة DOM"
+  "Draft": {
+    "message": "مسودة"
   },
   "Duration": {
-    "message": ""
+    "message": "المدة"
+  },
+  "ERROR": {
+    "message": "خطأ"
   },
   "Edit": {
-    "message": ""
+    "message": "تحرير"
+  },
+  "Edit_Agent": {
+    "message": "تحرير الوكيل"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "تحرير الخادم"
   },
   "Enable_All_Tools": {
     "message": "تمكين جميع الأدوات"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "تمكين التخزين المؤقت"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "تمكين التخزين المؤقت لتحسين الأداء عن طريق تخزين البيانات التي يتم الوصول إليها بشكل متكرر"
   },
   "Enable_Compression": {
     "message": "تمكين الضغط"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "تمكين سكريبتات المحتوى"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "تمكين الامتداد"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "تمكين أدوات بروتوكول سياق النموذج من الخوادم المتصلة بـ MCP"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "تمكين الاتصال التلقائي عند بدء تشغيل browserx"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "تمكين التخزين المؤقت لتحسين الأداء عن طريق تخزين البيانات التي يتم الوصول إليها بشكل متكرر"
+  },
+  "Enable_debug_logging": {
+    "message": "تمكين تسجيل التصحيح"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "تمكين قدرات البحث على الويب للوكيل"
   },
   "Enabled": {
-    "message": ""
+    "message": "مفعل"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "أدخل مفتاح API إذا لزم الأمر"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "أدخل مفتاح API أو رمز الحامل"
   },
   "Enter_your_LLM_API_key": {
     "message": "أدخل مفتاح API الخاص بـ LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "أدخل مهمتك..."
   },
   "Error": {
-    "message": ""
+    "message": "خطأ"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "خطأ: غير متصل بالوكيل. يرجى تحديث الصفحة."
   },
   "Execute_Commands": {
     "message": "تنفيذ الأوامر"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "وضع التنفيذ"
+  },
+  "Exit_Code": {
+    "message": "رمز الخروج:"
+  },
+  "Expand": {
+    "message": "توسيع"
   },
   "Expire_after_days": {
     "message": "انتهاء الصلاحية بعد أيام"
   },
-  "Explain_your_decision": {
-    "message": "اشرح قرارك..."
+  "Explain_this_info_selectionText": {
+    "message": "اشرح هذا: ${info.selectionText}"
   },
-  "Extension_Configuration": {
-    "message": "تكوين الامتداد"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "تكوين الامتداد والأذونات"
-  },
-  "extension_description": {
-    "message": "وكيل ذكاء اصطناعي عام داخل المتصفح لمهام العمل"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "اشرح باستخدام Browserx"
   },
   "Extension_Permission": {
     "message": "الامتداد والإذن"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "إعدادات الامتداد والأذونات"
   },
+  "Extension_Configuration": {
+    "message": "تكوين الامتداد"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "تكوين الامتداد والأذونات"
+  },
   "Extra_Credits": {
     "message": "رصيد إضافي"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "دليل إضافي يمكن الوصول إليه داخل الحاوية"
   },
   "Extract_Data": {
     "message": "استخراج البيانات:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "استخراج البيانات باستخدام Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "استخراج أنماط بيانات محددة من الصفحات"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "استخراج البيانات المهيكلة من هذه الصفحة"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "استخراج بيانات منظمة من صفحات الويب"
   },
+  "Failed": {
+    "message": "فشل"
+  },
+  "Failed_to_change_model_1": {
+    "message": "فشل في تغيير النموذج: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "فشل في الاتصال: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "فشل في إنشاء علامة تبويب جديدة. يرجى المحاولة مرة أخرى."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "فشل في إنشاء علامة تبويب المتصفح: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "فشل في قطع الاتصال: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "فشل في تحميل إعدادات A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "فشل في تحميل المحادثة. يرجى المحاولة مرة أخرى."
+  },
   "Failed_to_load_preferences": {
     "message": "فشل في تحميل التفضيلات"
+  },
+  "Failed_to_load_settings": {
+    "message": "فشل في تحميل الإعدادات"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "فشل في إزالة مفتاح API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "فشل في إزالة الوكيل: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "فشل في حفظ مفتاح API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "فشل في حفظ إعداد تسجيل التصحيح: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "فشل في حفظ الإعدادات"
   },
+  "Failed_to_save_settings_1": {
+    "message": "فشل في حفظ الإعدادات: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "فشل في الحفظ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "فشل في إرسال الرسالة. يرجى المحاولة مرة أخرى."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "فشل في بدء محادثة جديدة. يرجى المحاولة مرة أخرى."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "فشل في إيقاف المهمة. يرجى المحاولة مرة أخرى."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "فشل في التبديل إلى علامة تبويب ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "فشل في اختبار الاتصال"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "فشل في تحديث وضع API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "فشل في تحديث مستوى الخدمة: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "مطلوب موافقة على تغيير الملف"
+  },
   "File_Operations_Not_Available": {
     "message": "عمليات الملفات (غير متاحة)"
   },
-  "File_Path": {
-    "message": "مسار الملف"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ملء النماذج، إرسال البيانات، التفاعل مع عناصر النموذج"
+  },
+  "Flex": {
+    "message": "مرن"
   },
   "Form_Automation_Tool": {
     "message": "أداة أتمتة النماذج"
@@ -372,16 +856,16 @@
     "message": "وصول كامل (خطير)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "الإدخال الكامل"
   },
   "General": {
     "message": "عام"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "الإعدادات العامة"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "ابدأ"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "مرحبًا بالعالم"
   },
-  "History": {
-    "message": "السجل"
+  "Hide_API_key": {
+    "message": "إخفاء مفتاح API"
+  },
+  "High_Speed": {
+    "message": "سرعة عالية"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "كيفية ربط دليل مساحة العمل في الصندوق الرملي"
   },
-  "Impact": {
-    "message": "التأثير"
+  "Image_Input": {
+    "message": "إدخال صورة"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "تحسين هذا النص: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "تحسين باستخدام Browserx"
+  },
+  "In": {
+    "message": "في:"
+  },
+  "Incompatible_features": {
+    "message": "ميزات غير متوافقة:"
+  },
+  "Initial_Delay": {
+    "message": "التأخير الأولي"
+  },
+  "Input_Token_Price": {
+    "message": "سعر رمز الإدخال"
+  },
+  "Input": {
+    "message": "الإدخال:"
+  },
+  "Input_1": {
+    "message": "الإدخال: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "اعتراض وتعديل طلبات/استجابات الشبكة"
   },
+  "Invalid_API_key": {
+    "message": "مفتاح API غير صالح"
+  },
+  "Invalid_API_key_provided": {
+    "message": "تم توفير مفتاح API غير صالح"
+  },
+  "Invalid_URL_format": {
+    "message": "تنسيق URL غير صالح"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "تنسيق الإرسال غير صالح: حقل op مفقود"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "تنسيق الإرسال غير صالح: op يفتقد حقل type"
+  },
   "Keyboard_Shortcuts": {
     "message": "اختصارات لوحة المفاتيح"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "طلبات LLM تذهب مباشرة إلى APIs المزود"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "طلبات LLM تمر عبر الخادم الخلفي لـ AI Republic"
   },
   "Language": {
     "message": "اللغة"
@@ -419,37 +956,52 @@
     "message": "اعرف المزيد"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "اتركه فارغًا للاحتفاظ بالقيمة الحالية"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "قائمة المصادر المسموح بها (مصدر واحد في كل سطر). يدعم الأحرف العامة (*)"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "طلبات LLM تذهب مباشرة إلى APIs المزود"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "طلبات LLM تمر عبر الخادم الخلفي لـ AI Republic"
-  },
   "Load_More": {
-    "message": ""
+    "message": "تحميل المزيد"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "تحميل المزيد"
+  },
+  "Loading_configuration": {
+    "message": "جارٍ تحميل التكوين..."
   },
   "Loading_credits": {
     "message": "جارٍ تحميل الرصيد..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "جارٍ تحميل التفاصيل..."
+  },
+  "Loading_history": {
+    "message": "جارٍ تحميل السجل..."
   },
   "Loading_settings": {
     "message": "جارٍ تحميل الإعدادات..."
   },
+  "Loading_tabs": {
+    "message": "جارٍ تحميل الألسنة..."
+  },
+  "Loading": {
+    "message": "جارٍ التحميل..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "سجّل رسائل بروتوكول A2A إلى وحدة تحكم المتصفح للتصحيح"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "سجّل رسائل بروتوكول MCP إلى وحدة تحكم المتصفح للتصحيح"
+  },
+  "Log_in_to_your_account": {
+    "message": "سجّل الدخول إلى حسابك"
+  },
+  "Logged_in": {
+    "message": "تم تسجيل الدخول"
   },
   "Logging_in": {
-    "message": ""
+    "message": "جارٍ تسجيل الدخول..."
   },
   "Login": {
     "message": "تسجيل الدخول"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "سجّل الدخول للحصول على رصيد مجاني"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "اضغط مطولًا لجدولة المهمة"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "اضغط مطولًا على زر الإرسال لجدولة مهمة"
   },
   "Low_credits_remaining": {
     "message": "الرصيد المتبقي منخفض"
+  },
+  "MCP_Servers": {
+    "message": "خوادم MCP"
+  },
+  "MCP_Tools": {
+    "message": "أدوات MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "إدارة علامات تبويب المتصفح (فتح، إغلاق، تبديل، استعلام)"
@@ -479,40 +1037,102 @@
     "message": "الحد الأقصى لحجم الذاكرة المؤقتة (ميغابايت)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "الحد الأقصى للجلسات المتزامنة"
+  },
+  "Max_Delay": {
+    "message": "الحد الأقصى للتأخير"
+  },
+  "Max_Output": {
+    "message": "الحد الأقصى للإخراج"
+  },
+  "Max_Output_Tokens": {
+    "message": "الحد الأقصى لرموز الإخراج"
+  },
+  "Max_Retries": {
+    "message": "الحد الأقصى للمحاولات"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "الحد الأقصى لحجم الذاكرة المؤقتة بالميغابايت (الإعداد الافتراضي: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "الحد الأقصى لعدد جلسات الوكيل المتوازية، بما في ذلك المهام المجدولة"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "تم الوصول إلى الحد الأقصى لعدد الوكلاء (5)"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "تم الوصول إلى الحد الأقصى لعدد الخوادم (5)"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "الحد الأقصى للوقت (بالمليثانية) الذي يمكن للأداة أن تعمل قبل انتهاء المهلة (الإعداد الافتراضي: 30000)"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "متوسط المخاطر وما فوق"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "خدمة الرسائل غير متاحة"
   },
   "Missed": {
-    "message": ""
+    "message": "مُفوّت"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "المهام المجدولة الفائتة"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "النموذج \"$1$\" لا يدعم إدخال الصور. سيتم تعطيل بعض الأدوات.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "إعداد النموذج"
   },
+  "Model_Configuration": {
+    "message": "إعدادات النموذج"
+  },
+  "Model_Key_API": {
+    "message": "مفتاح النموذج (API)"
+  },
+  "Model_Name": {
+    "message": "اسم النموذج"
+  },
   "Model_Selection": {
     "message": "اختيار النموذج"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "تم تحميل إعدادات النموذج والمزود من التكوين الافتراضي (للقراءة فقط)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "تم تغيير النموذج إلى $1$. يرجى إعداد مفتاح API الخاص بك.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "تم تغيير النموذج إلى $1$. سيتم إعادة تهيئة الجلسة.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "النموذج:"
+  },
+  "Model_1": {
+    "message": "النموذج: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "الدردشة الحديثة"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "تعديل المعلمات عند طلب التغييرات"
   },
   "Monthly_Credits": {
     "message": "الرصيد الشهري"
@@ -521,7 +1141,7 @@
     "message": "مزيد من الإعدادات"
   },
   "Name": {
-    "message": ""
+    "message": "الاسم"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "تصفح الصفحات، والنقر على الروابط، والتحكم في تنقل المتصفح"
@@ -530,10 +1150,16 @@
     "message": "أداة التنقل"
   },
   "Network_Access": {
-    "message": ""
+    "message": "الوصول إلى الشبكة"
   },
   "Network_Intercept_Tool": {
     "message": "أداة اعتراض الشبكة"
+  },
+  "Network_error": {
+    "message": "خطأ في الشبكة"
+  },
+  "Network_error_occurred": {
+    "message": "حدث خطأ في الشبكة"
   },
   "Never_expire_permanent": {
     "message": "لا ينتهي أبداً (دائم)"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "محادثة جديدة"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "لم يتم تكوين أي وكلاء A2A بعد."
+  },
   "No_Access": {
-    "message": ""
+    "message": "لا يوجد وصول"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "لا توجد سجلات موافقة بعد."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "لم يتم تكوين وصول"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "لم يتم تكوين أي خوادم MCP بعد."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "لم يتم تكوين وصول. يرجى تسجيل الدخول أو تكوين مفتاح API."
+  },
+  "No_active_sessions": {
+    "message": "لا توجد جلسات نشطة"
+  },
+  "No_chat_history_yet": {
+    "message": "لا توجد سجل محادثات بعد"
+  },
+  "No_completed_tasks_yet": {
+    "message": "لا توجد مهام مكتملة بعد"
+  },
+  "No_models_available": {
+    "message": "لا توجد نماذج متاحة"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "لا توجد نماذج متاحة. يرجى التحقق من الإعدادات."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "لا توجد مهام مجدولة"
+  },
+  "No_scheduled_time": {
+    "message": "لا يوجد وقت مجدول"
+  },
+  "No_skills_available": {
+    "message": "لا توجد مهارات متاحة."
+  },
+  "No_steps_in_plan": {
+    "message": "لا توجد خطوات في الخطة"
   },
   "No_tabs_available": {
     "message": "لا توجد علامات تبويب متاحة"
   },
+  "No_time_set": {
+    "message": "لم يتم تحديد الوقت"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "لا توجد أدوات متاحة."
+  },
+  "None": {
+    "message": "لا شيء"
   },
   "Not_Connected": {
     "message": "غير متصل"
+  },
+  "Notification": {
+    "message": "إشعار"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "عدد الأيام قبل انتهاء صلاحية بيانات النشر (الافتراضي: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "غير متصل - ستُنفَّذ المهام عند الاتصال"
+  },
+  "Older": {
+    "message": "أقدم"
+  },
+  "Only_high_risk_actions": {
+    "message": "الإجراءات ذات المخاطر العالية فقط"
+  },
+  "Open_1_settings": {
+    "message": "فتح إعدادات $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "فتح اللوحة الجانبية:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "المؤسسة"
+  },
+  "Organization_ID": {
+    "message": "معرّف المؤسسة"
+  },
+  "Out": {
+    "message": "خارج:"
+  },
+  "Output_Token_Price": {
+    "message": "سعر رمز الإخراج"
+  },
+  "Output": {
+    "message": "الإخراج:"
+  },
+  "Output_1": {
+    "message": "الإخراج: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "أداة إجراءات الصفحة"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "أداة رؤية الصفحة"
   },
-  "Parameter_Modifications": {
-    "message": "تعديلات Parameter"
+  "Past_Month": {
+    "message": "الشهر الماضي"
+  },
+  "Past_Week": {
+    "message": "الأسبوع الماضي"
+  },
+  "Patch_applied_successfully": {
+    "message": "تم تطبيق التصحيح بنجاح"
+  },
+  "Patch_for_1_file_s": {
+    "message": "تصحيح لـ $1$ ملف(ات)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "إيقاف مؤقت للصف"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "تنفيذ إجراءات الصفحة (تمرير، لقطة شاشة، انتظار)"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "حفظ الذاكرة المؤقتة إلى التخزين"
   },
+  "Plan_1_step_s": {
+    "message": "الخطة: $1$ خطوة(خطوات)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "يرجى التحقق من مفتاح API الخاص بك في الإعدادات."
+  },
+  "Please_enter_a_task_description": {
+    "message": "الرجاء إدخال وصف المهمة"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "الرجاء إدخال مفتاح API أولاً"
+  },
   "Please_input_a_valid_API_key": {
     "message": "الرجاء إدخال مفتاح API صالح."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "الرجاء تسجيل الدخول مرة أخرى لمواصلة استخدام وكيل الذكاء الاصطناعي."
+  },
+  "Please_select_a_provider": {
+    "message": "الرجاء اختيار مزود"
   },
   "Please_type_a_valid_command": {
     "message": "الرجاء كتابة أمر صالح"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "الرجاء ترقية الخطة لإلغاء حظر أكثر النماذج تقدمًا في العالم"
+  },
   "Power": {
-    "message": ""
+    "message": "القوة"
+  },
+  "Pricing_Information": {
+    "message": "معلومات التسعير"
+  },
+  "Pricing_Page": {
+    "message": "صفحة التسعير"
+  },
+  "Priority": {
+    "message": "الأولوية"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "الفئة ذات الأولوية توفر أوقات استجابة أسرع مع أسعار أعلى."
   },
+  "Processing": {
+    "message": "جارٍ المعالجة..."
+  },
+  "Protocol": {
+    "message": "البروتوكول"
+  },
   "Provider": {
     "message": "المزود"
+  },
+  "Provider_Configuration": {
+    "message": "إعدادات المزود"
+  },
+  "Provider_ID": {
+    "message": "معرّف المزود"
+  },
+  "Provider_Name": {
+    "message": "اسم المزود"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "استعلام وتعديل DOM"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "تم إيقاف الطابور"
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "إجراء سريع"
+    "message": "في الطابور"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "جدولة سريعة"
   },
   "Quick_Start": {
     "message": "بدء سريع"
   },
+  "Quick_action": {
+    "message": "إجراء سريع"
+  },
+  "Read_Only": {
+    "message": "للقراءة فقط"
+  },
+  "Read_Write": {
+    "message": "قراءة وكتابة"
+  },
   "Read_only": {
     "message": "للقراءة فقط"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "الاستدلال"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "جهود الاستدلال"
   },
-  "Reason_optional": {
-    "message": "السبب (اختياري)"
+  "Reasoning_Summaries": {
+    "message": "ملخصات الاستدلال"
+  },
+  "Reasoning_levels": {
+    "message": "مستويات الاستدلال:"
+  },
+  "Reasoning_1": {
+    "message": "الاستدلال: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "تحديث خلال"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "رفض"
   },
-  "Reject_this_action": {
-    "message": "رفض هذا الإجراء"
+  "Release_Date": {
+    "message": "تاريخ الإصدار"
+  },
+  "Release_date_unknown": {
+    "message": "تاريخ الإصدار غير معروف"
+  },
+  "Released": {
+    "message": "تم الإصدار:"
   },
   "Remaining": {
     "message": "المتبقي:"
   },
   "Remove": {
-    "message": ""
+    "message": "إزالة"
   },
   "Remove_API_Key": {
     "message": "إزالة مفتاح API"
   },
-  "Remove_modification": {
-    "message": "إزالة التعديل"
+  "Request_Timeout": {
+    "message": "انتهاء مهلة الطلب"
   },
-  "Request_Changes": {
-    "message": "طلب تغييرات"
-  },
-  "Request_changes_to_this_action": {
-    "message": "طلب تغييرات لهذا الإجراء"
+  "Request_timed_out": {
+    "message": "انتهت مهلة الطلب"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "مهلة الطلب بالمللي ثانية (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "مهلة الطلب بالمللي ثانية (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "تم إلغاء الطلب"
+  },
+  "Response_failed": {
+    "message": "فشل الاستجابة"
   },
   "Restricted": {
-    "message": ""
+    "message": "مقيد"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "ملخص النتيجة"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "استئناف الطابور"
+  },
+  "Retry_Configuration": {
+    "message": "إعدادات إعادة المحاولة"
+  },
+  "Retrying": {
+    "message": "إعادة المحاولة"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "انقر بزر الفأرة الأيمن على أي نص لتوضيحه أو تحسينه باستخدام Browserx"
+  },
+  "Risk_Score": {
+    "message": "درجة المخاطرة:"
   },
   "Rollout_Expiration": {
     "message": "انتهاء صلاحية النشر"
   },
   "Run_Now": {
-    "message": ""
+    "message": "تشغيل الآن"
   },
   "Running": {
-    "message": ""
+    "message": "قيد التشغيل"
+  },
+  "STREAM_ERROR": {
+    "message": "خطأ البث"
   },
   "Safe": {
-    "message": ""
+    "message": "آمن"
   },
   "Sandbox_Policy": {
     "message": "سياسة Sandbox"
   },
   "Save_API_Key": {
     "message": "حفظ مفتاح API"
+  },
+  "Save_Changes": {
+    "message": "حفظ التغييرات"
   },
   "Save_Settings": {
     "message": "حفظ الإعدادات"
@@ -713,25 +1511,48 @@
     "message": "جارٍ الحفظ..."
   },
   "Schedule": {
-    "message": ""
+    "message": "جدولة"
   },
   "Schedule_A_New_Task": {
-    "message": ""
+    "message": "جدولة مهمة جديدة"
   },
   "Scheduled": {
-    "message": ""
+    "message": "مجدول"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "مهمة مجدولة"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "بدء المهمة المجدولة"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "المهام المجدولة"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "يجب أن يكون الوقت المجدول على الأقل دقيقة واحدة في المستقبل"
+  },
+  "Search_complete": {
+    "message": "اكتمل البحث"
+  },
+  "Searching": {
+    "message": "جارٍ البحث..."
+  },
+  "Security_Privacy": {
+    "message": "الأمان والخصوصية"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "مستوى الأمان لبيئة تنفيذ الأدوات"
   },
-  "Security_Privacy": {
-    "message": "الأمان والخصوصية"
+  "Select_Model": {
+    "message": "اختر النموذج"
+  },
+  "Select_model_1": {
+    "message": "اختر النموذج: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "اختر نموذج AI لاستخدامه في المحادثات."
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "اختر لغتك المفضلة للواجهة"
   },
+  "Selected": {
+    "message": "محدد"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "تكوين النموذج المحدد مفقود"
+  },
+  "Send": {
+    "message": "إرسال"
+  },
   "Service_Tier": {
     "message": "فئة الخدمة"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "الجلسة"
+  "Service_tier_updated_to_1": {
+    "message": "تم تحديث مستوى الخدمة إلى $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "خطأ الجلسة"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى لمتابعة استخدام وكيل الذكاء الاصطناعي"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "تم الوصول إلى حد الجلسة. سيتم وضع المهام الجديدة في قائمة الانتظار."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "حدد متى يجب أن تنتهي صلاحية بيانات النشر"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "تم حفظ الإعدادات بنجاح"
   },
+  "Show_API_key": {
+    "message": "إظهار مفتاح API"
+  },
+  "Show_all": {
+    "message": "إظهار الكل"
+  },
+  "Show_less": {
+    "message": "إظهار أقل"
+  },
   "Show_token_usage_in_tasks": {
     "message": "عرض استخدام الرموز في المهام"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "سجّل الدخول إلى حسابك"
   },
+  "Skills": {
+    "message": "المهارات"
+  },
   "Stable": {
     "message": "مستقر"
   },
+  "Standard_capabilities": {
+    "message": "القدرات القياسية"
+  },
+  "Start_New_Conversation": {
+    "message": "بدء محادثة جديدة"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "البدء عند تسجيل الدخول"
   },
   "Status": {
-    "message": ""
+    "message": "الحالة"
+  },
+  "Stop_Agent": {
+    "message": "إيقاف الوكيل"
+  },
+  "Stop_the_current_task": {
+    "message": "إيقاف المهمة الحالية"
   },
   "Stop_the_current_task_run": {
     "message": "إيقاف تشغيل المهمة الحالية"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "تخزين بيانات الذاكرة المؤقتة بشكل دائم عبر جلسات المتصفح"
   },
+  "Suggest_Alternative": {
+    "message": "اقتراح بديل"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "تم التحويل إلى وضع الخلفية. سيتم توجيه طلبات LLM عبر خادم AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "تم التحويل إلى وضع API المباشر. يرجى تكوين مفتاح API الخاص بك."
+  },
+  "System": {
+    "message": "النظام"
+  },
   "Tab_Tool": {
     "message": "أداة التبويب"
   },
+  "Tab_unavailable": {
+    "message": "التبويب غير متاح"
+  },
+  "Take_Over": {
+    "message": "تولي"
+  },
   "Task": {
-    "message": ""
+    "message": "المهمة"
   },
   "Task_Details": {
-    "message": ""
+    "message": "تفاصيل المهمة"
+  },
+  "Task_Failed": {
+    "message": "فشل المهمة"
   },
   "Task_History": {
-    "message": ""
+    "message": "سجل المهمة"
   },
   "Task_ID": {
-    "message": ""
+    "message": "معرّف المهمة"
+  },
+  "Task_Plan": {
+    "message": "خطة المهمة"
+  },
+  "Task_cancelled_by_user": {
+    "message": "تم إلغاء المهمة من قبل المستخدم"
+  },
+  "Task_complete": {
+    "message": "اكتملت المهمة"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "اكتملت المهمة في $1$ دورة",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "فشلت المهمة"
+  },
+  "Task_started": {
+    "message": "بدأت المهمة"
   },
   "Terminal": {
     "message": "المحطة الطرفية"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "صندوق الرمل الطرفي"
   },
   "Test_Connection": {
     "message": "اختبار الاتصال"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "جارٍ الاختبار..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "عنوان URL لنقطة نهاية وكيل A2A (http أو https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "يقرر الذكاء الاصطناعي لكل أمر ما إذا كان سيستخدم صندوق الرمل بناءً على تقييم المخاطر."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "عنوان URL لنقطة نهاية خادم MCP (http أو https)"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "الوكيل يستخدم حاليًا وضع الخلفية. سيتم توجيه طلبات LLM عبر خادم AI Republic. تُعالج محادثاتك بأمان عبر بنيتنا التحتية."
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "تبديل النموذج سيؤدي إلى مسح المحادثة الحالية. هل تريد المتابعة؟"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "واجه الخادم خطأ. يرجى المحاولة مرة أخرى لاحقًا."
   },
   "Time": {
     "message": "الوقت"
-  },
-  "Time_remaining": {
-    "message": "الوقت المتبقي"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "مدة الصلاحية للعناصر المخزنة مؤقتًا بالثواني (الافتراضي: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "مهلة (مللي ثانية)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "لاستخدام وكيل الذكاء الاصطناعي، يرجى إما:"
+  },
+  "Today": {
+    "message": "اليوم"
   },
   "Toggle_side_panel": {
     "message": "تبديل اللوحة الجانبية"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "تبديل استخدام مفتاح API الخاص"
   },
-  "Tool": {
-    "message": "أداة"
+  "Token_Usage": {
+    "message": "استخدام الرموز"
+  },
+  "Tokens": {
+    "message": "الرموز:"
+  },
+  "Tokens_1": {
+    "message": "الرموز: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "مهلة الأداة (مللي ثانية)"
+  },
+  "Tool_name": {
+    "message": "اسم الأداة:"
+  },
+  "Tool": {
+    "message": "أداة"
   },
   "Tools": {
     "message": "الأدوات"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "إعدادات الأدوات"
   },
-  "Turn": {
-    "message": "دورة"
+  "Trusted": {
+    "message": "موثوق"
+  },
+  "Trusted_Domains": {
+    "message": "النطاقات الموثوقة"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "يتم الموافقة تلقائيًا على الوكلاء الموثوقين لاستدعاءات المهارات"
+  },
+  "Turns": {
+    "message": "الأدوار:"
+  },
+  "Type_alternative_instructions": {
+    "message": "اكتب تعليمات بديلة..."
   },
   "UI_Theme": {
     "message": "سمة واجهة المستخدم"
   },
+  "URL": {
+    "message": "URL"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "يجب أن يستخدم عنوان URL بروتوكول http أو https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "غير قادر على فحص حالة الوكيل"
+  },
   "Unable_to_load_credit_information": {
     "message": "تعذر تحميل معلومات الرصيد"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "غير قادر على الوصول إلى خادم الخلفية - يرجى التحقق من اتصالك"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "غير قادر على الوصول إلى الخادم. يرجى التحقق من اتصالك وإعادة المحاولة."
+  },
+  "Unknown_Event": {
+    "message": "حدث غير معروف"
+  },
+  "Unknown_error": {
+    "message": "خطأ غير معروف"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "خطأ غير معروف أثناء فحص حالة الوكيل"
+  },
+  "Unknown_error_occurred": {
+    "message": "حدث خطأ غير معروف"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "حدث خطأ غير معروف أثناء تنفيذ المهمة"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "خطأ غير معروف أثناء معالجة الإرسال"
+  },
+  "Unknown_model_1": {
+    "message": "نموذج غير معروف ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "تغييرات غير محفوظة"
   },
+  "Untitled": {
+    "message": "بدون عنوان"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "القادمة"
   },
   "Update": {
-    "message": ""
+    "message": "تحديث"
   },
   "Update_Channel": {
     "message": "قناة التحديث"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "الترقية إلى النسخة المميزة"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "قم بالترقية لاستكشاف أقوى النماذج في العالم"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "قم بترقية اشتراكك لاستكشاف أقوى النماذج في العالم"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Use_Context_Menu": {
     "message": "استخدام قائمة السياق"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "استخدام مفتاح API الخاص"
   },
-  "User_approved_action": {
-    "message": "إجراء موافق عليه من المستخدم"
-  },
   "User_Center": {
     "message": "مركز المستخدم"
   },
-  "User_decision": {
-    "message": "قرار المستخدم"
+  "User_Session": {
+    "message": "جلسة المستخدم"
   },
   "User_preferences_and_interface_settings": {
     "message": "تفضيلات المستخدم وإعدادات الواجهة"
   },
-  "User_rejected_action": {
-    "message": "إجراء مرفوض من المستخدم"
-  },
-  "User_requested_modifications": {
-    "message": "تعديلات طلبها المستخدم"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "استخدام أرصدة إضافية"
+  },
+  "Verbosity": {
+    "message": "الإسهاب"
+  },
+  "Verbosity_Control": {
+    "message": "التحكم في الإسهاب"
+  },
+  "Verbosity_Levels": {
+    "message": "مستويات الإسهاب"
+  },
+  "Verbosity_levels": {
+    "message": "مستويات الإسهاب:"
+  },
+  "Version": {
+    "message": "الإصدار"
   },
   "View_Chat_History": {
     "message": "عرض سجل الدردشة"
   },
   "View_History": {
-    "message": ""
+    "message": "عرض السجل"
   },
   "View_Session": {
-    "message": ""
+    "message": "عرض الجلسة"
+  },
+  "View_pricing_details": {
+    "message": "عرض تفاصيل التسعير"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "تحليل بصري لمحتوى الصفحة وتخطيطها"
+  },
+  "Waiting_for_approval": {
+    "message": "في انتظار الموافقة"
   },
   "Web_Scraping_Tool": {
     "message": "أداة استخراج الويب"
@@ -956,13 +1950,22 @@
     "message": "مرحبًا بك في Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "ما إذا كانت الأوامر المعزولة يمكنها الوصول إلى الشبكة"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "الوصول إلى مساحة العمل"
   },
   "Workspace_Write": {
     "message": "كتابة مساحة العمل"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "أمس"
+  },
+  "You": {
+    "message": "أنت"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "لديك تغييرات غير محفوظة. هل تريد تجاهلها؟"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "مفتاح API الخاص بك مشفر"
   },
-  "Your_Decision": {
-    "message": "قرارك"
+  "Your_personal_AI_assistant": {
+    "message": "مساعدك الشخصي للذكاء الاصطناعي"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى."
+  },
+  "DISCONNECTED": {
+    "message": "[مفصول]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[خطأ: تم قطع البث]"
+  },
+  "NO_ACCESS": {
+    "message": "[لا وصول]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[لا مفتاح API - انقر الإعدادات]"
+  },
+  "PROCESSING": {
+    "message": "[قيد المعالجة]"
+  },
+  "available": {
+    "message": "متاح"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "مخزن مؤقتًا"
+  },
+  "detailed_thinking": {
+    "message": "تفكير مفصل"
+  },
+  "disconnected": {
+    "message": "مفصول"
+  },
+  "exec_unknown_command": {
+    "message": "exec (أمر غير معروف)"
+  },
+  "optional": {
+    "message": "اختياري"
+  },
+  "remaining": {
+    "message": "متبقي"
+  },
+  "session": {
+    "message": "جلسة"
+  },
+  "sessions": {
+    "message": "جلسات"
+  },
+  "streaming": {
+    "message": "جارٍ البث..."
+  },
+  "thinking": {
+    "message": "يفكر"
+  },
+  "tokens": {
+    "message": "رموز"
+  },
+  "trusted": {
+    "message": "موثوق"
+  },
+  "user": {
+    "message": "المستخدم"
+  },
+  "web_search": {
+    "message": "بحث الويب"
   }
 }

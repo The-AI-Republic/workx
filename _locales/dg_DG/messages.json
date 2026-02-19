@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "much general in-browser AI agent for work tasks wow"
+  },
+  "1_API_Key": {
+    "message": "$1$ much API Key wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API key removed very successfully wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} such task(s) missed their scheduled time while the browser was closed wow"
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - accuracy may be reduced wow)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(very active wow)"
+  },
+  "multiple_files": {
+    "message": "(such multiple files wow)"
+  },
+  "no_output": {
+    "message": "(no output wow)"
+  },
+  "no_result": {
+    "message": "(no result wow)"
+  },
+  "patch_details": {
+    "message": "(such patch details wow)"
+  },
+  "Enter_command": {
+    "message": ">> much Enter command wow..."
+  },
+  "A2A_Agents": {
+    "message": "much A2A Agents wow"
+  },
+  "API_Key": {
+    "message": "much API Key wow"
+  },
+  "API_Key_Configuration": {
+    "message": "much API key configuration wow"
+  },
+  "API_Version": {
+    "message": "much API Version wow"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "API key editing is disabled in backend mode wow"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "API key for authentication (stored encrypted wow)"
+  },
+  "API_key_has_expired": {
+    "message": "API key has expired wow"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API key has insufficient permissions wow"
+  },
+  "API_key_saved_successfully": {
+    "message": "API key saved very successfully wow!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "much API keys encrypted and stored locally in browser. never sent to external servers except for API calls wow"
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "much access browser storage (localStorage, sessionStorage, cookies) wow"
   },
-  "Action": {
-    "message": "much action wow"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "much action details wow"
+    "message": "much Action approval mode, trusted domains, risk settings wow"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "very Active Sessions wow"
   },
   "Add": {
-    "message": ""
+    "message": "Add wow"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "much add modification wow"
+  "Add_Agent": {
+    "message": "Add such agent wow"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Add such server wow"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Add much task wow"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "Add such server to connect to external tools wow."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Add such agent to connect to external skills wow."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Additional such bind mounts wow"
   },
   "Advanced_Configuration": {
     "message": "much advanced configuration wow"
   },
-  "Advanced_Options": {
-    "message": "much advanced options wow"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Advanced such settings wow"
+  },
+  "Agent": {
+    "message": "Agent wow"
   },
   "Agent_Execution_Tools": {
     "message": "much agent execution tools wow"
   },
+  "Agent_Turn_Complete": {
+    "message": "Agent turn complete wow"
+  },
+  "Agent_URL_is_required": {
+    "message": "Agent URL is required wow"
+  },
+  "Agent_added_successfully": {
+    "message": "Agent added successfully wow"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Agent name can only contain letters, numbers, and hyphens wow"
+  },
+  "Agent_name_is_required": {
+    "message": "Agent name is required wow"
+  },
+  "Agent_not_initialized": {
+    "message": "Agent not initialized wow"
+  },
+  "Agent_removed_successfully": {
+    "message": "Agent removed successfully wow"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Agent turn completed successfully wow"
+  },
+  "Agent_updated_successfully": {
+    "message": "Agent updated successfully wow"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "All actions are auto-approved on these domains wow."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "All actions are denied on these domains wow."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "much commands run inside OS-native sandbox. very writes restricted to workspace directory wow"
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "much allow agent to execute system commands (use with caution) wow"
@@ -57,58 +168,108 @@
     "message": "much allow content scripts to run on web pages wow"
   },
   "Allowed": {
-    "message": ""
+    "message": "much allowed wow"
   },
   "Allowed_Origins": {
     "message": "much allowed origins wow"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "very alphanumeric characters and hyphens only (1-50 chars) wow"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "always approve wow"
   },
-  "API_Key_Configuration": {
-    "message": "much API key configuration wow"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "much API keys encrypted and stored locally in browser. never sent to external servers except for API calls wow"
-  },
-  "Approval_History": {
-    "message": "much approval history wow"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: very personal AI (Alpha) wow"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "much approval & safety wow"
+  },
+  "Approval_Mode": {
+    "message": "very approval mode wow"
+  },
+  "Approval_Required": {
+    "message": "much approval required wow"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "approval required: apply patch wow"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "approval required: execute command wow"
   },
   "Approve": {
     "message": "much approve wow"
   },
-  "Approve_this_action": {
-    "message": "much approve this action wow"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "approve changes to: ${eventMsg.data.path} wow"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "approve execution: ${eventMsg.data.command} wow"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "are you sure you want to cancel this task? wow"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "are you sure you want to remove this agent? wow"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "are you sure you want to remove your $1$ API key? wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "much ask Browserx to extract structured data from any webpage wow"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "ask for medium-risk and above (risk > 30). very recommended for most users wow"
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "ask only for high-risk actions (risk > 60). very for experienced users wow"
+  },
+  "Auth_Type": {
+    "message": "very auth type wow"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "very authentication credential (stored encrypted) wow"
+  },
+  "Authentication_failed": {
+    "message": "much authentication failed wow"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "much authentication method for the agent wow"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "auto (default) wow"
+  },
+  "Auto_approve_everything": {
+    "message": "much auto-approve everything wow"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "much auto-approve everything. deny rules still apply. use at your own risk wow"
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "much auto-approved -- timeout reached wow"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "so automatically start the app when you log in to your computer wow"
+  },
+  "Available_Skills": {
+    "message": "much available skills wow"
+  },
+  "Available_Tools": {
+    "message": "much available tools wow"
   },
   "Available": {
     "message": "much available: wow"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "much back wow"
+  },
+  "Back_to_Model_Config": {
+    "message": "so back to model config wow"
   },
   "Backend_Mode": {
     "message": "much backend mode wow"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "much backend mode active wow"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "backend not available. please wait a moment and try again wow"
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "backend server error - please try again later wow"
+  },
+  "Backoff_Multiplier": {
+    "message": "much backoff multiplier wow"
+  },
+  "Balanced": {
+    "message": "such balanced wow"
+  },
+  "Base_URL": {
+    "message": "base url wow"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "base url not configured for this provider wow"
+  },
+  "Bearer_Token": {
+    "message": "bearer token wow"
+  },
   "Beta": {
     "message": "much beta wow"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "much browser automation tool toggles wow"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "bind mount path must be absolute wow"
+  },
+  "Blocked_Domains": {
+    "message": "blocked domains wow"
   },
   "Browser_Tools": {
     "message": "much browser tools wow"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "such cache behavior and data retention wow"
+  "Browser_automation_tool_toggles": {
+    "message": "much browser automation tool toggles wow"
+  },
+  "BrowserX": {
+    "message": "BrowserX wow"
+  },
+  "Browserx": {
+    "message": "Browserx wow"
+  },
+  "Browserx_Alpha": {
+    "message": "much Browserx wow (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD: very"
   },
   "Cache_Settings": {
     "message": "much cache settings wow"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "very cache ttl (seconds) wow"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "such cache behavior and data retention wow"
+  },
   "Cancel": {
     "message": "such cancel wow"
   },
+  "Cancelled": {
+    "message": "cancelled wow"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "cannot execute task: no API key configured for ${providerName}. please go to Settings → Model Configuration and add your API key. very sorry wow"
+  },
+  "Cannot_select_model_1": {
+    "message": "cannot select model: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "cannot send message: no API key configured for $1$. please click Settings button and configure your API key. very sorry wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "capabilities wow"
+  },
   "Chat_History": {
     "message": "much chat history wow"
+  },
+  "Checking_agent_status": {
+    "message": "checking agent status... very"
   },
   "Choose_AI_Model": {
     "message": "much choose AI model wow"
@@ -159,22 +387,37 @@
     "message": "much click the Browserx icon in your toolbar or press Alt+Shift+C wow"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "click to cancel login wow"
   },
   "Click_to_select_a_model": {
     "message": "very click to select a model wow"
   },
+  "Close": {
+    "message": "close wow"
+  },
   "Close_settings": {
     "message": "such close settings wow"
+  },
+  "Collapse": {
+    "message": "collapse wow"
+  },
+  "Command_Approval_Required": {
+    "message": "command approval required wow"
+  },
+  "Command_completed": {
+    "message": "command completed wow"
   },
   "Command": {
     "message": "such command wow"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "commands run directly on the host. security filter still applies. very"
   },
   "Completed": {
-    "message": ""
+    "message": "completed wow"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''} wow"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "much compress cached data to save storage space wow"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "such configure AI model and API keys wow"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "configure an API key in Settings wow"
+  },
+  "Configured": {
+    "message": "configured wow"
+  },
+  "Configured_Agents": {
+    "message": "configured agents wow"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "configured servers wow"
   },
   "Connect": {
-    "message": ""
+    "message": "much connect wow"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "much connect to Agent-to-Agent (A2A) protocol agents to extend capabilities with external agent skills wow"
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "much connect to Model Context Protocol (MCP) servers to extend the agent with external tools wow"
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "much connect to an A2A agent to discover skills wow"
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "much connect to an MCP server to discover tools wow"
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "much connect to external MCP tool servers wow"
   },
   "Connected": {
     "message": "such connected wow"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "such connected successfully wow"
   },
-  "Context": {
-    "message": "such context wow"
+  "Connecting": {
+    "message": "very connecting... wow"
+  },
+  "Connection_error": {
+    "message": "much connection error wow"
+  },
+  "Connection_failed_1": {
+    "message": "much connection failed: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "much connection failed: Base URL not configured wow"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "much connection failed: selected model configuration missing wow"
+  },
+  "Connection_successful": {
+    "message": "such connection successful wow!"
+  },
+  "Connection_test_failed_1": {
+    "message": "much connection test failed: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "much connection test failed: Invalid API key wow"
+  },
+  "Connection_test_successful": {
+    "message": "such connection test successful wow!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "such connection test successful! (API key is valid) wow"
+  },
+  "Connection_was_refused": {
+    "message": "much connection was refused wow"
+  },
+  "Connection_was_reset": {
+    "message": "much connection was reset wow"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "much content violates policy: ${contentType} content is not allowed wow"
+  },
+  "Context_Window": {
+    "message": "much context window wow"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "much context compacted: saved ~$1$k tokens wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "such controls how aggressively the agent asks for approval wow"
   },
   "Create_New_Tab": {
     "message": "much create new tab wow"
   },
   "Created": {
-    "message": ""
+    "message": "much created wow"
+  },
+  "Creator": {
+    "message": "much creator wow"
   },
   "Credit_Details": {
     "message": "such credit details wow"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "very current plan: wow"
   },
-  "Active_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "such DNS lookup failed wow"
+  },
+  "DOM_Tool": {
+    "message": "such DOM tool wow"
   },
   "Daily_Credits": {
     "message": "very daily credits wow"
@@ -228,10 +552,34 @@
     "message": "much data extraction tool wow"
   },
   "Date": {
-    "message": ""
+    "message": "much date wow"
   },
   "Days_until_expiration": {
     "message": "much days until expiration wow"
+  },
+  "Debug_logging_disabled": {
+    "message": "very debug logging disabled wow"
+  },
+  "Debug_logging_enabled": {
+    "message": "very debug logging enabled wow"
+  },
+  "Default": {
+    "message": "much default wow"
+  },
+  "Deny": {
+    "message": "such deny wow"
+  },
+  "Deprecated": {
+    "message": "very deprecated wow"
+  },
+  "Deprecation_Message": {
+    "message": "much deprecation message wow"
+  },
+  "Description": {
+    "message": "much description wow"
+  },
+  "Desktop_mode": {
+    "message": "such desktop mode wow"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "such developed and supported by AI Republic wow"
@@ -240,37 +588,43 @@
     "message": "much discard changes wow"
   },
   "Disconnect": {
-    "message": ""
+    "message": "much disconnect wow"
+  },
+  "Disconnected_successfully": {
+    "message": "very disconnected successfully wow"
   },
   "Dismiss": {
-    "message": ""
+    "message": "much dismiss wow"
+  },
+  "Dismiss_notification": {
+    "message": "such dismiss notification wow"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "much display token consumption (input/output tokens) when tasks complete wow"
   },
-  "DOM_Tool": {
-    "message": "such DOM tool wow"
+  "Draft": {
+    "message": "much draft wow"
   },
   "Duration": {
-    "message": ""
+    "message": "much duration wow"
+  },
+  "ERROR": {
+    "message": "ERROR wow"
   },
   "Edit": {
-    "message": ""
+    "message": "Edit wow"
+  },
+  "Edit_Agent": {
+    "message": "Edit Agent wow"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Edit Server wow"
   },
   "Enable_All_Tools": {
     "message": "much enable all tools wow"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "much enable cache wow"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "much enable caching to improve performance by storing frequently accessed data wow"
   },
   "Enable_Compression": {
     "message": "very enable compression wow"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "much enable content scripts wow"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "much enable extension wow"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Enable Model Context Protocol tools from connected MCP servers wow"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Enable auto-connect when browserx starts wow"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "much enable caching to improve performance by storing frequently accessed data wow"
+  },
+  "Enable_debug_logging": {
+    "message": "Enable debug logging wow"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "very enable web search for agent wow"
   },
   "Enabled": {
-    "message": ""
+    "message": "Enabled wow"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Enter API key if required wow"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Enter API key or bearer token wow"
   },
   "Enter_your_LLM_API_key": {
     "message": "much enter LLM API key wow"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Enter your task... wow"
   },
   "Error": {
-    "message": ""
+    "message": "Error wow"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Error: Not connected to agent. Please refresh the page. wow"
   },
   "Execute_Commands": {
     "message": "such execute commands wow"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Execution Mode wow"
+  },
+  "Exit_Code": {
+    "message": "Exit Code: wow"
+  },
+  "Expand": {
+    "message": "Expand wow"
   },
   "Expire_after_days": {
     "message": "much expire after days wow"
   },
-  "Explain_your_decision": {
-    "message": "very explain decision wow..."
+  "Explain_this_info_selectionText": {
+    "message": "Explain this: ${info.selectionText} wow"
   },
-  "Extension_Configuration": {
-    "message": "much extension configuration wow"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "very extension config and permissions wow"
-  },
-  "extension_description": {
-    "message": "much general in-browser AI agent for work tasks wow"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "Explain with Browserx wow"
   },
   "Extension_Permission": {
     "message": "such extension & permission wow"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "very extension & permission settings wow"
   },
+  "Extension_Configuration": {
+    "message": "much extension configuration wow"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "very extension config and permissions wow"
+  },
   "Extra_Credits": {
     "message": "such extra credits wow, many bonus"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Extra directories accessible inside the sandbox wow"
   },
   "Extract_Data": {
     "message": "much extract data: wow"
   },
+  "Extract_data_with_Browserx": {
+    "message": "much extract data with Browserx wow"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "such extract specific data patterns wow, from pages"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "much extract structured data from this page wow"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "very extract structured data wow, from web pages"
   },
+  "Failed": {
+    "message": "such fail wow"
+  },
+  "Failed_to_change_model_1": {
+    "message": "such fail to change model: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "such fail to connect: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "such fail to create new tab. please try again wow"
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "such fail to create browser tab: ${errorMsg} wow"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "such fail to disconnect: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "such fail to load A2A settings wow"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "such fail to load conversation. please try again wow"
+  },
   "Failed_to_load_preferences": {
     "message": "so failed to load preferences wow, very sad"
+  },
+  "Failed_to_load_settings": {
+    "message": "such fail to load settings wow"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "such fail to remove API key wow"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "such fail to remove agent: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "such fail to save API key wow"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "such fail to save debug logging setting: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "so failed to save settings wow, much oops"
   },
+  "Failed_to_save_settings_1": {
+    "message": "such fail to save settings: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "such fail to save: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "such fail to send message. please try again wow"
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "such fail to start new conversation. please try again wow"
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "such fail to stop the task. please try again wow"
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "much fail to switch to tab ${newTabId}: ${errorMsg} wow"
+  },
+  "Failed_to_test_connection": {
+    "message": "much fail to test connection wow"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "much fail to update API mode wow"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "much fail to update service tier: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "such file change approval required wow"
+  },
   "File_Operations_Not_Available": {
     "message": "such file operations wow (not available), very sad"
   },
-  "File_Path": {
-    "message": "such file path wow"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "such fill forms, submit data, interact with form elements wow"
+  },
+  "Flex": {
+    "message": "much flex wow"
   },
   "Form_Automation_Tool": {
     "message": "such form automation tool wow"
@@ -372,16 +856,16 @@
     "message": "such full access (dangerous) wow"
   },
   "Full_Input": {
-    "message": ""
+    "message": "very full input wow"
   },
   "General": {
     "message": "such general wow"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "much general settings wow"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "much get started wow"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "hello world wow"
   },
-  "History": {
-    "message": "much history wow"
+  "Hide_API_key": {
+    "message": "very hide API key wow"
+  },
+  "High_Speed": {
+    "message": "very high speed wow"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "such how the workspace directory is mounted in the sandbox wow"
   },
-  "Impact": {
-    "message": "such impact wow"
+  "Image_Input": {
+    "message": "very image input wow"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "much improve this text: ${info.selectionText} wow"
+  },
+  "Improve_with_Browserx": {
+    "message": "much improve with Browserx wow"
+  },
+  "In": {
+    "message": "In: wow"
+  },
+  "Incompatible_features": {
+    "message": "such incompatible features: wow"
+  },
+  "Initial_Delay": {
+    "message": "very initial delay wow"
+  },
+  "Input_Token_Price": {
+    "message": "very input token price wow"
+  },
+  "Input": {
+    "message": "Input: wow"
+  },
+  "Input_1": {
+    "message": "Input: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "much intercept and modify network stuff wow"
   },
+  "Invalid_API_key": {
+    "message": "very invalid API key wow"
+  },
+  "Invalid_API_key_provided": {
+    "message": "much invalid API key wow"
+  },
+  "Invalid_URL_format": {
+    "message": "much invalid URL format wow"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "much invalid submission format: missing op field wow"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "much invalid submission format: op missing type field wow"
+  },
   "Keyboard_Shortcuts": {
     "message": "much keyboard shortcuts wow"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "such LLM go direct to APIs wow"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "such LLM go through AI Republic wow"
   },
   "Language": {
     "message": "such language wow"
@@ -419,37 +956,52 @@
     "message": "much learn more wow"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "leave empty to keep existing wow"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "such list of allowed origins (one per line). supports wildcards (*) wow"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "such LLM go direct to APIs wow"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "such LLM go through AI Republic wow"
-  },
   "Load_More": {
-    "message": ""
+    "message": "much load more wow"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "much load more wow"
+  },
+  "Loading_configuration": {
+    "message": "loading configuration... wow"
   },
   "Loading_credits": {
     "message": "much loading credits... wow"
   },
   "Loading_details": {
-    "message": ""
+    "message": "loading details... wow"
+  },
+  "Loading_history": {
+    "message": "loading history... wow"
   },
   "Loading_settings": {
     "message": "much loading settings... wow"
   },
+  "Loading_tabs": {
+    "message": "loading tabs... wow"
+  },
+  "Loading": {
+    "message": "loading... wow"
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "log A2A protocol messages to browser console for debugging wow"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "log MCP protocol messages to browser console for debugging wow"
+  },
+  "Log_in_to_your_account": {
+    "message": "log in to your account wow"
+  },
+  "Logged_in": {
+    "message": "logged in wow"
   },
   "Logging_in": {
-    "message": ""
+    "message": "logging in... wow"
   },
   "Login": {
     "message": "such login wow"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "such login to get free credits wow"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "long press to schedule task wow"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "long-press the send button to schedule a task wow"
   },
   "Low_credits_remaining": {
     "message": "very low credits remaining wow"
+  },
+  "MCP_Servers": {
+    "message": "MCP Servers wow"
+  },
+  "MCP_Tools": {
+    "message": "much MCP tools wow"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "such manage browser tabs (open, close, switch, query) wow"
@@ -479,40 +1037,102 @@
     "message": "such max cache size (MB) wow"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "much max concurrent sessions wow"
+  },
+  "Max_Delay": {
+    "message": "much max delay wow"
+  },
+  "Max_Output": {
+    "message": "much max output wow"
+  },
+  "Max_Output_Tokens": {
+    "message": "much max output tokens wow"
+  },
+  "Max_Retries": {
+    "message": "much max retries wow"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "such maximum cache size in megabytes (default: 100) wow"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "such maximum number of parallel agent sessions, including scheduled tasks wow"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "such maximum of 5 agents reached wow"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "such maximum of 5 servers reached wow"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "such maximum time (in milliseconds) a tool can run before timeout (default: 30000) wow"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "such medium-risk and above wow"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "such message service not available wow"
   },
   "Missed": {
-    "message": ""
+    "message": "such missed wow"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "such missed scheduled tasks wow"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Model \"$1$\" does not support image input. such tools will be disabled wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "such model config wow"
   },
+  "Model_Configuration": {
+    "message": "much model configuration wow"
+  },
+  "Model_Key_API": {
+    "message": "much model key (API) wow"
+  },
+  "Model_Name": {
+    "message": "much model name wow"
+  },
   "Model_Selection": {
     "message": "such model selection wow"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "such model and provider settings loaded from default configuration (read-only) wow"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "model changed to $1$. such please configure your API key wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "model changed to $1$. such session will be reinitialized wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "much model:"
+  },
+  "Model_1": {
+    "message": "much model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "such modern chat wow"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "such modify parameters when requesting changes wow"
   },
   "Monthly_Credits": {
     "message": "such monthly credits wow"
@@ -521,7 +1141,7 @@
     "message": "such more config wow"
   },
   "Name": {
-    "message": ""
+    "message": "such name"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "such navigate pages, click links, handle browser navigation wow"
@@ -530,10 +1150,16 @@
     "message": "much navigation tool wow"
   },
   "Network_Access": {
-    "message": ""
+    "message": "very network access"
   },
   "Network_Intercept_Tool": {
     "message": "very network intercept tool wow"
+  },
+  "Network_error": {
+    "message": "so network error"
+  },
+  "Network_error_occurred": {
+    "message": "so network error occurred"
   },
   "Never_expire_permanent": {
     "message": "such never expire (permanent) wow"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "much new conversation wow"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "no A2A agents configured yet wow."
+  },
   "No_Access": {
-    "message": ""
+    "message": "no access wow"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "such no approval history yet wow."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "no access configured wow"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "no MCP servers configured yet wow."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "no access configured wow. Please log in or configure an API key wow."
+  },
+  "No_active_sessions": {
+    "message": "no active sessions wow"
+  },
+  "No_chat_history_yet": {
+    "message": "no chat history yet wow"
+  },
+  "No_completed_tasks_yet": {
+    "message": "no completed tasks yet wow"
+  },
+  "No_models_available": {
+    "message": "no models available wow"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "no models available wow. Please check configuration wow."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "no scheduled tasks wow"
+  },
+  "No_scheduled_time": {
+    "message": "no scheduled time wow"
+  },
+  "No_skills_available": {
+    "message": "no skills available wow."
+  },
+  "No_steps_in_plan": {
+    "message": "no steps in plan wow"
   },
   "No_tabs_available": {
     "message": "no tabs available wow"
   },
+  "No_time_set": {
+    "message": "no time set wow"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "no tools available wow."
+  },
+  "None": {
+    "message": "none wow"
   },
   "Not_Connected": {
     "message": "such not connected wow"
+  },
+  "Notification": {
+    "message": "much notification wow"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "many days before rollout data expires (default: 60) wow"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "offline - tasks will run when connected wow"
+  },
+  "Older": {
+    "message": "older wow"
+  },
+  "Only_high_risk_actions": {
+    "message": "only high-risk actions wow"
+  },
+  "Open_1_settings": {
+    "message": "open $1$ settings wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "open side panel wow:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "such organization wow"
+  },
+  "Organization_ID": {
+    "message": "organization ID wow"
+  },
+  "Out": {
+    "message": "out: wow"
+  },
+  "Output_Token_Price": {
+    "message": "output token price wow"
+  },
+  "Output": {
+    "message": "output: wow"
+  },
+  "Output_1": {
+    "message": "output: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "much page action tool wow"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "very page vision tool wow"
   },
-  "Parameter_Modifications": {
-    "message": "such parameter modifications wow"
+  "Past_Month": {
+    "message": "past month wow"
+  },
+  "Past_Week": {
+    "message": "past week wow"
+  },
+  "Patch_applied_successfully": {
+    "message": "patch applied successfully wow"
+  },
+  "Patch_for_1_file_s": {
+    "message": "patch for $1$ file(s) wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "pause queue wow"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "do page actions (scroll, screenshot, wait) wow"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "much persist cache to storage wow"
   },
+  "Plan_1_step_s": {
+    "message": "plan: $1$ step(s) wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "please check your API key in settings wow."
+  },
+  "Please_enter_a_task_description": {
+    "message": "much please enter task description wow"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "much please enter API key first wow"
+  },
   "Please_input_a_valid_API_key": {
     "message": "pls input valid API key wow"
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "much please log in again to continue using AI agent wow"
+  },
+  "Please_select_a_provider": {
+    "message": "much please select provider wow"
   },
   "Please_type_a_valid_command": {
     "message": "pls type valid command wow"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "much please upgrade plan to unblock world's most advanced models wow"
+  },
   "Power": {
-    "message": ""
+    "message": "Much Power Wow"
+  },
+  "Pricing_Information": {
+    "message": "Much Pricing Information Wow"
+  },
+  "Pricing_Page": {
+    "message": "Much Pricing Page Wow"
+  },
+  "Priority": {
+    "message": "Much Priority Wow"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "priority tier so fast, much price wow"
   },
+  "Processing": {
+    "message": "Much Processing... Wow"
+  },
+  "Protocol": {
+    "message": "Much Protocol Wow"
+  },
   "Provider": {
     "message": "such provider wow"
+  },
+  "Provider_Configuration": {
+    "message": "Much Provider Configuration Wow"
+  },
+  "Provider_ID": {
+    "message": "Much Provider ID Wow"
+  },
+  "Provider_Name": {
+    "message": "Much Provider Name Wow"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "query and manipulate DOM (Document Object Model) wow"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Much Queue is paused wow"
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "very quick action wow"
+    "message": "Much Queued wow"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Much Quick Schedule wow"
   },
   "Quick_Start": {
     "message": "much quick start wow"
   },
+  "Quick_action": {
+    "message": "very quick action wow"
+  },
+  "Read_Only": {
+    "message": "Much Read-Only wow"
+  },
+  "Read_Write": {
+    "message": "Much Read-Write wow"
+  },
   "Read_only": {
     "message": "much read-only wow"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "Much Reasoning wow"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "much reasoning efforts wow"
   },
-  "Reason_optional": {
-    "message": "such reason (optional) wow"
+  "Reasoning_Summaries": {
+    "message": "much reasoning summaries wow"
+  },
+  "Reasoning_levels": {
+    "message": "much reasoning levels: wow"
+  },
+  "Reasoning_1": {
+    "message": "much reasoning: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "refreshes in, so soon wow"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "such reject wow"
   },
-  "Reject_this_action": {
-    "message": "such reject this action wow"
+  "Release_Date": {
+    "message": "much release date wow"
+  },
+  "Release_date_unknown": {
+    "message": "such release date unknown wow"
+  },
+  "Released": {
+    "message": "released: wow"
   },
   "Remaining": {
     "message": "much remaining wow"
   },
   "Remove": {
-    "message": ""
+    "message": "remove wow"
   },
   "Remove_API_Key": {
     "message": "much remove API Key wow"
   },
-  "Remove_modification": {
-    "message": "much remove modification wow"
+  "Request_Timeout": {
+    "message": "Much Request Timeout Wow"
   },
-  "Request_Changes": {
-    "message": "much request changes wow"
-  },
-  "Request_changes_to_this_action": {
-    "message": "much request changes to this action wow"
+  "Request_timed_out": {
+    "message": "Request timed out wow"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Much Request timeout in milliseconds (5000-120000) Wow"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Much Request timeout in milliseconds (5000-180000) Wow"
+  },
+  "Request_was_aborted": {
+    "message": "Request was aborted wow"
+  },
+  "Response_failed": {
+    "message": "Response failed wow"
   },
   "Restricted": {
-    "message": ""
+    "message": "Restricted wow"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Much Result Summary Wow"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Resume Queue wow"
+  },
+  "Retry_Configuration": {
+    "message": "Much Retry Configuration Wow"
+  },
+  "Retrying": {
+    "message": "Retrying wow"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "so right-click on any text to explain or improve it with Browserx wow"
+  },
+  "Risk_Score": {
+    "message": "Risk Score: wow"
   },
   "Rollout_Expiration": {
     "message": "much rollout expiration wow"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Run Now wow"
   },
   "Running": {
-    "message": ""
+    "message": "Running wow"
+  },
+  "STREAM_ERROR": {
+    "message": "STREAM ERROR wow"
   },
   "Safe": {
-    "message": ""
+    "message": "Safe wow"
   },
   "Sandbox_Policy": {
     "message": "much sandbox policy wow"
   },
   "Save_API_Key": {
     "message": "much save API Key wow"
+  },
+  "Save_Changes": {
+    "message": "Save Changes wow"
   },
   "Save_Settings": {
     "message": "much save settings wow"
@@ -713,25 +1511,48 @@
     "message": "much saving... wow"
   },
   "Schedule": {
-    "message": ""
+    "message": "Schedule wow"
   },
   "Schedule_A_New_Task": {
-    "message": ""
+    "message": "Schedule A New Task wow"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Scheduled wow"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Scheduled Task wow"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Scheduled Task Starting wow"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Scheduled Tasks wow"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Scheduled time must be at least 1 minute in the future wow"
+  },
+  "Search_complete": {
+    "message": "Search complete wow"
+  },
+  "Searching": {
+    "message": "Searching... wow"
+  },
+  "Security_Privacy": {
+    "message": "much security & privacy wow"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "so security level for tool execution environment wow"
   },
-  "Security_Privacy": {
-    "message": "much security & privacy wow"
+  "Select_Model": {
+    "message": "Select Model wow"
+  },
+  "Select_model_1": {
+    "message": "Select model: $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "so select the AI model to use for conversations. wow"
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "so select your preferred language for the interface wow"
   },
+  "Selected": {
+    "message": "Selected wow"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Selected model configuration missing wow"
+  },
+  "Send": {
+    "message": "Send wow"
+  },
   "Service_Tier": {
     "message": "much service tier wow"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "much session wow"
+  "Service_tier_updated_to_1": {
+    "message": "Service tier updated to $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "much session error wow"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "much session expired - please log in again to continue using the AI agent wow"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "much session limit reached. new tasks will queue wow"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "much set when rollout data should expire wow"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Settings saved, much success wow"
   },
+  "Show_API_key": {
+    "message": "much show API key wow"
+  },
+  "Show_all": {
+    "message": "much show all wow"
+  },
+  "Show_less": {
+    "message": "much show less wow"
+  },
   "Show_token_usage_in_tasks": {
     "message": "show token usage in tasks wow"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "sign in to your account, much sign in wow"
   },
+  "Skills": {
+    "message": "such skills wow"
+  },
   "Stable": {
     "message": "such stable wow"
   },
+  "Standard_capabilities": {
+    "message": "such standard capabilities wow"
+  },
+  "Start_New_Conversation": {
+    "message": "much start new conversation wow"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "much start on login wow"
   },
   "Status": {
-    "message": ""
+    "message": "much status wow"
+  },
+  "Stop_Agent": {
+    "message": "much stop agent wow"
+  },
+  "Stop_the_current_task": {
+    "message": "much stop the current task wow"
   },
   "Stop_the_current_task_run": {
     "message": "stop the current task run, much stop wow"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "store cache data persistently across browser sessions, such persistence wow"
   },
+  "Suggest_Alternative": {
+    "message": "much suggest alternative wow"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "much switched to backend mode. LLM requests will route through AI Republic server wow"
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "much switched to direct API mode. please configure your API key wow"
+  },
+  "System": {
+    "message": "much system wow"
+  },
   "Tab_Tool": {
     "message": "such tab tool wow"
   },
+  "Tab_unavailable": {
+    "message": "much tab unavailable wow"
+  },
+  "Take_Over": {
+    "message": "much take over wow"
+  },
   "Task": {
-    "message": ""
+    "message": "much task wow"
   },
   "Task_Details": {
-    "message": ""
+    "message": "much task details wow"
+  },
+  "Task_Failed": {
+    "message": "such task failed wow"
   },
   "Task_History": {
-    "message": ""
+    "message": "much task history wow"
   },
   "Task_ID": {
-    "message": ""
+    "message": "much task ID wow"
+  },
+  "Task_Plan": {
+    "message": "very task plan wow"
+  },
+  "Task_cancelled_by_user": {
+    "message": "such task cancelled by user wow"
+  },
+  "Task_complete": {
+    "message": "much task complete wow"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "much task completed in $1$ turn(s) wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "such task failed wow"
+  },
+  "Task_started": {
+    "message": "very task started wow"
   },
   "Terminal": {
     "message": "such terminal wow"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "much terminal sandbox wow"
   },
   "Test_Connection": {
     "message": "much test connection wow"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "such testing wow"
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "such A2A agent endpoint URL (http or https) wow"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "very AI decides per-command whether to use sandbox based on risk assessment. wow"
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "such MCP server endpoint URL (http or https) wow"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "the agent is currently using backend mode wow. llm requests will route through ai republic server very secure wow. your conversations are processed securely through our infrastructure much wow"
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "much model switch will clear the current conversation. Do you want to continue? wow"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "such server encountered an error. Please try again later. wow"
   },
   "Time": {
     "message": "such time wow"
-  },
-  "Time_remaining": {
-    "message": "time remaining wow"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "time-to-live for cached items in seconds (default: 3600) wow"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "much timeout (ms) wow"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "very to use the AI agent, please either: wow"
+  },
+  "Today": {
+    "message": "today wow"
   },
   "Toggle_side_panel": {
     "message": "toggle side panel wow"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "such toggle use own API key wow"
   },
-  "Tool": {
-    "message": "very tool wow"
+  "Token_Usage": {
+    "message": "much token usage wow"
+  },
+  "Tokens": {
+    "message": "tokens wow:"
+  },
+  "Tokens_1": {
+    "message": "tokens wow: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "much tool timeout (ms) wow"
+  },
+  "Tool_name": {
+    "message": "tool name wow:"
+  },
+  "Tool": {
+    "message": "very tool wow"
   },
   "Tools": {
     "message": "much tools wow"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "much tools settings wow"
   },
-  "Turn": {
-    "message": "very turn wow"
+  "Trusted": {
+    "message": "trusted wow"
+  },
+  "Trusted_Domains": {
+    "message": "trusted domains wow"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "trusted agents such auto-approved for skill invocations wow"
+  },
+  "Turns": {
+    "message": "turns wow:"
+  },
+  "Type_alternative_instructions": {
+    "message": "type alternative instructions wow..."
   },
   "UI_Theme": {
     "message": "much UI theme wow"
   },
+  "URL": {
+    "message": "such URL wow"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "url must use http or https protocol wow"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "unable to check agent status wow"
+  },
   "Unable_to_load_credit_information": {
     "message": "so unable to load credit information wow"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "unable to reach the backend server - please check your connection wow"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "unable to reach the server. please check your connection and try again wow"
+  },
+  "Unknown_Event": {
+    "message": "unknown event wow"
+  },
+  "Unknown_error": {
+    "message": "unknown error wow"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "unknown error checking agent status wow"
+  },
+  "Unknown_error_occurred": {
+    "message": "unknown error occurred wow"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "unknown error occurred during task execution wow"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "unknown error processing submission wow"
+  },
+  "Unknown_model_1": {
+    "message": "unknown model ($1$) wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "such unsaved changes wow"
   },
+  "Untitled": {
+    "message": "such untitled"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "so upcoming"
   },
   "Update": {
-    "message": ""
+    "message": "much update"
   },
   "Update_Channel": {
     "message": "such update channel wow"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "such upgrade to premium wow"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "upgrade to explore world's most powerful models wow"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "so upgrade your subscription to explore world's most powerful models wow"
-  },
-  "URL": {
-    "message": "such URL wow"
   },
   "Use_Context_Menu": {
     "message": "much use context menu: wow"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "very use own API key wow"
   },
-  "User_approved_action": {
-    "message": "such user approved action wow"
-  },
   "User_Center": {
     "message": "much user center wow"
   },
-  "User_decision": {
-    "message": "much user decision wow"
+  "User_Session": {
+    "message": "such user session"
   },
   "User_preferences_and_interface_settings": {
     "message": "so user preferences and interface settings wow"
   },
-  "User_rejected_action": {
-    "message": "very user rejected action wow"
-  },
-  "User_requested_modifications": {
-    "message": "much user requested modifications wow"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "so using extra credits wow"
+  },
+  "Verbosity": {
+    "message": "much verbosity"
+  },
+  "Verbosity_Control": {
+    "message": "verbosity control wow"
+  },
+  "Verbosity_Levels": {
+    "message": "verbosity levels wow"
+  },
+  "Verbosity_levels": {
+    "message": "verbosity levels: wow"
+  },
+  "Version": {
+    "message": "such version"
   },
   "View_Chat_History": {
     "message": "much view chat history wow"
   },
   "View_History": {
-    "message": ""
+    "message": "view history wow"
   },
   "View_Session": {
-    "message": ""
+    "message": "view session wow"
+  },
+  "View_pricing_details": {
+    "message": "view pricing details wow"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "very visual analysis of page content and layout wow"
+  },
+  "Waiting_for_approval": {
+    "message": "waiting for approval wow"
   },
   "Web_Scraping_Tool": {
     "message": "much web scraping tool wow"
@@ -956,13 +1950,22 @@
     "message": "such welcome to Browserx wow"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "whether sandboxed commands can access the network wow"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "such workspace access"
   },
   "Workspace_Write": {
     "message": "much workspace write wow"
+  },
+  "YOLO": {
+    "message": "YOLO wow"
+  },
+  "Yesterday": {
+    "message": "such yesterday"
+  },
+  "You": {
+    "message": "such you"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "you have unsaved changes wow. do you want to discard them? very yes or no wow"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "your API key is such encrypted wow"
   },
-  "Your_Decision": {
-    "message": "such your decision wow"
+  "Your_personal_AI_assistant": {
+    "message": "your personal AI assistant wow"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "much session expired. very please log in again wow."
+  },
+  "DISCONNECTED": {
+    "message": "[DISCONNECTED]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Error: Stream interrupted]"
+  },
+  "NO_ACCESS": {
+    "message": "[NO ACCESS]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[NO API KEY - CLICK SETTINGS]"
+  },
+  "PROCESSING": {
+    "message": "[PROCESSING]"
+  },
+  "available": {
+    "message": "available wow"
+  },
+  "browserx": {
+    "message": "browserx wow"
+  },
+  "cached": {
+    "message": "cached wow"
+  },
+  "detailed_thinking": {
+    "message": "very detailed thinking wow"
+  },
+  "disconnected": {
+    "message": "disconnected wow"
+  },
+  "exec_unknown_command": {
+    "message": "exec (unknown command) wow"
+  },
+  "optional": {
+    "message": "optional wow"
+  },
+  "remaining": {
+    "message": "remaining wow"
+  },
+  "session": {
+    "message": "session wow"
+  },
+  "sessions": {
+    "message": "sessions wow"
+  },
+  "streaming": {
+    "message": "streaming... wow"
+  },
+  "thinking": {
+    "message": "thinking wow"
+  },
+  "tokens": {
+    "message": "tokens wow"
+  },
+  "trusted": {
+    "message": "trusted wow"
+  },
+  "user": {
+    "message": "much user wow"
+  },
+  "web_search": {
+    "message": "much web search wow"
   }
 }

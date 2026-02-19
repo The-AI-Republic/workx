@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { marked } from 'marked';
   import type { UIUpdate } from '@/core/StreamProcessor';
+  import { t, _t } from '../lib/i18n';
 
   export let message: {
     role: 'user' | 'assistant' | 'system';
@@ -54,7 +55,7 @@
     console.error('Stream error:', event.detail.error);
 
     // Add error indicator to content
-    content += '\n\n[Error: Stream interrupted]';
+    content += '\n\n' + t('[Error: Stream interrupted]');
   }
 
   onMount(() => {
@@ -105,11 +106,11 @@
   <div class="message-header">
     <span class="role">
       {#if message.role === 'user'}
-        You
+        {$_t("You")}
       {:else if message.role === 'assistant'}
-        Browserx
+        {$_t("Browserx")}
       {:else}
-        System
+        {$_t("System")}
       {/if}
     </span>
     {#if message.timestamp}

@@ -5,6 +5,7 @@
 
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
+  import { t, _t } from '../lib/i18n';
   import type { AgentConfig } from '@/config/AgentConfig';
 
   export let settingsConfig: AgentConfig | null;
@@ -119,97 +120,97 @@
 </script>
 
 <div class="advanced-config">
-  <button class="back-button" on:click={handleBack}>← Back to Model Config</button>
+  <button class="back-button" on:click={handleBack}>← {$_t("Back to Model Config")}</button>
 
-  <h2 class="config-title">Advanced Configuration</h2>
-  <p class="config-subtitle">Model and provider settings loaded from default configuration (read-only)</p>
+  <h2 class="config-title">{$_t("Advanced Configuration")}</h2>
+  <p class="config-subtitle">{$_t("Model and provider settings loaded from default configuration (read-only)")}</p>
 
   {#if isLoading}
-    <div class="loading">Loading configuration...</div>
+    <div class="loading">{$_t("Loading configuration...")}</div>
   {:else}
     <div class="config-display">
       <!-- Model Configuration Section -->
       <div class="config-section">
-        <h3 class="section-title">Model Configuration</h3>
+        <h3 class="section-title">{$_t("Model Configuration")}</h3>
 
         <div class="info-grid">
           <div class="info-item">
-            <span class="info-label">Model Name</span>
+            <span class="info-label">{$_t("Model Name")}</span>
             <span class="info-value">{modelName || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Model Key (API)</span>
+            <span class="info-label">{$_t("Model Key (API)")}</span>
             <span class="info-value code">{modelKey || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Creator</span>
+            <span class="info-label">{$_t("Creator")}</span>
             <span class="info-value">{creator || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Release Date</span>
+            <span class="info-label">{$_t("Release Date")}</span>
             <span class="info-value">{releaseDate || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Context Window</span>
-            <span class="info-value">{formatNumber(contextWindow)} tokens</span>
+            <span class="info-label">{$_t("Context Window")}</span>
+            <span class="info-value">{formatNumber(contextWindow)} {$_t("tokens")}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Max Output Tokens</span>
-            <span class="info-value">{formatNumber(maxOutputTokens)} tokens</span>
+            <span class="info-label">{$_t("Max Output Tokens")}</span>
+            <span class="info-value">{formatNumber(maxOutputTokens)} {$_t("tokens")}</span>
           </div>
         </div>
 
         <!-- Capabilities -->
         <div class="capabilities-section">
-          <h4 class="subsection-title">Capabilities</h4>
+          <h4 class="subsection-title">{$_t("Capabilities")}</h4>
           <div class="capability-tags">
             <span class="tag {supportsImage ? 'enabled' : 'disabled'}">
-              {supportsImage ? '✓' : '✗'} Image Input
+              {supportsImage ? '✓' : '✗'} {$_t("Image Input")}
             </span>
             <span class="tag {supportsReasoning ? 'enabled' : 'disabled'}">
-              {supportsReasoning ? '✓' : '✗'} Reasoning
+              {supportsReasoning ? '✓' : '✗'} {$_t("Reasoning")}
             </span>
             <span class="tag {supportsReasoningSummaries ? 'enabled' : 'disabled'}">
-              {supportsReasoningSummaries ? '✓' : '✗'} Reasoning Summaries
+              {supportsReasoningSummaries ? '✓' : '✗'} {$_t("Reasoning Summaries")}
             </span>
             <span class="tag {supportsVerbosity ? 'enabled' : 'disabled'}">
-              {supportsVerbosity ? '✓' : '✗'} Verbosity Control
+              {supportsVerbosity ? '✓' : '✗'} {$_t("Verbosity Control")}
             </span>
             {#if deprecated}
-              <span class="tag deprecated">⚠ Deprecated</span>
+              <span class="tag deprecated">⚠ {$_t("Deprecated")}</span>
             {/if}
           </div>
         </div>
 
         {#if supportsReasoning && reasoningEfforts.length > 0}
           <div class="info-item full-width">
-            <span class="info-label">Reasoning Efforts</span>
+            <span class="info-label">{$_t("Reasoning Efforts")}</span>
             <span class="info-value">{reasoningEfforts.join(', ')}</span>
           </div>
         {/if}
 
         {#if supportsVerbosity && verbosityLevels.length > 0}
           <div class="info-item full-width">
-            <span class="info-label">Verbosity Levels</span>
+            <span class="info-label">{$_t("Verbosity Levels")}</span>
             <span class="info-value">{verbosityLevels.join(', ')}</span>
           </div>
         {/if}
 
         {#if deprecated && deprecationMessage}
           <div class="info-item full-width">
-            <span class="info-label">Deprecation Message</span>
+            <span class="info-label">{$_t("Deprecation Message")}</span>
             <span class="info-value warning">{deprecationMessage}</span>
           </div>
         {/if}
 
         {#if providerId === 'openai' && serviceTier}
           <div class="info-item full-width">
-            <span class="info-label">Service Tier</span>
+            <span class="info-label">{$_t("Service Tier")}</span>
             <span class="info-value">{serviceTier}</span>
           </div>
         {/if}
@@ -217,22 +218,22 @@
         <!-- Pricing -->
         {#if pricingInputToken || pricingOutputToken}
           <div class="pricing-section">
-            <h4 class="subsection-title">Pricing Information</h4>
+            <h4 class="subsection-title">{$_t("Pricing Information")}</h4>
             <div class="info-grid">
               <div class="info-item">
-                <span class="info-label">Input Token Price</span>
+                <span class="info-label">{$_t("Input Token Price")}</span>
                 <span class="info-value">{pricingInputToken || '-'}</span>
               </div>
 
               <div class="info-item">
-                <span class="info-label">Output Token Price</span>
+                <span class="info-label">{$_t("Output Token Price")}</span>
                 <span class="info-value">{pricingOutputToken || '-'}</span>
               </div>
             </div>
 
             {#if pricingLink}
               <div class="info-item full-width">
-                <span class="info-label">Pricing Page</span>
+                <span class="info-label">{$_t("Pricing Page")}</span>
                 <a href={pricingLink} target="_blank" rel="noopener noreferrer" class="info-link">
                   {pricingLink}
                 </a>
@@ -244,61 +245,61 @@
 
       <!-- Provider Configuration Section -->
       <div class="config-section">
-        <h3 class="section-title">Provider Configuration</h3>
+        <h3 class="section-title">{$_t("Provider Configuration")}</h3>
 
         <div class="info-grid">
           <div class="info-item">
-            <span class="info-label">Provider Name</span>
+            <span class="info-label">{$_t("Provider Name")}</span>
             <span class="info-value">{providerName || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Provider ID</span>
+            <span class="info-label">{$_t("Provider ID")}</span>
             <span class="info-value code">{providerId || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">Organization ID</span>
+            <span class="info-label">{$_t("Organization ID")}</span>
             <span class="info-value">{organization || '-'}</span>
           </div>
 
           <div class="info-item">
-            <span class="info-label">API Version</span>
+            <span class="info-label">{$_t("API Version")}</span>
             <span class="info-value">{version || '-'}</span>
           </div>
         </div>
 
         <div class="info-item full-width">
-          <span class="info-label">Base URL</span>
+          <span class="info-label">{$_t("Base URL")}</span>
           <span class="info-value code">{baseUrl || '-'}</span>
         </div>
 
         <div class="info-item full-width">
-          <span class="info-label">Request Timeout</span>
+          <span class="info-label">{$_t("Request Timeout")}</span>
           <span class="info-value">{formatNumber(timeout)} ms ({(timeout / 1000).toFixed(0)} seconds)</span>
         </div>
 
         <!-- Retry Configuration -->
         <div class="retry-section">
-          <h4 class="subsection-title">Retry Configuration</h4>
+          <h4 class="subsection-title">{$_t("Retry Configuration")}</h4>
           <div class="info-grid">
             <div class="info-item">
-              <span class="info-label">Max Retries</span>
+              <span class="info-label">{$_t("Max Retries")}</span>
               <span class="info-value">{retryMaxRetries}</span>
             </div>
 
             <div class="info-item">
-              <span class="info-label">Initial Delay</span>
+              <span class="info-label">{$_t("Initial Delay")}</span>
               <span class="info-value">{formatNumber(retryInitialDelay)} ms</span>
             </div>
 
             <div class="info-item">
-              <span class="info-label">Max Delay</span>
+              <span class="info-label">{$_t("Max Delay")}</span>
               <span class="info-value">{formatNumber(retryMaxDelay)} ms</span>
             </div>
 
             <div class="info-item">
-              <span class="info-label">Backoff Multiplier</span>
+              <span class="info-label">{$_t("Backoff Multiplier")}</span>
               <span class="info-value">{retryBackoffMultiplier}x</span>
             </div>
           </div>

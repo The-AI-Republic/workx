@@ -29,6 +29,7 @@ import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivit
 import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
 import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
 import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
+import { t } from '@/extension/sidepanel/lib/i18n';
 
 /**
  * Main agent class managing the submission and event queues
@@ -374,7 +375,7 @@ export class PiAgent {
         this.emitEvent({
           type: 'Error',
           data: {
-            message: error instanceof Error ? error.message : 'Unknown error occurred',
+            message: error instanceof Error ? error.message : t('Unknown error occurred'),
           },
         });
       }
@@ -594,7 +595,7 @@ export class PiAgent {
             this.emitEvent({
               type: 'Error',
               data: {
-                message: 'Failed to create a new tab. Please try again.',
+                message: t('Failed to create a new tab. Please try again.'),
               },
             });
 
@@ -608,7 +609,7 @@ export class PiAgent {
         this.emitEvent({
           type: 'Error',
           data: {
-            message: `Failed to create browser tab: ${errorMsg}`,
+            message: t(`Failed to create browser tab: ${errorMsg}`),
           },
         });
 
@@ -689,7 +690,7 @@ export class PiAgent {
           this.emitEvent({
             type: 'Error',
             data: {
-              message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
+              message: t(`Failed to switch to tab ${newTabId}: ${errorMsg}`),
             },
           });
 
@@ -775,7 +776,7 @@ export class PiAgent {
       console.error('Error processing user input:', error);
 
       // Check if this is an API key error and emit appropriate event
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during task execution';
+      const errorMessage = error instanceof Error ? error.message : t('Unknown error occurred during task execution');
       const isApiKeyError = errorMessage.includes('No API key configured');
 
       // Get provider name for better error message
@@ -791,7 +792,7 @@ export class PiAgent {
       }
 
       const userFriendlyMessage = isApiKeyError
-        ? `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`
+        ? t(`Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`)
         : errorMessage;
 
       this.emitEvent({
@@ -1300,7 +1301,7 @@ export class PiAgent {
     } catch (error) {
       return {
         ready: false,
-        message: error instanceof Error ? error.message : 'Unknown error checking agent status',
+        message: error instanceof Error ? error.message : t('Unknown error checking agent status'),
         authMode: 'none',
       };
     }

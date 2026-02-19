@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { t } from '../../lib/i18n';
 
   export let title: string = '';
   export let show: boolean = false;
@@ -114,7 +115,7 @@
         <button
           class="popup-close"
           on:click|stopPropagation={onClose}
-          aria-label="Close"
+          aria-label={t("Close")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>

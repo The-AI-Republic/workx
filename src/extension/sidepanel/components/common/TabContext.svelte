@@ -3,7 +3,7 @@
   import { uiTheme } from '../../stores/themeStore';
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
 
   /**
    * TabContext Component
@@ -74,9 +74,9 @@
       updateTitle(tab);
     } catch (err) {
       console.error(`[TabContext] Failed to fetch tab ${id}:`, err);
-      error = 'Tab unavailable';
-      fullTitle = 'Tab unavailable';
-      displayTitle = 'Tab unavailable';
+      error = t('Tab unavailable');
+      fullTitle = t('Tab unavailable');
+      displayTitle = t('Tab unavailable');
     } finally {
       isLoading = false;
     }
@@ -97,10 +97,10 @@
           const url = new URL(tab.url);
           title = url.hostname || tab.url;
         } catch {
-          title = 'Untitled';
+          title = t('Untitled');
         }
       } else {
-        title = 'Untitled';
+        title = t('Untitled');
       }
     } else {
       title = tab.title;
@@ -266,7 +266,7 @@
           tabindex={clickable ? 0 : undefined}
         >
           {#if isLoading}
-            <span class="tab-context-loading">Loading...</span>
+            <span class="tab-context-loading">{$_t("Loading...")}</span>
           {:else if error}
             <span class="tab-context-error">{error}</span>
           {:else}
@@ -281,7 +281,7 @@
 
     <div slot="content" class="dropdown-content {currentTheme}" data-testid="tab-dropdown-menu">
       {#if loadingTabs}
-        <div class="dropdown-item loading">Loading tabs...</div>
+        <div class="dropdown-item loading">{$_t("Loading tabs...")}</div>
       {:else if availableTabs.length === 0}
         <div class="dropdown-item no-tabs">{$_t("No tabs available")}</div>
       {:else}
@@ -306,7 +306,7 @@
 
         <!-- List of available tabs -->
         {#each availableTabs as tab (tab.id)}
-          <Tooltip content={tab.title || tab.url || 'Untitled'} placement="top" fixedPosition>
+          <Tooltip content={tab.title || tab.url || t('Untitled')} placement="top" fixedPosition>
             <div
               class="dropdown-item"
               class:selected={tab.id === tabId}
@@ -317,7 +317,7 @@
               data-testid="tab-dropdown-item"
             >
               <span class="tab-item-title">
-                {#if tab.id === activeTabId}<span class="active-tab-marker">{$_t("(active)")}</span> {/if}{tab.title || tab.url || 'Untitled'}
+                {#if tab.id === activeTabId}<span class="active-tab-marker">{$_t("(active)")}</span> {/if}{tab.title || tab.url || t('Untitled')}
               </span>
               {#if tab.id === tabId}
                 <span class="selected-indicator">✓</span>

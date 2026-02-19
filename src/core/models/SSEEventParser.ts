@@ -1,4 +1,5 @@
 import type { ResponseEvent } from './types/ResponsesAPI';
+import { t } from '@/extension/sidepanel/lib/i18n';
 
 /**
  * SSE event structure
@@ -271,7 +272,7 @@ export class SSEEventParser {
         if (event.response) {
           const error = event.response.error;
           let retryAfter: number | undefined;
-          let message = 'Response failed';
+          let message = t('Response failed');
 
           if (error) {
             const parsedError = error as ApiError;

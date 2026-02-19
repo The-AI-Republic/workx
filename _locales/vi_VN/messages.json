@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Trợ lý AI đa năng trên trình duyệt dành cho công việc"
+  },
+  "1_API_Key": {
+    "message": "$1$ Khóa API",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ Khóa API đã được xóa thành công",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} tác vụ đã bỏ lỡ thời gian dự kiến khi trình duyệt bị đóng."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - độ chính xác có thể giảm)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(đang hoạt động)"
+  },
+  "multiple_files": {
+    "message": "(nhiều tệp)"
+  },
+  "no_output": {
+    "message": "(không có đầu ra)"
+  },
+  "no_result": {
+    "message": "(không có kết quả)"
+  },
+  "patch_details": {
+    "message": "(chi tiết bản vá)"
+  },
+  "Enter_command": {
+    "message": ">> Nhập lệnh..."
+  },
+  "A2A_Agents": {
+    "message": "Đại lý A2A"
+  },
+  "API_Key": {
+    "message": "Khóa API"
+  },
+  "API_Key_Configuration": {
+    "message": "Cấu hình khóa API"
+  },
+  "API_Version": {
+    "message": "Phiên bản API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Chỉnh sửa khóa API bị tắt ở chế độ backend"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "Khóa API để xác thực (được lưu trữ mã hoá)"
+  },
+  "API_key_has_expired": {
+    "message": "Khóa API đã hết hạn"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "Khóa API không có đủ quyền"
+  },
+  "API_key_saved_successfully": {
+    "message": "Khóa API đã được lưu thành công!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Các khóa API được mã hóa và lưu trữ cục bộ trong trình duyệt của bạn. Chúng không bao giờ được gửi đến máy chủ bên ngoài, ngoại trừ các cuộc gọi API."
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Truy cập bộ nhớ trình duyệt (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Hành động"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "Chi tiết hành động"
+    "message": "Chế độ phê duyệt hành động, miền tin cậy, cài đặt rủi ro"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "Phiên hoạt động"
   },
   "Add": {
-    "message": ""
+    "message": "Thêm"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "Thêm sửa đổi"
+  "Add_Agent": {
+    "message": "Thêm Agent"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Thêm Server"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Thêm Nhiệm vụ"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "Thêm một máy chủ để kết nối với các công cụ bên ngoài."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Thêm một agent để kết nối với các kỹ năng bên ngoài."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Các Bind Mount bổ sung"
   },
   "Advanced_Configuration": {
     "message": "Cấu hình nâng cao"
   },
-  "Advanced_Options": {
-    "message": "Tùy chọn nâng cao"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Cài đặt nâng cao"
+  },
+  "Agent": {
+    "message": "Agent"
   },
   "Agent_Execution_Tools": {
     "message": "Công cụ thực thi cho tác nhân"
   },
+  "Agent_Turn_Complete": {
+    "message": "Hoàn thành lượt Agent"
+  },
+  "Agent_URL_is_required": {
+    "message": "Yêu cầu URL của Agent"
+  },
+  "Agent_added_successfully": {
+    "message": "Đã thêm Agent thành công"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Tên Agent chỉ được chứa chữ cái, số và dấu gạch ngang"
+  },
+  "Agent_name_is_required": {
+    "message": "Yêu cầu tên Agent"
+  },
+  "Agent_not_initialized": {
+    "message": "Agent chưa được khởi tạo"
+  },
+  "Agent_removed_successfully": {
+    "message": "Đã xóa Agent thành công"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Lượt Agent đã hoàn thành thành công"
+  },
+  "Agent_updated_successfully": {
+    "message": "Đã cập nhật Agent thành công"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Tất cả hành động đều được tự động chấp thuận trên các miền này."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Tất cả hành động đều bị từ chối trên các miền này."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "Tất cả lệnh chạy trong sandbox gốc của hệ điều hành. Việc ghi chỉ được phép trong thư mục workspace."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Cho phép tác nhân thực thi lệnh hệ thống (sử dụng cẩn thận)"
@@ -57,58 +168,108 @@
     "message": "Cho phép content scripts chạy trên các trang web"
   },
   "Allowed": {
-    "message": ""
+    "message": "Được phép"
   },
   "Allowed_Origins": {
     "message": "Nguồn được phép"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Chỉ cho phép ký tự chữ và số cùng dấu gạch nối (1‑50 ký tự)"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "Luôn phê duyệt"
   },
-  "API_Key_Configuration": {
-    "message": "Cấu hình khóa API"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "Các khóa API được mã hóa và lưu trữ cục bộ trong trình duyệt của bạn. Chúng không bao giờ được gửi đến máy chủ bên ngoài, ngoại trừ các cuộc gọi API."
-  },
-  "Approval_History": {
-    "message": "Lịch sử phê duyệt"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: AI cá nhân của bạn (Alpha)"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "Phê duyệt & An toàn"
+  },
+  "Approval_Mode": {
+    "message": "Chế độ phê duyệt"
+  },
+  "Approval_Required": {
+    "message": "Yêu cầu phê duyệt"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Yêu cầu phê duyệt: Áp dụng bản vá"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Yêu cầu phê duyệt: Thực thi lệnh"
   },
   "Approve": {
     "message": "Phê duyệt"
   },
-  "Approve_this_action": {
-    "message": "Phê duyệt hành động này"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Phê duyệt thay đổi cho: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Phê duyệt thực thi: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Bạn có chắc muốn hủy tác vụ này không?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Bạn có chắc muốn xóa tác nhân này không?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Bạn có chắc muốn xóa khóa API $1$ của mình không?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Yêu cầu Browserx trích xuất dữ liệu có cấu trúc từ bất kỳ trang web nào"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Yêu cầu xác nhận cho các rủi ro trung bình trở lên (rủi ro > 30). Được khuyến nghị cho hầu hết người dùng."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Chỉ yêu cầu xác nhận cho các hành động có rủi ro cao (rủi ro > 60). Dành cho người dùng có kinh nghiệm."
+  },
+  "Auth_Type": {
+    "message": "Loại xác thực"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Thông tin xác thực (được lưu trữ dưới dạng mã hoá)"
+  },
+  "Authentication_failed": {
+    "message": "Xác thực thất bại"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Phương thức xác thực cho tác nhân"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "Tự động (mặc định)"
+  },
+  "Auto_approve_everything": {
+    "message": "Tự động chấp thuận mọi thứ"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Tự động chấp thuận mọi thứ. Các quy tắc từ chối vẫn áp dụng. Sử dụng có rủi ro."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Đã tự động chấp thuận -- đã hết thời gian chờ"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "Tự động khởi động ứng dụng khi bạn đăng nhập vào máy tính"
+  },
+  "Available_Skills": {
+    "message": "Kỹ năng khả dụng"
+  },
+  "Available_Tools": {
+    "message": "Công cụ khả dụng"
   },
   "Available": {
     "message": "Có sẵn:"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "Quay lại"
+  },
+  "Back_to_Model_Config": {
+    "message": "Quay lại Cấu hình Mô hình"
   },
   "Backend_Mode": {
     "message": "Chế độ Backend"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "Chế độ Backend đang hoạt động"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Backend không khả dụng. Vui lòng chờ một lúc và thử lại."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Lỗi máy chủ Backend - vui lòng thử lại sau"
+  },
+  "Backoff_Multiplier": {
+    "message": "Hệ số giảm tốc"
+  },
+  "Balanced": {
+    "message": "Cân bằng"
+  },
+  "Base_URL": {
+    "message": "URL cơ sở"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "URL cơ sở chưa được cấu hình cho nhà cung cấp này"
+  },
+  "Bearer_Token": {
+    "message": "Token Bearer"
+  },
   "Beta": {
     "message": "Beta"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Công tắc công cụ tự động hóa trình duyệt"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Đường dẫn gắn kết phải là đường dẫn tuyệt đối"
+  },
+  "Blocked_Domains": {
+    "message": "Miền bị chặn"
   },
   "Browser_Tools": {
     "message": "Công cụ trình duyệt"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "Hành vi bộ nhớ đệm và lưu trữ dữ liệu"
+  "Browser_automation_tool_toggles": {
+    "message": "Công tắc công cụ tự động hóa trình duyệt"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "Cài đặt bộ nhớ đệm"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "Thời gian tồn tại bộ nhớ đệm (giây)"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "Hành vi bộ nhớ đệm và lưu trữ dữ liệu"
+  },
   "Cancel": {
     "message": "Hủy"
   },
+  "Cancelled": {
+    "message": "Đã hủy"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Không thể thực hiện tác vụ: Không có khóa API được cấu hình cho ${providerName}. Vui lòng vào Cài đặt → Cấu hình mô hình và thêm khóa API của bạn."
+  },
+  "Cannot_select_model_1": {
+    "message": "Không thể chọn mô hình: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Không thể gửi tin nhắn: Không có khóa API được cấu hình cho $1$. Vui lòng nhấn nút Cài đặt và cấu hình khóa API của bạn.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Khả năng"
+  },
   "Chat_History": {
     "message": "Lịch sử trò chuyện"
+  },
+  "Checking_agent_status": {
+    "message": "Đang kiểm tra trạng thái đại lý..."
   },
   "Choose_AI_Model": {
     "message": "Chọn mô hình AI"
@@ -159,22 +387,37 @@
     "message": "Nhấn vào biểu tượng Browserx trên thanh công cụ hoặc nhấn Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "Nhấn để hủy đăng nhập"
   },
   "Click_to_select_a_model": {
     "message": "Nhấp để chọn mô hình"
   },
+  "Close": {
+    "message": "Đóng"
+  },
   "Close_settings": {
     "message": "Đóng cài đặt"
+  },
+  "Collapse": {
+    "message": "Thu gọn"
+  },
+  "Command_Approval_Required": {
+    "message": "Yêu cầu phê duyệt lệnh"
+  },
+  "Command_completed": {
+    "message": "Lệnh đã hoàn thành"
   },
   "Command": {
     "message": "Lệnh"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "Các lệnh chạy trực tiếp trên máy chủ. Bộ lọc bảo mật vẫn được áp dụng."
   },
   "Completed": {
-    "message": ""
+    "message": "Đã hoàn thành"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Đã hoàn thành: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Nén dữ liệu bộ nhớ đệm để tiết kiệm không gian lưu trữ"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Cấu hình mô hình AI và khóa API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Cấu hình khóa API trong Cài đặt"
+  },
+  "Configured": {
+    "message": "Đã cấu hình"
+  },
+  "Configured_Agents": {
+    "message": "Các đại lý đã cấu hình"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Các máy chủ đã cấu hình"
   },
   "Connect": {
-    "message": ""
+    "message": "Kết nối"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Kết nối tới các tác nhân giao thức Agent-to-Agent (A2A) để mở rộng khả năng với các kỹ năng tác nhân bên ngoài."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Kết nối tới các máy chủ Model Context Protocol (MCP) để mở rộng tác nhân với các công cụ bên ngoài."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Kết nối tới một tác nhân A2A để khám phá các kỹ năng."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "Kết nối tới một máy chủ MCP để khám phá các công cụ."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "Kết nối tới các máy chủ công cụ MCP bên ngoài"
   },
   "Connected": {
     "message": "Đã kết nối"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Kết nối thành công"
   },
-  "Context": {
-    "message": "Ngữ cảnh"
+  "Connecting": {
+    "message": "Đang kết nối..."
+  },
+  "Connection_error": {
+    "message": "Lỗi kết nối"
+  },
+  "Connection_failed_1": {
+    "message": "Kết nối thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Kết nối thất bại: URL cơ sở chưa được cấu hình"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Kết nối thất bại: cấu hình mô hình đã chọn thiếu"
+  },
+  "Connection_successful": {
+    "message": "Kết nối thành công!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Kiểm tra kết nối thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Kiểm tra kết nối thất bại: API key không hợp lệ"
+  },
+  "Connection_test_successful": {
+    "message": "Kiểm tra kết nối thành công!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Kiểm tra kết nối thành công! (API key hợp lệ)"
+  },
+  "Connection_was_refused": {
+    "message": "Kết nối bị từ chối"
+  },
+  "Connection_was_reset": {
+    "message": "Kết nối đã được đặt lại"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Nội dung vi phạm chính sách: nội dung ${contentType} không được phép"
+  },
+  "Context_Window": {
+    "message": "Cửa sổ ngữ cảnh"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Ngữ cảnh đã nén: tiết kiệm ~$1$k token",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Kiểm soát mức độ quyết liệt mà tác nhân yêu cầu phê duyệt."
   },
   "Create_New_Tab": {
     "message": "Tạo tab mới"
   },
   "Created": {
-    "message": ""
+    "message": "Đã tạo"
+  },
+  "Creator": {
+    "message": "Người tạo"
   },
   "Credit_Details": {
     "message": "Chi tiết tín dụng"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "Gói hiện tại:"
   },
-  "Active_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "Tra cứu DNS thất bại"
+  },
+  "DOM_Tool": {
+    "message": "Công cụ DOM"
   },
   "Daily_Credits": {
     "message": "Tín dụng hàng ngày"
@@ -228,10 +552,34 @@
     "message": "Công cụ trích xuất dữ liệu"
   },
   "Date": {
-    "message": ""
+    "message": "Ngày"
   },
   "Days_until_expiration": {
     "message": "Số ngày còn lại"
+  },
+  "Debug_logging_disabled": {
+    "message": "Ghi nhật ký gỡ lỗi đã tắt"
+  },
+  "Debug_logging_enabled": {
+    "message": "Ghi nhật ký gỡ lỗi đã bật"
+  },
+  "Default": {
+    "message": "Mặc định"
+  },
+  "Deny": {
+    "message": "Từ chối"
+  },
+  "Deprecated": {
+    "message": "Không còn được hỗ trợ"
+  },
+  "Deprecation_Message": {
+    "message": "Thông báo ngừng hỗ trợ"
+  },
+  "Description": {
+    "message": "Mô tả"
+  },
+  "Desktop_mode": {
+    "message": "Chế độ máy tính để bàn"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Được phát triển và hỗ trợ bởi AI Republic"
@@ -240,37 +588,43 @@
     "message": "Hủy thay đổi"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Ngắt kết nối"
+  },
+  "Disconnected_successfully": {
+    "message": "Ngắt kết nối thành công"
   },
   "Dismiss": {
-    "message": ""
+    "message": "Bỏ qua"
+  },
+  "Dismiss_notification": {
+    "message": "Bỏ qua thông báo"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Hiển thị tiêu thụ token (token đầu vào/đầu ra) khi tác vụ hoàn tất"
   },
-  "DOM_Tool": {
-    "message": "Công cụ DOM"
+  "Draft": {
+    "message": "Bản nháp"
   },
   "Duration": {
-    "message": ""
+    "message": "Thời lượng"
+  },
+  "ERROR": {
+    "message": "LỖI"
   },
   "Edit": {
-    "message": ""
+    "message": "Chỉnh sửa"
+  },
+  "Edit_Agent": {
+    "message": "Chỉnh sửa Agent"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Chỉnh sửa Máy chủ"
   },
   "Enable_All_Tools": {
     "message": "Bật tất cả công cụ"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "Bật bộ nhớ đệm"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Bật bộ nhớ đệm để cải thiện hiệu năng bằng cách lưu trữ dữ liệu thường xuyên truy cập"
   },
   "Enable_Compression": {
     "message": "Bật nén"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "Bật Content Scripts"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "Bật tiện ích mở rộng"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Bật công cụ Model Context Protocol từ các máy chủ MCP đã kết nối"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Bật tự động kết nối khi browserx khởi động"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Bật bộ nhớ đệm để cải thiện hiệu năng bằng cách lưu trữ dữ liệu thường xuyên truy cập"
+  },
+  "Enable_debug_logging": {
+    "message": "Bật ghi nhật ký gỡ lỗi"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Bật tính năng tìm kiếm web cho trợ lý"
   },
   "Enabled": {
-    "message": ""
+    "message": "Đã bật"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Nhập khóa API nếu cần"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Nhập khóa API hoặc token bearer"
   },
   "Enter_your_LLM_API_key": {
     "message": "Nhập khóa API LLM của bạn"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Nhập nhiệm vụ của bạn..."
   },
   "Error": {
-    "message": ""
+    "message": "Lỗi"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Lỗi: Không kết nối được với agent. Vui lòng làm mới trang."
   },
   "Execute_Commands": {
     "message": "Thực thi lệnh"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Chế độ thực thi"
+  },
+  "Exit_Code": {
+    "message": "Mã thoát:"
+  },
+  "Expand": {
+    "message": "Mở rộng"
   },
   "Expire_after_days": {
     "message": "Hết hạn sau (số ngày)"
   },
-  "Explain_your_decision": {
-    "message": "Giải thích quyết định của bạn..."
+  "Explain_this_info_selectionText": {
+    "message": "Giải thích điều này: ${info.selectionText}"
   },
-  "Extension_Configuration": {
-    "message": "Cấu hình Tiện ích"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "Cấu hình và quyền của tiện ích"
-  },
-  "extension_description": {
-    "message": "Trợ lý AI đa năng trên trình duyệt dành cho công việc"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "Giải thích với Browserx"
   },
   "Extension_Permission": {
     "message": "Tiện ích & Quyền"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "Cài đặt Tiện ích & Quyền"
   },
+  "Extension_Configuration": {
+    "message": "Cấu hình Tiện ích"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Cấu hình và quyền của tiện ích"
+  },
   "Extra_Credits": {
     "message": "Điểm bổ sung"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Thư mục bổ sung có thể truy cập trong sandbox"
   },
   "Extract_Data": {
     "message": "Trích xuất dữ liệu:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Trích xuất dữ liệu với Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Trích xuất các mẫu dữ liệu cụ thể từ các trang"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "Trích xuất dữ liệu có cấu trúc từ trang này"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "Trích xuất dữ liệu có cấu trúc từ các trang web"
   },
+  "Failed": {
+    "message": "Thất bại"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Thay đổi mô hình thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Kết nối thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Tạo thẻ mới thất bại. Vui lòng thử lại."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Tạo thẻ trình duyệt thất bại: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Ngắt kết nối thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Tải cài đặt A2A thất bại"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Tải cuộc trò chuyện thất bại. Vui lòng thử lại."
+  },
   "Failed_to_load_preferences": {
     "message": "Không thể tải tùy chọn"
+  },
+  "Failed_to_load_settings": {
+    "message": "Tải cài đặt thất bại"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Xóa khóa API thất bại"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Xóa tác nhân thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Lưu khóa API thất bại"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Lưu cài đặt ghi nhật ký gỡ lỗi thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "Không thể lưu cài đặt"
   },
+  "Failed_to_save_settings_1": {
+    "message": "Lưu cài đặt thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Lưu thất bại: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Gửi tin nhắn thất bại. Vui lòng thử lại."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Bắt đầu cuộc trò chuyện mới thất bại. Vui lòng thử lại."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Dừng tác vụ thất bại. Vui lòng thử lại."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Không thể chuyển sang tab ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Không thể kiểm tra kết nối"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Không thể cập nhật chế độ API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Không thể cập nhật cấp dịch vụ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Cần phê duyệt thay đổi tệp"
+  },
   "File_Operations_Not_Available": {
     "message": "Thao tác tệp (Không khả dụng)"
   },
-  "File_Path": {
-    "message": "Đường dẫn tệp"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Điền biểu mẫu, gửi dữ liệu, tương tác với các thành phần biểu mẫu"
+  },
+  "Flex": {
+    "message": "Linh hoạt"
   },
   "Form_Automation_Tool": {
     "message": "Công cụ tự động hoá biểu mẫu"
@@ -372,16 +856,16 @@
     "message": "Quyền truy cập đầy đủ (Nguy hiểm)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "Đầu vào đầy đủ"
   },
   "General": {
     "message": "Chung"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "Cài đặt chung"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "Bắt đầu"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "Lịch sử"
+  "Hide_API_key": {
+    "message": "Ẩn khóa API"
+  },
+  "High_Speed": {
+    "message": "Tốc độ cao"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "Cách thư mục workspace được gắn trong sandbox"
   },
-  "Impact": {
-    "message": "Tác động"
+  "Image_Input": {
+    "message": "Đầu vào hình ảnh"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Cải thiện văn bản này: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Cải thiện với Browserx"
+  },
+  "In": {
+    "message": "Trong:"
+  },
+  "Incompatible_features": {
+    "message": "Tính năng không tương thích:"
+  },
+  "Initial_Delay": {
+    "message": "Độ trễ ban đầu"
+  },
+  "Input_Token_Price": {
+    "message": "Giá token đầu vào"
+  },
+  "Input": {
+    "message": "Đầu vào:"
+  },
+  "Input_1": {
+    "message": "Đầu vào: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Chặn và sửa đổi yêu cầu/phản hồi mạng"
   },
+  "Invalid_API_key": {
+    "message": "Khóa API không hợp lệ"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Khóa API không hợp lệ"
+  },
+  "Invalid_URL_format": {
+    "message": "Định dạng URL không hợp lệ"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Định dạng gửi không hợp lệ: thiếu trường op"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Định dạng gửi không hợp lệ: op thiếu trường type"
+  },
   "Keyboard_Shortcuts": {
     "message": "Phím tắt"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Yêu cầu LLM được gửi trực tiếp tới API của nhà cung cấp"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Yêu cầu LLM được định tuyến qua backend của AI Republic"
   },
   "Language": {
     "message": "Ngôn ngữ"
@@ -419,37 +956,52 @@
     "message": "Tìm hiểu thêm"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Để trống để giữ nguyên"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Danh sách các nguồn được phép (một mỗi dòng). Hỗ trợ ký tự đại diện (*)."
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "Yêu cầu LLM được gửi trực tiếp tới API của nhà cung cấp"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "Yêu cầu LLM được định tuyến qua backend của AI Republic"
-  },
   "Load_More": {
-    "message": ""
+    "message": "Tải thêm"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "Tải thêm"
+  },
+  "Loading_configuration": {
+    "message": "Đang tải cấu hình..."
   },
   "Loading_credits": {
     "message": "Đang tải tín dụng..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "Đang tải chi tiết..."
+  },
+  "Loading_history": {
+    "message": "Đang tải lịch sử..."
   },
   "Loading_settings": {
     "message": "Đang tải cài đặt..."
   },
+  "Loading_tabs": {
+    "message": "Đang tải các tab..."
+  },
+  "Loading": {
+    "message": "Đang tải..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Ghi lại tin nhắn giao thức A2A vào console trình duyệt để gỡ lỗi"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Ghi lại tin nhắn giao thức MCP vào console trình duyệt để gỡ lỗi"
+  },
+  "Log_in_to_your_account": {
+    "message": "Đăng nhập vào tài khoản của bạn"
+  },
+  "Logged_in": {
+    "message": "Đã đăng nhập"
   },
   "Logging_in": {
-    "message": ""
+    "message": "Đang đăng nhập..."
   },
   "Login": {
     "message": "Đăng nhập"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "Đăng nhập để nhận tín dụng miễn phí"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Nhấn và giữ để lên lịch tác vụ"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "Nhấn và giữ nút gửi để lên lịch một tác vụ"
   },
   "Low_credits_remaining": {
     "message": "Số tín dụng còn lại thấp"
+  },
+  "MCP_Servers": {
+    "message": "Máy chủ MCP"
+  },
+  "MCP_Tools": {
+    "message": "Công cụ MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Quản lý các thẻ trình duyệt (mở, đóng, chuyển, truy vấn)"
@@ -479,40 +1037,102 @@
     "message": "Kích thước bộ nhớ đệm tối đa (MB)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "Số phiên đồng thời tối đa"
+  },
+  "Max_Delay": {
+    "message": "Độ trễ tối đa"
+  },
+  "Max_Output": {
+    "message": "Đầu ra tối đa"
+  },
+  "Max_Output_Tokens": {
+    "message": "Số token đầu ra tối đa"
+  },
+  "Max_Retries": {
+    "message": "Số lần thử lại tối đa"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Kích thước bộ nhớ đệm tối đa tính bằng megabyte (mặc định: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "Số lượng phiên đại lý song song tối đa, bao gồm các nhiệm vụ đã lên lịch"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Đã đạt tối đa 5 đại lý"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Đã đạt tối đa 5 máy chủ"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Thời gian tối đa (ms) một công cụ có thể chạy trước khi hết giờ (mặc định: 30000)"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "Rủi ro trung bình trở lên"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "Dịch vụ tin nhắn không khả dụng"
   },
   "Missed": {
-    "message": ""
+    "message": "Bỏ lỡ"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Nhiệm vụ đã lên lịch bị bỏ lỡ"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Mô hình \"$1$\" không hỗ trợ nhập hình ảnh. Một số công cụ sẽ bị vô hiệu hoá.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Cấu hình mô hình"
   },
+  "Model_Configuration": {
+    "message": "Cấu hình mô hình"
+  },
+  "Model_Key_API": {
+    "message": "Khóa mô hình (API)"
+  },
+  "Model_Name": {
+    "message": "Tên mô hình"
+  },
   "Model_Selection": {
     "message": "Lựa chọn mô hình"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Cài đặt mô hình và nhà cung cấp được tải từ cấu hình mặc định (chỉ đọc)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Mô hình đã được đổi thành $1$. Vui lòng cấu hình khóa API của bạn.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Mô hình đã được đổi thành $1$. Phiên sẽ được khởi tạo lại.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Mô hình:"
+  },
+  "Model_1": {
+    "message": "Mô hình: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Chat Hiện đại"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Sửa đổi tham số khi yêu cầu thay đổi"
   },
   "Monthly_Credits": {
     "message": "Tín dụng hàng tháng"
@@ -521,7 +1141,7 @@
     "message": "Thêm cấu hình"
   },
   "Name": {
-    "message": ""
+    "message": "Tên"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Điều hướng trang, nhấp liên kết, xử lý điều hướng trình duyệt"
@@ -530,10 +1150,16 @@
     "message": "Công cụ Điều hướng"
   },
   "Network_Access": {
-    "message": ""
+    "message": "Truy cập mạng"
   },
   "Network_Intercept_Tool": {
     "message": "Công cụ Chặn Mạng"
+  },
+  "Network_error": {
+    "message": "Lỗi mạng"
+  },
+  "Network_error_occurred": {
+    "message": "Đã xảy ra lỗi mạng"
   },
   "Never_expire_permanent": {
     "message": "Không bao giờ hết hạn (vĩnh viễn)"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "Cuộc trò chuyện mới"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "Chưa có agent A2A nào được cấu hình."
+  },
   "No_Access": {
-    "message": ""
+    "message": "Không có quyền truy cập"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Chưa có lịch sử phê duyệt."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "Chưa cấu hình quyền truy cập"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "Chưa có máy chủ MCP nào được cấu hình."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Chưa cấu hình quyền truy cập. Vui lòng đăng nhập hoặc cấu hình khóa API."
+  },
+  "No_active_sessions": {
+    "message": "Không có phiên hoạt động"
+  },
+  "No_chat_history_yet": {
+    "message": "Chưa có lịch sử trò chuyện"
+  },
+  "No_completed_tasks_yet": {
+    "message": "Chưa có nhiệm vụ đã hoàn thành"
+  },
+  "No_models_available": {
+    "message": "Không có mô hình nào khả dụng"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Không có mô hình nào khả dụng. Vui lòng kiểm tra cấu hình."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Không có nhiệm vụ đã lên lịch"
+  },
+  "No_scheduled_time": {
+    "message": "Không có thời gian đã lên lịch"
+  },
+  "No_skills_available": {
+    "message": "Không có kỹ năng nào khả dụng."
+  },
+  "No_steps_in_plan": {
+    "message": "Không có bước nào trong kế hoạch"
   },
   "No_tabs_available": {
     "message": "Không có tab nào khả dụng"
   },
+  "No_time_set": {
+    "message": "Chưa đặt thời gian"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Không có công cụ nào khả dụng."
+  },
+  "None": {
+    "message": "Không"
   },
   "Not_Connected": {
     "message": "Chưa kết nối"
+  },
+  "Notification": {
+    "message": "Thông báo"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Số ngày trước khi dữ liệu triển khai hết hạn (mặc định: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "Ngoại tuyến - các tác vụ sẽ chạy khi kết nối"
+  },
+  "Older": {
+    "message": "Cũ hơn"
+  },
+  "Only_high_risk_actions": {
+    "message": "Chỉ các hành động có rủi ro cao"
+  },
+  "Open_1_settings": {
+    "message": "Mở cài đặt $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Mở Thanh bên:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "Tổ chức"
+  },
+  "Organization_ID": {
+    "message": "ID tổ chức"
+  },
+  "Out": {
+    "message": "Đầu ra:"
+  },
+  "Output_Token_Price": {
+    "message": "Giá token đầu ra"
+  },
+  "Output": {
+    "message": "Đầu ra:"
+  },
+  "Output_1": {
+    "message": "Đầu ra: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "Công cụ Hành động Trang"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "Công cụ Kiểm tra Trang"
   },
-  "Parameter_Modifications": {
-    "message": "Sửa đổi Tham số"
+  "Past_Month": {
+    "message": "Tháng qua"
+  },
+  "Past_Week": {
+    "message": "Tuần qua"
+  },
+  "Patch_applied_successfully": {
+    "message": "Áp dụng bản vá thành công"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Bản vá cho $1$ tệp",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Tạm dừng hàng đợi"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Thực hiện các hành động trên trang (cuộn, chụp màn hình, chờ)"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "Lưu bộ nhớ đệm vào kho lưu trữ"
   },
+  "Plan_1_step_s": {
+    "message": "Kế hoạch: $1$ bước",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Vui lòng kiểm tra khóa API của bạn trong cài đặt."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Vui lòng nhập mô tả nhiệm vụ"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Vui lòng nhập khóa API trước"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Vui lòng nhập khóa API hợp lệ."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Vui lòng đăng nhập lại để tiếp tục sử dụng AI agent."
+  },
+  "Please_select_a_provider": {
+    "message": "Vui lòng chọn nhà cung cấp"
   },
   "Please_type_a_valid_command": {
     "message": "Vui lòng nhập lệnh hợp lệ"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Vui lòng nâng cấp gói để mở khóa các mô hình tiên tiến nhất thế giới"
+  },
   "Power": {
-    "message": ""
+    "message": "Công suất"
+  },
+  "Pricing_Information": {
+    "message": "Thông tin giá"
+  },
+  "Pricing_Page": {
+    "message": "Trang giá"
+  },
+  "Priority": {
+    "message": "Ưu tiên"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Mức ưu tiên cung cấp thời gian phản hồi nhanh hơn với giá cao hơn."
   },
+  "Processing": {
+    "message": "Đang xử lý..."
+  },
+  "Protocol": {
+    "message": "Giao thức"
+  },
   "Provider": {
     "message": "Nhà cung cấp"
+  },
+  "Provider_Configuration": {
+    "message": "Cấu hình nhà cung cấp"
+  },
+  "Provider_ID": {
+    "message": "ID nhà cung cấp"
+  },
+  "Provider_Name": {
+    "message": "Tên nhà cung cấp"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Truy vấn và thao tác DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Hàng đợi đã tạm dừng"
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "Hành động nhanh"
+    "message": "Đã xếp hàng"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Lịch nhanh"
   },
   "Quick_Start": {
     "message": "Bắt đầu nhanh"
   },
+  "Quick_action": {
+    "message": "Hành động nhanh"
+  },
+  "Read_Only": {
+    "message": "Chỉ đọc"
+  },
+  "Read_Write": {
+    "message": "Đọc‑ghi"
+  },
   "Read_only": {
     "message": "Chỉ đọc"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "Lập luận"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "Nỗ lực suy luận"
   },
-  "Reason_optional": {
-    "message": "Lý do (tùy chọn)"
+  "Reasoning_Summaries": {
+    "message": "Tóm tắt suy luận"
+  },
+  "Reasoning_levels": {
+    "message": "Cấp độ suy luận:"
+  },
+  "Reasoning_1": {
+    "message": "Suy luận: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Sẽ làm mới sau"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "Từ chối"
   },
-  "Reject_this_action": {
-    "message": "Từ chối hành động này"
+  "Release_Date": {
+    "message": "Ngày phát hành"
+  },
+  "Release_date_unknown": {
+    "message": "Ngày phát hành không xác định"
+  },
+  "Released": {
+    "message": "Đã phát hành:"
   },
   "Remaining": {
     "message": "Còn lại:"
   },
   "Remove": {
-    "message": ""
+    "message": "Xóa"
   },
   "Remove_API_Key": {
     "message": "Xóa API Key"
   },
-  "Remove_modification": {
-    "message": "Xóa sửa đổi"
+  "Request_Timeout": {
+    "message": "Hết thời gian yêu cầu"
   },
-  "Request_Changes": {
-    "message": "Yêu cầu thay đổi"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Yêu cầu thay đổi hành động này"
+  "Request_timed_out": {
+    "message": "Yêu cầu đã hết thời gian"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Thời gian chờ yêu cầu tính bằng mili giây (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Thời gian chờ yêu cầu tính bằng mili giây (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Yêu cầu đã bị hủy"
+  },
+  "Response_failed": {
+    "message": "Phản hồi thất bại"
   },
   "Restricted": {
-    "message": ""
+    "message": "Bị hạn chế"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Tóm tắt kết quả"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Tiếp tục hàng đợi"
+  },
+  "Retry_Configuration": {
+    "message": "Cấu hình thử lại"
+  },
+  "Retrying": {
+    "message": "Đang thử lại"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Nhấp chuột phải vào bất kỳ văn bản nào để giải thích hoặc cải thiện bằng Browserx"
+  },
+  "Risk_Score": {
+    "message": "Điểm rủi ro:"
   },
   "Rollout_Expiration": {
     "message": "Thời hạn Rollout"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Chạy ngay"
   },
   "Running": {
-    "message": ""
+    "message": "Đang chạy"
+  },
+  "STREAM_ERROR": {
+    "message": "LỖI STREAM"
   },
   "Safe": {
-    "message": ""
+    "message": "An toàn"
   },
   "Sandbox_Policy": {
     "message": "Chính sách Sandbox"
   },
   "Save_API_Key": {
     "message": "Lưu API Key"
+  },
+  "Save_Changes": {
+    "message": "Lưu thay đổi"
   },
   "Save_Settings": {
     "message": "Lưu cài đặt"
@@ -713,25 +1511,48 @@
     "message": "Đang lưu..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Lên lịch"
   },
   "Schedule_A_New_Task": {
-    "message": ""
+    "message": "Lên lịch nhiệm vụ mới"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Đã lên lịch"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Nhiệm vụ đã lên lịch"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Nhiệm vụ đã lên lịch đang bắt đầu"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Các nhiệm vụ đã lên lịch"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Thời gian lên lịch phải cách hiện tại ít nhất 1 phút"
+  },
+  "Search_complete": {
+    "message": "Tìm kiếm hoàn tất"
+  },
+  "Searching": {
+    "message": "Đang tìm kiếm..."
+  },
+  "Security_Privacy": {
+    "message": "Bảo mật & Riêng tư"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Mức bảo mật cho môi trường thực thi công cụ"
   },
-  "Security_Privacy": {
-    "message": "Bảo mật & Riêng tư"
+  "Select_Model": {
+    "message": "Chọn mô hình"
+  },
+  "Select_model_1": {
+    "message": "Chọn mô hình: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Chọn mô hình AI để sử dụng trong các cuộc trò chuyện."
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Chọn ngôn ngữ ưu tiên cho giao diện"
   },
+  "Selected": {
+    "message": "Đã chọn"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Cấu hình mô hình đã chọn bị thiếu"
+  },
+  "Send": {
+    "message": "Gửi"
+  },
   "Service_Tier": {
     "message": "Cấp dịch vụ"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "Phiên"
+  "Service_tier_updated_to_1": {
+    "message": "Cấp dịch vụ đã được cập nhật lên $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "Lỗi phiên"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Phiên đã hết hạn - vui lòng đăng nhập lại để tiếp tục sử dụng AI agent"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "Đã đạt giới hạn phiên. Các tác vụ mới sẽ được xếp hàng."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Đặt thời gian hết hạn cho dữ liệu rollout"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Đã lưu cài đặt thành công"
   },
+  "Show_API_key": {
+    "message": "Hiển thị API key"
+  },
+  "Show_all": {
+    "message": "Hiển thị tất cả"
+  },
+  "Show_less": {
+    "message": "Hiển thị ít hơn"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Hiển thị lượng token sử dụng trong tác vụ"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Đăng nhập vào tài khoản của bạn"
   },
+  "Skills": {
+    "message": "Kỹ năng"
+  },
   "Stable": {
     "message": "Ổn định"
   },
+  "Standard_capabilities": {
+    "message": "Khả năng tiêu chuẩn"
+  },
+  "Start_New_Conversation": {
+    "message": "Bắt đầu cuộc trò chuyện mới"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "Bắt đầu khi đăng nhập"
   },
   "Status": {
-    "message": ""
+    "message": "Trạng thái"
+  },
+  "Stop_Agent": {
+    "message": "Dừng Agent"
+  },
+  "Stop_the_current_task": {
+    "message": "Dừng tác vụ hiện tại"
   },
   "Stop_the_current_task_run": {
     "message": "Dừng quá trình chạy tác vụ hiện tại"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Lưu trữ dữ liệu bộ nhớ đệm liên tục qua các phiên trình duyệt"
   },
+  "Suggest_Alternative": {
+    "message": "Đề xuất thay thế"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Đã chuyển sang chế độ backend. Yêu cầu LLM sẽ được định tuyến qua máy chủ AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Đã chuyển sang chế độ API trực tiếp. Vui lòng cấu hình API key của bạn."
+  },
+  "System": {
+    "message": "Hệ thống"
+  },
   "Tab_Tool": {
     "message": "Công cụ Tab"
   },
+  "Tab_unavailable": {
+    "message": "Tab không khả dụng"
+  },
+  "Take_Over": {
+    "message": "Tiếp quản"
+  },
   "Task": {
-    "message": ""
+    "message": "Tác vụ"
   },
   "Task_Details": {
-    "message": ""
+    "message": "Chi tiết công việc"
+  },
+  "Task_Failed": {
+    "message": "Công việc thất bại"
   },
   "Task_History": {
-    "message": ""
+    "message": "Lịch sử công việc"
   },
   "Task_ID": {
-    "message": ""
+    "message": "ID công việc"
+  },
+  "Task_Plan": {
+    "message": "Kế hoạch công việc"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Công việc bị người dùng hủy"
+  },
+  "Task_complete": {
+    "message": "Công việc hoàn thành"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Công việc hoàn thành trong $1$ lượt",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Công việc thất bại"
+  },
+  "Task_started": {
+    "message": "Công việc đã bắt đầu"
   },
   "Terminal": {
     "message": "Terminal"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "Terminal Sandbox"
   },
   "Test_Connection": {
     "message": "Kiểm tra kết nối"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "Đang kiểm tra..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "URL endpoint của tác nhân A2A (http hoặc https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "AI quyết định theo lệnh có nên sử dụng sandbox dựa trên đánh giá rủi ro."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "URL endpoint của máy chủ MCP (http hoặc https)"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Tác nhân hiện đang sử dụng chế độ backend. Các yêu cầu LLM sẽ được định tuyến qua máy chủ AI Republic. Cuộc hội thoại của bạn được xử lý an toàn thông qua cơ sở hạ tầng của chúng tôi."
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Việc chuyển đổi mô hình sẽ xóa cuộc trò chuyện hiện tại. Bạn có muốn tiếp tục không?"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Máy chủ gặp lỗi. Vui lòng thử lại sau."
   },
   "Time": {
     "message": "Thời gian"
-  },
-  "Time_remaining": {
-    "message": "Thời gian còn lại"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Thời gian tồn tại (TTL) cho các mục bộ nhớ đệm tính bằng giây (mặc định: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Thời gian chờ (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Để sử dụng AI agent, vui lòng một trong các cách sau:"
+  },
+  "Today": {
+    "message": "Hôm nay"
   },
   "Toggle_side_panel": {
     "message": "Bật/tắt thanh bên"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "Bật/tắt sử dụng khóa API của riêng bạn"
   },
-  "Tool": {
-    "message": "Công cụ"
+  "Token_Usage": {
+    "message": "Sử dụng token"
+  },
+  "Tokens": {
+    "message": "Token:"
+  },
+  "Tokens_1": {
+    "message": "Token: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Thời gian chờ công cụ (ms)"
+  },
+  "Tool_name": {
+    "message": "Tên công cụ:"
+  },
+  "Tool": {
+    "message": "Công cụ"
   },
   "Tools": {
     "message": "Các công cụ"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "Cài đặt công cụ"
   },
-  "Turn": {
-    "message": "Xoay"
+  "Trusted": {
+    "message": "Đáng tin cậy"
+  },
+  "Trusted_Domains": {
+    "message": "Miền tin cậy"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Các tác nhân đáng tin cậy được tự động phê duyệt khi gọi kỹ năng"
+  },
+  "Turns": {
+    "message": "Lượt:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Nhập hướng dẫn thay thế..."
   },
   "UI_Theme": {
     "message": "Chủ đề giao diện"
   },
+  "URL": {
+    "message": "URL"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL phải sử dụng giao thức http hoặc https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Không thể kiểm tra trạng thái tác nhân"
+  },
   "Unable_to_load_credit_information": {
     "message": "Không thể tải thông tin tín dụng"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Không thể kết nối tới máy chủ backend - vui lòng kiểm tra kết nối của bạn"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối và thử lại."
+  },
+  "Unknown_Event": {
+    "message": "Sự kiện không xác định"
+  },
+  "Unknown_error": {
+    "message": "Lỗi không xác định"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Lỗi không xác định khi kiểm tra trạng thái tác nhân"
+  },
+  "Unknown_error_occurred": {
+    "message": "Đã xảy ra lỗi không xác định"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Đã xảy ra lỗi không xác định trong quá trình thực thi nhiệm vụ"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Lỗi không xác định khi xử lý gửi"
+  },
+  "Unknown_model_1": {
+    "message": "Mô hình không xác định ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Thay đổi chưa lưu"
   },
+  "Untitled": {
+    "message": "Không tiêu đề"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Sắp tới"
   },
   "Update": {
-    "message": ""
+    "message": "Cập nhật"
   },
   "Update_Channel": {
     "message": "Kênh cập nhật"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "Nâng cấp lên Gói Cao cấp"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Nâng cấp để khám phá các mô hình mạnh nhất của thế giới"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Nâng cấp gói đăng ký của bạn để khám phá các mô hình mạnh nhất thế giới"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Use_Context_Menu": {
     "message": "Sử dụng menu ngữ cảnh:"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "Sử dụng khóa API của riêng bạn"
   },
-  "User_approved_action": {
-    "message": "Hành động người dùng đã phê duyệt"
-  },
   "User_Center": {
     "message": "Trung tâm người dùng"
   },
-  "User_decision": {
-    "message": "Quyết định của người dùng"
+  "User_Session": {
+    "message": "Phiên người dùng"
   },
   "User_preferences_and_interface_settings": {
     "message": "Tùy chọn người dùng và cài đặt giao diện"
   },
-  "User_rejected_action": {
-    "message": "Hành động bị người dùng từ chối"
-  },
-  "User_requested_modifications": {
-    "message": "Người dùng yêu cầu sửa đổi"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "Sử dụng tín dụng bổ sung"
+  },
+  "Verbosity": {
+    "message": "Độ chi tiết"
+  },
+  "Verbosity_Control": {
+    "message": "Điều khiển độ chi tiết"
+  },
+  "Verbosity_Levels": {
+    "message": "Mức độ chi tiết"
+  },
+  "Verbosity_levels": {
+    "message": "Mức độ chi tiết:"
+  },
+  "Version": {
+    "message": "Phiên bản"
   },
   "View_Chat_History": {
     "message": "Xem lịch sử trò chuyện"
   },
   "View_History": {
-    "message": ""
+    "message": "Xem lịch sử"
   },
   "View_Session": {
-    "message": ""
+    "message": "Xem phiên"
+  },
+  "View_pricing_details": {
+    "message": "Xem chi tiết giá"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Phân tích trực quan nội dung và bố cục trang"
+  },
+  "Waiting_for_approval": {
+    "message": "Đang chờ phê duyệt"
   },
   "Web_Scraping_Tool": {
     "message": "Công cụ thu thập dữ liệu web"
@@ -956,13 +1950,22 @@
     "message": "Chào mừng đến với Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "Liệu các lệnh sandboxed có thể truy cập mạng hay không"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "Truy cập không gian làm việc"
   },
   "Workspace_Write": {
     "message": "Ghi vào Không gian làm việc"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Hôm qua"
+  },
+  "You": {
+    "message": "Bạn"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Bạn có các thay đổi chưa lưu. Bạn có muốn hủy các thay đổi này không?"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Khóa API của bạn đã được mã hóa"
   },
-  "Your_Decision": {
-    "message": "Quyết định của bạn"
+  "Your_personal_AI_assistant": {
+    "message": "Trợ lý AI cá nhân của bạn"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại."
+  },
+  "DISCONNECTED": {
+    "message": "[NGẮT KẾT NỐI]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Lỗi: Luồng bị gián đoạn]"
+  },
+  "NO_ACCESS": {
+    "message": "[KHÔNG CÓ QUYỀN TRUY CẬP]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[KHÔNG CÓ API KEY - NHẤP CÀI ĐẶT]"
+  },
+  "PROCESSING": {
+    "message": "[ĐANG XỬ LÝ]"
+  },
+  "available": {
+    "message": "có sẵn"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "đã lưu trong bộ nhớ đệm"
+  },
+  "detailed_thinking": {
+    "message": "suy nghĩ chi tiết"
+  },
+  "disconnected": {
+    "message": "đã ngắt kết nối"
+  },
+  "exec_unknown_command": {
+    "message": "exec (lệnh không xác định)"
+  },
+  "optional": {
+    "message": "tùy chọn"
+  },
+  "remaining": {
+    "message": "còn lại"
+  },
+  "session": {
+    "message": "phiên"
+  },
+  "sessions": {
+    "message": "các phiên"
+  },
+  "streaming": {
+    "message": "đang stream..."
+  },
+  "thinking": {
+    "message": "đang suy nghĩ"
+  },
+  "tokens": {
+    "message": "token"
+  },
+  "trusted": {
+    "message": "được tin cậy"
+  },
+  "user": {
+    "message": "người dùng"
+  },
+  "web_search": {
+    "message": "tìm kiếm web"
   }
 }

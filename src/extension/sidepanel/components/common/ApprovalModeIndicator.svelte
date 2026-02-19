@@ -8,7 +8,7 @@
   import Tooltip from './Tooltip.svelte';
   import PopupCard from './PopupCard.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
   import type { ApprovalMode, IApprovalConfig } from '@/core/approval/types';
   import { STORAGE_KEYS } from '@/config/defaults';
 
@@ -17,9 +17,9 @@
   let showPopup = false;
 
   const MODE_OPTIONS: { mode: ApprovalMode; label: string; description: string; color: string }[] = [
-    { mode: 'balanced', label: 'Balanced', description: 'Medium-risk and above', color: '#22c55e' },
-    { mode: 'high_speed', label: 'High Speed', description: 'Only high-risk actions', color: '#eab308' },
-    { mode: 'yolo', label: 'YOLO', description: 'Auto-approve everything', color: '#ef4444' },
+    { mode: 'balanced', label: t('Balanced'), description: t('Medium-risk and above'), color: '#22c55e' },
+    { mode: 'high_speed', label: t('High Speed'), description: t('Only high-risk actions'), color: '#eab308' },
+    { mode: 'yolo', label: t('YOLO'), description: t('Auto-approve everything'), color: '#ef4444' },
   ];
 
   uiTheme.subscribe((theme) => {
