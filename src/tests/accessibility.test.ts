@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import TerminalContainer from '../sidepanel/components/TerminalContainer.svelte';
-import TerminalMessage from '../sidepanel/components/TerminalMessage.svelte';
-import TerminalInput from '../sidepanel/components/TerminalInput.svelte';
+import TerminalContainer from '../extension/sidepanel/components/TerminalContainer.svelte';
+import TerminalMessage from '../extension/sidepanel/components/TerminalMessage.svelte';
+import TerminalInput from '../extension/sidepanel/components/TerminalInput.svelte';
 
 describe('Accessibility', () => {
   it('should meet WCAG AA contrast ratios for green on black', () => {

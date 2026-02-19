@@ -1,27 +1,36 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "En generell AI-agent i nettleseren for arbeidsoppgaver"
-  },
-  "API_Key_Configuration": {
-    "message": "API-nøkkelkonfigurasjon"
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API-nøkler er kryptert og lagret lokalt i nettleseren din. De blir aldri sendt til eksterne servere, bortsett fra ved API‑kall."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Tilgang til nettleserlagring (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "Handling"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Action_Details": {
     "message": "Handlingsdetaljer"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Legg til endring"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Additional_Bind_Mounts": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Avansert konfigurasjon"
@@ -29,8 +38,14 @@
   "Advanced_Options": {
     "message": "Avanserte alternativer"
   },
+  "Advanced_Settings": {
+    "message": ""
+  },
   "Agent_Execution_Tools": {
     "message": "Verktøy for agentutførelse"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Tillat agenten å kjøre systemkommandoer (bruk med forsiktighet)"
@@ -41,11 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Tillat innholdsskript å kjøre på nettsider"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Tillatte origins"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API-nøkkelkonfigurasjon"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API-nøkler er kryptert og lagret lokalt i nettleseren din. De blir aldri sendt til eksterne servere, bortsett fra ved API‑kall."
+  },
   "Approval_History": {
     "message": "Godkjenningshistorikk"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "Godkjenn"
@@ -56,8 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Be Browserx om å hente ut strukturert data fra en hvilken som helst nettside"
   },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
+  },
   "Available": {
     "message": "Tilgjengelig:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "Tilbake"
@@ -71,20 +119,20 @@
   "Beta": {
     "message": "Beta"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "Brytere for nettleserautomatisering"
+  },
   "Browser_Tools": {
     "message": "Nettleserverktøy"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Brytere for nettleserautomatisering"
+  "Cache_behavior_and_data_retention": {
+    "message": "Cache-oppførsel og databevaring"
   },
   "Cache_Settings": {
     "message": "Cache-innstillinger"
   },
   "Cache_TTL_seconds": {
     "message": "Cache TTL (sekunder)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "Cache-oppførsel og databevaring"
   },
   "Cancel": {
     "message": "Avbryt"
@@ -110,6 +158,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klikk på Browserx-ikonet i verktøylinjen eller trykk Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Klikk for å velge en modell"
   },
@@ -119,14 +170,38 @@
   "Command": {
     "message": "Kommando"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimer hurtigbufrede data for å spare lagringsplass"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Konfigurer AI-modell og API-nøkler"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
   "Connected": {
     "message": "Tilkoblet"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Kontekst"
@@ -134,20 +209,26 @@
   "Create_New_Tab": {
     "message": "Opprett ny fane"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Kredittdetaljer"
   },
   "Current_Plan": {
     "message": "Gjeldende plan:"
   },
-  "DOM_Tool": {
-    "message": "DOM-verktøy"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "Daglige kreditter"
   },
   "Data_Extraction_Tool": {
     "message": "Datauttrekksverktøy"
+  },
+  "Date": {
+    "message": ""
   },
   "Days_until_expiration": {
     "message": "Dager til utløp"
@@ -158,14 +239,38 @@
   "Discard_Changes": {
     "message": "Forkast endringer"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Vis tokenforbruk (input-/output‑tokens) når oppgaver er fullført"
+  },
+  "DOM_Tool": {
+    "message": "DOM-verktøy"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Aktiver alle verktøy"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "Aktiver cache"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Aktiver caching for å forbedre ytelsen ved å lagre ofte hentet data"
   },
   "Enable_Compression": {
     "message": "Aktiver komprimering"
@@ -173,23 +278,38 @@
   "Enable_Content_Scripts": {
     "message": "Aktiver innholdsskript"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "Aktiver utvidelse"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Aktiver integrasjon av Model Context Protocol‑verktøy (kommer i fremtidig oppdatering)"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Aktiver caching for å forbedre ytelsen ved å lagre ofte hentet data"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Aktiver websøk‑funksjonalitet for agenten"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Skriv inn din LLM API-nøkkel"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "Kjør kommandoer"
+  },
+  "Execution_Mode": {
+    "message": ""
   },
   "Expire_after_days": {
     "message": "Utløper etter dager"
@@ -197,20 +317,29 @@
   "Explain_your_decision": {
     "message": "Forklar beslutningen din…"
   },
-  "Extension_Permission": {
-    "message": "Utvidelse & Tillatelse"
-  },
-  "Extension_Permission_Settings": {
-    "message": "Innstillinger for utvidelse & tillatelse"
-  },
   "Extension_Configuration": {
     "message": "Utvidelseskonfigurasjon"
   },
   "Extension_configuration_and_permissions": {
     "message": "Utvidelseskonfigurasjon og tillatelser"
   },
+  "extension_description": {
+    "message": "En generell AI-agent i nettleseren for arbeidsoppgaver"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "Utvidelse & Tillatelse"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Innstillinger for utvidelse & tillatelse"
+  },
   "Extra_Credits": {
     "message": "Ekstra kreditter"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Ekstraher data:"
@@ -242,14 +371,17 @@
   "Full_Access_Dangerous": {
     "message": "Full tilgang (Farlig)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Generelt"
   },
-  "General_Settings": {
-    "message": "Generelle innstillinger"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "Generelle innstillinger"
   },
   "Get_Started": {
     "message": "Kom i gang"
@@ -268,6 +400,9 @@
   "History": {
     "message": "Historikk"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "Effekt"
   },
@@ -277,26 +412,44 @@
   "Keyboard_Shortcuts": {
     "message": "Tastatursnarveier"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM-forespørsler går direkte til leverandør‑APIer"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM-forespørsler rutes gjennom AI Republic-backend"
-  },
   "Language": {
     "message": "Språk"
   },
   "Learn_more": {
     "message": "Lær mer"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Liste over tillatte opprinnelsesdomener (én per linje). Støtter jokertegn (*)."
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-forespørsler går direkte til leverandør‑APIer"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-forespørsler rutes gjennom AI Republic-backend"
+  },
+  "Load_More": {
+    "message": ""
+  },
+  "Loading": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Laster kreditter..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Laster innstillinger..."
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Logg inn"
@@ -304,11 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "Logg inn for å få gratis kreditter"
   },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Lavt kredittsaldo"
-  },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP-verktøy (ikke tilgjengelig)"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Administrer nettleserfaner (åpne, lukke, bytte, spørre)"
@@ -322,11 +478,29 @@
   "Max_Cache_Size_MB": {
     "message": "Maks cache-størrelse (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maksimal cache-størrelse i megabyte (standard: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maksimal tid (i millisekunder) et verktøy kan kjøre før tidsavbrudd (standard: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Modellkonfigurasjon"
@@ -346,11 +520,17 @@
   "More_Config": {
     "message": "Mer konfigurasjon"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Naviger sider, klikk lenker, håndter nettlesernavigasjon"
   },
   "Navigation_Tool": {
     "message": "Navigasjonsverktøy"
+  },
+  "Network_Access": {
+    "message": ""
   },
   "Network_Intercept_Tool": {
     "message": "Nettverksinterceptverktøy"
@@ -361,11 +541,29 @@
   "New_Conversation": {
     "message": "Ny samtale"
   },
+  "No_Access": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Ingen godkjenningshistorikk ennå."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Ingen faner tilgjengelige"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Ikke tilkoblet"
@@ -373,8 +571,14 @@
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Antall dager før utrullingsdata utløper (standard: 60)"
   },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
+  },
   "Open_Side_Panel": {
     "message": "Åpne sidepanel:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "Organisasjon"
@@ -388,6 +592,9 @@
   "Parameter_Modifications": {
     "message": "Parameterendringer"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Utfør sidehandlinger (rull, skjermbilde, vent)"
   },
@@ -400,6 +607,9 @@
   "Please_type_a_valid_command": {
     "message": "Vennligst skriv inn en gyldig kommando"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Prioritetsnivå gir raskere responstider med høyere pris."
   },
@@ -409,14 +619,29 @@
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Spør og manipuler DOM (Document Object Model)"
   },
-  "Quick_Start": {
-    "message": "Rask start"
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
   },
   "Quick_action": {
     "message": "Rask handling"
   },
+  "Quick_Schedule": {
+    "message": ""
+  },
+  "Quick_Start": {
+    "message": "Rask start"
+  },
   "Read_only": {
     "message": "Skrivebeskyttet"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "Årsak (valgfritt)"
@@ -433,6 +658,9 @@
   "Remaining": {
     "message": "Gjenstår:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Fjern API-nøkkel"
   },
@@ -445,11 +673,32 @@
   "Request_changes_to_this_action": {
     "message": "Be om endringer i denne handlingen"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Høyreklikk på hvilken som helst tekst for å forklare eller forbedre den med Browserx"
   },
   "Rollout_Expiration": {
     "message": "Utrullingsutløp"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
+  },
+  "Safe": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandkassepolicy"
@@ -463,11 +712,26 @@
   "Saving": {
     "message": "Lagrer..."
   },
-  "Security_Privacy": {
-    "message": "Sikkerhet og personvern"
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_A_New_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Sikkerhetsnivå for verktøyets kjøremiljø"
+  },
+  "Security_Privacy": {
+    "message": "Sikkerhet og personvern"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Velg AI-modellen som skal brukes i samtaler."
@@ -475,14 +739,23 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Velg foretrukket språk for grensesnittet"
   },
-  "Send_the_message": {
-    "message": "Send meldingen"
-  },
   "Service_Tier": {
     "message": "Tjenestenivå"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "Sesjon"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Angi når utrullingsdata skal utløpe"
@@ -504,6 +777,12 @@
   },
   "Stable": {
     "message": "Stabil"
+  },
+  "Start_on_login": {
+    "message": ""
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Stopp den nåværende oppgavekjøringen"
@@ -529,8 +808,23 @@
   "Tab_Tool": {
     "message": "Faneverktøy"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminal"
+  },
+  "Terminal_Sandbox": {
+    "message": ""
   },
   "Test_Connection": {
     "message": "Test tilkobling"
@@ -541,6 +835,12 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agenten bruker for øyeblikket backend-modus. LLM-forespørsler vil bli rutet gjennom AI Republic-serveren. Samtalene dine behandles sikkert gjennom vår infrastruktur."
   },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "Time": {
     "message": "Tid"
   },
@@ -550,8 +850,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Levetid for hurtigbufferobjekter i sekunder (standard: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Veksle sidepanel"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Verktøy"
@@ -571,14 +877,17 @@
   "UI_Theme": {
     "message": "UI-tema"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "Kunne ikke laste kredittinformasjon"
   },
   "Unsaved_Changes": {
     "message": "Ulagrede endringer"
+  },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "Oppdateringskanal"
@@ -592,17 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Oppgrader abonnementet ditt for å utforske verdens mest kraftfulle modeller"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "Bruk kontekstmeny:"
   },
   "Use_Own_API_Key": {
     "message": "Bruk egen API-nøkkel"
   },
-  "User_Center": {
-    "message": "Brukersenter"
-  },
   "User_approved_action": {
     "message": "Handling godkjent av bruker"
+  },
+  "User_Center": {
+    "message": "Brukersenter"
   },
   "User_decision": {
     "message": "Brukerbeslutning"
@@ -616,11 +928,20 @@
   "User_requested_modifications": {
     "message": "Brukerens forespurte endringer"
   },
+  "User_Session": {
+    "message": ""
+  },
   "Using_extra_credits": {
     "message": "Bruke ekstra kreditter"
   },
   "View_Chat_History": {
     "message": "Vis chatthistorikk"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visuell analyse av sideinnhold og layout"
@@ -633,6 +954,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Velkommen til Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Skriv til arbeidsområde"

@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventCollector, createMockSubmission, createMockUserTurn, waitFor, createDeferred } from '../utils/test-helpers';
-import { Submission, Event, EventMsg } from '../../protocol/types';
+import type { Submission, Event, EventMsg } from '../../core/protocol/types';
 
 // Define TurnManager contract interfaces
 interface TurnRequest {
@@ -102,7 +102,6 @@ describe('TurnManager Contract', () => {
               data: {
                 session_id: request.sessionId,
                 turn_id: 'turn_1',
-                turn_number: request.context.turnNumber,
               },
             },
           });
@@ -231,7 +230,6 @@ describe('TurnManager Contract', () => {
               data: {
                 code: 'TURN_FAILED',
                 message: 'Turn execution failed',
-                retryable: true,
               },
             },
           });
@@ -384,7 +382,7 @@ describe('TurnManager Contract', () => {
                 type: 'ContextUpdated',
                 data: {
                   session_id: sessionId,
-                  updates,
+                  context_type: 'manual',
                 },
               },
             });
@@ -424,8 +422,8 @@ describe('TurnManager Contract', () => {
               type: 'TurnRetry',
               data: {
                 turn_id: turnId,
-                retry_count: 1,
-                context_updates: newContext || {},
+                attempt: 1,
+                reason: newContext ? 'context_updated' : 'retry',
               },
             },
           });
@@ -498,8 +496,8 @@ describe('TurnManager Contract', () => {
               type: 'TurnRetry',
               data: {
                 turn_id: turnId,
-                retry_count: retryCount,
-                delay_ms: retryCount * 1000,
+                attempt: retryCount,
+                reason: 'retry',
               },
             },
           });
@@ -610,7 +608,6 @@ describe('TurnManager Contract', () => {
             msg: {
               type: 'TurnAborted',
               data: {
-                turn_id: turnId,
                 reason: 'user_request',
               },
             },

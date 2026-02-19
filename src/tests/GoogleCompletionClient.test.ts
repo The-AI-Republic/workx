@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GoogleCompletionClient } from '../models/client/GoogleCompletionClient';
-import type { ModelProviderInfo, Prompt } from '../models/types/ResponsesAPI';
+import { GoogleCompletionClient } from '../core/models/client/GoogleCompletionClient';
+import type { ModelProviderInfo, Prompt } from '../core/models/types/ResponsesAPI';
 import { GoogleGenAI } from '@google/genai';
 
 const mocks = vi.hoisted(() => {

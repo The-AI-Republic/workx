@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { VisibilityFilter } from '../../../serializers/filters/VisibilityFilter';
-import { VirtualNode } from '../../../types';
+import type { VirtualNode } from '../../../types';
 
 describe('VisibilityFilter', () => {
   const filter = new VisibilityFilter();

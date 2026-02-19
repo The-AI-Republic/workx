@@ -4,11 +4,11 @@
  * Generates titles based on the first 3 user messages in a conversation.
  */
 
-import type { ResponseItem } from '../../protocol/types';
+import type { ResponseItem } from '../protocol/types';
 import type { TitleGenerationConfig, TitleGenerationResult } from './types';
 import { DEFAULT_TITLE_CONFIG, TITLE_GENERATION_PROMPT } from './constants';
-import type { ModelClient } from '../../models/ModelClient';
-import { isOutputTextDelta, isCompleted } from '../../models/types/ResponseEvent';
+import type { ModelClient } from '../models/ModelClient';
+import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
 
 /**
  * Service for generating conversation titles using LLM

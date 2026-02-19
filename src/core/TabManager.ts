@@ -63,7 +63,7 @@ export class TabManager {
       return;
     }
 
-    // Clean up all existing browserx groups on initialization
+    // Clean up all existing pi groups on initialization
     await this.reset();
 
     // Setup Chrome event listeners
@@ -77,7 +77,7 @@ export class TabManager {
    */
   private setupChromeEventListeners(): void {
     // Listen for tab closure
-    chrome.tabs.onRemoved.addListener((tabId: number, removeInfo: chrome.tabs.TabRemoveInfo) => {
+    chrome.tabs.onRemoved.addListener((tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => {
       console.log(`[TabManager] Tab ${tabId} closed`);
       this.notifyTabClosure(tabId);
     });
@@ -85,7 +85,7 @@ export class TabManager {
     // Listen for tab crashes
     chrome.tabs.onUpdated.addListener((
       tabId: number,
-      changeInfo: chrome.tabs.TabChangeInfo,
+      changeInfo: { status?: string; url?: string; pinned?: boolean; audible?: boolean; discarded?: boolean; autoDiscardable?: boolean; groupId?: number; favIconUrl?: string; title?: string },
       tab: chrome.tabs.Tab
     ) => {
       // Detect crashed or unresponsive tabs
@@ -100,9 +100,17 @@ export class TabManager {
    * Register a callback for tab closure events
    * The callback receives the tabId that was closed/crashed
    * @param callback - Function to call when a tab closes
+   * @returns Unsubscribe function to remove the callback
    */
-  onTabClosure(callback: TabClosureCallback): void {
+  onTabClosure(callback: TabClosureCallback): () => void {
     this.tabClosureCallbacks.push(callback);
+    // Return unsubscribe function
+    return () => {
+      const index = this.tabClosureCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.tabClosureCallbacks.splice(index, 1);
+      }
+    };
   }
 
   /**
@@ -162,11 +170,11 @@ export class TabManager {
 
 
   /**
-   * Ensure BrowserX tab group exists (merged from TabGroupManager)
-   * Finds or prepares to create the "browserx" tab group
+   * Ensure Pi tab group exists (merged from TabGroupManager)
+   * Finds or prepares to create the "pi" tab group
    * Gracefully degrades if chrome.tabGroups API is unavailable
    */
-  private async ensureBrowserXGroup(): Promise<void> {
+  private async ensurePiGroup(): Promise<void> {
     // Check if tab groups API is available
     if (typeof chrome === 'undefined' || !chrome.tabGroups) {
       console.warn('[TabManager] Tab Groups API not available, grouping disabled');
@@ -175,21 +183,21 @@ export class TabManager {
     }
 
     try {
-      // Try to find existing BrowserX group
+      // Try to find existing Pi group
       const groups = await chrome.tabGroups.query({ title: this.groupTitle });
 
       if (groups.length > 0) {
         // Use existing group
         this.groupId = groups[0].id;
-        console.log(`[TabManager] Found existing BrowserX tab group: ${this.groupId}`);
+        console.log(`[TabManager] Found existing Pi tab group: ${this.groupId}`);
 
         // Ensure it has the correct color
         await chrome.tabGroups.update(this.groupId, {
           title: this.groupTitle,
-          color: this.groupColor,
+          color: this.groupColor as chrome.tabGroups.Color,
         });
       } else {
-        console.log('[TabManager] No existing BrowserX tab group found, will create on first tab');
+        console.log('[TabManager] No existing Pi tab group found, will create on first tab');
       }
     } catch (error) {
       console.error('[TabManager] Failed to initialize tab group:', error);
@@ -198,10 +206,10 @@ export class TabManager {
   }
 
   /**
-   * Create BrowserX tab group (merged from TabGroupManager)
+   * Create Pi tab group (merged from TabGroupManager)
    * @param tabId - Initial tab to add to the group
    */
-  private async createBrowserXGroup(tabId: number): Promise<void> {
+  private async createPiGroup(tabId: number): Promise<void> {
     try {
       // Ensure tab is in a normal window
       let tab = await chrome.tabs.get(tabId);
@@ -212,7 +220,7 @@ export class TabManager {
 
       const normalizedTab = await this.ensureTabInNormalWindow(tab);
       if (!normalizedTab) {
-        console.warn(`[TabManager] Cannot create BrowserX group: tab ${tabId} could not be moved to a normal window`);
+        console.warn(`[TabManager] Cannot create Pi group: tab ${tabId} could not be moved to a normal window`);
         return;
       }
       tab = normalizedTab;
@@ -224,12 +232,12 @@ export class TabManager {
       // Configure the group
       await chrome.tabGroups.update(groupId, {
         title: this.groupTitle,
-        color: this.groupColor,
+        color: this.groupColor as chrome.tabGroups.Color,
         collapsed: false,
       });
 
       this.groupId = groupId;
-      console.log(`[TabManager] Created BrowserX tab group: ${this.groupId}`);
+      console.log(`[TabManager] Created Pi tab group: ${this.groupId}`);
     } catch (error) {
       console.error('[TabManager] Failed to create tab group:', error);
       this.groupId = null;
@@ -311,6 +319,10 @@ export class TabManager {
 
       if (candidateWindowId === undefined) {
         const newWindow = await chrome.windows.create({ focused: true });
+        if (!newWindow) {
+          console.warn('[TabManager] Failed to create a new window');
+          return null;
+        }
         candidateWindowId = newWindow.id ?? undefined;
       }
 
@@ -373,7 +385,7 @@ export class TabManager {
   }
 
   /**
-   * Add tab to BrowserX group
+   * Add tab to Pi group
    * Gracefully degrades if tab groups API is unavailable
    * @param tabId - Tab ID to add to group
    * @returns The group ID, or null if grouping failed
@@ -416,7 +428,7 @@ export class TabManager {
 
       // If we don't have a group yet, create one
       if (this.groupId === null) {
-        await this.createBrowserXGroup(tabId);
+        await this.createPiGroup(tabId);
         return this.groupId;
       }
 
@@ -426,7 +438,7 @@ export class TabManager {
         groupId: this.groupId,
       });
 
-      console.log(`[TabManager] Added tab ${tabId} to BrowserX group ${this.groupId}`);
+      console.log(`[TabManager] Added tab ${tabId} to Pi group ${this.groupId}`);
       return this.groupId;
     } catch (error) {
       console.error(`[TabManager] Failed to add tab ${tabId} to group:`, error);
@@ -435,7 +447,7 @@ export class TabManager {
   }
 
   /**
-   * Remove tab from BrowserX group
+   * Remove tab from Pi group
    * Gracefully degrades if tab groups API is unavailable
    * @param tabId - Tab ID to remove from group
    */
@@ -460,10 +472,10 @@ export class TabManager {
         return;
       }
 
-      // Only remove from our BrowserX group
+      // Only remove from our Pi group
       if (this.groupId !== null && tab.groupId === this.groupId) {
         await chrome.tabs.ungroup(tabId);
-        console.log(`[TabManager] Removed tab ${tabId} from BrowserX group ${this.groupId}`);
+        console.log(`[TabManager] Removed tab ${tabId} from Pi group ${this.groupId}`);
       } else {
         console.log(`[TabManager] Tab ${tabId} is in a different group (${tab.groupId}), not removing`);
       }
@@ -473,9 +485,9 @@ export class TabManager {
   }
 
   /**
-   * Reset TabManager by ungrouping all tabs from "browserx" groups (tabs stay open)
-   * All "browserx" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
-   * Called during session reset and initialization to clean up all browserx groups
+   * Reset TabManager by ungrouping all tabs from "pi" groups (tabs stay open)
+   * All "pi" groups (both collapsed and expanded) will be deleted after ungrouping their tabs
+   * Called during session reset and initialization to clean up all pi groups
    */
   async reset(): Promise<void> {
     // Skip if API is unavailable
@@ -483,7 +495,7 @@ export class TabManager {
       return;
     }
 
-    // Query for both collapsed and non-collapsed browserx groups
+    // Query for both collapsed and non-collapsed pi groups
     const [collapsedGroups, expandedGroups] = await Promise.all([
       chrome.tabGroups.query({ title: this.groupTitle, collapsed: true }),
       chrome.tabGroups.query({ title: this.groupTitle, collapsed: false }),
@@ -496,7 +508,7 @@ export class TabManager {
       return;
     }
 
-    // Ungroup all tabs from each browserx group
+    // Ungroup all tabs from each pi group
     for (const group of allGroups) {
       try {
         // First, expand the group if it's collapsed (to ensure we can access all tabs)
@@ -513,10 +525,10 @@ export class TabManager {
         const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
 
         if (tabIds.length > 0) {
-          await chrome.tabs.ungroup(tabIds);
+          await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
         }
       } catch (error) {
-        console.error(`[TabManager] Failed to reset browserx group ${group.id}:`, error);
+        console.error(`[TabManager] Failed to reset pi group ${group.id}:`, error);
       }
     }
 
@@ -524,7 +536,7 @@ export class TabManager {
   }
 
   /**
-   * Remove all tabs from all BrowserX groups (ungroup without closing)
+   * Remove all tabs from all Pi groups (ungroup without closing)
    * Used when switching tabs to ensure consistency
    */
   async clearAllTabsFromGroup(): Promise<void> {
@@ -534,7 +546,7 @@ export class TabManager {
     }
 
     try {
-      // Find all browserx groups
+      // Find all pi groups
       const groups = await chrome.tabGroups.query({ title: this.groupTitle });
 
       if (groups.length === 0) {
@@ -542,14 +554,14 @@ export class TabManager {
         return;
       }
 
-      // Ungroup tabs from all browserx groups
+      // Ungroup tabs from all pi groups
       for (const group of groups) {
         try {
           const tabs = await chrome.tabs.query({ groupId: group.id });
           const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
 
           if (tabIds.length > 0) {
-            await chrome.tabs.ungroup(tabIds);
+            await chrome.tabs.ungroup(tabIds as [number, ...number[]]);
           }
         } catch (error) {
           console.error(`[TabManager] Failed to ungroup tabs from group ${group.id}:`, error);
@@ -558,7 +570,7 @@ export class TabManager {
 
       this.groupId = null;
     } catch (error) {
-      console.error('[TabManager] Failed to clear tabs from BrowserX groups:', error);
+      console.error('[TabManager] Failed to clear tabs from Pi groups:', error);
     }
   }
 

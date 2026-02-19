@@ -275,6 +275,24 @@ export interface IUserPreferences {
    * - Default: false (hidden by default)
    */
   showTokenUsage?: boolean;
+  /**
+   * Maximum number of concurrent agent sessions (Feature 015: Multi-Agent Instances)
+   * - Controls how many parallel sessions can run simultaneously
+   * - Includes primary user session and scheduled task sessions
+   * - Default: 3, Range: 1-10
+   */
+  maxConcurrentSessions?: number;
+  /**
+   * Whether to auto-start the app on OS login (desktop only)
+   * - When true: App registers itself to start on OS login
+   * - When false: App does not start on OS login
+   * - Default: false (opt-in; user enables via Settings > General)
+   */
+  autoStartEnabled?: boolean;
+  /**
+   * User's preferred language code (e.g., 'en', 'es', 'zh')
+   */
+  language?: string;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
 }

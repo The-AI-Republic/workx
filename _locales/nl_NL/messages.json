@@ -1,27 +1,36 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "Algemene in-browser AI-agent voor werktaken"
-  },
-  "API_Key_Configuration": {
-    "message": "API-sleutelconfiguratie"
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API-sleutels worden versleuteld en lokaal in uw browser opgeslagen. Ze worden nooit naar externe servers verzonden, behalve voor API-aanroepen."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Toegang tot browseropslag (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "Actie"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Action_Details": {
     "message": "Actiedetails"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Wijziging toevoegen"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Additional_Bind_Mounts": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Geavanceerde configuratie"
@@ -29,8 +38,14 @@
   "Advanced_Options": {
     "message": "Geavanceerde opties"
   },
+  "Advanced_Settings": {
+    "message": ""
+  },
   "Agent_Execution_Tools": {
     "message": "Agent-uitvoeringshulpmiddelen"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Agent toestaan systeemopdrachten uit te voeren (met voorzichtigheid gebruiken)"
@@ -41,11 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Toestaan dat inhoudsscripts op webpagina's worden uitgevoerd"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Toegestane origins"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API-sleutelconfiguratie"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API-sleutels worden versleuteld en lokaal in uw browser opgeslagen. Ze worden nooit naar externe servers verzonden, behalve voor API-aanroepen."
+  },
   "Approval_History": {
     "message": "Goedkeuringsgeschiedenis"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "Goedkeuren"
@@ -56,8 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
   },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
+  },
   "Available": {
     "message": "Beschikbaar:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "Terug"
@@ -71,20 +119,20 @@
   "Beta": {
     "message": "Beta"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "Schakelaars voor browserautomatiseringstools"
+  },
   "Browser_Tools": {
     "message": "Browserhulpmiddelen"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Schakelaars voor browserautomatiseringstools"
+  "Cache_behavior_and_data_retention": {
+    "message": "Cachegedrag en gegevensbewaring"
   },
   "Cache_Settings": {
     "message": "Cache-instellingen"
   },
   "Cache_TTL_seconds": {
     "message": "Cache TTL (seconden)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "Cachegedrag en gegevensbewaring"
   },
   "Cancel": {
     "message": "Annuleren"
@@ -110,6 +158,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Klik om een model te selecteren"
   },
@@ -119,14 +170,38 @@
   "Command": {
     "message": "Opdracht"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Cachegegevens comprimeren om opslagruimte te besparen"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Configureer AI-model en API-sleutels"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
   "Connected": {
     "message": "Verbonden"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Context"
@@ -134,20 +209,26 @@
   "Create_New_Tab": {
     "message": "Nieuw tabblad maken"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Creditdetails"
   },
   "Current_Plan": {
     "message": "Huidig plan:"
   },
-  "DOM_Tool": {
-    "message": "DOM-tool"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "Dagelijkse credits"
   },
   "Data_Extraction_Tool": {
     "message": "Gegevens-extractietool"
+  },
+  "Date": {
+    "message": ""
   },
   "Days_until_expiration": {
     "message": "Dagen tot vervaldatum"
@@ -158,14 +239,38 @@
   "Discard_Changes": {
     "message": "Wijzigingen negeren"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Toon tokenverbruik (invoer-/uitvoertokens) bij voltooiing van taken"
+  },
+  "DOM_Tool": {
+    "message": "DOM-tool"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Alle tools inschakelen"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "Cache inschakelen"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
   },
   "Enable_Compression": {
     "message": "Compressie inschakelen"
@@ -173,23 +278,38 @@
   "Enable_Content_Scripts": {
     "message": "Inhoudsscripts inschakelen"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "Extensie inschakelen"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Integratie van Model Context Protocol-tools inschakelen (komt in een toekomstige update)"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Webzoekfunctionaliteit voor de agent inschakelen"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Voer uw LLM API-sleutel in"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "Opdrachten uitvoeren"
+  },
+  "Execution_Mode": {
+    "message": ""
   },
   "Expire_after_days": {
     "message": "Verloopt na dagen"
@@ -197,20 +317,29 @@
   "Explain_your_decision": {
     "message": "Leg uw beslissing uit..."
   },
-  "Extension_Permission": {
-    "message": "Extensie & toestemming"
-  },
-  "Extension_Permission_Settings": {
-    "message": "Instellingen voor extensie en toestemming"
-  },
   "Extension_Configuration": {
     "message": "Extensieconfiguratie"
   },
   "Extension_configuration_and_permissions": {
     "message": "Extensieconfiguratie en toestemmingen"
   },
+  "extension_description": {
+    "message": "Algemene in-browser AI-agent voor werktaken"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "Extensie & toestemming"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Instellingen voor extensie en toestemming"
+  },
   "Extra_Credits": {
     "message": "Extra Credits"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Gegevens extraheren:"
@@ -242,14 +371,17 @@
   "Full_Access_Dangerous": {
     "message": "Volledige toegang (gevaarlijk)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Algemeen"
   },
-  "General_Settings": {
-    "message": "Algemene instellingen"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "Algemene in-browser AI-agent voor werktaken"
+  },
+  "General_Settings": {
+    "message": "Algemene instellingen"
   },
   "Get_Started": {
     "message": "Aan de slag"
@@ -268,6 +400,9 @@
   "History": {
     "message": "Geschiedenis"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "Impact"
   },
@@ -277,26 +412,44 @@
   "Keyboard_Shortcuts": {
     "message": "Sneltoetsen"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM-verzoeken gaan rechtstreeks naar provider-API's"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM-verzoeken worden via de AI Republic-backend geleid"
-  },
   "Language": {
     "message": "Taal"
   },
   "Learn_more": {
     "message": "Meer info"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Lijst met toegestane origins (één per regel). Ondersteunt wildcards (*)."
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-verzoeken gaan rechtstreeks naar provider-API's"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-verzoeken worden via de AI Republic-backend geleid"
+  },
+  "Load_More": {
+    "message": ""
+  },
+  "Loading": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Credits laden..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Instellingen laden..."
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Inloggen"
@@ -304,11 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "Log in om gratis credits te krijgen"
   },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Weinig credits over"
-  },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP Tools (Niet beschikbaar)"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Beheer browsertabbladen (openen, sluiten, wisselen, opvragen)"
@@ -322,11 +478,29 @@
   "Max_Cache_Size_MB": {
     "message": "Maximale cachegrootte (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maximale cachegrootte in megabytes (standaard: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximumtijd (in milliseconden) dat een tool kan draaien voordat er een time‑out optreedt (standaard: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Modelconfiguratie"
@@ -346,11 +520,17 @@
   "More_Config": {
     "message": "Meer configuratie"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigeer door pagina's, klik op links, beheer browsernavigatie"
   },
   "Navigation_Tool": {
     "message": "Navigatietool"
+  },
+  "Network_Access": {
+    "message": ""
   },
   "Network_Intercept_Tool": {
     "message": "Netwerkinterceptietool"
@@ -361,11 +541,29 @@
   "New_Conversation": {
     "message": "Nieuw gesprek"
   },
+  "No_Access": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Nog geen goedkeuringsgeschiedenis."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Geen tabbladen beschikbaar"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Niet verbonden"
@@ -373,8 +571,14 @@
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Aantal dagen voordat implementatiegegevens verlopen (standaard: 60)"
   },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
+  },
   "Open_Side_Panel": {
     "message": "Open zijpaneel:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "Organisatie"
@@ -388,6 +592,9 @@
   "Parameter_Modifications": {
     "message": "Parameterwijzigingen"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Voer pagina-acties uit (scrollen, screenshot, wachten)"
   },
@@ -400,6 +607,9 @@
   "Please_type_a_valid_command": {
     "message": "Typ een geldige opdracht"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Het prioriteitsniveau biedt snellere responstijden tegen hogere kosten."
   },
@@ -409,14 +619,29 @@
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Bevraag en bewerk de DOM (Document Object Model)"
   },
-  "Quick_Start": {
-    "message": "Snel starten"
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
   },
   "Quick_action": {
     "message": "Snelle actie"
   },
+  "Quick_Schedule": {
+    "message": ""
+  },
+  "Quick_Start": {
+    "message": "Snel starten"
+  },
   "Read_only": {
     "message": "Alleen-lezen"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "Reden (optioneel)"
@@ -433,6 +658,9 @@
   "Remaining": {
     "message": "Resterend:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "API-sleutel verwijderen"
   },
@@ -445,11 +673,32 @@
   "Request_changes_to_this_action": {
     "message": "Wijzigingen voor deze actie aanvragen"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met Browserx"
   },
   "Rollout_Expiration": {
     "message": "Uitrolvervaldatum"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
+  },
+  "Safe": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Sandboxbeleid"
@@ -463,11 +712,26 @@
   "Saving": {
     "message": "Opslaan..."
   },
-  "Security_Privacy": {
-    "message": "Beveiliging & privacy"
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_A_New_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Beveiligingsniveau voor tool-uitvoeringsomgeving"
+  },
+  "Security_Privacy": {
+    "message": "Beveiliging & privacy"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Selecteer het AI-model voor gesprekken."
@@ -475,14 +739,23 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selecteer uw voorkeurstaal voor de interface"
   },
-  "Send_the_message": {
-    "message": "Bericht verzenden"
-  },
   "Service_Tier": {
     "message": "Serviceklasse"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "Sessie"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Instellen wanneer rolloutgegevens moeten verlopen"
@@ -504,6 +777,12 @@
   },
   "Stable": {
     "message": "Stabiel"
+  },
+  "Start_on_login": {
+    "message": ""
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Stop de huidige taakuitvoering"
@@ -529,8 +808,23 @@
   "Tab_Tool": {
     "message": "Tabblad-hulpmiddel"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Terminal"
+  },
+  "Terminal_Sandbox": {
+    "message": ""
   },
   "Test_Connection": {
     "message": "Verbinding testen"
@@ -541,6 +835,12 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "De agent gebruikt momenteel de backend‑modus. LLM‑verzoeken worden via de AI Republic‑server geleid. Uw gesprekken worden veilig verwerkt via onze infrastructuur."
   },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "Time": {
     "message": "Tijd"
   },
@@ -550,8 +850,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live voor gecachte items in seconden (standaard: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Zijpaneel tonen/verbergen"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Tool"
@@ -571,14 +877,17 @@
   "UI_Theme": {
     "message": "UI-thema"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "Kan creditinformatie niet laden"
   },
   "Unsaved_Changes": {
     "message": "Niet-opgeslagen wijzigingen"
+  },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "Updatekanaal"
@@ -592,17 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Upgrade je abonnement om de krachtigste modellen van de wereld te verkennen"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "Gebruik contextmenu:"
   },
   "Use_Own_API_Key": {
     "message": "Gebruik eigen API-sleutel"
   },
-  "User_Center": {
-    "message": "Gebruikerscentrum"
-  },
   "User_approved_action": {
     "message": "Door gebruiker goedgekeurde actie"
+  },
+  "User_Center": {
+    "message": "Gebruikerscentrum"
   },
   "User_decision": {
     "message": "Gebruikerskeuze"
@@ -616,11 +928,20 @@
   "User_requested_modifications": {
     "message": "Door gebruiker aangevraagde wijzigingen"
   },
+  "User_Session": {
+    "message": ""
+  },
   "Using_extra_credits": {
     "message": "Extra credits gebruiken"
   },
   "View_Chat_History": {
     "message": "Chatgeschiedenis bekijken"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visuele analyse van paginainhoud en -indeling"
@@ -633,6 +954,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Welkom bij Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Schrijven in werkruimte"

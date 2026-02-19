@@ -189,6 +189,7 @@ describe('ModelClient Contracts', () => {
         function: {
           name: 'get_weather',
           description: 'Get weather for a location',
+          strict: false,
           parameters: {
             type: 'object',
             properties: {
@@ -205,7 +206,7 @@ describe('ModelClient Contracts', () => {
       };
 
       expect(request.tools).toBeDefined();
-      expect(request.tools![0].function.name).toBe('get_weather');
+      expect((request.tools![0] as any).function.name).toBe('get_weather');
     });
 
     it('should support streaming responses', async () => {

@@ -125,6 +125,7 @@ Simply provide coordinates based on visual analysis of the screenshot image.
           'viewport_detection',
         ],
         permissions: ['activeTab', 'debugger', 'storage'],
+        platforms: ['extension'],
       },
     }
   );

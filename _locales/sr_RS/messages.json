@@ -1,27 +1,36 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "Општи AI агент у прегледачу за радне задатке"
-  },
-  "API_Key_Configuration": {
-    "message": "Конфигурација API кључа"
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API кључеви су шифровани и локално сачувани у вашем прегледачу. Никада се не шаљу на спољне сервере осим за API позиве."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Приступ складишту прегледача (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "Акција"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Action_Details": {
     "message": "Детаљи акције"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "Додај измену"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Additional_Bind_Mounts": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "Напредна конфигурација"
@@ -29,8 +38,14 @@
   "Advanced_Options": {
     "message": "Напредне опције"
   },
+  "Advanced_Settings": {
+    "message": ""
+  },
   "Agent_Execution_Tools": {
     "message": "Алати за извршење агента"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Дозволи агенту да извршава системске команде (користите пажљиво)"
@@ -41,11 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Дозволи скриптама садржаја да раде на веб страницама"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Дозвољени извори"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "Конфигурација API кључа"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API кључеви су шифровани и локално сачувани у вашем прегледачу. Никада се не шаљу на спољне сервере осим за API позиве."
+  },
   "Approval_History": {
     "message": "Историја одобрења"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "Одобри"
@@ -56,8 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx може да извуче структуиране податке са било које веб странице"
   },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
+  },
   "Available": {
     "message": "Доступно:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "Назад"
@@ -71,20 +119,20 @@
   "Beta": {
     "message": "Бета"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "Прекидачи алата за аутоматизацију претраживача"
+  },
   "Browser_Tools": {
     "message": "Алати претраживача"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Прекидачи алата за аутоматизацију претраживача"
+  "Cache_behavior_and_data_retention": {
+    "message": "Понашање кеша и задржавање података"
   },
   "Cache_Settings": {
     "message": "Подешавања кеша"
   },
   "Cache_TTL_seconds": {
     "message": "TTL кеша (секунда)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "Понашање кеша и задржавање података"
   },
   "Cancel": {
     "message": "Откажи"
@@ -110,6 +158,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Кликните на иконицу Browserx у вашој траци са алаткама или притисните Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "Кликните да изаберете модел"
   },
@@ -119,14 +170,38 @@
   "Command": {
     "message": "Команда"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Сажмите кеширане податке да бисте уштедели простор за складиштење"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "Подесите AI модел и API кључеве"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
   "Connected": {
     "message": "Повезано"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "Контекст"
@@ -134,20 +209,26 @@
   "Create_New_Tab": {
     "message": "Направи нову картицу"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "Информације о кредитима"
   },
   "Current_Plan": {
     "message": "Тренутни план:"
   },
-  "DOM_Tool": {
-    "message": "DOM алат"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "Дневни кредити"
   },
   "Data_Extraction_Tool": {
     "message": "Алат за извлачење података"
+  },
+  "Date": {
+    "message": ""
   },
   "Days_until_expiration": {
     "message": "Дана до истека"
@@ -158,14 +239,38 @@
   "Discard_Changes": {
     "message": "Одбаци измене"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Прикажи потрошњу токена (улазни/излазни токени) након завршетка задатака"
+  },
+  "DOM_Tool": {
+    "message": "DOM алат"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "Омогући све алате"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "Омогући кеш"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Омогући кеширање за побољшање перформанси чувањем често приступаних података"
   },
   "Enable_Compression": {
     "message": "Омогући компресију"
@@ -173,23 +278,38 @@
   "Enable_Content_Scripts": {
     "message": "Омогући скрипте садржаја"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "Омогући екстензију"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "Омогући интеграцију алата Model Context Protocol (Долази у будућем ажурирању)"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Омогући кеширање за побољшање перформанси чувањем често приступаних података"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Омогући веб претрагу за агента"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "Унесите ваш LLM API кључ"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "Извршавање команди"
+  },
+  "Execution_Mode": {
+    "message": ""
   },
   "Expire_after_days": {
     "message": "Истиче након дана"
@@ -197,20 +317,29 @@
   "Explain_your_decision": {
     "message": "Објасните вашу одлуку..."
   },
-  "Extension_Permission": {
-    "message": "Екстензија и дозвола"
-  },
-  "Extension_Permission_Settings": {
-    "message": "Подешавања екстензије и дозвола"
-  },
   "Extension_Configuration": {
     "message": "Конфигурација екстензије"
   },
   "Extension_configuration_and_permissions": {
     "message": "Конфигурација екстензије и дозволе"
   },
+  "extension_description": {
+    "message": "Општи AI агент у прегледачу за радне задатке"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "Екстензија и дозвола"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Подешавања екстензије и дозвола"
+  },
   "Extra_Credits": {
     "message": "Додатни кредити"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Екстракција података:"
@@ -242,14 +371,17 @@
   "Full_Access_Dangerous": {
     "message": "Потпуни приступ (опасно)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "Опште"
   },
-  "General_Settings": {
-    "message": "Опште поставке"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "Општи AI агент у прегледачу за радне задатке"
+  },
+  "General_Settings": {
+    "message": "Опште поставке"
   },
   "Get_Started": {
     "message": "Започни"
@@ -268,6 +400,9 @@
   "History": {
     "message": "Историја"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "Утицај"
   },
@@ -277,26 +412,44 @@
   "Keyboard_Shortcuts": {
     "message": "Тастатурне пречице"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM захтеви иду директно ка API провајдера"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM захтеви се усмеравају преко AI Republic backend"
-  },
   "Language": {
     "message": "Језик"
   },
   "Learn_more": {
     "message": "Сазнајте више"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Листа дозвољених извора (један по линији). Подржава wildcard-ове (*)."
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM захтеви иду директно ка API провајдера"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM захтеви се усмеравају преко AI Republic backend"
+  },
+  "Load_More": {
+    "message": ""
+  },
+  "Loading": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "Учитавање кредита..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "Учитавање подешавања..."
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "Пријава"
@@ -304,11 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "Пријавите се да добијете бесплатне кредите"
   },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "Остало је мало кредита"
-  },
-  "MCP_Tools_Not_Available": {
-    "message": "MCP алати (Није доступно)"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Управљање картицама прегледача (отварање, затварање, пребацивање, упит)"
@@ -322,11 +478,29 @@
   "Max_Cache_Size_MB": {
     "message": "Максимална величина кеша (МБ)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Максимална величина кеша у мегабајтима (подразумевано: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Максимално време (у милисекундама) које алат може да ради пре истека (подразумевано: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "Конфигурација модела"
@@ -346,11 +520,17 @@
   "More_Config": {
     "message": "Додатна подешавања"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Навигација страницама, кликање линкова, управљање навигацијом прегледача"
   },
   "Navigation_Tool": {
     "message": "Алат за навигацију"
+  },
+  "Network_Access": {
+    "message": ""
   },
   "Network_Intercept_Tool": {
     "message": "Алат за пресретање мреже"
@@ -361,11 +541,29 @@
   "New_Conversation": {
     "message": "Нови разговор"
   },
+  "No_Access": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "Још нема историје одобрења."
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "Нема доступних картица"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "Није повезано"
@@ -373,8 +571,14 @@
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Број дана пре истека података о распрострањивању (подразумевано: 60)"
   },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
+  },
   "Open_Side_Panel": {
     "message": "Отвори бочни панел:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "Организација"
@@ -388,6 +592,9 @@
   "Parameter_Modifications": {
     "message": "Модификације параметара"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Изврши радње на страници (скрол, снимак екрана, чекање)"
   },
@@ -400,6 +607,9 @@
   "Please_type_a_valid_command": {
     "message": "Унесите важећу команду"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Приоритетни ниво обезбеђује брже време одговора уз вишу цену."
   },
@@ -409,14 +619,29 @@
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Упитајте и манипулишите DOM (Document Object Model)"
   },
-  "Quick_Start": {
-    "message": "Брзи почетак"
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
   },
   "Quick_action": {
     "message": "Брза радња"
   },
+  "Quick_Schedule": {
+    "message": ""
+  },
+  "Quick_Start": {
+    "message": "Брзи почетак"
+  },
   "Read_only": {
     "message": "Само за читање"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "Разлог (опционо)"
@@ -433,6 +658,9 @@
   "Remaining": {
     "message": "Преостало:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "Уклони API кључ"
   },
@@ -445,11 +673,32 @@
   "Request_changes_to_this_action": {
     "message": "Затражи измене ове радње"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Десним кликом на било који текст објасните га или побољшајте уз Browserx"
   },
   "Rollout_Expiration": {
     "message": "Рок истека фазираног покретања"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
+  },
+  "Safe": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "Политика песочнице"
@@ -463,11 +712,26 @@
   "Saving": {
     "message": "Чување..."
   },
-  "Security_Privacy": {
-    "message": "Безбедност и приватност"
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_A_New_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Ниво безбедности за окружење у ком се извршавају алати"
+  },
+  "Security_Privacy": {
+    "message": "Безбедност и приватност"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Изаберите AI модел за разговоре."
@@ -475,14 +739,23 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Изаберите жељени језик за интерфејс"
   },
-  "Send_the_message": {
-    "message": "Пошаљи поруку"
-  },
   "Service_Tier": {
     "message": "Ниво услуге"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "Сесија"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Подесите када треба да истекне фазирано покретање"
@@ -504,6 +777,12 @@
   },
   "Stable": {
     "message": "Стабилно"
+  },
+  "Start_on_login": {
+    "message": ""
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "Зауставите тренутно извршавање задатка"
@@ -529,8 +808,23 @@
   "Tab_Tool": {
     "message": "Алат за картице"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "Терминал"
+  },
+  "Terminal_Sandbox": {
+    "message": ""
   },
   "Test_Connection": {
     "message": "Тестирајте везу"
@@ -541,6 +835,12 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Агент тренутно користи режим позадинског сервера. LLM захтеви ће се прослеђивати преко AI Republic сервера. Ваши разговори се сигурно обрађују преко наше инфраструктуре."
   },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "Time": {
     "message": "Време"
   },
@@ -550,8 +850,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Време трајања кешираних ставки у секундама (подразумевано: 3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "Пребаци бочни панел"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "Алат"
@@ -571,14 +877,17 @@
   "UI_Theme": {
     "message": "Тема интерфејса"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "Не могу да учитам информације о кредиту"
   },
   "Unsaved_Changes": {
     "message": "Несачуване измене"
+  },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "Канал за ажурирања"
@@ -592,17 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Надоградите претплату да бисте истражили најмоћније моделе у свету"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "Користи контекстни мени:"
   },
   "Use_Own_API_Key": {
     "message": "Користи сопствени API кључ"
   },
-  "User_Center": {
-    "message": "Кориснички центар"
-  },
   "User_approved_action": {
     "message": "Радња одобрена од стране корисника"
+  },
+  "User_Center": {
+    "message": "Кориснички центар"
   },
   "User_decision": {
     "message": "Корисничка одлука"
@@ -616,11 +928,20 @@
   "User_requested_modifications": {
     "message": "Корисник је захтевао измене"
   },
+  "User_Session": {
+    "message": ""
+  },
   "Using_extra_credits": {
     "message": "Коришћење додатних кредита"
   },
   "View_Chat_History": {
     "message": "Преглед историје разговора"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Визуелна анализа садржаја и распореда странице"
@@ -633,6 +954,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "Добродошли у BrowserX"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "Писање у радни простор"

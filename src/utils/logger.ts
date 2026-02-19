@@ -1,5 +1,5 @@
 /**
- * Logging utilities for BrowserX Chrome Extension
+ * Logging utilities for Pi
  * Provides trace-level logging for Gemini streaming debugging
  */
 

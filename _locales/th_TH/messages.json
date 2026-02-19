@@ -1,27 +1,36 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "เอเย่นต์ AI สำหรับงานทั่วไปในเบราว์เซอร์"
-  },
-  "API_Key_Configuration": {
-    "message": "การกำหนดค่า API Key"
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API Key ถูกเข้ารหัสและจัดเก็บไว้ในเบราว์เซอร์ของคุณแบบท้องถิ่น จะไม่ถูกส่งไปยังเซิร์ฟเวอร์ภายนอกเลย ยกเว้นการเรียก API"
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "เข้าถึงที่เก็บข้อมูลเบราว์เซอร์ (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "ดำเนินการ"
   },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
+  },
   "Action_Details": {
     "message": "รายละเอียดการดำเนินการ"
   },
+  "Active_Sessions": {
+    "message": ""
+  },
+  "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": ""
+  },
   "Add_Modification": {
     "message": "เพิ่มการแก้ไข"
+  },
+  "Add_Server": {
+    "message": ""
+  },
+  "Add_Task": {
+    "message": ""
+  },
+  "Additional_Bind_Mounts": {
+    "message": ""
   },
   "Advanced_Configuration": {
     "message": "การกำหนดค่าขั้นสูง"
@@ -29,8 +38,14 @@
   "Advanced_Options": {
     "message": "ตัวเลือกขั้นสูง"
   },
+  "Advanced_Settings": {
+    "message": ""
+  },
   "Agent_Execution_Tools": {
     "message": "เครื่องมือดำเนินการเอเจนต์"
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "อนุญาตให้เอเจนต์ดำเนินการคำสั่งระบบ(ใช้ด้วยความระมัดระวัง)"
@@ -41,11 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "อนุญาตให้คอนเทนต์สคริปต์ทำงานบนหน้าเว็บ"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "แหล่งที่มาที่อนุญาต"
   },
+  "Alphanumeric_characters_and_hyphens_only_fa49": {
+    "message": ""
+  },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "การกำหนดค่า API Key"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API Key ถูกเข้ารหัสและจัดเก็บไว้ในเบราว์เซอร์ของคุณแบบท้องถิ่น จะไม่ถูกส่งไปยังเซิร์ฟเวอร์ภายนอกเลย ยกเว้นการเรียก API"
+  },
   "Approval_History": {
     "message": "ประวัติการอนุมัติ"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "อนุมัติ"
@@ -56,8 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ขอให้บราวเซอร์เอ็กซ์ดึงข้อมูลที่มีโครงสร้างจากหน้าเว็บใดก็ได้"
   },
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": ""
+  },
   "Available": {
     "message": "พร้อมใช้งาน:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "กลับ"
@@ -71,20 +119,20 @@
   "Beta": {
     "message": "เบต้า"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "สวิตช์เครื่องมืออัตโนมัติของเบราว์เซอร์"
+  },
   "Browser_Tools": {
     "message": "เครื่องมือเบราว์เซอร์"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "สวิตช์เครื่องมืออัตโนมัติของเบราว์เซอร์"
+  "Cache_behavior_and_data_retention": {
+    "message": "การทำงานของแคชและการเก็บข้อมูล"
   },
   "Cache_Settings": {
     "message": "การตั้งค่าแคช"
   },
   "Cache_TTL_seconds": {
     "message": "TTL แคช (วินาที)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "การทำงานของแคชและการเก็บข้อมูล"
   },
   "Cancel": {
     "message": "ยกเลิก"
@@ -110,6 +158,9 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "คลิกไอคอนBrowserxในแถบเครื่องมือของคุณหรือกดAlt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": ""
+  },
   "Click_to_select_a_model": {
     "message": "คลิกเพื่อเลือกโมเดล"
   },
@@ -119,14 +170,38 @@
   "Command": {
     "message": "คำสั่ง"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
+  "Completed": {
+    "message": ""
+  },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "บีบอัดข้อมูลแคชเพื่อประหยัดพื้นที่จัดเก็บ"
   },
   "Configure_AI_model_and_API_keys": {
     "message": "กำหนดค่าโมเดลเอไอและคีย์เอพีไอ"
   },
+  "Configured_Servers": {
+    "message": ""
+  },
+  "Connect": {
+    "message": ""
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": ""
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
+    "message": ""
+  },
   "Connected": {
     "message": "เชื่อมต่อแล้ว"
+  },
+  "Connecting": {
+    "message": ""
   },
   "Context": {
     "message": "บริบท"
@@ -134,20 +209,26 @@
   "Create_New_Tab": {
     "message": "สร้างแท็บใหม่"
   },
+  "Created": {
+    "message": ""
+  },
   "Credit_Details": {
     "message": "รายละเอียดเครดิต"
   },
   "Current_Plan": {
     "message": "แผนปัจจุบัน:"
   },
-  "DOM_Tool": {
-    "message": "เครื่องมือ DOM"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "เครดิตรายวัน"
   },
   "Data_Extraction_Tool": {
     "message": "เครื่องมือดึงข้อมูล"
+  },
+  "Date": {
+    "message": ""
   },
   "Days_until_expiration": {
     "message": "วันก่อนหมดอายุ"
@@ -158,14 +239,38 @@
   "Discard_Changes": {
     "message": "ละทิ้งการเปลี่ยนแปลง"
   },
+  "Disconnect": {
+    "message": ""
+  },
+  "Dismiss": {
+    "message": ""
+  },
   "Display_token_consumption_input_output_t_4979": {
     "message": "แสดงการใช้โทเคน (อินพุต/เอาต์พุต) เมื่องานเสร็จสิ้น"
+  },
+  "DOM_Tool": {
+    "message": "เครื่องมือ DOM"
+  },
+  "Duration": {
+    "message": ""
+  },
+  "Edit": {
+    "message": ""
+  },
+  "Edit_Server": {
+    "message": ""
   },
   "Enable_All_Tools": {
     "message": "เปิดใช้งานเครื่องมือทั้งหมด"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "เปิดใช้งานแคช"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "เปิดใช้งานการแคชเพื่อปรับปรุงประสิทธิภาพโดยเก็บข้อมูลที่เข้าถึงบ่อย"
   },
   "Enable_Compression": {
     "message": "เปิดใช้งานการบีบอัด"
@@ -173,23 +278,38 @@
   "Enable_Content_Scripts": {
     "message": "เปิดใช้งานสคริปต์เนื้อหา"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "เปิดใช้งานส่วนขยาย"
   },
-  "Enable_Model_Context_Protocol_tools_inte_851c": {
-    "message": "เปิดใช้งานการรวมเครื่องมือ Model Context Protocol (จะมาในอัปเดตในอนาคต)"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "เปิดใช้งานการแคชเพื่อปรับปรุงประสิทธิภาพโดยเก็บข้อมูลที่เข้าถึงบ่อย"
+  "Enable_Model_Context_Protocol_tools_from_29ac": {
+    "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "เปิดใช้งานความสามารถการค้นหาเว็บสำหรับเอเจนท์"
   },
+  "Enabled": {
+    "message": ""
+  },
+  "Enter_API_key_if_required": {
+    "message": ""
+  },
   "Enter_your_LLM_API_key": {
     "message": "ป้อนคีย์ API ของ LLM ของคุณ"
   },
+  "Enter_your_task": {
+    "message": ""
+  },
+  "Error": {
+    "message": ""
+  },
   "Execute_Commands": {
     "message": "ดำเนินการคำสั่ง"
+  },
+  "Execution_Mode": {
+    "message": ""
   },
   "Expire_after_days": {
     "message": "หมดอายุหลังจาก $1$ วัน",
@@ -202,20 +322,29 @@
   "Explain_your_decision": {
     "message": "อธิบายการตัดสินใจของคุณ..."
   },
-  "Extension_Permission": {
-    "message": "ส่วนขยายและสิทธิ์"
-  },
-  "Extension_Permission_Settings": {
-    "message": "การตั้งค่าส่วนขยายและสิทธิ์"
-  },
   "Extension_Configuration": {
     "message": "การกำหนดค่าส่วนขยาย"
   },
   "Extension_configuration_and_permissions": {
     "message": "การกำหนดค่าส่วนขยายและสิทธิ์"
   },
+  "extension_description": {
+    "message": "เอเย่นต์ AI สำหรับงานทั่วไปในเบราว์เซอร์"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "ส่วนขยายและสิทธิ์"
+  },
+  "Extension_Permission_Settings": {
+    "message": "การตั้งค่าส่วนขยายและสิทธิ์"
+  },
   "Extra_Credits": {
     "message": "เครดิตเพิ่มเติม"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "ดึงข้อมูล:"
@@ -247,14 +376,17 @@
   "Full_Access_Dangerous": {
     "message": "การเข้าถึงเต็มรูปแบบ (อันตราย)"
   },
+  "Full_Input": {
+    "message": ""
+  },
   "General": {
     "message": "ทั่วไป"
   },
-  "General_Settings": {
-    "message": "การตั้งค่าทั่วไป"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "เอเย่นต์เอไอในเบราว์เซอร์ทั่วไปสำหรับงาน"
+  },
+  "General_Settings": {
+    "message": "การตั้งค่าทั่วไป"
   },
   "Get_Started": {
     "message": "เริ่มต้น"
@@ -273,6 +405,9 @@
   "History": {
     "message": "ประวัติ"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "ผลกระทบ"
   },
@@ -282,26 +417,44 @@
   "Keyboard_Shortcuts": {
     "message": "ทางลัดแป้นพิมพ์"
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "คำขอLLMส่งตรงไปยังAPIผู้ให้บริการ"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "คำขอLLMผ่านแบ็กเอนด์AIRepublic"
-  },
   "Language": {
     "message": "ภาษา"
   },
   "Learn_more": {
     "message": "เรียนรู้เพิ่มเติม"
   },
+  "Leave_empty_to_keep_existing": {
+    "message": ""
+  },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "รายการต้นทางที่อนุญาต (หนึ่งต่อบรรทัด) รองรับไวลด์การ์ด (*)"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "คำขอLLMส่งตรงไปยังAPIผู้ให้บริการ"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "คำขอLLMผ่านแบ็กเอนด์AIRepublic"
+  },
+  "Load_More": {
+    "message": ""
+  },
+  "Loading": {
+    "message": ""
   },
   "Loading_credits": {
     "message": "กำลังโหลดเครดิต..."
   },
+  "Loading_details": {
+    "message": ""
+  },
   "Loading_settings": {
     "message": "กำลังโหลดการตั้งค่า..."
+  },
+  "Log_MCP_protocol_messages_to_browser_con_f380": {
+    "message": ""
+  },
+  "Logging_in": {
+    "message": ""
   },
   "Login": {
     "message": "เข้าสู่ระบบ"
@@ -309,11 +462,14 @@
   "Login_to_get_free_credits": {
     "message": "เข้าสู่ระบบเพื่อรับเครดิตฟรี"
   },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": ""
+  },
+  "Long_press_to_schedule_task": {
+    "message": ""
+  },
   "Low_credits_remaining": {
     "message": "เครดิตเหลือน้อย"
-  },
-  "MCP_Tools_Not_Available": {
-    "message": "เครื่องมือ MCP (ไม่พร้อมใช้งาน)"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "จัดการแท็บเบราว์เซอร์ (เปิด, ปิด, สลับ, ค้นหา)"
@@ -327,11 +483,29 @@
   "Max_Cache_Size_MB": {
     "message": "ขนาดแคชสูงสุด(MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": ""
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "ขนาดแคชสูงสุดเป็นเมกะไบต์(ค่าเริ่มต้น:100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": ""
+  },
+  "Maximum_of_5_servers_reached": {
+    "message": ""
+  },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "เวลาสูงสุด (มิลลิวินาที) ที่เครื่องมือทำงานก่อนหมดเวลา (ค่าเริ่มต้น: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
+  },
+  "Missed": {
+    "message": ""
   },
   "Model_Config": {
     "message": "การกำหนดค่าโมเดล"
@@ -351,11 +525,17 @@
   "More_Config": {
     "message": "การกำหนดเพิ่มเติม"
   },
+  "Name": {
+    "message": ""
+  },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "นำทางหน้า, คลิกลิงก์, จัดการการนำทางเบราว์เซอร์"
   },
   "Navigation_Tool": {
     "message": "เครื่องมือการนำทาง"
+  },
+  "Network_Access": {
+    "message": ""
   },
   "Network_Intercept_Tool": {
     "message": "เครื่องมือดักจับเครือข่าย"
@@ -366,11 +546,29 @@
   "New_Conversation": {
     "message": "การสนทนาใหม่"
   },
+  "No_Access": {
+    "message": ""
+  },
+  "No_active_sessions": {
+    "message": ""
+  },
   "No_approval_history_yet": {
     "message": "ยังไม่มีประวัติการอนุมัติ"
   },
+  "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": ""
+  },
+  "No_scheduled_tasks": {
+    "message": ""
+  },
   "No_tabs_available": {
     "message": "ไม่มีแท็บพร้อมใช้งาน"
+  },
+  "No_tools_available": {
+    "message": ""
   },
   "Not_Connected": {
     "message": "ไม่ได้เชื่อมต่อ"
@@ -378,8 +576,14 @@
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "จำนวนวันก่อนข้อมูลการเปิดตัวจะหมดอายุ (ค่าเริ่มต้น: 60)"
   },
+  "Offline_tasks_will_run_when_connected": {
+    "message": ""
+  },
   "Open_Side_Panel": {
     "message": "เปิดแถบด้านข้าง:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "องค์กร"
@@ -393,6 +597,9 @@
   "Parameter_Modifications": {
     "message": "การแก้ไขพารามิเตอร์"
   },
+  "Pause_Queue": {
+    "message": ""
+  },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "ทำการดำเนินการกับหน้า (เลื่อน, จับภาพหน้าจอ, รอ)"
   },
@@ -405,6 +612,9 @@
   "Please_type_a_valid_command": {
     "message": "กรุณาพิมพ์คำสั่งที่ถูกต้อง"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "ระดับความสำคัญให้เวลาตอบสนองที่เร็วขึ้น แต่มีราคาสูงกว่า"
   },
@@ -414,14 +624,29 @@
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "ค้นหาและจัดการDOM(Document Object Model)"
   },
-  "Quick_Start": {
-    "message": "เริ่มต้นอย่างรวดเร็ว"
+  "Queue_is_paused": {
+    "message": ""
+  },
+  "Queued": {
+    "message": ""
   },
   "Quick_action": {
     "message": "การกระทำอย่างรวดเร็ว"
   },
+  "Quick_Schedule": {
+    "message": ""
+  },
+  "Quick_Start": {
+    "message": "เริ่มต้นอย่างรวดเร็ว"
+  },
   "Read_only": {
     "message": "อ่านอย่างเดียว"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "เหตุผล (ไม่จำเป็น)"
@@ -438,6 +663,9 @@
   "Remaining": {
     "message": "คงเหลือ:"
   },
+  "Remove": {
+    "message": ""
+  },
   "Remove_API_Key": {
     "message": "ลบ API Key"
   },
@@ -450,11 +678,32 @@
   "Request_changes_to_this_action": {
     "message": "ขอเปลี่ยนแปลงการกระทำนี้"
   },
+  "Request_timeout_in_milliseconds_5000_120_0f28": {
+    "message": ""
+  },
+  "Restricted": {
+    "message": ""
+  },
+  "Result_Summary": {
+    "message": ""
+  },
+  "Resume_Queue": {
+    "message": ""
+  },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "คลิกขวาที่ข้อความใดก็ได้เพื่ออธิบายหรือปรับปรุงด้วย Browserx"
   },
   "Rollout_Expiration": {
     "message": "วันหมดอายุการนำออกใช้"
+  },
+  "Run_Now": {
+    "message": ""
+  },
+  "Running": {
+    "message": ""
+  },
+  "Safe": {
+    "message": ""
   },
   "Sandbox_Policy": {
     "message": "นโยบายแซนด์บ็อกซ์"
@@ -468,11 +717,26 @@
   "Saving": {
     "message": "กำลังบันทึก..."
   },
-  "Security_Privacy": {
-    "message": "ความปลอดภัยและความเป็นส่วนตัว"
+  "Schedule": {
+    "message": ""
+  },
+  "Schedule_A_New_Task": {
+    "message": ""
+  },
+  "Scheduled": {
+    "message": ""
+  },
+  "Scheduled_Task": {
+    "message": ""
+  },
+  "Scheduled_Tasks": {
+    "message": ""
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "ระดับความปลอดภัยสำหรับสภาพแวดล้อมการทำงานของเครื่องมือ"
+  },
+  "Security_Privacy": {
+    "message": "ความปลอดภัยและความเป็นส่วนตัว"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "เลือกโมเดล AI ที่จะใช้สำหรับการสนทนา"
@@ -480,14 +744,23 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "เลือกภาษาที่คุณต้องการสำหรับส่วนติดต่อผู้ใช้"
   },
-  "Send_the_message": {
-    "message": "ส่งข้อความ"
-  },
   "Service_Tier": {
     "message": "ระดับบริการ"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "ช่วงเวลาใช้งาน"
+  },
+  "Session_error": {
+    "message": ""
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
+    "message": ""
   },
   "Set_when_rollout_data_should_expire": {
     "message": "ตั้งเวลาหมดอายุของข้อมูลการนำออกใช้"
@@ -509,6 +782,12 @@
   },
   "Stable": {
     "message": "เสถียร"
+  },
+  "Start_on_login": {
+    "message": ""
+  },
+  "Status": {
+    "message": ""
   },
   "Stop_the_current_task_run": {
     "message": "หยุดการทำงานของงานปัจจุบัน"
@@ -534,8 +813,23 @@
   "Tab_Tool": {
     "message": "เครื่องมือแท็บ"
   },
+  "Task": {
+    "message": ""
+  },
+  "Task_Details": {
+    "message": ""
+  },
+  "Task_History": {
+    "message": ""
+  },
+  "Task_ID": {
+    "message": ""
+  },
   "Terminal": {
     "message": "เทอร์มินัล"
+  },
+  "Terminal_Sandbox": {
+    "message": ""
   },
   "Test_Connection": {
     "message": "ทดสอบการเชื่อมต่อ"
@@ -546,6 +840,12 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ตัวแทนกำลังใช้โหมดแบ็กเอนด์ คำขอ LLM จะถูกส่งผ่านเซิร์ฟเวอร์ AI Republic การสนทนาของคุณจะถูกประมวลผลอย่างปลอดภัยผ่านโครงสร้างพื้นฐานของเรา"
   },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
+  },
   "Time": {
     "message": "เวลา"
   },
@@ -555,8 +855,14 @@
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "อายุการใช้งานของรายการแคชเป็นวินาที(ค่าเริ่มต้น:3600)"
   },
+  "Timeout_ms": {
+    "message": ""
+  },
   "Toggle_side_panel": {
     "message": "สลับแถบด้านข้าง"
+  },
+  "Tokens": {
+    "message": ""
   },
   "Tool": {
     "message": "เครื่องมือ"
@@ -576,14 +882,17 @@
   "UI_Theme": {
     "message": "ธีมUI"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "ไม่สามารถโหลดข้อมูลเครดิต"
   },
   "Unsaved_Changes": {
     "message": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
+  },
+  "Upcoming": {
+    "message": ""
+  },
+  "Update": {
+    "message": ""
   },
   "Update_Channel": {
     "message": "ช่องทางอัปเดต"
@@ -597,17 +906,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "อัปเกรดการสมัครของคุณเพื่อสำรวจโมเดลที่ทรงพลังที่สุดในโลก"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "ใช้เมนูบริบท:"
   },
   "Use_Own_API_Key": {
     "message": "ใช้คีย์APIของคุณ"
   },
-  "User_Center": {
-    "message": "ศูนย์ผู้ใช้"
-  },
   "User_approved_action": {
     "message": "การกระทำที่ผู้ใช้อนุมัติ"
+  },
+  "User_Center": {
+    "message": "ศูนย์ผู้ใช้"
   },
   "User_decision": {
     "message": "การตัดสินใจของผู้ใช้"
@@ -621,11 +933,20 @@
   "User_requested_modifications": {
     "message": "การแก้ไขที่ผู้ใช้ร้องขอ"
   },
+  "User_Session": {
+    "message": ""
+  },
   "Using_extra_credits": {
     "message": "กำลังใช้เครดิตพิเศษ"
   },
   "View_Chat_History": {
     "message": "ดูประวัติแชท"
+  },
+  "View_History": {
+    "message": ""
+  },
+  "View_Session": {
+    "message": ""
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "การวิเคราะห์ภาพของเนื้อหาและการจัดหน้า"
@@ -638,6 +959,12 @@
   },
   "Welcome_to_Browserx": {
     "message": "ยินดีต้อนรับสู่Browserx"
+  },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
   },
   "Workspace_Write": {
     "message": "เขียนในพื้นที่ทำงาน"

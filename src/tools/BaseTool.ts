@@ -10,11 +10,11 @@
  */
 export type JsonSchema =
   | { type: 'boolean'; description?: string }
-  | { type: 'string'; description?: string }
+  | { type: 'string'; description?: string; enum?: string[] }
   | { type: 'number'; description?: string }
   | { type: 'integer'; description?: string }
   | { type: 'array'; items: JsonSchema; description?: string }
-  | { type: 'object'; properties: Record<string, JsonSchema>; required?: string[]; additionalProperties?: boolean };
+  | { type: 'object'; properties?: Record<string, JsonSchema>; required?: string[]; additionalProperties?: boolean; description?: string };
 
 /**
  * Response API tool definition
@@ -45,12 +45,33 @@ export interface FreeformTool {
 }
 
 /**
+ * Platform type for tool registration
+ */
+export type Platform = 'extension' | 'desktop';
+
+/**
+ * Tool metadata for capabilities, permissions, and platform support
+ */
+export interface ToolMetadata {
+  capabilities?: string[];
+  permissions?: string[];
+  platforms?: Platform[];
+  [key: string]: unknown;
+}
+
+/**
  * Tool definition - union type
  *
  * When serialized as JSON, this produces a valid "Tool" in the OpenAI Responses API.
  */
 export type ToolDefinition =
-  | { type: 'function'; function: ResponsesApiTool }
+  | {
+      type: 'function';
+      function: ResponsesApiTool;
+      metadata?: ToolMetadata;
+      category?: string;
+      version?: string;
+    }
   | { type: 'local_shell' }
   | { type: 'web_search' }
   | { type: 'custom'; custom: FreeformTool };
@@ -78,6 +99,7 @@ export interface ToolExecutionRequest {
   turnId: string;
   tabId?: number; // Current session's bound tab ID
   timeout?: number;
+  metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
 }
 
 /**
@@ -291,7 +313,7 @@ export abstract class BaseTool {
 
     // Validate each parameter
     for (const [paramName, paramValue] of Object.entries(parameters)) {
-      const propSchema = schema.properties[paramName];
+      const propSchema = schema.properties?.[paramName];
 
       if (!propSchema) {
         if (!schema.additionalProperties) {
@@ -352,7 +374,7 @@ export abstract class BaseTool {
     // Object property validation
     if (schema.type === 'object' && 'properties' in schema && typeof value === 'object' && !Array.isArray(value)) {
       for (const [propName, propValue] of Object.entries(value)) {
-        const propSchema = schema.properties[propName];
+        const propSchema = schema.properties?.[propName];
         if (propSchema) {
           const propErrors = this.validateJsonSchemaValue(`${paramName}.${propName}`, propValue, propSchema);
           errors.push(...propErrors);
@@ -527,7 +549,7 @@ export abstract class BaseTool {
 
     if (validation.status === 'invalid') {
       // Throw TabInvalidError when validation fails
-      throw new TabInvalidError(tabId, validation.reason, sessionId);
+      throw new TabInvalidError(tabId, validation.reason, sessionId || 'unknown');
     }
 
     if (validation.status !== 'valid') {
@@ -633,7 +655,7 @@ export abstract class BaseTool {
 
     if (chrome.permissions) {
       const hasPermissions = await chrome.permissions.contains({
-        permissions,
+        permissions: permissions as chrome.runtime.ManifestPermissions[],
       });
 
       if (!hasPermissions) {
@@ -707,7 +729,7 @@ export function createObjectSchema(
  * @param name - Tool name
  * @param description - Tool description
  * @param properties - Tool parameters in simplified format
- * @param options - Additional options (required fields, etc.)
+ * @param options - Additional options (required fields, metadata, etc.)
  * @returns ToolDefinition in OpenAI Responses API format
  */
 export function createToolDefinition(
@@ -718,7 +740,7 @@ export function createToolDefinition(
     required?: string[];
     category?: string;
     version?: string;
-    metadata?: Record<string, any>;
+    metadata?: ToolMetadata;
   } = {}
 ): ToolDefinition {
   // Convert ParameterProperty to JsonSchema
@@ -752,8 +774,19 @@ export function createToolDefinition(
     convertedProperties[key] = convertToJsonSchema(value);
   }
 
-  return createFunctionTool(name, description, createObjectSchema(convertedProperties, {
-    required: options.required,
-    additionalProperties: false,
-  }));
+  return {
+    type: 'function',
+    function: {
+      name,
+      description,
+      strict: false,
+      parameters: createObjectSchema(convertedProperties, {
+        required: options.required,
+        additionalProperties: false,
+      }),
+    },
+    metadata: options.metadata,
+    category: options.category,
+    version: options.version,
+  };
 }

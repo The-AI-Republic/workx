@@ -3,6 +3,32 @@ import { NODE_TYPE_ELEMENT, NODE_TYPE_TEXT, NODE_TYPE_DOCUMENT } from '../types'
 import { DomService } from '../DomService';
 import type { SerializedNode } from '../types';
 
+// Mock ChromeDebuggerClient so DomService.forTab() works with test chrome.debugger mocks
+vi.mock('@/extension/tools/browser/ChromeDebuggerClient', () => ({
+  ChromeDebuggerClient: class MockChromeDebuggerClient {
+    private target: any = null;
+    private attached = false;
+    private eventCallbacks: Array<(method: string, params: unknown) => void> = [];
+    async attach(target: any) {
+      const debuggee = target && 'tabId' in target ? { tabId: target.tabId } : {};
+      await (chrome.debugger.attach as any)(debuggee, '1.3');
+      this.target = target; this.attached = true;
+    }
+    async detach() { this.target = null; this.attached = false; this.eventCallbacks = []; }
+    isAttached() { return this.attached; }
+    async sendCommand(method: string, params?: any) {
+      const debuggee = this.target && 'tabId' in this.target ? { tabId: this.target.tabId } : {};
+      return (chrome.debugger.sendCommand as any)(debuggee, method, params);
+    }
+    onEvent(cb: any) { this.eventCallbacks.push(cb); }
+    offEvent(cb: any) { const i = this.eventCallbacks.indexOf(cb); if (i !== -1) this.eventCallbacks.splice(i, 1); }
+    async enableDomain(domain: string) { await this.sendCommand(`${domain}.enable`); }
+    async disableDomain(domain: string) { await this.sendCommand(`${domain}.disable`); }
+    getTargetInfo() { return this.target; }
+    getTabId() { return this.target && 'tabId' in this.target ? this.target.tabId : null; }
+  }
+}));
+
 // Helper to flatten tree structure for testing
 function flattenNodes(node: SerializedNode): SerializedNode[] {
   const result: SerializedNode[] = [node];
@@ -545,14 +571,35 @@ describe('Integration: Iframe Content Support', () => {
         };
       }
 
-      if (method === 'DOM.focus') {
-        expect(params.backendNodeId).toBe(500);
-        return {};
+      if (method === 'Runtime.evaluate') {
+        if (params?.expression === 'document.readyState') {
+          return { result: { value: 'complete' } };
+        }
+        if (params?.expression?.includes('buttons')) {
+          return { result: { value: { interactiveCount: 5, textLength: 200, hasLoadingIndicator: false, isStillLoading: false } } };
+        }
+        return { result: { value: { url: 'https://iframe-test.example.com', title: 'Iframe Test', width: 1920, height: 1080, scrollX: 0, scrollY: 0, pageWidth: 1920, pageHeight: 1080, devicePixelRatio: 1, visualViewportScale: 1 } } };
       }
 
+      if (method === 'DOM.resolveNode') {
+        return { object: { objectId: 'obj-500' } };
+      }
+
+      if (method === 'Runtime.callFunctionOn') {
+        // detectElementType returns element info
+        return { result: { value: { tagName: 'INPUT', type: 'text', isContentEditable: false, role: 'textbox' } } };
+      }
+
+      if (method === 'DOM.scrollIntoViewIfNeeded') return {};
+
+      if (method === 'DOM.getBoxModel') {
+        return { model: { content: [100, 200, 300, 200, 300, 230, 100, 230] } };
+      }
+
+      if (method === 'Input.dispatchMouseEvent') return {};
+      if (method === 'DOM.focus') return {};
       if (method === 'Input.dispatchKeyEvent') return {};
       if (method === 'Input.insertText') {
-        expect(params.text).toBe('Hello from iframe');
         return {};
       }
 

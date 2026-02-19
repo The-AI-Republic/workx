@@ -49,7 +49,7 @@ function build() {
     // Copy and fix HTML files
     log('\n📄 Copying and fixing HTML files...', colors.yellow);
     const htmlFiles = [
-      { src: 'src/sidepanel/sidepanel.html', dest: 'sidepanel.html' },
+      { src: 'src/extension/sidepanel/sidepanel.html', dest: 'sidepanel.html' },
       { src: 'src/welcome/welcome.html', dest: 'welcome.html' }
     ];
 
@@ -111,18 +111,14 @@ function build() {
       log('\n📝 Copying prompts...', colors.yellow);
       fs.mkdirSync(promptsDest, { recursive: true });
       fs.readdirSync(promptsSrc).forEach(file => {
-        fs.copyFileSync(
-          path.join(promptsSrc, file),
-          path.join(promptsDest, file)
-        );
+        const srcFile = path.join(promptsSrc, file);
+        // Skip directories (e.g., fragments/) — fragments are inlined by Vite ?raw
+        // imports at build time, so they don't need to be copied to dist
+        if (!fs.statSync(srcFile).isFile()) return;
+        fs.copyFileSync(srcFile, path.join(promptsDest, file));
       });
       log('  ✓ Copied prompts directory', colors.green);
     }
-
-    // Extract i18n translation keys
-    log('\n🌐 Extracting i18n translations...', colors.yellow);
-    const { extractI18n } = require('./extract-i18n.js');
-    extractI18n();
 
     // Copy _locales directory (required for i18n)
     const localesPath = path.join(__dirname, '..', '_locales');

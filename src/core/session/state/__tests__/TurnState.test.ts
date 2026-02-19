@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TurnState } from '../TurnState';
-import { ReviewDecision } from '../../../../protocol/types';
+import type { ReviewDecision } from '../../../protocol/types';
 import type { ApprovalResolver } from '../types';
 
 describe('TurnState', () => {
@@ -17,7 +17,7 @@ describe('TurnState', () => {
 
   describe('Pending Approvals', () => {
     it('should insert and remove pending approval', () => {
-      const resolver = vi.fn<[ReviewDecision], void>();
+      const resolver = vi.fn() as any;
       const executionId = 'exec-1';
 
       // Insert approval
@@ -36,8 +36,8 @@ describe('TurnState', () => {
     });
 
     it('should allow multiple pending approvals', () => {
-      const resolver1 = vi.fn<[ReviewDecision], void>();
-      const resolver2 = vi.fn<[ReviewDecision], void>();
+      const resolver1 = vi.fn() as any;
+      const resolver2 = vi.fn() as any;
 
       turnState.insertPendingApproval('exec-1', resolver1);
       turnState.insertPendingApproval('exec-2', resolver2);
@@ -50,7 +50,7 @@ describe('TurnState', () => {
     });
 
     it('should call resolver with decision', () => {
-      const resolver = vi.fn<[ReviewDecision], void>();
+      const resolver = vi.fn() as any;
       turnState.insertPendingApproval('exec-1', resolver);
 
       const retrieved = turnState.removePendingApproval('exec-1');
@@ -61,8 +61,8 @@ describe('TurnState', () => {
     });
 
     it('should clear all pending approvals', () => {
-      const resolver1 = vi.fn<[ReviewDecision], void>();
-      const resolver2 = vi.fn<[ReviewDecision], void>();
+      const resolver1 = vi.fn() as any;
+      const resolver2 = vi.fn() as any;
 
       turnState.insertPendingApproval('exec-1', resolver1);
       turnState.insertPendingApproval('exec-2', resolver2);
@@ -79,14 +79,8 @@ describe('TurnState', () => {
 
   describe('Pending Input', () => {
     it('should push and take pending input', () => {
-      const input1 = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Hello' }],
-      };
-      const input2 = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'World' }],
-      };
+      const input1 = { type: 'text' as const, text: 'Hello' };
+      const input2 = { type: 'text' as const, text: 'World' };
 
       turnState.pushPendingInput(input1);
       turnState.pushPendingInput(input2);
@@ -99,10 +93,7 @@ describe('TurnState', () => {
     });
 
     it('should clear pending input after taking', () => {
-      const input = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Test' }],
-      };
+      const input = { type: 'text' as const, text: 'Test' };
 
       turnState.pushPendingInput(input);
       const first = turnState.takePendingInput();
@@ -118,10 +109,7 @@ describe('TurnState', () => {
     });
 
     it('should clear pending input explicitly', () => {
-      const input = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Test' }],
-      };
+      const input = { type: 'text' as const, text: 'Test' };
 
       turnState.pushPendingInput(input);
       turnState.clearPendingInput();
@@ -131,18 +119,9 @@ describe('TurnState', () => {
     });
 
     it('should preserve input order (FIFO)', () => {
-      const input1 = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'First' }],
-      };
-      const input2 = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Second' }],
-      };
-      const input3 = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Third' }],
-      };
+      const input1 = { type: 'text' as const, text: 'First' };
+      const input2 = { type: 'text' as const, text: 'Second' };
+      const input3 = { type: 'text' as const, text: 'Third' };
 
       turnState.pushPendingInput(input1);
       turnState.pushPendingInput(input2);
@@ -150,19 +129,16 @@ describe('TurnState', () => {
 
       const pending = turnState.takePendingInput();
 
-      expect(pending[0].content[0].text).toBe('First');
-      expect(pending[1].content[0].text).toBe('Second');
-      expect(pending[2].content[0].text).toBe('Third');
+      expect((pending[0] as any).text).toBe('First');
+      expect((pending[1] as any).text).toBe('Second');
+      expect((pending[2] as any).text).toBe('Third');
     });
   });
 
   describe('Combined Operations', () => {
     it('should handle approvals and input independently', () => {
-      const resolver = vi.fn<[ReviewDecision], void>();
-      const input = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Test' }],
-      };
+      const resolver = vi.fn() as any;
+      const input = { type: 'text' as const, text: 'Test' };
 
       turnState.insertPendingApproval('exec-1', resolver);
       turnState.pushPendingInput(input);
@@ -175,11 +151,8 @@ describe('TurnState', () => {
     });
 
     it('should clear all state', () => {
-      const resolver = vi.fn<[ReviewDecision], void>();
-      const input = {
-        role: 'user' as const,
-        content: [{ type: 'text' as const, text: 'Test' }],
-      };
+      const resolver = vi.fn() as any;
+      const input = { type: 'text' as const, text: 'Test' };
 
       turnState.insertPendingApproval('exec-1', resolver);
       turnState.pushPendingInput(input);

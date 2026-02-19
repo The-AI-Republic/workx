@@ -3,8 +3,8 @@
  * Based on contract from approval-manager.test.ts
  */
 
-import type { ReviewDecision } from '../protocol/types';
-import type { Event } from '../protocol/types';
+import type { ReviewDecision } from './protocol/types';
+import type { Event } from './protocol/types';
 import type { AgentConfig } from '../config/AgentConfig';
 
 export interface ApprovalRequest {
@@ -25,6 +25,7 @@ export interface ApprovalDetails {
   action?: string;
   parameters?: Record<string, any>;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskScore?: number;
   impact?: string[];
 }
 
@@ -37,6 +38,10 @@ export interface ApprovalMetadata {
   rollbackable: boolean;
   description?: string;
   tags?: string[];
+  /** Current page domain (for web tools memory key) */
+  domain?: string;
+  /** Final risk score after enhancers (for risk ceiling guard) */
+  riskScore?: number;
 }
 
 export interface ApprovalResponse {
@@ -75,7 +80,6 @@ export class ApprovalManager {
   private pendingRequests = new Map<string, PendingApproval>();
   private approvalHistory = new Map<string, ApprovalResponse>();
   private eventEmitter?: (event: Event) => void;
-  private approvalRequestCallback?: (approval: ApprovalRequest) => void;
 
   constructor(configOrEventEmitter?: AgentConfig | ((event: Event) => void), eventEmitter?: (event: Event) => void) {
     // Handle both signatures for backward compatibility
@@ -101,70 +105,83 @@ export class ApprovalManager {
       return policyDecision;
     }
 
+    // Set up timeout handling
+    // timeout=0 means no timeout (wait indefinitely for user input, used in balanced mode)
+    const timeout = request.timeout !== undefined ? request.timeout : (this.policy.timeout || 600000);
+
     // Emit approval requested event
     this.emitEvent({
       id: `evt_approval_requested_${request.id}`,
       msg: {
         type: 'ApprovalRequested',
         data: {
-          approval_id: request.id,
-          type: request.type,
-          risk_level: request.details.riskLevel,
-          title: request.title,
+          id: request.id,
+          tool_name: request.metadata?.toolName || request.type,
+          risk_score: request.details.riskScore ?? this.riskLevelToScore(request.details.riskLevel),
+          risk_level: request.details.riskLevel || 'medium',
+          risk_factors: request.details.impact || [],
+          explanation: request.description || request.title,
+          command: request.details.command,
+          timeout,
         },
       },
     });
 
-    // Call approval request callback if registered
-    if (this.approvalRequestCallback) {
-      this.approvalRequestCallback(request);
-    }
-
-    // Set up timeout handling
-    const timeout = request.timeout || this.policy.timeout || 30000;
-    const timeoutPromise = new Promise<ApprovalResponse>((resolve) => {
-      setTimeout(() => {
-        this.pendingRequests.delete(request.id);
-
-        this.emitEvent({
-          id: `evt_approval_timeout_${request.id}`,
-          msg: {
-            type: 'ApprovalTimeout',
-            data: {
-              approval_id: request.id,
-              timeout_ms: timeout,
-            },
-          },
-        });
-
-        const timeoutResponse: ApprovalResponse = {
-          id: request.id,
-          decision: 'reject',
-          timestamp: Date.now(),
-          reason: 'Request timed out',
-          metadata: { timeout: true },
-        };
-
-        this.approvalHistory.set(request.id, timeoutResponse);
-        resolve(timeoutResponse);
-      }, timeout);
-    });
-
-    // Create pending approval entry
+    // Create pending approval entry first so timeout can reference it
     const pendingApproval: PendingApproval = {
       request,
       timestamp: Date.now(),
       timeRemaining: timeout,
+      resolved: false,
     };
 
     this.pendingRequests.set(request.id, pendingApproval);
 
-    // Wait for user decision or timeout
+    // Wait for user decision
     const userDecisionPromise = new Promise<ApprovalResponse>((resolve) => {
       pendingApproval.resolver = resolve;
     });
 
-    return Promise.race([userDecisionPromise, timeoutPromise]);
+    // If timeout > 0, race user decision against auto-approve timer
+    if (timeout > 0) {
+      const timeoutPromise = new Promise<ApprovalResponse>((resolve) => {
+        pendingApproval.timeoutId = setTimeout(() => {
+          // Only fire if still pending (not already resolved by handleDecision/cancelRequest)
+          if (pendingApproval.resolved || !this.pendingRequests.has(request.id)) return;
+          pendingApproval.resolved = true;
+          this.pendingRequests.delete(request.id);
+
+          this.emitEvent({
+            id: `evt_approval_timeout_${request.id}`,
+            msg: {
+              type: 'ApprovalGranted',
+              data: {
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                reason: 'Auto-approved after timeout',
+                timestamp: Date.now(),
+              },
+            },
+          });
+
+          const timeoutResponse: ApprovalResponse = {
+            id: request.id,
+            decision: 'approve',
+            timestamp: Date.now(),
+            reason: 'Auto-approved after timeout',
+            metadata: { timeout: true },
+          };
+
+          this.approvalHistory.set(request.id, timeoutResponse);
+          resolve(timeoutResponse);
+        }, timeout);
+      });
+
+      return Promise.race([userDecisionPromise, timeoutPromise]);
+    }
+
+    // No timeout — wait indefinitely for user input (balanced mode)
+    return userDecisionPromise;
   }
 
   /**
@@ -172,8 +189,17 @@ export class ApprovalManager {
    */
   async handleDecision(response: ApprovalResponse): Promise<void> {
     const pending = this.pendingRequests.get(response.id);
-    if (!pending) {
-      return; // Request already processed or doesn't exist
+    if (!pending || pending.resolved) {
+      console.warn(`[ApprovalManager] No pending approval found for id: ${response.id} (already processed or timed out)`);
+      return;
+    }
+
+    // Mark as resolved to prevent timeout from also resolving
+    pending.resolved = true;
+
+    // Clear timeout to prevent duplicate events
+    if (pending.timeoutId) {
+      clearTimeout(pending.timeoutId);
     }
 
     // Remove from pending
@@ -183,22 +209,32 @@ export class ApprovalManager {
     this.approvalHistory.set(response.id, response);
 
     // Emit appropriate event
-    const eventType = response.decision === 'approve' ? 'ApprovalGranted' :
-                     response.decision === 'reject' ? 'ApprovalRejected' :
-                     'ApprovalModified';
-
-    this.emitEvent({
-      id: `evt_approval_${response.decision}_${response.id}`,
-      msg: {
-        type: eventType as any,
-        data: {
-          approval_id: response.id,
-          decision: response.decision,
-          reason: response.reason,
-          modifications: response.modifications,
+    if (response.decision === 'approve') {
+      this.emitEvent({
+        id: `evt_approval_granted_${response.id}`,
+        msg: {
+          type: 'ApprovalGranted',
+          data: {
+            id: response.id,
+            tool_name: pending.request.metadata?.toolName || pending.request.type,
+            timestamp: Date.now(),
+          },
         },
-      },
-    });
+      });
+    } else {
+      this.emitEvent({
+        id: `evt_approval_denied_${response.id}`,
+        msg: {
+          type: 'ApprovalDenied',
+          data: {
+            id: response.id,
+            tool_name: pending.request.metadata?.toolName || pending.request.type,
+            reason: response.reason || 'Denied by user',
+            timestamp: Date.now(),
+          },
+        },
+      });
+    }
 
     // Resolve the pending promise
     if (pending.resolver) {
@@ -240,8 +276,16 @@ export class ApprovalManager {
    */
   async cancelRequest(id: string): Promise<boolean> {
     const pending = this.pendingRequests.get(id);
-    if (!pending) {
+    if (!pending || pending.resolved) {
       return false;
+    }
+
+    // Mark as resolved to prevent timeout from also resolving
+    pending.resolved = true;
+
+    // Clear timeout to prevent duplicate events
+    if (pending.timeoutId) {
+      clearTimeout(pending.timeoutId);
     }
 
     this.pendingRequests.delete(id);
@@ -249,10 +293,12 @@ export class ApprovalManager {
     this.emitEvent({
       id: `evt_approval_canceled_${id}`,
       msg: {
-        type: 'ApprovalCanceled',
+        type: 'ApprovalDenied',
         data: {
-          approval_id: id,
+          id,
+          tool_name: pending.request.metadata?.toolName || pending.request.type,
           reason: 'User canceled request',
+          timestamp: Date.now(),
         },
       },
     });
@@ -278,19 +324,7 @@ export class ApprovalManager {
    * Update approval policy
    */
   async updatePolicy(updates: Partial<ApprovalPolicy>): Promise<void> {
-    const oldPolicy = { ...this.policy };
     this.policy = { ...this.policy, ...updates };
-
-    this.emitEvent({
-      id: `evt_policy_updated_${Date.now()}`,
-      msg: {
-        type: 'PolicyUpdated',
-        data: {
-          policy: this.policy,
-          changes: updates,
-        },
-      },
-    });
   }
 
   /**
@@ -326,13 +360,6 @@ export class ApprovalManager {
    */
   getApproval(approvalId: string): PendingApproval | undefined {
     return this.pendingRequests.get(approvalId);
-  }
-
-  /**
-   * Register a callback for approval requests
-   */
-  onApprovalRequest(callback: (approval: ApprovalRequest) => void): void {
-    this.approvalRequestCallback = callback;
   }
 
   /**
@@ -401,17 +428,32 @@ export class ApprovalManager {
     this.approvalHistory.set(request.id, response);
 
     // Emit event
-    const eventType = decision === 'approve' ? 'AutoApproved' : 'AutoRejected';
-    this.emitEvent({
-      id: `evt_auto_${decision}_${request.id}`,
-      msg: {
-        type: eventType as any,
-        data: {
-          approval_id: request.id,
-          policy_reason: reason,
+    if (decision === 'approve') {
+      this.emitEvent({
+        id: `evt_auto_approved_${request.id}`,
+        msg: {
+          type: 'ApprovalAutoApproved',
+          data: {
+            tool_name: request.metadata?.toolName || request.type,
+            risk_score: this.riskLevelToScore(request.details.riskLevel),
+            risk_level: request.details.riskLevel,
+          },
         },
-      },
-    });
+      });
+    } else {
+      this.emitEvent({
+        id: `evt_auto_rejected_${request.id}`,
+        msg: {
+          type: 'ApprovalDenied',
+          data: {
+            id: request.id,
+            tool_name: request.metadata?.toolName || request.type,
+            reason,
+            timestamp: Date.now(),
+          },
+        },
+      });
+    }
 
     return response;
   }
@@ -432,6 +474,19 @@ export class ApprovalManager {
       return hostname === pattern;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Map risk level string to numeric score for event payloads
+   */
+  private riskLevelToScore(level: string): number {
+    switch (level) {
+      case 'low': return 15;
+      case 'medium': return 45;
+      case 'high': return 75;
+      case 'critical': return 95;
+      default: return 50;
     }
   }
 
@@ -475,7 +530,7 @@ export class ApprovalManager {
    */
   getApprovalTimeout(): number {
     // Config integration placeholder - returns default
-    return 30000;
+    return 600000;
   }
 }
 
@@ -486,5 +541,7 @@ interface PendingApproval {
   request: ApprovalRequest;
   timestamp: number;
   timeRemaining: number;
+  resolved: boolean;
   resolver?: (response: ApprovalResponse) => void;
+  timeoutId?: ReturnType<typeof setTimeout>;
 }

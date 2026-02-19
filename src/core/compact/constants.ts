@@ -1,33 +1,24 @@
 /**
  * Constants for chat history compaction
+ *
+ * Prompt content loaded directly from fragment files via Vite ?raw imports.
  */
 
 import type { CompactionConfig } from './types';
+import compactSummarization from '../../prompts/fragments/compact_summarization.md?raw';
+import compactSummaryPrefix from '../../prompts/fragments/compact_summary_prefix.md?raw';
 
 /**
  * Prompt sent to LLM for summarization.
  * Designed for LLM-to-LLM handoff context.
  */
-export const SUMMARIZATION_PROMPT = `You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff summary for another LLM that will resume the task.
-
-Include:
-- Current progress and key decisions made
-- Important context, constraints, or user preferences
-- What remains to be done (clear next steps)
-- Any critical data, examples, or references needed to continue
-
-CRITICAL - Cache Storage Keys:
-If cache_storage_tool was used during this conversation, you MUST preserve ALL storageKey values and their descriptions exactly as returned from write/update actions. These keys are required to retrieve cached data later. Format as:
-  - storageKey: "<exact_key>" - <description>
-Without these keys, cached data becomes permanently inaccessible.
-
-Be concise, structured, and focused on helping the next LLM seamlessly continue the work.`;
+export const SUMMARIZATION_PROMPT = compactSummarization;
 
 /**
  * Prefix prepended to summary when added to history.
  * Used to identify summary messages and prevent re-summarization.
  */
-export const SUMMARY_PREFIX = `Another language model started to solve this problem and produced a summary of its thinking process. You also have access to the state of the tools that were used by that language model. Use this to build on the work that has already been done and avoid duplicating work. Here is the summary produced by the other language model, use the information in this summary to assist with your own analysis:`;
+export const SUMMARY_PREFIX = compactSummaryPrefix;
 
 /**
  * Placeholder when no meaningful summary can be generated.

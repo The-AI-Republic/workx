@@ -1,15 +1,63 @@
 /**
- * ScreenshotFileManager - Manage screenshot storage in chrome.storage.local
+ * ScreenshotFileManager - Manage screenshot storage
  *
- * Handles screenshot storage, retrieval, and cleanup using chrome.storage.local
+ * Handles screenshot storage, retrieval, and cleanup using ConfigStorageProvider
  * with atomic updates at key "screenshot_cache".
  */
 
 import { SCREENSHOT_CACHE_KEY, MAX_SCREENSHOT_SIZE_MB } from './types';
+import {
+  getConfigStorage,
+  isConfigStorageInitialized,
+  type ConfigStorageProvider
+} from '../../core/storage/ConfigStorageProvider';
 
 export class ScreenshotFileManager {
   /**
-   * Save screenshot to chrome.storage.local
+   * Get storage provider with fallback
+   */
+  private static async getStorage(): Promise<ConfigStorageProvider | null> {
+    if (isConfigStorageInitialized()) {
+      return getConfigStorage();
+    }
+    // Fallback to chrome.storage.local if provider not initialized
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      return {
+        async get<T>(key: string): Promise<T | null> {
+          const result = await chrome.storage.local.get(key);
+          return (result[key] as T) ?? null;
+        },
+        async set<T>(key: string, value: T): Promise<void> {
+          await chrome.storage.local.set({ [key]: value });
+        },
+        async remove(key: string): Promise<void> {
+          await chrome.storage.local.remove(key);
+        },
+        async getMany<T>(keys: string[]): Promise<Record<string, T>> {
+          return await chrome.storage.local.get(keys) as Record<string, T>;
+        },
+        async setMany<T>(items: Record<string, T>): Promise<void> {
+          await chrome.storage.local.set(items);
+        },
+        async removeMany(keys: string[]): Promise<void> {
+          await chrome.storage.local.remove(keys);
+        },
+        async getAll(): Promise<Record<string, unknown>> {
+          return await chrome.storage.local.get(null);
+        },
+        async clear(): Promise<void> {
+          await chrome.storage.local.clear();
+        },
+        async getBytesInUse(): Promise<number | null> {
+          return null;
+        }
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Save screenshot to storage
    * Atomically replaces any existing screenshot at the same key
    *
    * @param base64Data - Base64-encoded PNG screenshot data
@@ -26,10 +74,13 @@ export class ScreenshotFileManager {
         );
       }
 
+      const storage = await this.getStorage();
+      if (!storage) {
+        throw new Error('Storage not available');
+      }
+
       // Atomic save - automatically replaces old screenshot if present
-      await chrome.storage.local.set({
-        [SCREENSHOT_CACHE_KEY]: base64Data
-      });
+      await storage.set(SCREENSHOT_CACHE_KEY, base64Data);
     } catch (error: any) {
       console.error('[ScreenshotFileManager] Failed to save screenshot:', error);
       throw new Error(`FILE_STORAGE_ERROR: ${error.message}`);
@@ -37,14 +88,19 @@ export class ScreenshotFileManager {
   }
 
   /**
-   * Get screenshot from chrome.storage.local
+   * Get screenshot from storage
    *
    * @returns Base64-encoded PNG screenshot data, or null if not found
    */
   static async getScreenshot(): Promise<string | null> {
     try {
-      const result = await chrome.storage.local.get(SCREENSHOT_CACHE_KEY);
-      const screenshotData = result[SCREENSHOT_CACHE_KEY];
+      const storage = await this.getStorage();
+      if (!storage) {
+        console.debug('[ScreenshotFileManager] Storage not available');
+        return null;
+      }
+
+      const screenshotData = await storage.get<string>(SCREENSHOT_CACHE_KEY);
 
       if (!screenshotData) {
         console.debug('[ScreenshotFileManager] No screenshot found at key "${SCREENSHOT_CACHE_KEY}"');
@@ -59,13 +115,16 @@ export class ScreenshotFileManager {
   }
 
   /**
-   * Delete screenshot from chrome.storage.local
+   * Delete screenshot from storage
    *
    * @returns Promise that resolves when screenshot is deleted
    */
   static async deleteScreenshot(): Promise<void> {
     try {
-      await chrome.storage.local.remove(SCREENSHOT_CACHE_KEY);
+      const storage = await this.getStorage();
+      if (!storage) return;
+
+      await storage.remove(SCREENSHOT_CACHE_KEY);
     } catch (error: any) {
       console.error('[ScreenshotFileManager] Failed to delete screenshot:', error);
       throw new Error(`FILE_STORAGE_ERROR: ${error.message}`);
@@ -79,8 +138,11 @@ export class ScreenshotFileManager {
    */
   static async hasScreenshot(): Promise<boolean> {
     try {
-      const result = await chrome.storage.local.get(SCREENSHOT_CACHE_KEY);
-      return !!result[SCREENSHOT_CACHE_KEY];
+      const storage = await this.getStorage();
+      if (!storage) return false;
+
+      const data = await storage.get<string>(SCREENSHOT_CACHE_KEY);
+      return !!data;
     } catch (error: any) {
       console.error('[ScreenshotFileManager] Failed to check screenshot existence:', error);
       return false;

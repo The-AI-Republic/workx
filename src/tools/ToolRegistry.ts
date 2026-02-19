@@ -5,8 +5,7 @@
  * Provides a centralized system for tool management with validation and metadata support.
  */
 
-import type { Event } from '../protocol/types';
-import { EventCollector } from '../tests/utils/test-helpers';
+import type { Event } from '../core/protocol/types';
 import type {
   ToolDefinition,
   JsonSchema,
@@ -20,6 +19,17 @@ import type {
   ToolContext,
   ToolHandler,
 } from './BaseTool';
+import type { ApprovalGate } from '../core/approval/ApprovalGate';
+import type { IRiskAssessor } from '../core/approval/types';
+import { parseNodeId } from './dom/utils';
+
+/**
+ * Interface for event collection (used for testing)
+ * The actual EventCollector class is in tests/utils/test-helpers.ts
+ */
+export interface IEventCollector {
+  collect(event: Event): void;
+}
 
 /**
  * Tool registry entry
@@ -28,6 +38,7 @@ interface ToolRegistryEntry {
   definition: ToolDefinition;
   handler: ToolHandler;
   registrationTime: number;
+  riskAssessor?: IRiskAssessor;
 }
 
 /**
@@ -38,17 +49,32 @@ interface ToolRegistryEntry {
  */
 export class ToolRegistry {
   private tools: Map<string, ToolRegistryEntry> = new Map();
-  private eventCollector?: EventCollector;
+  private eventCollector?: IEventCollector;
+  private approvalGate?: ApprovalGate;
 
-  constructor(eventCollector?: EventCollector) {
+  constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
     // Note: TabManager (including tab grouping) is now initialized at service worker level
   }
 
   /**
+   * Set the approval gate for risk-based tool call interception
+   */
+  setApprovalGate(gate: ApprovalGate): void {
+    this.approvalGate = gate;
+  }
+
+  /**
+   * Get the approval gate (if configured)
+   */
+  getApprovalGate(): ApprovalGate | undefined {
+    return this.approvalGate;
+  }
+
+  /**
    * Register a tool with the registry
    */
-  async register(tool: ToolDefinition, handler: ToolHandler): Promise<void> {
+  async register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void> {
     // Validate tool definition
     this.validateToolDefinition(tool);
 
@@ -65,6 +91,7 @@ export class ToolRegistry {
       definition: tool,
       handler,
       registrationTime: Date.now(),
+      riskAssessor,
     };
 
     this.tools.set(toolName, entry);
@@ -236,6 +263,52 @@ export class ToolRegistry {
         };
       }
 
+      // Approval gate check (if configured)
+      if (this.approvalGate) {
+        const context = request.metadata ? {
+          currentUrl: request.metadata.currentUrl as string | undefined,
+          currentDomain: request.metadata.currentDomain as string | undefined,
+          cwd: request.metadata.cwd as string | undefined,
+          sessionId: request.sessionId,
+          turnId: request.turnId,
+        } : {
+          sessionId: request.sessionId,
+          turnId: request.turnId,
+        };
+
+        // Enrich browser_dom parameters with element metadata for risk assessment
+        let approvalParameters = request.parameters;
+        if (request.toolName === 'browser_dom' && request.parameters.node_id && request.tabId) {
+          const action = request.parameters.action;
+          if (action === 'click' || action === 'type' || action === 'keypress') {
+            approvalParameters = await this.enrichDomParameters(request.parameters, request.tabId);
+          }
+        }
+
+        const result = await this.approvalGate.check(
+          request.toolName,
+          approvalParameters,
+          entry.riskAssessor,
+          context
+        );
+
+        const decision = typeof result === 'string' ? result : result.decision;
+        const reason = typeof result === 'object' && result !== null ? result.reason : undefined;
+
+        if (decision === 'deny') {
+          return {
+            success: false,
+            error: {
+              code: 'APPROVAL_DENIED',
+              message: `Tool '${request.toolName}' was denied by the approval system`,
+              details: reason ? { reason } : undefined,
+            },
+            duration: Date.now() - startTime,
+          };
+        }
+        // 'auto_approve' and 'ask_user' (resolved to approve) continue execution
+      }
+
       // Emit execution start event
       this.emitEvent({
         id: `evt_exec_start_${request.toolName}`,
@@ -367,14 +440,8 @@ export class ToolRegistry {
    * Get registry statistics
    */
   getStats() {
-    let totalTools = 0;
-
-    for (const entry of this.tools.values()) {
-      totalTools++;
-    }
-
     return {
-      totalTools,
+      totalTools: this.tools.size,
       categories: [], // ToolDefinition doesn't have category field
       registeredTools: Array.from(this.tools.keys()),
     };
@@ -391,11 +458,64 @@ export class ToolRegistry {
    * Cleanup resources when shutting down
    */
   async cleanup(): Promise<void> {
-    if (this.tabGroupManager) {
-      await this.tabGroupManager.cleanup();
-    }
+    // No resources to clean up at the registry level
   }
 
+
+  /**
+   * Enrich browser_dom parameters with element metadata from DOM snapshot
+   * for more accurate risk assessment. Read-only — does not modify execution params.
+   */
+  private async enrichDomParameters(
+    parameters: Record<string, any>,
+    tabId: number
+  ): Promise<Record<string, any>> {
+    try {
+      // Dynamic import to avoid circular dependency at module load time
+      const { DomService } = await import('./dom/DomService');
+      const domService = await DomService.forTab(tabId);
+      const snapshot = domService.getCurrentSnapshot();
+      if (!snapshot) return parameters;
+
+      const { frameId, backendNodeId } = parseNodeId(parameters.node_id);
+      const node = snapshot.resolveNodeByBackendIdAndFrame(backendNodeId, frameId);
+      if (!node) return parameters;
+
+      const enriched: Record<string, any> = { ...parameters };
+
+      if (node.accessibility?.name) {
+        enriched.aria_label = node.accessibility.name;
+      }
+      if (node.accessibility?.role) {
+        enriched.role = node.accessibility.role;
+      }
+
+      // Extract text from first text child
+      if (node.children) {
+        for (const child of node.children) {
+          if (child.nodeType === 3 && child.nodeValue) {
+            enriched.text = child.nodeValue.trim();
+            break;
+          }
+        }
+      }
+
+      // Extract 'name' attribute from attributes array
+      if (node.attributes) {
+        for (let i = 0; i < node.attributes.length; i += 2) {
+          if (node.attributes[i] === 'name' && node.attributes[i + 1]) {
+            enriched.name = node.attributes[i + 1];
+            break;
+          }
+        }
+      }
+
+      return enriched;
+    } catch {
+      // Non-critical: return original parameters if enrichment fails
+      return parameters;
+    }
+  }
 
   /**
    * Extract tool name from ToolDefinition based on type
