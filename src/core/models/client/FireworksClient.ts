@@ -1,5 +1,5 @@
 /**
- * Fireworks AI API client implementation for browserx-chrome
+ * Fireworks AI API client implementation for pi
  * Extends OpenAIResponsesClient with Fireworks-specific behavior
  *
  * Key Fireworks Differences:

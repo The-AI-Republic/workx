@@ -1,11 +1,30 @@
 /**
  * MCP Server Integration Type Definitions
  *
- * These types define the contracts for MCP server integration in browserx.
+ * These types define the contracts for MCP server integration in Pi.
  * They are used for configuration, runtime state, and tool integration.
  */
 
 import type { JsonSchema, ToolDefinition, ToolHandler } from '../../tools/BaseTool';
+
+// =============================================================================
+// Transport and Platform Types
+// =============================================================================
+
+/**
+ * Transport type for MCP server communication.
+ * - 'sse': Server-Sent Events (works on both extension and desktop)
+ * - 'stdio': Standard I/O subprocess (desktop only, handled by Rust rmcp)
+ */
+export type MCPTransportType = 'sse' | 'stdio';
+
+/**
+ * Platform scope for MCP server visibility.
+ * - 'shared': Visible on both extension and desktop
+ * - 'extension': Only visible in Chrome extension mode
+ * - 'desktop': Only visible in desktop (Tauri) mode
+ */
+export type MCPPlatformScope = 'shared' | 'extension' | 'desktop';
 
 // =============================================================================
 // Configuration Types (Persisted in chrome.storage.local)
@@ -22,7 +41,7 @@ export interface IMCPServerConfig {
   /** Display name, also used as tool prefix (e.g., "github" → "github:search") */
   name: string;
 
-  /** Server endpoint URL (should be HTTPS in production) */
+  /** Server endpoint URL (required for SSE, not needed for stdio) */
   url: string;
 
   /** Encrypted API key for authentication (optional) */
@@ -33,6 +52,27 @@ export interface IMCPServerConfig {
 
   /** Request timeout in milliseconds (default: 30000) */
   timeout: number;
+
+  /** Transport type (default: 'sse') */
+  transport: MCPTransportType;
+
+  /** Platform scope (default: 'shared') */
+  platform: MCPPlatformScope;
+
+  /** Whether this is a builtin server (cannot be deleted by user) */
+  builtin?: boolean;
+
+  /** Command to execute (required for stdio transport) */
+  command?: string;
+
+  /** Arguments for the command (stdio transport) */
+  args?: string[];
+
+  /** Environment variables (stdio transport) */
+  env?: Record<string, string>;
+
+  /** Working directory (stdio transport) */
+  cwd?: string;
 
   /** Unix timestamp of creation */
   createdAt: number;
@@ -46,10 +86,17 @@ export interface IMCPServerConfig {
  */
 export interface IMCPServerConfigCreate {
   name: string;
-  url: string;
+  url?: string;
   apiKey?: string;
   enabled?: boolean;
   timeout?: number;
+  transport?: MCPTransportType;
+  platform?: MCPPlatformScope;
+  builtin?: boolean;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
 }
 
 /**
@@ -61,6 +108,12 @@ export interface IMCPServerConfigUpdate {
   apiKey?: string;
   enabled?: boolean;
   timeout?: number;
+  transport?: MCPTransportType;
+  platform?: MCPPlatformScope;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
 }
 
 // =============================================================================
@@ -324,7 +377,7 @@ export interface IMCPManager {
 // =============================================================================
 
 /**
- * Adapts MCP tools to browserx ToolDefinition format.
+ * Adapts MCP tools to Pi ToolDefinition format.
  */
 export interface IMCPToolAdapter {
   /**
@@ -348,10 +401,63 @@ export interface IMCPToolAdapter {
 
   /**
    * Parse a prefixed tool name into server and tool parts.
-   * @param prefixedName e.g., "github:search"
+   * @param prefixedName e.g., "github__search"
    * @returns { serverName: "github", toolName: "search" } or null if invalid
    */
   parsePrefixedName(prefixedName: string): { serverName: string; toolName: string } | null;
+}
+
+// =============================================================================
+// Client Adapter Interface
+// =============================================================================
+
+/**
+ * Unified client adapter interface for MCP connections.
+ * Both MCPClient (SSE) and RustMCPBridge (stdio) implement this interface,
+ * allowing MCPManager to work with either transport transparently.
+ */
+export interface IMCPClientAdapter {
+  /** Connect to the MCP server */
+  connect(): Promise<void>;
+
+  /** Disconnect from the MCP server */
+  disconnect(): Promise<void>;
+
+  /** List available tools from the server */
+  listTools(): Promise<IMCPTool[]>;
+
+  /** Call a tool with the given arguments */
+  callTool(name: string, args: Record<string, unknown>): Promise<IMCPToolResult>;
+
+  /** List available resources from the server */
+  listResources(): Promise<IMCPResource[]>;
+
+  /** Read a resource by URI */
+  readResource(uri: string): Promise<IMCPResourceContent>;
+
+  /** Get current connection status */
+  getStatus(): MCPConnectionStatus;
+
+  /** Get server info from handshake */
+  getServerInfo(): IMCPServerInfo | undefined;
+
+  /** Get server capabilities */
+  getCapabilities(): IMCPCapabilities | undefined;
+
+  /** Get cached tools list */
+  getTools(): IMCPTool[];
+
+  /** Get cached resources list */
+  getResources(): IMCPResource[];
+
+  /** Get last error message */
+  getLastError(): string | undefined;
+
+  /** Get the configuration ID this client is associated with */
+  getConfigId(): string;
+
+  /** Get negotiated protocol version */
+  getProtocolVersion(): string | undefined;
 }
 
 // =============================================================================

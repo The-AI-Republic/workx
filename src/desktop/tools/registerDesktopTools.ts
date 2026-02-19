@@ -1,9 +1,11 @@
 /**
  * Desktop Tools Registration
  *
- * Registers CDP-based tools for desktop mode.
- * This file is only imported in desktop builds to avoid Tauri dependencies
- * being pulled into the extension build.
+ * Registers browser automation tools via MCPManager's builtin 'browser' server,
+ * plus cross-platform tools (planning, web search).
+ *
+ * The builtin browser server (chrome-devtools-mcp) is connected via MCPManager,
+ * and its tools are registered dynamically with prefixed names (e.g., browser__click).
  *
  * @module desktop/tools/registerDesktopTools
  */
@@ -11,9 +13,16 @@
 import { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
 import type { ToolDefinition, Platform } from '../../tools/BaseTool';
-import { CDPDOMTool } from './CDPDOMTool';
 import { PlanningTool } from '../../tools/PlanningTool';
 import { WebSearchTool } from '../../tools/WebSearchTool';
+import { MCPManager } from '../../core/mcp/MCPManager';
+import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
+import { TerminalTool } from './terminal/TerminalTool';
+import { invoke } from '@tauri-apps/api/core';
+import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
+import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowserRiskAssessor';
+import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
+import type { IRiskAssessor } from '../../core/approval/types';
 
 /**
  * Check if a tool supports the given platform based on its metadata
@@ -33,7 +42,10 @@ function isPlatformSupported(toolDef: ToolDefinition, platform: Platform): boole
 }
 
 /**
- * Register desktop-specific tools (CDP-based)
+ * Register desktop-specific tools.
+ *
+ * Connects the builtin browser MCP server and registers its tools dynamically.
+ * Also registers cross-platform tools (planning, web search).
  *
  * @param registry - Tool registry instance
  * @param toolsConfig - Tool configuration settings
@@ -45,39 +57,27 @@ export async function registerDesktopToolsImpl(
   modelConfig?: { name: string; supportsImage?: boolean }
 ): Promise<void> {
   const platform: Platform = 'desktop';
+  const enableBrowserTools =
+    toolsConfig.enable_all_tools === true ||
+    toolsConfig.dom_tool === true ||
+    toolsConfig.navigation_tool === true;
 
-  // Helper to check if tool is enabled in user config
-  const isToolEnabled = (toolName: string): boolean => {
-    if (toolsConfig.enable_all_tools === true) return true;
+  // Risk assessors for desktop tools
+  const mcpBrowserAssessor = new McpBrowserRiskAssessor();
+  const terminalAssessor = new TerminalRiskAssessor();
+  const staticAssessor = new StaticRiskAssessor();
 
-    switch (toolName) {
-      case 'dom_tool':
-        return toolsConfig.dom_tool === true;
-      case 'navigation_tool':
-        return toolsConfig.navigation_tool === true;
-      case 'page_vision_tool':
-        return toolsConfig.page_vision_tool === true;
-      default:
-        return false;
-    }
-  };
-
-  // Helper to register a tool with platform check
-  const registerTool = async (toolName: string, toolInstance: any) => {
+  // Helper to register a BaseTool instance
+  const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor) => {
     if (registry.getTool(toolName)) {
-      console.log(`[registerDesktopTools] ${toolName} already registered, skipping...`);
       return;
     }
 
     const definition = toolInstance.getDefinition();
 
-    // Check if tool supports this platform
     if (!isPlatformSupported(definition, platform)) {
-      console.log(`[registerDesktopTools] ${toolName} not supported on ${platform}, skipping...`);
       return;
     }
-
-    console.log(`[registerDesktopTools] Registering ${toolName} (desktop)...`);
 
     await registry.register(definition, async (params, context) => {
       return toolInstance.execute(params, {
@@ -88,26 +88,127 @@ export async function registerDesktopToolsImpl(
           toolName: context.toolName,
         },
       });
-    });
+    }, riskAssessor);
   };
 
-  // Register CDP-based DOM tool for desktop
-  if (isToolEnabled('dom_tool')) {
-    const cdpDomTool = new CDPDOMTool();
-    await cdpDomTool.initialize();
-    await registerTool('browser_dom', cdpDomTool);
+  // ──────────────────────────────────────────────────────────────────────
+  // Register browser tools via MCPManager builtin server
+  // ──────────────────────────────────────────────────────────────────────
+  if (enableBrowserTools) {
+    try {
+      const mcpManager = await MCPManager.getInstance('desktop');
+
+      // Find the builtin browser server
+      const browserServer = mcpManager.getServerByName('browser');
+
+      if (browserServer) {
+        // Connect with retry — chrome-devtools-mcp may take time to start
+        const MAX_RETRIES = 2;
+        const RETRY_DELAY_MS = 2000;
+        let lastError: unknown;
+        let connected = false;
+
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            if (attempt > 0) {
+              await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            }
+            await mcpManager.connect(browserServer.id);
+            connected = true;
+            break;
+          } catch (connectError) {
+            lastError = connectError;
+
+            // Disconnect before retrying so MCPManager doesn't think we're still connecting
+            if (attempt < MAX_RETRIES) {
+              try { await mcpManager.disconnect(browserServer.id); } catch { /* ignore */ }
+            }
+          }
+        }
+
+        if (connected) {
+          // Get the connection to access discovered tools
+          const connection = mcpManager.getConnection(browserServer.id);
+
+          if (connection && connection.tools.length > 0) {
+            // Register all discovered tools with prefixed names (browser__click, etc.)
+            await registerMCPTools(mcpManager, 'browser', connection.tools, registry, mcpBrowserAssessor);
+          } else {
+            console.warn('[registerDesktopTools] Browser server connected but no tools discovered');
+          }
+        } else {
+          console.warn('[registerDesktopTools] Browser tools will be unavailable — agent will proceed with planning and web search only');
+        }
+      } else {
+        console.warn('[registerDesktopTools] Builtin browser server not found in MCPManager');
+      }
+    } catch (error) {
+      console.error('[registerDesktopTools] Failed to initialize MCPManager:', error);
+    }
   }
 
-  // Planning tool - always enabled (supports both platforms)
+  // ──────────────────────────────────────────────────────────────────────
+  // Register cross-platform tools
+  // ──────────────────────────────────────────────────────────────────────
+
+  // Planning tool - always enabled (zero risk)
   const planningTool = new PlanningTool();
-  await registerTool('planning_tool', planningTool);
+  await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
 
-  // Web search tool (supports both platforms)
+  // Web search tool (zero risk)
   const webSearchTool = new WebSearchTool();
-  await registerTool('web_search', webSearchTool);
+  await registerTool('web_search', webSearchTool, new StaticRiskAssessor(0));
 
-  // TODO: Add more desktop-specific tools:
-  // - TerminalTool (shell command execution)
-  // - FileSystemTool (file read/write)
-  // - CDPNavigationTool (browser navigation via CDP)
+  // ──────────────────────────────────────────────────────────────────────
+  // Register terminal tool (desktop only)
+  // ──────────────────────────────────────────────────────────────────────
+  const terminalTool = new TerminalTool();
+  let osName: string | undefined;
+  try {
+    const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
+    osName = platformInfo.os;
+  } catch (error) {
+    console.warn('[registerDesktopTools] Failed to get platform info:', error);
+  }
+
+  // Initialize sandbox support and fetch status for dynamic tool description
+  let sandboxStatus;
+  try {
+    await terminalTool.initializeSandbox();
+    sandboxStatus = terminalTool.getSandboxManager().status ?? undefined;
+    console.log('[registerDesktopTools] Sandbox initialized:', sandboxStatus?.status, sandboxStatus?.runtime);
+  } catch (error) {
+    console.warn('[registerDesktopTools] Failed to initialize sandbox:', error);
+  }
+
+  const terminalDef = terminalTool.getToolDefinition(osName, sandboxStatus);
+
+  if (!registry.getTool('terminal')) {
+    console.log('[registerDesktopTools] Registering terminal (desktop)...');
+
+    await registry.register(
+      {
+        type: 'function',
+        function: {
+          name: terminalDef.name,
+          description: terminalDef.description,
+          strict: false,
+          parameters: terminalDef.inputSchema as any,
+        },
+        metadata: {
+          platforms: ['desktop'],
+        },
+      },
+      async (params) => {
+        return await terminalTool.handleInvocation(params as {
+          command: string;
+          cwd?: string;
+          timeout?: number;
+          userConfirmed?: boolean;
+          sandboxed?: boolean;
+        });
+      },
+      terminalAssessor
+    );
+  }
 }

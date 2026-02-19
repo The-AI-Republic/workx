@@ -394,7 +394,7 @@ export class StorageTool extends BaseTool {
     metadata: {
       capabilities: ['session_cache', 'data_storage', 'quota_management'],
       permissions: ['storage'],
-      platforms: ['extension'] as const,
+      platforms: ['extension' as const],
     },
     category: 'storage',
     version: '1.0.0',

@@ -8,7 +8,7 @@
  * - Session-aware message routing
  */
 
-import { BrowserxAgent } from '../../core/BrowserxAgent';
+import { PiAgent } from '../../core/PiAgent';
 import { MessageRouter, MessageType } from '../../core/MessageRouter';
 import { AuthManager } from '../../core/models/types/Auth';
 import type { Submission } from '../../core/protocol/types';
@@ -17,6 +17,8 @@ import { CacheManager } from '../../storage/CacheManager';
 import { StorageQuotaManager } from '../../storage/StorageQuotaManager';
 import { RolloutRecorder } from '../../storage/rollout';
 import { AgentConfig } from '../../config/AgentConfig';
+import { STORAGE_KEYS } from '../../config/defaults';
+import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
 import { TabManager } from '../../core/TabManager';
 import { LLM_API_URL } from '../../config/constants';
 import { MCPManager } from '../../core/mcp/MCPManager';
@@ -26,12 +28,26 @@ import type {
   IMCPServerConfigUpdate,
   MCPManagerEvent,
 } from '../../core/mcp/types';
+import { A2AManager } from '../../core/a2a/A2AManager';
+import { registerA2ASkills, unregisterA2ASkills } from '../../core/a2a/A2AToolAdapter';
+import type {
+  IA2AAgentConfigCreate,
+  IA2AAgentConfigUpdate,
+  A2AManagerEvent,
+} from '../../core/a2a/types';
 
 // Task Scheduler imports
 import { Scheduler, SchedulerStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
 import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
+
+// Storage initialization — static imports required because dynamic import()
+// is banned in Chrome extension service workers by the HTML specification.
+import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
+import { setCredentialStore } from '../../core/storage/CredentialStore';
+import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
+import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import type {
   CreateDraftTaskRequest,
   ScheduleTaskRequest,
@@ -53,13 +69,14 @@ import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts'
  * This variable is kept only for backward compatibility during migration.
  * All new code should use AgentRegistry to access agent instances.
  */
-let agent: BrowserxAgent | null = null;
+let agent: PiAgent | null = null;
 let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
 let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
 let storageQuotaManager: StorageQuotaManager | null = null;
 let agentConfig: AgentConfig | null = null;
 let mcpManager: MCPManager | null = null; // MCP server connection manager
+let a2aManager: A2AManager | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let scheduler: Scheduler | null = null; // Task scheduler
 let schedulerStorage: SchedulerStorage | null = null;
@@ -142,6 +159,18 @@ async function doInitialize(): Promise<void> {
 
   // Setup MCP message handlers
   setupMCPMessageHandlers();
+
+  // Initialize A2A manager
+  a2aManager = await A2AManager.getInstance();
+
+  // Subscribe to A2A events for tool registration/unregistration
+  setupA2AToolRegistration();
+
+  // Auto-connect enabled A2A agents
+  await autoConnectEnabledA2AAgents();
+
+  // Setup A2A message handlers
+  setupA2AMessageHandlers();
 
   // Initialize Task Scheduler
   await initializeScheduler();
@@ -250,7 +279,7 @@ async function initializeSessionPersistence(): Promise<void> {
  * @param message The incoming message with optional sessionId
  * @returns The agent to use for this message
  */
-function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): BrowserxAgent | null {
+function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): PiAgent | null {
   // Feature 015: Route by sessionId if provided, otherwise use primary session
   // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
   const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
@@ -407,7 +436,7 @@ function setupMessageHandlers(): void {
     }
 
     // Recreate agent with resumed session
-    agent = new BrowserxAgent(agentConfig!, router!, {
+    agent = new PiAgent(agentConfig!, router!, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -486,6 +515,41 @@ function setupMessageHandlers(): void {
       }
       return true;
     }
+
+    // Handle approval config updates (UPDATE_APPROVAL_CONFIG)
+    // Uses "double write" pattern: saves to storage AND updates ApprovalGate directly.
+    // This avoids reliance on chrome.storage.onChanged which is not available in desktop mode.
+    if (message.type === 'UPDATE_APPROVAL_CONFIG') {
+      (async () => {
+        try {
+          const config = message.config;
+          // 1. Save to storage
+          const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
+          const existing = result[STORAGE_KEYS.APPROVAL_CONFIG] || { ...DEFAULT_APPROVAL_CONFIG };
+          const merged = { ...existing, ...config };
+          await chrome.storage.local.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: merged });
+          // 2. Update ApprovalGate directly
+          const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+          if (primaryAgent) {
+            const gate = primaryAgent.getToolRegistry().getApprovalGate();
+            if (gate) {
+              if (config.mode) gate.setMode(config.mode);
+              if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
+              if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+            }
+          }
+          sendResponse({ success: true });
+        } catch (error) {
+          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+      })();
+      return true;
+    }
+
+    // Note: Approval decisions (EXEC_APPROVAL) are now handled through the unified
+    // SUBMISSION pipeline. EventProcessor sends { type: 'SUBMISSION', payload: { op: { type: 'ExecApproval' } } }
+    // which routes through MessageRouter → agent.submitOperation() → handleExecApproval()
+    // on both extension and desktop platforms.
   });
 
   // Handle storage operations
@@ -573,7 +637,7 @@ function setupMessageHandlers(): void {
           await agent.cleanup();
         }
 
-        agent = new BrowserxAgent(agentConfig, router!);
+        agent = new PiAgent(agentConfig, router!);
 
         // Set up event dispatcher for chrome extension mode
         agent.setEventDispatcher((event) => {
@@ -1130,6 +1194,202 @@ function setupMCPMessageHandlers(): void {
   console.log('[ServiceWorker] MCP message handlers registered');
 }
 
+// ==========================================================================
+// A2A Integration (Feature 021)
+// ==========================================================================
+
+/**
+ * Setup A2A tool registration event handling.
+ * Registers/unregisters A2A skills with ToolRegistry when connections change.
+ * Mirrors the setupMCPToolRegistration() pattern.
+ */
+function setupA2AToolRegistration(): void {
+  const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
+  if (!a2aManager || !primaryAgent) {
+    console.warn('[ServiceWorker] Cannot setup A2A tool registration - manager or agent not ready');
+    return;
+  }
+
+  const toolRegistry = primaryAgent.getToolRegistry();
+
+  // Track registered skill names per agent for cleanup
+  const registeredAgentSkills = new Map<string, string[]>();
+
+  a2aManager.on('event', async (event: A2AManagerEvent) => {
+    if (event.type === 'skills-updated') {
+      const { configId, skills } = event;
+      const agentConfig = a2aManager!.getAgent(configId);
+      if (!agentConfig) return;
+
+      const agentName = agentConfig.name;
+      const connection = a2aManager!.getConnection(configId);
+
+      // If connected and skills available, register them
+      if (connection?.status === 'connected' && skills.length > 0) {
+        // First unregister any previously registered skills for this agent
+        const previousSkills = registeredAgentSkills.get(agentName);
+        if (previousSkills) {
+          for (const toolName of previousSkills) {
+            try {
+              await toolRegistry.unregister(toolName);
+            } catch {
+              // Ignore - tool might not be registered
+            }
+          }
+        }
+
+        // Register new skills
+        try {
+          await registerA2ASkills(a2aManager!, agentName, skills, toolRegistry, agentConfig.trusted);
+          // Track registered tool names
+          registeredAgentSkills.set(
+            agentName,
+            skills.map((s) => `${agentName}__${s.id}`)
+          );
+          console.log(`[ServiceWorker] Registered ${skills.length} A2A skills from ${agentName}`);
+        } catch (error) {
+          console.error(`[ServiceWorker] Failed to register A2A skills from ${agentName}:`, error);
+        }
+      }
+    } else if (event.type === 'connection-status-changed') {
+      const { configId, status } = event;
+      const agentConfig = a2aManager!.getAgent(configId);
+      if (!agentConfig) return;
+
+      const agentName = agentConfig.name;
+
+      // If disconnecting or error, unregister skills
+      if (status === 'disconnected' || status === 'error') {
+        const previousSkills = registeredAgentSkills.get(agentName);
+        if (previousSkills) {
+          for (const toolName of previousSkills) {
+            try {
+              await toolRegistry.unregister(toolName);
+            } catch {
+              // Ignore - tool might not be registered
+            }
+          }
+          registeredAgentSkills.delete(agentName);
+          console.log(`[ServiceWorker] Unregistered A2A skills from ${agentName}`);
+        }
+      }
+    }
+  });
+
+  console.log('[ServiceWorker] A2A tool registration handler setup complete');
+}
+
+/**
+ * Auto-connect enabled A2A agents on service worker startup
+ * Attempts to connect to all agents with enabled: true
+ */
+async function autoConnectEnabledA2AAgents(): Promise<void> {
+  if (!a2aManager) {
+    console.warn('[ServiceWorker] Cannot auto-connect A2A agents - manager not ready');
+    return;
+  }
+
+  const agents = a2aManager.getAgents();
+  const enabledAgents = agents.filter((a) => a.enabled);
+
+  if (enabledAgents.length === 0) {
+    console.log('[ServiceWorker] No enabled A2A agents to auto-connect');
+    return;
+  }
+
+  console.log(`[ServiceWorker] Auto-connecting ${enabledAgents.length} enabled A2A agent(s)...`);
+
+  for (const agent of enabledAgents) {
+    try {
+      console.log(`[ServiceWorker] Auto-connecting to A2A agent: ${agent.name}`);
+      await a2aManager.connect(agent.id);
+      console.log(`[ServiceWorker] Auto-connected to A2A agent: ${agent.name}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[ServiceWorker] Failed to auto-connect A2A agent ${agent.name}: ${errorMsg}`);
+    }
+  }
+}
+
+/**
+ * Setup A2A agent integration message handlers
+ */
+function setupA2AMessageHandlers(): void {
+  if (!router || !a2aManager) return;
+
+  // Get all A2A agent configurations
+  router.on(MessageType.A2A_GET_AGENTS, async () => {
+    return a2aManager!.getAgents();
+  });
+
+  // Add a new A2A agent
+  router.on(MessageType.A2A_ADD_AGENT, async (message) => {
+    const config = message.payload as IA2AAgentConfigCreate;
+    return a2aManager!.addAgent(config);
+  });
+
+  // Update an existing A2A agent
+  router.on(MessageType.A2A_UPDATE_AGENT, async (message) => {
+    const { id, update } = message.payload as { id: string; update: IA2AAgentConfigUpdate };
+    return a2aManager!.updateAgent(id, update);
+  });
+
+  // Remove an A2A agent
+  router.on(MessageType.A2A_REMOVE_AGENT, async (message) => {
+    const { id } = message.payload as { id: string };
+    await a2aManager!.removeAgent(id);
+    return { success: true };
+  });
+
+  // Connect to an A2A agent
+  router.on(MessageType.A2A_CONNECT, async (message) => {
+    const { id } = message.payload as { id: string };
+    await a2aManager!.connect(id);
+    return { success: true };
+  });
+
+  // Disconnect from an A2A agent
+  router.on(MessageType.A2A_DISCONNECT, async (message) => {
+    const { id } = message.payload as { id: string };
+    await a2aManager!.disconnect(id);
+    return { success: true };
+  });
+
+  // Get connection state for a specific agent
+  router.on(MessageType.A2A_GET_CONNECTION, async (message) => {
+    const { id } = message.payload as { id: string };
+    return a2aManager!.getConnection(id);
+  });
+
+  // Get all connections
+  router.on(MessageType.A2A_GET_CONNECTIONS, async () => {
+    return a2aManager!.getConnections();
+  });
+
+  // Get all available skills from all connected agents
+  router.on(MessageType.A2A_GET_ALL_SKILLS, async () => {
+    return a2aManager!.getAllSkills();
+  });
+
+  // Execute an A2A skill
+  router.on(MessageType.A2A_EXECUTE_SKILL, async (message) => {
+    const { prefixedName, args } = message.payload as {
+      prefixedName: string;
+      args: Record<string, unknown>;
+    };
+    return a2aManager!.executeSkill(prefixedName, args);
+  });
+
+  // Cancel an A2A task
+  router.on(MessageType.A2A_CANCEL_TASK, async (message) => {
+    const { agentName, taskId } = message.payload as { agentName: string; taskId: string };
+    await a2aManager!.cancelTask(agentName, taskId);
+    return { success: true };
+  });
+
+  console.log('[ServiceWorker] A2A message handlers registered');
+}
+
 /**
  * Setup Chrome API event listeners
  */
@@ -1331,10 +1591,10 @@ async function executeTabCommand(
  * Initialize storage layer
  */
 async function initializeStorage(): Promise<void> {
-  // Initialize config storage provider (platform-agnostic)
+  // Initialize config storage provider
+  // NOTE: Static imports used — dynamic import() is banned in service workers.
   try {
-    const { initializeConfigStorage } = await import('@/core/storage');
-    await initializeConfigStorage();
+    setConfigStorage(new ChromeConfigStorage());
     console.log('[ServiceWorker] Config storage initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize config storage:', error);
@@ -1343,8 +1603,7 @@ async function initializeStorage(): Promise<void> {
 
   // Initialize credential store (for secure API key storage)
   try {
-    const { initializeCredentialStore } = await import('@/core/storage');
-    await initializeCredentialStore();
+    setCredentialStore(new ChromeCredentialStore());
     console.log('[ServiceWorker] Credential store initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);

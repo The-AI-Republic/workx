@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventCollector, createDeferred, waitFor } from '../utils/test-helpers';
-import { ReviewDecision } from '../../core/protocol/types';
+import type { ReviewDecision } from '../../core/protocol/types';
 
 // Define ApprovalManager contract interfaces
 interface ApprovalRequest {
@@ -73,6 +73,17 @@ interface ApprovalManager {
   getPolicy(): ApprovalPolicy;
 }
 
+/** Map risk level to numeric score for event payloads */
+function riskLevelToScore(level: string): number {
+  switch (level) {
+    case 'low': return 15;
+    case 'medium': return 45;
+    case 'high': return 75;
+    case 'critical': return 95;
+    default: return 50;
+  }
+}
+
 describe('ApprovalManager Contract', () => {
   let eventCollector: EventCollector;
 
@@ -89,10 +100,12 @@ describe('ApprovalManager Contract', () => {
             msg: {
               type: 'ApprovalRequested',
               data: {
-                approval_id: request.id,
-                type: request.type,
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                risk_score: riskLevelToScore(request.details.riskLevel),
                 risk_level: request.details.riskLevel,
-                title: request.title,
+                risk_factors: [],
+                explanation: request.title,
               },
             },
           });
@@ -105,8 +118,9 @@ describe('ApprovalManager Contract', () => {
             msg: {
               type: 'ApprovalGranted',
               data: {
-                approval_id: request.id,
-                decision: 'approve',
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                timestamp: Date.now(),
               },
             },
           });
@@ -175,22 +189,26 @@ describe('ApprovalManager Contract', () => {
             msg: {
               type: 'ApprovalRequested',
               data: {
-                approval_id: request.id,
-                type: request.type,
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                risk_score: riskLevelToScore(request.details.riskLevel),
                 risk_level: request.details.riskLevel,
+                risk_factors: [],
+                explanation: `Risk level: ${request.details.riskLevel}`,
               },
             },
           });
 
           // Simulate user rejection
           eventCollector.collect({
-            id: 'evt_approval_rejected',
+            id: 'evt_approval_denied',
             msg: {
-              type: 'ApprovalRejected',
+              type: 'ApprovalDenied',
               data: {
-                approval_id: request.id,
-                decision: 'reject',
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
                 reason: 'High risk action rejected by user',
+                timestamp: Date.now(),
               },
             },
           });
@@ -238,7 +256,7 @@ describe('ApprovalManager Contract', () => {
       expect(response.decision).toBe('reject');
       expect(response.reason).toContain('rejected');
 
-      const rejectionEvent = eventCollector.findByType('ApprovalRejected');
+      const rejectionEvent = eventCollector.findByType('ApprovalDenied');
       expect(rejectionEvent).toBeDefined();
     });
 
@@ -250,20 +268,26 @@ describe('ApprovalManager Contract', () => {
             msg: {
               type: 'ApprovalRequested',
               data: {
-                approval_id: request.id,
-                type: request.type,
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                risk_score: riskLevelToScore(request.details.riskLevel),
+                risk_level: request.details.riskLevel,
+                risk_factors: [],
+                explanation: request.title,
               },
             },
           });
 
+          // request_change maps to a denied event (with modification info in reason)
           eventCollector.collect({
-            id: 'evt_approval_modified',
+            id: 'evt_approval_denied',
             msg: {
-              type: 'ApprovalModified',
+              type: 'ApprovalDenied',
               data: {
-                approval_id: request.id,
-                decision: 'request_change',
-                modifications: { targetPath: '/tmp/safe-dir' },
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                reason: 'User requested change: safer path /tmp/safe-dir',
+                timestamp: Date.now(),
               },
             },
           });
@@ -315,8 +339,8 @@ describe('ApprovalManager Contract', () => {
       expect(response.modifications).toBeDefined();
       expect(response.modifications?.targetPath).toBe('/tmp/safe-dir');
 
-      const modificationEvent = eventCollector.findByType('ApprovalModified');
-      expect(modificationEvent).toBeDefined();
+      const deniedEvent = eventCollector.findByType('ApprovalDenied');
+      expect(deniedEvent).toBeDefined();
     });
   });
 
@@ -341,10 +365,11 @@ describe('ApprovalManager Contract', () => {
             eventCollector.collect({
               id: 'evt_auto_approved',
               msg: {
-                type: 'AutoApproved',
+                type: 'ApprovalAutoApproved',
                 data: {
-                  approval_id: request.id,
-                  policy_reason: 'Low risk action auto-approved',
+                  tool_name: request.metadata?.toolName || request.type,
+                  risk_score: riskLevelToScore(request.details.riskLevel),
+                  risk_level: request.details.riskLevel,
                 },
               },
             });
@@ -401,7 +426,7 @@ describe('ApprovalManager Contract', () => {
       expect(response.decision).toBe('approve');
       expect(response.metadata?.autoApproved).toBe(true);
 
-      const autoApproveEvent = eventCollector.findByType('AutoApproved');
+      const autoApproveEvent = eventCollector.findByType('ApprovalAutoApproved');
       expect(autoApproveEvent).toBeDefined();
     });
 
@@ -429,10 +454,12 @@ describe('ApprovalManager Contract', () => {
             eventCollector.collect({
               id: 'evt_auto_rejected',
               msg: {
-                type: 'AutoRejected',
+                type: 'ApprovalDenied',
                 data: {
-                  approval_id: request.id,
-                  policy_reason: 'High risk action auto-rejected',
+                  id: request.id,
+                  tool_name: request.metadata?.toolName || request.type,
+                  reason: 'High risk action auto-rejected by policy',
+                  timestamp: Date.now(),
                 },
               },
             });
@@ -489,7 +516,7 @@ describe('ApprovalManager Contract', () => {
       expect(response.decision).toBe('reject');
       expect(response.metadata?.autoRejected).toBe(true);
 
-      const autoRejectEvent = eventCollector.findByType('AutoRejected');
+      const autoRejectEvent = eventCollector.findByType('ApprovalDenied');
       expect(autoRejectEvent).toBeDefined();
     });
 
@@ -516,17 +543,7 @@ describe('ApprovalManager Contract', () => {
         },
         async updatePolicy(updates: Partial<ApprovalPolicy>): Promise<void> {
           currentPolicy = { ...currentPolicy, ...updates };
-
-          eventCollector.collect({
-            id: 'evt_policy_updated',
-            msg: {
-              type: 'PolicyUpdated',
-              data: {
-                policy: currentPolicy,
-                changes: updates,
-              },
-            },
-          });
+          // Policy updates are handled internally; no event emission needed
         },
         getPolicy(): ApprovalPolicy {
           return currentPolicy;
@@ -545,9 +562,6 @@ describe('ApprovalManager Contract', () => {
       expect(updatedPolicy.mode).toBe('auto_approve_safe');
       expect(updatedPolicy.riskThreshold).toBe('low');
       expect(updatedPolicy.trustedDomains).toEqual(['localhost', 'example.com']);
-
-      const policyEvent = eventCollector.findByType('PolicyUpdated');
-      expect(policyEvent).toBeDefined();
     });
   });
 
@@ -562,8 +576,12 @@ describe('ApprovalManager Contract', () => {
             msg: {
               type: 'ApprovalRequested',
               data: {
-                approval_id: request.id,
-                timeout_ms: request.timeout,
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                risk_score: riskLevelToScore(request.details.riskLevel),
+                risk_level: request.details.riskLevel,
+                risk_factors: [],
+                explanation: request.title,
               },
             },
           });
@@ -575,10 +593,12 @@ describe('ApprovalManager Contract', () => {
               eventCollector.collect({
                 id: 'evt_approval_timeout',
                 msg: {
-                  type: 'ApprovalTimeout',
+                  type: 'ApprovalDenied',
                   data: {
-                    approval_id: request.id,
-                    timeout_ms: timeout,
+                    id: request.id,
+                    tool_name: request.metadata?.toolName || request.type,
+                    reason: `Request timed out after ${timeout}ms`,
+                    timestamp: Date.now(),
                   },
                 },
               });
@@ -633,7 +653,7 @@ describe('ApprovalManager Contract', () => {
       expect(response.reason).toContain('timed out');
       expect(response.metadata?.timeout).toBe(true);
 
-      const timeoutEvent = eventCollector.findByType('ApprovalTimeout');
+      const timeoutEvent = eventCollector.findByType('ApprovalDenied');
       expect(timeoutEvent).toBeDefined();
     });
 
@@ -649,7 +669,12 @@ describe('ApprovalManager Contract', () => {
             msg: {
               type: 'ApprovalRequested',
               data: {
-                approval_id: request.id,
+                id: request.id,
+                tool_name: request.metadata?.toolName || request.type,
+                risk_score: riskLevelToScore(request.details.riskLevel),
+                risk_level: request.details.riskLevel,
+                risk_factors: [],
+                explanation: request.title,
               },
             },
           });
@@ -688,10 +713,12 @@ describe('ApprovalManager Contract', () => {
           eventCollector.collect({
             id: 'evt_approval_canceled',
             msg: {
-              type: 'ApprovalCanceled',
+              type: 'ApprovalDenied',
               data: {
-                approval_id: id,
+                id,
+                tool_name: 'unknown',
                 reason: 'User canceled request',
+                timestamp: Date.now(),
               },
             },
           });
@@ -738,7 +765,7 @@ describe('ApprovalManager Contract', () => {
       expect(response.reason).toContain('canceled');
       expect(response.metadata?.canceled).toBe(true);
 
-      const cancelEvent = eventCollector.findByType('ApprovalCanceled');
+      const cancelEvent = eventCollector.findByType('ApprovalDenied');
       expect(cancelEvent).toBeDefined();
 
       // Verify status is cleared

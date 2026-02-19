@@ -83,7 +83,6 @@ export class SSETransport implements MCPTransport {
       this.eventSource.onopen = () => {
         clearTimeout(timeout);
         this.connected = true;
-        console.log('[SSETransport] Connected');
         resolve();
       };
 
@@ -119,7 +118,6 @@ export class SSETransport implements MCPTransport {
     }
     this.connected = false;
     this.notifyClose();
-    console.log('[SSETransport] Disconnected');
   }
 
   /**

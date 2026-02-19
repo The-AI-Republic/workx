@@ -1,27 +1,12 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "Obecný AI agent pro pracovní úkoly v prohlížeči"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "Konfigurace API klíče"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API klíče jsou šifrovány a ukládány lokálně ve vašem prohlížeči. Nikdy nejsou odesílány na externí servery, kromě volání API."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Přístup k úložišti prohlížeče (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "Akce"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "Podrobnosti akce"
@@ -30,6 +15,9 @@
     "message": ""
   },
   "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Add_Modification": {
@@ -41,7 +29,7 @@
   "Add_Task": {
     "message": ""
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
+  "Additional_Bind_Mounts": {
     "message": ""
   },
   "Advanced_Configuration": {
@@ -56,6 +44,9 @@
   "Agent_Execution_Tools": {
     "message": "Nástroje pro provádění agenta"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Povolit agentovi spouštět systémové příkazy (používejte opatrně)"
   },
@@ -65,14 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Povolit spouštění obsahových skriptů na webových stránkách"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "Povolené zdroje"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "Konfigurace API klíče"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API klíče jsou šifrovány a ukládány lokálně ve vašem prohlížeči. Nikdy nejsou odesílány na externí servery, kromě volání API."
+  },
   "Approval_History": {
     "message": "Historie schválení"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "Schválit"
@@ -83,11 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Požádat Browserx o extrakci strukturovaných dat z jakékoli webové stránky"
   },
-  "Available_Tools": {
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "Dostupné:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "Zpět"
@@ -101,20 +119,20 @@
   "Beta": {
     "message": "Beta"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "Přepínače nástrojů pro automatizaci prohlížeče"
+  },
   "Browser_Tools": {
     "message": "Nástroje prohlížeče"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Přepínače nástrojů pro automatizaci prohlížeče"
+  "Cache_behavior_and_data_retention": {
+    "message": "Chování mezipaměti a uchovávání dat"
   },
   "Cache_Settings": {
     "message": "Nastavení mezipaměti"
   },
   "Cache_TTL_seconds": {
     "message": "TTL mezipaměti (sekundy)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "Chování mezipaměti a uchovávání dat"
   },
   "Cancel": {
     "message": "Zrušit"
@@ -152,6 +170,9 @@
   "Command": {
     "message": "Příkaz"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
   "Completed": {
     "message": ""
   },
@@ -167,13 +188,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -197,8 +218,8 @@
   "Current_Plan": {
     "message": "Aktuální plán:"
   },
-  "DOM_Tool": {
-    "message": "Nástroj DOM"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "Denní kredity"
@@ -227,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "Zobrazit spotřebu tokenů (vstupní/výstupní tokeny) po dokončení úkolů"
   },
+  "DOM_Tool": {
+    "message": "Nástroj DOM"
+  },
   "Duration": {
     "message": ""
   },
@@ -239,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "Povolit všechny nástroje"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "Povolit mezipaměť"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Povolit ukládání do mezipaměti pro zlepšení výkonu – ukládá často používaná data"
   },
   "Enable_Compression": {
     "message": "Povolit kompresi"
@@ -248,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "Povolit skripty obsahu"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "Povolit rozšíření"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Povolit ukládání do mezipaměti pro zlepšení výkonu – ukládá často používaná data"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -284,17 +308,14 @@
   "Execute_Commands": {
     "message": "Spustit příkazy"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "Vyprší po dnech"
   },
   "Explain_your_decision": {
     "message": "Vysvětlete své rozhodnutí..."
-  },
-  "Extension_Permission": {
-    "message": "Rozšíření a oprávnění"
-  },
-  "Extension_Permission_Settings": {
-    "message": "Nastavení rozšíření a oprávnění"
   },
   "Extension_Configuration": {
     "message": "Konfigurace rozšíření"
@@ -302,8 +323,23 @@
   "Extension_configuration_and_permissions": {
     "message": "Konfigurace rozšíření a oprávnění"
   },
+  "extension_description": {
+    "message": "Obecný AI agent pro pracovní úkoly v prohlížeči"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "Rozšíření a oprávnění"
+  },
+  "Extension_Permission_Settings": {
+    "message": "Nastavení rozšíření a oprávnění"
+  },
   "Extra_Credits": {
     "message": "Kredity navíc"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "Extrahovat data:"
@@ -341,11 +377,11 @@
   "General": {
     "message": "Obecné"
   },
-  "General_Settings": {
-    "message": "Obecné nastavení"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "Obecné nastavení"
   },
   "Get_Started": {
     "message": "Začít"
@@ -364,6 +400,9 @@
   "History": {
     "message": "Historie"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "Dopad"
   },
@@ -372,12 +411,6 @@
   },
   "Keyboard_Shortcuts": {
     "message": "Klávesové zkratky"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "Požadavky LLM jsou odesílány přímo k rozhraním API poskytovatele"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "Požadavky LLM procházejí přes backend AI Republic"
   },
   "Language": {
     "message": "Jazyk"
@@ -391,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Seznam povolených zdrojů (jeden na řádek). Podporuje zástupné znaky (*)."
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Požadavky LLM jsou odesílány přímo k rozhraním API poskytovatele"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Požadavky LLM procházejí přes backend AI Republic"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -402,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "Načítání nastavení..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -418,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "Přihlaste se a získejte bezplatné kredity"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "Zbývá málo kreditů"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Spravovat karty prohlížeče (otevřít, zavřít, přepnout, dotazovat)"
@@ -459,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximální čas (v milisekundách), po který může nástroj běžet před vypršením časového limitu (výchozí: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -490,6 +529,9 @@
   "Navigation_Tool": {
     "message": "Navigační nástroj"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "Nástroj pro zachycení sítě"
   },
@@ -499,7 +541,7 @@
   "New_Conversation": {
     "message": "Nová konverzace"
   },
-  "No_MCP_servers_configured_yet": {
+  "No_Access": {
     "message": ""
   },
   "No_active_sessions": {
@@ -509,6 +551,9 @@
     "message": "Zatím žádná historie schválení."
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -531,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "Otevřít postranní panel:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "Organizace"
@@ -559,6 +607,9 @@
   "Please_type_a_valid_command": {
     "message": "Zadejte platný příkaz"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Prioritní úroveň poskytuje rychlejší odezvu za vyšší cenu."
   },
@@ -574,17 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "Rychlá akce"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "Rychlý start"
   },
-  "Quick_action": {
-    "message": "Rychlá akce"
-  },
   "Read_only": {
     "message": "Pouze ke čtení"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "Důvod (volitelně)"
@@ -619,6 +676,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +695,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -664,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "Zabezpečení a soukromí"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Úroveň zabezpečení pro prostředí spouštění nástrojů"
+  },
+  "Security_Privacy": {
+    "message": "Zabezpečení a soukromí"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Vyberte model AI pro konverzace."
@@ -679,6 +742,9 @@
   "Service_Tier": {
     "message": "Úroveň služby"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "Relace"
   },
@@ -686,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -708,6 +777,9 @@
   },
   "Stable": {
     "message": "Stabilní"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,17 +823,23 @@
   "Terminal": {
     "message": "Terminál"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "Otestovat připojení"
   },
   "Testing": {
     "message": "Testování..."
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
-  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agent momentálně používá režim backendu. Požadavky na LLM budou směrovány přes server AI Republic. Vaše konverzace jsou bezpečně zpracovávány naší infrastrukturou."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "Time": {
     "message": "Čas"
@@ -799,9 +877,6 @@
   "UI_Theme": {
     "message": "Téma uživatelského rozhraní"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "Nelze načíst informace o kreditech"
   },
@@ -826,20 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Vylepšete své předplatné a objevte nejvýkonnější modely na světě"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "Použít kontextové menu:"
   },
   "Use_Own_API_Key": {
     "message": "Použít vlastní API klíč"
   },
-  "User_Center": {
-    "message": "Uživatelské centrum"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "Akce schválená uživatelem"
+  },
+  "User_Center": {
+    "message": "Uživatelské centrum"
   },
   "User_decision": {
     "message": "Rozhodnutí uživatele"
@@ -852,6 +927,9 @@
   },
   "User_requested_modifications": {
     "message": "Uživatel požadoval úpravy"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "Používání extra kreditů"
@@ -877,6 +955,12 @@
   "Welcome_to_Browserx": {
     "message": "Vítejte v Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "Zápis do pracovního prostoru"
   },
@@ -891,14 +975,5 @@
   },
   "Your_Decision": {
     "message": "Vaše rozhodnutí"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }

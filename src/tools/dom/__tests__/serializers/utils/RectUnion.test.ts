@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RectUnion } from '../../../serializers/utils/RectUnion';
-import { Rect } from '../../../types';
+import type { Rect } from '../../../types';
 
 describe('RectUnion', () => {
   let union: RectUnion;

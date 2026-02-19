@@ -1,13 +1,13 @@
 /**
  * Desktop Agent Bootstrap
  *
- * Initializes and wires up the BrowserxAgent with the channel system for desktop mode.
+ * Initializes and wires up the PiAgent with the channel system for desktop mode.
  * In desktop mode, the agent runs directly in the WebView (same process as UI).
  *
  * Flow:
  * 1. Create ChannelManager (routes submissions to agent, events to channels)
  * 2. Create TauriChannel (receives submissions from UI, sends events to UI)
- * 3. Create BrowserxAgent (processes submissions, emits events)
+ * 3. Create PiAgent (processes submissions, emits events)
  * 4. Wire them together
  *
  * @module desktop/agent/DesktopAgentBootstrap
@@ -16,9 +16,11 @@
 import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
-import { BrowserxAgent } from '@/core/BrowserxAgent';
+import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
+import { configurePromptComposer } from '@/core/PromptLoader';
+import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
@@ -35,7 +37,7 @@ let _instance: DesktopAgentBootstrap | null = null;
  * Manages the lifecycle of the agent and channel system in desktop mode.
  */
 export class DesktopAgentBootstrap {
-  private agent: BrowserxAgent | null = null;
+  private agent: PiAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private initialized = false;
@@ -52,18 +54,23 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for BrowserxAgent
+      // 1. Create the message router for PiAgent
       this.messageRouter = new DesktopMessageRouter('background');
 
       // 2. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create BrowserxAgent
-      // BrowserxAgent expects a MessageRouter with updateState method
+      // 3. Create PiAgent
+      // PiAgent expects a MessageRouter with updateState method
       // DesktopMessageRouter provides this compatibility
-      this.agent = new BrowserxAgent(config, this.messageRouter as any);
+      this.agent = new PiAgent(config, this.messageRouter as any);
 
-      // 4. Initialize the agent (loads model client, tools, etc.)
+      // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
+      // This must happen first so PiAgent.configurePromptComposition() sees
+      // the composer is already configured and skips re-configuration.
+      await this.configurePromptWithPlatformInfo();
+
+      // 5. Initialize the agent (loads model client, tools, etc.)
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
@@ -116,6 +123,9 @@ export class DesktopAgentBootstrap {
       // 9. Wire up agent events to be dispatched through the channel
       this.setupEventForwarding(channelManager);
 
+      // 10. Set up MCP tool registration events
+      await this.setupMCPToolRegistration();
+
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
     } catch (error) {
@@ -127,7 +137,7 @@ export class DesktopAgentBootstrap {
   /**
    * Set up event forwarding from agent to channel
    *
-   * Uses BrowserxAgent's setEventDispatcher to route events through
+   * Uses PiAgent's setEventDispatcher to route events through
    * ChannelManager instead of chrome.runtime.sendMessage.
    */
   private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
@@ -136,7 +146,7 @@ export class DesktopAgentBootstrap {
       return;
     }
 
-    // Set the event dispatcher on BrowserxAgent
+    // Set the event dispatcher on PiAgent
     // Events will be routed through ChannelManager to TauriChannel
     this.agent.setEventDispatcher((event) => {
       // Dispatch event to the Tauri channel
@@ -149,9 +159,88 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Set up MCP tool registration events for desktop.
+   * Subscribes to MCPManager 'tools-updated' events so tools are
+   * auto-registered/unregistered when MCP servers connect/disconnect.
+   */
+  private async setupMCPToolRegistration(): Promise<void> {
+    if (!this.agent) {
+      return;
+    }
+
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const { registerMCPTools, unregisterMCPTools } = await import('@/core/mcp/MCPToolAdapter');
+      const mcpManager = await MCPManager.getInstance('desktop');
+      const registry = this.agent.getToolRegistry();
+
+      // Track registered tools per server so we can unregister them on disconnect.
+      // MCPManager clears connection.tools before emitting the event, so we
+      // can't read them from the connection at unregister time.
+      const registeredToolsByServer = new Map<string, import('@/core/mcp/types').IMCPTool[]>();
+
+      mcpManager.on('event', (event) => {
+        if (event.type !== 'tools-updated') return;
+
+        const config = mcpManager.getServer(event.configId);
+        if (!config) return;
+
+        // Unregister previously registered tools first (handles both disconnect and reconnect)
+        const previousTools = registeredToolsByServer.get(event.configId);
+        if (previousTools && previousTools.length > 0) {
+          unregisterMCPTools(config.name, previousTools, registry).catch((error) => {
+            console.error('[DesktopAgentBootstrap] Failed to unregister MCP tools:', error);
+          });
+          registeredToolsByServer.delete(event.configId);
+        }
+
+        if (event.tools.length > 0) {
+          // Tools discovered — register them and track for later unregistration
+          registerMCPTools(mcpManager, config.name, event.tools, registry).catch((error) => {
+            console.error('[DesktopAgentBootstrap] Failed to register MCP tools:', error);
+          });
+          registeredToolsByServer.set(event.configId, event.tools);
+        }
+      });
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not set up MCP tool registration:', error);
+    }
+  }
+
+  /**
+   * Collect platform info from Tauri and configure PromptComposer for Pi agent.
+   * Called before agent.initialize() so the dynamic prompt includes OS/arch/shell.
+   */
+  private async configurePromptWithPlatformInfo(): Promise<void> {
+    const staticContext: Partial<RuntimeContext> = {
+      browserConnection: 'mcp',
+    };
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
+      staticContext.os = platformInfo.os;
+      staticContext.arch = platformInfo.arch;
+      staticContext.osVersion = platformInfo.version;
+      // TODO: Heuristic-based shell detection — assumes default shell per OS.
+      // Actual shell detection requires a Rust-side Tauri command (out of scope).
+      staticContext.shell = platformInfo.os === 'macos' ? 'zsh'
+        : platformInfo.os === 'windows' ? 'powershell' : 'bash';
+
+      const { homeDir } = await import('@tauri-apps/api/path');
+      staticContext.homeDir = await homeDir();
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
+    }
+
+    configurePromptComposer('pi', staticContext);
+    console.log('[DesktopAgentBootstrap] PromptComposer configured for pi with platform context');
+  }
+
+  /**
    * Get the agent instance
    */
-  getAgent(): BrowserxAgent | null {
+  getAgent(): PiAgent | null {
     return this.agent;
   }
 

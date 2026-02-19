@@ -2,13 +2,15 @@
  * MCP Manager Singleton
  *
  * Central manager for all MCP server connections.
- * Follows the AgentConfig singleton pattern for consistency.
+ * Supports both SSE (extension + desktop) and stdio (desktop only) transports.
+ * Routes to MCPClient (SSE) or RustMCPBridge (stdio) based on server config.
  */
 
 import type {
   IMCPServerConfig,
   IMCPServerConfigCreate,
   IMCPServerConfigUpdate,
+  IMCPClientAdapter,
   IMCPConnection,
   IMCPTool,
   IMCPResource,
@@ -16,6 +18,7 @@ import type {
   IMCPResourceContent,
   MCPConnectionStatus,
   MCPManagerEvent,
+  MCPPlatformScope,
   IMCPManager,
 } from './types';
 import { MCPClient } from './MCPClient';
@@ -27,23 +30,28 @@ import {
 } from './MCPConfig';
 import { decryptApiKey } from '../../utils/encryption';
 
-/** Maximum number of MCP servers allowed */
+/** Maximum number of MCP servers allowed (excluding builtins) */
 const MAX_SERVERS = 5;
+
+/** Builtin browser server ID — deterministic UUID for desktop.
+ *  Must be a valid UUID to pass MCPServerConfigSchema validation. */
+const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
 
 /**
  * MCPManager manages multiple MCP server connections.
  *
  * This is a singleton class that:
- * - Loads/saves server configurations from chrome.storage.local
- * - Manages MCPClient instances for each connected server
+ * - Loads/saves server configurations from storage
+ * - Manages IMCPClientAdapter instances (MCPClient or RustMCPBridge)
+ * - Filters servers by platform (shared + current platform)
+ * - Seeds builtin servers (e.g., browser server on desktop)
  * - Aggregates tools and resources from all connected servers
  * - Emits events for status changes and updates
  *
  * Usage:
  * ```typescript
- * const manager = await MCPManager.getInstance();
- * const config = await manager.addServer({ name: 'github', url: 'https://...' });
- * await manager.connect(config.id);
+ * const manager = await MCPManager.getInstance('desktop');
+ * await manager.connect(browserServerId);
  * const tools = manager.getAllTools();
  * ```
  */
@@ -51,19 +59,28 @@ export class MCPManager implements IMCPManager {
   private static instance: MCPManager | null = null;
 
   private servers: Map<string, IMCPServerConfig> = new Map();
-  private clients: Map<string, MCPClient> = new Map();
+  private clients: Map<string, IMCPClientAdapter> = new Map();
   private connections: Map<string, IMCPConnection> = new Map();
   private eventHandlers: Set<(event: MCPManagerEvent) => void> = new Set();
   private initialized: boolean = false;
+  private platform: MCPPlatformScope;
 
-  private constructor() {}
+  private constructor(platform?: MCPPlatformScope) {
+    // Detect platform from build mode if not specified
+    this.platform = platform ?? (
+      typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop'
+        ? 'desktop'
+        : 'extension'
+    );
+  }
 
   /**
    * Get the singleton instance of MCPManager.
+   * @param platform - Optional platform override (detected from __BUILD_MODE__ if not provided)
    */
-  public static async getInstance(): Promise<MCPManager> {
+  public static async getInstance(platform?: MCPPlatformScope): Promise<MCPManager> {
     if (!MCPManager.instance) {
-      const instance = new MCPManager();
+      const instance = new MCPManager(platform);
       await instance.initialize();
       MCPManager.instance = instance;
     }
@@ -71,7 +88,7 @@ export class MCPManager implements IMCPManager {
   }
 
   /**
-   * Initialize the manager by loading configs from storage.
+   * Initialize the manager by loading configs from storage and seeding builtins.
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
@@ -90,8 +107,11 @@ export class MCPManager implements IMCPManager {
           resources: [],
         });
       }
+
+      // Seed builtin servers for the current platform
+      await this.seedBuiltinServers();
+
       this.initialized = true;
-      console.info(`[MCPManager] Initialized with ${this.servers.size} server(s)`);
     } catch (error) {
       console.error('[MCPManager] Failed to initialize:', error);
       this.initialized = true; // Mark as initialized to prevent infinite retries
@@ -108,9 +128,15 @@ export class MCPManager implements IMCPManager {
   async addServer(input: IMCPServerConfigCreate): Promise<IMCPServerConfig> {
     this.ensureInitialized();
 
-    // Check server limit
-    if (this.servers.size >= MAX_SERVERS) {
-      throw new Error(`Maximum of ${MAX_SERVERS} MCP servers allowed`);
+    // Validate: stdio transport only allowed on desktop
+    if (input.transport === 'stdio' && this.platform === 'extension') {
+      throw new Error('stdio transport is only available in desktop mode');
+    }
+
+    // Check server limit (exclude builtins from count)
+    const userServers = Array.from(this.servers.values()).filter(s => !s.builtin);
+    if (userServers.length >= MAX_SERVERS) {
+      throw new Error(`Maximum of ${MAX_SERVERS} user MCP servers allowed`);
     }
 
     const existingServers = Array.from(this.servers.values());
@@ -126,13 +152,14 @@ export class MCPManager implements IMCPManager {
       resources: [],
     });
 
-    // Persist to storage
-    await this.persistServers();
+    // Only persist non-builtin servers
+    if (!config.builtin) {
+      await this.persistServers();
+    }
 
     // Emit event
     this.emit({ type: 'config-added', config });
 
-    console.info(`[MCPManager] Added server: ${config.name} (${config.id})`);
     return config;
   }
 
@@ -152,18 +179,20 @@ export class MCPManager implements IMCPManager {
 
     this.servers.set(id, updated);
 
-    // Persist to storage
-    await this.persistServers();
+    // Persist to storage (only non-builtin servers)
+    if (!updated.builtin) {
+      await this.persistServers();
+    }
 
     // Emit event
     this.emit({ type: 'config-updated', config: updated });
 
-    console.info(`[MCPManager] Updated server: ${updated.name} (${id})`);
     return updated;
   }
 
   /**
    * Remove an MCP server configuration.
+   * Builtin servers cannot be removed.
    */
   async removeServer(id: string): Promise<void> {
     this.ensureInitialized();
@@ -171,6 +200,11 @@ export class MCPManager implements IMCPManager {
     const config = this.servers.get(id);
     if (!config) {
       throw new Error(`Server not found: ${id}`);
+    }
+
+    // Block deletion of builtin servers
+    if (config.builtin) {
+      throw new Error(`Cannot remove builtin server: ${config.name}`);
     }
 
     // Disconnect if connected
@@ -190,15 +224,17 @@ export class MCPManager implements IMCPManager {
     // Emit event
     this.emit({ type: 'config-removed', configId: id });
 
-    console.info(`[MCPManager] Removed server: ${config.name} (${id})`);
   }
 
   /**
-   * Get all server configurations.
+   * Get all server configurations visible to the current platform.
+   * Returns 'shared' servers plus servers matching the current platform.
    */
   getServers(): IMCPServerConfig[] {
     this.ensureInitialized();
-    return Array.from(this.servers.values());
+    return Array.from(this.servers.values()).filter(
+      (s) => s.platform === 'shared' || s.platform === this.platform
+    );
   }
 
   /**
@@ -209,12 +245,26 @@ export class MCPManager implements IMCPManager {
     return this.servers.get(id);
   }
 
+  /**
+   * Find a server by name.
+   */
+  getServerByName(name: string): IMCPServerConfig | undefined {
+    this.ensureInitialized();
+    for (const config of this.servers.values()) {
+      if (config.name === name) {
+        return config;
+      }
+    }
+    return undefined;
+  }
+
   // ==========================================================================
   // Connection Management
   // ==========================================================================
 
   /**
    * Connect to an MCP server.
+   * Creates the appropriate adapter (MCPClient for SSE, RustMCPBridge for stdio).
    */
   async connect(id: string): Promise<void> {
     this.ensureInitialized();
@@ -234,40 +284,21 @@ export class MCPManager implements IMCPManager {
     this.updateConnectionStatus(id, 'connecting');
 
     try {
-      // Decrypt API key if present
-      let apiKey: string | undefined;
-      if (config.apiKey) {
-        const decrypted = decryptApiKey(config.apiKey);
-        apiKey = decrypted ?? undefined;
-      }
+      // Create the appropriate adapter based on transport type
+      const adapter = await this.createAdapter(config);
 
-      // Create and connect client
-      const client = new MCPClient({
-        config,
-        apiKey,
-        onStatusChange: (status, error) => {
-          this.updateConnectionStatus(id, status, error);
-        },
-        onToolsChange: (tools) => {
-          this.updateConnectionTools(id, tools);
-        },
-        onResourcesChange: (resources) => {
-          this.updateConnectionResources(id, resources);
-        },
-      });
+      await adapter.connect();
 
-      await client.connect();
-
-      this.clients.set(id, client);
+      this.clients.set(id, adapter);
 
       // Update connection state
       const conn = this.connections.get(id)!;
       conn.status = 'connected';
-      conn.serverInfo = client.getServerInfo();
-      conn.capabilities = client.getCapabilities();
-      conn.protocolVersion = client.getProtocolVersion();
-      conn.tools = client.getTools();
-      conn.resources = client.getResources();
+      conn.serverInfo = adapter.getServerInfo();
+      conn.capabilities = adapter.getCapabilities();
+      conn.protocolVersion = adapter.getProtocolVersion();
+      conn.tools = adapter.getTools();
+      conn.resources = adapter.getResources();
       conn.lastConnected = Date.now();
       conn.lastError = undefined;
 
@@ -279,6 +310,7 @@ export class MCPManager implements IMCPManager {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MCPManager] Connection to ${config.name} failed: ${errorMessage}`);
       this.updateConnectionStatus(id, 'error', errorMessage);
       throw error;
     }
@@ -363,20 +395,20 @@ export class MCPManager implements IMCPManager {
 
   /**
    * Execute a tool on the appropriate server.
-   * @param prefixedName Tool name with server prefix (e.g., "github:search")
+   * @param prefixedName Tool name with server prefix (e.g., "github__search")
    * @param args Tool arguments
    */
   async executeTool(prefixedName: string, args: Record<string, unknown>): Promise<IMCPToolResult> {
     this.ensureInitialized();
 
-    // Parse prefixed name
-    const colonIndex = prefixedName.indexOf(':');
-    if (colonIndex === -1) {
-      throw new Error(`Invalid tool name format: ${prefixedName}. Expected "serverName:toolName"`);
+    // Parse prefixed name (separator is __ to avoid LLM API restrictions on colons)
+    const separatorIndex = prefixedName.indexOf('__');
+    if (separatorIndex === -1) {
+      throw new Error(`Invalid tool name format: ${prefixedName}. Expected "serverName__toolName"`);
     }
 
-    const serverName = prefixedName.slice(0, colonIndex);
-    const toolName = prefixedName.slice(colonIndex + 1);
+    const serverName = prefixedName.slice(0, separatorIndex);
+    const toolName = prefixedName.slice(separatorIndex + 2);
 
     // Find server by name
     let serverId: string | undefined;
@@ -471,6 +503,113 @@ export class MCPManager implements IMCPManager {
   }
 
   // ==========================================================================
+  // Platform & Adapter Management
+  // ==========================================================================
+
+  /**
+   * Get the current platform.
+   */
+  getPlatform(): MCPPlatformScope {
+    return this.platform;
+  }
+
+  /**
+   * Create the appropriate adapter for a server configuration.
+   */
+  private async createAdapter(config: IMCPServerConfig): Promise<IMCPClientAdapter> {
+    const callbacks = {
+      onStatusChange: (status: MCPConnectionStatus, error?: string) => {
+        this.updateConnectionStatus(config.id, status, error);
+      },
+      onToolsChange: (tools: IMCPTool[]) => {
+        this.updateConnectionTools(config.id, tools);
+      },
+      onResourcesChange: (resources: IMCPResource[]) => {
+        this.updateConnectionResources(config.id, resources);
+      },
+    };
+
+    if (config.transport === 'stdio') {
+      // Dynamic import to avoid pulling Tauri deps into extension build
+      const { RustMCPBridge } = await import('./RustMCPBridge');
+      return new RustMCPBridge({
+        config,
+        ...callbacks,
+      });
+    }
+
+    // Default: SSE transport
+    let apiKey: string | undefined;
+    if (config.apiKey) {
+      const decrypted = decryptApiKey(config.apiKey);
+      apiKey = decrypted ?? undefined;
+    }
+
+    return new MCPClient({
+      config,
+      apiKey,
+      ...callbacks,
+    });
+  }
+
+  /**
+   * Seed builtin servers for the current platform.
+   * On desktop, injects the 'browser' server config for chrome-devtools-mcp.
+   */
+  private async seedBuiltinServers(): Promise<void> {
+    if (this.platform !== 'desktop') {
+      return;
+    }
+
+    // Check if builtin browser server already exists
+    if (this.servers.has(BUILTIN_BROWSER_SERVER_ID)) {
+      return;
+    }
+
+    // Check if a server named 'browser' already exists (user-created)
+    for (const config of this.servers.values()) {
+      if (config.name === 'browser') {
+        return;
+      }
+    }
+
+    // Resolve project root via Tauri so npx can find chrome-devtools-mcp deps
+    let projectRoot: string | undefined;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      projectRoot = await invoke<string>('get_project_root');
+    } catch (err) {
+      console.warn('[MCPManager] Failed to resolve project root, MCP subprocess will inherit cwd:', err);
+    }
+
+    const now = Date.now();
+    const builtinConfig: IMCPServerConfig = {
+      id: BUILTIN_BROWSER_SERVER_ID,
+      name: 'browser',
+      url: '',
+      transport: 'stdio',
+      platform: 'desktop',
+      builtin: true,
+      command: 'npx',
+      args: ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'],
+      cwd: projectRoot,
+      enabled: true,
+      timeout: 180000, // 3 min — browser tools can be slow
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.servers.set(builtinConfig.id, builtinConfig);
+    this.connections.set(builtinConfig.id, {
+      configId: builtinConfig.id,
+      status: 'disconnected',
+      tools: [],
+      resources: [],
+    });
+
+  }
+
+  // ==========================================================================
   // Private Methods
   // ==========================================================================
 
@@ -481,7 +620,8 @@ export class MCPManager implements IMCPManager {
   }
 
   private async persistServers(): Promise<void> {
-    const configs = Array.from(this.servers.values());
+    // Only persist non-builtin servers
+    const configs = Array.from(this.servers.values()).filter(s => !s.builtin);
     await saveServers(configs);
   }
 

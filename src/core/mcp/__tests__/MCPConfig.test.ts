@@ -8,6 +8,8 @@ import {
   MCPServerNameSchema,
   MCPServerUrlSchema,
   MCPTimeoutSchema,
+  MCPTransportTypeSchema,
+  MCPPlatformScopeSchema,
   MCPServerConfigSchema,
   MCPServerConfigCreateSchema,
   MCPServerConfigUpdateSchema,
@@ -102,8 +104,8 @@ describe('MCPConfig Validation Schemas', () => {
       expect(() => MCPTimeoutSchema.parse(0)).toThrow();
     });
 
-    it('should reject timeouts above 120000ms', () => {
-      expect(() => MCPTimeoutSchema.parse(120001)).toThrow();
+    it('should reject timeouts above 180000ms', () => {
+      expect(() => MCPTimeoutSchema.parse(180001)).toThrow();
       expect(() => MCPTimeoutSchema.parse(300000)).toThrow();
     });
 
@@ -112,9 +114,9 @@ describe('MCPConfig Validation Schemas', () => {
       expect(result).toBe(30000);
     });
 
-    it('should accept exactly 5000ms and 120000ms', () => {
+    it('should accept exactly 5000ms and 180000ms', () => {
       expect(() => MCPTimeoutSchema.parse(5000)).not.toThrow();
-      expect(() => MCPTimeoutSchema.parse(120000)).not.toThrow();
+      expect(() => MCPTimeoutSchema.parse(180000)).not.toThrow();
     });
   });
 
@@ -125,6 +127,8 @@ describe('MCPConfig Validation Schemas', () => {
       url: 'https://mcp.github.example.com',
       enabled: true,
       timeout: 30000,
+      transport: 'sse' as const,
+      platform: 'shared' as const,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -146,14 +150,65 @@ describe('MCPConfig Validation Schemas', () => {
     it('should reject missing required fields', () => {
       const { name, ...missingName } = validConfig;
       expect(() => MCPServerConfigSchema.parse(missingName)).toThrow();
+    });
 
-      const { url, ...missingUrl } = validConfig;
-      expect(() => MCPServerConfigSchema.parse(missingUrl)).toThrow();
+    it('should default url to empty string when not provided', () => {
+      const { url, ...noUrl } = validConfig;
+      const result = MCPServerConfigSchema.parse(noUrl);
+      expect(result.url).toBe('');
+    });
+
+    it('should accept transport and platform fields', () => {
+      const configWithTransport = {
+        ...validConfig,
+        transport: 'stdio' as const,
+        platform: 'desktop' as const,
+        command: 'npx',
+        args: ['chrome-devtools-mcp'],
+      };
+      expect(() => MCPServerConfigSchema.parse(configWithTransport)).not.toThrow();
+    });
+
+    it('should default transport to sse and platform to shared', () => {
+      const result = MCPServerConfigSchema.parse(validConfig);
+      expect(result.transport).toBe('sse');
+      expect(result.platform).toBe('shared');
+    });
+
+    it('should accept builtin flag', () => {
+      const builtinConfig = { ...validConfig, builtin: true };
+      const result = MCPServerConfigSchema.parse(builtinConfig);
+      expect(result.builtin).toBe(true);
+    });
+  });
+
+  describe('MCPTransportTypeSchema', () => {
+    it('should accept sse and stdio', () => {
+      expect(() => MCPTransportTypeSchema.parse('sse')).not.toThrow();
+      expect(() => MCPTransportTypeSchema.parse('stdio')).not.toThrow();
+    });
+
+    it('should reject invalid transport types', () => {
+      expect(() => MCPTransportTypeSchema.parse('websocket')).toThrow();
+      expect(() => MCPTransportTypeSchema.parse('')).toThrow();
+    });
+  });
+
+  describe('MCPPlatformScopeSchema', () => {
+    it('should accept shared, extension, and desktop', () => {
+      expect(() => MCPPlatformScopeSchema.parse('shared')).not.toThrow();
+      expect(() => MCPPlatformScopeSchema.parse('extension')).not.toThrow();
+      expect(() => MCPPlatformScopeSchema.parse('desktop')).not.toThrow();
+    });
+
+    it('should reject invalid platform scopes', () => {
+      expect(() => MCPPlatformScopeSchema.parse('web')).toThrow();
+      expect(() => MCPPlatformScopeSchema.parse('')).toThrow();
     });
   });
 
   describe('MCPServerConfigCreateSchema', () => {
-    it('should accept valid create input', () => {
+    it('should accept valid SSE create input', () => {
       const input: IMCPServerConfigCreate = {
         name: 'github',
         url: 'https://mcp.github.example.com',
@@ -165,6 +220,45 @@ describe('MCPConfig Validation Schemas', () => {
       expect(result.url).toBe('https://mcp.github.example.com');
       expect(result.enabled).toBe(true); // default
       expect(result.timeout).toBe(30000); // default
+      expect(result.transport).toBe('sse'); // default
+      expect(result.platform).toBe('shared'); // default
+    });
+
+    it('should accept valid stdio create input', () => {
+      const input = {
+        name: 'browser',
+        transport: 'stdio' as const,
+        platform: 'desktop' as const,
+        command: 'npx',
+        args: ['chrome-devtools-mcp'],
+      };
+
+      const result = MCPServerConfigCreateSchema.parse(input);
+
+      expect(result.name).toBe('browser');
+      expect(result.transport).toBe('stdio');
+      expect(result.command).toBe('npx');
+      expect(result.args).toEqual(['chrome-devtools-mcp']);
+    });
+
+    it('should reject SSE transport without url', () => {
+      const input = {
+        name: 'github',
+        transport: 'sse' as const,
+        // no url
+      };
+
+      expect(() => MCPServerConfigCreateSchema.parse(input)).toThrow();
+    });
+
+    it('should reject stdio transport without command', () => {
+      const input = {
+        name: 'browser',
+        transport: 'stdio' as const,
+        // no command
+      };
+
+      expect(() => MCPServerConfigCreateSchema.parse(input)).toThrow();
     });
 
     it('should accept all optional fields', () => {
@@ -201,13 +295,18 @@ describe('MCPConfig Validation Schemas', () => {
       expect(() => MCPServerConfigUpdateSchema.parse({ timeout: 60000 })).not.toThrow();
     });
 
+    it('should accept transport and platform updates', () => {
+      expect(() => MCPServerConfigUpdateSchema.parse({ transport: 'stdio' })).not.toThrow();
+      expect(() => MCPServerConfigUpdateSchema.parse({ platform: 'desktop' })).not.toThrow();
+      expect(() => MCPServerConfigUpdateSchema.parse({ command: 'npx', args: ['mcp-server'] })).not.toThrow();
+    });
+
     it('should accept empty update object', () => {
       expect(() => MCPServerConfigUpdateSchema.parse({})).not.toThrow();
     });
 
     it('should still validate field values', () => {
       expect(() => MCPServerConfigUpdateSchema.parse({ name: '' })).toThrow();
-      expect(() => MCPServerConfigUpdateSchema.parse({ url: 'not-a-url' })).toThrow();
       expect(() => MCPServerConfigUpdateSchema.parse({ timeout: 1000 })).toThrow();
     });
   });
@@ -242,6 +341,8 @@ describe('MCPConfig Functions', () => {
           url: 'https://old.example.com',
           enabled: true,
           timeout: 30000,
+          transport: 'sse' as const,
+          platform: 'shared' as const,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },
@@ -276,6 +377,8 @@ describe('MCPConfig Functions', () => {
       url: 'https://mcp.github.example.com',
       enabled: true,
       timeout: 30000,
+      transport: 'sse',
+      platform: 'shared',
       createdAt: Date.now() - 10000,
       updatedAt: Date.now() - 10000,
     };
@@ -300,6 +403,8 @@ describe('MCPConfig Functions', () => {
         url: 'https://other.example.com',
         enabled: true,
         timeout: 30000,
+        transport: 'sse',
+        platform: 'shared',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

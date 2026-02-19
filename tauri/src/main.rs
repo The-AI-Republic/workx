@@ -1,11 +1,14 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod browser_commands;
 mod commands;
 mod http_commands;
 mod keychain_commands;
-mod mcp_commands;
+mod mcp_manager;
+mod sandbox;
 mod storage_commands;
+mod terminal_commands;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -14,8 +17,9 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager,
+    Emitter, Manager,
 };
+use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Detect if the system is using a dark theme
@@ -113,6 +117,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostarted"])))
         .plugin(tauri_plugin_deep_link::init())
         // Single instance plugin handles deep links on Windows/Linux
         // When a second instance is launched with a deep link URL,
@@ -135,6 +140,16 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // If launched via autostart (--autostarted flag), hide the window so the
+            // app starts minimized to the system tray. Users can open it from the tray.
+            let is_autostarted = std::env::args().any(|a| a == "--autostarted");
+            if is_autostarted {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+                println!("[Pi] Started via autostart — running in background");
+            }
+
             // Register the deep link protocol handler at runtime.
             // On Linux this creates/updates the .desktop file and registers with xdg-mime.
             // On Windows this creates the registry entries.
@@ -157,7 +172,7 @@ fn main() {
             }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "Open Pi", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
 
             // Detect initial theme
@@ -227,9 +242,13 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
-            mcp_commands::mcp_spawn,
-            mcp_commands::mcp_send,
-            mcp_commands::mcp_close,
+            commands::get_project_root,
+            mcp_manager::mcp_connect,
+            mcp_manager::mcp_list_tools,
+            mcp_manager::mcp_call_tool,
+            mcp_manager::mcp_list_resources,
+            mcp_manager::mcp_read_resource,
+            mcp_manager::mcp_disconnect,
             // Config storage commands
             storage_commands::config_storage_get,
             storage_commands::config_storage_set,
@@ -238,6 +257,19 @@ fn main() {
             storage_commands::config_storage_remove_many,
             storage_commands::config_storage_get_all,
             storage_commands::config_storage_clear,
+            // Browser detection and CDP commands
+            browser_commands::find_running_browsers,
+            browser_commands::file_exists,
+            browser_commands::get_home_dir,
+            browser_commands::is_port_available,
+            browser_commands::launch_chrome,
+            browser_commands::get_chrome_ws_endpoint,
+            browser_commands::kill_process,
+            // Terminal command execution
+            terminal_commands::terminal_execute,
+            // Sandbox commands
+            sandbox::status::sandbox_check_status,
+            sandbox::status::sandbox_install_runtime,
             // HTTP proxy command
             http_commands::http_fetch,
             // Keychain commands

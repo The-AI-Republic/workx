@@ -10,7 +10,7 @@ import { ModelClient, ModelClientError, type RetryConfig, type CompletionRequest
 import { get_full_instructions, get_formatted_input } from '../PromptHelpers';
 import { ResponseStream } from '../ResponseStream';
 import type { RateLimitSnapshot } from '../types/RateLimits';
-import type { ToolDefinition } from '../../tools/BaseTool';
+import type { ToolDefinition } from '../../../tools/BaseTool';
 
 export interface GoogleGenAIConfig {
   apiKey: string | null;

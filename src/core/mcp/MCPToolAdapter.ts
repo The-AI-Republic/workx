@@ -2,7 +2,7 @@
  * MCP Tool Adapter
  * Task: T032-T035, T038-T039, T042 [US2]
  *
- * Adapts MCP tools to browserx ToolDefinition format and creates
+ * Adapts MCP tools to Pi ToolDefinition format and creates
  * handlers that route tool calls through MCPManager.
  */
 
@@ -14,9 +14,10 @@ import type {
   IMCPToolAdapter,
   IMCPContent,
 } from './types';
+import type { IRiskAssessor } from '../approval/types';
 
 /**
- * Adapts MCP tools to browserx ToolDefinition format.
+ * Adapts MCP tools to Pi ToolDefinition format.
  */
 export class MCPToolAdapter implements IMCPToolAdapter {
   /**
@@ -24,7 +25,7 @@ export class MCPToolAdapter implements IMCPToolAdapter {
    * Prefixes the tool name with server name for disambiguation.
    */
   adaptTool(tool: IMCPTool, serverName: string): ToolDefinition {
-    const prefixedName = `${serverName}:${tool.name}`;
+    const prefixedName = `${serverName}__${tool.name}`;
 
     // Build description with server context if not present
     let description = tool.description || `Tool from ${serverName} server`;
@@ -53,7 +54,7 @@ export class MCPToolAdapter implements IMCPToolAdapter {
     serverName: string,
     toolName: string
   ): ToolHandler {
-    const prefixedName = `${serverName}:${toolName}`;
+    const prefixedName = `${serverName}__${toolName}`;
 
     return async (args: Record<string, unknown>): Promise<string> => {
       try {
@@ -62,11 +63,14 @@ export class MCPToolAdapter implements IMCPToolAdapter {
         // Check for error result
         if (result.isError) {
           const errorText = this.formatToolResult(result);
+          console.error(`[MCPToolAdapter] Tool ${prefixedName} returned error: ${errorText}`);
           throw new Error(errorText || 'Tool execution failed');
         }
 
         return this.formatToolResult(result);
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[MCPToolAdapter] Tool ${prefixedName} execution failed: ${errorMsg}`);
         // Re-throw with context
         if (error instanceof Error) {
           throw error;
@@ -78,7 +82,7 @@ export class MCPToolAdapter implements IMCPToolAdapter {
 
   /**
    * Parse a prefixed tool name into server and tool parts.
-   * @param prefixedName e.g., "github:search"
+   * @param prefixedName e.g., "github__search"
    * @returns { serverName, toolName } or null if invalid
    */
   parsePrefixedName(prefixedName: string): { serverName: string; toolName: string } | null {
@@ -86,13 +90,13 @@ export class MCPToolAdapter implements IMCPToolAdapter {
       return null;
     }
 
-    const colonIndex = prefixedName.indexOf(':');
-    if (colonIndex <= 0) {
+    const separatorIndex = prefixedName.indexOf('__');
+    if (separatorIndex <= 0) {
       return null;
     }
 
-    const serverName = prefixedName.substring(0, colonIndex);
-    const toolName = prefixedName.substring(colonIndex + 1);
+    const serverName = prefixedName.substring(0, separatorIndex);
+    const toolName = prefixedName.substring(separatorIndex + 2);
 
     if (!serverName || !toolName) {
       return null;
@@ -168,19 +172,26 @@ export function getMCPToolAdapter(): MCPToolAdapter {
  * Registry interface matching ToolRegistry
  */
 export interface IToolRegistry {
-  register(tool: ToolDefinition, handler: ToolHandler): Promise<void>;
+  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void>;
   unregister(toolName: string): Promise<void>;
 }
 
 /**
  * Register all tools from a connected MCP server with the ToolRegistry.
  * Called by MCPManager after successful connection.
+ *
+ * @param manager - MCP manager instance
+ * @param serverName - Server name for tool prefixing
+ * @param tools - Tools discovered from the MCP server
+ * @param registry - Tool registry to register tools with
+ * @param riskAssessor - Optional risk assessor for all tools from this server
  */
 export async function registerMCPTools(
   manager: IMCPManager,
   serverName: string,
   tools: IMCPTool[],
-  registry: IToolRegistry
+  registry: IToolRegistry,
+  riskAssessor?: IRiskAssessor
 ): Promise<void> {
   const adapter = getMCPToolAdapter();
 
@@ -189,11 +200,10 @@ export async function registerMCPTools(
     const handler = adapter.createHandler(manager, serverName, tool.name);
 
     try {
-      await registry.register(definition, handler);
-      console.log(`[MCPToolAdapter] Registered tool: ${definition.function.name}`);
+      await registry.register(definition, handler, riskAssessor);
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
-      console.warn(`[MCPToolAdapter] Failed to register tool ${definition.function.name}:`, error);
+      console.warn(`[MCPToolAdapter] Failed to register tool ${definition.type === 'function' ? definition.function.name : definition.type}:`, error);
     }
   }
 }
@@ -208,10 +218,9 @@ export async function unregisterMCPTools(
   registry: IToolRegistry
 ): Promise<void> {
   for (const tool of tools) {
-    const prefixedName = `${serverName}:${tool.name}`;
+    const prefixedName = `${serverName}__${tool.name}`;
     try {
       await registry.unregister(prefixedName);
-      console.log(`[MCPToolAdapter] Unregistered tool: ${prefixedName}`);
     } catch (error) {
       // Tool might not be registered
       console.warn(`[MCPToolAdapter] Failed to unregister tool ${prefixedName}:`, error);

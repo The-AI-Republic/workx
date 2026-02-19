@@ -1,27 +1,12 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "업무 작업을 위한 일반적인 브라우저 내 AI 에이전트"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "API 키 구성"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API 키는 암호화되어 브라우저에 로컬로 저장됩니다. API 호출을 제외하고 외부 서버로 전송되지 않습니다."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "브라우저 저장소에 접근 (localStorage, sessionStorage, 쿠키)"
   },
   "Action": {
     "message": "작업"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "작업 상세"
@@ -30,6 +15,9 @@
     "message": ""
   },
   "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Add_Modification": {
@@ -41,7 +29,7 @@
   "Add_Task": {
     "message": ""
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
+  "Additional_Bind_Mounts": {
     "message": ""
   },
   "Advanced_Configuration": {
@@ -56,6 +44,9 @@
   "Agent_Execution_Tools": {
     "message": "에이전트 실행 도구"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "에이전트가 시스템 명령을 실행하도록 허용 (주의해서 사용하세요)"
   },
@@ -65,14 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "콘텐츠 스크립트가 웹 페이지에서 실행되도록 허용"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "허용된 출처"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API 키 구성"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API 키는 암호화되어 브라우저에 로컬로 저장됩니다. API 호출을 제외하고 외부 서버로 전송되지 않습니다."
+  },
   "Approval_History": {
     "message": "승인 내역"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "승인"
@@ -83,11 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx에 웹 페이지에서 구조화된 데이터를 추출하도록 요청"
   },
-  "Available_Tools": {
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "사용 가능:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "뒤로"
@@ -101,20 +119,20 @@
   "Beta": {
     "message": "베타"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "브라우저 자동화 도구 토글"
+  },
   "Browser_Tools": {
     "message": "브라우저 도구"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "브라우저 자동화 도구 토글"
+  "Cache_behavior_and_data_retention": {
+    "message": "캐시 동작 및 데이터 보존"
   },
   "Cache_Settings": {
     "message": "캐시 설정"
   },
   "Cache_TTL_seconds": {
     "message": "캐시 TTL (초)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "캐시 동작 및 데이터 보존"
   },
   "Cancel": {
     "message": "취소"
@@ -152,6 +170,9 @@
   "Command": {
     "message": "명령"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
   "Completed": {
     "message": ""
   },
@@ -167,13 +188,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -197,8 +218,8 @@
   "Current_Plan": {
     "message": "현재 플랜:"
   },
-  "DOM_Tool": {
-    "message": "DOM 도구"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "일일 크레딧"
@@ -227,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "작업 완료 시 토큰 사용량(입력/출력 토큰) 표시"
   },
+  "DOM_Tool": {
+    "message": "DOM 도구"
+  },
   "Duration": {
     "message": ""
   },
@@ -239,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "모든 도구 활성화"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "캐시 활성화"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "자주 접근하는 데이터를 저장하여 성능을 개선하는 캐싱 활성화"
   },
   "Enable_Compression": {
     "message": "압축 활성화"
@@ -248,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "콘텐츠 스크립트 활성화"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "확장 프로그램 활성화"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "자주 접근하는 데이터를 저장하여 성능을 개선하는 캐싱 활성화"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -284,17 +308,14 @@
   "Execute_Commands": {
     "message": "명령 실행"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "일 후 만료됨"
   },
   "Explain_your_decision": {
     "message": "결정을 설명하십시오..."
-  },
-  "Extension_Permission": {
-    "message": "확장 프로그램 및 권한"
-  },
-  "Extension_Permission_Settings": {
-    "message": "확장 프로그램 및 권한 설정"
   },
   "Extension_Configuration": {
     "message": "확장 프로그램 구성"
@@ -302,8 +323,23 @@
   "Extension_configuration_and_permissions": {
     "message": "확장 프로그램 구성 및 권한"
   },
+  "extension_description": {
+    "message": "업무 작업을 위한 일반적인 브라우저 내 AI 에이전트"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "확장 프로그램 및 권한"
+  },
+  "Extension_Permission_Settings": {
+    "message": "확장 프로그램 및 권한 설정"
+  },
   "Extra_Credits": {
     "message": "추가 크레딧"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "데이터 추출:"
@@ -341,11 +377,11 @@
   "General": {
     "message": "일반"
   },
-  "General_Settings": {
-    "message": "일반 설정"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "일반 설정"
   },
   "Get_Started": {
     "message": "시작하기"
@@ -364,6 +400,9 @@
   "History": {
     "message": "기록"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "임팩트"
   },
@@ -372,12 +411,6 @@
   },
   "Keyboard_Shortcuts": {
     "message": "키보드 단축키"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM 요청이 제공자 API로 직접 전송"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM 요청이 AI Republic 백엔드를 통해 라우팅"
   },
   "Language": {
     "message": "언어"
@@ -391,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "허용된 출처 목록(한 줄에 하나씩). 와일드카드(*)를 지원합니다."
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM 요청이 제공자 API로 직접 전송"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM 요청이 AI Republic 백엔드를 통해 라우팅"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -402,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "설정을 불러오는 중..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -418,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "로그인하여 무료 크레딧을 받으세요"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "크레딧이 거의 남지 않았습니다"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "브라우저 탭 관리(열기, 닫기, 전환, 조회)"
@@ -459,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "도구 실행 제한 시간(밀리초, 기본값: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -490,6 +529,9 @@
   "Navigation_Tool": {
     "message": "탐색 도구"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "네트워크 인터셉트 도구"
   },
@@ -499,7 +541,7 @@
   "New_Conversation": {
     "message": "새 대화"
   },
-  "No_MCP_servers_configured_yet": {
+  "No_Access": {
     "message": ""
   },
   "No_active_sessions": {
@@ -509,6 +551,9 @@
     "message": "아직 승인 기록이 없습니다."
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -531,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "사이드 패널 열기:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "조직"
@@ -559,6 +607,9 @@
   "Please_type_a_valid_command": {
     "message": "유효한 명령을 입력해 주세요."
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "우선 순위 티어는 높은 가격으로 더 빠른 응답 시간을 제공합니다."
   },
@@ -574,17 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "빠른 액션"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "빠른 시작"
   },
-  "Quick_action": {
-    "message": "빠른 액션"
-  },
   "Read_only": {
     "message": "읽기 전용"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "사유 (선택 사항)"
@@ -619,6 +676,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +695,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -664,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "보안 및 개인정보"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "도구 실행 환경의 보안 등급"
+  },
+  "Security_Privacy": {
+    "message": "보안 및 개인정보"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "대화에 사용할 AI 모델을 선택하세요."
@@ -679,6 +742,9 @@
   "Service_Tier": {
     "message": "서비스 등급"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "세션"
   },
@@ -686,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -708,6 +777,9 @@
   },
   "Stable": {
     "message": "안정"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,17 +823,23 @@
   "Terminal": {
     "message": "터미널"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "연결 테스트"
   },
   "Testing": {
     "message": "테스트 중..."
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
-  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "에이전트가 현재 백엔드 모드를 사용 중입니다. LLM 요청은 AI Republic 서버를 통해 라우팅됩니다. 대화 내용은 당사 인프라를 통해 안전하게 처리됩니다."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "Time": {
     "message": "시간"
@@ -799,9 +877,6 @@
   "UI_Theme": {
     "message": "UI 테마"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "크레딧 정보를 불러올 수 없습니다"
   },
@@ -826,20 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "전 세계에서 가장 강력한 모델을 사용하려면 구독을 업그레이드하세요"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "컨텍스트 메뉴 사용:"
   },
   "Use_Own_API_Key": {
     "message": "내 API 키 사용"
   },
-  "User_Center": {
-    "message": "사용자 센터"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "사용자가 승인한 작업"
+  },
+  "User_Center": {
+    "message": "사용자 센터"
   },
   "User_decision": {
     "message": "사용자 결정"
@@ -852,6 +927,9 @@
   },
   "User_requested_modifications": {
     "message": "사용자가 요청한 수정 사항"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "추가 크레딧 사용 중"
@@ -877,6 +955,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx에 오신 것을 환영합니다"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "작업 공간 쓰기"
   },
@@ -891,14 +975,5 @@
   },
   "Your_Decision": {
     "message": "귀하의 결정"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }

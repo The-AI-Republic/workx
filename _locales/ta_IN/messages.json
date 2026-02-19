@@ -1,27 +1,12 @@
 {
-  "extension_name": {
-    "message": "BrowserX"
-  },
-  "extension_description": {
-    "message": "பணி பணிகளுக்கான பொதுவான உலாவி-உள்ள AI ஏஜெண்ட்"
-  },
-  "API_Key": {
-    "message": ""
-  },
-  "API_Key_Configuration": {
-    "message": "API சாவி உள்ளமைவு"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API சாவிகள் குறியாக்கம் செய்யப்பட்டு உங்கள் உலாவியில் உள்ளூராக சேமிக்கப்படுகின்றன. API அழைப்புகளைத் தவிர அவை வெளிப்புற சேவையகங்களுக்கு ஒருபோதும் அனுப்பப்படாது."
-  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "உலாவி சேமிப்பு அணுகல் (localStorage, sessionStorage, cookies)"
   },
   "Action": {
     "message": "செயல்"
+  },
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": ""
   },
   "Action_Details": {
     "message": "செயல் விவரங்கள்"
@@ -30,6 +15,9 @@
     "message": ""
   },
   "Add": {
+    "message": ""
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
     "message": ""
   },
   "Add_Modification": {
@@ -41,7 +29,7 @@
   "Add_Task": {
     "message": ""
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
+  "Additional_Bind_Mounts": {
     "message": ""
   },
   "Advanced_Configuration": {
@@ -56,6 +44,9 @@
   "Agent_Execution_Tools": {
     "message": "ஏஜெண்ட் நிறைவேற்று கருவிகள்"
   },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": ""
+  },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "ஏஜெண்ட் அமைப்புக் கட்டளைகளை இயக்க அனுமதிக்கவும் (கவனத்துடன் பயன்படுத்தவும்)"
   },
@@ -65,14 +56,35 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "வலைப்பக்கங்களில் உள்ளடக்க ஸ்கிரிப்டுகளை இயக்க அனுமதி"
   },
+  "Allowed": {
+    "message": ""
+  },
   "Allowed_Origins": {
     "message": "அனுமதிக்கப்பட்ட மூலங்கள்"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
     "message": ""
   },
+  "API_Key": {
+    "message": ""
+  },
+  "API_Key_Configuration": {
+    "message": "API சாவி உள்ளமைவு"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": ""
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API சாவிகள் குறியாக்கம் செய்யப்பட்டு உங்கள் உலாவியில் உள்ளூராக சேமிக்கப்படுகின்றன. API அழைப்புகளைத் தவிர அவை வெளிப்புற சேவையகங்களுக்கு ஒருபோதும் அனுப்பப்படாது."
+  },
   "Approval_History": {
     "message": "அனுமதி வரலாறு"
+  },
+  "Approval_Mode": {
+    "message": ""
+  },
+  "Approval_Safety": {
+    "message": ""
   },
   "Approve": {
     "message": "அனுமதி"
@@ -83,11 +95,17 @@
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx-ஐ எந்தவொரு வலைப்பக்கத்திலிருந்தும் கட்டமைக்கப்பட்ட தரவுகளைப் பிரித்தெடுக்கக் கேட்கவும்"
   },
-  "Available_Tools": {
+  "Auto_default": {
+    "message": ""
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
     "message": ""
   },
   "Available": {
     "message": "கிடைக்கும்:"
+  },
+  "Available_Tools": {
+    "message": ""
   },
   "Back": {
     "message": "பின்செல்"
@@ -101,20 +119,20 @@
   "Beta": {
     "message": "பீட்டா"
   },
+  "Browser_automation_tool_toggles": {
+    "message": "உலாவி தானியக்க கருவி மாற்றிகள்"
+  },
   "Browser_Tools": {
     "message": "உலாவி கருவிகள்"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "உலாவி தானியக்க கருவி மாற்றிகள்"
+  "Cache_behavior_and_data_retention": {
+    "message": "கேச் செயல்பாடு மற்றும் தரவு தக்கவைப்பு"
   },
   "Cache_Settings": {
     "message": "கேச் அமைப்புகள்"
   },
   "Cache_TTL_seconds": {
     "message": "கேச் TTL (வினாடிகள்)"
-  },
-  "Cache_behavior_and_data_retention": {
-    "message": "கேச் செயல்பாடு மற்றும் தரவு தக்கவைப்பு"
   },
   "Cancel": {
     "message": "ரத்து செய்"
@@ -152,6 +170,9 @@
   "Command": {
     "message": "கட்டளை"
   },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": ""
+  },
   "Completed": {
     "message": ""
   },
@@ -167,13 +188,13 @@
   "Connect": {
     "message": ""
   },
-  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
-  },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
     "message": ""
   },
   "Connect_to_external_MCP_tool_servers": {
+    "message": ""
+  },
+  "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
     "message": ""
   },
   "Connected": {
@@ -197,8 +218,8 @@
   "Current_Plan": {
     "message": "தற்போதைய திட்டம்:"
   },
-  "DOM_Tool": {
-    "message": "DOM கருவி"
+  "Active_tab_marker": {
+    "message": ""
   },
   "Daily_Credits": {
     "message": "தினசரி கிரெடிட்கள்"
@@ -227,6 +248,9 @@
   "Display_token_consumption_input_output_t_4979": {
     "message": "பணிகள் முடிந்தபோது டோக்கன் பயன்பாட்டை (உள்ளீடு/வெளியீடு டோக்கன்கள்) காட்டவும்"
   },
+  "DOM_Tool": {
+    "message": "DOM கருவி"
+  },
   "Duration": {
     "message": ""
   },
@@ -239,8 +263,14 @@
   "Enable_All_Tools": {
     "message": "அனைத்து கருவிகளையும் செயல்படுத்து"
   },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": ""
+  },
   "Enable_Cache": {
     "message": "கேச் செயல்படுத்து"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "அடிக்கடி அணுகப்படும் தரவைச் சேமிப்பதன் மூலம் செயல்திறனை மேம்படுத்த, கேசிங்-ஐ செயல்படுத்து"
   },
   "Enable_Compression": {
     "message": "சுருக்கத்தை செயல்படுத்து"
@@ -248,19 +278,13 @@
   "Enable_Content_Scripts": {
     "message": "உள்ளடக்க ஸ்கிரிப்டுகளை செயல்படுத்து"
   },
+  "Enable_debug_logging": {
+    "message": ""
+  },
   "Enable_Extension": {
     "message": "விரிவாக்கத்தை செயல்படுத்து"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
-  },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "அடிக்கடி அணுகப்படும் தரவைச் சேமிப்பதன் மூலம் செயல்திறனை மேம்படுத்த, கேசிங்-ஐ செயல்படுத்து"
-  },
-  "Enable_debug_logging": {
     "message": ""
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
@@ -284,17 +308,14 @@
   "Execute_Commands": {
     "message": "கட்டளைகளை செயல்படுத்து"
   },
+  "Execution_Mode": {
+    "message": ""
+  },
   "Expire_after_days": {
     "message": "நாட்களுக்குப் பிறகு காலாவதியாகும்"
   },
   "Explain_your_decision": {
     "message": "உங்கள் முடிவை விளக்கவும்..."
-  },
-  "Extension_Permission": {
-    "message": "விரிவாக்கம் & அனுமதி"
-  },
-  "Extension_Permission_Settings": {
-    "message": "விரிவாக்கம் & அனுமதி அமைப்புகள்"
   },
   "Extension_Configuration": {
     "message": "விரிவாக்க கட்டமைப்பு"
@@ -302,8 +323,23 @@
   "Extension_configuration_and_permissions": {
     "message": "விரிவாக்க கட்டமைப்பு மற்றும் அனுமதிகள்"
   },
+  "extension_description": {
+    "message": "பணி பணிகளுக்கான பொதுவான உலாவி-உள்ள AI ஏஜெண்ட்"
+  },
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "Extension_Permission": {
+    "message": "விரிவாக்கம் & அனுமதி"
+  },
+  "Extension_Permission_Settings": {
+    "message": "விரிவாக்கம் & அனுமதி அமைப்புகள்"
+  },
   "Extra_Credits": {
     "message": "கூடுதல் கிரெடிட்"
+  },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": ""
   },
   "Extract_Data": {
     "message": "தரவைப் பிரித்தெடுக்கவும்:"
@@ -341,11 +377,11 @@
   "General": {
     "message": "பொது"
   },
-  "General_Settings": {
-    "message": "பொது அமைப்புகள்"
-  },
   "General_in_browser_AI_agent_for_work_tas_2753": {
     "message": "General_in_browser_AI_agent_for_work_tas_2753"
+  },
+  "General_Settings": {
+    "message": "பொது அமைப்புகள்"
   },
   "Get_Started": {
     "message": "தொடங்குங்கள்"
@@ -364,6 +400,9 @@
   "History": {
     "message": "வரலாறு"
   },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": ""
+  },
   "Impact": {
     "message": "விளைவு"
   },
@@ -372,12 +411,6 @@
   },
   "Keyboard_Shortcuts": {
     "message": "விசைப்பலகை குறுக்குவழிகள்"
-  },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM கோரிக்கைகள் வழங்குநர் API களுக்கு நேரடியாக செல்கின்றன"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM கோரிக்கைகள் AI Republic பின்புலம் வழியாக செல்கின்றன"
   },
   "Language": {
     "message": "மொழி"
@@ -391,7 +424,16 @@
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "அனுமதிக்கப்பட்ட மூலங்களின் பட்டியல் (ஒவ்வொரு வரியிலும் ஒன்று). வைல்ட்கார்ட்கள் (*) ஆதரிக்கப்படுகின்றன."
   },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM கோரிக்கைகள் வழங்குநர் API களுக்கு நேரடியாக செல்கின்றன"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM கோரிக்கைகள் AI Republic பின்புலம் வழியாக செல்கின்றன"
+  },
   "Load_More": {
+    "message": ""
+  },
+  "Loading": {
     "message": ""
   },
   "Loading_credits": {
@@ -402,9 +444,6 @@
   },
   "Loading_settings": {
     "message": "அமைப்புகள் ஏற்றுகிறது..."
-  },
-  "Loading": {
-    "message": ""
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
     "message": ""
@@ -418,20 +457,14 @@
   "Login_to_get_free_credits": {
     "message": "இலவச கிரெடிட்களை பெற உள்நுழையவும்"
   },
-  "Long_press_to_schedule_task": {
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
     "message": ""
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
+  "Long_press_to_schedule_task": {
     "message": ""
   },
   "Low_credits_remaining": {
     "message": "மீதமுள்ள கிரெடிட்கள் குறைந்துள்ளன"
-  },
-  "MCP_Servers": {
-    "message": ""
-  },
-  "MCP_Tools": {
-    "message": ""
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "உலாவி தாவல்களை நிர்வகிக்கவும் (திறத்தல், மூடுதல், மாற்றுதல், வினவுதல்)"
@@ -459,6 +492,12 @@
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "நேரம் முடிவடையும்முன் ஒரு கருவி இயங்கக்கூடிய அதிகபட்ச நேரம் (மில்லிவிநாடிகள்) (இயல்புநிலை: 30000)"
+  },
+  "MCP_Servers": {
+    "message": ""
+  },
+  "MCP_Tools": {
+    "message": ""
   },
   "Missed": {
     "message": ""
@@ -490,6 +529,9 @@
   "Navigation_Tool": {
     "message": "வழிசெலுத்தல் கருவி"
   },
+  "Network_Access": {
+    "message": ""
+  },
   "Network_Intercept_Tool": {
     "message": "பிணைய இடைமறுப்புக் கருவி"
   },
@@ -499,7 +541,7 @@
   "New_Conversation": {
     "message": "புதிய உரையாடல்"
   },
-  "No_MCP_servers_configured_yet": {
+  "No_Access": {
     "message": ""
   },
   "No_active_sessions": {
@@ -509,6 +551,9 @@
     "message": "இன்னும் ஒப்புதல் வரலாறு இல்லை."
   },
   "No_completed_tasks_yet": {
+    "message": ""
+  },
+  "No_MCP_servers_configured_yet": {
     "message": ""
   },
   "No_scheduled_tasks": {
@@ -531,6 +576,9 @@
   },
   "Open_Side_Panel": {
     "message": "பக்கப் பலகை:"
+  },
+  "optional": {
+    "message": ""
   },
   "Organization": {
     "message": "நிறுவனம்"
@@ -559,6 +607,9 @@
   "Please_type_a_valid_command": {
     "message": "தயவுசெய்து செல்லுபடியாகும் கட்டளையை உள்ளிடவும்"
   },
+  "Power": {
+    "message": ""
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "முன்னுரிமை நிலை, அதிகமான விலையுடன் வேகமான பதில் நேரங்களை வழங்குகிறது."
   },
@@ -574,17 +625,23 @@
   "Queued": {
     "message": ""
   },
+  "Quick_action": {
+    "message": "விரைவு செயல்"
+  },
   "Quick_Schedule": {
     "message": ""
   },
   "Quick_Start": {
     "message": "விரைவு தொடக்கம்"
   },
-  "Quick_action": {
-    "message": "விரைவு செயல்"
-  },
   "Read_only": {
     "message": "வாசிக்க மட்டும்"
+  },
+  "Read_Only": {
+    "message": ""
+  },
+  "Read_Write": {
+    "message": ""
   },
   "Reason_optional": {
     "message": "காரணம் (விருப்பம்)"
@@ -619,6 +676,9 @@
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": ""
   },
+  "Restricted": {
+    "message": ""
+  },
   "Result_Summary": {
     "message": ""
   },
@@ -635,6 +695,9 @@
     "message": ""
   },
   "Running": {
+    "message": ""
+  },
+  "Safe": {
     "message": ""
   },
   "Sandbox_Policy": {
@@ -664,11 +727,11 @@
   "Scheduled_Tasks": {
     "message": ""
   },
-  "Security_Privacy": {
-    "message": "பாதுகாப்பும் தனியுரிமையும்"
-  },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "கருவி இயக்க சூழலுக்கான பாதுகாப்பு நிலை"
+  },
+  "Security_Privacy": {
+    "message": "பாதுகாப்பும் தனியுரிமையும்"
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "உரையாடல்களுக்கு பயன்படுத்த வேண்டிய AI மாதிரியை தேர்வு செய்யவும்."
@@ -679,6 +742,9 @@
   "Service_Tier": {
     "message": "சேவை நிலை"
   },
+  "session": {
+    "message": ""
+  },
   "Session": {
     "message": "அமர்வு"
   },
@@ -686,6 +752,9 @@
     "message": ""
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": ""
+  },
+  "sessions": {
     "message": ""
   },
   "Set_when_rollout_data_should_expire": {
@@ -708,6 +777,9 @@
   },
   "Stable": {
     "message": "நிலையான"
+  },
+  "Start_on_login": {
+    "message": ""
   },
   "Status": {
     "message": ""
@@ -751,17 +823,23 @@
   "Terminal": {
     "message": "டெர்மினல்"
   },
+  "Terminal_Sandbox": {
+    "message": ""
+  },
   "Test_Connection": {
     "message": "இணைப்பு சோதனை"
   },
   "Testing": {
     "message": "சோதனை நடைபெறுகிறது..."
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
-  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ஏஜெண்ட் தற்போது பின்புல முறையை பயன்படுத்துகிறது. LLM கோரிக்கைகள் AI Republic சேவையகத்தின் வழியாக வழிமாற்றப்படும். உங்கள் உரையாடல்கள் எங்கள் உட்கட்டமைப்பின் மூலம் பாதுகாப்பாக செயலாக்கப்படும்."
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": ""
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": ""
   },
   "Time": {
     "message": "நேரம்"
@@ -799,9 +877,6 @@
   "UI_Theme": {
     "message": "UI தீம்"
   },
-  "URL": {
-    "message": "URL"
-  },
   "Unable_to_load_credit_information": {
     "message": "கிரெடிட் தகவலை ஏற்ற முடியவில்லை"
   },
@@ -826,20 +901,20 @@
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "உலகின் மிக சக்திவாய்ந்த மாதிரிகளை ஆராய உங்கள் சந்தாவை மேம்படுத்துங்கள்"
   },
+  "URL": {
+    "message": "URL"
+  },
   "Use_Context_Menu": {
     "message": "சூழல் மெனுவைப் பயன்படுத்தவும்:"
   },
   "Use_Own_API_Key": {
     "message": "உங்கள் API சாவியைப் பயன்படுத்தவும்"
   },
-  "User_Center": {
-    "message": "பயனர் மையம்"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "User_approved_action": {
     "message": "பயனர் அங்கீகரித்த செயல்"
+  },
+  "User_Center": {
+    "message": "பயனர் மையம்"
   },
   "User_decision": {
     "message": "பயனர் முடிவு"
@@ -852,6 +927,9 @@
   },
   "User_requested_modifications": {
     "message": "பயனர் கோரிய மாற்றங்கள்"
+  },
+  "User_Session": {
+    "message": ""
   },
   "Using_extra_credits": {
     "message": "கூடுதல் கிரெடிட்களைப் பயன்படுத்துகிறது"
@@ -877,6 +955,12 @@
   "Welcome_to_Browserx": {
     "message": "Browserx-க்கு வரவேற்கிறோம்"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": ""
+  },
+  "Workspace_Access": {
+    "message": ""
+  },
   "Workspace_Write": {
     "message": "பணியிடத்தில் எழுதுக"
   },
@@ -891,14 +975,5 @@
   },
   "Your_Decision": {
     "message": "உங்கள் முடிவு"
-  },
-  "optional": {
-    "message": ""
-  },
-  "session": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
   }
 }

@@ -28,7 +28,7 @@ import {
 } from '../core/storage/CredentialStore';
 
 // Credential store constants
-const CREDENTIAL_SERVICE = 'browserx';
+const CREDENTIAL_SERVICE = 'pi';
 const CREDENTIAL_ACCOUNT_PREFIX = 'provider-apikey-';
 
 export class AgentConfig implements IConfigService {

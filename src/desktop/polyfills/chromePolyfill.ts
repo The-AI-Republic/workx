@@ -21,7 +21,7 @@ const pendingResponses: Map<string, (response: unknown) => void> = new Map();
 let messageIdCounter = 0;
 
 // Event listener for Tauri events that should be forwarded as chrome messages
-let unlistenBrowserxEvent: UnlistenFn | null = null;
+let unlistenPiEvent: UnlistenFn | null = null;
 
 // Tauri API modules (loaded dynamically to handle initialization failures)
 let tauriEvent: { emit: (event: string, payload?: unknown) => Promise<void>; listen: <T>(event: string, handler: (event: { payload: T }) => void) => Promise<UnlistenFn> } | null = null;
@@ -58,8 +58,8 @@ async function initPolyfill(): Promise<void> {
 
   // Listen for events from Tauri backend and forward as chrome messages
   try {
-    unlistenBrowserxEvent = await tauriEvent.listen<{ id?: string; type: string; payload: unknown }>(
-      'browserx:event',
+    unlistenPiEvent = await tauriEvent.listen<{ id?: string; type: string; payload: unknown }>(
+      'pi:event',
       (event) => {
         const message = event.payload;
 
@@ -79,7 +79,7 @@ async function initPolyfill(): Promise<void> {
               { tab: null, id: 'tauri' },
               (response) => {
                 if (message.id && tauriEvent) {
-                  tauriEvent.emit('browserx:response', { id: message.id, payload: response });
+                  tauriEvent.emit('pi:response', { id: message.id, payload: response });
                 }
               }
             );
@@ -147,11 +147,57 @@ const runtimePolyfill = {
           console.log('[chromePolyfill] SESSION_RESET received (desktop mode)');
           responseCallback?.({ success: true });
           return;
+
+        case 'UPDATE_APPROVAL_CONFIG': {
+          const config = (message as any).config;
+          (async () => {
+            try {
+              // 1. Save to storage
+              const result = await storagePolyfill.local.get('approval_config');
+              const existing = (result as any)['approval_config'] || {};
+              const merged = { ...existing, ...config };
+              await storagePolyfill.local.set({ approval_config: merged });
+              // 2. Update ApprovalGate directly
+              const { getDesktopAgentBootstrap } = await import('../agent/DesktopAgentBootstrap');
+              const agent = getDesktopAgentBootstrap().getAgent();
+              if (agent) {
+                const gate = agent.getToolRegistry().getApprovalGate();
+                if (gate) {
+                  if (config.mode) gate.setMode(config.mode);
+                  if (config.trustedDomains) gate.setTrustedDomains(config.trustedDomains);
+                  if (config.blockedDomains) gate.setBlockedDomains(config.blockedDomains);
+                }
+              }
+              responseCallback?.({ success: true });
+            } catch (error) {
+              console.error('[chromePolyfill] Failed to update approval config:', error);
+              responseCallback?.({ success: false, error: (error as Error).message });
+            }
+          })();
+          return;
+        }
+
+        case 'SUBMISSION':
+          // Route SUBMISSION messages through 'pi:submit' so TauriChannel
+          // picks them up and routes to agent.submitOperation().
+          // This ensures approval decisions (ExecApproval ops) work on desktop.
+          if (tauriEvent) {
+            const payload = (message as { payload?: unknown })?.payload;
+            tauriEvent.emit('pi:submit', payload).then(() => {
+              responseCallback?.({ success: true });
+            }).catch((error) => {
+              console.error('[chromePolyfill] Failed to emit submission:', error);
+              responseCallback?.({ success: false, error: (error as Error).message });
+            });
+          } else {
+            responseCallback?.({ success: false, error: 'Tauri API not available' });
+          }
+          return;
       }
     }
 
     // For messages that need to go to the Tauri backend,
-    // emit to 'browserx:message' (NOT 'browserx:submit' which is for agent submissions)
+    // emit to 'pi:message' (NOT 'pi:submit' which is for agent submissions)
     const messageWithId = { ...(message as object), id: messageId };
 
     // Store the callback if provided
@@ -179,8 +225,8 @@ const runtimePolyfill = {
       return;
     }
 
-    // Emit to 'browserx:message' for general messages (not agent submissions)
-    tauriEvent.emit('browserx:message', messageWithId).catch((error) => {
+    // Emit to 'pi:message' for general messages (not agent submissions)
+    tauriEvent.emit('pi:message', messageWithId).catch((error) => {
       console.error('[chromePolyfill] Failed to emit message:', error);
       if (responseCallback) {
         pendingResponses.delete(messageId);
@@ -206,7 +252,7 @@ const runtimePolyfill = {
     return `file://${path}`;
   },
 
-  id: 'browserx-desktop',
+  id: 'pi-desktop',
 };
 
 // In-memory storage fallback when Tauri storage isn't available

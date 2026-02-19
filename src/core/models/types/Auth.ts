@@ -1,5 +1,5 @@
 /**
- * Authentication types for browserx-chrome extension
+ * Authentication types for pi
  */
 
 /**

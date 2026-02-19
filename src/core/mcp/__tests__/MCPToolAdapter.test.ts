@@ -31,9 +31,9 @@ describe('MCPToolAdapter', () => {
       const toolDef = adapter.adaptTool(mcpTool, 'github');
 
       expect(toolDef.type).toBe('function');
-      expect(toolDef.function.name).toBe('github:search_repositories');
-      expect(toolDef.function.description).toBe('Search GitHub repositories');
-      expect(toolDef.function.parameters).toEqual(mcpTool.inputSchema);
+      expect((toolDef as any).function.name).toBe('github__search_repositories');
+      expect((toolDef as any).function.description).toBe('Search GitHub repositories');
+      expect((toolDef as any).function.parameters).toEqual(mcpTool.inputSchema);
     });
 
     it('should include server name in description if not present', () => {
@@ -45,7 +45,7 @@ describe('MCPToolAdapter', () => {
 
       const toolDef = adapter.adaptTool(mcpTool, 'filesystem');
 
-      expect(toolDef.function.description).toContain('filesystem');
+      expect((toolDef as any).function.description).toContain('filesystem');
     });
 
     it('should handle tools without description', () => {
@@ -57,8 +57,8 @@ describe('MCPToolAdapter', () => {
 
       const toolDef = adapter.adaptTool(mcpTool, 'network');
 
-      expect(toolDef.function.name).toBe('network:ping');
-      expect(toolDef.function.description).toBeTruthy();
+      expect((toolDef as any).function.name).toBe('network__ping');
+      expect((toolDef as any).function.description).toBeTruthy();
     });
 
     it('should preserve complex inputSchema', () => {
@@ -81,13 +81,13 @@ describe('MCPToolAdapter', () => {
 
       const toolDef = adapter.adaptTool(mcpTool, 'github');
 
-      expect(toolDef.function.parameters).toEqual(mcpTool.inputSchema);
+      expect((toolDef as any).function.parameters).toEqual(mcpTool.inputSchema);
     });
   });
 
   describe('parsePrefixedName', () => {
     it('should parse valid prefixed tool name', () => {
-      const result = adapter.parsePrefixedName('github:search_repositories');
+      const result = adapter.parsePrefixedName('github__search_repositories');
 
       expect(result).toEqual({
         serverName: 'github',
@@ -95,29 +95,29 @@ describe('MCPToolAdapter', () => {
       });
     });
 
-    it('should handle tool names with multiple colons', () => {
-      const result = adapter.parsePrefixedName('server:tool:with:colons');
+    it('should handle tool names with multiple separators', () => {
+      const result = adapter.parsePrefixedName('server__tool__with__separators');
 
       expect(result).toEqual({
         serverName: 'server',
-        toolName: 'tool:with:colons',
+        toolName: 'tool__with__separators',
       });
     });
 
-    it('should return null for name without colon', () => {
+    it('should return null for name without separator', () => {
       const result = adapter.parsePrefixedName('invalid_name');
 
       expect(result).toBeNull();
     });
 
     it('should return null for empty server name', () => {
-      const result = adapter.parsePrefixedName(':tool_name');
+      const result = adapter.parsePrefixedName('__tool_name');
 
       expect(result).toBeNull();
     });
 
     it('should return null for empty tool name', () => {
-      const result = adapter.parsePrefixedName('server:');
+      const result = adapter.parsePrefixedName('server__');
 
       expect(result).toBeNull();
     });
@@ -142,9 +142,9 @@ describe('MCPToolAdapter', () => {
 
       const handler = adapter.createHandler(mockManager, 'github', 'search');
 
-      const result = await handler({ query: 'test' });
+      const result = await (handler as any)({ query: 'test' });
 
-      expect(mockManager.executeTool).toHaveBeenCalledWith('github:search', {
+      expect(mockManager.executeTool).toHaveBeenCalledWith('github__search', {
         query: 'test',
       });
       expect(result).toBe('Search results...');
@@ -165,7 +165,7 @@ describe('MCPToolAdapter', () => {
 
       const handler = adapter.createHandler(mockManager, 'server', 'tool');
 
-      const result = await handler({});
+      const result = await (handler as any)({});
 
       expect(result).toBe('Line 1\nLine 2');
     });
@@ -184,7 +184,7 @@ describe('MCPToolAdapter', () => {
 
       const handler = adapter.createHandler(mockManager, 'server', 'tool');
 
-      const result = await handler({});
+      const result = await (handler as any)({});
 
       expect(result).toContain('image/png');
       expect(result).toContain('base64data');
@@ -202,7 +202,7 @@ describe('MCPToolAdapter', () => {
 
       const handler = adapter.createHandler(mockManager, 'github', 'search');
 
-      await expect(handler({})).rejects.toThrow('Rate limit exceeded');
+      await expect((handler as any)({})).rejects.toThrow('Rate limit exceeded');
     });
 
     it('should handle manager throwing error', async () => {
@@ -212,7 +212,7 @@ describe('MCPToolAdapter', () => {
 
       const handler = adapter.createHandler(mockManager, 'github', 'search');
 
-      await expect(handler({})).rejects.toThrow('Connection lost');
+      await expect((handler as any)({})).rejects.toThrow('Connection lost');
     });
 
     it('should handle empty content array', async () => {
@@ -227,7 +227,7 @@ describe('MCPToolAdapter', () => {
 
       const handler = adapter.createHandler(mockManager, 'server', 'tool');
 
-      const result = await handler({});
+      const result = await (handler as any)({});
 
       expect(result).toBe('');
     });

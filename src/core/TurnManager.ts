@@ -20,6 +20,15 @@ import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
 
 /**
+ * Optional MCP capability interface for sessions that support MCP tools.
+ * Used for runtime duck-typing of Session subclasses with MCP support.
+ */
+interface MCPCapableSession {
+  getMcpTools(): Promise<ToolDefinition[]>;
+  executeMcpTool(name: string, params: any): Promise<any>;
+}
+
+/**
  * Result of processing a single response item
  */
 export interface ProcessedResponseItem {
@@ -321,7 +330,9 @@ export class TurnManager {
     }
 
     // Add agent execution tools based on config
-    if (enableAllTools || toolsConfig.webSearch) {
+    // Only add web_search if not already registered in ToolRegistry
+    const hasWebSearch = tools.some(t => t.type === 'function' && t.function.name === 'web_search');
+    if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
       tools.push({
         type: 'function',
         function: {
@@ -344,13 +355,14 @@ export class TurnManager {
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
+    const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
     if (
       (enableAllTools || toolsConfig.mcpTools === true) &&
-      typeof this.session.getMcpTools === 'function'
+      typeof mcpSession.getMcpTools === 'function'
     ) {
-      const mcpTools = await this.session.getMcpTools();
+      const mcpTools = await mcpSession.getMcpTools();
       // Convert MCP tools to ModelClient format
-      const convertedMcpTools = mcpTools.map(tool => ({
+      const convertedMcpTools = mcpTools.map((tool: any) => ({
         type: 'function' as const,
         function: {
           name: tool.function.name,
@@ -369,14 +381,17 @@ export class TurnManager {
           // Custom tools would be loaded from registry or another source
           const customTool = this.toolRegistry.getTool(toolName);
           if (customTool) {
-            tools.push({
-              type: 'function',
-              function: {
-                name: customTool.name,
-                description: customTool.description,
-                parameters: customTool.parameters || {},
-              },
-            });
+            if (customTool.type === 'function') {
+              tools.push({
+                type: 'function',
+                function: {
+                  name: customTool.function.name,
+                  description: customTool.function.description,
+                  strict: customTool.function.strict ?? false,
+                  parameters: customTool.function.parameters || { type: 'object' as const, properties: {} },
+                },
+              });
+            }
           }
         }
       }
@@ -411,7 +426,7 @@ export class TurnManager {
 
     // Add synthetic aborted responses for missing calls
     const syntheticResponses = missingCallIds.map(callId => ({
-      type: 'function_call_output',
+      type: 'function_call_output' as const,
       call_id: callId,
       output: 'aborted',
     }));
@@ -473,12 +488,11 @@ export class TurnManager {
 
     // Convert input items to messages
     for (const item of prompt.input) {
-      if (item.role && item.content) {
+      if (item.type === 'message') {
         messages.push({
           role: item.role,
           content: item.content,
-          toolCalls: item.toolCalls,
-          toolCallId: item.toolCallId,
+          toolCalls: item.tool_calls,
         });
       }
     }
@@ -607,7 +621,7 @@ export class TurnManager {
           result = await this.updatePlan(parsedParams.plan, parsedParams.explanation);
           break;
 
-        default:
+        default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
           if (browserTool) {
@@ -620,25 +634,49 @@ export class TurnManager {
           const mcpEnabled = toolsConfig.mcpTools === true;
 
           if (!mcpEnabled) {
-            throw new Error(`Tool '${toolName}' not available (mcpTools disabled in config)`);
+            throw new Error(`Tool '${toolName}' not found in ToolRegistry and mcpTools disabled`);
           }
 
           // Only reach here if MCP is supported AND enabled
           result = await this.executeMcpTool(toolName, parsedParams);
           break;
+        }
       }
+
+      // Format result as function_call_output
+      // If result is already a string (e.g. from MCP text content), use it directly
+      // to avoid double-encoding (JSON.stringify on a string adds quotes + escapes)
+      const output = typeof result === 'string' ? result : JSON.stringify(result);
 
       return {
         type: 'function_call_output',
         call_id: callId,
-        output: JSON.stringify(result),
+        output,
       };
 
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // Handle approval denial with a descriptive message for the LLM
+      if (errorMsg.includes('denied by the approval system')) {
+        const reason = (error as any).reason;
+        console.warn(`[TurnManager] executeToolCall ${toolName} denied by approval system${reason ? `: ${reason}` : ''}`);
+        const output = reason
+          ? `Action denied: The user paused this action and said: "${reason}". Please respond to the user's message directly.`
+          : `Action denied: The user's approval system blocked this ${toolName} call. The action was assessed as too risky or was explicitly denied by the user. Please inform the user and suggest an alternative approach.`;
+        return {
+          type: 'function_call_output',
+          call_id: callId,
+          output,
+        };
+      }
+
+      console.error(`[TurnManager] executeToolCall ${toolName} failed:`, errorMsg);
+
       return {
         type: 'function_call_output',
         call_id: callId,
-        output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        output: `Error: ${errorMsg}`,
       };
     }
   }
@@ -711,7 +749,11 @@ export class TurnManager {
     });
 
     try {
-      const result = await this.session.executeMcpTool(toolName, parameters);
+      const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
+      if (typeof mcpSession.executeMcpTool !== 'function') {
+        throw new Error(`MCP tool execution not available on this session`);
+      }
+      const result = await mcpSession.executeMcpTool(toolName, parameters);
 
       await this.emitEvent({
         type: 'McpToolCallEnd',
@@ -754,6 +796,18 @@ export class TurnManager {
       // Get tabId from Session to pass to tool execution
       const tabId = this.session.getTabId();
 
+      // Build metadata for approval context
+      let currentUrl: string | undefined;
+      let currentDomain: string | undefined;
+      try {
+        if (tabId && tabId > 0 && typeof chrome !== 'undefined' && chrome.tabs) {
+          const tab = await chrome.tabs.get(tabId);
+          currentUrl = tab.url;
+          if (currentUrl) {
+            try { currentDomain = new URL(currentUrl).hostname; } catch { /* ignore */ }
+          }
+        }
+      } catch { /* tab may not exist in desktop mode */ }
 
       const request = {
         toolName,
@@ -761,12 +815,23 @@ export class TurnManager {
         sessionId: this.session.getSessionId(),
         turnId: `turn_${Date.now()}`,
         tabId, // Pass tabId in request for tools that need it
+        timeout: 300000, // 5 min — allows for MCP lazy connection + tool execution
+        metadata: {
+          currentUrl,
+          currentDomain,
+        },
       };
 
       const response = await this.toolRegistry.execute(request);
 
       if (!response.success) {
-        throw new Error(response.error?.message || 'Tool execution failed');
+        console.error(`[TurnManager] executeBrowserTool: ${toolName} failed:`, response.error);
+        const err = new Error(response.error?.message || 'Tool execution failed');
+        // Thread user's alternative text from approval denial
+        if (response.error?.details?.reason) {
+          (err as any).reason = response.error.details.reason;
+        }
+        throw err;
       }
 
       await this.emitEvent({
@@ -780,12 +845,15 @@ export class TurnManager {
 
       return response.data;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TurnManager] executeBrowserTool: ${toolName} threw:`, errorMsg);
+
       await this.emitEvent({
         type: 'ToolExecutionError',
         data: {
           tool_name: toolName,
           session_id: this.session.getSessionId(),
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         },
       });
       throw error;

@@ -121,14 +121,12 @@ async function registerExtensionTools(
  */
 export function getAvailableTools(platform: Platform): string[] {
   if (platform === 'desktop') {
+    // Desktop browser tools are registered dynamically from MCP server discovery
+    // (prefixed as browser__click, browser__take_snapshot, etc.)
     return [
-      'browser_dom', // CDP-based DOM tool
       'planning_tool',
       'web_search',
-      // Future:
-      // 'terminal',
-      // 'file_system',
-      // 'cdp_navigation',
+      // Browser tools are dynamic via MCPManager (browser__navigate_page, browser__click, etc.)
     ];
   }
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Pi",
+  "productName": "Apple Pi",
   "version": "0.1.0",
   "identifier": "com.airepublic.pi",
   "build": {
@@ -51,7 +51,7 @@
         "fullscreen": false,
         "height": 700,
         "resizable": true,
-        "title": "Pi",
+        "title": "Apple Pi",
         "width": 1000,
         "visible": true
       }

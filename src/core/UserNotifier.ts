@@ -259,7 +259,7 @@ export class UserNotifier {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        chrome.notifications.create(notification.id, chromeOptions as chrome.notifications.NotificationOptions, (id) => {
+        chrome.notifications.create(notification.id, chromeOptions as chrome.notifications.NotificationCreateOptions, (id) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {

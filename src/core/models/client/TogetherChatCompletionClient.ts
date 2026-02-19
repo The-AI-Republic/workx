@@ -1,5 +1,5 @@
 /**
- * Together AI Chat Completion API client implementation for browserx-chrome
+ * Together AI Chat Completion API client implementation for pi
  * Handles Together AI's unique response format for reasoning models like Kimi K2 Thinking
  *
  * Key differences from standard OpenAI Chat Completions:

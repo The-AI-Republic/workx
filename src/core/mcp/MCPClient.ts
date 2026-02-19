@@ -2,12 +2,13 @@
  * MCP Client Wrapper
  *
  * Wraps the official MCP SDK Client with our custom SSE transport.
- * Provides a simplified interface for browserx integration.
+ * Provides a simplified interface for Pi integration.
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport, type SSEClientTransportOptions } from './transports/SSEClientTransport';
 import type {
+  IMCPClientAdapter,
   IMCPServerConfig,
   IMCPServerInfo,
   IMCPCapabilities,
@@ -40,7 +41,7 @@ export interface MCPClientOptions {
 }
 
 /**
- * MCPClient wraps the MCP SDK Client with browserx-specific functionality.
+ * MCPClient wraps the MCP SDK Client with Pi-specific functionality.
  *
  * Usage:
  * ```typescript
@@ -51,7 +52,7 @@ export interface MCPClientOptions {
  * await client.disconnect();
  * ```
  */
-export class MCPClient {
+export class MCPClient implements IMCPClientAdapter {
   private client: Client | null = null;
   private transport: SSEClientTransport | null = null;
   private status: MCPConnectionStatus = 'disconnected';
@@ -109,10 +110,10 @@ export class MCPClient {
 
       this.transport = new SSEClientTransport(transportOptions);
 
-      // Create MCP client with browserx identity
+      // Create MCP client with Pi identity
       this.client = new Client(
         {
-          name: 'browserx',
+          name: 'pi',
           version: '1.0.0',
         },
         {
@@ -168,8 +169,6 @@ export class MCPClient {
       await this.discoverResources();
 
       this.setStatus('connected');
-      console.info(`[MCPClient] Connected to ${this.options.config.name} (${this.serverInfo?.name || 'unknown'})`);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.setStatus('error', errorMessage);
@@ -193,7 +192,6 @@ export class MCPClient {
       await this.cleanup();
     } finally {
       this.setStatus('disconnected');
-      console.info(`[MCPClient] Disconnected from ${this.options.config.name}`);
     }
   }
 
@@ -249,7 +247,7 @@ export class MCPClient {
       const result = await Promise.race([callPromise, timeoutPromise]);
 
       // Debug log: tool call response (T062)
-      await this.debugLog(`Tool response: ${name}`, { isError: result.isError, contentCount: result.content?.length });
+      await this.debugLog(`Tool response: ${name}`, { isError: result.isError, contentCount: (result.content as any[])?.length });
 
       // Handle compatibility with different result formats
       if ('toolResult' in result) {

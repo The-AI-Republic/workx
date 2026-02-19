@@ -10,7 +10,7 @@ import { isValidUUID, createDatabaseError } from './helpers';
 // Constants
 // ============================================================================
 
-const DB_NAME = 'BrowserxRollouts';
+const DB_NAME = 'PiRollouts';
 const STORE_ROLLOUTS = 'rollouts';
 const STORE_ROLLOUT_ITEMS = 'rollout_items';
 const MAX_SCAN = 100; // Maximum records to scan per query
