@@ -306,7 +306,7 @@
 
         <!-- List of available tabs -->
         {#each availableTabs as tab (tab.id)}
-          <Tooltip content={tab.title || tab.url || 'Untitled'} placement="top">
+          <Tooltip content={tab.title || tab.url || 'Untitled'} placement="top" fixedPosition>
             <div
               class="dropdown-item"
               class:selected={tab.id === tabId}
