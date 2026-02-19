@@ -17,6 +17,7 @@
 
   /* ChatGPT Theme Variables - Light Mode */
   --chat-bg: #ffffff;
+  --chat-bg-secondary: #f7f7f8;
   --chat-header-bg: #ffffff;
   --chat-text: #0d0d0d;
   --chat-text-secondary: #6e6e80;
@@ -26,6 +27,7 @@
   --chat-input-border: #e5e5e5;
   --chat-input-focus-border: #60a5fa;
   --chat-message-agent-bg: #f7f7f8;
+  --chat-code-bg: #f7f7f8;
   --chat-bubble-user: #60a5fa;
   --chat-avatar-user: #5436da;
   --chat-avatar-agent: #60a5fa;
@@ -35,6 +37,7 @@
   --chat-card-border: #e5e5e5;
   --chat-card-hover: #f7f7f8;
   --chat-badge-bg: #f4f4f4;
+  --chat-button-bg: #10a37f;
   --chat-button-hover: #ececec;
   --chat-tooltip-bg: #0d0d0d;
   --chat-tooltip-text: #ffffff;
@@ -70,6 +73,7 @@
 
     /* ChatGPT Theme Variables - Dark Mode */
     --chat-bg: #212121;
+    --chat-bg-secondary: #2f2f2f;
     --chat-header-bg: #212121;
     --chat-text: #ececec;
     --chat-text-secondary: #b4b4b4;
@@ -79,6 +83,7 @@
     --chat-input-border: #3e3e3e;
     --chat-input-focus-border: #60a5fa;
     --chat-message-agent-bg: #2f2f2f;
+    --chat-code-bg: #2f2f2f;
     --chat-bubble-user: #60a5fa;
     --chat-avatar-user: #7c3aed;
     --chat-avatar-agent: #60a5fa;
@@ -88,6 +93,7 @@
     --chat-card-border: #3e3e3e;
     --chat-card-hover: #3a3a3a;
     --chat-badge-bg: #3e3e3e;
+    --chat-button-bg: #10a37f;
     --chat-button-hover: #3e3e3e;
     --chat-tooltip-bg: #0d0d0d;
     --chat-tooltip-text: #ffffff;

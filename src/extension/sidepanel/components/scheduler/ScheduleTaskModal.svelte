@@ -164,7 +164,7 @@
       <!-- Header -->
       <div class="modal-header">
         <h2 id="schedule-modal-title" class="modal-title">
-          {$_t('Schedule Task')}
+          {$_t('Schedule A New Task')}
         </h2>
         <button class="close-button" on:click={handleClose} aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -611,6 +611,12 @@
 
   .modal-backdrop.chatgpt .picker-input::-webkit-calendar-picker-indicator {
     filter: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .modal-backdrop.chatgpt .picker-input::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
   }
 
   .modal-backdrop.chatgpt .schedule-preview {
