@@ -119,6 +119,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostarted"])))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_process::init())
         // Single instance plugin handles deep links on Windows/Linux
         // When a second instance is launched with a deep link URL,
         // it forwards the URL to the existing instance
@@ -140,6 +141,9 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // Initialize the updater plugin at runtime (requires app handle)
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+
             // If launched via autostart (--autostarted flag), hide the window so the
             // app starts minimized to the system tray. Users can open it from the tray.
             let is_autostarted = std::env::args().any(|a| a == "--autostarted");

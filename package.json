@@ -62,6 +62,8 @@
     "@tauri-apps/plugin-global-shortcut": "^2.3.1",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-updater": "^2",
+    "@tauri-apps/plugin-process": "^2",
     "@types/eventsource": "^1.1.15",
     "chrome-devtools-mcp": "^0.17.0",
     "dom-accessibility-api": "^0.7.0",
