@@ -6,6 +6,7 @@
  *   - tauri/tauri.conf.json  → "version" field
  *   - tauri/Cargo.toml       → version = "..." under [package]
  *   - package.json           → "version" field
+ *   - manifest.json          → "version" field (Chrome extension)
  *
  * Usage:
  *   node scripts/sync-version.js 1.0.0
@@ -17,6 +18,7 @@ const path = require('path');
 const TAURI_CONF_PATH = path.join(__dirname, '..', 'tauri', 'tauri.conf.json');
 const CARGO_TOML_PATH = path.join(__dirname, '..', 'tauri', 'Cargo.toml');
 const PACKAGE_JSON_PATH = path.join(__dirname, '..', 'package.json');
+const MANIFEST_PATH = path.join(__dirname, '..', 'manifest.json');
 
 function syncVersion() {
   const version = process.argv[2];
@@ -55,6 +57,12 @@ function syncVersion() {
     packageJson.version = version;
     fs.writeFileSync(PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2) + '\n', 'utf8');
     console.log(`Updated package.json → ${version}`);
+
+    // Update manifest.json (Chrome extension)
+    const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+    manifest.version = version;
+    fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    console.log(`Updated manifest.json → ${version}`);
 
     console.log(`\nAll config files synced to version ${version}`);
   } catch (error) {
