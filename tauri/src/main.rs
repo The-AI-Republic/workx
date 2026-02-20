@@ -89,10 +89,10 @@ fn load_png_image(bytes: &[u8]) -> Option<Image<'static>> {
 }
 
 // Embed icons at compile time
-const ICON_LIGHT: &[u8] = include_bytes!("../icons/icon.png");
-// Note: icon-dark.png must exist, or use ICON_LIGHT as fallback
+const ICON_LIGHT: &[u8] = include_bytes!("../icons/tray-icon.png");
+// Note: tray-icon-dark.png must exist, or use ICON_LIGHT as fallback
 #[cfg(feature = "dark-icon")]
-const ICON_DARK: &[u8] = include_bytes!("../icons/icon-dark.png");
+const ICON_DARK: &[u8] = include_bytes!("../icons/tray-icon-dark.png");
 
 /// Get the appropriate icon based on theme
 fn get_theme_icon(is_dark: bool) -> Option<Image<'static>> {
