@@ -64,7 +64,7 @@
       "open": true
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFFMURDMjEwMUFFMjdEOUEKUldTYWZlSWFFTUlkSGxzcFFrU3g5YkF6SUN2d2ZuUlBNUzI0bDdtdlM0dzZobUhlUkZPQzdwQjkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwNEQyMTEzQzc3OTI0MzEKUldReEpIbkhFeUZOVUZBa01rK0s1RVlvYXVFc0EzNExaK2loUFhhbVR3TGszUUwvcFBkRG84V1cK",
       "endpoints": [
         "https://github.com/The-AI-Republic/browserx/releases/latest/download/latest.json"
       ],
