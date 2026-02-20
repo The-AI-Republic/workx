@@ -271,6 +271,7 @@ fn main() {
             browser_commands::kill_process,
             // Terminal command execution
             terminal_commands::terminal_execute,
+            terminal_commands::terminal_execute_sudo,
             // Sandbox commands
             sandbox::status::sandbox_check_status,
             sandbox::status::sandbox_install_runtime,

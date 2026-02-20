@@ -13,6 +13,7 @@
  * @module desktop/agent/DesktopAgentBootstrap
  */
 
+import { SudoPasswordManager } from '../tools/terminal/SudoPasswordManager';
 import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
@@ -100,6 +101,9 @@ export class DesktopAgentBootstrap {
       // Wire up agent events to be dispatched through the channel
       this.setupEventForwarding(channelManager);
 
+      // Wire SudoPasswordManager to emit events through PiAgent's event system
+      this.setupSudoPasswordManager(channelManager);
+
       // 6. Initialize the agent (loads model client, tools, etc.)
       // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
@@ -158,6 +162,36 @@ export class DesktopAgentBootstrap {
     });
 
     console.log('[DesktopAgentBootstrap] Event forwarding configured via ChannelManager');
+  }
+
+  /**
+   * Wire SudoPasswordManager's event emitter to PiAgent's event dispatcher.
+   * When TerminalTool detects sudo, SudoPasswordManager emits a
+   * SudoPasswordRequested event that flows through the channel to the UI.
+   */
+  private setupSudoPasswordManager(channelManager: ReturnType<typeof getChannelManager>): void {
+    if (!this.channel) {
+      console.warn('[DesktopAgentBootstrap] Cannot setup SudoPasswordManager: channel not initialized');
+      return;
+    }
+
+    const channel = this.channel;
+
+    SudoPasswordManager.setEventEmitter((requestId: string, command: string, workingDir?: string) => {
+      const event = {
+        id: `evt_sudo_${Date.now()}`,
+        msg: {
+          type: 'SudoPasswordRequested' as const,
+          data: { requestId, command, workingDir },
+        },
+      };
+
+      channelManager.dispatchEvent(event.msg, channel.channelId).catch((error) => {
+        console.error('[DesktopAgentBootstrap] Failed to dispatch sudo password event:', error);
+      });
+    });
+
+    console.log('[DesktopAgentBootstrap] SudoPasswordManager wired to event system');
   }
 
   /**

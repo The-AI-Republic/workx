@@ -61,6 +61,8 @@ export class EventProcessor {
         return this.processOutputEvent(event);
       case 'approval':
         return this.processApprovalEvent(event);
+      case 'sudo':
+        return this.processSudoPasswordEvent(event);
       case 'plan':
         return this.processPlanEvent(event);
       case 'system':
@@ -161,6 +163,14 @@ export class EventProcessor {
       case 'ApplyPatchApprovalRequest':
       case 'ApprovalRequested':
         return 'approval';
+
+      // Sudo password prompts
+      case 'SudoPasswordRequested':
+        return 'sudo';
+
+      // Sudo password result (treated as system event)
+      case 'SudoPasswordResult':
+        return 'system';
 
       // Plan events
       case 'PlanUpdate':
@@ -763,6 +773,63 @@ export class EventProcessor {
     }
 
     return null;
+  }
+
+  /**
+   * Process sudo password request events.
+   * These ALWAYS require user interaction — YOLO/auto-approve cannot bypass them.
+   */
+  private processSudoPasswordEvent(event: Event): ProcessedEvent | null {
+    const msg = event.msg;
+
+    if (msg.type === 'SudoPasswordRequested') {
+      const data = msg.data;
+      return {
+        id: event.id,
+        category: 'sudo',
+        timestamp: new Date(),
+        title: t('Sudo Password Required'),
+        content: data.command || '',
+        style: { textColor: 'text-orange-400' },
+        sudoPasswordRequest: {
+          requestId: data.requestId,
+          command: data.command,
+          workingDir: data.workingDir,
+          onSubmit: (password: string) => {
+            this.sendSudoPasswordResponse(data.requestId, password);
+          },
+          onCancel: () => {
+            this.sendSudoPasswordResponse(data.requestId, null);
+          },
+        },
+        collapsible: false,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Send sudo password response as a standard SUBMISSION.
+   * Routes through the same pipeline as approval decisions.
+   * Security: The password is sent once and NEVER stored in conversation history.
+   */
+  private sendSudoPasswordResponse(requestId: string, password: string | null): void {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'SUBMISSION',
+        payload: {
+          id: `sudo_${Date.now()}`,
+          op: {
+            type: 'SudoPasswordResponse',
+            requestId,
+            password,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('[EventProcessor] Failed to send sudo password response:', error);
+    }
   }
 
   /**

@@ -434,6 +434,10 @@ export class PiAgent {
           await this.handleGetHistoryEntryRequest(submission.op);
           break;
 
+        case 'SudoPasswordResponse':
+          await this.handleSudoPasswordResponse(submission.op);
+          break;
+
         case 'Shutdown':
           await this.handleShutdown();
           break;
@@ -944,6 +948,28 @@ export class PiAgent {
         level: 'info',
       },
     });
+  }
+
+  /**
+   * Handle sudo password response.
+   * Routes the password (or cancellation) to SudoPasswordManager.
+   * This op is NEVER stored in conversation history for security.
+   */
+  private async handleSudoPasswordResponse(
+    op: Extract<Op, { type: 'SudoPasswordResponse' }>
+  ): Promise<void> {
+    try {
+      // Dynamic import to avoid pulling desktop code into extension builds
+      const { SudoPasswordManager } = await import('../desktop/tools/terminal/SudoPasswordManager');
+
+      if (op.password === null) {
+        SudoPasswordManager.rejectPassword(op.requestId);
+      } else {
+        SudoPasswordManager.resolvePassword(op.requestId, op.password);
+      }
+    } catch (error) {
+      console.error('[PiAgent] Failed to handle sudo password response:', error);
+    }
   }
 
   /**

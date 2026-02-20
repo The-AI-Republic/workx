@@ -23,6 +23,7 @@ export type EventDisplayCategory =
   | 'output'      // ExecCommandOutputDelta
   | 'error'       // Error, StreamError, TaskFailed
   | 'approval'    // ExecApprovalRequest, ApplyPatchApprovalRequest
+  | 'sudo'        // SudoPasswordRequested - sudo password prompts
   | 'plan'        // PlanUpdate - task planning and progress tracking
   | 'system';     // TokenCount, Notification, etc.
 
@@ -227,6 +228,19 @@ export interface ApprovalRequest {
 }
 
 /**
+ * SudoPasswordRequest - Data for inline sudo password prompt UI
+ */
+export interface SudoPasswordRequest {
+  requestId: string;                     // Unique request ID
+  command: string;                       // The command requiring sudo
+  workingDir?: string;                   // Working directory
+
+  // Response callbacks
+  onSubmit: (password: string) => void;  // Callback when user provides password
+  onCancel: () => void;                  // Callback when user cancels
+}
+
+/**
  * ContentBlock - Structured content for rich formatting
  */
 export type ContentBlock =
@@ -264,6 +278,7 @@ export interface ProcessedEvent {
 
   // Interactive
   requiresApproval?: ApprovalRequest;  // For approval events
+  sudoPasswordRequest?: SudoPasswordRequest;  // For sudo password prompts
   collapsible?: boolean;               // Can be collapsed (reasoning, tool output)
   collapsed?: boolean;                 // Current collapse state
 }

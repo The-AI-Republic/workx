@@ -107,7 +107,14 @@ export type Op =
     type: 'Review';
     review_request: ReviewRequest;
   }
-  | { type: 'Shutdown' };
+  | { type: 'Shutdown' }
+  | {
+    type: 'SudoPasswordResponse';
+    /** Unique request ID to correlate with the SudoPasswordRequested event */
+    requestId: string;
+    /** The password provided by the user, or null if cancelled */
+    password: string | null;
+  };
 
 /**
  * Determines the conditions under which the user is consulted to approve

@@ -18,6 +18,7 @@
   import ReasoningEvent from './ReasoningEvent.svelte';
   import OutputEvent from './OutputEvent.svelte';
   import ApprovalEvent from './ApprovalEvent.svelte';
+  import SudoPasswordEvent from './SudoPasswordEvent.svelte';
   import PlanEvent from './PlanEvent.svelte';
   import SystemEvent from './SystemEvent.svelte';
 
@@ -259,6 +260,8 @@
           <OutputEvent {event} />
         {:else if event.category === 'approval'}
           <ApprovalEvent {event} />
+        {:else if event.category === 'sudo'}
+          <SudoPasswordEvent {event} />
         {:else if event.category === 'plan'}
           <PlanEvent {event} />
         {:else if event.category === 'system'}
