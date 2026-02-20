@@ -71,11 +71,41 @@ export class DesktopAgentBootstrap {
       // the composer is already configured and skips re-configuration.
       await this.configurePromptWithPlatformInfo();
 
-      // 5. Initialize the agent (loads model client, tools, etc.)
+      // 5. Create TauriChannel and wire up event forwarding BEFORE agent.initialize()
+      // agent.initialize() may emit warning events (e.g. "No API key configured"),
+      // so the event dispatcher must be set first to avoid losing those events.
+      this.channel = new TauriChannel();
+
+      const channelManager = getChannelManager();
+
+      // Set up the agent handler on ChannelManager
+      // This routes submissions from channels to the agent
+      const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
+        if (!this.agent) {
+          throw new Error(t('Agent not initialized'));
+        }
+
+        console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
+
+        // Submit the operation to the agent
+        await this.agent.submitOperation(op, { tabId: context.tabId });
+      };
+
+      channelManager.setAgentHandler(agentHandler);
+
+      // Register the TauriChannel with ChannelManager
+      await channelManager.registerChannel(this.channel);
+      console.log('[DesktopAgentBootstrap] Channel registered');
+
+      // Wire up agent events to be dispatched through the channel
+      this.setupEventForwarding(channelManager);
+
+      // 6. Initialize the agent (loads model client, tools, etc.)
+      // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
-      // 4.5. Restore auth mode from keychain and listen for changes
+      // 7. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
       const { HOME_PAGE_BASE_URL } = await import('@/extension/sidepanel/lib/constants');
@@ -95,36 +125,7 @@ export class DesktopAgentBootstrap {
 
       await this.restoreAuthFromKeychain(config);
 
-      // 5. Create and initialize TauriChannel
-      this.channel = new TauriChannel();
-
-      // 6. Get the ChannelManager singleton
-      const channelManager = getChannelManager();
-
-      // 7. Set up the agent handler on ChannelManager
-      // This routes submissions from channels to the agent
-      const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
-        if (!this.agent) {
-          throw new Error(t('Agent not initialized'));
-        }
-
-        console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
-
-        // Submit the operation to the agent
-        await this.agent.submitOperation(op, { tabId: context.tabId });
-      };
-
-      channelManager.setAgentHandler(agentHandler);
-
-      // 8. Register the TauriChannel with ChannelManager
-      // This sets up the submission handler and initializes the channel
-      await channelManager.registerChannel(this.channel);
-      console.log('[DesktopAgentBootstrap] Channel registered');
-
-      // 9. Wire up agent events to be dispatched through the channel
-      this.setupEventForwarding(channelManager);
-
-      // 10. Set up MCP tool registration events
+      // 8. Set up MCP tool registration events
       await this.setupMCPToolRegistration();
 
       this.initialized = true;

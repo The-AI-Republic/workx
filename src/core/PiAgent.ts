@@ -1288,7 +1288,7 @@ export class PiAgent {
           message: `No API key configured for ${modelData.provider.name}`,
           provider: modelData.provider.name,
           model: modelData.model.name,
-          authMode: 'none',
+          authMode: 'api_key',
         };
       }
 
