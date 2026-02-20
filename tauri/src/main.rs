@@ -17,7 +17,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager,
+    Emitter, Listener, Manager, RunEvent, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -282,6 +282,20 @@ fn main() {
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::CloseRequested { api, .. },
+                ..
+            } = event
+            {
+                // Prevent the window from being destroyed — hide it to tray instead
+                api.prevent_close();
+                if let Some(window) = app.get_webview_window(&label) {
+                    let _ = window.hide();
+                }
+            }
+        });
 }
