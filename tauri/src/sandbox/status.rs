@@ -196,42 +196,23 @@ fn has_bwrap_apparmor_profile() -> bool {
 /// Required on older Debian and hardened kernels where
 /// kernel.unprivileged_userns_clone=0.
 /// Sets the runtime value and persists it across reboots.
+/// Uses pkexec for GUI-friendly privilege escalation.
 #[cfg(target_os = "linux")]
 async fn enable_userns_clone() -> Result<(), String> {
-    // Set runtime value
-    let runtime = tokio::process::Command::new("sudo")
-        .args(["sysctl", "-w", "kernel.unprivileged_userns_clone=1"])
+    // Set runtime value and persist across reboots in a single pkexec call
+    let output = tokio::process::Command::new("pkexec")
+        .args([
+            "sh", "-c",
+            "sysctl -w kernel.unprivileged_userns_clone=1 && \
+             printf 'kernel.unprivileged_userns_clone=1\\n' > /etc/sysctl.d/99-bwrap-userns.conf"
+        ])
         .output()
         .await
-        .map_err(|e| format!("Failed to run sysctl: {}", e))?;
-
-    if !runtime.status.success() {
-        let stderr = String::from_utf8_lossy(&runtime.stderr);
-        return Err(format!("Failed to enable user namespaces: {}", stderr));
-    }
-
-    // Persist across reboots via /etc/sysctl.d/
-    let persist = tokio::process::Command::new("sudo")
-        .args(["tee", "/etc/sysctl.d/99-bwrap-userns.conf"])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
-        .spawn();
-
-    let mut child = persist.map_err(|e| format!("Failed to persist sysctl config: {}", e))?;
-
-    if let Some(ref mut stdin) = child.stdin {
-        use tokio::io::AsyncWriteExt;
-        stdin.write_all(b"kernel.unprivileged_userns_clone=1\n").await
-            .map_err(|e| format!("Failed to write sysctl config: {}", e))?;
-    }
-
-    let output = child.wait_with_output().await
-        .map_err(|e| format!("Failed to persist sysctl config: {}", e))?;
+        .map_err(|e| format!("Failed to run pkexec: {}", e))?;
 
     if !output.status.success() {
-        // Runtime value is set, just warn about persistence
-        log::warn!("User namespaces enabled for this session but failed to persist config");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to enable user namespaces: {}", stderr));
     }
 
     log::info!("Unprivileged user namespaces enabled successfully");
@@ -241,9 +222,16 @@ async fn enable_userns_clone() -> Result<(), String> {
 /// Create an AppArmor profile for bwrap and load it.
 /// Required on Ubuntu 24.04+ where unprivileged user namespaces are
 /// restricted by AppArmor. Uses the same pattern as lxc-usernsexec.
+/// Uses pkexec for GUI-friendly privilege escalation.
 #[cfg(target_os = "linux")]
 async fn install_bwrap_apparmor_profile() -> Result<(), String> {
-    let profile = r#"abi <abi/4.0>,
+    // Write profile and reload in a single pkexec call to only prompt once.
+    // Uses a here-document via sh -c to write the profile content.
+    let output = tokio::process::Command::new("pkexec")
+        .args([
+            "sh", "-c",
+            r#"cat > /etc/apparmor.d/bwrap << 'PROFILE'
+abi <abi/4.0>,
 include <tunables/global>
 
 profile bwrap /usr/bin/bwrap flags=(unconfined) {
@@ -251,42 +239,16 @@ profile bwrap /usr/bin/bwrap flags=(unconfined) {
 
   include if exists <local/bwrap>
 }
-"#;
-
-    // Write profile — needs sudo since /etc/apparmor.d/ is root-owned
-    let write_result = tokio::process::Command::new("sudo")
-        .args(["tee", "/etc/apparmor.d/bwrap"])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
-        .spawn();
-
-    let mut child = write_result.map_err(|e| format!("Failed to write AppArmor profile: {}", e))?;
-
-    if let Some(ref mut stdin) = child.stdin {
-        use tokio::io::AsyncWriteExt;
-        stdin.write_all(profile.as_bytes()).await
-            .map_err(|e| format!("Failed to write AppArmor profile content: {}", e))?;
-    }
-
-    let output = child.wait_with_output().await
-        .map_err(|e| format!("Failed to write AppArmor profile: {}", e))?;
+PROFILE
+apparmor_parser -r /etc/apparmor.d/bwrap"#
+        ])
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run pkexec: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to write AppArmor profile: {}", stderr));
-    }
-
-    // Reload the profile
-    let reload = tokio::process::Command::new("sudo")
-        .args(["apparmor_parser", "-r", "/etc/apparmor.d/bwrap"])
-        .output()
-        .await
-        .map_err(|e| format!("Failed to reload AppArmor profile: {}", e))?;
-
-    if !reload.status.success() {
-        let stderr = String::from_utf8_lossy(&reload.stderr);
-        return Err(format!("Failed to reload AppArmor profile: {}", stderr));
+        return Err(format!("Failed to install AppArmor profile: {}", stderr));
     }
 
     log::info!("AppArmor profile for bwrap installed and loaded successfully");
@@ -364,6 +326,14 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
                 message: "Applied fixes but bubblewrap smoke test still failed".to_string(),
             });
         }
+
+        // bwrap exists but smoke test fails for an unknown reason — don't
+        // fall through to the package-install path (reinstalling won't help).
+        return Ok(SandboxInstallResult {
+            success: false,
+            message: "bubblewrap is installed but not functional for an unknown reason. \
+                     Check kernel and AppArmor configuration manually.".to_string(),
+        });
     }
 
     // Detect distro from /etc/os-release
@@ -404,12 +374,12 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
 
     log::info!("Installing bubblewrap via {}...", pm);
 
-    let output = tokio::process::Command::new("sudo")
+    let output = tokio::process::Command::new("pkexec")
         .arg(pm)
         .args(&args)
         .output()
         .await
-        .map_err(|e| format!("Failed to run sudo {}: {}", pm, e))?;
+        .map_err(|e| format!("Failed to run pkexec {}: {}", pm, e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -417,7 +387,7 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
         return Ok(SandboxInstallResult {
             success: false,
             message: format!(
-                "Failed to install bubblewrap via {}. You may need sudo access. Error: {}",
+                "Failed to install bubblewrap via {}. Authentication may have been cancelled. Error: {}",
                 pm, stderr
             ),
         });
