@@ -326,6 +326,14 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
                 message: "Applied fixes but bubblewrap smoke test still failed".to_string(),
             });
         }
+
+        // bwrap exists but smoke test fails for an unknown reason — don't
+        // fall through to the package-install path (reinstalling won't help).
+        return Ok(SandboxInstallResult {
+            success: false,
+            message: "bubblewrap is installed but not functional for an unknown reason. \
+                     Check kernel and AppArmor configuration manually.".to_string(),
+        });
     }
 
     // Detect distro from /etc/os-release
