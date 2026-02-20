@@ -1,7 +1,6 @@
-use super::{SandboxExecutor, SandboxOutput, SandboxProfile, WorkspaceAccess, NetworkMode};
+use super::{SandboxCommand, SandboxExecutor, SandboxOutput, SandboxProfile, WorkspaceAccess, NetworkMode};
 use std::collections::HashMap;
 use std::io::Write;
-use tokio::process::Command;
 
 pub struct MacSandbox;
 
@@ -92,14 +91,14 @@ impl MacSandbox {
 
 #[async_trait::async_trait]
 impl SandboxExecutor for MacSandbox {
-    async fn execute(
+    fn build_command(
         &self,
         command: &str,
         shell: &str,
         shell_flag: &str,
         profile: &SandboxProfile,
         env: Option<&HashMap<String, String>>,
-    ) -> Result<SandboxOutput, String> {
+    ) -> Result<SandboxCommand, String> {
         let sbpl = Self::generate_sbpl(profile)?;
 
         // Write SBPL profile to a temp file
@@ -110,38 +109,29 @@ impl SandboxExecutor for MacSandbox {
         let profile_path = tmp.path().to_string_lossy().to_string();
 
         log::info!(
-            "Executing command in sandbox via sandbox-exec (workspace={}, access={:?}, network={:?})",
+            "Building sandbox command via sandbox-exec (workspace={}, access={:?}, network={:?})",
             profile.workspace_dir.display(),
             profile.workspace_access,
             profile.network_mode
         );
 
-        let mut cmd = Command::new("sandbox-exec");
-        cmd.arg("-f")
-            .arg(&profile_path)
-            .arg(shell)
-            .arg(shell_flag)
-            .arg(command);
+        let args = vec![
+            "-f".to_string(),
+            profile_path,
+            shell.to_string(),
+            shell_flag.to_string(),
+            command.to_string(),
+        ];
 
-        if let Some(env_vars) = env {
-            for (key, value) in env_vars {
-                cmd.env(key, value);
-            }
-        }
+        let env_map = env.map(|e| e.clone());
 
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute sandbox-exec: {}", e))?;
-
-        let exit_code = output.status.code().unwrap_or(-1);
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        Ok(SandboxOutput {
-            exit_code,
-            stdout,
-            stderr,
+        Ok(SandboxCommand {
+            program: "sandbox-exec".to_string(),
+            args,
+            cwd: None,
+            env: env_map,
+            // Keep the temp file alive until the child process exits
+            held_resources: vec![Box::new(tmp)],
         })
     }
 }

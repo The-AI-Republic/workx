@@ -16,7 +16,6 @@ import {
   type ExecutionMode,
   type WorkspaceAccess,
 } from './SandboxManager';
-import { SudoPasswordManager } from './SudoPasswordManager';
 
 /**
  * Command execution options
@@ -116,18 +115,7 @@ export class TerminalTool {
   }
 
   /**
-   * Detect if a command requires sudo
-   */
-  detectsSudo(command: string): boolean {
-    const trimmed = command.trim();
-    // Match: sudo at start, after &&, after ||, after ;, after |, or after $()
-    return /(?:^|&&|\|\||;|\||\$\()\s*sudo\s/.test(trimmed);
-  }
-
-  /**
    * Execute a terminal command.
-   * If the command requires sudo, prompts the user for a password via
-   * SudoPasswordManager and routes through the sudo execution path.
    */
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
@@ -171,11 +159,6 @@ export class TerminalTool {
       command = filterResult.sanitizedCommand || command;
     }
 
-    // Sudo detection — prompt user for password if needed
-    if (this.detectsSudo(command)) {
-      return this.executeSudo(command, opts.cwd || this.defaultCwd || undefined, opts.timeout);
-    }
-
     // Resolve sandbox mode
     const sandboxConfig = this.sandboxManager.getSandboxConfig(opts.sandboxed);
 
@@ -214,72 +197,6 @@ export class TerminalTool {
         stderr: '',
         executionTimeMs: Date.now() - startTime,
         error: `Execution failed: ${error}`,
-        sandboxed: false,
-      };
-    }
-  }
-
-  /**
-   * Execute a command that requires sudo.
-   * Requests password from the user via SudoPasswordManager,
-   * then routes through the Rust terminal_execute_sudo command.
-   */
-  private async executeSudo(
-    command: string,
-    workingDir?: string,
-    timeout?: number,
-  ): Promise<ExecuteResult> {
-    const startTime = Date.now();
-
-    try {
-      // Request password from user (this blocks until user responds or timeout)
-      const password = await SudoPasswordManager.requestPassword(command, workingDir);
-
-      if (password === null) {
-        // User cancelled
-        return {
-          success: false,
-          exitCode: -1,
-          stdout: '',
-          stderr: '',
-          executionTimeMs: Date.now() - startTime,
-          blocked: true,
-          blockedReason: 'Sudo password prompt cancelled by user',
-          error: 'Sudo command cancelled: user did not provide password',
-          sandboxed: false,
-        };
-      }
-
-      // Execute via Rust sudo command
-      const result = await invoke<{
-        exitCode: number;
-        stdout: string;
-        stderr: string;
-        sandboxed: boolean;
-      }>('terminal_execute_sudo', {
-        command,
-        password,
-        cwd: workingDir,
-        timeout,
-      });
-
-      return {
-        success: result.exitCode === 0,
-        exitCode: result.exitCode,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        executionTimeMs: Date.now() - startTime,
-        sandboxed: false,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        success: false,
-        exitCode: -1,
-        stdout: '',
-        stderr: '',
-        executionTimeMs: Date.now() - startTime,
-        error: `Sudo execution failed: ${errorMessage}`,
         sandboxed: false,
       };
     }

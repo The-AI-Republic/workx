@@ -158,12 +158,6 @@ const ShutdownOpSchema = z.object({
   type: z.literal('Shutdown'),
 });
 
-const SudoPasswordResponseOpSchema = z.object({
-  type: z.literal('SudoPasswordResponse'),
-  requestId: z.string(),
-  password: z.string().nullable(),
-});
-
 export const OpSchema = z.discriminatedUnion('type', [
   InterruptOpSchema,
   UserInputOpSchema,
@@ -179,7 +173,6 @@ export const OpSchema = z.discriminatedUnion('type', [
   CompactOpSchema,
   ReviewOpSchema,
   ShutdownOpSchema,
-  SudoPasswordResponseOpSchema,
 ]);
 
 // Submission schema

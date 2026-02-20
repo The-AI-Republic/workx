@@ -84,9 +84,34 @@ pub struct SandboxOutput {
     pub stderr: String,
 }
 
+/// A fully resolved command ready for PTY-based execution.
+/// Produced by `SandboxExecutor::build_command()`.
+pub struct SandboxCommand {
+    pub program: String,
+    pub args: Vec<String>,
+    pub cwd: Option<String>,
+    pub env: Option<std::collections::HashMap<String, String>>,
+    /// Resources that must be kept alive until the child process exits
+    /// (e.g., temp files holding sandbox profiles).
+    pub held_resources: Vec<Box<dyn std::any::Any + Send>>,
+}
+
 /// Trait for platform-specific sandbox executors
 #[async_trait::async_trait]
 pub trait SandboxExecutor: Send + Sync {
+    /// Build a command ready for execution (PTY or otherwise).
+    /// Does NOT spawn the process — the caller owns the execution lifecycle.
+    fn build_command(
+        &self,
+        command: &str,
+        shell: &str,
+        shell_flag: &str,
+        profile: &SandboxProfile,
+        env: Option<&std::collections::HashMap<String, String>>,
+    ) -> Result<SandboxCommand, String>;
+
+    /// Execute a command inside the sandbox (default: builds + runs via tokio).
+    /// Kept for backward compatibility; new code should prefer `build_command()` + PTY.
     async fn execute(
         &self,
         command: &str,
@@ -94,7 +119,33 @@ pub trait SandboxExecutor: Send + Sync {
         shell_flag: &str,
         profile: &SandboxProfile,
         env: Option<&std::collections::HashMap<String, String>>,
-    ) -> Result<SandboxOutput, String>;
+    ) -> Result<SandboxOutput, String> {
+        let sandbox_cmd = self.build_command(command, shell, shell_flag, profile, env)?;
+        let mut cmd = tokio::process::Command::new(&sandbox_cmd.program);
+        cmd.args(&sandbox_cmd.args);
+        if let Some(dir) = &sandbox_cmd.cwd {
+            cmd.current_dir(dir);
+        }
+        if let Some(env_vars) = &sandbox_cmd.env {
+            for (key, value) in env_vars {
+                cmd.env(key, value);
+            }
+        }
+        let output = cmd
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute sandbox command: {}", e))?;
+        let exit_code = output.status.code().unwrap_or(-1);
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        // Drop held_resources after child exits
+        drop(sandbox_cmd.held_resources);
+        Ok(SandboxOutput {
+            exit_code,
+            stdout,
+            stderr,
+        })
+    }
 }
 
 /// Build a SandboxProfile from command parameters

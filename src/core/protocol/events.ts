@@ -99,9 +99,7 @@ export type EventMsg =
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
   | { type: 'NavigationActionStart'; data: NavigationActionStartEvent }
-  // Sudo password events
-  | { type: 'SudoPasswordRequested'; data: SudoPasswordRequestedEvent }
-  | { type: 'SudoPasswordResult'; data: SudoPasswordResultEvent };
+;
 
 // Individual event payload types
 
@@ -627,16 +625,3 @@ export interface NavigationActionStartEvent {
   options?: Record<string, unknown>;
 }
 
-// Sudo password event payloads
-
-export interface SudoPasswordRequestedEvent {
-  requestId: string;
-  command: string;
-  workingDir?: string;
-}
-
-export interface SudoPasswordResultEvent {
-  requestId: string;
-  success: boolean;
-  message?: string;
-}
