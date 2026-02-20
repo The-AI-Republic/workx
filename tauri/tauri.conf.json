@@ -19,7 +19,8 @@
       "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.png"
+      "icons/icon.png",
+      "icons/icon.ico"
     ],
     "longDescription": "Pi - AI-powered personal assistant agent",
     "shortDescription": "Pi - Personal Assistant",
