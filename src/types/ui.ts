@@ -103,6 +103,10 @@ export const STYLE_PRESETS: Record<string, EventStyle> = {
   dimmed: {
     textColor: 'text-gray-500',
   },
+  system: {
+    textColor: 'text-gray-400',
+    icon: 'info',
+  },
 };
 
 // ============================================================================

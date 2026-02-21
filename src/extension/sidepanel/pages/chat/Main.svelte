@@ -660,6 +660,25 @@
   }
 
   /**
+   * Handle command output from slash commands (e.g., /help)
+   * Creates a system ProcessedEvent and appends it to the chat
+   */
+  function handleCommandOutput(event: CustomEvent<{ title: string; content: string }>) {
+    const { title, content } = event.detail;
+    const cmdEvent: ProcessedEvent = {
+      id: `cmd_${Date.now()}`,
+      category: 'system',
+      timestamp: new Date(),
+      title,
+      content,
+      style: STYLE_PRESETS.system,
+      streaming: false,
+      collapsible: false,
+    };
+    processedEvents = [...processedEvents, cmdEvent];
+  }
+
+  /**
    * Handle long-press on send button to show schedule modal
    */
   function handleShowScheduleModal(event: CustomEvent<{ input: string }>) {
@@ -1080,6 +1099,8 @@
               placeholder={$_t(">> Enter command...")}
               on:tabSelected={handleTabSelected}
               on:showScheduleModal={handleShowScheduleModal}
+              on:commandOutput={handleCommandOutput}
+              on:openSettings={toggleSettings}
             />
           </div>
 
