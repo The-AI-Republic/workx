@@ -149,7 +149,7 @@ export class AgentRegistry {
         if (typeof chrome !== 'undefined' && chrome.runtime) {
           chrome.runtime.sendMessage({
             type: 'EVENT',
-            payload: event,
+            payload: { ...event, sessionId: session.sessionId },
           }).catch(() => {
             // Ignore errors if no listeners
           });
