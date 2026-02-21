@@ -2,7 +2,7 @@
  * Unit Tests: calculateBackoff()
  *
  * Tests the exponential backoff calculation logic in ModelClient
- * Rust Reference: browserx-rs/core/src/client.rs backoff() utility (lines 245-264)
+ * Rust Reference: pi-rs/core/src/client.rs backoff() utility (lines 245-264)
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

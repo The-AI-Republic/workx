@@ -56,7 +56,7 @@ export class Session {
   private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
-  private toolRegistry: ToolRegistry | null = null; // Tool registry from BrowserxAgent
+  private toolRegistry: ToolRegistry | null = null; // Tool registry from PiAgent
 
   // Runtime state (not persisted, lives in Session only)
   private toolUsageStats: Map<string, number> = new Map();
@@ -98,7 +98,7 @@ export class Session {
 
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
-    this.toolRegistry = toolRegistry ?? null; // Tool registry from BrowserxAgent
+    this.toolRegistry = toolRegistry ?? null; // Tool registry from PiAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
 
@@ -181,12 +181,15 @@ export class Session {
     if (!this.services?.rollout) return;
 
     // Record session metadata to rollout
+    // Include both cwd (for desktop) and tabId (for extension) so the
+    // session can be restored correctly in either runtime mode.
+    const tabId = this.sessionState.getTabId();
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        cwd: String(this.sessionState.getTabId()), // Use tabId as cwd for browser context
+        ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -889,7 +892,7 @@ export class Session {
   }
 
   /**
-   * Set tool registry (called by BrowserxAgent)
+   * Set tool registry (called by PiAgent)
    */
   setToolRegistry(toolRegistry: ToolRegistry): void {
     this.toolRegistry = toolRegistry;

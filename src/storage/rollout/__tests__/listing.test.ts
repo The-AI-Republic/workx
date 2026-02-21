@@ -17,7 +17,7 @@ import { listConversations } from '@/storage/rollout/listing';
 // Helpers for setting up test data in IndexedDB
 // ============================================================================
 
-const DB_NAME = 'BrowserxRollouts';
+const DB_NAME = 'PiRollouts';
 const STORE_ROLLOUTS = 'rollouts';
 const STORE_ROLLOUT_ITEMS = 'rollout_items';
 
@@ -58,7 +58,7 @@ function makeRecord(
 }
 
 /**
- * Open/create the BrowserxRollouts database with proper stores,
+ * Open/create the PiRollouts database with proper stores,
  * and seed it with given records.
  */
 async function seedDatabase(records: RolloutMetadataRecord[]): Promise<void> {

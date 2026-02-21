@@ -139,8 +139,8 @@ export class RequestQueue {
     },
   };
 
-  private readonly STORAGE_KEY = 'browserx_request_queue';
-  private readonly HISTORY_KEY = 'browserx_request_history';
+  private readonly STORAGE_KEY = 'pi_request_queue';
+  private readonly HISTORY_KEY = 'pi_request_history';
   private readonly MAX_HISTORY_SIZE = 1000;
 
   /**

@@ -54,7 +54,7 @@ describe('RolloutRecorder', () => {
       expect(recorder.getRolloutId()).toBe(conversationId);
     });
 
-    it('should create IndexedDB database "BrowserxRollouts"', async () => {
+    it('should create IndexedDB database "PiRollouts"', async () => {
       const params: RolloutRecorderParams = {
         type: 'create',
         conversationId,
@@ -63,7 +63,7 @@ describe('RolloutRecorder', () => {
       await RolloutRecorder.create(params);
 
       const dbs = await indexedDB.databases();
-      const dbExists = dbs.some((db: any) => db.name === 'BrowserxRollouts');
+      const dbExists = dbs.some((db: any) => db.name === 'PiRollouts');
       expect(dbExists).toBe(true);
     });
 

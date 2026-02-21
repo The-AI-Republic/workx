@@ -40,7 +40,7 @@ jobs:
 
           echo "Cloning private repository..."
           if ! git clone \
-            https://x-access-token:${{ secrets.OSS_SYNC_TO_PRIVATE }}@github.com/The-AI-Republic/private-browserx.git \
+            https://x-access-token:${{ secrets.OSS_SYNC_TO_PRIVATE }}@github.com/The-AI-Republic/private-pi.git \
             private-repo; then
             echo "ERROR: Failed to clone private repository" >&2
             echo "Check that OSS_SYNC_TO_PRIVATE secret is set and valid" >&2

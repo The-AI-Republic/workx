@@ -5,7 +5,7 @@
  * and handles partial headers correctly
  *
  * **Quickstart Reference**: Edge Case 3
- * **Rust Reference**: browserx-rs/core/src/client.rs Lines 580-619 (parseRateLimitSnapshot)
+ * **Rust Reference**: pi-rs/core/src/client.rs Lines 580-619 (parseRateLimitSnapshot)
  * **Functional Requirement**: FR-006 (parseRateLimitSnapshot from headers)
  */
 
@@ -64,9 +64,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle partial headers - primary only', () => {
     // Given: Response with only primary rate limit headers
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '75.5',
-      'x-browserx-primary-window-minutes': '60',
-      'x-browserx-primary-resets-in-seconds': '1200',
+      'x-pi-primary-used-percent': '75.5',
+      'x-pi-primary-window-minutes': '60',
+      'x-pi-primary-resets-in-seconds': '1200',
     });
 
     // When: Parse rate limit snapshot
@@ -86,9 +86,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle partial headers - secondary only', () => {
     // Given: Response with only secondary rate limit headers
     const headers = new Headers({
-      'x-browserx-secondary-used-percent': '45.2',
-      'x-browserx-secondary-window-minutes': '120',
-      'x-browserx-secondary-resets-in-seconds': '3600',
+      'x-pi-secondary-used-percent': '45.2',
+      'x-pi-secondary-window-minutes': '120',
+      'x-pi-secondary-resets-in-seconds': '3600',
     });
 
     // When: Parse rate limit snapshot
@@ -108,12 +108,12 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle both primary and secondary headers', () => {
     // Given: Response with both rate limit windows
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '80.0',
-      'x-browserx-primary-window-minutes': '60',
-      'x-browserx-primary-resets-in-seconds': '600',
-      'x-browserx-secondary-used-percent': '50.0',
-      'x-browserx-secondary-window-minutes': '120',
-      'x-browserx-secondary-resets-in-seconds': '3600',
+      'x-pi-primary-used-percent': '80.0',
+      'x-pi-primary-window-minutes': '60',
+      'x-pi-primary-resets-in-seconds': '600',
+      'x-pi-secondary-used-percent': '50.0',
+      'x-pi-secondary-window-minutes': '120',
+      'x-pi-secondary-resets-in-seconds': '3600',
     });
 
     // When: Parse rate limit snapshot
@@ -136,9 +136,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle invalid header values gracefully', () => {
     // Given: Headers with invalid/non-numeric values
     const headers = new Headers({
-      'x-browserx-primary-used-percent': 'invalid',
-      'x-browserx-primary-window-minutes': 'not-a-number',
-      'x-browserx-primary-resets-in-seconds': 'abc',
+      'x-pi-primary-used-percent': 'invalid',
+      'x-pi-primary-window-minutes': 'not-a-number',
+      'x-pi-primary-resets-in-seconds': 'abc',
     });
 
     // When: Parse rate limit snapshot
@@ -153,8 +153,8 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle empty string header values', () => {
     // Given: Headers with empty strings
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '',
-      'x-browserx-primary-window-minutes': '',
+      'x-pi-primary-used-percent': '',
+      'x-pi-primary-window-minutes': '',
     });
 
     // When: Parse rate limit snapshot
@@ -168,9 +168,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle missing individual fields', () => {
     // Given: Incomplete primary window (missing window-minutes and resets-in-seconds)
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '75.5',
-      // Missing: x-browserx-primary-window-minutes
-      // Missing: x-browserx-primary-resets-in-seconds
+      'x-pi-primary-used-percent': '75.5',
+      // Missing: x-pi-primary-window-minutes
+      // Missing: x-pi-primary-resets-in-seconds
     });
 
     // When: Parse rate limit snapshot
@@ -200,9 +200,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
     {
       // Given: Response with partial headers (only primary)
       const headers = new Headers();
-      headers.set('x-browserx-primary-used-percent', '75.5');
-      headers.set('x-browserx-primary-window-minutes', '60');
-      headers.set('x-browserx-primary-resets-in-seconds', '1200');
+      headers.set('x-pi-primary-used-percent', '75.5');
+      headers.set('x-pi-primary-window-minutes', '60');
+      headers.set('x-pi-primary-resets-in-seconds', '1200');
 
       const partialSnapshot = client.testParseRateLimitSnapshot(headers);
 
@@ -216,9 +216,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should preserve precision for floating point percentages', () => {
     // Given: Headers with precise floating point values
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '75.555',
-      'x-browserx-primary-window-minutes': '60',
-      'x-browserx-primary-resets-in-seconds': '1200',
+      'x-pi-primary-used-percent': '75.555',
+      'x-pi-primary-window-minutes': '60',
+      'x-pi-primary-resets-in-seconds': '1200',
     });
 
     // When: Parse rate limit snapshot
@@ -232,9 +232,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle zero values correctly', () => {
     // Given: Headers with zero values (valid edge case)
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '0',
-      'x-browserx-primary-window-minutes': '60',
-      'x-browserx-primary-resets-in-seconds': '0',
+      'x-pi-primary-used-percent': '0',
+      'x-pi-primary-window-minutes': '60',
+      'x-pi-primary-resets-in-seconds': '0',
     });
 
     // When: Parse rate limit snapshot
@@ -249,9 +249,9 @@ describe('Edge Case: Missing Rate Limit Headers', () => {
   it('should handle 100% used correctly', () => {
     // Given: Headers showing rate limit fully exhausted
     const headers = new Headers({
-      'x-browserx-primary-used-percent': '100.0',
-      'x-browserx-primary-window-minutes': '60',
-      'x-browserx-primary-resets-in-seconds': '300',
+      'x-pi-primary-used-percent': '100.0',
+      'x-pi-primary-window-minutes': '60',
+      'x-pi-primary-resets-in-seconds': '300',
     });
 
     // When: Parse rate limit snapshot

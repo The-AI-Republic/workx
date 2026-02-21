@@ -1,6 +1,5 @@
-use super::{SandboxExecutor, SandboxOutput, SandboxProfile, WorkspaceAccess, NetworkMode};
+use super::{SandboxCommand, SandboxExecutor, SandboxProfile, WorkspaceAccess, NetworkMode};
 use std::collections::HashMap;
-use tokio::process::Command;
 
 pub struct LinuxSandbox;
 
@@ -28,14 +27,14 @@ impl LinuxSandbox {
 
 #[async_trait::async_trait]
 impl SandboxExecutor for LinuxSandbox {
-    async fn execute(
+    fn build_command(
         &self,
         command: &str,
         shell: &str,
         shell_flag: &str,
         profile: &SandboxProfile,
         env: Option<&HashMap<String, String>>,
-    ) -> Result<SandboxOutput, String> {
+    ) -> Result<SandboxCommand, String> {
         let mut args: Vec<String> = Vec::new();
 
         // Read-only bind mounts for system directories
@@ -145,34 +144,20 @@ impl SandboxExecutor for LinuxSandbox {
         args.push(command.to_string());
 
         log::info!(
-            "Executing command in sandbox via bwrap (workspace={}, access={:?}, network={:?})",
+            "Building sandbox command via bwrap (workspace={}, access={:?}, network={:?})",
             ws,
             profile.workspace_access,
             profile.network_mode
         );
 
-        let mut cmd = Command::new("bwrap");
-        cmd.args(&args);
+        let env_map = env.map(|e| e.clone());
 
-        if let Some(env_vars) = env {
-            for (key, value) in env_vars {
-                cmd.env(key, value);
-            }
-        }
-
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute bwrap: {}", e))?;
-
-        let exit_code = output.status.code().unwrap_or(-1);
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        Ok(SandboxOutput {
-            exit_code,
-            stdout,
-            stderr,
+        Ok(SandboxCommand {
+            program: "bwrap".to_string(),
+            args,
+            cwd: None,
+            env: env_map,
+            held_resources: Vec::new(),
         })
     }
 }

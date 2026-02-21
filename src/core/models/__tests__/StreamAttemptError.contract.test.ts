@@ -2,9 +2,9 @@
  * Contract Test: StreamAttemptError Classification
  *
  * This test validates that error classification and retry logic matches
- * the Rust StreamAttemptError enum from browserx-rs
+ * the Rust StreamAttemptError enum from pi-rs
  *
- * Rust Reference: browserx-rs/core/src/client.rs Lines 447-486
+ * Rust Reference: pi-rs/core/src/client.rs Lines 447-486
  */
 
 import { describe, it, expect } from 'vitest';
@@ -231,7 +231,7 @@ describe('StreamAttemptError Contract Compliance', () => {
           'intoError()',       // Convert to Error
           'isRetryable()',     // Check if retryable
         ],
-        rustReference: 'browserx-rs/core/src/client.rs:447-486',
+        rustReference: 'pi-rs/core/src/client.rs:447-486',
       };
 
       expect(summary.variants.length).toBe(3);

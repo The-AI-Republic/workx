@@ -2,7 +2,7 @@
  * Desktop Message Router
  *
  * A minimal MessageRouter implementation for desktop mode that uses Tauri events
- * instead of chrome.runtime messaging. Provides compatibility for BrowserxAgent
+ * instead of chrome.runtime messaging. Provides compatibility for PiAgent
  * which requires a MessageRouter instance.
  *
  * @module desktop/channels/DesktopMessageRouter
@@ -71,7 +71,7 @@ export class DesktopMessageRouter {
     console.log('[DesktopMessageRouter] Sending message:', type);
 
     // Emit as Tauri event for UI to receive
-    await emit('browserx:message', message);
+    await emit('pi:message', message);
 
     // Return immediately - responses come as separate events
     return { success: true };

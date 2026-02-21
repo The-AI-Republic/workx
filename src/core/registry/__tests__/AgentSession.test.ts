@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AgentSession } from '@/core/registry/AgentSession';
 import type { SessionConfig } from '@/core/registry/types';
 
-// Mock BrowserxAgent session - shared object so spies work correctly
+// Mock PiAgent session - shared object so spies work correctly
 const mockSession = {
   conversationId: 'conv_test_123',
   abortAllTasks: vi.fn(),
@@ -15,7 +15,7 @@ const mockSession = {
   setTabId: vi.fn(),
 };
 
-// Mock BrowserxAgent
+// Mock PiAgent
 const mockAgent = {
   getSession: vi.fn(() => mockSession),
   submitOperation: vi.fn(() => Promise.resolve('sub_123')),
@@ -48,7 +48,7 @@ describe('AgentSession', () => {
       expect(session.sessionLetter).toBe('a');
       expect(session.state).toBe('initializing');
       expect(session.metadata.type).toBe('primary');
-      expect(session.metadata.tabGroupName).toBe('browserx_s_a');
+      expect(session.metadata.tabGroupName).toBe('pi_s_a');
     });
 
     it('creates session with scheduled type', () => {
@@ -61,7 +61,7 @@ describe('AgentSession', () => {
       expect(session.metadata.type).toBe('scheduled');
       expect(session.metadata.scheduledTaskId).toBe('task_123');
       expect(session.sessionLetter).toBe('b');
-      expect(session.metadata.tabGroupName).toBe('browserx_s_b');
+      expect(session.metadata.tabGroupName).toBe('pi_s_b');
     });
 
     it('uses provided tabId', () => {

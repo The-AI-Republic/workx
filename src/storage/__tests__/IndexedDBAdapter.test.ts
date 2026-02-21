@@ -38,10 +38,10 @@ describe('IndexedDBAdapter', () => {
       await adapter.initialize();
 
       const dbs = await indexedDB.databases();
-      const browserxDb = dbs.find(db => db.name === DB_NAME);
+      const piDb = dbs.find(db => db.name === DB_NAME);
 
-      expect(browserxDb).toBeDefined();
-      expect(browserxDb?.version).toBe(DB_VERSION);
+      expect(piDb).toBeDefined();
+      expect(piDb?.version).toBe(DB_VERSION);
     });
 
     it('should create all required object stores', async () => {
@@ -87,9 +87,9 @@ describe('IndexedDBAdapter', () => {
       ]);
 
       const dbs = await indexedDB.databases();
-      const browserxDbs = dbs.filter(db => db.name === DB_NAME);
+      const piDbs = dbs.filter(db => db.name === DB_NAME);
 
-      expect(browserxDbs.length).toBe(1);
+      expect(piDbs.length).toBe(1);
     });
 
     it('should throw StorageUnavailableError when IndexedDB is not available', async () => {
