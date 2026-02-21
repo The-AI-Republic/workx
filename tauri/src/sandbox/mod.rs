@@ -67,7 +67,7 @@ pub struct BindMount {
 }
 
 /// Platform-specific sandbox configuration generated per command
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SandboxProfile {
     pub workspace_dir: PathBuf,
     pub workspace_access: WorkspaceAccess,
@@ -177,6 +177,21 @@ pub fn build_profile(
     #[cfg(target_os = "macos")]
     {
         standard_writable.push(PathBuf::from("/private/var/folders"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // Replace Unix-style paths with Windows equivalents
+        standard_writable.clear();
+        if let Ok(temp) = std::env::var("TEMP") {
+            standard_writable.push(PathBuf::from(temp));
+        }
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            standard_writable.push(PathBuf::from(local_app_data));
+        }
+        standard_writable.push(home.join(".cargo"));
+        standard_writable.push(home.join(".npm"));
+        standard_writable.push(home.join(".yarn"));
     }
 
     // Canonicalize bind mount paths

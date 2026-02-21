@@ -40,13 +40,7 @@ pub async fn sandbox_check_status() -> Result<SandboxStatusResult, String> {
 
     #[cfg(target_os = "windows")]
     {
-        return Ok(SandboxStatusResult {
-            status: "unavailable".to_string(),
-            runtime: "appcontainer".to_string(),
-            os: os.to_string(),
-            version: None,
-            message: Some("AppContainer sandbox is not yet implemented. Commands will run without sandbox isolation.".to_string()),
-        });
+        return check_windows_status(os).await;
     }
 
     #[allow(unreachable_code)]
@@ -159,6 +153,75 @@ async fn check_macos_status(os: &str) -> Result<SandboxStatusResult, String> {
             version: None,
             message: Some("sandbox-exec not found".to_string()),
         }),
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn check_windows_status(os: &str) -> Result<SandboxStatusResult, String> {
+    // Locate the helper binary next to the running executable
+    let helper_path = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|p| p.join("browserx-sandbox.exe")));
+
+    let helper_path = match helper_path {
+        Some(p) if p.exists() => p,
+        _ => {
+            log::info!("Sandbox helper binary not found");
+            return Ok(SandboxStatusResult {
+                status: "unavailable".to_string(),
+                runtime: "appcontainer".to_string(),
+                os: os.to_string(),
+                version: None,
+                message: Some(
+                    "Sandbox helper binary (browserx-sandbox.exe) not found. \
+                     It should be bundled with the application."
+                        .to_string(),
+                ),
+            });
+        }
+    };
+
+    // Run the self-test smoke test
+    let result = tokio::process::Command::new(&helper_path)
+        .arg("--self-test")
+        .output()
+        .await;
+
+    match result {
+        Ok(output) if output.status.success() => {
+            log::info!("Sandbox runtime: AppContainer helper available and functional");
+            Ok(SandboxStatusResult {
+                status: "available".to_string(),
+                runtime: "appcontainer".to_string(),
+                os: os.to_string(),
+                version: None,
+                message: Some("AppContainer sandbox is available and functional".to_string()),
+            })
+        }
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            log::warn!("Sandbox helper self-test failed: {}", stderr);
+            Ok(SandboxStatusResult {
+                status: "unavailable".to_string(),
+                runtime: "appcontainer".to_string(),
+                os: os.to_string(),
+                version: None,
+                message: Some(format!(
+                    "Sandbox helper found but self-test failed: {}",
+                    stderr.trim()
+                )),
+            })
+        }
+        Err(e) => {
+            log::warn!("Failed to run sandbox helper self-test: {}", e);
+            Ok(SandboxStatusResult {
+                status: "unavailable".to_string(),
+                runtime: "appcontainer".to_string(),
+                os: os.to_string(),
+                version: None,
+                message: Some(format!("Failed to run sandbox helper: {}", e)),
+            })
+        }
     }
 }
 
