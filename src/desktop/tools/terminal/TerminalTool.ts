@@ -91,8 +91,8 @@ const DEFAULT_OPTIONS: ExecuteOptions = {
  * and optional OS-native sandbox protection.
  */
 export class TerminalTool {
-  private securityFilter: SecurityFilter;
   private defaultCwd: string | null = null;
+  private securityFilter: SecurityFilter;
   private sandboxManager: SandboxManager;
 
   constructor(securityConfig?: Partial<SecurityConfig>) {
@@ -115,7 +115,7 @@ export class TerminalTool {
   }
 
   /**
-   * Execute a terminal command
+   * Execute a terminal command.
    */
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
@@ -376,17 +376,4 @@ export class TerminalTool {
     return output;
   }
 
-  /**
-   * Update security configuration
-   */
-  updateSecurityConfig(config: Partial<SecurityConfig>): void {
-    this.securityFilter.updateConfig(config);
-  }
-
-  /**
-   * Get current security configuration
-   */
-  getSecurityConfig(): SecurityConfig {
-    return this.securityFilter.getConfig();
-  }
 }

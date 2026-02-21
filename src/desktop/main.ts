@@ -10,7 +10,10 @@
 
 import { initializeHotkeys } from './hotkeys';
 import { initializeTray } from './tray';
+import { initializeAutoStart } from './autostart';
+import { initializeUpdater } from './updater';
 import { getDesktopAgentBootstrap } from './agent/DesktopAgentBootstrap';
+import { AgentConfig } from '@/config/AgentConfig';
 
 /**
  * Initialize the desktop-specific services
@@ -35,6 +38,24 @@ async function initializeDesktop(): Promise<void> {
     console.log('[Desktop] Global hotkeys initialized');
   } catch (error) {
     console.warn('[Desktop] Failed to initialize global hotkeys (continuing):', error);
+  }
+
+  // Initialize auto-start (non-critical, catch errors)
+  try {
+    const config = await AgentConfig.getInstance();
+    const autoStartEnabled = config.getConfig().preferences?.autoStartEnabled ?? false;
+    await initializeAutoStart(autoStartEnabled);
+    console.log('[Desktop] Auto-start initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize auto-start (continuing):', error);
+  }
+
+  // Initialize auto-updater (non-critical, catch errors)
+  try {
+    await initializeUpdater();
+    console.log('[Desktop] Auto-updater initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize auto-updater (continuing):', error);
   }
 
   console.log('[Desktop] Desktop services initialization complete');

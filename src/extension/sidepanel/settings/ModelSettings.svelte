@@ -10,7 +10,7 @@
   import ModelSelector from './components/ModelSelector.svelte';
   import { userStore } from '../stores/userStore';
   import { LLM_API_URL } from '../lib/constants';
-  import { t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
 
   // Default compound key for free users (Fireworks Kimi K2 Thinking)
@@ -201,7 +201,7 @@
           }
           await settingsConfig.setSelectedModel(selectedModelKey);
         } else {
-          showMessage('No models available. Please check configuration.', 'error');
+          showMessage(t('No models available. Please check configuration.'), 'error');
           return;
         }
       }
@@ -226,7 +226,7 @@
       }
     } catch (error) {
       console.error('[ModelSettings] Failed to load settings:', error);
-      showMessage('Failed to load settings', 'error');
+      showMessage(t('Failed to load settings'), 'error');
     } finally {
       isInitializing = false;
     }
@@ -292,14 +292,14 @@
         }
       }
 
-      showMessage('API key saved successfully!', 'success');
+      showMessage(t('API key saved successfully!'), 'success');
 
       notifyConfigUpdate();
 
       dispatch('authUpdated', { isAuthenticated: true, mode: 'api_key' });
     } catch (error) {
       console.error('[ModelSettings] Failed to save API key:', error);
-      showMessage('Failed to save API key', 'error');
+      showMessage(t('Failed to save API key'), 'error');
     } finally {
       isSaving = false;
     }
@@ -307,7 +307,7 @@
 
   async function testConnection() {
     if (!apiKey.trim()) {
-      showMessage('Please enter an API key first', 'error');
+      showMessage(t('Please enter an API key first'), 'error');
       return;
     }
 
@@ -317,8 +317,8 @@
 
       const selectedItem = modelSelectionItems.find((item) => item.modelId === selectedModelKey);
       if (!selectedItem) {
-        testResult = { valid: false, error: 'Selected model configuration missing' };
-        showMessage('Connection failed: selected model configuration missing', 'error');
+        testResult = { valid: false, error: t('Selected model configuration missing') };
+        showMessage(t('Connection failed: selected model configuration missing'), 'error');
         return;
       }
 
@@ -328,8 +328,8 @@
       const organization = selectedItem.organization;
 
       if (!baseUrl) {
-        testResult = { valid: false, error: 'Base URL not configured for this provider' };
-        showMessage('Connection failed: Base URL not configured', 'error');
+        testResult = { valid: false, error: t('Base URL not configured for this provider') };
+        showMessage(t('Connection failed: Base URL not configured'), 'error');
         return;
       }
 
@@ -339,9 +339,9 @@
         await testOpenAICompatibleConnection(baseUrl, modelKey, organization);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Network error';
+      const errorMsg = error instanceof Error ? error.message : t('Network error');
       testResult = { valid: false, error: errorMsg };
-      showMessage('Failed to test connection', 'error');
+      showMessage(t('Failed to test connection'), 'error');
     } finally {
       isTesting = false;
     }
@@ -366,13 +366,13 @@
 
     if (response.ok || response.status === 400) {
       testResult = { valid: true };
-      showMessage('Connection test successful!', 'success');
+      showMessage(t('Connection test successful!'), 'success');
     } else if (response.status === 401) {
-      testResult = { valid: false, error: 'Invalid API key' };
-      showMessage('Connection test failed: Invalid API key', 'error');
+      testResult = { valid: false, error: t('Invalid API key') };
+      showMessage(t('Connection test failed: Invalid API key'), 'error');
     } else {
       testResult = { valid: false, error: `API error: ${response.status}` };
-      showMessage(`Connection test failed: API error ${response.status}`, 'error');
+      showMessage(t('Connection test failed: $1$', { substitutions: [`API error ${response.status}`] }), 'error');
     }
   }
 
@@ -399,18 +399,18 @@
         max_tokens: 1,
       });
       testResult = { valid: true };
-      showMessage('Connection test successful!', 'success');
+      showMessage(t('Connection test successful!'), 'success');
     } catch (error: any) {
       if (error?.status === 401 || error?.code === 'invalid_api_key') {
-        testResult = { valid: false, error: 'Invalid API key' };
-        showMessage('Connection test failed: Invalid API key', 'error');
+        testResult = { valid: false, error: t('Invalid API key') };
+        showMessage(t('Connection test failed: Invalid API key'), 'error');
       } else if (error?.status === 400) {
         testResult = { valid: true };
-        showMessage('Connection test successful! (API key is valid)', 'success');
+        showMessage(t('Connection test successful! (API key is valid)'), 'success');
       } else {
-        const errorMsg = error?.message || 'Network error';
+        const errorMsg = error?.message || t('Network error');
         testResult = { valid: false, error: errorMsg };
-        showMessage(`Connection test failed: ${errorMsg}`, 'error');
+        showMessage(t('Connection test failed: $1$', { substitutions: [errorMsg] }), 'error');
       }
     }
   }
@@ -429,7 +429,7 @@
                 ? 'Groq'
                 : currentProvider;
 
-    if (!confirm(`Are you sure you want to remove your ${providerName} API key?`)) return;
+    if (!confirm(t('Are you sure you want to remove your $1$ API key?', { substitutions: [providerName] }))) return;
     if (!settingsConfig) return;
 
     try {
@@ -447,11 +447,11 @@
         }
       }
 
-      showMessage(`${providerName} API key removed successfully`, 'info');
+      showMessage(t('$1$ API key removed successfully', { substitutions: [providerName] }), 'info');
       notifyConfigUpdate();
       dispatch('authUpdated', { isAuthenticated: false, mode: null });
     } catch (error) {
-      showMessage('Failed to remove API key', 'error');
+      showMessage(t('Failed to remove API key'), 'error');
     } finally {
       isClearingAuth = false;
     }
@@ -501,8 +501,8 @@
       notifyConfigUpdate();
 
       const message = newValue
-        ? 'Switched to direct API mode. Please configure your API key.'
-        : 'Switched to backend mode. LLM requests will route through AI Republic server.';
+        ? t('Switched to direct API mode. Please configure your API key.')
+        : t('Switched to backend mode. LLM requests will route through AI Republic server.');
       showMessage(message, 'success');
 
       dispatch('authUpdated', {
@@ -512,7 +512,7 @@
     } catch (error) {
       console.error('[ModelSettings] Failed to toggle useOwnApiKey:', error);
       useOwnApiKey = !useOwnApiKey; // Revert on error
-      showMessage('Failed to update API mode', 'error');
+      showMessage(t('Failed to update API mode'), 'error');
     }
   }
 
@@ -541,7 +541,7 @@
       const previousModelKey = selectedModelKey;
 
       if (
-        !confirm('The model switch will clear the current conversation. Do you want to continue?')
+        !confirm(t('The model switch will clear the current conversation. Do you want to continue?'))
       ) {
         modelSelectionItems = modelSelectionItems.map((item) => ({
           ...item,
@@ -553,7 +553,7 @@
 
       if (selectedItem.supportsImage === false) {
         alert(
-          `Model "${selectedItem.modelName}" does not support image input. Some tools will be disabled.`
+          t('Model "$1$" does not support image input. Some tools will be disabled.', { substitutions: [selectedItem.modelName] })
         );
       }
 
@@ -572,12 +572,12 @@
       notifyConfigUpdate();
 
       const message = apiKey
-        ? `Model changed to ${selectedItem.modelName}. Session will be reinitialized.`
-        : `Model changed to ${selectedItem.modelName}. Please configure your API key.`;
+        ? t('Model changed to $1$. Session will be reinitialized.', { substitutions: [selectedItem.modelName] })
+        : t('Model changed to $1$. Please configure your API key.', { substitutions: [selectedItem.modelName] });
       showMessage(message, apiKey ? 'success' : 'info');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      showMessage(`Failed to change model: ${errorMessage}`, 'error');
+      showMessage(t('Failed to change model: $1$', { substitutions: [errorMessage] }), 'error');
       await loadSettings();
     } finally {
       isModelSwitching = false;
@@ -587,7 +587,7 @@
   function handleValidationError(event: CustomEvent) {
     const { errors } = event.detail;
     modelValidationError = errors.join('. ');
-    showMessage(`Cannot select model: ${modelValidationError}`, 'error');
+    showMessage(t('Cannot select model: $1$', { substitutions: [modelValidationError] }), 'error');
   }
 
   async function handleServiceTierChange(event: Event) {
@@ -609,13 +609,13 @@
             provider.models[modelIndex].serviceTier = serviceTier;
             settingsConfig.updateProvider(modelData.provider.id, { models: provider.models });
             notifyConfigUpdate();
-            showMessage(`Service tier updated to ${serviceTier || 'default'}`, 'success');
+            showMessage(t('Service tier updated to $1$', { substitutions: [serviceTier || 'default'] }), 'success');
           }
         }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      showMessage(`Failed to update service tier: ${errorMessage}`, 'error');
+      showMessage(t('Failed to update service tier: $1$', { substitutions: [errorMessage] }), 'error');
     }
   }
 
@@ -690,7 +690,7 @@
         <button
           class="toggle-switch {useOwnApiKey ? 'active' : ''}"
           on:click={handleUseOwnApiKeyToggle}
-          aria-label="Toggle use own API key"
+          aria-label={t("Toggle use own API key")}
         >
           <span class="toggle-slider"></span>
         </button>
@@ -730,12 +730,12 @@
 
     <div class="form-group">
       <label for="api-key" class="form-label">
-        {currentProviderName} API Key
+        {$_t("$1$ API Key", { substitutions: [currentProviderName] })}
       </label>
       <div
         class="input-group"
         class:disabled-input={isUserLoggedIn && !useOwnApiKey}
-        title={isUserLoggedIn && !useOwnApiKey ? 'API key editing is disabled in backend mode' : ''}
+        title={isUserLoggedIn && !useOwnApiKey ? t('API key editing is disabled in backend mode') : ''}
       >
         {#if showApiKey}
           <input
@@ -784,7 +784,7 @@
           type="button"
           class="visibility-toggle"
           on:click={toggleApiKeyVisibility}
-          aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
+          aria-label={showApiKey ? t('Hide API key') : t('Show API key')}
         >
           {#if showApiKey}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -826,9 +826,9 @@
           class="form-select"
           disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
         >
-          <option value="default">Default</option>
-          <option value="flex">Flex</option>
-          <option value="priority">Priority</option>
+          <option value="default">{$_t("Default")}</option>
+          <option value="flex">{$_t("Flex")}</option>
+          <option value="priority">{$_t("Priority")}</option>
         </select>
         <div class="help-text">
           {t("Priority tier provides faster response times with higher pricing.")}
@@ -937,7 +937,7 @@
             <line x1="9" y1="9" x2="15" y2="15"></line>
           {/if}
         </svg>
-        {testResult.valid ? 'Connection successful!' : `Connection failed: ${testResult.error}`}
+        {testResult.valid ? $_t('Connection successful!') : $_t('Connection failed: $1$', { substitutions: [testResult.error] })}
       </div>
     {/if}
 

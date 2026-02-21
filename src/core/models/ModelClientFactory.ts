@@ -1,5 +1,5 @@
 /**
- * Model Client Factory for browserx-chrome
+ * Model Client Factory for pi
  * Creates and manages model client instances with provider selection and caching
  */
 
@@ -570,7 +570,7 @@ export class ModelClientFactory {
     const modelFamily = {
       family: selectedModel,
       base_instructions: providerName === 'google-ai-studio'
-        ? 'You are Gemini 2.5 Pro integrated with the BrowserX agent. Provide accurate answers and suggest tool usage when relevant.'
+        ? 'You are Gemini 2.5 Pro integrated with the Pi agent. Provide accurate answers and suggest tool usage when relevant.'
         : 'You are a helpful coding assistant.',
       supports_reasoning: supportsReasoning,
       supports_reasoning_summaries: supportsReasoningSummaries,

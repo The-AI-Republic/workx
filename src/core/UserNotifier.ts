@@ -5,6 +5,7 @@
 
 import type { EventMsg } from './protocol/events';
 import type { Event } from './protocol/types';
+import { t } from '@/extension/sidepanel/lib/i18n';
 
 /**
  * Notification types
@@ -259,7 +260,7 @@ export class UserNotifier {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        chrome.notifications.create(notification.id, chromeOptions as chrome.notifications.NotificationOptions, (id) => {
+        chrome.notifications.create(notification.id, chromeOptions as chrome.notifications.NotificationCreateOptions, (id) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -378,8 +379,8 @@ export class UserNotifier {
       priority: 'high',
       persistent: true,
       actions: [
-        { id: 'approve', label: 'Approve', style: 'primary' },
-        { id: 'reject', label: 'Reject', style: 'danger' },
+        { id: 'approve', label: t('Approve'), style: 'primary' },
+        { id: 'reject', label: t('Reject'), style: 'danger' },
       ],
       metadata: { approvalId },
     });
@@ -558,10 +559,10 @@ export class UserNotifier {
     inputMessages: string[],
     lastAssistantMessage?: string
   ): Promise<void> {
-    const title = 'Agent Turn Complete';
+    const title = t('Agent Turn Complete');
     const message = lastAssistantMessage
-      ? `Completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}`
-      : 'Agent turn completed successfully';
+      ? t(`Completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}`)
+      : t('Agent turn completed successfully');
 
     // Create notification with metadata
     await this.notify('success', title, message, {
@@ -630,15 +631,15 @@ export class UserNotifier {
     switch (eventMsg.type) {
       case 'Error':
         if (eventMsg.data?.message) {
-          await this.notifyError('Error', eventMsg.data.message);
+          await this.notifyError(t('Error'), eventMsg.data.message);
         }
         break;
 
       case 'ExecApprovalRequest':
         if (eventMsg.data) {
           await this.showApprovalRequest(
-            'Command Approval Required',
-            `Approve execution: ${eventMsg.data.command}`,
+            t('Command Approval Required'),
+            t(`Approve execution: ${eventMsg.data.command}`),
             eventMsg.data.id
           );
         }
@@ -647,8 +648,8 @@ export class UserNotifier {
       case 'ApplyPatchApprovalRequest':
         if (eventMsg.data) {
           await this.showApprovalRequest(
-            'File Change Approval Required',
-            `Approve changes to: ${eventMsg.data.path}`,
+            t('File Change Approval Required'),
+            t(`Approve changes to: ${eventMsg.data.path}`),
             eventMsg.data.id
           );
         }
@@ -656,7 +657,7 @@ export class UserNotifier {
 
       case 'TaskFailed':
         if (eventMsg.data?.reason) {
-          await this.notifyError('Task Failed', eventMsg.data.reason);
+          await this.notifyError(t('Task Failed'), eventMsg.data.reason);
         }
         break;
 

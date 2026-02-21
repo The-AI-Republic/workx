@@ -91,6 +91,14 @@
       </svg>`
     },
     {
+      id: 'approval',
+      label: t('Approval & Safety'),
+      description: t('Action approval mode, trusted domains, risk settings'),
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>`
+    },
+    {
       id: 'extension',
       label: t('Extension & Permission'),
       description: t('Extension configuration and permissions'),
@@ -119,7 +127,7 @@
       <button
         class="category-card"
         on:click={() => selectCategory(category.id)}
-        aria-label={`Open ${category.label} settings`}
+        aria-label={t('Open $1$ settings', { substitutions: [category.label] })}
       >
         <div class="category-header">
           <div class="category-icon">

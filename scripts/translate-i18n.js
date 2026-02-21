@@ -20,8 +20,10 @@ const path = require('path');
 // CONFIGURATION - Edit these values
 // ============================================================================
 const CONFIG = {
-  // Fireworks API configuration (set FIREWORKS_API_KEY environment variable)
-  apiKey: process.env.FIREWORKS_API_KEY,
+  // Fireworks API configuration
+  // Usage: npm run translate -- --api-key=fw_xxx
+  //    OR: FIREWORKS_API_KEY=fw_xxx npm run translate
+  apiKey: process.argv.find(a => a.startsWith('--api-key='))?.split('=')[1] || process.env.FIREWORKS_API_KEY,
   apiUrl: 'https://api.fireworks.ai/inference/v1/chat/completions',
 
   // Model for TRANSLATION
@@ -359,6 +361,18 @@ async function translateMissing() {
   const reportPath = path.join(projectRoot, CONFIG.validationReportPath);
 
   log('\n🌍 i18n Translation Tool', colors.cyan);
+
+  // Extract i18n keys from source before translating
+  log('\n🌐 Extracting i18n keys from source...', colors.yellow);
+  try {
+    const { extractI18n } = require('./extract-i18n.js');
+    extractI18n();
+    log('  ✓ Extraction complete', colors.green);
+  } catch (error) {
+    log(`  ✗ Extraction failed: ${error.message}`, colors.red);
+    process.exit(1);
+  }
+
   checkApiKey();
 
   // Load English messages for reference values

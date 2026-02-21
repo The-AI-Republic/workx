@@ -1,5 +1,5 @@
 /**
- * Tool registration and management for browserx-chrome
+ * Tool registration and management for pi
  */
 
 import { ToolRegistry } from './ToolRegistry';
@@ -14,6 +14,9 @@ import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
 import { PlanningTool } from './PlanningTool';
 import { WebSearchTool } from './WebSearchTool';
+import { DomToolRiskAssessor } from '../core/approval/assessors/DomToolRiskAssessor';
+import { StaticRiskAssessor } from '../core/approval/assessors/StaticRiskAssessor';
+import type { IRiskAssessor } from '../core/approval/types';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
 export { ToolRegistry } from './ToolRegistry';
@@ -76,8 +79,12 @@ export async function registerTools(
       }
     };
 
+    // Risk assessors for extension tools
+    const domRiskAssessor = new DomToolRiskAssessor();
+    const staticRiskAssessor = new StaticRiskAssessor();
+
     // Helper function to register a tool with error handling
-    const registerTool = async (toolName: string, toolInstance: any) => {
+    const registerTool = async (toolName: string, toolInstance: any, riskAssessor?: IRiskAssessor) => {
       if (!registry.getTool(toolName)) {
         const definition = toolInstance.getDefinition();
         console.log(`Registering ${toolName}...`);
@@ -92,7 +99,7 @@ export async function registerTools(
               toolName: context.toolName,
             }
           });
-        });
+        }, riskAssessor);
       } else {
         console.log(`${toolName} already registered, skipping...`);
       }
@@ -101,7 +108,7 @@ export async function registerTools(
     // Web Scraping Tool
     if (isToolEnabled('web_scraping')) {
       const webScrapingTool = new WebScrapingTool();
-      await registerTool('web_scraping', webScrapingTool);
+      await registerTool('web_scraping', webScrapingTool, staticRiskAssessor);
     } else {
       console.log('WebScrapingTool disabled in configuration, skipping...');
     }
@@ -109,7 +116,7 @@ export async function registerTools(
     // Form Automation Tool
     if (isToolEnabled('form_automation')) {
       const formAutomationTool = new FormAutomationTool();
-      await registerTool('form_automation', formAutomationTool);
+      await registerTool('form_automation', formAutomationTool, staticRiskAssessor);
     } else {
       console.log('FormAutomationTool disabled in configuration, skipping...');
     }
@@ -117,7 +124,7 @@ export async function registerTools(
     // Network Intercept Tool
     if (isToolEnabled('network_intercept')) {
       const networkInterceptTool = new NetworkInterceptTool();
-      await registerTool('network_intercept', networkInterceptTool);
+      await registerTool('network_intercept', networkInterceptTool, staticRiskAssessor);
     } else {
       console.log('NetworkInterceptTool disabled in configuration, skipping...');
     }
@@ -125,7 +132,7 @@ export async function registerTools(
     // Data Extraction Tool
     if (isToolEnabled('data_extraction')) {
       const dataExtractionTool = new DataExtractionTool();
-      await registerTool('data_extraction', dataExtractionTool);
+      await registerTool('data_extraction', dataExtractionTool, staticRiskAssessor);
     } else {
       console.log('DataExtractionTool disabled in configuration, skipping...');
     }
@@ -133,7 +140,7 @@ export async function registerTools(
     // DOM Tool
     if (isToolEnabled('dom_tool')) {
       const domTool = new DOMTool();
-      await registerTool('dom_tool', domTool);
+      await registerTool('dom_tool', domTool, domRiskAssessor);
     } else {
       console.log('DOMTool disabled in configuration, skipping...');
     }
@@ -141,7 +148,7 @@ export async function registerTools(
     // Navigation Tool
     if (isToolEnabled('navigation_tool')) {
       const navigationTool = new NavigationTool();
-      await registerTool('navigation_tool', navigationTool);
+      await registerTool('navigation_tool', navigationTool, staticRiskAssessor);
     } else {
       console.log('NavigationTool disabled in configuration, skipping...');
     }
@@ -149,7 +156,7 @@ export async function registerTools(
     // Storage Tool
     if (isToolEnabled('storage_tool')) {
       const storageTool = new StorageTool();
-      await registerTool('storage_tool', storageTool);
+      await registerTool('storage_tool', storageTool, staticRiskAssessor);
     } else {
       console.log('StorageTool disabled in configuration, skipping...');
     }
@@ -161,7 +168,7 @@ export async function registerTools(
       // Check if model supports image input
       if (!modelConfig || modelConfig.supportsImage !== false) {
         const pageVisionTool = new PageVisionTool();
-        await registerTool('page_vision', pageVisionTool);
+        await registerTool('page_vision', pageVisionTool, staticRiskAssessor);
       } else {
         console.log(`PageVisionTool disabled: Model "${modelConfig.name}" does not support image input`);
       }
@@ -174,7 +181,7 @@ export async function registerTools(
 
     // Planning Tool - Always enabled for task planning and progress tracking
     const planningTool = new PlanningTool();
-    await registerTool('planning_tool', planningTool);
+    await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
     console.log('PlanningTool registered (always enabled)');
 
     console.log('Advanced browser tools registration completed');

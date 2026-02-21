@@ -18,6 +18,7 @@ import type {
   EventMetadata,
 } from '@/types/ui';
 import { STYLE_PRESETS } from '@/types/ui';
+import { t } from '../../lib/i18n';
 
 /**
  * EventProcessor Implementation
@@ -158,6 +159,7 @@ export class EventProcessor {
       // Approvals
       case 'ExecApprovalRequest':
       case 'ApplyPatchApprovalRequest':
+      case 'ApprovalRequested':
         return 'approval';
 
       // Plan events
@@ -230,7 +232,7 @@ export class EventProcessor {
         id: event.id,
         category: 'message',
         timestamp: new Date(),
-        title: 'browserx',
+        title: t('browserx'),
         content: content,
         style: STYLE_PRESETS.agent_message,
         streaming: false,
@@ -243,7 +245,7 @@ export class EventProcessor {
         id: event.id,
         category: 'message',
         timestamp: new Date(),
-        title: 'user',
+        title: t('user'),
         content: msg.data.message || '',
         style: { textColor: 'text-cyan-400' },
         streaming: false,
@@ -265,7 +267,7 @@ export class EventProcessor {
         id: event.id,
         category: 'error',
         timestamp: new Date(),
-        title: 'ERROR',
+        title: t('ERROR'),
         content: msg.data.message,
         style: STYLE_PRESETS.error,
         status: 'error',
@@ -284,7 +286,7 @@ export class EventProcessor {
         const mentionsRetry = /\bretry/i.test(msg.data.error);
 
         if (hasRetryMetadata) {
-          let retryLine = 'Retrying';
+          let retryLine = t('Retrying');
 
           if (typeof msg.data.attempt === 'number') {
             if (typeof msg.data.maxRetries === 'number') {
@@ -300,7 +302,7 @@ export class EventProcessor {
 
           lines.push(retryLine);
         } else if (!mentionsRetry) {
-          lines.push('Retrying');
+          lines.push(t('Retrying'));
         }
       }
 
@@ -308,7 +310,7 @@ export class EventProcessor {
         id: event.id,
         category: 'error',
         timestamp: new Date(),
-        title: 'STREAM ERROR',
+        title: t('STREAM ERROR'),
         content: lines.join('\n'),
         style: STYLE_PRESETS.error,
         status: 'error',
@@ -335,8 +337,8 @@ export class EventProcessor {
         id: event.id,
         category: 'task',
         timestamp: new Date(),
-        title: 'Task started',
-        content: `Model: ${msg.data.model || 'unknown'}`,
+        title: t('Task started'),
+        content: t('Model: $1$', { substitutions: [msg.data.model || t('unknown')] }),
         style: STYLE_PRESETS.task_started,
         status: 'running',
         metadata,
@@ -359,16 +361,16 @@ export class EventProcessor {
           : undefined,
       };
 
-      let content = `Task completed in ${msg.data.turn_count || 0} turn(s)`;
+      let content = t('Task completed in $1$ turn(s)', { substitutions: [(msg.data.turn_count || 0).toString()] });
       if (tokenUsage) {
-        content += `\nTokens: ${tokenUsage.total_tokens?.toLocaleString() || 0}`;
+        content += '\n' + t('Tokens: $1$', { substitutions: [tokenUsage.total_tokens?.toLocaleString() || '0'] });
       }
 
       return {
         id: event.id,
         category: 'task',
         timestamp: new Date(),
-        title: 'Task complete',
+        title: t('Task complete'),
         content,
         style: STYLE_PRESETS.task_complete,
         status: 'success',
@@ -382,8 +384,8 @@ export class EventProcessor {
         id: event.id,
         category: 'task',
         timestamp: new Date(),
-        title: 'Task failed',
-        content: msg.data.message || 'Task failed',
+        title: t('Task failed'),
+        content: msg.data.message || t('Task failed'),
         style: STYLE_PRESETS.task_failed,
         status: 'error',
         collapsible: false,
@@ -416,8 +418,9 @@ export class EventProcessor {
     }
 
     if (msg.type === 'McpToolCallBegin') {
+      const callId = msg.data.call_id as string;
       const state: OperationState = {
-        callId: msg.data.call_id,
+        callId,
         type: 'tool',
         startTime: new Date(),
         buffer: '',
@@ -426,13 +429,13 @@ export class EventProcessor {
           toolParams: msg.data.params,
         },
       };
-      this.operationMetadata.set(msg.data.call_id, state);
+      this.operationMetadata.set(callId, state);
       return null;
     }
 
     if (msg.type === 'PatchApplyBegin') {
       const state: OperationState = {
-        callId: msg.data.session_id,
+        callId: msg.data.session_id as string,
         type: 'patch',
         startTime: new Date(),
         buffer: '',
@@ -440,14 +443,14 @@ export class EventProcessor {
           filesChanged: msg.data.num_files,
         },
       };
-      this.operationMetadata.set(msg.data.session_id, state);
+      this.operationMetadata.set(msg.data.session_id as string, state);
       return null;
     }
 
     // Handle End events
     if (msg.type === 'ExecCommandEnd') {
-      const state = this.operationMetadata.get(msg.data.session_id);
-      this.operationMetadata.delete(msg.data.session_id);
+      const state = this.operationMetadata.get(msg.data.session_id as string);
+      this.operationMetadata.delete(msg.data.session_id as string);
 
       if (!state) {
         // Orphaned End event - create standalone event
@@ -455,8 +458,8 @@ export class EventProcessor {
           id: event.id,
           category: 'tool',
           timestamp: new Date(),
-          title: 'exec (unknown command)',
-          content: 'Command completed',
+          title: t('exec (unknown command)'),
+          content: t('Command completed'),
           style:
             msg.data.exit_code === 0 ? STYLE_PRESETS.tool_success : STYLE_PRESETS.tool_error,
           status: msg.data.exit_code === 0 ? 'success' : 'error',
@@ -468,7 +471,7 @@ export class EventProcessor {
       const metadata: EventMetadata = {
         command: state.metadata.command as string,
         exitCode: msg.data.exit_code,
-        workingDir: state.metadata.workingDir as string,
+        tabId: state.metadata.tabId as number | undefined,
         duration: msg.data.duration_ms || duration,
       };
 
@@ -477,7 +480,7 @@ export class EventProcessor {
         category: 'tool',
         timestamp: new Date(),
         title: `exec ${state.metadata.command || 'command'}`,
-        content: state.buffer || '(no output)',
+        content: state.buffer || t('(no output)'),
         style: msg.data.exit_code === 0 ? STYLE_PRESETS.tool_success : STYLE_PRESETS.tool_error,
         status: msg.data.exit_code === 0 ? 'success' : 'error',
         metadata,
@@ -487,8 +490,8 @@ export class EventProcessor {
     }
 
     if (msg.type === 'McpToolCallEnd') {
-      const state = this.operationMetadata.get(msg.data.call_id);
-      this.operationMetadata.delete(msg.data.call_id);
+      const state = this.operationMetadata.get(msg.data.call_id as string);
+      this.operationMetadata.delete(msg.data.call_id as string);
 
       const duration = state ? new Date().getTime() - state.startTime.getTime() : 0;
       const metadata: EventMetadata = {
@@ -503,7 +506,7 @@ export class EventProcessor {
         category: 'tool',
         timestamp: new Date(),
         title: `tool ${state?.metadata.toolName || 'unknown'}`,
-        content: msg.data.error || msg.data.result || '(no result)',
+        content: msg.data.error || msg.data.result || t('(no result)'),
         style: success ? STYLE_PRESETS.tool_success : STYLE_PRESETS.tool_error,
         status: success ? 'success' : 'error',
         metadata,
@@ -513,8 +516,8 @@ export class EventProcessor {
     }
 
     if (msg.type === 'PatchApplyEnd') {
-      const state = this.operationMetadata.get(msg.data.session_id);
-      this.operationMetadata.delete(msg.data.session_id);
+      const state = this.operationMetadata.get(msg.data.session_id as string);
+      this.operationMetadata.delete(msg.data.session_id as string);
 
       const duration = state ? new Date().getTime() - state.startTime.getTime() : 0;
 
@@ -523,7 +526,7 @@ export class EventProcessor {
         category: 'tool',
         timestamp: new Date(),
         title: 'patch apply',
-        content: msg.data.error || 'Patch applied successfully',
+        content: msg.data.error || t('Patch applied successfully'),
         style: msg.data.error ? STYLE_PRESETS.tool_error : STYLE_PRESETS.tool_success,
         status: msg.data.error ? 'error' : 'success',
         metadata: { duration },
@@ -538,11 +541,11 @@ export class EventProcessor {
         id: event.id,
         category: 'tool',
         timestamp: new Date(),
-        title: 'web search',
+        title: t('web search'),
         content:
           msg.type === 'WebSearchEnd'
-            ? msg.data.result || msg.data.error || 'Search complete'
-            : 'Searching...',
+            ? msg.data.result || msg.data.error || t('Search complete')
+            : t('Searching...'),
         style:
           msg.type === 'WebSearchEnd' && !msg.data.error
             ? STYLE_PRESETS.tool_success
@@ -599,7 +602,7 @@ export class EventProcessor {
         id: event.id,
         category: 'reasoning',
         timestamp: new Date(),
-        title: 'thinking',
+        title: t('thinking'),
         content: content,
         style: STYLE_PRESETS.reasoning,
         streaming: false,
@@ -621,7 +624,7 @@ export class EventProcessor {
         id: event.id,
         category: 'reasoning',
         timestamp: new Date(),
-        title: 'detailed thinking',
+        title: t('detailed thinking'),
         content: content,
         style: STYLE_PRESETS.reasoning,
         streaming: false,
@@ -677,7 +680,7 @@ export class EventProcessor {
         id: event.id,
         category: 'approval',
         timestamp: new Date(),
-        title: 'Approval Required: Execute Command',
+        title: t('Approval Required: Execute Command'),
         content: msg.data.command || '',
         style: { textColor: 'text-yellow-400' },
         requiresApproval: {
@@ -686,10 +689,10 @@ export class EventProcessor {
           command: msg.data.command,
           explanation: msg.data.explanation,
           onApprove: () => {
-            console.log('Approval granted for:', msg.data.command);
+            this.sendApprovalDecision(event.id, 'approve');
           },
           onReject: () => {
-            console.log('Approval rejected for:', msg.data.command);
+            this.sendApprovalDecision(event.id, 'reject');
           },
         },
         collapsible: false,
@@ -701,22 +704,58 @@ export class EventProcessor {
         id: event.id,
         category: 'approval',
         timestamp: new Date(),
-        title: 'Approval Required: Apply Patch',
-        content: `Patch for ${msg.data.num_files || 0} file(s)`,
+        title: t('Approval Required: Apply Patch'),
+        content: t('Patch for $1$ file(s)', { substitutions: [(msg.data.num_files || 0).toString()] }),
         style: { textColor: 'text-yellow-400' },
         requiresApproval: {
           id: event.id,
           type: 'patch',
           explanation: msg.data.explanation,
           patch: {
-            path: '(multiple files)',
-            diff: '(patch details)',
+            path: t('(multiple files)'),
+            diff: t('(patch details)'),
           },
           onApprove: () => {
-            console.log('Patch approval granted');
+            this.sendApprovalDecision(event.id, 'approve');
           },
           onReject: () => {
-            console.log('Patch approval rejected');
+            this.sendApprovalDecision(event.id, 'reject');
+          },
+        },
+        collapsible: false,
+      };
+    }
+
+    if (msg.type === 'ApprovalRequested') {
+      const data = msg.data;
+      return {
+        id: event.id,
+        category: 'approval',
+        timestamp: new Date(),
+        title: t('Approval Required'),
+        content: data.command || data.explanation || '',
+        style: { textColor: 'text-yellow-400' },
+        requiresApproval: {
+          id: data.id,
+          type: 'tool',
+          toolName: data.tool_name,
+          command: data.command,
+          explanation: data.explanation,
+          riskScore: data.risk_score,
+          riskLevel: data.risk_level,
+          riskFactors: data.risk_factors,
+          countdown: data.timeout ? Math.floor(data.timeout / 1000) : 0,
+          onApprove: () => {
+            this.sendApprovalDecision(data.id, 'approve');
+          },
+          onReject: () => {
+            this.sendApprovalDecision(data.id, 'reject');
+          },
+          onRequestChange: (text: string) => {
+            this.sendApprovalDecision(data.id, 'reject', false, text);
+          },
+          onRemember: (scope: 'session' | 'no') => {
+            this.sendApprovalDecision(data.id, 'approve', scope === 'session');
           },
         },
         collapsible: false,
@@ -724,6 +763,36 @@ export class EventProcessor {
     }
 
     return null;
+  }
+
+  /**
+   * Send approval decision as a standard SUBMISSION.
+   * This routes through the same pipeline for both extension and desktop,
+   * reaching PiAgent.handleExecApproval() on all platforms.
+   */
+  private sendApprovalDecision(
+    id: string,
+    decision: 'approve' | 'reject',
+    remember?: boolean,
+    alternativeText?: string
+  ): void {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'SUBMISSION',
+        payload: {
+          id: `approval_${Date.now()}`,
+          op: {
+            type: 'ExecApproval',
+            id,
+            decision,
+            ...(remember !== undefined && { remember }),
+            ...(alternativeText && { alternativeText }),
+          },
+        },
+      });
+    } catch (error) {
+      console.error('[EventProcessor] Failed to send approval decision:', error);
+    }
   }
 
   /**
@@ -737,14 +806,14 @@ export class EventProcessor {
       const stepCount = planData.plan?.length || 0;
       const summary = planData.explanation
         ? planData.explanation
-        : `Plan: ${stepCount} step${stepCount !== 1 ? 's' : ''}`;
+        : t('Plan: $1$ step(s)', { substitutions: [stepCount.toString()] });
 
       return {
         id: event.id,
         category: 'plan',
         timestamp: new Date(),
-        title: 'Task Plan',
-        content: planData, // Pass the full plan data to PlanEvent component
+        title: t('Task Plan'),
+        content: planData as unknown as string, // Pass the full plan data to PlanEvent component
         style: { textColor: 'text-cyan-400' },
         collapsible: false,
       };
@@ -766,19 +835,17 @@ export class EventProcessor {
         return null;
       }
 
-      const content = `Tokens: ${usage.total_tokens?.toLocaleString() || 0}
-  Input: ${usage.input_tokens?.toLocaleString() || 0}${
-    usage.cached_input_tokens ? ` (${usage.cached_input_tokens.toLocaleString()} cached)` : ''
-  }
-  Output: ${usage.output_tokens?.toLocaleString() || 0}${
-    usage.reasoning_output_tokens ? `\n  Reasoning: ${usage.reasoning_output_tokens.toLocaleString()}` : ''
-  }`;
+      const content = t('Tokens: $1$', { substitutions: [usage.total_tokens?.toLocaleString() || '0'] }) +
+  '\n  ' + t('Input: $1$', { substitutions: [usage.input_tokens?.toLocaleString() || '0'] }) +
+    (usage.cached_input_tokens ? ` (${usage.cached_input_tokens.toLocaleString()} ${t('cached')})` : '') +
+  '\n  ' + t('Output: $1$', { substitutions: [usage.output_tokens?.toLocaleString() || '0'] }) +
+    (usage.reasoning_output_tokens ? '\n  ' + t('Reasoning: $1$', { substitutions: [usage.reasoning_output_tokens.toLocaleString()] }) : '');
 
       return {
         id: event.id,
         category: 'system',
         timestamp: new Date(),
-        title: 'Token Usage',
+        title: t('Token Usage'),
         content,
         style: STYLE_PRESETS.dimmed,
         collapsible: true,
@@ -791,7 +858,7 @@ export class EventProcessor {
         id: event.id,
         category: 'system',
         timestamp: new Date(),
-        title: 'Notification',
+        title: t('Notification'),
         content: msg.data.message || '',
         style: { textColor: 'text-gray-400' },
         collapsible: false,
@@ -804,7 +871,7 @@ export class EventProcessor {
       category: 'system',
       timestamp: new Date(),
       title: msg.type,
-      content: JSON.stringify(msg.data || {}, null, 2),
+      content: JSON.stringify((msg as any).data || {}, null, 2),
       style: STYLE_PRESETS.dimmed,
       collapsible: true,
       collapsed: true,
@@ -821,7 +888,7 @@ export class EventProcessor {
       id: event.id,
       category: 'system',
       timestamp: new Date(),
-      title: 'Unknown Event',
+      title: t('Unknown Event'),
       content: JSON.stringify(event, null, 2),
       style: STYLE_PRESETS.dimmed,
       collapsible: true,

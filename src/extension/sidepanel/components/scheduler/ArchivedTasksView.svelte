@@ -95,7 +95,7 @@
     <!-- Content -->
     <div class="view-content">
       {#if isLoading && archivedTasks.length === 0}
-        <div class="loading-state">Loading...</div>
+        <div class="loading-state">{$_t('Loading...')}</div>
       {:else if archivedTasks.length === 0}
         <div class="empty-state">
           <p>{$_t('No completed tasks yet')}</p>
@@ -119,7 +119,7 @@
 
         {#if hasMore}
           <button class="load-more-btn" on:click={loadMore} disabled={isLoading}>
-            {isLoading ? 'Loading...' : $_t('Load More')}
+            {isLoading ? $_t('Loading...') : $_t('Load More')}
           </button>
         {/if}
       {/if}

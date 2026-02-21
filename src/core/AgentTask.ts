@@ -1,7 +1,7 @@
 /**
  * AgentTask - Lightweight coordinator that delegates to TaskRunner
  *
- * This class acts as a thin coordination layer between BrowserxAgent and TaskRunner.
+ * This class acts as a thin coordination layer between PiAgent and TaskRunner.
  * The majority of task execution logic remains in TaskRunner, while AgentTask
  * provides lifecycle management and cancellation support.
  */

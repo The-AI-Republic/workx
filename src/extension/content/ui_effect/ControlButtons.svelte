@@ -12,6 +12,7 @@
    */
 
   import { createEventDispatcher } from 'svelte';
+  import { _t } from '../../sidepanel/lib/i18n';
 
   const dispatch = createEventDispatcher<{
     takeover: void;
@@ -56,7 +57,7 @@
         stroke-linejoin="round"
       />
     </svg>
-    Take Over
+    {$_t("Take Over")}
   </button>
 
   <button
@@ -81,7 +82,7 @@
         fill="currentColor"
       />
     </svg>
-    Stop Agent
+    {$_t("Stop Agent")}
   </button>
 </div>
 

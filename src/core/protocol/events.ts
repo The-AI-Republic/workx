@@ -64,12 +64,48 @@ export type EventMsg =
   | { type: 'Notification'; data: NotificationEvent }
   | { type: 'Interrupted' }
   | { type: 'TaskFailed'; data: TaskFailedEvent }
-  | { type: 'CompactionCompleted'; data: CompactionCompletedEvent };
+  | { type: 'CompactionCompleted'; data: CompactionCompletedEvent }
+  | { type: 'ApprovalAutoApproved'; data: ApprovalAutoApprovedEvent }
+  | { type: 'ApprovalRequested'; data: ApprovalRequestedEvent }
+  | { type: 'ApprovalGranted'; data: ApprovalGrantedEvent }
+  | { type: 'ApprovalDenied'; data: ApprovalDeniedEvent }
+  // DiffTracker events
+  | { type: 'ChangeAdded'; data: ChangeAddedEvent }
+  | { type: 'ChangesRetrieved'; data: ChangesRetrievedEvent }
+  | { type: 'RollbackStarted'; data: RollbackStartedEvent }
+  | { type: 'BatchRollbackStarted'; data: BatchRollbackStartedEvent }
+  | { type: 'SessionRollbackStarted'; data: SessionRollbackStartedEvent }
+  | { type: 'RollbackCompleted'; data: RollbackCompletedEvent }
+  | { type: 'SnapshotCreated'; data: SnapshotCreatedEvent }
+  | { type: 'SnapshotRestored'; data: SnapshotRestoredEvent }
+  | { type: 'ChangesCleared'; data: ChangesClearedEvent }
+  // Tool registry events
+  | { type: 'ToolRegistered'; data: ToolRegisteredEvent }
+  | { type: 'ToolUnregistered'; data: ToolUnregisteredEvent }
+  | { type: 'ToolExecutionStart'; data: ToolExecutionStartEvent }
+  | { type: 'ToolExecutionEnd'; data: ToolExecutionEndEvent }
+  | { type: 'ToolExecutionError'; data: ToolExecutionErrorEvent }
+  | { type: 'ToolExecutionTimeout'; data: ToolExecutionTimeoutEvent }
+  // Reasoning stream events
+  | { type: 'ReasoningSummaryDelta'; data: ReasoningSummaryDeltaEvent }
+  | { type: 'ReasoningContentDelta'; data: ReasoningContentDeltaEvent }
+  | { type: 'ReasoningSummaryPartAdded'; data: ReasoningSummaryPartAddedEvent }
+  // Turn lifecycle events
+  | { type: 'TurnStarted'; data: TurnStartedEvent }
+  | { type: 'TurnComplete'; data: TurnCompleteEvent }
+  | { type: 'ContextUpdated'; data: ContextUpdatedEvent }
+  | { type: 'TurnRetry'; data: TurnRetryEvent }
+  // Browser action events
+  | { type: 'DOMActionStart'; data: DOMActionStartEvent }
+  | { type: 'StorageActionStart'; data: StorageActionStartEvent }
+  | { type: 'NavigationActionStart'; data: NavigationActionStartEvent }
+;
 
 // Individual event payload types
 
 export interface ErrorEvent {
   message: string;
+  code?: string;
 }
 
 export interface TaskStartedEvent {
@@ -88,6 +124,7 @@ export interface TaskStartedEvent {
   browser_environment_policy?: string;
   reasoning_effort?: ReasoningEffortConfig;
   reasoning_summary?: ReasoningSummaryConfig;
+  turn_type?: string;
 }
 
 export interface TaskTokenUsageSummary {
@@ -155,6 +192,7 @@ export interface AgentMessageDeltaEvent {
 
 export interface AgentReasoningEvent {
   content: string;
+  reasoning?: string;
 }
 
 export interface AgentReasoningDeltaEvent {
@@ -180,21 +218,28 @@ export interface SessionConfiguredEvent {
 export interface McpToolCallBeginEvent {
   tool_name: string;
   params: any;
+  call_id?: string;
 }
 
 export interface McpToolCallEndEvent {
   tool_name: string;
   result?: any;
   error?: string;
+  call_id?: string;
+  duration_ms?: number;
 }
 
 export interface WebSearchBeginEvent {
-  query: string;
+  query?: string;
+  call_id?: string;
 }
 
 export interface WebSearchEndEvent {
-  call_id: string;
-  query: string;
+  call_id?: string;
+  query?: string;
+  result?: any;
+  error?: string;
+  results_count?: number;
 }
 
 export interface ExecCommandBeginEvent {
@@ -227,6 +272,8 @@ export interface ApplyPatchApprovalRequestEvent {
   id: string;
   path: string;
   patch: string;
+  num_files?: number;
+  explanation?: string;
 }
 
 export interface BackgroundEventEvent {
@@ -251,12 +298,15 @@ export interface StreamErrorEvent {
 export interface PatchApplyBeginEvent {
   path: string;
   description?: string;
+  session_id?: string;
+  num_files?: number;
 }
 
 export interface PatchApplyEndEvent {
   path: string;
   success: boolean;
   error?: string;
+  session_id?: string;
 }
 
 export interface TurnDiffEvent {
@@ -324,7 +374,7 @@ export interface TurnAbortedEvent {
   message?: string;
 }
 
-export type TurnAbortReason = 'user_interrupt' | 'automatic_abort' | 'error';
+export type TurnAbortReason = 'user_interrupt' | 'automatic_abort' | 'error' | 'user_request';
 
 export interface ConversationPathResponseEvent {
   path: string;
@@ -352,6 +402,7 @@ export interface NotificationEvent {
 export interface TaskFailedEvent {
   reason: string;
   error?: string;
+  message?: string;
 }
 
 /**
@@ -373,3 +424,204 @@ export interface CompactionCompletedEvent {
   /** Error message if compaction failed */
   error?: string;
 }
+
+/**
+ * Event emitted when a tool call is auto-approved by the approval system
+ */
+export interface ApprovalAutoApprovedEvent {
+  tool_name: string;
+  risk_score: number;
+  risk_level: string;
+}
+
+/**
+ * Event emitted when user approval is requested for a tool call
+ */
+export interface ApprovalRequestedEvent {
+  id: string;
+  tool_name: string;
+  risk_score: number;
+  risk_level: string;
+  risk_factors: string[];
+  explanation: string;
+  command?: string;
+  timeout?: number;
+}
+
+/**
+ * Event emitted when a tool call is granted by the user
+ */
+export interface ApprovalGrantedEvent {
+  id: string;
+  tool_name: string;
+  timestamp: number;
+  reason?: string;
+}
+
+/**
+ * Event emitted when a tool call is denied by the user or system
+ */
+export interface ApprovalDeniedEvent {
+  id: string;
+  tool_name: string;
+  reason: string;
+  timestamp: number;
+}
+
+// DiffTracker event payloads
+
+export interface ChangeAddedEvent {
+  change_id: string;
+  type: string;
+  operation: string;
+  target: unknown;
+}
+
+export interface ChangesRetrievedEvent {
+  filter: any;
+  count: number;
+}
+
+export interface RollbackStartedEvent {
+  change_id: string;
+  type: string;
+}
+
+export interface BatchRollbackStartedEvent {
+  change_ids: string[];
+  count: number;
+}
+
+export interface SessionRollbackStartedEvent {
+  session_id?: string;
+  turn_id?: string;
+  until?: number;
+}
+
+export interface RollbackCompletedEvent {
+  change_id: string;
+  success: boolean;
+}
+
+export interface SnapshotCreatedEvent {
+  snapshot_id: string;
+  session_id: string;
+  turn_id: string;
+  change_count: number;
+}
+
+export interface SnapshotRestoredEvent {
+  snapshot_id: string;
+  change_count: number;
+}
+
+export interface ChangesClearedEvent {
+  session_id?: string;
+  turn_id?: string;
+  cleared_count: number;
+}
+
+// Tool registry event payloads
+
+export interface ToolRegisteredEvent {
+  tool_name: string;
+  category?: string;
+  version?: string;
+  registration_time?: number;
+}
+
+export interface ToolUnregisteredEvent {
+  tool_name: string;
+  unregistration_time?: number;
+}
+
+export interface ToolExecutionStartEvent {
+  tool_name: string;
+  call_id?: string;
+  session_id?: string;
+  turn_id?: string;
+  start_time?: number;
+  params?: Record<string, unknown>;
+}
+
+export interface ToolExecutionEndEvent {
+  tool_name: string;
+  call_id?: string;
+  session_id?: string;
+  success: boolean;
+  duration?: number;
+}
+
+export interface ToolExecutionErrorEvent {
+  tool_name: string;
+  session_id?: string;
+  error: string;
+  duration?: number;
+}
+
+export interface ToolExecutionTimeoutEvent {
+  tool_name: string;
+  session_id?: string;
+  timeout_ms: number;
+}
+
+// Reasoning stream event payloads
+
+export interface ReasoningSummaryDeltaEvent {
+  delta: string;
+}
+
+export interface ReasoningContentDeltaEvent {
+  delta: string;
+}
+
+export interface ReasoningSummaryPartAddedEvent {
+  part_index?: number;
+}
+
+// Turn lifecycle event payloads
+
+export interface TurnStartedEvent {
+  session_id?: string;
+  turn_id?: string;
+}
+
+export interface TurnCompleteEvent {
+  session_id?: string;
+  turn_id?: string;
+  success?: boolean;
+}
+
+export interface ContextUpdatedEvent {
+  session_id?: string;
+  context_type?: string;
+}
+
+export interface TurnRetryEvent {
+  turn_id?: string;
+  attempt?: number;
+  reason?: string;
+}
+
+// Browser action event payloads
+
+export interface DOMActionStartEvent {
+  action: string;
+  selector?: string;
+  value?: string;
+  options?: Record<string, unknown>;
+}
+
+export interface StorageActionStartEvent {
+  action: string;
+  key?: string;
+  value?: unknown;
+  area?: string;
+}
+
+export interface NavigationActionStartEvent {
+  action: string;
+  url?: string;
+  options?: Record<string, unknown>;
+}
+

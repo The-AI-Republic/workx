@@ -215,7 +215,7 @@ export class ExtensionBrowserController implements BrowserController {
     this.ensureConnected();
 
     await this.evaluate(
-      (sel: string, vals: string[]) => {
+      ((sel: string, vals: string[]) => {
         const el = document.querySelector(sel) as HTMLSelectElement;
         if (!el) throw new Error(`Element not found: ${sel}`);
 
@@ -223,7 +223,7 @@ export class ExtensionBrowserController implements BrowserController {
           option.selected = vals.includes(option.value);
         }
         el.dispatchEvent(new Event('change', { bubbles: true }));
-      },
+      }) as (...args: unknown[]) => void,
       selector,
       values
     );
@@ -260,15 +260,15 @@ export class ExtensionBrowserController implements BrowserController {
     this.ensureConnected();
 
     if (typeof target === 'string') {
-      await this.evaluate((sel: string) => {
+      await this.evaluate(((sel: string) => {
         const el = document.querySelector(sel);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, target);
+      }) as (...args: unknown[]) => void, target);
     } else {
       await this.evaluate(
-        (x: number, y: number) => {
+        ((x: number, y: number) => {
           window.scrollTo({ left: x, top: y, behavior: 'smooth' });
-        },
+        }) as (...args: unknown[]) => void,
         target.x,
         target.y
       );

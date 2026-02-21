@@ -2,8 +2,8 @@
  * Type guards for runtime type checking of protocol types
  */
 
-import { Submission, Event, Op, InputItem } from './types';
-import { EventMsg } from './events';
+import type { Submission, Event, Op, InputItem } from './types';
+import type { EventMsg } from './events';
 
 /**
  * Check if an object is a Submission

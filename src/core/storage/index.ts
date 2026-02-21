@@ -51,7 +51,7 @@ export async function createStorageProvider(
     const { SQLiteStorageProvider } = await import(
       '@/desktop/storage/SQLiteStorageProvider'
     );
-    return new SQLiteStorageProvider(options);
+    return new SQLiteStorageProvider();
   }
 }
 

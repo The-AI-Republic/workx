@@ -1,8 +1,9 @@
 // Import types from their respective modules
 import type { ResponseItem } from '../../protocol/types';
 
-// Re-export ResponseEvent from its dedicated file
+// Re-export types for consumers
 export type { ResponseEvent } from './ResponseEvent';
+export type { ResponseItem } from '../../protocol/types';
 
 
 /**
@@ -172,43 +173,4 @@ export interface FreeformToolFormat {
   definition: string;
 }
 
-// Type guards for ResponseEvent variants
-export function isResponseEvent(obj: any): obj is ResponseEvent {
-  return obj && typeof obj.type === 'string';
-}
-
-export function isCreated(event: ResponseEvent): event is { type: 'Created' } {
-  return event.type === 'Created';
-}
-
-export function isOutputItemDone(event: ResponseEvent): event is { type: 'OutputItemDone'; item: ResponseItem } {
-  return event.type === 'OutputItemDone';
-}
-
-export function isCompleted(event: ResponseEvent): event is { type: 'Completed'; responseId: string; tokenUsage?: TokenUsage } {
-  return event.type === 'Completed';
-}
-
-export function isOutputTextDelta(event: ResponseEvent): event is { type: 'OutputTextDelta'; delta: string } {
-  return event.type === 'OutputTextDelta';
-}
-
-export function isReasoningSummaryDelta(event: ResponseEvent): event is { type: 'ReasoningSummaryDelta'; delta: string } {
-  return event.type === 'ReasoningSummaryDelta';
-}
-
-export function isReasoningContentDelta(event: ResponseEvent): event is { type: 'ReasoningContentDelta'; delta: string } {
-  return event.type === 'ReasoningContentDelta';
-}
-
-export function isReasoningSummaryPartAdded(event: ResponseEvent): event is { type: 'ReasoningSummaryPartAdded' } {
-  return event.type === 'ReasoningSummaryPartAdded';
-}
-
-export function isWebSearchCallBegin(event: ResponseEvent): event is { type: 'WebSearchCallBegin'; callId: string } {
-  return event.type === 'WebSearchCallBegin';
-}
-
-export function isRateLimits(event: ResponseEvent): event is { type: 'RateLimits'; snapshot: RateLimitSnapshot } {
-  return event.type === 'RateLimits';
-}
+// Type guards are defined in ResponseEvent.ts — do not duplicate here

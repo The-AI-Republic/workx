@@ -181,11 +181,11 @@ export class SessionCacheManager {
   }
 
   /**
-   * Generate 6-character alphanumeric ID using crypto.getRandomValues
+   * Generate 8-character alphanumeric ID using crypto.getRandomValues
    */
   private generateId(): string {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    const array = new Uint8Array(6);
+    const array = new Uint8Array(8);
     crypto.getRandomValues(array);
     return Array.from(array, byte => chars[byte % chars.length]).join('');
   }

@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IToolsConfig } from '@/config/types';
-  import { _t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
   export let settingsConfig: AgentConfig;
   export let highlightSettingId: string | undefined = undefined;
@@ -98,7 +98,7 @@
       }
     } catch (error) {
       console.error('[ToolsSettings] Failed to load settings:', error);
-      saveMessage = 'Failed to load settings';
+      saveMessage = t('Failed to load settings');
       saveMessageType = 'error';
     }
   }
@@ -165,7 +165,7 @@
     if (!newBindMountPath.trim()) return;
     const path = newBindMountPath.trim();
     if (!path.startsWith('/') && !path.match(/^[A-Z]:\\/)) {
-      saveMessage = 'Bind mount path must be absolute';
+      saveMessage = t('Bind mount path must be absolute');
       saveMessageType = 'error';
       setTimeout(() => { saveMessage = ''; saveMessageType = ''; }, 3000);
       return;
@@ -201,7 +201,7 @@
 
       originalTools = { ...currentTools };
       isDirty = false;
-      saveMessage = 'Settings saved successfully';
+      saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
 
       dispatch('saved', { success: true });
@@ -214,7 +214,7 @@
     } catch (error) {
       console.error('[ToolsSettings] Failed to save settings:', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      saveMessage = `Failed to save settings: ${errorMsg}`;
+      saveMessage = t('Failed to save settings: $1$', { substitutions: [errorMsg] });
       saveMessageType = 'error';
 
       dispatch('saved', { success: false, error: errorMsg });

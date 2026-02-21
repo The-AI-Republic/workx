@@ -24,9 +24,6 @@ const mockChrome = {
   }
 };
 
-// @ts-ignore
-global.chrome = mockChrome;
-
 describe('MessageRouter ResponseEvent Integration', () => {
   let backgroundRouter: MessageRouter;
   let sidepanelRouter: MessageRouter;
@@ -34,6 +31,13 @@ describe('MessageRouter ResponseEvent Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Must set chrome mock AFTER vi.clearAllMocks and AFTER setup.ts beforeEach
+    // because setup.ts overwrites global.chrome without onConnect
+    Object.defineProperty(globalThis, 'chrome', {
+      value: mockChrome,
+      writable: true,
+    });
 
     backgroundRouter = new MessageRouter('background');
     sidepanelRouter = new MessageRouter('sidepanel');
@@ -126,7 +130,7 @@ describe('MessageRouter ResponseEvent Integration', () => {
         expectedType: MessageType.RESPONSE_WEB_SEARCH_CALL_BEGIN
       },
       {
-        event: { type: 'RateLimits', snapshot: { requestsRemaining: 100 } },
+        event: { type: 'RateLimits', snapshot: { primary: { used_percent: 10, window_minutes: 60, resets_in_seconds: 300 } } },
         expectedType: MessageType.RESPONSE_RATE_LIMITS
       }
     ];
@@ -239,6 +243,8 @@ describe('MessageRouter ResponseEvent Integration', () => {
   });
 
   test('should handle message timeout', async () => {
+    vi.useFakeTimers();
+
     const testEvent: ResponseEvent = {
       type: 'OutputTextDelta',
       delta: 'Timeout test'
@@ -249,9 +255,16 @@ describe('MessageRouter ResponseEvent Integration', () => {
       // Don't call callback - simulates timeout
     });
 
+    // Start the send (will be pending)
+    const sendPromise = backgroundRouter.sendResponseEvent(testEvent);
+
+    // Advance timer past the 30 second timeout
+    vi.advanceTimersByTime(31000);
+
     // Should timeout after configured delay
-    await expect(backgroundRouter.sendResponseEvent(testEvent))
-      .rejects.toThrow('Message timeout');
+    await expect(sendPromise).rejects.toThrow('Message timeout');
+
+    vi.useRealTimers();
   });
 
   test('should handle Chrome runtime errors', async () => {

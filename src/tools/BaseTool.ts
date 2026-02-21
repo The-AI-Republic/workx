@@ -10,11 +10,11 @@
  */
 export type JsonSchema =
   | { type: 'boolean'; description?: string }
-  | { type: 'string'; description?: string }
+  | { type: 'string'; description?: string; enum?: string[] }
   | { type: 'number'; description?: string }
   | { type: 'integer'; description?: string }
   | { type: 'array'; items: JsonSchema; description?: string }
-  | { type: 'object'; properties: Record<string, JsonSchema>; required?: string[]; additionalProperties?: boolean };
+  | { type: 'object'; properties?: Record<string, JsonSchema>; required?: string[]; additionalProperties?: boolean; description?: string };
 
 /**
  * Response API tool definition
@@ -99,6 +99,7 @@ export interface ToolExecutionRequest {
   turnId: string;
   tabId?: number; // Current session's bound tab ID
   timeout?: number;
+  metadata?: Record<string, any>; // Additional context (currentUrl, currentDomain, cwd, etc.)
 }
 
 /**
@@ -312,7 +313,7 @@ export abstract class BaseTool {
 
     // Validate each parameter
     for (const [paramName, paramValue] of Object.entries(parameters)) {
-      const propSchema = schema.properties[paramName];
+      const propSchema = schema.properties?.[paramName];
 
       if (!propSchema) {
         if (!schema.additionalProperties) {
@@ -373,7 +374,7 @@ export abstract class BaseTool {
     // Object property validation
     if (schema.type === 'object' && 'properties' in schema && typeof value === 'object' && !Array.isArray(value)) {
       for (const [propName, propValue] of Object.entries(value)) {
-        const propSchema = schema.properties[propName];
+        const propSchema = schema.properties?.[propName];
         if (propSchema) {
           const propErrors = this.validateJsonSchemaValue(`${paramName}.${propName}`, propValue, propSchema);
           errors.push(...propErrors);
@@ -548,7 +549,7 @@ export abstract class BaseTool {
 
     if (validation.status === 'invalid') {
       // Throw TabInvalidError when validation fails
-      throw new TabInvalidError(tabId, validation.reason, sessionId);
+      throw new TabInvalidError(tabId, validation.reason, sessionId || 'unknown');
     }
 
     if (validation.status !== 'valid') {
@@ -654,7 +655,7 @@ export abstract class BaseTool {
 
     if (chrome.permissions) {
       const hasPermissions = await chrome.permissions.contains({
-        permissions,
+        permissions: permissions as chrome.runtime.ManifestPermissions[],
       });
 
       if (!hasPermissions) {

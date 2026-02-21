@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Agente de IA geral no navegador para tarefas de trabalho"
   },
+  "1_API_Key": {
+    "message": "$1$ Chave API",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ Chave API removida com sucesso",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} tarefa(s) perdeu o horário programado enquanto o navegador estava fechado."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - a precisão pode ser reduzida)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(ativo)"
+  },
+  "multiple_files": {
+    "message": "(vários ficheiros)"
+  },
+  "no_output": {
+    "message": "(sem saída)"
+  },
+  "no_result": {
+    "message": "(sem resultado)"
+  },
+  "patch_details": {
+    "message": "(detalhes do patch)"
+  },
+  "Enter_command": {
+    "message": ">> Introduzir comando..."
+  },
+  "A2A_Agents": {
+    "message": "Agentes A2A"
+  },
   "API_Key": {
-    "message": ""
+    "message": "Chave API"
   },
   "API_Key_Configuration": {
     "message": "Configuração da Chave API"
   },
+  "API_Version": {
+    "message": "Versão da API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "A edição da chave API está desativada no modo backend"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "Chave API para autenticação (armazenada encriptada)"
+  },
+  "API_key_has_expired": {
+    "message": "A chave API expirou"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "A chave API tem permissões insuficientes"
+  },
+  "API_key_saved_successfully": {
+    "message": "Chave API guardada com sucesso!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "As chaves API são encriptadas e armazenadas localmente no seu navegador. Nunca são enviadas para servidores externos, exceto nas chamadas API."
@@ -20,47 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Aceder ao armazenamento do navegador (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Ação"
-  },
-  "Action_Details": {
-    "message": "Detalhes da Ação"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Modo de aprovação de ação, domínios de confiança, definições de risco"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "Sessões Ativas"
   },
   "Add": {
-    "message": ""
+    "message": "Adicionar"
   },
-  "Add_Modification": {
-    "message": "Adicionar Modificação"
+  "Add_Agent": {
+    "message": "Adicionar agente"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Adicionar servidor"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Adicionar tarefa"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Adicionar um servidor para conectar a ferramentas externas."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Adicionar um agente para conectar a competências externas."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Montagens bind adicionais"
   },
   "Advanced_Configuration": {
     "message": "Configuração Avançada"
   },
-  "Advanced_Options": {
-    "message": "Opções Avançadas"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Configurações avançadas"
+  },
+  "Agent": {
+    "message": "Agente"
   },
   "Agent_Execution_Tools": {
     "message": "Ferramentas de Execução do Agente"
   },
+  "Agent_Turn_Complete": {
+    "message": "Turno do agente concluído"
+  },
+  "Agent_URL_is_required": {
+    "message": "É necessário o URL do agente"
+  },
+  "Agent_added_successfully": {
+    "message": "Agente adicionado com sucesso"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "O nome do agente só pode conter letras, números e hífens"
+  },
+  "Agent_name_is_required": {
+    "message": "É necessário o nome do agente"
+  },
+  "Agent_not_initialized": {
+    "message": "Agente não inicializado"
+  },
+  "Agent_removed_successfully": {
+    "message": "Agente removido com sucesso"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Turno do agente concluído com sucesso"
+  },
+  "Agent_updated_successfully": {
+    "message": "Agente atualizado com sucesso"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Todas as ações são aprovadas automaticamente nestes domínios."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Todas as ações são negadas nestes domínios."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "Todos os comandos são executados dentro de uma sandbox nativa do SO. Escritas restritas ao directório de workspace."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Permitir que o agente execute comandos do sistema (usar com cautela)"
@@ -72,31 +168,99 @@
     "message": "Permitir que scripts de conteúdo sejam executados em páginas web"
   },
   "Allowed": {
-    "message": ""
+    "message": "Permitido"
   },
   "Allowed_Origins": {
     "message": "Origens Permitidas"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Apenas caracteres alfanuméricos e hífens (1-50 caracteres)"
   },
-  "Approval_History": {
-    "message": "Histórico de Aprovações"
+  "Always_Approve": {
+    "message": "Aprovar sempre"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: A sua IA pessoal (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Aprovação e Segurança"
+  },
+  "Approval_Mode": {
+    "message": "Modo de aprovação"
+  },
+  "Approval_Required": {
+    "message": "Aprovação necessária"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Aprovação necessária: Aplicar patch"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Aprovação necessária: Executar comando"
   },
   "Approve": {
     "message": "Aprovar"
   },
-  "Approve_this_action": {
-    "message": "Aprovar esta ação"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Aprovar alterações a: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Aprovar execução: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Tem a certeza de que pretende cancelar esta tarefa?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Tem a certeza de que pretende remover este agente?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Tem a certeza de que pretende remover a sua chave API $1$?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Pedir ao Browserx para extrair dados estruturados de qualquer página web"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Solicitar para risco médio e superior (risco > 30). Recomendado para a maioria dos utilizadores."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Solicitar apenas para ações de alto risco (risco > 60). Para utilizadores experientes."
+  },
+  "Auth_Type": {
+    "message": "Tipo de autenticação"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Credencial de autenticação (armazenada encriptada)"
+  },
+  "Authentication_failed": {
+    "message": "Falha na autenticação"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Método de autenticação para o agente"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "Automático (predefinido)"
+  },
+  "Auto_approve_everything": {
+    "message": "Aprovar tudo automaticamente"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Aprovar tudo automaticamente. As regras de negação continuam a aplicar‑se. Use por sua conta e risco."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Aprovado automaticamente -- tempo limite atingido"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Iniciar a aplicação automaticamente ao iniciar sessão no computador"
+  },
+  "Available_Skills": {
+    "message": "Competências disponíveis"
   },
   "Available_Tools": {
-    "message": ""
+    "message": "Ferramentas disponíveis"
   },
   "Available": {
     "message": "Disponível:"
@@ -104,20 +268,62 @@
   "Back": {
     "message": "Voltar"
   },
+  "Back_to_Model_Config": {
+    "message": "Voltar à Configuração do Modelo"
+  },
   "Backend_Mode": {
     "message": "Modo Backend"
   },
   "Backend_Mode_Active": {
     "message": "Modo Backend Ativo"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Backend não disponível. Aguarde um momento e tente novamente."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Erro do servidor backend - tente novamente mais tarde"
+  },
+  "Backoff_Multiplier": {
+    "message": "Multiplicador de Retardo"
+  },
+  "Balanced": {
+    "message": "Equilibrado"
+  },
+  "Base_URL": {
+    "message": "URL base"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "URL base não configurada para este fornecedor"
+  },
+  "Bearer_Token": {
+    "message": "Bearer Token"
+  },
   "Beta": {
     "message": "Beta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "O caminho de montagem bind deve ser absoluto"
+  },
+  "Blocked_Domains": {
+    "message": "Domínios bloqueados"
   },
   "Browser_Tools": {
     "message": "Ferramentas do Navegador"
   },
   "Browser_automation_tool_toggles": {
     "message": "Alternar ferramentas de automação do navegador"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "Configurações de cache"
@@ -131,8 +337,36 @@
   "Cancel": {
     "message": "Cancelar"
   },
+  "Cancelled": {
+    "message": "Cancelado"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Não é possível executar a tarefa: Nenhuma chave API configurada para ${providerName}. Por favor, vá a Definições → Configuração de Modelo e adicione a sua chave API."
+  },
+  "Cannot_select_model_1": {
+    "message": "Não é possível selecionar o modelo: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Não é possível enviar a mensagem: Nenhuma chave API configurada para $1$. Por favor, clique no botão Definições e configure a sua chave API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Capacidades"
+  },
   "Chat_History": {
     "message": "Histórico de conversas"
+  },
+  "Checking_agent_status": {
+    "message": "A verificar o estado do agente..."
   },
   "Choose_AI_Model": {
     "message": "Escolher modelo de IA"
@@ -149,29 +383,41 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "Interface de chat limpa e moderna, semelhante ao ChatGPT"
   },
-  "Clear_search": {
-    "message": ""
-  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Clique no ícone do Browserx na sua barra de ferramentas ou prima Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "Clique para cancelar o início de sessão"
   },
   "Click_to_select_a_model": {
     "message": "Clique para selecionar um modelo"
   },
+  "Close": {
+    "message": "Fechar"
+  },
   "Close_settings": {
     "message": "Fechar configurações"
+  },
+  "Collapse": {
+    "message": "Recolher"
+  },
+  "Command_Approval_Required": {
+    "message": "Aprovação de Comando Necessária"
+  },
+  "Command_completed": {
+    "message": "Comando concluído"
   },
   "Command": {
     "message": "Comando"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "Os comandos são executados diretamente no host. O filtro de segurança continua a aplicar‑se."
   },
   "Completed": {
-    "message": ""
+    "message": "Concluído"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Concluído: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Comprimir dados em cache para poupar espaço de armazenamento"
@@ -179,41 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Configurar modelo de IA e chaves de API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Configure uma chave API nas Definições"
+  },
+  "Configured": {
+    "message": "Configurado"
+  },
+  "Configured_Agents": {
+    "message": "Agentes Configurados"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Servidores Configurados"
   },
   "Connect": {
-    "message": ""
+    "message": "Conectar"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Ligar a agentes do protocolo Agent-to-Agent (A2A) para ampliar as capacidades com competências externas de agentes."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Ligar a servidores do Model Context Protocol (MCP) para ampliar o agente com ferramentas externas."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Ligar a um agente A2A para descobrir competências."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Ligar a um servidor MCP para descobrir ferramentas."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Ligar a servidores externos de ferramentas MCP"
   },
   "Connected": {
     "message": "Conectado"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Ligado com sucesso"
   },
-  "Context": {
-    "message": "Contexto"
+  "Connecting": {
+    "message": "A ligar..."
+  },
+  "Connection_error": {
+    "message": "Erro de ligação"
+  },
+  "Connection_failed_1": {
+    "message": "Falha na ligação: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Falha na ligação: URL base não configurada"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Falha na ligação: configuração do modelo selecionado em falta"
+  },
+  "Connection_successful": {
+    "message": "Ligação bem-sucedida!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Teste de ligação falhou: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Teste de ligação falhou: Chave API inválida"
+  },
+  "Connection_test_successful": {
+    "message": "Teste de ligação bem-sucedido!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Teste de ligação bem-sucedido! (Chave API válida)"
+  },
+  "Connection_was_refused": {
+    "message": "Ligação recusada"
+  },
+  "Connection_was_reset": {
+    "message": "Ligação reiniciada"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "O conteúdo viola a política: conteúdo ${contentType} não é permitido"
+  },
+  "Context_Window": {
+    "message": "Janela de Contexto"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Contexto compactado: guardados ~ $1$k tokens",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Controla o quão agressivamente o agente solicita aprovação."
   },
   "Create_New_Tab": {
     "message": "Criar nova aba"
   },
   "Created": {
-    "message": ""
+    "message": "Criado"
+  },
+  "Creator": {
+    "message": "Criador"
   },
   "Credit_Details": {
     "message": "Detalhes de crédito"
   },
   "Current_Plan": {
     "message": "Plano atual:"
+  },
+  "DNS_lookup_failed": {
+    "message": "Falha na pesquisa DNS"
   },
   "DOM_Tool": {
     "message": "Ferramenta DOM"
@@ -225,10 +552,34 @@
     "message": "Ferramenta de extração de dados"
   },
   "Date": {
-    "message": ""
+    "message": "Data"
   },
   "Days_until_expiration": {
     "message": "Dias até à expiração"
+  },
+  "Debug_logging_disabled": {
+    "message": "Registo de depuração desativado"
+  },
+  "Debug_logging_enabled": {
+    "message": "Registo de depuração ativado"
+  },
+  "Default": {
+    "message": "Padrão"
+  },
+  "Deny": {
+    "message": "Negar"
+  },
+  "Deprecated": {
+    "message": "Obsoleto"
+  },
+  "Deprecation_Message": {
+    "message": "Mensagem de descontinuação"
+  },
+  "Description": {
+    "message": "Descrição"
+  },
+  "Desktop_mode": {
+    "message": "Modo de secretária"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Desenvolvido e suportado pela AI Republic"
@@ -237,22 +588,37 @@
     "message": "Descartar alterações"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Desconectar"
+  },
+  "Disconnected_successfully": {
+    "message": "Desconectado com sucesso"
   },
   "Dismiss": {
-    "message": ""
+    "message": "Ignorar"
+  },
+  "Dismiss_notification": {
+    "message": "Ignorar notificação"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Mostrar consumo de tokens (tokens de entrada/saída) quando as tarefas terminarem"
   },
+  "Draft": {
+    "message": "Rascunho"
+  },
   "Duration": {
-    "message": ""
+    "message": "Duração"
+  },
+  "ERROR": {
+    "message": "ERRO"
   },
   "Edit": {
-    "message": ""
+    "message": "Editar"
+  },
+  "Edit_Agent": {
+    "message": "Editar Agente"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Editar Servidor"
   },
   "Enable_All_Tools": {
     "message": "Ativar todas as ferramentas"
@@ -270,40 +636,52 @@
     "message": "Ativar extensão"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Ativar ferramentas do Protocolo de Contexto de Modelo dos servidores MCP conectados"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Ativar ligação automática ao iniciar o Browserx"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Ativar cache para melhorar o desempenho ao armazenar dados frequentemente acedidos"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Ativar registo de depuração"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Ativar pesquisa web para o agente"
   },
   "Enabled": {
-    "message": ""
+    "message": "Ativado"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Introduza a chave API, se necessário"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Introduza a chave API ou token bearer"
   },
   "Enter_your_LLM_API_key": {
     "message": "Introduza a sua chave API LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Introduza a sua tarefa..."
   },
   "Error": {
-    "message": ""
+    "message": "Erro"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Erro: Não está ligado ao agente. Por favor, recarregue a página."
   },
   "Execute_Commands": {
     "message": "Executar comandos"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Modo de Execução"
+  },
+  "Exit_Code": {
+    "message": "Código de Saída:"
+  },
+  "Expand": {
+    "message": "Expandir"
   },
   "Expire_after_days": {
     "message": "Expirar após $1$ dias",
@@ -313,8 +691,11 @@
       }
     }
   },
-  "Explain_your_decision": {
-    "message": "Explique a sua decisão..."
+  "Explain_this_info_selectionText": {
+    "message": "Explicar isto: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Explicar com o Browserx"
   },
   "Extension_Permission": {
     "message": "Extensão e permissão"
@@ -332,31 +713,146 @@
     "message": "Créditos Adicionais"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Diretórios extra acessíveis dentro da sandbox"
   },
   "Extract_Data": {
     "message": "Extrair dados:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Extrair dados com o Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extrair padrões de dados específicos das páginas"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "Extrair dados estruturados desta página"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "Extrair dados estruturados de páginas web"
   },
+  "Failed": {
+    "message": "Falhou"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Falha ao mudar o modelo: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Falha ao conectar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Falha ao criar um novo separador. Por favor, tente novamente."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Falha ao criar separador do navegador: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Falha ao desconectar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Falha ao carregar as definições A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Falha ao carregar a conversa. Por favor, tente novamente."
+  },
   "Failed_to_load_preferences": {
     "message": "Falha ao carregar as preferências"
+  },
+  "Failed_to_load_settings": {
+    "message": "Falha ao carregar as definições"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Falha ao remover a chave API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Falha ao remover o agente: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Falha ao guardar a chave API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Falha ao guardar a definição de registo de depuração: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "Falha ao guardar as definições"
   },
+  "Failed_to_save_settings_1": {
+    "message": "Falha ao guardar as definições: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Falha ao guardar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Falha ao enviar a mensagem. Por favor, tente novamente."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Falha ao iniciar nova conversa. Por favor, tente novamente."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Falha ao parar a tarefa. Por favor, tente novamente."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Falha ao mudar para o separador ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Falha ao testar a ligação"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Falha ao atualizar o modo API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Falha ao atualizar o nível de serviço: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Aprovação de alteração de ficheiro necessária"
+  },
   "File_Operations_Not_Available": {
     "message": "Operações de Ficheiro (Não Disponível)"
   },
-  "File_Path": {
-    "message": "Caminho do Ficheiro"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Preencher formulários, submeter dados, interagir com elementos de formulário"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Ferramenta de Automação de Formulários"
@@ -365,7 +861,7 @@
     "message": "Acesso Total (Perigoso)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "Entrada completa"
   },
   "General": {
     "message": "Geral"
@@ -390,17 +886,64 @@
   "Hello_World": {
     "message": "Olá Mundo"
   },
-  "History": {
-    "message": "Histórico"
+  "Hide_API_key": {
+    "message": "Ocultar chave API"
+  },
+  "High_Speed": {
+    "message": "Alta velocidade"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "Como o diretório do espaço de trabalho é montado na sandbox"
   },
-  "Impact": {
-    "message": "Impacto"
+  "Image_Input": {
+    "message": "Entrada de imagem"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Melhorar este texto: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Melhorar com Browserx"
+  },
+  "In": {
+    "message": "Em:"
+  },
+  "Incompatible_features": {
+    "message": "Funcionalidades incompatíveis:"
+  },
+  "Initial_Delay": {
+    "message": "Atraso inicial"
+  },
+  "Input_Token_Price": {
+    "message": "Preço do token de entrada"
+  },
+  "Input": {
+    "message": "Entrada:"
+  },
+  "Input_1": {
+    "message": "Entrada: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Interceptar e modificar pedidos/respostas de rede"
+  },
+  "Invalid_API_key": {
+    "message": "Chave API inválida"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Chave API inválida fornecida"
+  },
+  "Invalid_URL_format": {
+    "message": "Formato de URL inválido"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Formato de submissão inválido: campo op em falta"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Formato de submissão inválido: campo type em falta no op"
   },
   "Keyboard_Shortcuts": {
     "message": "Atalhos de Teclado"
@@ -418,31 +961,52 @@
     "message": "Saiba mais"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Deixe vazio para manter o atual"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Lista de origens permitidas (uma por linha). Suporta curingas (*)."
   },
   "Load_More": {
-    "message": ""
+    "message": "Carregar Mais"
+  },
+  "Load_more": {
+    "message": "Carregar mais"
+  },
+  "Loading_configuration": {
+    "message": "A carregar configuração..."
   },
   "Loading_credits": {
     "message": "A carregar créditos..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "A carregar detalhes..."
+  },
+  "Loading_history": {
+    "message": "A carregar histórico..."
   },
   "Loading_settings": {
     "message": "A carregar definições..."
   },
+  "Loading_tabs": {
+    "message": "A carregar separadores..."
+  },
   "Loading": {
-    "message": ""
+    "message": "A carregar..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Registar mensagens do protocolo A2A no console do navegador para depuração"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Registar mensagens do protocolo MCP no console do navegador para depuração"
+  },
+  "Log_in_to_your_account": {
+    "message": "Inicie sessão na sua conta"
+  },
+  "Logged_in": {
+    "message": "Sessão iniciada"
   },
   "Logging_in": {
-    "message": ""
+    "message": "A iniciar sessão..."
   },
   "Login": {
     "message": "Iniciar sessão"
@@ -451,19 +1015,19 @@
     "message": "Inicie sessão para obter créditos gratuitos"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Pressão longa para agendar tarefa"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Pressão longa no botão de enviar para agendar uma tarefa"
   },
   "Low_credits_remaining": {
     "message": "Poucos créditos restantes"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "Servidores MCP"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "Ferramentas MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Gerir separadores do navegador (abrir, fechar, mudar, consultar)"
@@ -478,34 +1042,102 @@
     "message": "Tamanho Máximo da Cache (MB)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "Máximo de Sessões Simultâneas"
+  },
+  "Max_Delay": {
+    "message": "Atraso Máximo"
+  },
+  "Max_Output": {
+    "message": "Saída Máxima"
+  },
+  "Max_Output_Tokens": {
+    "message": "Máximo de Tokens de Saída"
+  },
+  "Max_Retries": {
+    "message": "Máximo de Tentativas"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Tamanho máximo da cache em megabytes (predefinido: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "Número máximo de sessões de agente paralelas, incluindo tarefas agendadas"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Máximo de 5 agentes atingido"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Máximo de 5 servidores atingido"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Tempo máximo (em milissegundos) que uma ferramenta pode executar antes de expirar (predefinido: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Risco médio e superior"
+  },
+  "Message_service_not_available": {
+    "message": "Serviço de mensagens indisponível"
+  },
   "Missed": {
-    "message": ""
+    "message": "Perdido"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Tarefas Agendadas Perdidas"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "O modelo \"$1$\" não suporta entrada de imagem. Algumas ferramentas serão desativadas.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Configuração do Modelo"
   },
+  "Model_Configuration": {
+    "message": "Configuração do Modelo"
+  },
+  "Model_Key_API": {
+    "message": "Chave do Modelo (API)"
+  },
+  "Model_Name": {
+    "message": "Nome do Modelo"
+  },
   "Model_Selection": {
     "message": "Seleção de Modelo"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Configurações de modelo e fornecedor carregadas a partir da configuração padrão (apenas leitura)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Modelo alterado para $1$. Por favor, configure a sua chave API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Modelo alterado para $1$. A sessão será reinicializada.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Modelo:"
+  },
+  "Model_1": {
+    "message": "Modelo: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Chat Moderno"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Modificar parâmetros ao solicitar alterações"
   },
   "Monthly_Credits": {
     "message": "Créditos Mensais"
@@ -514,7 +1146,7 @@
     "message": "Mais Configurações"
   },
   "Name": {
-    "message": ""
+    "message": "Nome"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navegar nas páginas, clicar em ligações, gerir a navegação do navegador"
@@ -523,10 +1155,16 @@
     "message": "Ferramenta de Navegação"
   },
   "Network_Access": {
-    "message": ""
+    "message": "Acesso à Rede"
   },
   "Network_Intercept_Tool": {
     "message": "Ferramenta de Interceptação de Rede"
+  },
+  "Network_error": {
+    "message": "Erro de rede"
+  },
+  "Network_error_occurred": {
+    "message": "Ocorreu um erro de rede"
   },
   "Never_expire_permanent": {
     "message": "Nunca expira (permanente)"
@@ -534,41 +1172,85 @@
   "New_Conversation": {
     "message": "Nova Conversa"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "Ainda não foram configurados agentes A2A."
+  },
   "No_Access": {
-    "message": ""
+    "message": "Sem Acesso"
+  },
+  "No_Access_Configured": {
+    "message": "Nenhum Acesso Configurado"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "Ainda não foram configurados servidores MCP."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Nenhum acesso configurado. Por favor, inicie sessão ou configure uma chave API."
   },
   "No_active_sessions": {
-    "message": ""
+    "message": "Nenhuma sessão ativa"
   },
-  "No_approval_history_yet": {
-    "message": "Ainda não há histórico de aprovações."
+  "No_chat_history_yet": {
+    "message": "Ainda não há histórico de chat"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Ainda não há tarefas concluídas"
+  },
+  "No_models_available": {
+    "message": "Nenhum modelo disponível"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Nenhum modelo disponível. Por favor, verifique a configuração."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Nenhuma tarefa agendada"
   },
-  "No_settings_found": {
-    "message": ""
+  "No_scheduled_time": {
+    "message": "Nenhum horário agendado"
+  },
+  "No_skills_available": {
+    "message": "Nenhuma habilidade disponível."
+  },
+  "No_steps_in_plan": {
+    "message": "Nenhum passo no plano"
   },
   "No_tabs_available": {
     "message": "Nenhum separador disponível"
   },
+  "No_time_set": {
+    "message": "Nenhum horário definido"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Nenhuma ferramenta disponível."
+  },
+  "None": {
+    "message": "Nenhum"
   },
   "Not_Connected": {
     "message": "Não conectado"
+  },
+  "Notification": {
+    "message": "Notificação"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Número de dias antes de os dados de rollout expirarem (padrão: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "Offline - as tarefas serão executadas quando houver ligação"
+  },
+  "Older": {
+    "message": "Mais antigo"
+  },
+  "Only_high_risk_actions": {
+    "message": "Apenas ações de alto risco"
+  },
+  "Open_1_settings": {
+    "message": "Abrir definições $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Abrir Painel Lateral:"
@@ -576,17 +1258,51 @@
   "Organization": {
     "message": "Organização"
   },
+  "Organization_ID": {
+    "message": "ID da organização"
+  },
+  "Out": {
+    "message": "Saída:"
+  },
+  "Output_Token_Price": {
+    "message": "Preço do token de saída"
+  },
+  "Output": {
+    "message": "Saída:"
+  },
+  "Output_1": {
+    "message": "Saída: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Ferramenta de Ação de Página"
   },
   "Page_Vision_Tool": {
     "message": "Ferramenta de Visão de Página"
   },
-  "Parameter_Modifications": {
-    "message": "Modificações de Parâmetros"
+  "Past_Month": {
+    "message": "Mês passado"
+  },
+  "Past_Week": {
+    "message": "Semana passada"
+  },
+  "Patch_applied_successfully": {
+    "message": "Patch aplicado com sucesso"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Patch para $1$ ficheiro(s)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Pausar fila"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Executar ações de página (rolar, captura de ecrã, aguardar)"
@@ -594,32 +1310,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Persistir Cache no Armazenamento"
   },
+  "Plan_1_step_s": {
+    "message": "Plano: $1$ passo(s)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Por favor, verifique a sua chave API nas definições."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Por favor, introduza uma descrição da tarefa"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Por favor, introduza primeiro uma chave API"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Introduza uma chave API válida."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Por favor, volte a iniciar sessão para continuar a usar o agente de IA."
+  },
+  "Please_select_a_provider": {
+    "message": "Por favor, selecione um fornecedor"
   },
   "Please_type_a_valid_command": {
     "message": "Introduza um comando válido"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Por favor, atualize o plano para desbloquear os modelos mais avançados do mundo"
+  },
   "Power": {
-    "message": ""
+    "message": "Potência"
+  },
+  "Pricing_Information": {
+    "message": "Informação de Preços"
+  },
+  "Pricing_Page": {
+    "message": "Página de Preços"
+  },
+  "Priority": {
+    "message": "Prioridade"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "O nível prioritário oferece tempos de resposta mais rápidos com preços mais elevados."
   },
+  "Processing": {
+    "message": "A processar..."
+  },
+  "Protocol": {
+    "message": "Protocolo"
+  },
   "Provider": {
     "message": "Fornecedor"
+  },
+  "Provider_Configuration": {
+    "message": "Configuração do Fornecedor"
+  },
+  "Provider_ID": {
+    "message": "ID do Fornecedor"
+  },
+  "Provider_Name": {
+    "message": "Nome do Fornecedor"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Consultar e manipular o DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Fila está em pausa"
   },
   "Queued": {
-    "message": ""
+    "message": "Em fila"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Programação Rápida"
   },
   "Quick_Start": {
     "message": "Início Rápido"
@@ -628,16 +1394,33 @@
     "message": "Ação rápida"
   },
   "Read_Only": {
-    "message": ""
+    "message": "Só de Leitura"
   },
   "Read_Write": {
-    "message": ""
+    "message": "Leitura e Escrita"
   },
   "Read_only": {
     "message": "Só de leitura"
   },
-  "Reason_optional": {
-    "message": "Motivo (opcional)"
+  "Reasoning": {
+    "message": "Raciocínio"
+  },
+  "Reasoning_Efforts": {
+    "message": "Esforços de raciocínio"
+  },
+  "Reasoning_Summaries": {
+    "message": "Resumos de raciocínio"
+  },
+  "Reasoning_levels": {
+    "message": "Níveis de raciocínio:"
+  },
+  "Reasoning_1": {
+    "message": "Raciocínio: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Atualiza em"
@@ -645,59 +1428,86 @@
   "Reject": {
     "message": "Rejeitar"
   },
-  "Reject_this_action": {
-    "message": "Rejeitar esta ação"
+  "Release_Date": {
+    "message": "Data de lançamento"
+  },
+  "Release_date_unknown": {
+    "message": "Data de lançamento desconhecida"
+  },
+  "Released": {
+    "message": "Lançado:"
   },
   "Remaining": {
     "message": "Restante:"
   },
   "Remove": {
-    "message": ""
+    "message": "Remover"
   },
   "Remove_API_Key": {
     "message": "Remover chave API"
   },
-  "Remove_modification": {
-    "message": "Remover modificação"
+  "Request_Timeout": {
+    "message": "Tempo limite do pedido"
   },
-  "Request_Changes": {
-    "message": "Solicitar alterações"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Solicitar alterações a esta ação"
+  "Request_timed_out": {
+    "message": "Pedido expirou"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Tempo limite do pedido em milissegundos (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Tempo limite do pedido em milissegundos (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "O pedido foi abortado"
+  },
+  "Response_failed": {
+    "message": "Falha na resposta"
   },
   "Restricted": {
-    "message": ""
+    "message": "Restrito"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Resumo do resultado"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Retomar fila"
+  },
+  "Retry_Configuration": {
+    "message": "Configuração de nova tentativa"
+  },
+  "Retrying": {
+    "message": "A tentar novamente"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Clique com o botão direito em qualquer texto para explicar ou melhorar com o Browserx"
+  },
+  "Risk_Score": {
+    "message": "Pontuação de risco:"
   },
   "Rollout_Expiration": {
     "message": "Expiração do Rollout"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Executar agora"
   },
   "Running": {
-    "message": ""
+    "message": "Em execução"
+  },
+  "STREAM_ERROR": {
+    "message": "ERRO DE STREAM"
   },
   "Safe": {
-    "message": ""
+    "message": "Seguro"
   },
   "Sandbox_Policy": {
     "message": "Política de Sandbox"
   },
   "Save_API_Key": {
     "message": "Guardar chave API"
+  },
+  "Save_Changes": {
+    "message": "Guardar alterações"
   },
   "Save_Settings": {
     "message": "Guardar definições"
@@ -706,22 +1516,31 @@
     "message": "A guardar..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Agendar"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Agendar uma nova tarefa"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Agendado"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Tarefa agendada"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Início da tarefa agendada"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Tarefas agendadas"
   },
-  "Search_settings": {
-    "message": ""
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "A hora agendada tem de ser, no mínimo, 1 minuto no futuro"
+  },
+  "Search_complete": {
+    "message": "Pesquisa concluída"
+  },
+  "Searching": {
+    "message": "A pesquisar..."
   },
   "Security_Privacy": {
     "message": "Segurança e privacidade"
@@ -729,23 +1548,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Nível de segurança para o ambiente de execução da ferramenta"
   },
+  "Select_Model": {
+    "message": "Selecionar modelo"
+  },
+  "Select_model_1": {
+    "message": "Selecionar modelo: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Selecione o modelo de IA a usar nas conversas."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selecione o idioma preferido para a interface"
   },
+  "Selected": {
+    "message": "Selecionado"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Falta a configuração do modelo selecionado"
+  },
+  "Send": {
+    "message": "Enviar"
+  },
   "Service_Tier": {
     "message": "Nível de Serviço"
   },
-  "Session": {
-    "message": "Sessão"
+  "Service_tier_updated_to_1": {
+    "message": "Nível de serviço atualizado para $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "Erro de sessão"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Sessão expirada - por favor, inicie sessão novamente para continuar a usar o agente de IA"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
+    "message": "Limite de sessões atingido. Novas tarefas serão colocadas em fila."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Definir quando os dados de rollout devem expirar"
@@ -756,6 +1603,15 @@
   "Settings_saved_successfully": {
     "message": "Configurações guardadas com sucesso"
   },
+  "Show_API_key": {
+    "message": "Mostrar chave API"
+  },
+  "Show_all": {
+    "message": "Mostrar tudo"
+  },
+  "Show_less": {
+    "message": "Mostrar menos"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Mostrar utilização de tokens nas tarefas"
   },
@@ -765,11 +1621,29 @@
   "Sign_in_to_your_account": {
     "message": "Inicie sessão na sua conta"
   },
+  "Skills": {
+    "message": "Competências"
+  },
   "Stable": {
     "message": "Estável"
   },
+  "Standard_capabilities": {
+    "message": "Capacidades padrão"
+  },
+  "Start_New_Conversation": {
+    "message": "Iniciar nova conversa"
+  },
+  "Start_on_login": {
+    "message": "Iniciar ao iniciar sessão"
+  },
   "Status": {
-    "message": ""
+    "message": "Estado"
+  },
+  "Stop_Agent": {
+    "message": "Parar agente"
+  },
+  "Stop_the_current_task": {
+    "message": "Parar a tarefa atual"
   },
   "Stop_the_current_task_run": {
     "message": "Parar a execução da tarefa atual"
@@ -792,26 +1666,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Armazenar dados de cache de forma persistente entre sessões do navegador"
   },
+  "Suggest_Alternative": {
+    "message": "Sugerir alternativa"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Mudado para modo backend. Os pedidos LLM serão encaminhados através do servidor AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Mudado para modo API direto. Por favor, configure a sua chave API."
+  },
+  "System": {
+    "message": "Sistema"
+  },
   "Tab_Tool": {
     "message": "Ferramenta de Tabs"
   },
+  "Tab_unavailable": {
+    "message": "Separador indisponível"
+  },
+  "Take_Over": {
+    "message": "Assumir controlo"
+  },
   "Task": {
-    "message": ""
+    "message": "Tarefa"
   },
   "Task_Details": {
-    "message": ""
+    "message": "Detalhes da Tarefa"
+  },
+  "Task_Failed": {
+    "message": "Tarefa Falhou"
   },
   "Task_History": {
-    "message": ""
+    "message": "Histórico da Tarefa"
   },
   "Task_ID": {
-    "message": ""
+    "message": "ID da Tarefa"
+  },
+  "Task_Plan": {
+    "message": "Plano da Tarefa"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Tarefa cancelada pelo utilizador"
+  },
+  "Task_complete": {
+    "message": "Tarefa concluída"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Tarefa concluída em $1$ volta(s)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Tarefa falhou"
+  },
+  "Task_started": {
+    "message": "Tarefa iniciada"
   },
   "Terminal": {
     "message": "Terminal"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "Sandbox de Terminal"
   },
   "Test_Connection": {
     "message": "Testar Conexão"
@@ -819,38 +1737,67 @@
   "Testing": {
     "message": "A testar..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "O URL do ponto de extremidade do agente A2A (http ou https)"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+    "message": "A IA decide por comando se deve usar a sandbox com base na avaliação de risco."
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "O URL do ponto de extremidade do servidor MCP (http ou https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "O agente está atualmente a usar o modo backend. Os pedidos LLM serão encaminhados através do servidor AI Republic. As suas conversas são processadas de forma segura através da nossa infraestrutura."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "A troca de modelo limpará a conversa atual. Pretende continuar?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "O servidor encontrou um erro. Por favor, tente novamente mais tarde."
+  },
   "Time": {
     "message": "Tempo"
-  },
-  "Time_remaining": {
-    "message": "Tempo restante"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Tempo de vida (TTL) dos itens em cache, em segundos (por defeito: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Tempo limite (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Para usar o agente IA, por favor:"
+  },
+  "Today": {
+    "message": "Hoje"
   },
   "Toggle_side_panel": {
     "message": "Alternar painel lateral"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "Alternar uso da própria chave API"
   },
-  "Tool": {
-    "message": "Ferramenta"
+  "Token_Usage": {
+    "message": "Utilização de Tokens"
+  },
+  "Tokens": {
+    "message": "Tokens:"
+  },
+  "Tokens_1": {
+    "message": "Tokens: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Tempo limite da ferramenta (ms)"
+  },
+  "Tool_name": {
+    "message": "Nome da ferramenta:"
+  },
+  "Tool": {
+    "message": "Ferramenta"
   },
   "Tools": {
     "message": "Ferramentas"
@@ -858,8 +1805,20 @@
   "Tools_Settings": {
     "message": "Configurações das ferramentas"
   },
-  "Turn": {
-    "message": "Vez"
+  "Trusted": {
+    "message": "Confiável"
+  },
+  "Trusted_Domains": {
+    "message": "Domínios Confiáveis"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Os agentes confiáveis são aprovados automaticamente para invocações de competências"
+  },
+  "Turns": {
+    "message": "Turnos:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Escreva instruções alternativas..."
   },
   "UI_Theme": {
     "message": "Tema da interface"
@@ -867,17 +1826,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "O URL tem de usar o protocolo http ou https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Não foi possível verificar o estado do agente"
+  },
   "Unable_to_load_credit_information": {
     "message": "Não foi possível carregar as informações de crédito"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Não foi possível alcançar o servidor backend - verifique a sua ligação"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Não foi possível alcançar o servidor. Verifique a sua ligação e tente novamente."
+  },
+  "Unknown_Event": {
+    "message": "Evento desconhecido"
+  },
+  "Unknown_error": {
+    "message": "Erro desconhecido"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Erro desconhecido ao verificar o estado do agente"
+  },
+  "Unknown_error_occurred": {
+    "message": "Ocorreu um erro desconhecido"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Ocorreu um erro desconhecido durante a execução da tarefa"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Erro desconhecido ao processar a submissão"
+  },
+  "Unknown_model_1": {
+    "message": "Modelo desconhecido ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Alterações não guardadas"
   },
+  "Untitled": {
+    "message": "Sem título"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Próximo"
   },
   "Update": {
-    "message": ""
+    "message": "Atualizar"
   },
   "Update_Channel": {
     "message": "Canal de atualização"
@@ -887,6 +1887,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Atualizar para Premium"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Atualize para explorar os modelos mais poderosos do mundo"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Atualize a sua subscrição para explorar os modelos mais poderosos do mundo"
@@ -901,37 +1904,46 @@
     "message": "Centro do utilizador"
   },
   "User_Session": {
-    "message": ""
-  },
-  "User_approved_action": {
-    "message": "Ação aprovada pelo utilizador"
-  },
-  "User_decision": {
-    "message": "Decisão do utilizador"
+    "message": "Sessão do utilizador"
   },
   "User_preferences_and_interface_settings": {
     "message": "Preferências do utilizador e definições da interface"
   },
-  "User_rejected_action": {
-    "message": "Ação rejeitada pelo utilizador"
-  },
-  "User_requested_modifications": {
-    "message": "Modificações solicitadas pelo utilizador"
-  },
   "Using_extra_credits": {
     "message": "A usar créditos extra"
+  },
+  "Verbosity": {
+    "message": "Verbosidade"
+  },
+  "Verbosity_Control": {
+    "message": "Controlo de verbosidade"
+  },
+  "Verbosity_Levels": {
+    "message": "Níveis de verbosidade"
+  },
+  "Verbosity_levels": {
+    "message": "Níveis de verbosidade:"
+  },
+  "Version": {
+    "message": "Versão"
   },
   "View_Chat_History": {
     "message": "Ver histórico de chat"
   },
   "View_History": {
-    "message": ""
+    "message": "Ver histórico"
   },
   "View_Session": {
-    "message": ""
+    "message": "Ver sessão"
+  },
+  "View_pricing_details": {
+    "message": "Ver detalhes de preços"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Análise visual do conteúdo e layout da página"
+  },
+  "Waiting_for_approval": {
+    "message": "A aguardar aprovação"
   },
   "Web_Scraping_Tool": {
     "message": "Ferramenta de Web Scraping"
@@ -943,13 +1955,22 @@
     "message": "Bem-vindo ao Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "Se os comandos em sandbox podem aceder à rede"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "Acesso ao espaço de trabalho"
   },
   "Workspace_Write": {
     "message": "Escrita no Espaço de Trabalho"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Ontem"
+  },
+  "You": {
+    "message": "Você"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Tem alterações não guardadas. Deseja descartá‑las?"
@@ -960,19 +1981,73 @@
   "Your_API_key_is_encrypted": {
     "message": "A sua chave API está encriptada"
   },
-  "Your_Decision": {
-    "message": "A sua decisão"
+  "Your_personal_AI_assistant": {
+    "message": "O seu assistente de IA pessoal"
   },
-  "more_results": {
-    "message": ""
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "A sua sessão expirou. Por favor, volte a iniciar sessão."
+  },
+  "DISCONNECTED": {
+    "message": "[DESCONECTADO]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Erro: Transmissão interrompida]"
+  },
+  "NO_ACCESS": {
+    "message": "[SEM ACESSO]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[SEM CHAVE API - CLICAR EM DEFINIÇÕES]"
+  },
+  "PROCESSING": {
+    "message": "[A PROCESSAR]"
+  },
+  "available": {
+    "message": "disponível"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "em cache"
+  },
+  "detailed_thinking": {
+    "message": "pensamento detalhado"
+  },
+  "disconnected": {
+    "message": "desconectado"
+  },
+  "exec_unknown_command": {
+    "message": "exec (comando desconhecido)"
   },
   "optional": {
-    "message": ""
+    "message": "opcional"
+  },
+  "remaining": {
+    "message": "restante"
   },
   "session": {
-    "message": ""
+    "message": "sessão"
   },
   "sessions": {
-    "message": ""
+    "message": "sessões"
+  },
+  "streaming": {
+    "message": "a transmitir..."
+  },
+  "thinking": {
+    "message": "a pensar"
+  },
+  "tokens": {
+    "message": "tokens"
+  },
+  "trusted": {
+    "message": "confiável"
+  },
+  "user": {
+    "message": "utilizador"
+  },
+  "web_search": {
+    "message": "Pesquisa Web"
   }
 }

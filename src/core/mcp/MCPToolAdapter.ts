@@ -2,7 +2,7 @@
  * MCP Tool Adapter
  * Task: T032-T035, T038-T039, T042 [US2]
  *
- * Adapts MCP tools to browserx ToolDefinition format and creates
+ * Adapts MCP tools to Pi ToolDefinition format and creates
  * handlers that route tool calls through MCPManager.
  */
 
@@ -14,9 +14,10 @@ import type {
   IMCPToolAdapter,
   IMCPContent,
 } from './types';
+import type { IRiskAssessor } from '../approval/types';
 
 /**
- * Adapts MCP tools to browserx ToolDefinition format.
+ * Adapts MCP tools to Pi ToolDefinition format.
  */
 export class MCPToolAdapter implements IMCPToolAdapter {
   /**
@@ -171,19 +172,26 @@ export function getMCPToolAdapter(): MCPToolAdapter {
  * Registry interface matching ToolRegistry
  */
 export interface IToolRegistry {
-  register(tool: ToolDefinition, handler: ToolHandler): Promise<void>;
+  register(tool: ToolDefinition, handler: ToolHandler, riskAssessor?: IRiskAssessor): Promise<void>;
   unregister(toolName: string): Promise<void>;
 }
 
 /**
  * Register all tools from a connected MCP server with the ToolRegistry.
  * Called by MCPManager after successful connection.
+ *
+ * @param manager - MCP manager instance
+ * @param serverName - Server name for tool prefixing
+ * @param tools - Tools discovered from the MCP server
+ * @param registry - Tool registry to register tools with
+ * @param riskAssessor - Optional risk assessor for all tools from this server
  */
 export async function registerMCPTools(
   manager: IMCPManager,
   serverName: string,
   tools: IMCPTool[],
-  registry: IToolRegistry
+  registry: IToolRegistry,
+  riskAssessor?: IRiskAssessor
 ): Promise<void> {
   const adapter = getMCPToolAdapter();
 
@@ -192,10 +200,10 @@ export async function registerMCPTools(
     const handler = adapter.createHandler(manager, serverName, tool.name);
 
     try {
-      await registry.register(definition, handler);
+      await registry.register(definition, handler, riskAssessor);
     } catch (error) {
       // Tool might already be registered (e.g., during reconnect)
-      console.warn(`[MCPToolAdapter] Failed to register tool ${definition.function.name}:`, error);
+      console.warn(`[MCPToolAdapter] Failed to register tool ${definition.type === 'function' ? definition.function.name : definition.type}:`, error);
     }
   }
 }

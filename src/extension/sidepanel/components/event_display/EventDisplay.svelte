@@ -9,6 +9,7 @@
   import type { ProcessedEvent } from '@/types/ui';
   import { formatTime } from '@/utils/formatters';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { t, _t } from '../../lib/i18n';
   import Tooltip from '../common/Tooltip.svelte';
   import MessageEvent from './MessageEvent.svelte';
   import ErrorEvent from './ErrorEvent.svelte';
@@ -57,6 +58,11 @@
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    // Don't intercept keys when user is typing in an input/textarea
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (event.collapsible) {
@@ -143,7 +149,7 @@
   <div class={getContainerClasses()}>
     <!-- Header outside bubble for user messages in chatgpt theme -->
     <div class="message-header">
-      <span class="message-sender">{event.title === 'user' ? 'You' : 'BrowserX'}:</span>
+      <span class="message-sender">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
       <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
     </div>
     <div class="message-container">
@@ -151,7 +157,7 @@
         <MessageEvent {event} />
         {#if event.streaming}
           <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
-            streaming...
+            {$_t("streaming...")}
           </span>
         {/if}
       </div>
@@ -176,7 +182,7 @@
           <button
             class="collapse-button transition-colors"
             on:click|stopPropagation={handleToggle}
-            aria-label={collapsed ? 'Expand' : 'Collapse'}
+            aria-label={collapsed ? t('Expand') : t('Collapse')}
           >
             {#if collapsed}
               <span>▶</span>
@@ -232,7 +238,7 @@
         <!-- Streaming indicator -->
         {#if event.streaming}
           <span class="streaming-indicator text-xs animate-pulse" role="status" aria-live="polite">
-            streaming...
+            {$_t("streaming...")}
           </span>
         {/if}
       </div>

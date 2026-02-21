@@ -333,7 +333,7 @@ describe('RustMCPBridge', () => {
       const result = await bridge.callTool('click', {});
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Timeout');
+      expect((result.content[0] as any).text).toContain('Timeout');
     });
   });
 

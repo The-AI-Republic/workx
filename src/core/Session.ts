@@ -55,7 +55,7 @@ export class Session {
   private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
-  private toolRegistry: ToolRegistry | null = null; // Tool registry from BrowserxAgent
+  private toolRegistry: ToolRegistry | null = null; // Tool registry from PiAgent
 
   // Runtime state (not persisted, lives in Session only)
   private toolUsageStats: Map<string, number> = new Map();
@@ -97,7 +97,7 @@ export class Session {
 
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
-    this.toolRegistry = toolRegistry ?? null; // Tool registry from BrowserxAgent
+    this.toolRegistry = toolRegistry ?? null; // Tool registry from PiAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
 
@@ -180,12 +180,15 @@ export class Session {
     if (!this.services?.rollout) return;
 
     // Record session metadata to rollout
+    // Include both cwd (for desktop) and tabId (for extension) so the
+    // session can be restored correctly in either runtime mode.
+    const tabId = this.sessionState.getTabId();
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        tabId: this.sessionState.getTabId(), // Replaced cwd with tabId
+        ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -350,7 +353,7 @@ export class Session {
    */
   getMessagesByType(type: 'user' | 'agent' | 'system'): ResponseItem[] {
     const role = type === 'user' ? 'user' : type === 'system' ? 'system' : 'assistant';
-    return this.sessionState.historySnapshot().filter(item => item.role === role);
+    return this.sessionState.historySnapshot().filter(item => item.type === 'message' && item.role === role);
   }
 
   /**
@@ -620,7 +623,9 @@ export class Session {
    */
   async searchMessages(query: string): Promise<ResponseItem[]> {
     return this.sessionState.historySnapshot().filter(item => {
-      const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+      const content = item.type === 'message'
+        ? (typeof item.content === 'string' ? item.content : JSON.stringify(item.content))
+        : JSON.stringify(item);
       return content.toLowerCase().includes(query.toLowerCase());
     });
   }
@@ -879,7 +884,7 @@ export class Session {
   }
 
   /**
-   * Set tool registry (called by BrowserxAgent)
+   * Set tool registry (called by PiAgent)
    */
   setToolRegistry(toolRegistry: ToolRegistry): void {
     this.toolRegistry = toolRegistry;

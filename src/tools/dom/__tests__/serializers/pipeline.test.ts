@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { SerializationPipeline } from '../../serializers/SerializationPipeline';
 import { DEFAULT_PIPELINE_CONFIG, BASELINE_PIPELINE_CONFIG } from '../../types';
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 
 describe('SerializationPipeline Integration', () => {
   const createTestTree = (): VirtualNode => {
@@ -108,7 +108,11 @@ describe('SerializationPipeline Integration', () => {
 
     it('should provide IdRemapper with registered nodes', () => {
       const tree = createTestTree();
-      const pipeline = new SerializationPipeline();
+      // enableIdRemapping must be true for IdRemapper to be populated
+      const pipeline = new SerializationPipeline({
+        ...DEFAULT_PIPELINE_CONFIG,
+        enableIdRemapping: true
+      });
 
       const result = pipeline.execute(tree);
 
@@ -121,9 +125,9 @@ describe('SerializationPipeline Integration', () => {
 
       const result = pipeline.execute(tree);
 
-      expect(result.metrics.totalNodes).toBeGreaterThan(0);
-      expect(result.metrics.compactionScore).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.compactionScore).toBeLessThanOrEqual(1);
+      expect(result.metrics!.totalNodes).toBeGreaterThan(0);
+      expect(result.metrics!.compactionScore).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.compactionScore).toBeLessThanOrEqual(1);
     });
   });
 
@@ -205,8 +209,10 @@ describe('SerializationPipeline Integration', () => {
       const pipeline = new SerializationPipeline();
       const result = pipeline.execute(tree);
 
-      // Redundant role should be removed
-      const hasRedundantRole = result.tree.attributes?.includes('button');
+      // Redundant role=button is removed (matches implicit role of <button>)
+      // Empty type='' is also removed
+      // Both attributes removed → attributes becomes undefined or empty
+      const hasRedundantRole = result.tree.attributes?.includes('button') ?? false;
       expect(hasRedundantRole).toBe(false);
     });
   });
@@ -214,7 +220,11 @@ describe('SerializationPipeline Integration', () => {
   describe('stage 3: payload optimization', () => {
     it('should assign sequential IDs', () => {
       const tree = createTestTree();
-      const pipeline = new SerializationPipeline();
+      // enableIdRemapping must be true for sequential ID assignment
+      const pipeline = new SerializationPipeline({
+        ...DEFAULT_PIPELINE_CONFIG,
+        enableIdRemapping: true
+      });
 
       const result = pipeline.execute(tree);
 
@@ -297,7 +307,7 @@ describe('SerializationPipeline Integration', () => {
       const fullPipeline = new SerializationPipeline(DEFAULT_PIPELINE_CONFIG);
       const fullResult = fullPipeline.execute(tree);
 
-      expect(fullResult.metrics.serializedNodes).toBeLessThan(baselineResult.metrics.serializedNodes);
+      expect(fullResult.metrics!.serializedNodes).toBeLessThan(baselineResult.metrics!.serializedNodes);
     });
 
     it('should achieve measurable token reduction', () => {
@@ -307,7 +317,7 @@ describe('SerializationPipeline Integration', () => {
       const result = pipeline.execute(tree);
 
       // Should achieve some token reduction
-      expect(result.metrics.tokenReductionRate).toBeGreaterThan(0);
+      expect(result.metrics!.tokenReductionRate).toBeGreaterThan(0);
     });
   });
 
@@ -341,10 +351,10 @@ describe('SerializationPipeline Integration', () => {
 
       const result = pipeline.execute(tree);
 
-      expect(result.metrics.stage1TimeMs).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.stage2TimeMs).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.stage3TimeMs).toBeGreaterThanOrEqual(0);
-      expect(result.metrics.serializationTimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.stage1TimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.stage2TimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.stage3TimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.metrics!.serializationTimeMs).toBeGreaterThanOrEqual(0);
     });
   });
 });

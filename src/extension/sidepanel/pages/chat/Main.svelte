@@ -26,7 +26,7 @@
   // Agent store for auth mode tracking
   import { agentStore } from '../../stores/agentStore';
   // i18n
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
   // Scheduler components
   import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
 
@@ -212,7 +212,7 @@
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: 'Task cancelled by user',
+        content: t('Task cancelled by user'),
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
@@ -404,7 +404,7 @@
       if (!service) {
         isConnected = false;
         agentReady = false;
-        healthStatus = { ready: false, message: 'Message service not available', authMode: 'none' };
+        healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
         return;
       }
 
@@ -439,16 +439,16 @@
         });
       } else {
         agentReady = false;
-        healthStatus = { ready: false, message: 'Unable to check agent status', authMode: 'none' };
-        agentStore.setNoAccess('Unable to check agent status');
+        healthStatus = { ready: false, message: t('Unable to check agent status'), authMode: 'none' };
+        agentStore.setNoAccess(t('Unable to check agent status'));
       }
     } catch (error) {
       console.error('[App] Health check failed:', error);
 
       isConnected = false;
       agentReady = false;
-      healthStatus = { ready: false, message: 'Connection error', authMode: 'none' };
-      agentStore.setNoAccess('Connection error');
+      healthStatus = { ready: false, message: t('Connection error'), authMode: 'none' };
+      agentStore.setNoAccess(t('Connection error'));
     }
   }
 
@@ -560,7 +560,7 @@
     if (!isConnected) {
       messages = [...messages, {
         type: 'agent',
-        content: 'Error: Not connected to agent. Please refresh the page.',
+        content: t('Error: Not connected to agent. Please refresh the page.'),
         timestamp: Date.now(),
       }];
       return;
@@ -571,7 +571,7 @@
       const providerName = healthStatus.provider || 'the selected provider';
       messages = [...messages, {
         type: 'agent',
-        content: `Cannot send message: No API key configured for ${providerName}.\n\nPlease click the Settings button (⚙️) at the top right and configure your API key.`,
+        content: t('Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.', { substitutions: [providerName] }),
         timestamp: Date.now(),
       }];
       return;
@@ -610,9 +610,9 @@
     } catch (error) {
       console.error('Failed to send message:', error);
 
-      let errorMessage = 'Failed to send message. Please try again.';
+      let errorMessage = t('Failed to send message. Please try again.');
       if (error instanceof Error && error.message.includes('not available')) {
-        errorMessage = 'Backend not available. Please wait a moment and try again.';
+        errorMessage = t('Backend not available. Please wait a moment and try again.');
       }
 
       messages = [...messages, {
@@ -657,6 +657,25 @@
 
   function handleAuthUpdated(event: CustomEvent) {
     // Handle auth updates if needed
+  }
+
+  /**
+   * Handle command output from slash commands (e.g., /help)
+   * Creates a system ProcessedEvent and appends it to the chat
+   */
+  function handleCommandOutput(event: CustomEvent<{ title: string; content: string }>) {
+    const { title, content } = event.detail;
+    const cmdEvent: ProcessedEvent = {
+      id: `cmd_${Date.now()}`,
+      category: 'system',
+      timestamp: new Date(),
+      title,
+      content,
+      style: STYLE_PRESETS.system,
+      streaming: false,
+      collapsible: false,
+    };
+    processedEvents = [...processedEvents, cmdEvent];
   }
 
   /**
@@ -749,7 +768,7 @@
     } catch (error) {
       console.error('Failed to reset session:', error);
 
-      let errorMessage = 'Failed to start new conversation. Please try again.';
+      let errorMessage = t('Failed to start new conversation. Please try again.');
 
       messages = [...messages, {
         type: 'agent',
@@ -777,7 +796,7 @@
 
       messages = [...messages, {
         type: 'agent',
-        content: 'Failed to stop the task. Please try again.',
+        content: t('Failed to stop the task. Please try again.'),
         timestamp: Date.now(),
       }];
     }
@@ -816,7 +835,7 @@
 
       messages = [...messages, {
         type: 'agent',
-        content: 'Failed to load conversation. Please try again.',
+        content: t('Failed to load conversation. Please try again.'),
         timestamp: Date.now(),
       }];
     }
@@ -965,17 +984,17 @@
     <div class="content-container">
         <!-- Status Line -->
         <div class="status-line flex justify-between mb-2">
-          <TerminalMessage type="system" content={platform.platformName === 'extension' ? "Browserx (Alpha)" : "Pi: Your personal AI (Alpha)"} />
+          <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
           <div class="flex items-center space-x-2">
             {#if isProcessing}
-              <TerminalMessage type="warning" content="[PROCESSING]" />
+              <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}
             {#if !isConnected}
-              <TerminalMessage type="error" content="[DISCONNECTED]" />
+              <TerminalMessage type="error" content={$_t("[DISCONNECTED]")} />
             {:else if !agentReady && $agentStore.authMode === 'none'}
-              <TerminalMessage type="warning" content="[NO ACCESS]" />
+              <TerminalMessage type="warning" content={$_t("[NO ACCESS]")} />
             {:else if !agentReady}
-              <TerminalMessage type="warning" content="[NO API KEY - CLICK SETTINGS ⚙️]" />
+              <TerminalMessage type="warning" content={$_t("[NO API KEY - CLICK SETTINGS]") + " ⚙️"} />
             {/if}
           </div>
         </div>
@@ -987,17 +1006,17 @@
               {#if compactionNotification.isWarning}⚠️{:else}✓{/if}
             </span>
             <span class="notification-text">
-              Context compacted: saved ~{Math.round(compactionNotification.tokensSaved / 1000)}k tokens
+              {$_t("Context compacted: saved ~$1$k tokens", { substitutions: [Math.round(compactionNotification.tokensSaved / 1000)] })}
               {#if compactionNotification.isWarning}
                 <span class="warning-text">
-                  (#{compactionNotification.compactionCount} - accuracy may be reduced)
+                  {$_t("(#$1$ - accuracy may be reduced)", { substitutions: [compactionNotification.compactionCount] })}
                 </span>
               {/if}
             </span>
             <button
               class="notification-close"
               on:click={() => compactionNotification = { ...compactionNotification, show: false }}
-              aria-label="Dismiss notification"
+              aria-label={t("Dismiss notification")}
             >×</button>
           </div>
         {/if}
@@ -1007,20 +1026,20 @@
           <div class="no-access-warning">
             <div class="warning-header">
               <span class="warning-icon">⚠️</span>
-              <span class="warning-title">No Access Configured</span>
+              <span class="warning-title">{$_t("No Access Configured")}</span>
             </div>
             <p class="warning-message">
-              To use the AI agent, please either:
+              {$_t("To use the AI agent, please either:")}
             </p>
             <ul class="warning-options">
               <li>
                 <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer" class="warning-link">
-                  Log in to your account
+                  {$_t("Log in to your account")}
                 </a>
               </li>
               <li>
                 <button on:click={toggleSettings} class="warning-link-button">
-                  Configure an API key in Settings
+                  {$_t("Configure an API key in Settings")}
                 </button>
               </li>
             </ul>
@@ -1040,7 +1059,7 @@
                 {/each}
               </pre>
               <p class="welcome-subtitle text-term-blue">
-                {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : "Your personal AI assistant"}
+                {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
               </p>
               <p class="welcome-subtitle text-term-dim-green">
                 {$_t("Developed and supported by AI Republic")}
@@ -1077,9 +1096,11 @@
               onNewConversation={startNewConversation}
               tabId={currentTabId}
               {isProcessing}
-              placeholder=">> Enter command..."
+              placeholder={$_t(">> Enter command...")}
               on:tabSelected={handleTabSelected}
               on:showScheduleModal={handleShowScheduleModal}
+              on:commandOutput={handleCommandOutput}
+              on:openSettings={toggleSettings}
             />
           </div>
 
@@ -1125,7 +1146,7 @@
     flex-direction: column;
     height: 100%;
     min-height: 0; /* Important for nested flex overflow */
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
   }
@@ -1489,6 +1510,7 @@
     --browserx-warning: #ffff00;
     background: var(--browserx-background);
     border: 1px solid var(--browserx-border);
+    color-scheme: dark;
   }
 
   /* ChatGPT theme for settings modal - use modern light/dark colors */
@@ -1507,5 +1529,6 @@
     border: 1px solid var(--browserx-border);
     border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    color-scheme: light;
   }
 </style>

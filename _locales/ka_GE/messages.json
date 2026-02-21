@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "საერთო AI აგენტი ბრაუზერში სამუშაო დავალებებისთვის"
   },
+  "1_API_Key": {
+    "message": "$1$ API Key",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API key წარმატებით წაიშალა",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} დავალება(ები) მათი დაგეგმილი დრო ვერ შესრულეს, როდესაც ბრაუზერი დახურული იყო."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - სიზუსტე შეიძლება შემცირდეს)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(აქტიური)"
+  },
+  "multiple_files": {
+    "message": "(მრავალ ფაილი)"
+  },
+  "no_output": {
+    "message": "(გამოტანა არ არის)"
+  },
+  "no_result": {
+    "message": "(შედეგი არ არის)"
+  },
+  "patch_details": {
+    "message": "(პაჩის დეტალები)"
+  },
+  "Enter_command": {
+    "message": ">> შეიყვანეთ ბრძანება..."
+  },
+  "A2A_Agents": {
+    "message": "A2A აგენტები"
+  },
   "API_Key": {
-    "message": ""
+    "message": "API Key"
   },
   "API_Key_Configuration": {
     "message": "API გასაღების კონფიგურაცია"
   },
+  "API_Version": {
+    "message": "API ვერსია"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "API key-ის რედაქტირება გათიშულია backend რეჟიმში"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "API key აუტენტიფიკაციისთვის (შენახულია დაშიფრულად)"
+  },
+  "API_key_has_expired": {
+    "message": "API key-ის ვადა გაუვიდა"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API key-ის არაკმარისი უფლებები"
+  },
+  "API_key_saved_successfully": {
+    "message": "API key წარმატებით შენახულია!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API გასაღებები დაშიფრულია და ლოკალურად ინახება თქვენს ბრაუზერში. ისინი არასოდეს გადაეცემა გარე სერვერებს, API მოთხოვნების გარდა."
@@ -20,47 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ბრაუზერის მონაცემთა შენახვაზე წვდომა (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "მოქმედება"
-  },
-  "Action_Details": {
-    "message": "მოქმედების დეტალები"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "მოქმედების დამტკიცების რეჟიმი, სანდო დომენები, რისკის პარამეტრები"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "აქტიური სესიები"
   },
   "Add": {
-    "message": ""
+    "message": "დამატება"
   },
-  "Add_Modification": {
-    "message": "ცვლილების დამატება"
+  "Add_Agent": {
+    "message": "აგენტის დამატება"
   },
   "Add_Server": {
-    "message": ""
+    "message": "სერვერის დამატება"
   },
   "Add_Task": {
-    "message": ""
+    "message": "ამოცანის დამატება"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "დაამატეთ სერვერი, რათა დაუკავშირდეთ გარე ინსტრუმენტებს."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "დაამატეთ აგენტი, რათა დაუკავშირდეთ გარე უნარებს."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "დამატებითი Bind Mounts"
   },
   "Advanced_Configuration": {
     "message": "მოწინავე კონფიგურაცია"
   },
-  "Advanced_Options": {
-    "message": "მოწინავე პარამეტრები"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "გაფართოებული პარამეტრები"
+  },
+  "Agent": {
+    "message": "აგენტი"
   },
   "Agent_Execution_Tools": {
     "message": "აგენტის შესრულების ხელსაწყოები"
   },
+  "Agent_Turn_Complete": {
+    "message": "აგენტის ბრუნვა დასრულებულია"
+  },
+  "Agent_URL_is_required": {
+    "message": "აგენტის URL აუცილებელია"
+  },
+  "Agent_added_successfully": {
+    "message": "აგენტი წარმატებით დაემატა"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "აგენტის სახელი შეიძლება შეიცავდეს მხოლოდ ასოებს, ციფრებს და დეფისებს"
+  },
+  "Agent_name_is_required": {
+    "message": "აგენტის სახელი აუცილებელია"
+  },
+  "Agent_not_initialized": {
+    "message": "აგენტი ინიციალიზებული არაა"
+  },
+  "Agent_removed_successfully": {
+    "message": "აგენტი წარმატებით წაიშალა"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "აგენტის ბრუნვა წარმატებით დასრულდა"
+  },
+  "Agent_updated_successfully": {
+    "message": "აგენტი წარმატებით განახლდა"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "ამ დომენებზე ყველა ქმედება ავტომატურად დამტკიცებულია."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "ამ დომენებზე ყველა ქმედება აკრძალულია."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "ყველა ბრძანება შესრულდება OS‑ის ნატურალურ სენდბოქში. ჩაწერა შეზღუდულია სამუშაო სივრცის საქაღალდეზე."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "მიეცით აგენტს სისტემური ბრძანებების შესრულების უფლება (გამოიყენეთ ფრთხილით)"
@@ -72,31 +168,99 @@
     "message": "დაუშვით შინაარსის სკრიპტების გაშვება ვებგვერდებზე"
   },
   "Allowed": {
-    "message": ""
+    "message": "დაშვებულია"
   },
   "Allowed_Origins": {
     "message": "დაშვებული წყაროები"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "მხოლოდ ალფანუმერიული სიმბოლოები და დეფისები (1-50 სიმბოლო)"
   },
-  "Approval_History": {
-    "message": "დამტკიცების ისტორია"
+  "Always_Approve": {
+    "message": "ყოველთვის დამტკიცება"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: თქვენი პერსონალური AI (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "დამტკიცება & უსაფრთხოება"
+  },
+  "Approval_Mode": {
+    "message": "დამტკიცების რეჟიმი"
+  },
+  "Approval_Required": {
+    "message": "საჭიროა დამტკიცება"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "საჭიროა დამტკიცება: პაჩის გადატარება"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "საჭიროა დამტკიცება: ბრძანების შესრულება"
   },
   "Approve": {
     "message": "დამტკიცება"
   },
-  "Approve_this_action": {
-    "message": "დამტკიცეთ ეს მოქმედება"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "დამტკიცეთ ცვლილებები: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "დამტკიცეთ შესრულება: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "დარწმუნებული ხართ, რომ გსურთ ამ დავალების გაუქმება?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "დარწმუნებული ხართ, რომ გსურთ ამ აგენტის წაშლა?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "დარწმუნებული ხართ, რომ გსურთ თქვენი $1$ API გასაღების წაშლა?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "ვთხოვოთ Browserx-ს, რომ სტრუქტურირებული მონაცემები ნებისმიერი ვებგვერდიდან გამოვიყვანოს"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "მოთხოვნა საშუალო-რისკის და უფრო მაღალი (რისკი > 30). რეკომენდებულია უმეტეს მომხმარებლებისთვის."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "მოთხოვნა მხოლოდ მაღალი რისკის ქმედებების (რისკი > 60) შემთხვევაში. გამოცდილი მომხმარებლებისთვის."
+  },
+  "Auth_Type": {
+    "message": "ავთენტიკაციის ტიპი"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "ავთენტიკაციის დეტალი (შენახულია დაშიფრულად)"
+  },
+  "Authentication_failed": {
+    "message": "ავთენტიკაცია ვერ მოხერხდა"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "აგენტის ავთენტიკაციის მეთოდი"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "ავტომატური (ნაგულისხმევი)"
+  },
+  "Auto_approve_everything": {
+    "message": "ყველას ავტომატურად დადასტურება"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "ყველას ავტომატურად დადასტურება. აკრძალვის წესები მაინც მოქმედებს. გამოიყენეთ თქვენი პასუხისმგებლობით."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "ავტომატურად დადასტურდა -- დროის ლიმიტი მიღწეული"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "აპლიკაცია ავტომატურად გაეშვას, როდესაც თქვენს კომპიუტერში შეხვდებით"
+  },
+  "Available_Skills": {
+    "message": "ხელმისაწვდომი უნარები"
   },
   "Available_Tools": {
-    "message": ""
+    "message": "ხელმისაწვდომი ხელსაწყოები"
   },
   "Available": {
     "message": "ხელმისაწვდომია:"
@@ -104,20 +268,62 @@
   "Back": {
     "message": "უკან"
   },
+  "Back_to_Model_Config": {
+    "message": "მოდელის კონფიგურაციაზე დაბრუნება"
+  },
   "Backend_Mode": {
     "message": "სერვერული რეჟიმი"
   },
   "Backend_Mode_Active": {
     "message": "სერვერული რეჟიმი აქტიურია"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "უკანაბოლო მიუწვდომელია. გთხოვთ, დაელოდოთ რამდენიმე წამს და სცადოთ თავიდან."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "უკანაბოლო სერვერის შეცდომა - გთხოვთ, სცადოთ მოგვიანებით"
+  },
+  "Backoff_Multiplier": {
+    "message": "Backoff Multiplier"
+  },
+  "Balanced": {
+    "message": "ბალანსირებული"
+  },
+  "Base_URL": {
+    "message": "Base URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Base URL არ არის კონფიგურირებული ამ პროვაიდერისთვის"
+  },
+  "Bearer_Token": {
+    "message": "Bearer Token"
+  },
   "Beta": {
     "message": "ბეტა"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Bind mount-ის ბილიკი უნდა იყოს აბსოლუტური"
+  },
+  "Blocked_Domains": {
+    "message": "დაბლოკილი დომენები"
   },
   "Browser_Tools": {
     "message": "ბრაუზერის ხელსაწყოები"
   },
   "Browser_automation_tool_toggles": {
     "message": "ბრაუზერის ავტომატიზაციის ხელსაწყოების გადამრთველები"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "ქეშის პარამეტრები"
@@ -131,8 +337,36 @@
   "Cancel": {
     "message": "გაუქმება"
   },
+  "Cancelled": {
+    "message": "გაუქმებულია"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "ამოცანის შესრულება შეუძლებელია: ${providerName}-სთვის API გასაღები არ არის კონფიგურირებული. გთხოვთ, გადადით Settings → Model Configuration და დაამატეთ თქვენი API გასაღები."
+  },
+  "Cannot_select_model_1": {
+    "message": "მოდელის არჩევა შეუძლებელია: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "შეტყობინების გაგზავნა შეუძლებელია: $1$-სთვის API გასაღები არ არის კონფიგურირებული. გთხოვთ, დააწკაპეთ Settings ღილაკს და კონფიგურირეთ თქვენი API გასაღები.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "შესაძლებლობები"
+  },
   "Chat_History": {
     "message": "საუბრის ისტორია"
+  },
+  "Checking_agent_status": {
+    "message": "ამჟამად აგენტის სტატუსის შემოწმება..."
   },
   "Choose_AI_Model": {
     "message": "აირჩიეთ AI-ის მოდელი"
@@ -149,29 +383,41 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "სუფთა, თანამედროვე ჩატის ინტერფეისი, ChatGPT-ს მსგავსია"
   },
-  "Clear_search": {
-    "message": ""
-  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "დააჭირეთ Browserx-ის ხატულას თქვენი ხელსაწყოთა პანელში ან დააჭირეთ Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "დააწკაპეთ შესვლის გაუქმებისთვის"
   },
   "Click_to_select_a_model": {
     "message": "დააწკაპუნეთ მოდელის ასარჩევად"
   },
+  "Close": {
+    "message": "დახურვა"
+  },
   "Close_settings": {
     "message": "პარამეტრების დახურვა"
+  },
+  "Collapse": {
+    "message": "ჩაკეცვა"
+  },
+  "Command_Approval_Required": {
+    "message": "ბრძანების დამტკიცება აუცილებელია"
+  },
+  "Command_completed": {
+    "message": "ბრძანება დასრულებულია"
   },
   "Command": {
     "message": "ბრძანება"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "ბრძანებები პირდაპირ ჰოსტზე შესრულდება. უსაფრთხოების ფილტრი მაინც მოქმედებს."
   },
   "Completed": {
-    "message": ""
+    "message": "დასრულებულია"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "დასრულებულია: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "ქეშირებული მონაცემების შეკუმშვა საცავის სივრცის დასაზოგად"
@@ -179,41 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "კონფიგურირეთ AI მოდელი და API გასაღებები"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "კონფიგურირეთ API გასაღები Settings-ში"
+  },
+  "Configured": {
+    "message": "კონფიგურირებულია"
+  },
+  "Configured_Agents": {
+    "message": "კონფიგურირებული აგენტები"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "კონფიგურირებული სერვერები"
   },
   "Connect": {
-    "message": ""
+    "message": "დაკავშირება"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "დაკავშირეთ Agent-to-Agent (A2A) პროტოკოლის აგენტები, რათა გაფართოვოთ შესაძლებლობები გარე აგენტის უნარებით."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "დაკავშირეთ Model Context Protocol (MCP) სერვერებს, რათა გაფართოვოთ აგენტი გარე ხელსაწყოების საშუალებით."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "დაკავშირეთ A2A აგენტს, რათა აღმოვაჩინოთ უნარები."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "დაკავშირეთ MCP სერვერს, რათა აღმოვაჩინოთ ხელსაწყოები."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "დაკავშირეთ გარე MCP ხელსაწყოების სერვერებთან"
   },
   "Connected": {
     "message": "დაკავშირებულია"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "წარმატებით დაკავშირებულია"
   },
-  "Context": {
-    "message": "კონტექსტი"
+  "Connecting": {
+    "message": "დაკავშირება..."
+  },
+  "Connection_error": {
+    "message": "დაკავშირების შეცდომა"
+  },
+  "Connection_failed_1": {
+    "message": "დაკავშირება ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "დაკავშირება ვერ მოხერხდა: საბაზისო URL არ არის კონფიგურირებული"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "დაკავშირება ვერ მოხერხდა: არჩეული მოდელის კონფიგურაცია აკლია"
+  },
+  "Connection_successful": {
+    "message": "დაკავშირება წარმატებულია!"
+  },
+  "Connection_test_failed_1": {
+    "message": "დაკავშირების ტესტი ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "დაკავშირების ტესტი ვერ მოხერხდა: არასწორი API გასაღები"
+  },
+  "Connection_test_successful": {
+    "message": "დაკავშირების ტესტი წარმატებულია!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "დაკავშირების ტესტი წარმატებულია! (API გასაღები სწორია)"
+  },
+  "Connection_was_refused": {
+    "message": "დაკავშირება უარყოფილია"
+  },
+  "Connection_was_reset": {
+    "message": "დაკავშირება გადატვირთულია"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "შემცველობა დარღვევს წესებს: ${contentType} შინაარსი დაუშვებელია"
+  },
+  "Context_Window": {
+    "message": "კონტექსტის ფანჯარა"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "კონტექსტი შეკუმშულია: შენახულია ~$1$k ტოკენები",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "აკონტროლებს, თუ რამდენად აგრესიულად ითხოვს აგენტი დამტკიცება."
   },
   "Create_New_Tab": {
     "message": "ახალი ჩანართის შექმნა"
   },
   "Created": {
-    "message": ""
+    "message": "შექმნილია"
+  },
+  "Creator": {
+    "message": "შემქმნელი"
   },
   "Credit_Details": {
     "message": "კრედიტის დეტალები"
   },
   "Current_Plan": {
     "message": "მიმდინარე გეგმა:"
+  },
+  "DNS_lookup_failed": {
+    "message": "DNS-ის ძიება ვერ მოხერხდა"
   },
   "DOM_Tool": {
     "message": "DOM ხელსაწყო"
@@ -225,10 +552,34 @@
     "message": "მონაცემთა გამოღების ხელსაწყო"
   },
   "Date": {
-    "message": ""
+    "message": "თარიღი"
   },
   "Days_until_expiration": {
     "message": "დღეები ვადის გასვლამდე"
+  },
+  "Debug_logging_disabled": {
+    "message": "გამართვის ლოგირება გამორთულია"
+  },
+  "Debug_logging_enabled": {
+    "message": "გამართვის ლოგირება ჩართულია"
+  },
+  "Default": {
+    "message": "ნაგულისხმევი"
+  },
+  "Deny": {
+    "message": "უარყოფა"
+  },
+  "Deprecated": {
+    "message": "მოძველებული"
+  },
+  "Deprecation_Message": {
+    "message": "მოძველების შეტყობინება"
+  },
+  "Description": {
+    "message": "აღწერა"
+  },
+  "Desktop_mode": {
+    "message": "სამუშაო მაგიდის რეჟიმი"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "განვითარებულია და მხარდაჭერილია AI Republic-ის მიერ"
@@ -237,22 +588,37 @@
     "message": "ცვლილებების გაუქმება"
   },
   "Disconnect": {
-    "message": ""
+    "message": "გათიშვა"
+  },
+  "Disconnected_successfully": {
+    "message": "გათიშვა წარმატებით დასრულდა"
   },
   "Dismiss": {
-    "message": ""
+    "message": "მოცილება"
+  },
+  "Dismiss_notification": {
+    "message": "შეტყობინების მოცილება"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "დავალებების დასრულებისას ტოკენების მოხმარების ჩვენება (შემომავალი/გამომავალი ტოკენები)"
   },
+  "Draft": {
+    "message": "მონახაზი"
+  },
   "Duration": {
-    "message": ""
+    "message": "ხანგრძლივობა"
+  },
+  "ERROR": {
+    "message": "შეცდომა"
   },
   "Edit": {
-    "message": ""
+    "message": "რედაქტირება"
+  },
+  "Edit_Agent": {
+    "message": "აგენტის რედაქტირება"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "სერვერის რედაქტირება"
   },
   "Enable_All_Tools": {
     "message": "ყველა ხელსაწყოს ჩართვა"
@@ -270,46 +636,61 @@
     "message": "გაფართოების ჩართვა"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "მოდელის კონტექსტის პროტოკოლის ინსტრუმენტების ჩართვა დაკავშირებული MCP სერვერებიდან"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "ავტო-შეერთების ჩართვა, როდესაც browserx იწყება"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "ქეშის ჩართვა წარმადობის გასაუმჯობესებლად ხშირად გამოყენებული მონაცემების შენახვით"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "გამართვის ლოგირების ჩართვა"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "აგენტისთვის ვებ-ძიების ფუნქციის ჩართვა"
   },
   "Enabled": {
-    "message": ""
+    "message": "ჩართული"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "შეიყვანეთ API გასაღები, თუ საჭიროა"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "შეიყვანეთ API გასაღები ან ბერერი ტოკენი"
   },
   "Enter_your_LLM_API_key": {
     "message": "შეიყვანეთ თქვენი LLM API გასაღები"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "შეიყვანეთ თქვენი დავალება..."
   },
   "Error": {
-    "message": ""
+    "message": "შეცდომა"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "შეცდომა: არ არის დაკავშირებული აგენტთან. გთხოვთ, განაახლეთ გვერდი."
   },
   "Execute_Commands": {
     "message": "ბრძანებების შესრულება"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "გაშვების რეჟიმი"
+  },
+  "Exit_Code": {
+    "message": "გასვლის კოდი:"
+  },
+  "Expand": {
+    "message": "გაფართოვება"
   },
   "Expire_after_days": {
     "message": "ვადის გასვლა დღეებში"
   },
-  "Explain_your_decision": {
-    "message": "განმარტეთ თქვენი გადაწყვეტილება..."
+  "Explain_this_info_selectionText": {
+    "message": "განმარტეთ ეს: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "განმარტება Browserx-ით"
   },
   "Extension_Permission": {
     "message": "გაფართოება და ნებართვა"
@@ -327,31 +708,146 @@
     "message": "დამატებითი კრედიტები"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "დამატებითი დირექტორიები, ხელმისაწვდომი სანდბოქსის შიგნით"
   },
   "Extract_Data": {
     "message": "მონაცემების ამოღება:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "მონაცემების გამოღება Browserx-ით"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "გვერდებიდან კონკრეტული მონაცემთა შაბლონების ამოღება"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "სტრუქტურირებული მონაცემების გამოღება ამ გვერდიდან"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "სტრუქტურირებული მონაცემების ამოღება ვებ-გვერდებიდან"
   },
+  "Failed": {
+    "message": "შეცდომა"
+  },
+  "Failed_to_change_model_1": {
+    "message": "მოდელის შეცვლა ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "დაკავშირება ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "ახალი ჩანართის შექმნა ვერ მოხერხდა. გთხოვთ, სცადეთ თავიდან."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "ბრაუზერის ჩანართის შექმნა ვერ მოხერხდა: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "გათიშვა ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "A2A პარამეტრების ჩატვირთვა ვერ მოხერხდა"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "საუბრის ჩატვირთვა ვერ მოხერხდა. გთხოვთ, სცადეთ თავიდან."
+  },
   "Failed_to_load_preferences": {
     "message": "პარამეტრების ჩატვირთვა ვერ მოხერხდა"
+  },
+  "Failed_to_load_settings": {
+    "message": "პარამეტრების ჩატვირთვა ვერ მოხერხდა"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "API გასაღების წაშლა ვერ მოხერხდა"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "აგენტის წაშლა ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "API გასაღების შენახვა ვერ მოხერხდა"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "დაბაგის ლოგირების პარამეტრის შენახვა ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "პარამეტრების შენახვა ვერ მოხერხდა"
   },
+  "Failed_to_save_settings_1": {
+    "message": "პარამეტრების შენახვა ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "შენახვა ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "შეტყობინების გაგზავნა ვერ მოხერხდა. გთხოვთ, სცადეთ თავიდან."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "ახალი საუბრის დაწყება ვერ მოხერხდა. გთხოვთ, სცადეთ თავიდან."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "ამოცანის შეწყვეტა ვერ მოხერხდა. გთხოვთ, სცადეთ თავიდან."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "ჩანართზე ${newTabId} გადართვა ვერ მოხერხდა: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "კავშირის შემოწმება ვერ მოხერხდა"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "API რეჟიმის განახლება ვერ მოხერხდა"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "სერვისის დონეს განახლება ვერ მოხერხდა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "ფაილის ცვლილების დამტკიცება აუცილებელია"
+  },
   "File_Operations_Not_Available": {
     "message": "ფაილური ოპერაციები (მიუწვდომელია)"
   },
-  "File_Path": {
-    "message": "ფაილის ბილიკი"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ფორმების შევსება, მონაცემების გადაგზავნა, ფორმის ელემენტებთან ურთიერთქმედება"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "ფორმის ავტომატიზაციის ინსტრუმენტი"
@@ -360,7 +856,7 @@
     "message": "სრული წვდომა (საშიში)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "სრული შეყვანა"
   },
   "General": {
     "message": "ზოგადი"
@@ -385,17 +881,64 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "ისტორია"
+  "Hide_API_key": {
+    "message": "API გასაღების დამალვა"
+  },
+  "High_Speed": {
+    "message": "მაღალი სიჩქარე"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "როგორ მიმაგრებულია სამუშაო სივრცის საქაღალდე სენდბოქში"
   },
-  "Impact": {
-    "message": "გავლენა"
+  "Image_Input": {
+    "message": "გამოსახულების შეყვანა"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "გაუმჯობესეთ ეს ტექსტი: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "გაუმჯობესეთ Browserx-ით"
+  },
+  "In": {
+    "message": "შიგნით:"
+  },
+  "Incompatible_features": {
+    "message": "არათავსებადი ფუნქციები:"
+  },
+  "Initial_Delay": {
+    "message": "საწყისი დაყოვნება"
+  },
+  "Input_Token_Price": {
+    "message": "შეყვანის ტოკენის ფასი"
+  },
+  "Input": {
+    "message": "შეყვანა:"
+  },
+  "Input_1": {
+    "message": "შეყვანა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "ქსელის მოთხოვნების/პასუხების დაჭერა და შეცვლა"
+  },
+  "Invalid_API_key": {
+    "message": "არასწორი API გასაღები"
+  },
+  "Invalid_API_key_provided": {
+    "message": "არასწორი API გასაღები"
+  },
+  "Invalid_URL_format": {
+    "message": "არასწორი URL ფორმატი"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "არასწორი გადაგზავნის ფორმატი: აკლია op ველი"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "არასწორი გადაგზავნის ფორმატი: op-ის ტიპის ველი აკლია"
   },
   "Keyboard_Shortcuts": {
     "message": "კლავიატურის მალსახმობები"
@@ -413,31 +956,52 @@
     "message": "ვრცლად"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "დატოვეთ ცარიელი, რომ არსებული დარჩეს"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "დაშვებული წყაროების სია (თითო ხაზზე ერთი). მხარდაჭერილია ვაილდქარდები (*)"
   },
   "Load_More": {
-    "message": ""
+    "message": "მეტი ჩამოტვირთვა"
+  },
+  "Load_more": {
+    "message": "მეტი ჩამოტვირთვა"
+  },
+  "Loading_configuration": {
+    "message": "კონფიგურაციის ჩატვირთვა..."
   },
   "Loading_credits": {
     "message": "კრედიტები იტვირთება..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "დეტალების ჩატვირთვა..."
+  },
+  "Loading_history": {
+    "message": "ისტორიის ჩატვირთვა..."
   },
   "Loading_settings": {
     "message": "პარამეტრები იტვირთება..."
   },
+  "Loading_tabs": {
+    "message": "ტაბის ჩატვირთვა..."
+  },
   "Loading": {
-    "message": ""
+    "message": "ჩატვირთვა..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "A2A პროტოკოლის შეტყობინებების ლოგირება ბრაუზერის კონსოლში დიბაგისთვის"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "MCP პროტოკოლის შეტყობინებების ლოგირება ბრაუზერის კონსოლში დიბაგისთვის"
+  },
+  "Log_in_to_your_account": {
+    "message": "შედით თქვენს ანგარიშში"
+  },
+  "Logged_in": {
+    "message": "შესული"
   },
   "Logging_in": {
-    "message": ""
+    "message": "მიმდინარეობს შესვლა..."
   },
   "Login": {
     "message": "შესვლა"
@@ -446,19 +1010,19 @@
     "message": "შედით უფასო კრედიტების მისაღებად"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "გრძელი დაჭერა დავალების დაგეგმვისთვის"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "გრძელი დაჭერა გაგზავნის ღილაკზე დავალების დაგეგმვისთვის"
   },
   "Low_credits_remaining": {
     "message": "კრედიტების დაბალი ბალანსი"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "MCP სერვერები"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "MCP ინსტრუმენტები"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ბრაუზერის ჩანართების მართვა (გახსნა, დახურვა, გადართვა, მოთხოვნა)"
@@ -473,34 +1037,102 @@
     "message": "მაქს. ქეშის ზომა (მბ)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "მაქსიმალური თანასწორ სესიები"
+  },
+  "Max_Delay": {
+    "message": "მაქსიმალური დაყოვნება"
+  },
+  "Max_Output": {
+    "message": "მაქსიმალური გამომავალი"
+  },
+  "Max_Output_Tokens": {
+    "message": "მაქსიმალური გამომავალი ტოკენები"
+  },
+  "Max_Retries": {
+    "message": "მაქსიმალური ცდები"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "ქეშის მაქსიმალური ზომა მეგაბაიტებში (ნაგულისხმევი: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "განრიგებული დავალებების ჩათვლით, აგენტის თანასწორ სესიების მაქსიმალური რაოდენობა"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "მიღებულია 5 აგენტის მაქსიმუმ"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "მიღებულია 5 სერვერის მაქსიმუმ"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "ხელსაწყოს მუშაობის მაქსიმალური დრო (მილიწამებში) დროის ამოწურვამდე (ნაგულისხმევი: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "საშუალო რისკის და უფრო მაღალი"
+  },
+  "Message_service_not_available": {
+    "message": "მესიჯის სერვისი ხელმისაწვდომი არაა"
+  },
   "Missed": {
-    "message": ""
+    "message": "გამოტოვებული"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "გამოტოვებული დაგეგმილი დავალებები"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "მოდელი \"$1$\" არ უჭერს მხარს გამოსახულების შეყვანას. ზოგიერთი ინსტრუმენტი გამორთული იქნება.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "მოდელის კონფიგურაცია"
   },
+  "Model_Configuration": {
+    "message": "მოდელის კონფიგურაცია"
+  },
+  "Model_Key_API": {
+    "message": "მოდელის გასაღები (API)"
+  },
+  "Model_Name": {
+    "message": "მოდელის სახელი"
+  },
   "Model_Selection": {
     "message": "მოდელის არჩევანი"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "მოდელის და პროვაიდერის პარამეტრები ჩაიტვირთა ნაგულისხმევი კონფიგურაციიდან (მხოლოდ-კითხვის)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "მოდელი შეიცვალა $1$-ზე. გთხოვთ, დააყენოთ თქვენი API გასაღები.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "მოდელი შეიცვალა $1$-ზე. სესია თავიდან ინიციალიზდება.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "მოდელი:"
+  },
+  "Model_1": {
+    "message": "მოდელი: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "თანამედროვე ჩატი"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "პარამეტრების შეცვლა ცვლილებების მოთხოვნისას"
   },
   "Monthly_Credits": {
     "message": "თვიური კრედიტები"
@@ -509,7 +1141,7 @@
     "message": "დამატებითი კონფიგურაცია"
   },
   "Name": {
-    "message": ""
+    "message": "სახელი"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "გვერდებზე ნავიგაცია, ბმულებზე დაწკაპება, ბრაუზერის ნავიგაციის მართვა"
@@ -518,10 +1150,16 @@
     "message": "ნავიგაციის ხელსაწყო"
   },
   "Network_Access": {
-    "message": ""
+    "message": "ქსელის წვდომა"
   },
   "Network_Intercept_Tool": {
     "message": "ქსელის ინტერსეპციის ხელსაწყო"
+  },
+  "Network_error": {
+    "message": "ქსელის შეცდომა"
+  },
+  "Network_error_occurred": {
+    "message": "ქსელის შეცდომა მოხდა"
   },
   "Never_expire_permanent": {
     "message": "ვადა არასოდეს ამოიწურება (მუდმივი)"
@@ -529,41 +1167,85 @@
   "New_Conversation": {
     "message": "ახალი საუბარი"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "A2A აგენტები ჯერ არ არის კონფიგურირებული."
+  },
   "No_Access": {
-    "message": ""
+    "message": "წვდომის გარეშე"
+  },
+  "No_Access_Configured": {
+    "message": "წვდომა არ არის კონფიგურირებული"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "MCP სერვერები ჯერ არ არის კონფიგურირებული."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "წვდომა არ არის კონფიგურირებული. გთხოვთ, შეხვიდეთ ან კონფიგურირეთ API გასაღები."
   },
   "No_active_sessions": {
-    "message": ""
+    "message": "აქტიური სესიები არ არის"
   },
-  "No_approval_history_yet": {
-    "message": "დამტკიცების ისტორია ჯერ არ არსებობს."
+  "No_chat_history_yet": {
+    "message": "საუბრის ისტორია ჯერ არ არსებობს"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "დასრულებული დავალებები ჯერ არ არსებობს"
+  },
+  "No_models_available": {
+    "message": "მოდელები არ არის ხელმისაწვდომი"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "მოდელები არ არის ხელმისაწვდომი. გთხოვთ, შეამოწმეთ კონფიგურაცია."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "დაგეგმილი დავალებები არ არის"
   },
-  "No_settings_found": {
-    "message": ""
+  "No_scheduled_time": {
+    "message": "დაგეგმილი დრო არ არის"
+  },
+  "No_skills_available": {
+    "message": "უნარები არ არის ხელმისაწვდომი."
+  },
+  "No_steps_in_plan": {
+    "message": "გეგმაში ნაბიჯები არ არის"
   },
   "No_tabs_available": {
     "message": "ჩანართები ხელმისაწვდომი არაა"
   },
+  "No_time_set": {
+    "message": "დრო არ არის დაყენებული"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "ინსტრუმენტები არ არის ხელმისაწვდომი."
+  },
+  "None": {
+    "message": "არცერთი"
   },
   "Not_Connected": {
     "message": "არ არის დაკავშირებული"
+  },
+  "Notification": {
+    "message": "შეტყობინება"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "დღეების რაოდენობა, სანამ დანერგვის მონაცემების ვადა ამოიწურება (ნაგულისხმევი: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "ოფლაინ - დავალებები შესრულდება, როდესაც კავშირი იქნება"
+  },
+  "Older": {
+    "message": "უფრო ძველი"
+  },
+  "Only_high_risk_actions": {
+    "message": "მხოლოდ მაღალი რისკის ქმედებები"
+  },
+  "Open_1_settings": {
+    "message": "გახსენი $1$ პარამეტრები",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "გვერდითი პანელის გახსნა:"
@@ -571,17 +1253,51 @@
   "Organization": {
     "message": "ორგანიზაცია"
   },
+  "Organization_ID": {
+    "message": "ორგანიზაციის ID"
+  },
+  "Out": {
+    "message": "გამოტანა:"
+  },
+  "Output_Token_Price": {
+    "message": "გამოტანის ტოკენის ფასი"
+  },
+  "Output": {
+    "message": "გამოტანა:"
+  },
+  "Output_1": {
+    "message": "გამოტანა: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "გვერდის მოქმედებების ხელსაწყო"
   },
   "Page_Vision_Tool": {
     "message": "გვერდის ხედის ხელსაწყო"
   },
-  "Parameter_Modifications": {
-    "message": "პარამეტრების შეცვლები"
+  "Past_Month": {
+    "message": "გასული თვე"
+  },
+  "Past_Week": {
+    "message": "გასული კვირა"
+  },
+  "Patch_applied_successfully": {
+    "message": "პაჩი წარმატებით გადატარდა"
+  },
+  "Patch_for_1_file_s": {
+    "message": "პაჩი $1$ ფაილ(ებ)ზე",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "რიგის შეჩერება"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "გააკეთეთ გვერდის მოქმედებები (გადახვევა, ეკრანის სურათი, დაყოვნება)"
@@ -589,32 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "ქეშის მუდმივი შენახვა საცავში"
   },
+  "Plan_1_step_s": {
+    "message": "გეგმა: $1$ ნაბიჯ(ი)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "გთხოვთ, შეამოწმეთ თქვენი API გასაღები პარამეტრებში."
+  },
+  "Please_enter_a_task_description": {
+    "message": "გთხოვთ, შეიყვანეთ დავალების აღწერა"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "გთხოვთ, პირველ რიგში შეიყვანეთ API გასაღები"
+  },
   "Please_input_a_valid_API_key": {
     "message": "გთხოვთ, შეიყვანოთ სწორი API გასაღები."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "გთხოვთ, თავიდან შეხვიდეთ, რათა გააგრძელოთ AI აგენტის გამოყენება."
+  },
+  "Please_select_a_provider": {
+    "message": "გთხოვთ, აირჩიოთ პროვაიდერი"
   },
   "Please_type_a_valid_command": {
     "message": "გთხოვთ, აკრიფოთ სწორი ბრძანება"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "გთხოვთ, განაახლოთ გეგმა, რათა განბლოკოთ მსოფლიოს ყველაზე განვითარებული მოდელები"
+  },
   "Power": {
-    "message": ""
+    "message": "მძლავრობა"
+  },
+  "Pricing_Information": {
+    "message": "ფასის ინფორმაცია"
+  },
+  "Pricing_Page": {
+    "message": "ფასის გვერდი"
+  },
+  "Priority": {
+    "message": "პრიორიტეტი"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "პრიორიტეტის დონე იძლევა უფრო სწრაფ პასუხებს, თუმცა უფრო მაღალი ფასით."
   },
+  "Processing": {
+    "message": "მუშავდება..."
+  },
+  "Protocol": {
+    "message": "პროტოკოლი"
+  },
   "Provider": {
     "message": "მომწოდებელი"
+  },
+  "Provider_Configuration": {
+    "message": "პროვაიდერის კონფიგურაცია"
+  },
+  "Provider_ID": {
+    "message": "პროვაიდერის ID"
+  },
+  "Provider_Name": {
+    "message": "პროვაიდერის სახელი"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "მოთხოვნა და მანიპულაცია DOM‑ზე (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "რიგი შეჩერებულია"
   },
   "Queued": {
-    "message": ""
+    "message": "რიგში"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "სწრაფი განრიგი"
   },
   "Quick_Start": {
     "message": "სწრაფი დაწყება"
@@ -623,16 +1389,33 @@
     "message": "სწრაფი მოქმედება"
   },
   "Read_Only": {
-    "message": ""
+    "message": "მხოლოდ-წაკითხვადი"
   },
   "Read_Write": {
-    "message": ""
+    "message": "წაკითხვადი-ჩაწერადი"
   },
   "Read_only": {
     "message": "მხოლოდ კითხვის"
   },
-  "Reason_optional": {
-    "message": "მიზეზი (არასავალდებულო)"
+  "Reasoning": {
+    "message": "მიზეზის გამოთქმა"
+  },
+  "Reasoning_Efforts": {
+    "message": "განმარტების მცდელობები"
+  },
+  "Reasoning_Summaries": {
+    "message": "განმარტების შეჯამებები"
+  },
+  "Reasoning_levels": {
+    "message": "განმარტების დონეები:"
+  },
+  "Reasoning_1": {
+    "message": "განმარტება: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "განახლდება"
@@ -640,59 +1423,86 @@
   "Reject": {
     "message": "უარყოფა"
   },
-  "Reject_this_action": {
-    "message": "ამ ქმედების უარყოფა"
+  "Release_Date": {
+    "message": "გამოშვების თარიღი"
+  },
+  "Release_date_unknown": {
+    "message": "გამოშვების თარიღი უცნობია"
+  },
+  "Released": {
+    "message": "გამოშვებულია:"
   },
   "Remaining": {
     "message": "დარჩენილი:"
   },
   "Remove": {
-    "message": ""
+    "message": "წაშლა"
   },
   "Remove_API_Key": {
     "message": "API გასაღების წაშლა"
   },
-  "Remove_modification": {
-    "message": "მოდიფიკაციის წაშლა"
+  "Request_Timeout": {
+    "message": "მოთხოვნის ვადა"
   },
-  "Request_Changes": {
-    "message": "ცვლილებების მოთხოვნა"
-  },
-  "Request_changes_to_this_action": {
-    "message": "ამ ქმედების შეცვლის მოთხოვნა"
+  "Request_timed_out": {
+    "message": "მოთხოვნის ვადა გავიდა"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "მოთხოვნის ვადა მილიწამებში (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "მოთხოვნის ვადა მილიწამებში (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "მოთხოვნა შეწყვეტილია"
+  },
+  "Response_failed": {
+    "message": "პასუხის შეცდომა"
   },
   "Restricted": {
-    "message": ""
+    "message": "შეზღუდული"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "შედეგის შეჯამება"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "რეკის გაგრძელება"
+  },
+  "Retry_Configuration": {
+    "message": "ხელახლა ცდის კონფიგურაცია"
+  },
+  "Retrying": {
+    "message": "ხელახლა ცდა"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "ნებისმიერ ტექსტზე მარჯვენა ღილაკით დააწკაპუნეთ, რომ Browserx-ით განმარტოთ ან გააუმჯობესოთ იგი."
+  },
+  "Risk_Score": {
+    "message": "რისკის ქულა:"
   },
   "Rollout_Expiration": {
     "message": "განაწილების ვადის გასვლა"
   },
   "Run_Now": {
-    "message": ""
+    "message": "გაშვება ახლავე"
   },
   "Running": {
-    "message": ""
+    "message": "გაშვებულია"
+  },
+  "STREAM_ERROR": {
+    "message": "სტრიმის შეცდომა"
   },
   "Safe": {
-    "message": ""
+    "message": "უსაფრთხო"
   },
   "Sandbox_Policy": {
     "message": "სენდბოქსის პოლიტიკა"
   },
   "Save_API_Key": {
     "message": "API გასაღების შენახვა"
+  },
+  "Save_Changes": {
+    "message": "ცვლილებების შენახვა"
   },
   "Save_Settings": {
     "message": "პარამეტრების შენახვა"
@@ -701,22 +1511,31 @@
     "message": "მიმდინარეობს შენახვა..."
   },
   "Schedule": {
-    "message": ""
+    "message": "განრიგში"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "ახალი დავალების დაგეგმვა"
   },
   "Scheduled": {
-    "message": ""
+    "message": "დაგეგმილი"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "დაგეგმილი დავალება"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "დაგეგმილი დავალება იწყება"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "დაგეგმილი დავალებები"
   },
-  "Search_settings": {
-    "message": ""
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "დაგეგმილი დრო უნდა იყოს მინიმუმ 1 წუთით მომავალში"
+  },
+  "Search_complete": {
+    "message": "ძიება დასრულებულია"
+  },
+  "Searching": {
+    "message": "ძიება..."
   },
   "Security_Privacy": {
     "message": "უსაფრთხოება & კონფიდენციალურობა"
@@ -724,23 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "ხელსაწყოს შესრულების გარემოს უსაფრთხოების დონე"
   },
+  "Select_Model": {
+    "message": "მოდელის არჩევა"
+  },
+  "Select_model_1": {
+    "message": "აირჩიეთ მოდელი: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "აირჩიეთ AI მოდელი, რომელიც გამოიყენება საუბრებში."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "აირჩიეთ ინტერფეისის სასურველი ენა"
   },
+  "Selected": {
+    "message": "არჩეული"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "არჩეული მოდელის კონფიგურაცია არ არსებობს"
+  },
+  "Send": {
+    "message": "გაგზავნა"
+  },
   "Service_Tier": {
     "message": "სერვისის დონე"
   },
-  "Session": {
-    "message": "სესია"
+  "Service_tier_updated_to_1": {
+    "message": "სერვისის დონე განახლდა $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "სესიის შეცდომა"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "სესია დასრულდა - გთხოვთ, თავიდან შეხვიდეთ, რათა გააგრძელოთ AI აგენტის გამოყენება"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
+    "message": "სესიის ლიმიტი მიღწეულია. ახალი დავალებები რიგში დაემატება."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "დააყენეთ, როდის უნდა ამოიწუროს განაწილების მონაცემების ვადა"
@@ -751,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "პარამეტრები წარმატებით შენახულია"
   },
+  "Show_API_key": {
+    "message": "API გასაღების ჩვენება"
+  },
+  "Show_all": {
+    "message": "ყველას ჩვენება"
+  },
+  "Show_less": {
+    "message": "ნაკლები ჩვენება"
+  },
   "Show_token_usage_in_tasks": {
     "message": "დავალებებში ტოკენების გამოყენების ჩვენება"
   },
@@ -760,11 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "შედით თქვენს ანგარიშში"
   },
+  "Skills": {
+    "message": "უნარები"
+  },
   "Stable": {
     "message": "სტაბილური"
   },
+  "Standard_capabilities": {
+    "message": "სტანდარტული შესაძლებლობები"
+  },
+  "Start_New_Conversation": {
+    "message": "ახალი საუბრის დაწყება"
+  },
+  "Start_on_login": {
+    "message": "შესვლისას დაწყება"
+  },
   "Status": {
-    "message": ""
+    "message": "სტატუსი"
+  },
+  "Stop_Agent": {
+    "message": "აგენტის შეჩერება"
+  },
+  "Stop_the_current_task": {
+    "message": "მიმდინარე დავალების შეჩერება"
   },
   "Stop_the_current_task_run": {
     "message": "მიმდინარე დავალების შესრულების შეჩერება"
@@ -787,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "ქეშის მონაცემების მუდმივი შენახვა ბრაუზერის სესიების განმავლობაში"
   },
+  "Suggest_Alternative": {
+    "message": "ალტერნატივის შეთავაზება"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "გადართულია ბექენდის რეჟიმზე. LLM მოთხოვნები გაიგზავნება AI Republic სერვერის გავლით."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "გადართულია პირდაპირი API რეჟიმზე. გთხოვთ, კონფიგურიროთ თქვენი API გასაღები."
+  },
+  "System": {
+    "message": "სისტემა"
+  },
   "Tab_Tool": {
     "message": "ტაბის ინსტრუმენტი"
   },
+  "Tab_unavailable": {
+    "message": "ჩანართი მიუწვდომელია"
+  },
+  "Take_Over": {
+    "message": "გადაიღება"
+  },
   "Task": {
-    "message": ""
+    "message": "დავალება"
   },
   "Task_Details": {
-    "message": ""
+    "message": "დავალების დეტალები"
+  },
+  "Task_Failed": {
+    "message": "დავალება ჩავარდა"
   },
   "Task_History": {
-    "message": ""
+    "message": "დავალებების ისტორია"
   },
   "Task_ID": {
-    "message": ""
+    "message": "დავალების ID"
+  },
+  "Task_Plan": {
+    "message": "დავალების გეგმა"
+  },
+  "Task_cancelled_by_user": {
+    "message": "დავალება გაუქმებულია მომხმარებლის მიერ"
+  },
+  "Task_complete": {
+    "message": "დავალება დასრულებულია"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "დავალება დასრულდა $1$ სვლაში",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "დავალება ჩავარდა"
+  },
+  "Task_started": {
+    "message": "დავალება დაიწყო"
   },
   "Terminal": {
     "message": "ტერმინალი"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "ტერმინალის სანდბოქსი"
   },
   "Test_Connection": {
     "message": "კავშირის ტესტირება"
@@ -814,38 +1732,67 @@
   "Testing": {
     "message": "ტესტირება..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "A2A აგენტის საბოლოო წერტილის URL (http ან https)"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+    "message": "AI თითოეული ბრძანების მიხედვით, რისკის შეფასებაზე, განსაზღვრავს, გამოიყენება თუ არა სანდბოქსი."
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "MCP სერვერის საბოლოო წერტილის URL (http ან https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "აგენტი ამჟამად იყენებს ბექენდის რეჟიმს. LLM მოთხოვნები AI Republic-ის სერვერზე გაიგზავნება. თქვენი საუბრები უსაფრთხოდ პროცესდება ჩვენი ინფრასტრუქტურის მეშვეობით."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "მოდელის გადართვა გასუფთავებს მიმდინარე საუბარს. გსურთ გაგრძელება?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "სერვერს შეცდომა მოხდა. გთხოვთ, სცადოთ მოგვიანებით."
+  },
   "Time": {
     "message": "დრო"
-  },
-  "Time_remaining": {
-    "message": "დარჩენილი დრო"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "ქეშის ელემენტების სიცოცხლის დრო წამებში (ნაგულისხმევი: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "ტაიმაუტი (მს)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "AI აგენტის გამოსაყენებლად, გთხოვთ, აირჩიოთ ერთ-ერთი:"
+  },
+  "Today": {
+    "message": "დღეს"
   },
   "Toggle_side_panel": {
     "message": "გვერდითი პანელის გადართვა"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "საკუთარი API გასაღების გადართვა"
   },
-  "Tool": {
-    "message": "ხელსაწყო"
+  "Token_Usage": {
+    "message": "ტოკენების გამოყენება"
+  },
+  "Tokens": {
+    "message": "ტოკენები:"
+  },
+  "Tokens_1": {
+    "message": "ტოკენები: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "ხელსაწყოს დროის ამოწურვა (ms)"
+  },
+  "Tool_name": {
+    "message": "ინსტრუმენტის სახელი:"
+  },
+  "Tool": {
+    "message": "ხელსაწყო"
   },
   "Tools": {
     "message": "ხელსაწყოები"
@@ -853,8 +1800,20 @@
   "Tools_Settings": {
     "message": "ხელსაწყოების პარამეტრები"
   },
-  "Turn": {
-    "message": "ტური"
+  "Trusted": {
+    "message": "სანდო"
+  },
+  "Trusted_Domains": {
+    "message": "სანდო დომენები"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "სანდო აგენტები ავტომატურად დადასტურებულია უნარების გამოძახებისთვის"
+  },
+  "Turns": {
+    "message": "სვლები:"
+  },
+  "Type_alternative_instructions": {
+    "message": "აკრიფეთ ალტერნატიული ინსტრუქციები..."
   },
   "UI_Theme": {
     "message": "ინტერფეისის თემა"
@@ -862,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL-მა უნდა იყენებდეს http ან https პროტოკოლს"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "ვერ მოხერხდა აგენტის სტატუსის შემოწმება"
+  },
   "Unable_to_load_credit_information": {
     "message": "კრედიტის ინფორმაციის ჩატვირთვა ვერ მოხერხდა"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "ვერ მივაღწიეთ ბექენდის სერვერს - გთხოვთ, შეამოწმოთ თქვენი კავშირი"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "ვერ მივაღწიეთ სერვერს. გთხოვთ, შეამოწმოთ თქვენი კავშირი და სცადოთ თავიდან."
+  },
+  "Unknown_Event": {
+    "message": "უცნობი მოვლენა"
+  },
+  "Unknown_error": {
+    "message": "უცნობი შეცდომა"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "უცნობი შეცდომა აგენტის სტატუსის შემოწმებისას"
+  },
+  "Unknown_error_occurred": {
+    "message": "უცნობი შეცდომა მოხდა"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "უცნობი შეცდომა მოხდა დავალების შესრულებისას"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "უცნობი შეცდომა გადაგზავნის დამუშავებისას"
+  },
+  "Unknown_model_1": {
+    "message": "უცნობი მოდელი ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "შეუნახავი ცვლილებები"
   },
+  "Untitled": {
+    "message": "უსახელო"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "მომავალი"
   },
   "Update": {
-    "message": ""
+    "message": "განახლება"
   },
   "Update_Channel": {
     "message": "განახლების არხი"
@@ -882,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "პრემიუმზე გადასვლა"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "განახლეთ, რათა აღმოაჩინოთ მსოფლიოს ყველაზე ძლიერი მოდელები"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "განახლეთ თქვენი გამოწერა, რომ გამოიკვლიოთ მსოფლიოს ყველაზე ძლიერი მოდელები"
@@ -896,37 +1899,46 @@
     "message": "მომხმარებლის ცენტრი"
   },
   "User_Session": {
-    "message": ""
-  },
-  "User_approved_action": {
-    "message": "მომხმარებლის დამტკიცებული ქმედება"
-  },
-  "User_decision": {
-    "message": "მომხმარებლის გადაწყვეტილება"
+    "message": "მომხმარებლის სესია"
   },
   "User_preferences_and_interface_settings": {
     "message": "მომხმარებლის პრეფერენციები და ინტერფეისის პარამეტრები"
   },
-  "User_rejected_action": {
-    "message": "მომხმარებლის უარყოფილი ქმედება"
-  },
-  "User_requested_modifications": {
-    "message": "მომხმარებლის მოთხოვნილი ცვლილებები"
-  },
   "Using_extra_credits": {
     "message": "დამატებითი კრედიტების გამოყენება"
+  },
+  "Verbosity": {
+    "message": "სიტყვიერება"
+  },
+  "Verbosity_Control": {
+    "message": "სიტყვიერების კონტროლი"
+  },
+  "Verbosity_Levels": {
+    "message": "სიტყვიერების დონეები"
+  },
+  "Verbosity_levels": {
+    "message": "სიტყვიერების დონეები:"
+  },
+  "Version": {
+    "message": "ვერსია"
   },
   "View_Chat_History": {
     "message": "საუბრის ისტორიის ნახვა"
   },
   "View_History": {
-    "message": ""
+    "message": "ისტორიის ნახვა"
   },
   "View_Session": {
-    "message": ""
+    "message": "სესიის ნახვა"
+  },
+  "View_pricing_details": {
+    "message": "ფასის დეტალების ნახვა"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "გვერდის შინაარსის და განლაგების ვიზუალური ანალიზი"
+  },
+  "Waiting_for_approval": {
+    "message": "დაელოდება დამტკიცებას"
   },
   "Web_Scraping_Tool": {
     "message": "ვებ-სკრაპინგის ინსტრუმენტი"
@@ -938,13 +1950,22 @@
     "message": "მოგესალმებით Browserx-ში"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "შეიძლება თუ არა სანდბოქსის ბრძანებებს ქსელთან წვდომა"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "სამუშაო სივრცის წვდომა"
   },
   "Workspace_Write": {
     "message": "სამუშაო სივრცის ჩაწერა"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "გუშინ"
+  },
+  "You": {
+    "message": "თქვენ"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "თქვენ გაქვთ შეუნახავი ცვლილებები. გსურთ მათი გაუქმება?"
@@ -955,19 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "თქვენი API გასაღები დაშიფრულია"
   },
-  "Your_Decision": {
-    "message": "თქვენი გადაწყვეტილება"
+  "Your_personal_AI_assistant": {
+    "message": "თქვენი პერსონალური AI ასისტენტი"
   },
-  "more_results": {
-    "message": ""
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "თქვენი სესია ვადაგასულია. გთხოვთ, თავიდან შეხვიდეთ."
+  },
+  "DISCONNECTED": {
+    "message": "[დაკავშირება შეწყებულია]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[შეცდომა: სტრიმი შეწყვეტილია]"
+  },
+  "NO_ACCESS": {
+    "message": "[წვდომის გარეშე]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[API გასაღები არ არსებობს - დააწკაპეთ პარამეტრებზე]"
+  },
+  "PROCESSING": {
+    "message": "[მუშავდება]"
+  },
+  "available": {
+    "message": "ხელმისაწვდომი"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "ქეშირებული"
+  },
+  "detailed_thinking": {
+    "message": "დეტალური აზროვნება"
+  },
+  "disconnected": {
+    "message": "დაკავშირება შეწყებულია"
+  },
+  "exec_unknown_command": {
+    "message": "exec (უცნობი ბრძანება)"
   },
   "optional": {
-    "message": ""
+    "message": "არჩევითი"
+  },
+  "remaining": {
+    "message": "დარჩენილი"
   },
   "session": {
-    "message": ""
+    "message": "სესია"
   },
   "sessions": {
-    "message": ""
+    "message": "სესიები"
+  },
+  "streaming": {
+    "message": "სტრიმინგი..."
+  },
+  "thinking": {
+    "message": "აზროვნება"
+  },
+  "tokens": {
+    "message": "ტოკენები"
+  },
+  "trusted": {
+    "message": "სანდო"
+  },
+  "user": {
+    "message": "მომხმარებელი"
+  },
+  "web_search": {
+    "message": "ვებ-ძიება"
   }
 }

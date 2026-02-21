@@ -8,9 +8,22 @@
  */
 
 import { writable, type Writable } from 'svelte/store';
-import type { CursorPosition, VisualEffectState } from './contracts/visual-effect-controller';
+import type { CursorPosition } from './contracts/visual-effect-controller';
 import type { VisualEffectEvent } from './contracts/domtool-events';
 import { EffectQueue } from './utils/eventQueue';
+
+/**
+ * Store-specific visual effect state (differs from controller VisualEffectState)
+ */
+interface StoreVisualEffectState {
+  agentSessionActive: boolean;
+  overlayVisible: boolean;
+  takeoverActive: boolean;
+  cursorPosition: CursorPosition;
+  isAnimating: boolean;
+  queuedEventCount: number;
+  lastError: string | null;
+}
 
 /**
  * Cursor animation state
@@ -154,7 +167,7 @@ export const effectQueue: Writable<EffectQueue> = writable(new EffectQueue());
  *   console.log('Cursor position:', state.cursorPosition);
  * });
  */
-export const visualEffectState: Writable<VisualEffectState> = writable({
+export const visualEffectState: Writable<StoreVisualEffectState> = writable({
   agentSessionActive: false,
   overlayVisible: false,
   takeoverActive: false,

@@ -7,16 +7,26 @@
  * @module desktop/tools/browser/NativeBrowserController
  */
 
+import type { BrowserController } from '@/core/tools/browser/BrowserController';
 import type {
-  BrowserController,
+  SerializedDOM,
   NavigateOptions,
   ClickOptions,
   TypeOptions,
   ScreenshotOptions,
-  EvaluateOptions,
-  WaitOptions,
-} from '@/core/tools/browser/BrowserController';
-import type { SerializedDOM } from '@/core/tools/browser/types';
+  WaitCondition,
+} from '@/core/tools/browser/types';
+
+/** Evaluate options for native CDP evaluation */
+interface EvaluateOptions {
+  timeout?: number;
+}
+
+/** Wait options for native CDP waits */
+interface WaitOptions {
+  timeout?: number;
+  visible?: boolean;
+}
 import { NativeCDPClient } from './NativeCDPClient';
 import { ChromeLauncher, type LaunchResult } from './ChromeLauncher';
 
@@ -217,7 +227,7 @@ export class NativeBrowserController implements BrowserController {
     await this.client.sendCommand('DOM.focus', { nodeId: node.nodeId });
 
     // Clear existing content if requested
-    if (options?.clearExisting) {
+    if (options?.clear) {
       await this.client.sendCommand('Input.dispatchKeyEvent', {
         type: 'keyDown',
         key: 'a',
@@ -314,8 +324,21 @@ export class NativeBrowserController implements BrowserController {
     );
 
     return {
-      html: html.outerHTML,
-      timestamp: Date.now(),
+      root: {
+        nodeId: doc.root.nodeId,
+        tagName: 'html',
+        attributes: {},
+        textContent: html.outerHTML,
+        children: [],
+        isVisible: true,
+        isInteractive: false,
+      },
+      metadata: {
+        url: await this.getUrl(),
+        title: await this.getTitle(),
+        documentState: 'complete',
+        viewport: { width: 0, height: 0 },
+      },
     };
   }
 
@@ -362,7 +385,7 @@ export class NativeBrowserController implements BrowserController {
         if (options?.visible) {
           const boxModel = await this.client.sendCommand<{
             model?: { width: number; height: number };
-          }>('DOM.getBoxModel', { nodeId: node.nodeId }).catch(() => ({}));
+          }>('DOM.getBoxModel', { nodeId: node.nodeId }).catch(() => ({ model: undefined }));
           if (boxModel.model && boxModel.model.width > 0 && boxModel.model.height > 0) {
             return;
           }
@@ -426,6 +449,101 @@ export class NativeBrowserController implements BrowserController {
     );
 
     return result.nodeId ? result : null;
+  }
+
+  isConnected(): boolean {
+    return this.initialized && this.connectionMode !== 'degraded' && this.client.isConnected();
+  }
+
+  async disconnect(): Promise<void> {
+    await this.close();
+  }
+
+  async goBack(): Promise<void> {
+    this.ensureConnected();
+    await this.client.sendCommand('Page.goBack');
+  }
+
+  async goForward(): Promise<void> {
+    this.ensureConnected();
+    await this.client.sendCommand('Page.goForward');
+  }
+
+  async reload(): Promise<void> {
+    this.ensureConnected();
+    await this.client.sendCommand('Page.reload');
+  }
+
+  async select(selector: string, ...values: string[]): Promise<void> {
+    this.ensureConnected();
+    const escapedSelector = JSON.stringify(selector);
+    const escapedValues = JSON.stringify(values);
+    await this.evaluate(`(() => {
+      const el = document.querySelector(${escapedSelector});
+      if (!el) throw new Error('Element not found: ' + ${escapedSelector});
+      ${escapedValues}.forEach(v => {
+        for (const opt of el.options) { if (opt.value === v) opt.selected = true; }
+      });
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+  }
+
+  async focus(selector: string): Promise<void> {
+    this.ensureConnected();
+    const node = await this.findElement(selector);
+    if (!node) throw new Error(`Element not found: ${selector}`);
+    await this.client.sendCommand('DOM.focus', { nodeId: node.nodeId });
+  }
+
+  async hover(selector: string): Promise<void> {
+    this.ensureConnected();
+    const node = await this.findElement(selector);
+    if (!node) throw new Error(`Element not found: ${selector}`);
+
+    // Get element center position for mouse event dispatch
+    const boxModel = await this.client.sendCommand<{
+      model: { content: number[] };
+    }>('DOM.getBoxModel', { nodeId: node.nodeId });
+
+    const content = boxModel.model.content;
+    const x = (content[0] + content[2]) / 2;
+    const y = (content[1] + content[5]) / 2;
+
+    await this.client.sendCommand('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x,
+      y,
+    });
+  }
+
+  async scroll(target: string | { x: number; y: number }): Promise<void> {
+    this.ensureConnected();
+    if (typeof target === 'string') {
+      const escapedSelector = JSON.stringify(target);
+      await this.evaluate(`document.querySelector(${escapedSelector})?.scrollIntoView({ behavior: 'smooth', block: 'center' })`);
+    } else {
+      await this.evaluate(`window.scrollTo({ left: ${Number(target.x)}, top: ${Number(target.y)}, behavior: 'smooth' })`);
+    }
+  }
+
+  async getTextContent(): Promise<string> {
+    return this.evaluate(() => document.body.innerText || '');
+  }
+
+  async getHtml(): Promise<string> {
+    return this.evaluate(() => document.documentElement.outerHTML);
+  }
+
+  async waitFor(condition: WaitCondition): Promise<void> {
+    if (condition.type === 'selector') {
+      await this.waitForSelector(condition.selector, {
+        timeout: condition.timeout,
+        visible: condition.visible,
+      });
+    } else if (condition.type === 'navigation') {
+      await this.waitForNavigation({ timeout: condition.timeout });
+    }
+    // Other conditions are no-ops in native mode
   }
 
   /**

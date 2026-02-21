@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "কাজের জন্য সাধারণ ব্রাউজার-ভিত্তিক AI এজেন্ট"
   },
+  "1_API_Key": {
+    "message": "$1$ API কী",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API কী সফলভাবে সরানো হয়েছে",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} কাজ নির্ধারিত সময় মিস করেছে যখন ব্রাউজার বন্ধ ছিল।"
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - নির্ভুলতা কমে যেতে পারে)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(সক্রিয়)"
+  },
+  "multiple_files": {
+    "message": "(একাধিক ফাইল)"
+  },
+  "no_output": {
+    "message": "(কোন আউটপুট নেই)"
+  },
+  "no_result": {
+    "message": "(কোন ফলাফল নেই)"
+  },
+  "patch_details": {
+    "message": "(প্যাচের বিবরণ)"
+  },
+  "Enter_command": {
+    "message": ">> কমান্ড লিখুন..."
+  },
+  "A2A_Agents": {
+    "message": "A2A এজেন্টস"
+  },
   "API_Key": {
-    "message": ""
+    "message": "API কী"
   },
   "API_Key_Configuration": {
     "message": "API কী কনফিগারেশন"
   },
+  "API_Version": {
+    "message": "API সংস্করণ"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "ব্যাকএন্ড মোডে API কী সম্পাদনা নিষ্ক্রিয় করা হয়েছে"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "প্রমাণীকরণের জন্য API কী (এনক্রিপ্টেডভাবে সংরক্ষিত)"
+  },
+  "API_key_has_expired": {
+    "message": "API কী মেয়াদ শেষ হয়েছে"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API কী-র অনুমতি অপর্যাপ্ত"
+  },
+  "API_key_saved_successfully": {
+    "message": "API কী সফলভাবে সংরক্ষিত হয়েছে!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API কী গুলি এনক্রিপ্ট করা হয় এবং আপনার ব্রাউজারে লোকালভাবে সংরক্ষিত হয়। API কল ব্যতীত এগুলি কখনই বাহ্যিক সার্ভারে পাঠানো হয় না।"
@@ -20,47 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "ব্রাউজার স্টোরেজে প্রবেশ (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "অ্যাকশন"
-  },
-  "Action_Details": {
-    "message": "অ্যাকশন বিবরণ"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "অ্যাকশন অনুমোদন মোড, বিশ্বস্ত ডোমেইন, ঝুঁকি সেটিংস"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "সক্রিয় সেশন"
   },
   "Add": {
-    "message": ""
+    "message": "যোগ করুন"
   },
-  "Add_Modification": {
-    "message": "পরিবর্তন যোগ করুন"
+  "Add_Agent": {
+    "message": "এজেন্ট যোগ করুন"
   },
   "Add_Server": {
-    "message": ""
+    "message": "সার্ভার যোগ করুন"
   },
   "Add_Task": {
-    "message": ""
+    "message": "টাস্ক যোগ করুন"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "বাহ্যিক টুলের সঙ্গে সংযোগের জন্য একটি সার্ভার যোগ করুন।"
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "বাহ্যিক স্কিলের সঙ্গে সংযোগের জন্য একটি এজেন্ট যোগ করুন।"
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "অতিরিক্ত বাইন্ড মাউন্টস"
   },
   "Advanced_Configuration": {
     "message": "উন্নত কনফিগারেশন"
   },
-  "Advanced_Options": {
-    "message": "উন্নত বিকল্প"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "উন্নত সেটিংস"
+  },
+  "Agent": {
+    "message": "এজেন্ট"
   },
   "Agent_Execution_Tools": {
     "message": "এজেন্ট এক্সিকিউশন সরঞ্জাম"
   },
+  "Agent_Turn_Complete": {
+    "message": "এজেন্ট টার্ন সম্পন্ন"
+  },
+  "Agent_URL_is_required": {
+    "message": "এজেন্ট URL প্রয়োজনীয়"
+  },
+  "Agent_added_successfully": {
+    "message": "এজেন্ট সফলভাবে যোগ করা হয়েছে।"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "এজেন্টের নাম শুধুমাত্র অক্ষর, সংখ্যা এবং হাইফেন ধারণ করতে পারে।"
+  },
+  "Agent_name_is_required": {
+    "message": "এজেন্টের নাম প্রয়োজন।"
+  },
+  "Agent_not_initialized": {
+    "message": "এজেন্ট আরম্ভ করা হয়নি।"
+  },
+  "Agent_removed_successfully": {
+    "message": "এজেন্ট সফলভাবে মুছে ফেলা হয়েছে।"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "এজেন্ট টার্ন সফলভাবে সম্পন্ন হয়েছে।"
+  },
+  "Agent_updated_successfully": {
+    "message": "এজেন্ট সফলভাবে আপডেট করা হয়েছে।"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "এই ডোমেইনগুলিতে সমস্ত ক্রিয়া স্বয়ংক্রিয়ভাবে অনুমোদিত।"
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "এই ডোমেইনগুলিতে সমস্ত ক্রিয়া অস্বীকার করা হয়েছে।"
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "সকল কমান্ড OS-নেটিভ স্যান্ডবক্সের মধ্যে চালানো হয়। লেখার অনুমতি শুধুমাত্র ওয়ার্কস্পেস ডিরেক্টরিতে সীমাবদ্ধ।"
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "এজেন্টকে সিস্টেম কমান্ড চালানোর অনুমতি দিন (সাবধানে ব্যবহার করুন)"
@@ -72,31 +168,99 @@
     "message": "কন্টেন্ট স্ক্রিপ্টগুলোকে ওয়েব পেজে চালানোর অনুমতি দিন"
   },
   "Allowed": {
-    "message": ""
+    "message": "অনুমোদিত"
   },
   "Allowed_Origins": {
     "message": "অনুমোদিত উৎস"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "শুধুমাত্র অক্ষর-সংখ্যা এবং হাইফেন (১-৫০ অক্ষর)"
   },
-  "Approval_History": {
-    "message": "অনুমোদন ইতিহাস"
+  "Always_Approve": {
+    "message": "সর্বদা অনুমোদন করুন"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: আপনার ব্যক্তিগত AI (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "অনুমোদন ও নিরাপত্তা"
+  },
+  "Approval_Mode": {
+    "message": "অনুমোদন মোড"
+  },
+  "Approval_Required": {
+    "message": "অনুমোদন প্রয়োজন"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "অনুমোদন প্রয়োজন: প্যাচ প্রয়োগ করুন"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "অনুমোদন প্রয়োজন: কমান্ড চালান"
   },
   "Approve": {
     "message": "অনুমোদন"
   },
-  "Approve_this_action": {
-    "message": "এই অ্যাকশন অনুমোদন করুন"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "পরিবর্তনগুলি অনুমোদন করুন: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "নির্বাহ অনুমোদন করুন: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "আপনি কি নিশ্চিত যে আপনি এই কাজটি বাতিল করতে চান?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "আপনি কি নিশ্চিত যে আপনি এই এজেন্টটি সরাতে চান?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "আপনি কি নিশ্চিত যে আপনি আপনার $1$ API কীটি সরাতে চান?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Browserx-কে যেকোনো ওয়েবপেজ থেকে কাঠামোবদ্ধ ডেটা বের করতে বলুন"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "মাঝারি-ঝুঁকি এবং তার উপরে (ঝুঁকি > 30) জিজ্ঞাসা করুন। অধিকাংশ ব্যবহারকারীর জন্য সুপারিশ করা হয়।"
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "শুধুমাত্র উচ্চ-ঝুঁকির কাজের জন্য জিজ্ঞাসা করুন (ঝুঁকি > 60)। অভিজ্ঞ ব্যবহারকারীদের জন্য।"
+  },
+  "Auth_Type": {
+    "message": "প্রমাণীকরণ ধরন"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "প্রমাণীকরণ শংসাপত্র (এনক্রিপ্টেডভাবে সংরক্ষিত)"
+  },
+  "Authentication_failed": {
+    "message": "প্রমাণীকরণ ব্যর্থ হয়েছে"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "এজেন্টের জন্য প্রমাণীকরণ পদ্ধতি"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "স্বয়ংক্রিয় (ডিফল্ট)"
+  },
+  "Auto_approve_everything": {
+    "message": "সবকিছু স্বয়ংক্রিয়ভাবে অনুমোদন করুন"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "সবকিছু স্বয়ংক্রিয়ভাবে অনুমোদন করুন। অস্বীকারের নিয়মগুলি এখনও প্রযোজ্য। নিজের ঝুঁকিতে ব্যবহার করুন।"
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "স্বয়ংক্রিয়ভাবে অনুমোদিত — সময়সীমা পৌঁছেছে"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "আপনি যখন কম্পিউটারে লগইন করবেন, তখন অ্যাপটি স্বয়ংক্রিয়ভাবে চালু হবে"
+  },
+  "Available_Skills": {
+    "message": "উপলব্ধ দক্ষতা"
   },
   "Available_Tools": {
-    "message": ""
+    "message": "উপলব্ধ সরঞ্জাম"
   },
   "Available": {
     "message": "উপলব্ধ:"
@@ -104,20 +268,62 @@
   "Back": {
     "message": "পিছনে"
   },
+  "Back_to_Model_Config": {
+    "message": "মডেল কনফিগে ফিরে যান"
+  },
   "Backend_Mode": {
     "message": "ব্যাকএন্ড মোড"
   },
   "Backend_Mode_Active": {
     "message": "ব্যাকএন্ড মোড সক্রিয়"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "ব্যাকএন্ড উপলব্ধ নয়। অনুগ্রহ করে এক মুহূর্ত অপেক্ষা করুন এবং পুনরায় চেষ্টা করুন।"
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "ব্যাকএন্ড সার্ভার ত্রুটি - অনুগ্রহ করে পরে আবার চেষ্টা করুন"
+  },
+  "Backoff_Multiplier": {
+    "message": "ব্যাকঅফ গুণক"
+  },
+  "Balanced": {
+    "message": "সামঞ্জস্যপূর্ণ"
+  },
+  "Base_URL": {
+    "message": "বেস URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "এই প্রদানকারীর জন্য বেস URL কনফিগার করা হয়নি"
+  },
+  "Bearer_Token": {
+    "message": "বেয়ারার টোকেন"
+  },
   "Beta": {
     "message": "বেটা"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "বাইন্ড মাউন্ট পাথ অবশ্যই সম্পূর্ণ পথ হতে হবে"
+  },
+  "Blocked_Domains": {
+    "message": "ব্লক করা ডোমেইনগুলি"
   },
   "Browser_Tools": {
     "message": "ব্রাউজার সরঞ্জাম"
   },
   "Browser_automation_tool_toggles": {
     "message": "ব্রাউজার অটোমেশন টুল টগলস"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (আলফা)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "ক্যাশ সেটিংস"
@@ -131,8 +337,36 @@
   "Cancel": {
     "message": "বাতিল"
   },
+  "Cancelled": {
+    "message": "বাতিল"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "কাজটি সম্পাদন করা যায় না: ${providerName} এর জন্য কোনো API কী কনফিগার করা নেই। দয়া করে Settings → Model Configuration এ যান এবং আপনার API কী যোগ করুন।"
+  },
+  "Cannot_select_model_1": {
+    "message": "মডেল নির্বাচন করা যায় না: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "বার্তা পাঠানো যায় না: $1$ এর জন্য কোনো API কী কনফিগার করা নেই। দয়া করে Settings বোতামটি ক্লিক করুন এবং আপনার API কী কনফিগার করুন।",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "সক্ষমতা"
+  },
   "Chat_History": {
     "message": "চ্যাট ইতিহাস"
+  },
+  "Checking_agent_status": {
+    "message": "এজেন্টের অবস্থা যাচাই করা হচ্ছে..."
   },
   "Choose_AI_Model": {
     "message": "AI মডেল নির্বাচন করুন"
@@ -149,29 +383,41 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "পরিষ্কার, আধুনিক চ্যাট ইন্টারফেস, ChatGPT-র মতো"
   },
-  "Clear_search": {
-    "message": ""
-  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "আপনার টুলবারে Browserx আইকন ক্লিক করুন অথবা Alt+Shift+C চাপুন"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "লগইন বাতিল করতে ক্লিক করুন"
   },
   "Click_to_select_a_model": {
     "message": "মডেল নির্বাচন করতে ক্লিক করুন"
   },
+  "Close": {
+    "message": "বন্ধ"
+  },
   "Close_settings": {
     "message": "সেটিংস বন্ধ করুন"
+  },
+  "Collapse": {
+    "message": "সঙ্কুচিত করুন"
+  },
+  "Command_Approval_Required": {
+    "message": "কমান্ড অনুমোদন প্রয়োজন"
+  },
+  "Command_completed": {
+    "message": "কমান্ড সম্পন্ন হয়েছে"
   },
   "Command": {
     "message": "কমান্ড"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "কমান্ডগুলি সরাসরি হোস্টে চালানো হয়। নিরাপত্তা ফিল্টার এখনও প্রযোজ্য।"
   },
   "Completed": {
-    "message": ""
+    "message": "সম্পন্ন"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "সম্পন্ন: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "সংরক্ষণস্থান বাঁচাতে ক্যাশড ডেটা কম্প্রেস করুন"
@@ -179,41 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "AI মডেল এবং API কী কনফিগার করুন"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Settings-এ একটি API কী কনফিগার করুন"
+  },
+  "Configured": {
+    "message": "কনফিগার করা হয়েছে"
+  },
+  "Configured_Agents": {
+    "message": "কনফিগার করা এজেন্টস"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "কনফিগার করা সার্ভারস"
   },
   "Connect": {
-    "message": ""
+    "message": "সংযোগ করুন"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "বাহ্যিক এজেন্ট দক্ষতা দিয়ে ক্ষমতা বাড়াতে Agent-to-Agent (A2A) প্রোটোকল এজেন্টগুলোর সাথে সংযোগ করুন।"
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "বাহ্যিক টুলস দিয়ে এজেন্টকে সম্প্রসারিত করতে Model Context Protocol (MCP) সার্ভারগুলোর সাথে সংযোগ করুন।"
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "দক্ষতা আবিষ্কারের জন্য একটি A2A এজেন্টের সাথে সংযোগ করুন।"
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "টুলস আবিষ্কারের জন্য একটি MCP সার্ভারের সাথে সংযোগ করুন।"
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "বাহ্যিক MCP টুল সার্ভারগুলোর সাথে সংযোগ করুন"
   },
   "Connected": {
     "message": "সংযুক্ত"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "সফলভাবে সংযুক্ত হয়েছে"
   },
-  "Context": {
-    "message": "প্রসঙ্গ"
+  "Connecting": {
+    "message": "সংযোগ করা হচ্ছে..."
+  },
+  "Connection_error": {
+    "message": "সংযোগ ত্রুটি"
+  },
+  "Connection_failed_1": {
+    "message": "সংযোগ ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "সংযোগ ব্যর্থ: বেস URL কনফিগার করা হয়নি"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "সংযোগ ব্যর্থ: নির্বাচিত মডেল কনফিগারেশন অনুপস্থিত"
+  },
+  "Connection_successful": {
+    "message": "সংযোগ সফল!"
+  },
+  "Connection_test_failed_1": {
+    "message": "সংযোগ পরীক্ষা ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "সংযোগ পরীক্ষা ব্যর্থ: অবৈধ API কী"
+  },
+  "Connection_test_successful": {
+    "message": "সংযোগ পরীক্ষা সফল!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "সংযোগ পরীক্ষা সফল! (API কী বৈধ)"
+  },
+  "Connection_was_refused": {
+    "message": "সংযোগ প্রত্যাখ্যান করা হয়েছে"
+  },
+  "Connection_was_reset": {
+    "message": "সংযোগ রিসেট হয়েছে"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "বিষয়বস্তু নীতি লঙ্ঘন করে: ${contentType} বিষয়বস্তু অনুমোদিত নয়"
+  },
+  "Context_Window": {
+    "message": "প্রসঙ্গ উইন্ডো"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "প্রসঙ্গ সংক্ষিপ্ত: সংরক্ষিত ~$1$k টোকেন",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "এজেন্ট কতটা আগ্রাসীভাবে অনুমোদনের জন্য অনুরোধ করে তা নিয়ন্ত্রণ করে।"
   },
   "Create_New_Tab": {
     "message": "নতুন ট্যাব তৈরি করুন"
   },
   "Created": {
-    "message": ""
+    "message": "তৈরি হয়েছে"
+  },
+  "Creator": {
+    "message": "স্রষ্টা"
   },
   "Credit_Details": {
     "message": "ক্রেডিট বিবরণ"
   },
   "Current_Plan": {
     "message": "বর্তমান প্ল্যান:"
+  },
+  "DNS_lookup_failed": {
+    "message": "DNS অনুসন্ধান ব্যর্থ হয়েছে"
   },
   "DOM_Tool": {
     "message": "DOM টুল"
@@ -225,10 +552,34 @@
     "message": "ডেটা এক্সট্র্যাকশন টুল"
   },
   "Date": {
-    "message": ""
+    "message": "তারিখ"
   },
   "Days_until_expiration": {
     "message": "মেয়াদ শেষ হওয়া পর্যন্ত দিন"
+  },
+  "Debug_logging_disabled": {
+    "message": "ডিবাগ লগিং নিষ্ক্রিয়"
+  },
+  "Debug_logging_enabled": {
+    "message": "ডিবাগ লগিং সক্রিয়"
+  },
+  "Default": {
+    "message": "ডিফল্ট"
+  },
+  "Deny": {
+    "message": "অস্বীকার"
+  },
+  "Deprecated": {
+    "message": "অবচলিত"
+  },
+  "Deprecation_Message": {
+    "message": "অবচলনের বার্তা"
+  },
+  "Description": {
+    "message": "বর্ণনা"
+  },
+  "Desktop_mode": {
+    "message": "ডেস্কটপ মোড"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republic দ্বারা বিকশিত এবং সমর্থিত"
@@ -237,22 +588,37 @@
     "message": "পরিবর্তন বাতিল করুন"
   },
   "Disconnect": {
-    "message": ""
+    "message": "সংযোগ বিচ্ছিন্ন করুন"
+  },
+  "Disconnected_successfully": {
+    "message": "সফলভাবে সংযোগ বিচ্ছিন্ন হয়েছে"
   },
   "Dismiss": {
-    "message": ""
+    "message": "বাতিল করুন"
+  },
+  "Dismiss_notification": {
+    "message": "বিজ্ঞপ্তি বাতিল করুন"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "কাজ শেষ হলে টোকেন ব্যবহারের তথ্য (ইনপুট/আউটপুট টোকেন) প্রদর্শন করুন"
   },
+  "Draft": {
+    "message": "খসড়া"
+  },
   "Duration": {
-    "message": ""
+    "message": "সময়কাল"
+  },
+  "ERROR": {
+    "message": "ত্রুটি"
   },
   "Edit": {
-    "message": ""
+    "message": "সম্পাদনা"
+  },
+  "Edit_Agent": {
+    "message": "এজেন্ট সম্পাদনা"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "সার্ভার সম্পাদনা"
   },
   "Enable_All_Tools": {
     "message": "সব টুল সক্রিয় করুন"
@@ -270,46 +636,61 @@
     "message": "এক্সটেনশন সক্রিয় করুন"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "সংযুক্ত MCP সার্ভার থেকে মডেল কন্টেক্সট প্রোটোকল টুলস সক্রিয় করুন"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "browserx শুরু হলে অটো-সংযোগ সক্রিয় করুন"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "প্রায়ই ব্যবহৃত ডেটা সংরক্ষণ করে পারফরম্যান্স উন্নত করতে ক্যাশিং সক্রিয় করুন"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "ডিবাগ লগিং সক্রিয় করুন"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "এজেন্টের জন্য ওয়েব সার্চ ক্ষমতা সক্রিয় করুন"
   },
   "Enabled": {
-    "message": ""
+    "message": "সক্রিয়"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "প্রয়োজন হলে API কী লিখুন"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "API কী বা বেয়ারার টোকেন লিখুন"
   },
   "Enter_your_LLM_API_key": {
     "message": "আপনার LLM API কী লিখুন"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "আপনার কাজ লিখুন..."
   },
   "Error": {
-    "message": ""
+    "message": "ত্রুটি"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "ত্রুটি: এজেন্টের সঙ্গে সংযুক্ত নয়। দয়া করে পৃষ্ঠা রিফ্রেশ করুন।"
   },
   "Execute_Commands": {
     "message": "কমান্ড এক্সিকিউট করুন"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "এক্সিকিউশন মোড"
+  },
+  "Exit_Code": {
+    "message": "এক্সিট কোড:"
+  },
+  "Expand": {
+    "message": "বিস্তৃত করুন"
   },
   "Expire_after_days": {
     "message": "দিন পর মেয়াদোত্তীর্ণ"
   },
-  "Explain_your_decision": {
-    "message": "আপনার সিদ্ধান্ত ব্যাখ্যা করুন..."
+  "Explain_this_info_selectionText": {
+    "message": "এটি ব্যাখ্যা করুন: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Browserx দিয়ে ব্যাখ্যা করুন"
   },
   "Extension_Permission": {
     "message": "এক্সটেনশন ও অনুমতি"
@@ -327,31 +708,146 @@
     "message": "অতিরিক্ত ক্রেডিট"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "স্যান্ডবক্সের মধ্যে প্রবেশযোগ্য অতিরিক্ত ডিরেক্টরি"
   },
   "Extract_Data": {
     "message": "ডেটা বের করুন:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Browserx দিয়ে ডেটা বের করুন"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "পৃষ্ঠাগুলি থেকে নির্দিষ্ট ডেটা প্যাটার্ন বের করুন"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "এই পৃষ্ঠার থেকে গঠিত ডেটা বের করুন"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "ওয়েব পৃষ্ঠাগুলি থেকে গঠনযুক্ত ডেটা বের করুন"
   },
+  "Failed": {
+    "message": "ব্যর্থ"
+  },
+  "Failed_to_change_model_1": {
+    "message": "মডেল পরিবর্তন করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "সংযোগ করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "নতুন ট্যাব তৈরি করতে ব্যর্থ। দয়া করে আবার চেষ্টা করুন।"
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "ব্রাউজার ট্যাব তৈরি করতে ব্যর্থ: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "সংযোগ বিচ্ছিন্ন করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "A2A সেটিংস লোড করতে ব্যর্থ"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "কথোপকথন লোড করতে ব্যর্থ। দয়া করে আবার চেষ্টা করুন।"
+  },
   "Failed_to_load_preferences": {
     "message": "পছন্দসমূহ লোড করতে ব্যর্থ হয়েছে"
+  },
+  "Failed_to_load_settings": {
+    "message": "সেটিংস লোড করতে ব্যর্থ"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "API কী অপসারণ করতে ব্যর্থ"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "এজেন্ট অপসারণ করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "API কী সংরক্ষণ করতে ব্যর্থ"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "ডিবাগ লগিং সেটিং সংরক্ষণ করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "সেটিংস সংরক্ষণ করতে ব্যর্থ হয়েছে"
   },
+  "Failed_to_save_settings_1": {
+    "message": "সেটিংস সংরক্ষণ করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "সংরক্ষণ করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "বার্তা পাঠাতে ব্যর্থ। দয়া করে আবার চেষ্টা করুন।"
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "নতুন কথোপকথন শুরু করতে ব্যর্থ। দয়া করে আবার চেষ্টা করুন।"
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "কাজ থামাতে ব্যর্থ। দয়া করে আবার চেষ্টা করুন।"
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "ট্যাব ${newTabId} এ স্যুইচ করতে ব্যর্থ: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "সংযোগ পরীক্ষা করতে ব্যর্থ"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "API মোড আপডেট করতে ব্যর্থ"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "সার্ভিস টিয়ার আপডেট করতে ব্যর্থ: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "ফাইল পরিবর্তনের অনুমোদন প্রয়োজন"
+  },
   "File_Operations_Not_Available": {
     "message": "ফাইল অপারেশন (উপলব্ধ নয়)"
   },
-  "File_Path": {
-    "message": "ফাইল পথ"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "ফর্ম পূরণ করুন, ডেটা জমা দিন, ফর্ম উপাদানগুলোর সঙ্গে ইন্টারঅ্যাক্ট করুন"
+  },
+  "Flex": {
+    "message": "ফ্লেক্স"
   },
   "Form_Automation_Tool": {
     "message": "ফর্ম অটোমেশন টুল"
@@ -360,7 +856,7 @@
     "message": "পূর্ণ অ্যাক্সেস (ঝুঁকিপূর্ণ)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "পূর্ণ ইনপুট"
   },
   "General": {
     "message": "সাধারণ"
@@ -385,17 +881,64 @@
   "Hello_World": {
     "message": "Hello World"
   },
-  "History": {
-    "message": "ইতিহাস"
+  "Hide_API_key": {
+    "message": "API কী লুকান"
+  },
+  "High_Speed": {
+    "message": "উচ্চ গতি"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "স্যান্ডবক্সে ওয়ার্কস্পেস ডিরেক্টরি কীভাবে মাউন্ট করা হয়"
   },
-  "Impact": {
-    "message": "প্রভাব"
+  "Image_Input": {
+    "message": "ছবি ইনপুট"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "এই টেক্সট উন্নত করুন: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Browserx দিয়ে উন্নত করুন"
+  },
+  "In": {
+    "message": "এতে:"
+  },
+  "Incompatible_features": {
+    "message": "অসামঞ্জস্যপূর্ণ বৈশিষ্ট্যগুলি:"
+  },
+  "Initial_Delay": {
+    "message": "প্রাথমিক বিলম্ব"
+  },
+  "Input_Token_Price": {
+    "message": "ইনপুট টোকেনের মূল্য"
+  },
+  "Input": {
+    "message": "ইনপুট:"
+  },
+  "Input_1": {
+    "message": "ইনপুট: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "নেটওয়ার্ক অনুরোধ/প্রতিক্রিয়া আটকান ও পরিবর্তন করুন"
+  },
+  "Invalid_API_key": {
+    "message": "অবৈধ API কী"
+  },
+  "Invalid_API_key_provided": {
+    "message": "অবৈধ API কী প্রদান করা হয়েছে"
+  },
+  "Invalid_URL_format": {
+    "message": "অবৈধ URL ফরম্যাট"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "অবৈধ জমা ফরম্যাট: অনুপস্থিত op ফিল্ড"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "অবৈধ জমা ফরম্যাট: op-এ type ফিল্ড অনুপস্থিত"
   },
   "Keyboard_Shortcuts": {
     "message": "Keyboard Shortcuts"
@@ -413,31 +956,52 @@
     "message": "আরও জানুন"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "বিদ্যমান রাখতে ফাঁকা রাখুন"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "অনুমোদিত উত্সের তালিকা (প্রতি লাইনে একটি)। ওয়াইল্ডকার্ড (*) সমর্থন করে।"
   },
   "Load_More": {
-    "message": ""
+    "message": "আরো লোড করুন"
+  },
+  "Load_more": {
+    "message": "আরো লোড করুন"
+  },
+  "Loading_configuration": {
+    "message": "কনফিগারেশন লোড হচ্ছে..."
   },
   "Loading_credits": {
     "message": "ক্রেডিট লোড হচ্ছে..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "বিবরণ লোড হচ্ছে..."
+  },
+  "Loading_history": {
+    "message": "ইতিহাস লোড হচ্ছে..."
   },
   "Loading_settings": {
     "message": "সেটিংস লোড হচ্ছে..."
   },
+  "Loading_tabs": {
+    "message": "ট্যাব লোড হচ্ছে..."
+  },
   "Loading": {
-    "message": ""
+    "message": "লোড হচ্ছে..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "ডিবাগিংয়ের জন্য ব্রাউজার কনসোলে A2A প্রোটোকল বার্তা লগ করুন"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "ডিবাগিংয়ের জন্য ব্রাউজার কনসোলে MCP প্রোটোকল বার্তা লগ করুন"
+  },
+  "Log_in_to_your_account": {
+    "message": "আপনার অ্যাকাউন্টে লগ ইন করুন"
+  },
+  "Logged_in": {
+    "message": "লগ ইন হয়েছে"
   },
   "Logging_in": {
-    "message": ""
+    "message": "লগ ইন করা হচ্ছে..."
   },
   "Login": {
     "message": "লগইন"
@@ -446,19 +1010,19 @@
     "message": "ফ্রি ক্রেডিট পেতে লগইন করুন"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "টাস্ক নির্ধারণের জন্য লং প্রেস করুন"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "টাস্ক নির্ধারণের জন্য সেন্ড বাটনটি লং-প্রেস করুন"
   },
   "Low_credits_remaining": {
     "message": "কম ক্রেডিট বাকি আছে"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "MCP সার্ভারগুলি"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "MCP টুলস"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "ব্রাউজার ট্যাব পরিচালনা (খোলা, বন্ধ, পরিবর্তন, কোয়েরি)"
@@ -473,34 +1037,102 @@
     "message": "সর্বোচ্চ ক্যাশ সাইজ (MB)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "সর্বোচ্চ সমসাময়িক সেশন"
+  },
+  "Max_Delay": {
+    "message": "সর্বোচ্চ বিলম্ব"
+  },
+  "Max_Output": {
+    "message": "সর্বোচ্চ আউটপুট"
+  },
+  "Max_Output_Tokens": {
+    "message": "সর্বোচ্চ আউটপুট টোকেন"
+  },
+  "Max_Retries": {
+    "message": "সর্বোচ্চ পুনরায় চেষ্টা"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "মেগাবাইটে সর্বোচ্চ ক্যাশ সাইজ (ডিফল্ট: ১০০)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "সমান্তরাল এজেন্ট সেশনের সর্বোচ্চ সংখ্যা, নির্ধারিত কাজসহ"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "সর্বোচ্চ ৫টি এজেন্টে পৌঁছেছে"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "সর্বোচ্চ ৫টি সার্ভারে পৌঁছেছে"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "টাইমআউটের আগে টুল চালানোর সর্বোচ্চ সময় (মিলিসেকেন্ডে) (ডিফল্ট: ৩০০০০)"
   },
+  "Medium_risk_and_above": {
+    "message": "মাঝারি-ঝুঁকি এবং তার উপরে"
+  },
+  "Message_service_not_available": {
+    "message": "মেসেজ পরিষেবা উপলব্ধ নয়"
+  },
   "Missed": {
-    "message": ""
+    "message": "মিসড"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "মিসড নির্ধারিত কাজগুলো"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "মডেল \"$1$\" ইমেজ ইনপুট সমর্থন করে না। কিছু টুল নিষ্ক্রিয় হবে।",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "মডেল কনফিগ"
   },
+  "Model_Configuration": {
+    "message": "মডেল কনফিগারেশন"
+  },
+  "Model_Key_API": {
+    "message": "মডেল কী (API)"
+  },
+  "Model_Name": {
+    "message": "মডেল নাম"
+  },
   "Model_Selection": {
     "message": "মডেল নির্বাচন"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "ডিফল্ট কনফিগারেশন (শুধুমাত্র-পাঠযোগ্য) থেকে লোড করা মডেল এবং প্রদানকারী সেটিংস"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "মডেল $1$ এ পরিবর্তিত হয়েছে। অনুগ্রহ করে আপনার API কী কনফিগার করুন।",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "মডেল $1$ এ পরিবর্তিত হয়েছে। সেশন পুনরায় আরম্ভ হবে।",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "মডেল:"
+  },
+  "Model_1": {
+    "message": "মডেল: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "আধুনিক চ্যাট"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "পরিবর্তনের অনুরোধ করার সময় প্যারামিটার সংশোধন"
   },
   "Monthly_Credits": {
     "message": "মাসিক ক্রেডিট"
@@ -509,7 +1141,7 @@
     "message": "আরও কনফিগারেশন"
   },
   "Name": {
-    "message": ""
+    "message": "নাম"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "পেজ নেভিগেট করুন, লিঙ্কে ক্লিক করুন, ব্রাউজার নেভিগেশন পরিচালনা করুন"
@@ -518,10 +1150,16 @@
     "message": "নেভিগেশন টুল"
   },
   "Network_Access": {
-    "message": ""
+    "message": "নেটওয়ার্ক অ্যাক্সেস"
   },
   "Network_Intercept_Tool": {
     "message": "নেটওয়ার্ক ইন্টারসেপ্ট টুল"
+  },
+  "Network_error": {
+    "message": "নেটওয়ার্ক ত্রুটি"
+  },
+  "Network_error_occurred": {
+    "message": "নেটওয়ার্ক ত্রুটি ঘটেছে"
   },
   "Never_expire_permanent": {
     "message": "কখনো মেয়াদ শেষ হবে না (স্থায়ী)"
@@ -529,41 +1167,85 @@
   "New_Conversation": {
     "message": "নতুন কথোপকথন"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "এখনো কোনো A2A এজেন্ট কনফিগার করা হয়নি।"
+  },
   "No_Access": {
-    "message": ""
+    "message": "অ্যাক্সেস নেই"
+  },
+  "No_Access_Configured": {
+    "message": "কোনো অ্যাক্সেস কনফিগার করা নেই"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "এখনো কোনো MCP সার্ভার কনফিগার করা হয়নি।"
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "কোনো অ্যাক্সেস কনফিগার করা নেই। দয়া করে লগইন করুন অথবা একটি API কী কনফিগার করুন।"
   },
   "No_active_sessions": {
-    "message": ""
+    "message": "কোনো সক্রিয় সেশন নেই"
   },
-  "No_approval_history_yet": {
-    "message": "এখনো কোনো অনুমোদন ইতিহাস নেই।"
+  "No_chat_history_yet": {
+    "message": "এখনো কোনো চ্যাট ইতিহাস নেই"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "এখনো কোনো সম্পন্ন কাজ নেই"
+  },
+  "No_models_available": {
+    "message": "কোনো মডেল উপলব্ধ নেই"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "কোনো মডেল উপলব্ধ নেই। দয়া করে কনফিগারেশন পরীক্ষা করুন।"
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "কোনো নির্ধারিত কাজ নেই"
   },
-  "No_settings_found": {
-    "message": ""
+  "No_scheduled_time": {
+    "message": "নির্ধারিত সময় নেই"
+  },
+  "No_skills_available": {
+    "message": "কোনো দক্ষতা উপলব্ধ নেই।"
+  },
+  "No_steps_in_plan": {
+    "message": "পরিকল্পনায় কোনো ধাপ নেই"
   },
   "No_tabs_available": {
     "message": "কোনো ট্যাব উপলব্ধ নেই"
   },
+  "No_time_set": {
+    "message": "কোনো সময় নির্ধারিত নয়"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "কোনো টুল উপলব্ধ নেই।"
+  },
+  "None": {
+    "message": "কোনটি না"
   },
   "Not_Connected": {
     "message": "সংযুক্ত নয়"
+  },
+  "Notification": {
+    "message": "বিজ্ঞপ্তি"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "রোলআউট ডেটার মেয়াদ শেষ হওয়ার পূর্বের দিন সংখ্যা (default: ৬০)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "অফলাইন - সংযুক্ত হলে কাজগুলো চলবে"
+  },
+  "Older": {
+    "message": "পুরোনো"
+  },
+  "Only_high_risk_actions": {
+    "message": "শুধুমাত্র উচ্চ-ঝুঁকিপূর্ণ ক্রিয়াকলাপ"
+  },
+  "Open_1_settings": {
+    "message": "খোলুন $1$ সেটিংস",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "সাইড প্যানেল খুলুন:"
@@ -571,17 +1253,51 @@
   "Organization": {
     "message": "প্রতিষ্ঠান"
   },
+  "Organization_ID": {
+    "message": "সংগঠন আইডি"
+  },
+  "Out": {
+    "message": "আউট:"
+  },
+  "Output_Token_Price": {
+    "message": "আউটপুট টোকেনের দাম"
+  },
+  "Output": {
+    "message": "আউটপুট:"
+  },
+  "Output_1": {
+    "message": "আউটপুট: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "পেজ অ্যাকশন টুল"
   },
   "Page_Vision_Tool": {
     "message": "পেজ ভিশন টুল"
   },
-  "Parameter_Modifications": {
-    "message": "প্যারামিটার পরিবর্তন"
+  "Past_Month": {
+    "message": "গত মাস"
+  },
+  "Past_Week": {
+    "message": "গত সপ্তাহ"
+  },
+  "Patch_applied_successfully": {
+    "message": "প্যাচ সফলভাবে প্রয়োগ হয়েছে"
+  },
+  "Patch_for_1_file_s": {
+    "message": "$1$ ফাইলের জন্য প্যাচ",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "কিউ বিরতি দিন"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "পৃষ্ঠা ক্রিয়া সম্পাদন করুন (স্ক্রল, স্ক্রিনশট, অপেক্ষা)"
@@ -589,32 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "ক্যাশ স্থায়ীভাবে স্টোরেজে সংরক্ষণ করুন"
   },
+  "Plan_1_step_s": {
+    "message": "পরিকল্পনা: $1$ ধাপ",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "অনুগ্রহ করে সেটিংসে আপনার API কী পরীক্ষা করুন।"
+  },
+  "Please_enter_a_task_description": {
+    "message": "অনুগ্রহ করে কাজের বিবরণ লিখুন"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "অনুগ্রহ করে প্রথমে একটি API কী লিখুন"
+  },
   "Please_input_a_valid_API_key": {
     "message": "অনুগ্রহ করে একটি বৈধ API কী প্রবেশ করুন।"
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "AI এজেন্ট ব্যবহার চালিয়ে যাওয়ার জন্য অনুগ্রহ করে আবার লগ ইন করুন।"
+  },
+  "Please_select_a_provider": {
+    "message": "অনুগ্রহ করে একটি প্রদানকারী নির্বাচন করুন"
   },
   "Please_type_a_valid_command": {
     "message": "অনুগ্রহ করে একটি বৈধ কমান্ড টাইপ করুন"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "বিশ্বের সর্বোচ্চ উন্নত মডেলগুলি আনলক করতে অনুগ্রহ করে পরিকল্পনা আপগ্রেড করুন"
+  },
   "Power": {
-    "message": ""
+    "message": "ক্ষমতা"
+  },
+  "Pricing_Information": {
+    "message": "মূল্য তথ্য"
+  },
+  "Pricing_Page": {
+    "message": "মূল্য পৃষ্ঠা"
+  },
+  "Priority": {
+    "message": "অগ্রাধিকার"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "প্রায়োরিটি টিয়ার দ্রুততর প্রতিক্রিয়া সময় প্রদান করে, তবে উচ্চ মূল্যে।"
   },
+  "Processing": {
+    "message": "প্রক্রিয়াকরণ..."
+  },
+  "Protocol": {
+    "message": "প্রোটোকল"
+  },
   "Provider": {
     "message": "প্রদানকারী"
+  },
+  "Provider_Configuration": {
+    "message": "প্রদানকারী কনফিগারেশন"
+  },
+  "Provider_ID": {
+    "message": "প্রদানকারী আইডি"
+  },
+  "Provider_Name": {
+    "message": "প্রদানকারী নাম"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM (ডকুমেন্ট অবজেক্ট মডেল) অনুসন্ধান এবং পরিবর্তন করুন"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "সারিটি বিরত আছে"
   },
   "Queued": {
-    "message": ""
+    "message": "সারিতে যুক্ত"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "দ্রুত সময়সূচি"
   },
   "Quick_Start": {
     "message": "দ্রুত শুরু"
@@ -623,16 +1389,33 @@
     "message": "দ্রুত ক্রিয়া"
   },
   "Read_Only": {
-    "message": ""
+    "message": "শুধুমাত্র-পঠন"
   },
   "Read_Write": {
-    "message": ""
+    "message": "পঠন-লেখন"
   },
   "Read_only": {
     "message": "শুধু পড়ার জন্য"
   },
-  "Reason_optional": {
-    "message": "কারণ (ঐচ্ছিক)"
+  "Reasoning": {
+    "message": "যুক্তি"
+  },
+  "Reasoning_Efforts": {
+    "message": "যুক্তি প্রচেষ্টা"
+  },
+  "Reasoning_Summaries": {
+    "message": "যুক্তি সংক্ষিপ্তসার"
+  },
+  "Reasoning_levels": {
+    "message": "যুক্তি স্তর:"
+  },
+  "Reasoning_1": {
+    "message": "যুক্তি: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "রিফ্রেশ হবে:"
@@ -640,59 +1423,86 @@
   "Reject": {
     "message": "প্রত্যাখ্যান"
   },
-  "Reject_this_action": {
-    "message": "এই কাজটি প্রত্যাখ্যান করুন"
+  "Release_Date": {
+    "message": "প্রকাশের তারিখ"
+  },
+  "Release_date_unknown": {
+    "message": "প্রকাশের তারিখ অজানা"
+  },
+  "Released": {
+    "message": "প্রকাশিত:"
   },
   "Remaining": {
     "message": "অবশিষ্ট:"
   },
   "Remove": {
-    "message": ""
+    "message": "মুছে ফেলুন"
   },
   "Remove_API_Key": {
     "message": "API কী সরান"
   },
-  "Remove_modification": {
-    "message": "পরিবর্তন সরান"
+  "Request_Timeout": {
+    "message": "অনুরোধের সময়সীমা"
   },
-  "Request_Changes": {
-    "message": "পরিবর্তনের অনুরোধ করুন"
-  },
-  "Request_changes_to_this_action": {
-    "message": "এই কাজের জন্য পরিবর্তনের অনুরোধ করুন"
+  "Request_timed_out": {
+    "message": "অনুরোধের সময় শেষ হয়েছে"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "মিলিসেকেন্ডে অনুরোধের সময়সীমা (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "মিলিসেকেন্ডে অনুরোধের সময়সীমা (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "অনুরোধ বাতিল করা হয়েছে"
+  },
+  "Response_failed": {
+    "message": "প্রতিক্রিয়া ব্যর্থ হয়েছে"
   },
   "Restricted": {
-    "message": ""
+    "message": "সীমাবদ্ধ"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "ফলাফল সংক্ষিপ্তসার"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "কিউ পুনরায় চালু"
+  },
+  "Retry_Configuration": {
+    "message": "পুনঃপ্রয়াস কনফিগারেশন"
+  },
+  "Retrying": {
+    "message": "পুনঃপ্রয়াস করা হচ্ছে"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "যেকোনো লেখার উপর রাইট-ক্লিক করে Browserx-এর সাহায্যে এটি ব্যাখ্যা বা উন্নত করুন"
+  },
+  "Risk_Score": {
+    "message": "ঝুঁকি স্কোর:"
   },
   "Rollout_Expiration": {
     "message": "রোলআউটের মেয়াদোত্তীর্ণ তারিখ"
   },
   "Run_Now": {
-    "message": ""
+    "message": "এখন চালান"
   },
   "Running": {
-    "message": ""
+    "message": "চলমান"
+  },
+  "STREAM_ERROR": {
+    "message": "স্ট্রিম ত্রুটি"
   },
   "Safe": {
-    "message": ""
+    "message": "নিরাপদ"
   },
   "Sandbox_Policy": {
     "message": "স্যান্ডবক্স নীতি"
   },
   "Save_API_Key": {
     "message": "API কী সংরক্ষণ করুন"
+  },
+  "Save_Changes": {
+    "message": "পরিবর্তন সংরক্ষণ করুন"
   },
   "Save_Settings": {
     "message": "সেটিংস সংরক্ষণ করুন"
@@ -701,22 +1511,31 @@
     "message": "সংরক্ষণ করা হচ্ছে..."
   },
   "Schedule": {
-    "message": ""
+    "message": "সূচি"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "একটি নতুন কাজ নির্ধারণ করুন"
   },
   "Scheduled": {
-    "message": ""
+    "message": "নির্ধারিত"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "নির্ধারিত কাজ"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "নির্ধারিত কাজ শুরু হচ্ছে"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "নির্ধারিত কাজগুলি"
   },
-  "Search_settings": {
-    "message": ""
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "নির্ধারিত সময় ভবিষ্যতে কমপক্ষে ১ মিনিটের পরে হতে হবে"
+  },
+  "Search_complete": {
+    "message": "অনুসন্ধান সম্পন্ন"
+  },
+  "Searching": {
+    "message": "অনুসন্ধান করা হচ্ছে..."
   },
   "Security_Privacy": {
     "message": "নিরাপত্তা ও গোপনীয়তা"
@@ -724,23 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "টুল চালানোর পরিবেশের নিরাপত্তা স্তর"
   },
+  "Select_Model": {
+    "message": "মডেল নির্বাচন করুন"
+  },
+  "Select_model_1": {
+    "message": "মডেল নির্বাচন করুন: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "কথোপকথনের জন্য AI মডেল নির্বাচন করুন।"
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "ইন্টারফেসের জন্য আপনার পছন্দের ভাষা নির্বাচন করুন"
   },
+  "Selected": {
+    "message": "নির্বাচিত"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "নির্বাচিত মডেল কনফিগারেশন অনুপস্থিত"
+  },
+  "Send": {
+    "message": "প্রেরণ করুন"
+  },
   "Service_Tier": {
     "message": "সেবা স্তর"
   },
-  "Session": {
-    "message": "সেশন"
+  "Service_tier_updated_to_1": {
+    "message": "সেবা স্তর $1$ এ আপডেট হয়েছে",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "সেশন ত্রুটি"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "সেশন মেয়াদ শেষ হয়েছে - AI এজেন্ট ব্যবহার চালিয়ে যেতে আবার লগ ইন করুন"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
+    "message": "সেশন সীমা পৌঁছেছে। নতুন কাজগুলি কিউতে যাবে।"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "রোলআউট ডেটা কখন মেয়াদোত্তীর্ণ হবে তা নির্ধারণ করুন"
@@ -751,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "সেটিংস সফলভাবে সংরক্ষিত হয়েছে"
   },
+  "Show_API_key": {
+    "message": "API কী দেখুন"
+  },
+  "Show_all": {
+    "message": "সব দেখুন"
+  },
+  "Show_less": {
+    "message": "কম দেখুন"
+  },
   "Show_token_usage_in_tasks": {
     "message": "কাজে টোকেন ব্যবহার দেখান"
   },
@@ -760,11 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "আপনার অ্যাকাউন্টে সাইন ইন করুন"
   },
+  "Skills": {
+    "message": "দক্ষতা"
+  },
   "Stable": {
     "message": "স্থিতিশীল"
   },
+  "Standard_capabilities": {
+    "message": "স্ট্যান্ডার্ড সক্ষমতা"
+  },
+  "Start_New_Conversation": {
+    "message": "নতুন কথোপকথন শুরু করুন"
+  },
+  "Start_on_login": {
+    "message": "লগইনের সময় শুরু করুন"
+  },
   "Status": {
-    "message": ""
+    "message": "অবস্থা"
+  },
+  "Stop_Agent": {
+    "message": "এজেন্ট বন্ধ করুন"
+  },
+  "Stop_the_current_task": {
+    "message": "বর্তমান কাজ বন্ধ করুন"
   },
   "Stop_the_current_task_run": {
     "message": "বর্তমান টাস্ক থামান"
@@ -787,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "ব্রাউজার সেশন জুড়ে ক্যাশ ডেটা স্থায়ীভাবে সংরক্ষণ করুন"
   },
+  "Suggest_Alternative": {
+    "message": "বিকল্প প্রস্তাব করুন"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "ব্যাকএন্ড মোডে স্যুইচ করা হয়েছে। LLM অনুরোধগুলি AI Republic সার্ভারের মাধ্যমে রাউট হবে।"
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "ডাইরেক্ট API মোডে স্যুইচ করা হয়েছে। দয়া করে আপনার API কী কনফিগার করুন।"
+  },
+  "System": {
+    "message": "সিস্টেম"
+  },
   "Tab_Tool": {
     "message": "ট্যাব টুল"
   },
+  "Tab_unavailable": {
+    "message": "ট্যাবটি উপলব্ধ নয়"
+  },
+  "Take_Over": {
+    "message": "দখল করুন"
+  },
   "Task": {
-    "message": ""
+    "message": "কাজ"
   },
   "Task_Details": {
-    "message": ""
+    "message": "টাস্কের বিবরণ"
+  },
+  "Task_Failed": {
+    "message": "টাস্ক ব্যর্থ হয়েছে"
   },
   "Task_History": {
-    "message": ""
+    "message": "টাস্কের ইতিহাস"
   },
   "Task_ID": {
-    "message": ""
+    "message": "টাস্ক আইডি"
+  },
+  "Task_Plan": {
+    "message": "টাস্ক পরিকল্পনা"
+  },
+  "Task_cancelled_by_user": {
+    "message": "ব্যবহারকারী দ্বারা টাস্ক বাতিল করা হয়েছে"
+  },
+  "Task_complete": {
+    "message": "টাস্ক সম্পন্ন হয়েছে"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "টাস্ক $1$ টার্নে সম্পন্ন হয়েছে",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "টাস্ক ব্যর্থ হয়েছে"
+  },
+  "Task_started": {
+    "message": "টাস্ক শুরু হয়েছে"
   },
   "Terminal": {
     "message": "টার্মিনাল"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "টার্মিনাল স্যান্ডবক্স"
   },
   "Test_Connection": {
     "message": "সংযোগ পরীক্ষা করুন"
@@ -814,20 +1732,26 @@
   "Testing": {
     "message": "পরীক্ষা চলছে..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "A2A এজেন্ট এন্ডপয়েন্ট URL (http বা https)"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+    "message": "AI ঝুঁকি মূল্যায়নের ভিত্তিতে প্রতিটি কমান্ডের জন্য স্যান্ডবক্স ব্যবহার করবে কিনা সিদ্ধান্ত নেয়।"
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "MCP সার্ভার এন্ডপয়েন্ট URL (http বা https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "এজেন্ট বর্তমানে ব্যাকএন্ড মোড ব্যবহার করছে। LLM অনুরোধগুলি AI Republic সার্ভারের মাধ্যমে রাউট করা হবে। আপনার কথোপকথনগুলি আমাদের অবকাঠামোর মাধ্যমে নিরাপদে প্রক্রিয়াকৃত হবে।"
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "মডেল পরিবর্তন করলে বর্তমান কথোপকথন মুছে যাবে। আপনি কি চালিয়ে যেতে চান?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "সার্ভার একটি ত্রুটির সম্মুখীন হয়েছে। অনুগ্রহ করে পরে আবার চেষ্টা করুন।"
+  },
   "Time": {
     "message": "সময়"
-  },
-  "Time_remaining": {
-    "message": "বাকি সময়"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "ক্যাশে রাখা আইটেমের স্থায়িত্বকাল (সেকেন্ডে) (default: $1$)",
@@ -838,19 +1762,42 @@
     }
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "টাইমআউট (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "AI এজেন্ট ব্যবহার করতে, দয়া করে নিম্নের একটি করুন:"
+  },
+  "Today": {
+    "message": "আজ"
   },
   "Toggle_side_panel": {
     "message": "সাইড প্যানেল টগল করুন"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "নিজস্ব API কী ব্যবহার টগল করুন"
   },
-  "Tool": {
-    "message": "টুল"
+  "Token_Usage": {
+    "message": "টোকেন ব্যবহার"
+  },
+  "Tokens": {
+    "message": "টোকেন:"
+  },
+  "Tokens_1": {
+    "message": "টোকেন: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "টুল টাইমআউট (মিলিসেকেন্ড)"
+  },
+  "Tool_name": {
+    "message": "টুলের নাম:"
+  },
+  "Tool": {
+    "message": "টুল"
   },
   "Tools": {
     "message": "টুলস"
@@ -858,8 +1805,20 @@
   "Tools_Settings": {
     "message": "টুলসের সেটিংস"
   },
-  "Turn": {
-    "message": "টার্ন"
+  "Trusted": {
+    "message": "বিশ্বাসযোগ্য"
+  },
+  "Trusted_Domains": {
+    "message": "বিশ্বাসযোগ্য ডোমেইন"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "বিশ্বাসযোগ্য এজেন্টগুলি স্কিল আহ্বানের জন্য স্বয়ংক্রিয়ভাবে অনুমোদিত হয়"
+  },
+  "Turns": {
+    "message": "টার্নস:"
+  },
+  "Type_alternative_instructions": {
+    "message": "বিকল্প নির্দেশনা টাইপ করুন..."
   },
   "UI_Theme": {
     "message": "ইউআই থিম"
@@ -867,17 +1826,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL-এ http বা https প্রোটোকল ব্যবহার করতে হবে"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "এজেন্টের স্ট্যাটাস পরীক্ষা করা সম্ভব নয়"
+  },
   "Unable_to_load_credit_information": {
     "message": "ক্রেডিট তথ্য লোড করা যায়নি"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "ব্যাকএন্ড সার্ভার পৌঁছানো যাচ্ছে না - দয়া করে আপনার সংযোগ পরীক্ষা করুন"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "সার্ভার পৌঁছানো যাচ্ছে না। দয়া করে আপনার সংযোগ পরীক্ষা করুন এবং আবার চেষ্টা করুন।"
+  },
+  "Unknown_Event": {
+    "message": "অজানা ইভেন্ট"
+  },
+  "Unknown_error": {
+    "message": "অজানা ত্রুটি"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "এজেন্টের স্ট্যাটাস পরীক্ষা করার সময় অজানা ত্রুটি"
+  },
+  "Unknown_error_occurred": {
+    "message": "অজানা ত্রুটি ঘটেছে"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "কাজ সম্পাদনের সময় অজানা ত্রুটি ঘটেছে"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "সাবমিশন প্রক্রিয়াকরণের সময় অজানা ত্রুটি"
+  },
+  "Unknown_model_1": {
+    "message": "অজানা মডেল ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "সংরক্ষণহীন পরিবর্তন"
   },
+  "Untitled": {
+    "message": "শিরোনামহীন"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "আসন্ন"
   },
   "Update": {
-    "message": ""
+    "message": "আপডেট"
   },
   "Update_Channel": {
     "message": "আপডেট চ্যানেল"
@@ -887,6 +1887,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "প্রিমিয়াম প্ল্যানে আপগ্রেড করুন"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "বিশ্বের সবচেয়ে শক্তিশালী মডেলগুলো অন্বেষণ করতে আপগ্রেড করুন"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "বিশ্বের সবচেয়ে শক্তিশালী মডেল ব্যবহার করতে আপনার সাবস্ক্রিপশন আপগ্রেড করুন"
@@ -901,37 +1904,46 @@
     "message": "ব্যবহারকারী ড্যাশবোর্ড"
   },
   "User_Session": {
-    "message": ""
-  },
-  "User_approved_action": {
-    "message": "ব্যবহারকারী অনুমোদিত ক্রিয়া"
-  },
-  "User_decision": {
-    "message": "ব্যবহারকারী সিদ্ধান্ত"
+    "message": "ব্যবহারকারী সেশন"
   },
   "User_preferences_and_interface_settings": {
     "message": "ব্যবহারকারী পছন্দ ও ইন্টারফেস সেটিংস"
   },
-  "User_rejected_action": {
-    "message": "ব্যবহারকারী দ্বারা কর্ম প্রত্যাখ্যান"
-  },
-  "User_requested_modifications": {
-    "message": "ব্যবহারকারীর অনুরোধকৃত পরিবর্তনসমূহ"
-  },
   "Using_extra_credits": {
     "message": "অতিরিক্ত ক্রেডিট ব্যবহার করা"
+  },
+  "Verbosity": {
+    "message": "বর্ণনাশৈলী"
+  },
+  "Verbosity_Control": {
+    "message": "বর্ণনাশৈলী নিয়ন্ত্রণ"
+  },
+  "Verbosity_Levels": {
+    "message": "বর্ণনাশৈলী স্তরসমূহ"
+  },
+  "Verbosity_levels": {
+    "message": "বর্ণনাশৈলী স্তরসমূহ:"
+  },
+  "Version": {
+    "message": "সংস্করণ"
   },
   "View_Chat_History": {
     "message": "চ্যাট ইতিহাস"
   },
   "View_History": {
-    "message": ""
+    "message": "ইতিহাস দেখুন"
   },
   "View_Session": {
-    "message": ""
+    "message": "সেশন দেখুন"
+  },
+  "View_pricing_details": {
+    "message": "মূল্য বিবরণ দেখুন"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "পৃষ্ঠার বিষয়বস্তু ও লেআউটের ভিজ্যুয়াল বিশ্লেষণ"
+  },
+  "Waiting_for_approval": {
+    "message": "অনুমোদনের জন্য অপেক্ষা করা হচ্ছে"
   },
   "Web_Scraping_Tool": {
     "message": "ওয়েব স্ক্র্যাপিং টুল"
@@ -943,13 +1955,22 @@
     "message": "Browserx-এ স্বাগতম"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "স্যান্ডবক্সড কমান্ডগুলো নেটওয়ার্কে প্রবেশ করতে পারে কিনা"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "ওয়ার্কস্পেস অ্যাক্সেস"
   },
   "Workspace_Write": {
     "message": "ওয়ার্কস্পেস রাইট"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "গতকাল"
+  },
+  "You": {
+    "message": "আপনি"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "আপনার অসংরক্ষিত পরিবর্তন রয়েছে। আপনি কি সেগুলি বাতিল করতে চান?"
@@ -960,19 +1981,73 @@
   "Your_API_key_is_encrypted": {
     "message": "আপনার API কী এনক্রিপ্ট করা হয়েছে"
   },
-  "Your_Decision": {
-    "message": "আপনার সিদ্ধান্ত"
+  "Your_personal_AI_assistant": {
+    "message": "আপনার ব্যক্তিগত এআই সহকারী"
   },
-  "more_results": {
-    "message": ""
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "আপনার সেশন শেষ হয়ে গেছে। দয়া করে আবার লগইন করুন।"
+  },
+  "DISCONNECTED": {
+    "message": "[সংযোগ বিচ্ছিন্ন]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[ত্রুটি: স্ট্রিম বাধাগ্রস্ত]"
+  },
+  "NO_ACCESS": {
+    "message": "[প্রবেশাধিকার নেই]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[API কী নেই - সেটিংস ক্লিক করুন]"
+  },
+  "PROCESSING": {
+    "message": "[প্রক্রিয়াকরণ]"
+  },
+  "available": {
+    "message": "উপলব্ধ"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "ক্যাশ করা"
+  },
+  "detailed_thinking": {
+    "message": "বিস্তারিত চিন্তা"
+  },
+  "disconnected": {
+    "message": "সংযোগ বিচ্ছিন্ন"
+  },
+  "exec_unknown_command": {
+    "message": "exec (অজানা কমান্ড)"
   },
   "optional": {
-    "message": ""
+    "message": "ঐচ্ছিক"
+  },
+  "remaining": {
+    "message": "বাকি"
   },
   "session": {
-    "message": ""
+    "message": "সেশন"
   },
   "sessions": {
-    "message": ""
+    "message": "সেশনগুলি"
+  },
+  "streaming": {
+    "message": "স্ট্রিমিং..."
+  },
+  "thinking": {
+    "message": "চিন্তা"
+  },
+  "tokens": {
+    "message": "টোকেন"
+  },
+  "trusted": {
+    "message": "বিশ্বাসযোগ্য"
+  },
+  "user": {
+    "message": "ব্যবহারকারী"
+  },
+  "web_search": {
+    "message": "ওয়েব অনুসন্ধান"
   }
 }

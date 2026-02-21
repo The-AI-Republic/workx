@@ -32,19 +32,19 @@ describe('CompactionMetrics', () => {
   describe('estimateTokens', () => {
     it('should estimate tokens based on character count', () => {
       const chars = 1000;
-      const tokens = metrics.estimateTokens(chars);
+      const tokens = CompactionMetrics.estimateTokens(chars);
 
-      // Assuming ~4 chars per token
-      expect(tokens).toBe(Math.ceil(chars / 4));
+      // Uses ~3.8 chars per token
+      expect(tokens).toBe(Math.ceil(chars / 3.8));
     });
 
     it('should handle zero characters', () => {
-      const tokens = metrics.estimateTokens(0);
+      const tokens = CompactionMetrics.estimateTokens(0);
       expect(tokens).toBe(0);
     });
 
     it('should handle small character counts', () => {
-      const tokens = metrics.estimateTokens(5);
+      const tokens = CompactionMetrics.estimateTokens(5);
       expect(tokens).toBeGreaterThan(0);
     });
   });
@@ -53,8 +53,8 @@ describe('CompactionMetrics', () => {
     it('should calculate token reduction rate', () => {
       metrics.totalCharsBefore = 10000;
       metrics.totalCharsAfter = 3000;
-      metrics.estimatedTokensBefore = metrics.estimateTokens(10000);
-      metrics.estimatedTokensAfter = metrics.estimateTokens(3000);
+      metrics.estimatedTokensBefore = CompactionMetrics.estimateTokens(10000);
+      metrics.estimatedTokensAfter = CompactionMetrics.estimateTokens(3000);
 
       metrics.calculateTokenReduction();
 
@@ -74,8 +74,8 @@ describe('CompactionMetrics', () => {
     it('should handle no reduction case', () => {
       metrics.totalCharsBefore = 1000;
       metrics.totalCharsAfter = 1000;
-      metrics.estimatedTokensBefore = metrics.estimateTokens(1000);
-      metrics.estimatedTokensAfter = metrics.estimateTokens(1000);
+      metrics.estimatedTokensBefore = CompactionMetrics.estimateTokens(1000);
+      metrics.estimatedTokensAfter = CompactionMetrics.estimateTokens(1000);
 
       metrics.calculateTokenReduction();
 
@@ -89,8 +89,8 @@ describe('CompactionMetrics', () => {
       metrics.totalCharsAfter = 3000;
       metrics.totalNodes = 1000;
       metrics.serializedNodes = 400;
-      metrics.estimatedTokensBefore = metrics.estimateTokens(10000);
-      metrics.estimatedTokensAfter = metrics.estimateTokens(3000);
+      metrics.estimatedTokensBefore = CompactionMetrics.estimateTokens(10000);
+      metrics.estimatedTokensAfter = CompactionMetrics.estimateTokens(3000);
       metrics.calculateTokenReduction();
 
       const score = metrics.calculateCompactionScore();
@@ -113,8 +113,8 @@ describe('CompactionMetrics', () => {
       metrics.totalCharsAfter = 100;
       metrics.totalNodes = 500;
       metrics.serializedNodes = 50;
-      metrics.estimatedTokensBefore = metrics.estimateTokens(1000);
-      metrics.estimatedTokensAfter = metrics.estimateTokens(100);
+      metrics.estimatedTokensBefore = CompactionMetrics.estimateTokens(1000);
+      metrics.estimatedTokensAfter = CompactionMetrics.estimateTokens(100);
       metrics.calculateTokenReduction();
 
       const score = metrics.calculateCompactionScore();
@@ -149,14 +149,14 @@ describe('CompactionMetrics', () => {
       metrics.filteredNodes = 600;
       metrics.totalCharsBefore = 10000;
       metrics.totalCharsAfter = 3000;
-      metrics.estimatedTokensBefore = metrics.estimateTokens(10000);
-      metrics.estimatedTokensAfter = metrics.estimateTokens(3000);
+      metrics.estimatedTokensBefore = CompactionMetrics.estimateTokens(10000);
+      metrics.estimatedTokensAfter = CompactionMetrics.estimateTokens(3000);
       metrics.calculateTokenReduction();
       metrics.calculateCompactionScore();
 
       const str = metrics.toString();
 
-      expect(str).toContain('Compaction Metrics');
+      expect(str).toContain('Token Reduction');
       expect(str).toContain('1000');
       expect(str).toContain('400');
       expect(str).toContain('600');
@@ -175,8 +175,8 @@ describe('CompactionMetrics', () => {
       metrics.totalCharsBefore = 150000;
       metrics.totalCharsAfter = 45000; // 70% reduction
 
-      metrics.estimatedTokensBefore = metrics.estimateTokens(150000);
-      metrics.estimatedTokensAfter = metrics.estimateTokens(45000);
+      metrics.estimatedTokensBefore = CompactionMetrics.estimateTokens(150000);
+      metrics.estimatedTokensAfter = CompactionMetrics.estimateTokens(45000);
       metrics.calculateTokenReduction();
 
       const score = metrics.calculateCompactionScore();

@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Общий AI‑агент в браузере для рабочих задач"
   },
+  "1_API_Key": {
+    "message": "$1$ API‑ключ",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API‑ключ успешно удалён",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} задача(ов) пропустили запланированное время, пока браузер был закрыт."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ — точность может быть снижена)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(активно)"
+  },
+  "multiple_files": {
+    "message": "(несколько файлов)"
+  },
+  "no_output": {
+    "message": "(нет вывода)"
+  },
+  "no_result": {
+    "message": "(нет результата)"
+  },
+  "patch_details": {
+    "message": "(подробности патча)"
+  },
+  "Enter_command": {
+    "message": ">> Введите команду..."
+  },
+  "A2A_Agents": {
+    "message": "Агенты A2A"
+  },
   "API_Key": {
-    "message": ""
+    "message": "API‑ключ"
   },
   "API_Key_Configuration": {
     "message": "Конфигурация API‑ключа"
   },
+  "API_Version": {
+    "message": "Версия API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Редактирование API‑ключа отключено в режиме бэкенда"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "API‑ключ для аутентификации (хранится зашифрованным)"
+  },
+  "API_key_has_expired": {
+    "message": "Срок действия API‑ключа истёк"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "У API‑ключа недостаточно прав"
+  },
+  "API_key_saved_successfully": {
+    "message": "API‑ключ успешно сохранён!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API‑ключи шифруются и сохраняются локально в вашем браузере. Они никогда не отправляются на внешние серверы, за исключением вызовов API."
@@ -20,47 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Доступ к хранилищу браузера (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Действие"
-  },
-  "Action_Details": {
-    "message": "Детали действия"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Режим одобрения действий, доверенные домены, настройки риска"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "Активные сеансы"
   },
   "Add": {
-    "message": ""
+    "message": "Добавить"
   },
-  "Add_Modification": {
-    "message": "Добавить изменение"
+  "Add_Agent": {
+    "message": "Добавить агента"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Добавить сервер"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Добавить задачу"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Добавьте сервер для подключения к внешним инструментам."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Добавьте агента для подключения к внешним навыкам."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Дополнительные привязанные монтирования"
   },
   "Advanced_Configuration": {
     "message": "Расширенная конфигурация"
   },
-  "Advanced_Options": {
-    "message": "Расширенные параметры"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Расширенные настройки"
+  },
+  "Agent": {
+    "message": "Агент"
   },
   "Agent_Execution_Tools": {
     "message": "Инструменты выполнения агента"
   },
+  "Agent_Turn_Complete": {
+    "message": "Ход агента завершён"
+  },
+  "Agent_URL_is_required": {
+    "message": "Требуется URL агента"
+  },
+  "Agent_added_successfully": {
+    "message": "Агент успешно добавлен"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Имя агента может содержать только буквы, цифры и дефисы"
+  },
+  "Agent_name_is_required": {
+    "message": "Требуется имя агента"
+  },
+  "Agent_not_initialized": {
+    "message": "Агент не инициализирован"
+  },
+  "Agent_removed_successfully": {
+    "message": "Агент успешно удалён"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Ход агента успешно завершён"
+  },
+  "Agent_updated_successfully": {
+    "message": "Агент успешно обновлён"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Все действия автоматически одобряются для этих доменов."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Все действия запрещены для этих доменов."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "Все команды выполняются внутри нативной ОС‑песочницы. Запись ограничена каталогом рабочей области."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Разрешить агенту выполнять системные команды (используйте с осторожностью)"
@@ -72,31 +168,99 @@
     "message": "Разрешить запуск скриптов содержимого на веб‑страницах"
   },
   "Allowed": {
-    "message": ""
+    "message": "Разрешено"
   },
   "Allowed_Origins": {
     "message": "Разрешённые источники"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Только буквенно-цифровые символы и дефисы (1‑50 символов)"
   },
-  "Approval_History": {
-    "message": "История одобрений"
+  "Always_Approve": {
+    "message": "Всегда одобрять"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: ваш персональный ИИ (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Одобрение и безопасность"
+  },
+  "Approval_Mode": {
+    "message": "Режим одобрения"
+  },
+  "Approval_Required": {
+    "message": "Требуется одобрение"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Требуется одобрение: применить патч"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Требуется одобрение: выполнить команду"
   },
   "Approve": {
     "message": "Одобрить"
   },
-  "Approve_this_action": {
-    "message": "Одобрить это действие"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Одобрить изменения в: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Одобрить выполнение: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Вы уверены, что хотите отменить эту задачу?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Вы уверены, что хотите удалить этого агента?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Вы уверены, что хотите удалить ваш API‑ключ $1$?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Попросить Browserx извлечь структурированные данные с любой веб‑страницы"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Запрашивать средний и более высокий риск (risk > 30). Рекомендуется большинству пользователей."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Запрашивать только действия с высоким риском (risk > 60). Для опытных пользователей."
+  },
+  "Auth_Type": {
+    "message": "Тип аутентификации"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Учётные данные аутентификации (хранятся зашифрованными)"
+  },
+  "Authentication_failed": {
+    "message": "Ошибка аутентификации"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Метод аутентификации для агента"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "Авто (по умолчанию)"
+  },
+  "Auto_approve_everything": {
+    "message": "Автоматически одобрять всё"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Автоматически одобрять всё. Правила запрета всё равно применяются. Используйте на свой страх и риск."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Автоодобрено — время ожидания истекло"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Автоматически запускать приложение при входе в систему"
+  },
+  "Available_Skills": {
+    "message": "Доступные навыки"
   },
   "Available_Tools": {
-    "message": ""
+    "message": "Доступные инструменты"
   },
   "Available": {
     "message": "Доступно:"
@@ -104,20 +268,62 @@
   "Back": {
     "message": "Назад"
   },
+  "Back_to_Model_Config": {
+    "message": "Назад к настройкам модели"
+  },
   "Backend_Mode": {
     "message": "Режим бэкенда"
   },
   "Backend_Mode_Active": {
     "message": "Режим бэкенда активен"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Бэкенд недоступен. Пожалуйста, подождите немного и попробуйте снова."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Ошибка сервера бэкенда — попробуйте позже"
+  },
+  "Backoff_Multiplier": {
+    "message": "Множитель отката"
+  },
+  "Balanced": {
+    "message": "Сбалансированный"
+  },
+  "Base_URL": {
+    "message": "Базовый URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Базовый URL не настроен для этого провайдера"
+  },
+  "Bearer_Token": {
+    "message": "Токен Bearer"
+  },
   "Beta": {
     "message": "Бета"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Путь привязки монтирования должен быть абсолютным"
+  },
+  "Blocked_Domains": {
+    "message": "Заблокированные домены"
   },
   "Browser_Tools": {
     "message": "Инструменты браузера"
   },
   "Browser_automation_tool_toggles": {
     "message": "Переключатели инструментов автоматизации браузера"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "Текущий каталог:"
   },
   "Cache_Settings": {
     "message": "Настройки кэша"
@@ -131,8 +337,36 @@
   "Cancel": {
     "message": "Отмена"
   },
+  "Cancelled": {
+    "message": "Отменено"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Не удалось выполнить задачу: для ${providerName} не настроен API‑ключ. Перейдите в Настройки → Конфигурация модели и добавьте ваш API‑ключ."
+  },
+  "Cannot_select_model_1": {
+    "message": "Не удалось выбрать модель: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Не удалось отправить сообщение: для $1$ не настроен API‑ключ. Нажмите кнопку Настройки и настройте ваш API‑ключ.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Возможности"
+  },
   "Chat_History": {
     "message": "История чата"
+  },
+  "Checking_agent_status": {
+    "message": "Проверка статуса агента..."
   },
   "Choose_AI_Model": {
     "message": "Выберите модель ИИ"
@@ -149,29 +383,41 @@
   "Clean_modern_chat_interface_similar_to_C_2401": {
     "message": "Чистый современный чат‑интерфейс, похожий на ChatGPT"
   },
-  "Clear_search": {
-    "message": ""
-  },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Нажмите значок Browserx на панели инструментов или нажмите Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "Нажмите, чтобы отменить вход"
   },
   "Click_to_select_a_model": {
     "message": "Нажмите, чтобы выбрать модель"
   },
+  "Close": {
+    "message": "Закрыть"
+  },
   "Close_settings": {
     "message": "Закрыть настройки"
+  },
+  "Collapse": {
+    "message": "Свернуть"
+  },
+  "Command_Approval_Required": {
+    "message": "Требуется одобрение команды"
+  },
+  "Command_completed": {
+    "message": "Команда выполнена"
   },
   "Command": {
     "message": "Команда"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "Команды выполняются непосредственно на хосте. Фильтр безопасности по‑прежнему применяется."
   },
   "Completed": {
-    "message": ""
+    "message": "Завершено"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Завершено: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Сжать кэшированные данные для экономии места"
@@ -179,41 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Настройте модель ИИ и ключи API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Настройте API‑ключ в Настройках"
+  },
+  "Configured": {
+    "message": "Настроено"
+  },
+  "Configured_Agents": {
+    "message": "Настроенные агенты"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Настроенные серверы"
   },
   "Connect": {
-    "message": ""
+    "message": "Подключить"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Подключитесь к агентам протокола Agent-to-Agent (A2A), чтобы расширить возможности внешними навыками агентов."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Подключитесь к серверам Model Context Protocol (MCP), чтобы расширить агента внешними инструментами."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Подключитесь к агенту A2A, чтобы обнаружить навыки."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Подключитесь к серверу MCP, чтобы обнаружить инструменты."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Подключиться к внешним серверам инструментов MCP"
   },
   "Connected": {
     "message": "Подключено"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Подключено успешно"
   },
-  "Context": {
-    "message": "Контекст"
+  "Connecting": {
+    "message": "Подключение..."
+  },
+  "Connection_error": {
+    "message": "Ошибка подключения"
+  },
+  "Connection_failed_1": {
+    "message": "Ошибка подключения: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Ошибка подключения: базовый URL не настроен"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Ошибка подключения: отсутствует выбранная конфигурация модели"
+  },
+  "Connection_successful": {
+    "message": "Подключение успешно!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Тест подключения не удался: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Тест подключения не удался: неверный API‑ключ"
+  },
+  "Connection_test_successful": {
+    "message": "Тест подключения успешен!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Тест подключения успешен! (API‑ключ действителен)"
+  },
+  "Connection_was_refused": {
+    "message": "Подключение отклонено"
+  },
+  "Connection_was_reset": {
+    "message": "Подключение было сброшено"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Содержимое нарушает политику: контент типа ${contentType} не разрешён"
+  },
+  "Context_Window": {
+    "message": "Окно контекста"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Контекст сжат: сэкономлено ~$1$k токенов",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Управляет тем, насколько настойчиво агент запрашивает одобрение."
   },
   "Create_New_Tab": {
     "message": "Создать новую вкладку"
   },
   "Created": {
-    "message": ""
+    "message": "Создано"
+  },
+  "Creator": {
+    "message": "Создатель"
   },
   "Credit_Details": {
     "message": "Детали кредита"
   },
   "Current_Plan": {
     "message": "Текущий план:"
+  },
+  "DNS_lookup_failed": {
+    "message": "Не удалось выполнить DNS‑запрос"
   },
   "DOM_Tool": {
     "message": "Инструмент DOM"
@@ -225,10 +552,34 @@
     "message": "Инструмент извлечения данных"
   },
   "Date": {
-    "message": ""
+    "message": "Дата"
   },
   "Days_until_expiration": {
     "message": "Дней до истечения срока"
+  },
+  "Debug_logging_disabled": {
+    "message": "Отладочный журнал отключён"
+  },
+  "Debug_logging_enabled": {
+    "message": "Отладочный журнал включён"
+  },
+  "Default": {
+    "message": "По умолчанию"
+  },
+  "Deny": {
+    "message": "Отказать"
+  },
+  "Deprecated": {
+    "message": "Устарело"
+  },
+  "Deprecation_Message": {
+    "message": "Сообщение об устаревании"
+  },
+  "Description": {
+    "message": "Описание"
+  },
+  "Desktop_mode": {
+    "message": "Режим рабочего стола"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Разработано и поддерживается AI Republic"
@@ -237,22 +588,37 @@
     "message": "Отменить изменения"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Отключить"
+  },
+  "Disconnected_successfully": {
+    "message": "Отключение выполнено успешно"
   },
   "Dismiss": {
-    "message": ""
+    "message": "Скрыть"
+  },
+  "Dismiss_notification": {
+    "message": "Скрыть уведомление"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Показывать потребление токенов (входные/выходные токены) при завершении задач"
   },
+  "Draft": {
+    "message": "Черновик"
+  },
   "Duration": {
-    "message": ""
+    "message": "Продолжительность"
+  },
+  "ERROR": {
+    "message": "ОШИБКА"
   },
   "Edit": {
-    "message": ""
+    "message": "Редактировать"
+  },
+  "Edit_Agent": {
+    "message": "Редактировать агента"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Редактировать сервер"
   },
   "Enable_All_Tools": {
     "message": "Включить все инструменты"
@@ -270,46 +636,61 @@
     "message": "Включить расширение"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Включить инструменты Model Context Protocol с подключённых MCP‑серверов"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Включить автоматическое подключение при запуске browserx"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Включить кэширование для повышения производительности за счёт хранения часто используемых данных"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Включить отладочный журнал"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Включить возможности веб‑поиска для агента"
   },
   "Enabled": {
-    "message": ""
+    "message": "Включено"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Введите API‑ключ, если требуется"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Введите API‑ключ или токен доступа"
   },
   "Enter_your_LLM_API_key": {
     "message": "Введите ваш API‑ключ LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Введите задачу…"
   },
   "Error": {
-    "message": ""
+    "message": "Ошибка"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Ошибка: нет соединения с агентом. Пожалуйста, обновите страницу."
   },
   "Execute_Commands": {
     "message": "Выполнить команды"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Режим выполнения"
+  },
+  "Exit_Code": {
+    "message": "Код выхода:"
+  },
+  "Expand": {
+    "message": "Развернуть"
   },
   "Expire_after_days": {
     "message": "Истекает через дней"
   },
-  "Explain_your_decision": {
-    "message": "Объясните ваше решение..."
+  "Explain_this_info_selectionText": {
+    "message": "Объясните это: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Объяснить с помощью Browserx"
   },
   "Extension_Permission": {
     "message": "Расширение и разрешение"
@@ -327,31 +708,146 @@
     "message": "Дополнительные кредиты"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Дополнительные каталоги, доступные внутри песочницы"
   },
   "Extract_Data": {
     "message": "Извлечь данные:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Извлечь данные с помощью Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Извлекать определённые шаблоны данных со страниц"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "Извлечь структурированные данные с этой страницы"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "Извлекать структурированные данные с веб‑страниц"
   },
+  "Failed": {
+    "message": "Не удалось"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Не удалось изменить модель: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Не удалось подключиться: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Не удалось создать новую вкладку. Пожалуйста, попробуйте ещё раз."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Не удалось создать вкладку браузера: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Не удалось отключиться: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Не удалось загрузить настройки A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Не удалось загрузить разговор. Пожалуйста, попробуйте ещё раз."
+  },
   "Failed_to_load_preferences": {
     "message": "Не удалось загрузить настройки"
+  },
+  "Failed_to_load_settings": {
+    "message": "Не удалось загрузить настройки"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Не удалось удалить ключ API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Не удалось удалить агента: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Не удалось сохранить ключ API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Не удалось сохранить настройку отладки журнала: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "Не удалось сохранить настройки"
   },
+  "Failed_to_save_settings_1": {
+    "message": "Не удалось сохранить настройки: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Не удалось сохранить: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Не удалось отправить сообщение. Пожалуйста, попробуйте ещё раз."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Не удалось начать новый разговор. Пожалуйста, попробуйте ещё раз."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Не удалось остановить задачу. Пожалуйста, попробуйте ещё раз."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Не удалось переключиться на вкладку ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Не удалось проверить соединение"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Не удалось обновить режим API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Не удалось обновить уровень сервиса: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Требуется одобрение изменения файла"
+  },
   "File_Operations_Not_Available": {
     "message": "Операции с файлами (Недоступно)"
   },
-  "File_Path": {
-    "message": "Путь к файлу"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Заполнять формы, отправлять данные, взаимодействовать с элементами формы"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Инструмент автоматизации форм"
@@ -360,7 +856,7 @@
     "message": "Полный доступ (Опасно)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "Полный ввод"
   },
   "General": {
     "message": "Общие"
@@ -385,17 +881,64 @@
   "Hello_World": {
     "message": "Здравствуй, мир"
   },
-  "History": {
-    "message": "История"
+  "Hide_API_key": {
+    "message": "Скрыть ключ API"
+  },
+  "High_Speed": {
+    "message": "Высокая скорость"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "Как директория рабочего пространства монтируется в песочнице"
   },
-  "Impact": {
-    "message": "Влияние"
+  "Image_Input": {
+    "message": "Ввод изображения"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Улучшить этот текст: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Улучшить с помощью Browserx"
+  },
+  "In": {
+    "message": "В:"
+  },
+  "Incompatible_features": {
+    "message": "Несовместимые функции:"
+  },
+  "Initial_Delay": {
+    "message": "Начальная задержка"
+  },
+  "Input_Token_Price": {
+    "message": "Цена токена ввода"
+  },
+  "Input": {
+    "message": "Ввод:"
+  },
+  "Input_1": {
+    "message": "Ввод: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Перехватывать и изменять сетевые запросы/ответы"
+  },
+  "Invalid_API_key": {
+    "message": "Недействительный ключ API"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Указан неверный API‑ключ"
+  },
+  "Invalid_URL_format": {
+    "message": "Неверный формат URL"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Неверный формат отправки: отсутствует поле op"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Неверный формат отправки: у op отсутствует поле type"
   },
   "Keyboard_Shortcuts": {
     "message": "Комбинации клавиш"
@@ -413,31 +956,52 @@
     "message": "Подробнее"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Оставьте пустым, чтобы сохранить текущее значение"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Список разрешённых источников (по одному в строке). Поддерживает подстановочные знаки (*)."
   },
   "Load_More": {
-    "message": ""
+    "message": "Загрузить ещё"
+  },
+  "Load_more": {
+    "message": "Загрузить ещё"
+  },
+  "Loading_configuration": {
+    "message": "Загрузка конфигурации..."
   },
   "Loading_credits": {
     "message": "Загрузка кредитов..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "Загрузка деталей..."
+  },
+  "Loading_history": {
+    "message": "Загрузка истории..."
   },
   "Loading_settings": {
     "message": "Загрузка настроек..."
   },
+  "Loading_tabs": {
+    "message": "Загрузка вкладок..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Загрузка..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Записывать сообщения протокола A2A в консоль браузера для отладки"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Записывать сообщения протокола MCP в консоль браузера для отладки"
+  },
+  "Log_in_to_your_account": {
+    "message": "Войдите в свою учётную запись"
+  },
+  "Logged_in": {
+    "message": "Вход выполнен"
   },
   "Logging_in": {
-    "message": ""
+    "message": "Выполняется вход..."
   },
   "Login": {
     "message": "Войти"
@@ -446,19 +1010,19 @@
     "message": "Войдите, чтобы получить бесплатные кредиты"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Длительное нажатие для планирования задачи"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Удерживайте кнопку отправки, чтобы запланировать задачу"
   },
   "Low_credits_remaining": {
     "message": "Осталось мало кредитов"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "Серверы MCP"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "Инструменты MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Управление вкладками браузера (открыть, закрыть, переключить, запросить)"
@@ -473,34 +1037,102 @@
     "message": "Максимальный размер кэша (МБ)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "Максимальное количество одновременных сеансов"
+  },
+  "Max_Delay": {
+    "message": "Максимальная задержка"
+  },
+  "Max_Output": {
+    "message": "Максимальный вывод"
+  },
+  "Max_Output_Tokens": {
+    "message": "Максимальное количество токенов вывода"
+  },
+  "Max_Retries": {
+    "message": "Максимальное количество повторных попыток"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Максимальный размер кэша в мегабайтах (по умолчанию: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "Максимальное количество параллельных сеансов агентов, включая запланированные задачи"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Достигнут максимум из 5 агентов"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Достигнут максимум из 5 серверов"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Максимальное время (в миллисекундах), в течение которого инструмент может работать до тайм‑аута (по умолчанию: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Средний риск и выше"
+  },
+  "Message_service_not_available": {
+    "message": "Служба сообщений недоступна"
+  },
   "Missed": {
-    "message": ""
+    "message": "Пропущено"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Пропущенные запланированные задачи"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Модель \"$1$\" не поддерживает ввод изображений. Некоторые инструменты будут отключены.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Конфигурация модели"
   },
+  "Model_Configuration": {
+    "message": "Конфигурация модели"
+  },
+  "Model_Key_API": {
+    "message": "Ключ модели (API)"
+  },
+  "Model_Name": {
+    "message": "Название модели"
+  },
   "Model_Selection": {
     "message": "Выбор модели"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Настройки модели и провайдера загружены из конфигурации по умолчанию (только для чтения)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Модель изменена на $1$. Пожалуйста, настройте ваш API‑ключ.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Модель изменена на $1$. Сеанс будет переинициализирован.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Модель:"
+  },
+  "Model_1": {
+    "message": "Модель: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Современный чат"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Изменять параметры при запросе изменений"
   },
   "Monthly_Credits": {
     "message": "Ежемесячные кредиты"
@@ -509,7 +1141,7 @@
     "message": "Дополнительные настройки"
   },
   "Name": {
-    "message": ""
+    "message": "Имя"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Навигация по страницам, переход по ссылкам, управление навигацией браузера"
@@ -518,10 +1150,16 @@
     "message": "Инструмент навигации"
   },
   "Network_Access": {
-    "message": ""
+    "message": "Сетевой доступ"
   },
   "Network_Intercept_Tool": {
     "message": "Инструмент перехвата сети"
+  },
+  "Network_error": {
+    "message": "Ошибка сети"
+  },
+  "Network_error_occurred": {
+    "message": "Произошла ошибка сети"
   },
   "Never_expire_permanent": {
     "message": "Не истекает (постоянно)"
@@ -529,41 +1167,85 @@
   "New_Conversation": {
     "message": "Новый разговор"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "Агенты A2A ещё не настроены."
+  },
   "No_Access": {
-    "message": ""
+    "message": "Нет доступа"
+  },
+  "No_Access_Configured": {
+    "message": "Доступ не настроен"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "Серверы MCP ещё не настроены."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Доступ не настроен. Пожалуйста, войдите в систему или настройте API‑ключ."
   },
   "No_active_sessions": {
-    "message": ""
+    "message": "Нет активных сеансов"
   },
-  "No_approval_history_yet": {
-    "message": "История одобрений отсутствует."
+  "No_chat_history_yet": {
+    "message": "История чата пока отсутствует"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Завершённые задачи пока отсутствуют"
+  },
+  "No_models_available": {
+    "message": "Нет доступных моделей"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Нет доступных моделей. Пожалуйста, проверьте конфигурацию."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Запланированных задач нет"
   },
-  "No_settings_found": {
-    "message": ""
+  "No_scheduled_time": {
+    "message": "Время не запланировано"
+  },
+  "No_skills_available": {
+    "message": "Нет доступных навыков."
+  },
+  "No_steps_in_plan": {
+    "message": "В плане нет шагов"
   },
   "No_tabs_available": {
     "message": "Нет доступных вкладок"
   },
+  "No_time_set": {
+    "message": "Время не задано"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Инструменты недоступны."
+  },
+  "None": {
+    "message": "Нет"
   },
   "Not_Connected": {
     "message": "Не подключено"
+  },
+  "Notification": {
+    "message": "Уведомление"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Количество дней до истечения данных развертывания (по умолчанию: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "Оффлайн — задачи будут выполнены при подключении"
+  },
+  "Older": {
+    "message": "Старше"
+  },
+  "Only_high_risk_actions": {
+    "message": "Только действия с высоким риском"
+  },
+  "Open_1_settings": {
+    "message": "Открыть настройки $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Открыть боковую панель:"
@@ -571,17 +1253,51 @@
   "Organization": {
     "message": "Организация"
   },
+  "Organization_ID": {
+    "message": "ID организации"
+  },
+  "Out": {
+    "message": "Вывод:"
+  },
+  "Output_Token_Price": {
+    "message": "Цена токена вывода"
+  },
+  "Output": {
+    "message": "Вывод:"
+  },
+  "Output_1": {
+    "message": "Вывод: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Инструмент действий со страницей"
   },
   "Page_Vision_Tool": {
     "message": "Инструмент Page Vision"
   },
-  "Parameter_Modifications": {
-    "message": "Изменения параметров"
+  "Past_Month": {
+    "message": "За последний месяц"
+  },
+  "Past_Week": {
+    "message": "За последнюю неделю"
+  },
+  "Patch_applied_successfully": {
+    "message": "Патч успешно применён"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Патч для $1$ файла(ов)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Приостановить очередь"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Выполнять действия на странице (прокрутка, скриншот, ожидание)"
@@ -589,32 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Сохранить кэш в хранилище"
   },
+  "Plan_1_step_s": {
+    "message": "План: $1$ шаг(ов)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Проверьте ваш API‑ключ в настройках."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Пожалуйста, введите описание задачи"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Пожалуйста, сначала введите API‑ключ"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Введите действительный API‑ключ."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Пожалуйста, войдите снова, чтобы продолжить использовать AI‑агента."
+  },
+  "Please_select_a_provider": {
+    "message": "Пожалуйста, выберите провайдера"
   },
   "Please_type_a_valid_command": {
     "message": "Введите корректную команду"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Пожалуйста, обновите план, чтобы разблокировать самые передовые модели мира"
+  },
   "Power": {
-    "message": ""
+    "message": "Мощность"
+  },
+  "Pricing_Information": {
+    "message": "Информация о ценах"
+  },
+  "Pricing_Page": {
+    "message": "Страница цен"
+  },
+  "Priority": {
+    "message": "Приоритет"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Приоритетный тариф обеспечивает более быстрое время ответа по более высокой цене."
   },
+  "Processing": {
+    "message": "Обработка..."
+  },
+  "Protocol": {
+    "message": "Протокол"
+  },
   "Provider": {
     "message": "Поставщик"
+  },
+  "Provider_Configuration": {
+    "message": "Конфигурация провайдера"
+  },
+  "Provider_ID": {
+    "message": "ID провайдера"
+  },
+  "Provider_Name": {
+    "message": "Название провайдера"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Запрашивать и изменять DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Очередь приостановлена"
   },
   "Queued": {
-    "message": ""
+    "message": "В очереди"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Быстрое планирование"
   },
   "Quick_Start": {
     "message": "Быстрый старт"
@@ -623,16 +1389,33 @@
     "message": "Быстрое действие"
   },
   "Read_Only": {
-    "message": ""
+    "message": "Только чтение"
   },
   "Read_Write": {
-    "message": ""
+    "message": "Чтение‑запись"
   },
   "Read_only": {
     "message": "Только для чтения"
   },
-  "Reason_optional": {
-    "message": "Причина (необязательно)"
+  "Reasoning": {
+    "message": "Рассуждение"
+  },
+  "Reasoning_Efforts": {
+    "message": "Усилия рассуждения"
+  },
+  "Reasoning_Summaries": {
+    "message": "Сводки рассуждений"
+  },
+  "Reasoning_levels": {
+    "message": "Уровни рассуждения:"
+  },
+  "Reasoning_1": {
+    "message": "Рассуждение: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Обновление через"
@@ -640,59 +1423,86 @@
   "Reject": {
     "message": "Отклонить"
   },
-  "Reject_this_action": {
-    "message": "Отклонить это действие"
+  "Release_Date": {
+    "message": "Дата выпуска"
+  },
+  "Release_date_unknown": {
+    "message": "Дата выпуска неизвестна"
+  },
+  "Released": {
+    "message": "Выпущено:"
   },
   "Remaining": {
     "message": "Осталось:"
   },
   "Remove": {
-    "message": ""
+    "message": "Удалить"
   },
   "Remove_API_Key": {
     "message": "Удалить API‑ключ"
   },
-  "Remove_modification": {
-    "message": "Удалить изменение"
+  "Request_Timeout": {
+    "message": "Тайм-аут запроса"
   },
-  "Request_Changes": {
-    "message": "Запросить изменения"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Запросить изменения к этому действию"
+  "Request_timed_out": {
+    "message": "Запрос превысил время ожидания"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Тайм-аут запроса в миллисекундах (5000‑120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Тайм-аут запроса в миллисекундах (5000‑180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Запрос был прерван"
+  },
+  "Response_failed": {
+    "message": "Не удалось получить ответ"
   },
   "Restricted": {
-    "message": ""
+    "message": "Ограничено"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Сводка результата"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Возобновить очередь"
+  },
+  "Retry_Configuration": {
+    "message": "Конфигурация повторных попыток"
+  },
+  "Retrying": {
+    "message": "Повторная попытка"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Щёлкните правой кнопкой мыши любой текст, чтобы объяснить или улучшить его с помощью Browserx"
+  },
+  "Risk_Score": {
+    "message": "Оценка риска:"
   },
   "Rollout_Expiration": {
     "message": "Срок действия поэтапного выпуска"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Запустить сейчас"
   },
   "Running": {
-    "message": ""
+    "message": "Выполняется"
+  },
+  "STREAM_ERROR": {
+    "message": "ОШИБКА ПОТОКА"
   },
   "Safe": {
-    "message": ""
+    "message": "Безопасно"
   },
   "Sandbox_Policy": {
     "message": "Политика песочницы"
   },
   "Save_API_Key": {
     "message": "Сохранить API‑ключ"
+  },
+  "Save_Changes": {
+    "message": "Сохранить изменения"
   },
   "Save_Settings": {
     "message": "Сохранить настройки"
@@ -701,22 +1511,31 @@
     "message": "Сохранение..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Запланировать"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Запланировать новую задачу"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Запланировано"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Запланированная задача"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Запуск запланированной задачи"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Запланированные задачи"
   },
-  "Search_settings": {
-    "message": ""
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Запланированное время должно быть минимум на 1 минуту в будущем"
+  },
+  "Search_complete": {
+    "message": "Поиск завершён"
+  },
+  "Searching": {
+    "message": "Поиск..."
   },
   "Security_Privacy": {
     "message": "Безопасность и конфиденциальность"
@@ -724,23 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Уровень безопасности среды выполнения инструмента"
   },
+  "Select_Model": {
+    "message": "Выбрать модель"
+  },
+  "Select_model_1": {
+    "message": "Выбрать модель: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Выберите модель ИИ для использования в диалогах."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Выберите предпочтительный язык интерфейса"
   },
+  "Selected": {
+    "message": "Выбрано"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Отсутствует конфигурация выбранной модели"
+  },
+  "Send": {
+    "message": "Отправить"
+  },
   "Service_Tier": {
     "message": "Уровень сервиса"
   },
-  "Session": {
-    "message": "Сессия"
+  "Service_tier_updated_to_1": {
+    "message": "Уровень сервиса обновлён до $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "Ошибка сеанса"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Сеанс истёк — пожалуйста, войдите снова, чтобы продолжить использовать AI‑агента"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
+    "message": "Достигнут лимит сеансов. Новые задачи будут поставлены в очередь."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Установить срок действия данных поэтапного выпуска"
@@ -751,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Настройки успешно сохранены"
   },
+  "Show_API_key": {
+    "message": "Показать API‑ключ"
+  },
+  "Show_all": {
+    "message": "Показать всё"
+  },
+  "Show_less": {
+    "message": "Показать меньше"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Отображать использование токенов в задачах"
   },
@@ -760,11 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Войдите в свою учётную запись"
   },
+  "Skills": {
+    "message": "Навыки"
+  },
   "Stable": {
     "message": "Стабильный"
   },
+  "Standard_capabilities": {
+    "message": "Стандартные возможности"
+  },
+  "Start_New_Conversation": {
+    "message": "Начать новый разговор"
+  },
+  "Start_on_login": {
+    "message": "Запуск при входе"
+  },
   "Status": {
-    "message": ""
+    "message": "Состояние"
+  },
+  "Stop_Agent": {
+    "message": "Остановить агента"
+  },
+  "Stop_the_current_task": {
+    "message": "Остановить текущую задачу"
   },
   "Stop_the_current_task_run": {
     "message": "Остановить текущий запуск задачи"
@@ -787,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Сохранять данные кэша постоянно между сеансами браузера"
   },
+  "Suggest_Alternative": {
+    "message": "Предложить альтернативу"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Переключено в режим бэкенда. Запросы к LLM будут проходить через сервер AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Переключено в режим прямого API. Пожалуйста, настройте ваш API‑ключ."
+  },
+  "System": {
+    "message": "Система"
+  },
   "Tab_Tool": {
     "message": "Инструмент вкладки"
   },
+  "Tab_unavailable": {
+    "message": "Вкладка недоступна"
+  },
+  "Take_Over": {
+    "message": "Перехватить"
+  },
   "Task": {
-    "message": ""
+    "message": "Задача"
   },
   "Task_Details": {
-    "message": ""
+    "message": "Подробности задачи"
+  },
+  "Task_Failed": {
+    "message": "Задача не выполнена"
   },
   "Task_History": {
-    "message": ""
+    "message": "История задач"
   },
   "Task_ID": {
-    "message": ""
+    "message": "ID задачи"
+  },
+  "Task_Plan": {
+    "message": "План задачи"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Задача отменена пользователем"
+  },
+  "Task_complete": {
+    "message": "Задача выполнена"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Задача выполнена за $1$ ход(ов)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Задача не выполнена"
+  },
+  "Task_started": {
+    "message": "Задача запущена"
   },
   "Terminal": {
     "message": "Терминал"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "Терминальная песочница"
   },
   "Test_Connection": {
     "message": "Проверить соединение"
@@ -814,38 +1732,67 @@
   "Testing": {
     "message": "Проверка..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "URL конечной точки агента A2A (http или https)"
+  },
   "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+    "message": "ИИ решает для каждой команды, использовать ли песочницу, исходя из оценки риска."
   },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "URL конечной точки сервера MCP (http или https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Агент в данный момент работает в режиме бэкенда. Запросы к LLM будут проходить через сервер AI Republic. Ваши диалоги обрабатываются безопасно через нашу инфраструктуру."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Смена модели очистит текущий диалог. Вы хотите продолжить?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "На сервере произошла ошибка. Пожалуйста, попробуйте позже."
+  },
   "Time": {
     "message": "Время"
-  },
-  "Time_remaining": {
-    "message": "Оставшееся время"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Время жизни кэшированных элементов в секундах (по умолчанию: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Тайм-аут (мс)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Чтобы использовать AI‑агент, пожалуйста, выберите один из вариантов:"
+  },
+  "Today": {
+    "message": "Сегодня"
   },
   "Toggle_side_panel": {
     "message": "Переключить боковую панель"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "Переключить использование собственного API‑ключа"
   },
-  "Tool": {
-    "message": "Инструмент"
+  "Token_Usage": {
+    "message": "Использование токенов"
+  },
+  "Tokens": {
+    "message": "Токены:"
+  },
+  "Tokens_1": {
+    "message": "Токены: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Тайм-аут инструмента (мс)"
+  },
+  "Tool_name": {
+    "message": "Название инструмента:"
+  },
+  "Tool": {
+    "message": "Инструмент"
   },
   "Tools": {
     "message": "Инструменты"
@@ -853,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Настройки инструментов"
   },
-  "Turn": {
-    "message": "Переключить"
+  "Trusted": {
+    "message": "Доверенный"
+  },
+  "Trusted_Domains": {
+    "message": "Доверенные домены"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Доверенные агенты автоматически одобряются для вызова навыков"
+  },
+  "Turns": {
+    "message": "Ходы:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Введите альтернативные инструкции..."
   },
   "UI_Theme": {
     "message": "Тема интерфейса"
@@ -862,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL должен использовать протокол http или https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Не удалось проверить статус агента"
+  },
   "Unable_to_load_credit_information": {
     "message": "Не удалось загрузить информацию о кредитах"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Не удалось подключиться к серверу back‑end — проверьте соединение"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Не удалось подключиться к серверу. Проверьте соединение и попробуйте снова."
+  },
+  "Unknown_Event": {
+    "message": "Неизвестное событие"
+  },
+  "Unknown_error": {
+    "message": "Неизвестная ошибка"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Неизвестная ошибка при проверке статуса агента"
+  },
+  "Unknown_error_occurred": {
+    "message": "Произошла неизвестная ошибка"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Во время выполнения задачи произошла неизвестная ошибка"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Неизвестная ошибка при обработке отправки"
+  },
+  "Unknown_model_1": {
+    "message": "Неизвестная модель ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Несохранённые изменения"
   },
+  "Untitled": {
+    "message": "Без названия"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Предстоящие"
   },
   "Update": {
-    "message": ""
+    "message": "Обновить"
   },
   "Update_Channel": {
     "message": "Канал обновлений"
@@ -882,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Обновить до Premium"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Обновите, чтобы исследовать самые мощные модели в мире"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Обновите подписку, чтобы использовать самые мощные модели в мире"
@@ -896,37 +1899,46 @@
     "message": "Личный кабинет"
   },
   "User_Session": {
-    "message": ""
-  },
-  "User_approved_action": {
-    "message": "Действие, одобренное пользователем"
-  },
-  "User_decision": {
-    "message": "Решение пользователя"
+    "message": "Сессия пользователя"
   },
   "User_preferences_and_interface_settings": {
     "message": "Настройки предпочтений пользователя и интерфейса"
   },
-  "User_rejected_action": {
-    "message": "Действие, отклонённое пользователем"
-  },
-  "User_requested_modifications": {
-    "message": "Запрошенные пользователем изменения"
-  },
   "Using_extra_credits": {
     "message": "Использование дополнительных кредитов"
+  },
+  "Verbosity": {
+    "message": "Подробность"
+  },
+  "Verbosity_Control": {
+    "message": "Управление подробностью"
+  },
+  "Verbosity_Levels": {
+    "message": "Уровни подробности"
+  },
+  "Verbosity_levels": {
+    "message": "Уровни подробности:"
+  },
+  "Version": {
+    "message": "Версия"
   },
   "View_Chat_History": {
     "message": "Просмотр истории чата"
   },
   "View_History": {
-    "message": ""
+    "message": "Просмотр истории"
   },
   "View_Session": {
-    "message": ""
+    "message": "Просмотр сессии"
+  },
+  "View_pricing_details": {
+    "message": "Просмотреть детали цен"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Визуальный анализ содержимого и макета страницы"
+  },
+  "Waiting_for_approval": {
+    "message": "Ожидание одобрения"
   },
   "Web_Scraping_Tool": {
     "message": "Инструмент веб‑скрейпинга"
@@ -938,13 +1950,22 @@
     "message": "Добро пожаловать в Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "Могут ли изолированные команды получать доступ к сети"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "Доступ к рабочему пространству"
   },
   "Workspace_Write": {
     "message": "Запись рабочего пространства"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Вчера"
+  },
+  "You": {
+    "message": "Вы"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "У вас есть несохранённые изменения. Хотите их отменить?"
@@ -955,19 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Ваш API‑ключ зашифрован"
   },
-  "Your_Decision": {
-    "message": "Ваше решение"
+  "Your_personal_AI_assistant": {
+    "message": "Ваш персональный AI‑ассистент"
   },
-  "more_results": {
-    "message": ""
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Ваша сессия истекла. Пожалуйста, войдите снова."
+  },
+  "DISCONNECTED": {
+    "message": "[ОТКЛЮЧЕНО]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Ошибка: Поток прерван]"
+  },
+  "NO_ACCESS": {
+    "message": "[НЕТ ДОСТУПА]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[НЕТ API КЛЮЧА - НАЖМИТЕ НАСТРОЙКИ]"
+  },
+  "PROCESSING": {
+    "message": "[ОБРАБОТКА]"
+  },
+  "available": {
+    "message": "доступно"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "кешировано"
+  },
+  "detailed_thinking": {
+    "message": "подробное обдумывание"
+  },
+  "disconnected": {
+    "message": "отключено"
+  },
+  "exec_unknown_command": {
+    "message": "exec (неизвестная команда)"
   },
   "optional": {
-    "message": ""
+    "message": "необязательно"
+  },
+  "remaining": {
+    "message": "осталось"
   },
   "session": {
-    "message": ""
+    "message": "сессия"
   },
   "sessions": {
-    "message": ""
+    "message": "сессии"
+  },
+  "streaming": {
+    "message": "стриминг..."
+  },
+  "thinking": {
+    "message": "обдумывание"
+  },
+  "tokens": {
+    "message": "токены"
+  },
+  "trusted": {
+    "message": "доверенный"
+  },
+  "user": {
+    "message": "Пользователь"
+  },
+  "web_search": {
+    "message": "Веб‑поиск"
   }
 }

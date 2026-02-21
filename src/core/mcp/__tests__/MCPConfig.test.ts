@@ -127,6 +127,8 @@ describe('MCPConfig Validation Schemas', () => {
       url: 'https://mcp.github.example.com',
       enabled: true,
       timeout: 30000,
+      transport: 'sse' as const,
+      platform: 'shared' as const,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -339,6 +341,8 @@ describe('MCPConfig Functions', () => {
           url: 'https://old.example.com',
           enabled: true,
           timeout: 30000,
+          transport: 'sse' as const,
+          platform: 'shared' as const,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },
@@ -373,6 +377,8 @@ describe('MCPConfig Functions', () => {
       url: 'https://mcp.github.example.com',
       enabled: true,
       timeout: 30000,
+      transport: 'sse',
+      platform: 'shared',
       createdAt: Date.now() - 10000,
       updatedAt: Date.now() - 10000,
     };
@@ -397,6 +403,8 @@ describe('MCPConfig Functions', () => {
         url: 'https://other.example.com',
         enabled: true,
         timeout: 30000,
+        transport: 'sse',
+        platform: 'shared',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

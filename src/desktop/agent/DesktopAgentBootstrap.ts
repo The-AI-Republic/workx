@@ -1,13 +1,13 @@
 /**
  * Desktop Agent Bootstrap
  *
- * Initializes and wires up the BrowserxAgent with the channel system for desktop mode.
+ * Initializes and wires up the PiAgent with the channel system for desktop mode.
  * In desktop mode, the agent runs directly in the WebView (same process as UI).
  *
  * Flow:
  * 1. Create ChannelManager (routes submissions to agent, events to channels)
  * 2. Create TauriChannel (receives submissions from UI, sends events to UI)
- * 3. Create BrowserxAgent (processes submissions, emits events)
+ * 3. Create PiAgent (processes submissions, emits events)
  * 4. Wire them together
  *
  * @module desktop/agent/DesktopAgentBootstrap
@@ -16,13 +16,16 @@
 import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
-import { BrowserxAgent } from '@/core/BrowserxAgent';
+import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
+import { configurePromptComposer } from '@/core/PromptLoader';
+import type { RuntimeContext } from '@/prompts/PromptComposer';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
+import { t } from '@/extension/sidepanel/lib/i18n';
 
 /**
  * Singleton instance
@@ -35,7 +38,7 @@ let _instance: DesktopAgentBootstrap | null = null;
  * Manages the lifecycle of the agent and channel system in desktop mode.
  */
 export class DesktopAgentBootstrap {
-  private agent: BrowserxAgent | null = null;
+  private agent: PiAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private initialized = false;
@@ -52,22 +55,57 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for BrowserxAgent
+      // 1. Create the message router for PiAgent
       this.messageRouter = new DesktopMessageRouter('background');
 
       // 2. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create BrowserxAgent
-      // BrowserxAgent expects a MessageRouter with updateState method
+      // 3. Create PiAgent
+      // PiAgent expects a MessageRouter with updateState method
       // DesktopMessageRouter provides this compatibility
-      this.agent = new BrowserxAgent(config, this.messageRouter as any);
+      this.agent = new PiAgent(config, this.messageRouter as any);
 
-      // 4. Initialize the agent (loads model client, tools, etc.)
+      // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
+      // This must happen first so PiAgent.configurePromptComposition() sees
+      // the composer is already configured and skips re-configuration.
+      await this.configurePromptWithPlatformInfo();
+
+      // 5. Create TauriChannel and wire up event forwarding BEFORE agent.initialize()
+      // agent.initialize() may emit warning events (e.g. "No API key configured"),
+      // so the event dispatcher must be set first to avoid losing those events.
+      this.channel = new TauriChannel();
+
+      const channelManager = getChannelManager();
+
+      // Set up the agent handler on ChannelManager
+      // This routes submissions from channels to the agent
+      const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
+        if (!this.agent) {
+          throw new Error(t('Agent not initialized'));
+        }
+
+        console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
+
+        // Submit the operation to the agent
+        await this.agent.submitOperation(op, { tabId: context.tabId });
+      };
+
+      channelManager.setAgentHandler(agentHandler);
+
+      // Register the TauriChannel with ChannelManager
+      await channelManager.registerChannel(this.channel);
+      console.log('[DesktopAgentBootstrap] Channel registered');
+
+      // Wire up agent events to be dispatched through the channel
+      this.setupEventForwarding(channelManager);
+
+      // 6. Initialize the agent (loads model client, tools, etc.)
+      // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
-      // 4.5. Restore auth mode from keychain and listen for changes
+      // 7. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
       const { HOME_PAGE_BASE_URL } = await import('@/extension/sidepanel/lib/constants');
@@ -87,36 +125,7 @@ export class DesktopAgentBootstrap {
 
       await this.restoreAuthFromKeychain(config);
 
-      // 5. Create and initialize TauriChannel
-      this.channel = new TauriChannel();
-
-      // 6. Get the ChannelManager singleton
-      const channelManager = getChannelManager();
-
-      // 7. Set up the agent handler on ChannelManager
-      // This routes submissions from channels to the agent
-      const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
-        if (!this.agent) {
-          throw new Error('Agent not initialized');
-        }
-
-        console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
-
-        // Submit the operation to the agent
-        await this.agent.submitOperation(op, { tabId: context.tabId });
-      };
-
-      channelManager.setAgentHandler(agentHandler);
-
-      // 8. Register the TauriChannel with ChannelManager
-      // This sets up the submission handler and initializes the channel
-      await channelManager.registerChannel(this.channel);
-      console.log('[DesktopAgentBootstrap] Channel registered');
-
-      // 9. Wire up agent events to be dispatched through the channel
-      this.setupEventForwarding(channelManager);
-
-      // 10. Set up MCP tool registration events
+      // 8. Set up MCP tool registration events
       await this.setupMCPToolRegistration();
 
       this.initialized = true;
@@ -130,7 +139,7 @@ export class DesktopAgentBootstrap {
   /**
    * Set up event forwarding from agent to channel
    *
-   * Uses BrowserxAgent's setEventDispatcher to route events through
+   * Uses PiAgent's setEventDispatcher to route events through
    * ChannelManager instead of chrome.runtime.sendMessage.
    */
   private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
@@ -139,7 +148,7 @@ export class DesktopAgentBootstrap {
       return;
     }
 
-    // Set the event dispatcher on BrowserxAgent
+    // Set the event dispatcher on PiAgent
     // Events will be routed through ChannelManager to TauriChannel
     this.agent.setEventDispatcher((event) => {
       // Dispatch event to the Tauri channel
@@ -201,9 +210,39 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Collect platform info from Tauri and configure PromptComposer for Pi agent.
+   * Called before agent.initialize() so the dynamic prompt includes OS/arch/shell.
+   */
+  private async configurePromptWithPlatformInfo(): Promise<void> {
+    const staticContext: Partial<RuntimeContext> = {
+      browserConnection: 'mcp',
+    };
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const platformInfo = await invoke<{ os: string; arch: string; version: string }>('get_platform_info');
+      staticContext.os = platformInfo.os;
+      staticContext.arch = platformInfo.arch;
+      staticContext.osVersion = platformInfo.version;
+      // TODO: Heuristic-based shell detection — assumes default shell per OS.
+      // Actual shell detection requires a Rust-side Tauri command (out of scope).
+      staticContext.shell = platformInfo.os === 'macos' ? 'zsh'
+        : platformInfo.os === 'windows' ? 'powershell' : 'bash';
+
+      const { homeDir } = await import('@tauri-apps/api/path');
+      staticContext.homeDir = await homeDir();
+    } catch (e) {
+      console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
+    }
+
+    configurePromptComposer('pi', staticContext);
+    console.log('[DesktopAgentBootstrap] PromptComposer configured for pi with platform context');
+  }
+
+  /**
    * Get the agent instance
    */
-  getAgent(): BrowserxAgent | null {
+  getAgent(): PiAgent | null {
     return this.agent;
   }
 
@@ -312,7 +351,7 @@ export class DesktopAgentBootstrap {
     if (!this.agent) {
       return {
         ready: false,
-        message: 'Agent not initialized',
+        message: t('Agent not initialized'),
         authMode: 'none' as const,
       };
     }

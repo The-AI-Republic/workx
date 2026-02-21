@@ -277,7 +277,7 @@
     height="48"
     draggable="false"
   />
-  <div class="cursor-label">browserx</div>
+  <div class="cursor-label">BrowserX</div>
 </div>
 
 <style>
