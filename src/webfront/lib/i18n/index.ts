@@ -14,20 +14,20 @@ import { writable, derived, get } from 'svelte/store';
 import type { TranslationOptions, MessagesFile } from './types';
 
 // Import key_map.json at build time (text -> key mapping)
-import keyMap from '../../../../../_locales/key_map.json';
+import keyMap from '../../../../_locales/key_map.json';
 
 // Import all locale messages at build time using Vite's glob import
-const localeModules = import.meta.glob('../../../../../_locales/*/messages.json', { eager: true });
+const localeModules = import.meta.glob('../../../../_locales/*/messages.json', { eager: true });
 
 /**
  * Map of locale codes to their messages
- * Builds from glob import paths like '../../../../../_locales/zh_CN/messages.json'
+ * Builds from glob import paths like '../../../../_locales/zh_CN/messages.json'
  */
 const localeMessages: Record<string, MessagesFile> = {};
 
 // Parse glob imports and build locale map
 for (const [path, module] of Object.entries(localeModules)) {
-  // Extract locale code from path: '../../../../../_locales/zh_CN/messages.json' -> 'zh_CN'
+  // Extract locale code from path: '../../../../_locales/zh_CN/messages.json' -> 'zh_CN'
   const match = path.match(/_locales\/([^/]+)\/messages\.json$/);
   if (match) {
     const localeDir = match[1]; // e.g., 'zh_CN', 'en', 'de_DE'

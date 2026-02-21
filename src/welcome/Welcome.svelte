@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { _t } from '../extension/sidepanel/lib/i18n';
+  import { _t } from '../webfront/lib/i18n';
 
   function handleGetStarted() {
     chrome.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });

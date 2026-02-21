@@ -5,7 +5,7 @@
 
 import type { EventMsg } from './protocol/events';
 import type { Event } from './protocol/types';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * Notification types

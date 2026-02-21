@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import MessageInput from '@/extension/sidepanel/components/MessageInput.svelte';
+import MessageInput from '@/webfront/components/MessageInput.svelte';
 
 describe('MessageInput Component', () => {
   // Component rendering test

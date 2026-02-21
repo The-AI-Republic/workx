@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
-import TerminalInput from '@/extension/sidepanel/components/TerminalInput.svelte';
+import TerminalInput from '@/webfront/components/TerminalInput.svelte';
 
 describe('TerminalInput - Outline Visibility', () => {
   it('should have visible border in default state', () => {
