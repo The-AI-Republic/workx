@@ -7,6 +7,8 @@ export interface BuiltinCommandCallbacks {
 }
 
 export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
+  if (commandRegistry.has('new')) return;
+
   commandRegistry.register({
     name: 'new',
     description: 'Reset the current conversation',

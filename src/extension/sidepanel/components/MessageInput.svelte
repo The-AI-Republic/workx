@@ -6,7 +6,7 @@
   import ChatHistoryPopup from './chat/ChatHistoryPopup.svelte';
   import CommandDropdown from './CommandDropdown.svelte';
   import CommandError from './CommandError.svelte';
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme } from '../stores/themeStore';
   import { platform } from '../stores/platformStore';
   import { t, _t } from '../lib/i18n';
   import { commandRegistry, parseCommandInput } from '../commands';
@@ -31,7 +31,8 @@
   }>();
 
   let isFocused = false;
-  let currentTheme: UITheme = 'terminal';
+
+  $: currentTheme = $uiTheme;
 
   // Long-press detection for scheduling
   const LONG_PRESS_DURATION = 500; // milliseconds
@@ -56,7 +57,7 @@
     if (builtinsInitialized) return;
     builtinsInitialized = true;
     initBuiltinCommands({
-      onNewConversation,
+      onNewConversation: () => onNewConversation(),
       onCommandOutput: (title: string, content: string) => {
         dispatch('commandOutput', { title, content });
       },
@@ -72,10 +73,6 @@
     : !value.trim()
       ? $_t('Please type a valid command')
       : $_t('Long press to schedule task');
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
 
   function handleModelChanged(event: CustomEvent<{ modelId: string; modelName: string }>) {
     dispatch('modelChanged', event.detail);

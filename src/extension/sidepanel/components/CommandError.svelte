@@ -1,14 +1,10 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme } from '../stores/themeStore';
 
   export let message: string | null = null;
   export let visible: boolean = false;
 
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  $: currentTheme = $uiTheme;
 </script>
 
 {#if visible && message}

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { createEventDispatcher, afterUpdate, onMount } from 'svelte';
+  import { createEventDispatcher, afterUpdate } from 'svelte';
   import type { FilteredCommand } from '../commands';
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme } from '../stores/themeStore';
 
   export let commands: FilteredCommand[] = [];
   export let selectedIndex: number = 0;
@@ -12,13 +12,10 @@
     select: FilteredCommand;
   }>();
 
-  let currentTheme: UITheme = 'terminal';
   let dropdownEl: HTMLDivElement;
   let renderAbove = true;
 
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  $: currentTheme = $uiTheme;
 
   // Scroll selected item into view when selectedIndex changes
   afterUpdate(() => {
