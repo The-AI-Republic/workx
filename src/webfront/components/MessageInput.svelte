@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
   import Tooltip from './common/Tooltip.svelte';
@@ -27,7 +28,6 @@
     tabSelected: { tabId: number };
     showScheduleModal: { input: string };
     commandOutput: { title: string; content: string };
-    openSettings: void;
   }>();
 
   let isFocused = false;
@@ -62,7 +62,7 @@
         dispatch('commandOutput', { title, content });
       },
       onOpenSettings: () => {
-        dispatch('openSettings');
+        push('/settings');
       },
     });
   }

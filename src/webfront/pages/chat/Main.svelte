@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import { MessageType } from '@/core/MessageRouter';
   import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
   import type { TaskStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
@@ -9,7 +10,6 @@
   import TerminalContainer from '../../components/TerminalContainer.svelte';
   import TerminalMessage from '../../components/TerminalMessage.svelte';
   import MessageInput from '../../components/MessageInput.svelte';
-  import Settings from '../../Settings.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
@@ -39,7 +39,6 @@
   let inputText = '';
   let isConnected = false;
   let isProcessing = false;
-  let showSettings = false;
   let showWelcome = false;
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = -1; // Track current session's bound tab
@@ -645,20 +644,6 @@
     return 'default';
   }
 
-  function toggleSettings() {
-    showSettings = !showSettings;
-  }
-
-  function handleSettingsClose() {
-    showSettings = false;
-    // Re-check health status in case API key was added
-    checkConnection();
-  }
-
-  function handleAuthUpdated(event: CustomEvent) {
-    // Handle auth updates if needed
-  }
-
   /**
    * Handle command output from slash commands (e.g., /help)
    * Creates a system ProcessedEvent and appends it to the chat
@@ -1038,7 +1023,7 @@
                 </a>
               </li>
               <li>
-                <button on:click={toggleSettings} class="warning-link-button">
+                <button on:click={() => push('/settings')} class="warning-link-button">
                   {$_t("Configure an API key in Settings")}
                 </button>
               </li>
@@ -1100,28 +1085,15 @@
               on:tabSelected={handleTabSelected}
               on:showScheduleModal={handleShowScheduleModal}
               on:commandOutput={handleCommandOutput}
-              on:openSettings={toggleSettings}
             />
           </div>
 
           <!-- Footer Bar -->
-          <FooterBar on:openSettings={toggleSettings} />
+          <FooterBar />
         </div>
       </div>
     </TerminalContainer>
   </div>
-
-<!-- Settings Modal -->
-{#if showSettings}
-  <div class="settings-modal-overlay">
-    <div class="settings-modal-container" class:chatgpt={currentTheme === 'chatgpt'}>
-      <Settings
-        on:authUpdated={handleAuthUpdated}
-        on:close={handleSettingsClose}
-      />
-    </div>
-  </div>
-{/if}
 
 <!-- Schedule Task Modal -->
 <ScheduleTaskModal
@@ -1475,60 +1447,5 @@
 
   .function-button:disabled:hover {
     transform: none;
-  }
-
-  /* ============================================
-     Settings Modal Styles
-     ============================================ */
-
-  .settings-modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-  }
-
-  .settings-modal-container {
-    max-width: 42rem;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    border-radius: 0.5rem;
-    /* Terminal theme (default) - use terminal-styled browserx colors */
-    --browserx-primary: #00ff00;
-    --browserx-secondary: #00cc00;
-    --browserx-background: #000000;
-    --browserx-surface: #0a0a0a;
-    --browserx-text: #00ff00;
-    --browserx-text-secondary: #00cc00;
-    --browserx-border: #00cc00;
-    --browserx-error: #ff0000;
-    --browserx-success: #00ff00;
-    --browserx-warning: #ffff00;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    color-scheme: dark;
-  }
-
-  /* ChatGPT theme for settings modal - use modern light/dark colors */
-  .settings-modal-container.chatgpt {
-    --browserx-primary: var(--chat-primary, #60a5fa);
-    --browserx-secondary: var(--chat-primary, #60a5fa);
-    --browserx-background: var(--chat-bg, #ffffff);
-    --browserx-surface: var(--chat-card-bg, #f7f7f8);
-    --browserx-text: var(--chat-text, #0d0d0d);
-    --browserx-text-secondary: var(--chat-text-secondary, #6e6e80);
-    --browserx-border: var(--chat-border, #e5e5e5);
-    --browserx-error: var(--chat-error, #ef4444);
-    --browserx-success: #10b981;
-    --browserx-warning: #f59e0b;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    border-radius: 1rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    color-scheme: light;
   }
 </style>
