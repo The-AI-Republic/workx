@@ -1,4 +1,4 @@
-use super::{SandboxCommand, SandboxExecutor, SandboxOutput, SandboxProfile, WorkspaceAccess, NetworkMode};
+use super::{SandboxCommand, SandboxExecutor, SandboxProfile, WorkspaceAccess, NetworkMode};
 use std::collections::HashMap;
 use std::io::Write;
 

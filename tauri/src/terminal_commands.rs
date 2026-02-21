@@ -30,11 +30,40 @@ impl PtySessionRegistry {
     }
 }
 
-/// Result from a PTY execution (combined stdout+stderr).
+/// Result from a PTY execution.
+/// PTY merges stdout+stderr into a single stream returned in `output`.
 struct DirectResult {
     exit_code: i32,
-    stdout: String,
-    stderr: String,
+    output: String,
+}
+
+/// Register a PTY writer in the execution registry.
+fn register_execution(
+    registry: &Arc<tokio::sync::Mutex<HashMap<String, Box<dyn Write + Send>>>>,
+    id: &str,
+    writer: Box<dyn Write + Send>,
+) {
+    let rt = tokio::runtime::Handle::current();
+    let registry_clone = registry.clone();
+    let id = id.to_string();
+    rt.block_on(async move {
+        let mut executions = registry_clone.lock().await;
+        executions.insert(id, writer);
+    });
+}
+
+/// Unregister a PTY writer from the execution registry.
+fn unregister_execution(
+    registry: &Arc<tokio::sync::Mutex<HashMap<String, Box<dyn Write + Send>>>>,
+    id: &str,
+) {
+    let rt = tokio::runtime::Handle::current();
+    let registry_clone = registry.clone();
+    let id = id.to_string();
+    rt.block_on(async move {
+        let mut executions = registry_clone.lock().await;
+        executions.remove(&id);
+    });
 }
 
 /// Execute a command via a pseudo-terminal.
@@ -97,16 +126,7 @@ fn execute_via_pty(
         .take_writer()
         .map_err(|e| format!("Failed to get PTY master writer: {}", e))?;
 
-    // Register in execution registry (block_on is fine here — we're already in spawn_blocking)
-    {
-        let rt = tokio::runtime::Handle::current();
-        let registry_clone = registry.clone();
-        let eid = cmd_execution_id.clone();
-        rt.block_on(async move {
-            let mut executions = registry_clone.lock().await;
-            executions.insert(eid, master_writer);
-        });
-    }
+    register_execution(&registry, &cmd_execution_id, master_writer);
 
     // Read output from master in a background thread
     let mut reader = pty_pair
@@ -155,16 +175,7 @@ fn execute_via_pty(
                     drop(pty_pair.master);
                     let _ = read_handle.join();
 
-                    // Unregister execution
-                    {
-                        let rt = tokio::runtime::Handle::current();
-                        let registry_clone = registry.clone();
-                        let eid = cmd_execution_id.clone();
-                        rt.block_on(async move {
-                            let mut executions = registry_clone.lock().await;
-                            executions.remove(&eid);
-                        });
-                    }
+                    unregister_execution(&registry, &cmd_execution_id);
 
                     // Drop held resources
                     drop(held_resources);
@@ -189,16 +200,7 @@ fn execute_via_pty(
     // Collect output
     let raw_output = read_handle.join().unwrap_or_default();
 
-    // Unregister execution
-    {
-        let rt = tokio::runtime::Handle::current();
-        let registry_clone = registry.clone();
-        let eid = cmd_execution_id.clone();
-        rt.block_on(async move {
-            let mut executions = registry_clone.lock().await;
-            executions.remove(&eid);
-        });
-    }
+    unregister_execution(&registry, &cmd_execution_id);
 
     // Drop held resources now that child has exited
     drop(held_resources);
@@ -209,8 +211,7 @@ fn execute_via_pty(
 
     Ok(DirectResult {
         exit_code,
-        stdout,
-        stderr: String::new(), // PTY merges stdout+stderr
+        output: stdout,
     })
 }
 
@@ -235,7 +236,8 @@ pub async fn terminal_execute(
 ) -> Result<TerminalResult, String> {
     let timeout_ms = timeout.unwrap_or(120_000);
     let capture_stdout = captureStdout.unwrap_or(true);
-    let _capture_stderr = captureStderr.unwrap_or(true);
+    // captureStderr is accepted but unused — PTY merges stdout+stderr into one stream
+    let _ = captureStderr;
     let should_sandbox = sandboxed.unwrap_or(false);
 
     let shell = if cfg!(target_os = "windows") {
@@ -293,7 +295,7 @@ pub async fn terminal_execute(
                 .map_err(|e| e)?;
 
                 let stdout = if capture_stdout {
-                    result.stdout
+                    result.output
                 } else {
                     String::new()
                 };
@@ -301,7 +303,7 @@ pub async fn terminal_execute(
                 return Ok(TerminalResult {
                     exit_code: result.exit_code,
                     stdout,
-                    stderr: result.stderr,
+                    stderr: String::new(),
                     sandboxed: true,
                 });
             }
@@ -332,7 +334,7 @@ pub async fn terminal_execute(
                 .map_err(|e| e)?;
 
                 let stdout = if capture_stdout {
-                    result.stdout
+                    result.output
                 } else {
                     String::new()
                 };
@@ -340,7 +342,7 @@ pub async fn terminal_execute(
                 return Ok(TerminalResult {
                     exit_code: result.exit_code,
                     stdout,
-                    stderr: format!("{}{}", warning, result.stderr),
+                    stderr: warning.to_string(),
                     sandboxed: false,
                 });
             }
@@ -369,7 +371,7 @@ pub async fn terminal_execute(
     .map_err(|e| e)?;
 
     let stdout = if capture_stdout {
-        result.stdout
+        result.output
     } else {
         String::new()
     };
@@ -377,7 +379,7 @@ pub async fn terminal_execute(
     Ok(TerminalResult {
         exit_code: result.exit_code,
         stdout,
-        stderr: result.stderr,
+        stderr: String::new(),
         sandboxed: false,
     })
 }

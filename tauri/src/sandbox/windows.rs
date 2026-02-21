@@ -1,4 +1,4 @@
-use super::{SandboxCommand, SandboxExecutor, SandboxOutput, SandboxProfile, WorkspaceAccess};
+use super::{SandboxCommand, SandboxExecutor, SandboxProfile, WorkspaceAccess};
 use std::collections::HashMap;
 
 pub struct WindowsSandbox;
