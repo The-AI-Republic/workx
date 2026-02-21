@@ -243,6 +243,7 @@ fn main() {
 
             Ok(())
         })
+        .manage(terminal_commands::PtySessionRegistry::new())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
@@ -271,6 +272,7 @@ fn main() {
             browser_commands::kill_process,
             // Terminal command execution
             terminal_commands::terminal_execute,
+            terminal_commands::terminal_write_stdin,
             // Sandbox commands
             sandbox::status::sandbox_check_status,
             sandbox::status::sandbox_install_runtime,
