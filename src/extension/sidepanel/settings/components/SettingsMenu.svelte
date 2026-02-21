@@ -1,10 +1,36 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../../lib/i18n';
+  import SettingsSearch from './SettingsSearch.svelte';
 
   const dispatch = createEventDispatcher<{
-    categorySelected: { categoryId: string };
+    categorySelected: { categoryId: string; scrollToId?: string };
   }>();
+
+  // Desktop detection for conditional settings filtering
+  let isDesktop = false;
+  onMount(async () => {
+    try {
+      await import('@tauri-apps/api/core');
+      isDesktop = true;
+    } catch {
+      isDesktop = false;
+    }
+  });
+
+  // Track whether search is active to hide/show category cards
+  let searchActive = false;
+
+  function handleSearchResult(event: CustomEvent<{ categoryId: string; scrollToId: string }>) {
+    dispatch('categorySelected', {
+      categoryId: event.detail.categoryId,
+      scrollToId: event.detail.scrollToId,
+    });
+  }
+
+  function handleSearchActive(event: CustomEvent<{ active: boolean }>) {
+    searchActive = event.detail.active;
+  }
 
   interface Category {
     id: string;
@@ -90,12 +116,18 @@
 
 <div class="settings-menu">
   <h2 class="menu-title">{t("Settings")}</h2>
-  <div class="categories-grid">
+  <SettingsSearch
+    {isDesktop}
+    on:resultSelected={handleSearchResult}
+    on:searchActive={handleSearchActive}
+  />
+  <div class="categories-grid" class:hidden-but-present={searchActive}>
     {#each categories as category}
       <button
         class="category-card"
         on:click={() => selectCategory(category.id)}
         aria-label={t('Open $1$ settings', { substitutions: [category.label] })}
+        tabindex={searchActive ? -1 : 0}
       >
         <div class="category-header">
           <div class="category-icon">
@@ -125,6 +157,11 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .categories-grid.hidden-but-present {
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .category-card {

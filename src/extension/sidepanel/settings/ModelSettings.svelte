@@ -12,6 +12,8 @@
   import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   // Default compound key for free users (Fireworks Kimi K2 Thinking)
   // Format: providerId:modelKey (compound key, not a raw model key)
@@ -28,6 +30,7 @@
 
   // Exported for parent to bind
   export let isDirty = false;
+  export let highlightSettingId: string | undefined = undefined;
 
   // Component state
   let apiKey = '';
@@ -60,6 +63,11 @@
 
   // API key validation warning (only show after save attempt)
   let showApiKeyWarning = false;
+
+  $: if (highlightSettingId) {
+    highlightSetting(highlightSettingId);
+    highlightSettingId = undefined;
+  }
 
   // Subscribe to user store
   $: isUserLoggedIn = $userStore.isLoggedIn;
@@ -612,7 +620,7 @@
   <button class="back-button" on:click={handleBack}>← {t("Back")}</button>
 
   <!-- Model Selection -->
-  <div class="settings-section settings-card">
+  <div class="settings-section settings-card" data-setting-id="model-selection">
     <h3 class="section-title">{t("Model Selection")}</h3>
     <div class="form-group">
       <label class="form-label">{t("Choose AI Model")}</label>
@@ -661,7 +669,7 @@
 
   <!-- Use Own API Key Toggle (only shown when logged in) -->
   {#if isUserLoggedIn}
-    <div class="settings-section settings-card">
+    <div class="settings-section settings-card" data-setting-id="use-own-api-key">
       <div class="toggle-row">
         <div class="toggle-info">
           <span class="toggle-label">{t("Use Own API Key")}</span>

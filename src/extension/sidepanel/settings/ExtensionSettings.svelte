@@ -4,8 +4,11 @@
   import type { IExtensionSettings, IPermissionSettings } from '@/config/types';
   import { _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -26,6 +29,11 @@
 
   // For allowed origins input
   let allowedOriginsText = '';
+
+  $: if (highlightSettingId) {
+    highlightSetting(highlightSettingId);
+    highlightSettingId = undefined;
+  }
 
   onMount(async () => {
     await loadSettings();
@@ -123,7 +131,7 @@
       <h3 class="section-title">{$_t("Extension Configuration")}</h3>
 
       <!-- Extension Enabled -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="extension-enabled">
         <label class="checkbox-label">
           <input
             type="checkbox"
@@ -137,7 +145,7 @@
       </div>
 
       <!-- Content Script Enabled -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="content-script-enabled">
         <label class="checkbox-label">
           <input
             type="checkbox"

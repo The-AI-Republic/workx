@@ -4,8 +4,11 @@
   import type { ICacheSettings, IStorageConfig } from '@/config/types';
   import { _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -25,6 +28,11 @@
   // For rolloutTTL input
   let rolloutTTLValue = '';
   let rolloutTTLUnit: 'days' | 'permanent' = 'days';
+
+  $: if (highlightSettingId) {
+    highlightSetting(highlightSettingId);
+    highlightSettingId = undefined;
+  }
 
   onMount(async () => {
     await loadSettings();
@@ -137,7 +145,7 @@
       <h3 class="section-title">{$_t("Cache Settings")}</h3>
 
       <!-- Cache Enabled Toggle -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="cache-enabled">
         <label class="checkbox-label">
           <input
             type="checkbox"
@@ -183,7 +191,7 @@
       </div>
 
       <!-- Compression Enabled -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="cache-compression-enabled">
         <label class="checkbox-label">
           <input
             type="checkbox"
@@ -198,7 +206,7 @@
       </div>
 
       <!-- Persist to Storage -->
-      <div class="form-group">
+      <div class="form-group" data-setting-id="cache-persist-to-storage">
         <label class="checkbox-label">
           <input
             type="checkbox"
