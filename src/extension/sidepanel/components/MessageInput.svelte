@@ -11,7 +11,7 @@
   import { t, _t } from '../lib/i18n';
   import { commandRegistry, parseCommandInput } from '../commands';
   import type { FilteredCommand } from '../commands';
-  import { initBuiltinCommands } from '../commands/builtinCommands';
+  import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
 
   export let value: string = '';
   export let placeholder: string = t('>> Enter command...');
@@ -64,6 +64,11 @@
       onOpenSettings: () => {
         dispatch('openSettings');
       },
+    });
+
+    // Load skill commands asynchronously (non-blocking)
+    registerSkillCommands((name, body) => {
+      dispatch('commandOutput', { title: `Skill: ${name}`, content: body });
     });
   }
 
