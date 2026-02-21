@@ -164,7 +164,7 @@
         "modelKey": "gemini-2.5-pro",
         "creator": "Google",
         "contextWindow": 1000000,
-        "maxOutputTokens": 8192,
+        "maxOutputTokens": 65536,
         "supportsReasoning": true,
         "reasoningEfforts": [],
         "supportsReasoningSummaries": false,
