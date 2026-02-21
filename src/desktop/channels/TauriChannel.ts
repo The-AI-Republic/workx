@@ -20,7 +20,7 @@ import type {
 } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import type { Op } from '@/core/protocol/types';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * Connection state for the channel

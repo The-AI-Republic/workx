@@ -6,7 +6,7 @@
   import { showTokenUsage } from '../stores/tokenUsageStore';
   import Switch from '../components/common/Switch.svelte';
   import { t, _t, getCurrentLocale, setLocale } from '../lib/i18n';
-  import supportedLanguages from '../../../../_locales/supported_languages.json';
+  import supportedLanguages from '../../../_locales/supported_languages.json';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
   import { platform } from '../stores/platformStore';
   import { highlightSetting } from './utils/highlightSetting';

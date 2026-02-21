@@ -25,7 +25,7 @@ import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * Singleton instance
@@ -108,7 +108,7 @@ export class DesktopAgentBootstrap {
       // 7. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
-      const { HOME_PAGE_BASE_URL } = await import('@/extension/sidepanel/lib/constants');
+      const { HOME_PAGE_BASE_URL } = await import('@/webfront/lib/constants');
       const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
 
       // Listen for auth changes (implicit login via deep link)
@@ -276,7 +276,7 @@ export class DesktopAgentBootstrap {
   private async restoreAuthFromKeychain(config: AgentConfig): Promise<void> {
     try {
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
-      const { HOME_PAGE_BASE_URL, LLM_API_URL } = await import('@/extension/sidepanel/lib/constants');
+      const { HOME_PAGE_BASE_URL, LLM_API_URL } = await import('@/webfront/lib/constants');
       const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
       await authService.initialize();
 
