@@ -121,13 +121,13 @@
     on:resultSelected={handleSearchResult}
     on:searchActive={handleSearchActive}
   />
-  {#if !searchActive}
-  <div class="categories-grid">
+  <div class="categories-grid" class:hidden-but-present={searchActive}>
     {#each categories as category}
       <button
         class="category-card"
         on:click={() => selectCategory(category.id)}
         aria-label={t('Open $1$ settings', { substitutions: [category.label] })}
+        tabindex={searchActive ? -1 : 0}
       >
         <div class="category-header">
           <div class="category-icon">
@@ -139,7 +139,6 @@
       </button>
     {/each}
   </div>
-  {/if}
 </div>
 
 <style>
@@ -158,6 +157,11 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .categories-grid.hidden-but-present {
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .category-card {
