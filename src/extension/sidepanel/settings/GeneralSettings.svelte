@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, tick } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
   import { uiTheme, type UITheme } from '../stores/themeStore';
@@ -9,6 +9,8 @@
   import supportedLanguages from '../../../../_locales/supported_languages.json';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
   import { platform } from '../stores/platformStore';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
   export let highlightSettingId: string | undefined = undefined;
@@ -30,18 +32,8 @@
   let browserLanguage = getCurrentLocale();
 
   $: if (highlightSettingId) {
-    (async () => {
-      await tick();
-      const el = document.getElementById(highlightSettingId) ||
-                 document.querySelector(`[data-setting-id="${highlightSettingId}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const target = el.closest('.settings-card') || el.closest('.form-group') || el;
-        target.classList.add('highlight-pulse');
-        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
-      }
-      highlightSettingId = undefined;
-    })();
+    highlightSetting(highlightSettingId);
+    highlightSettingId = undefined;
   }
 
   // Theme options - reactive to locale changes
@@ -634,14 +626,5 @@
     font-size: 0.75rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
-  }
-
-  @keyframes highlightPulse {
-    0%, 100% { background-color: transparent; }
-    25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
-  }
-
-  :global(.highlight-pulse) {
-    animation: highlightPulse 0.75s ease-in-out 2;
   }
 </style>

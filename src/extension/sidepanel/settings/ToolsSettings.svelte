@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, tick } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
   export let settingsConfig: AgentConfig;
   export let highlightSettingId: string | undefined = undefined;
 
@@ -37,48 +39,13 @@
   let terminalSandboxExpanded = false;
 
   $: if (highlightSettingId) {
-    (async () => {
-      await tick();
-      const el = document.getElementById(highlightSettingId) ||
-                 document.querySelector(`[data-setting-id="${highlightSettingId}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const target = el.closest('.settings-card') || el.closest('.form-group') || el;
-        target.classList.add('highlight-pulse');
-        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
-      } else {
-        // Element not found - it may be inside a collapsed section, try expanding
-        const settingId = highlightSettingId;
-        const allSections = document.querySelectorAll('.collapsible-section');
-        for (const section of allSections) {
-          const sectionContent = section.querySelector('.section-content');
-          if (!sectionContent) {
-            // Section is collapsed, check section header text to determine which to expand
-            const headerText = section.querySelector('.section-title')?.textContent || '';
-            if (headerText.includes('Browser Tools')) browserToolsExpanded = true;
-            else if (headerText.includes('Agent Execution')) agentToolsExpanded = true;
-            else if (headerText.includes('Advanced')) advancedExpanded = true;
-            else if (headerText.includes('Terminal Sandbox')) terminalSandboxExpanded = true;
-          }
-        }
-        // Expand all collapsed sections to find the element
-        browserToolsExpanded = true;
-        agentToolsExpanded = true;
-        advancedExpanded = true;
-        terminalSandboxExpanded = true;
-        await tick();
-        await new Promise(r => setTimeout(r, 50));
-        const el2 = document.getElementById(settingId) ||
-                     document.querySelector(`[data-setting-id="${settingId}"]`);
-        if (el2) {
-          el2.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          const target2 = el2.closest('.settings-card') || el2.closest('.form-group') || el2;
-          target2.classList.add('highlight-pulse');
-          setTimeout(() => target2.classList.remove('highlight-pulse'), 1500);
-        }
-      }
-      highlightSettingId = undefined;
-    })();
+    highlightSetting(highlightSettingId, async () => {
+      browserToolsExpanded = true;
+      agentToolsExpanded = true;
+      advancedExpanded = true;
+      terminalSandboxExpanded = true;
+    });
+    highlightSettingId = undefined;
   }
 
   onMount(async () => {
@@ -1009,14 +976,5 @@
   .btn-small {
     padding: 0.375rem 0.75rem;
     font-size: 0.8125rem;
-  }
-
-  @keyframes highlightPulse {
-    0%, 100% { background-color: transparent; }
-    25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
-  }
-
-  :global(.highlight-pulse) {
-    animation: highlightPulse 0.75s ease-in-out 2;
   }
 </style>

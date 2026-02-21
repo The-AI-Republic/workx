@@ -4,7 +4,7 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type {
     IMCPServerConfig,
@@ -15,6 +15,8 @@
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/mcp/MCPConfig';
   import { sendMessage, MessageType } from '../lib/messaging';
   import { _t } from '../lib/i18n';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
   export let highlightSettingId: string | undefined = undefined;
@@ -50,34 +52,12 @@
   let advancedExpanded = false;
 
   $: if (highlightSettingId) {
-    (async () => {
-      await tick();
-      const el = document.getElementById(highlightSettingId) ||
-                 document.querySelector(`[data-setting-id="${highlightSettingId}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const target = el.closest('.settings-card') || el.closest('.form-group') || el;
-        target.classList.add('highlight-pulse');
-        setTimeout(() => target.classList.remove('highlight-pulse'), 1500);
-      } else {
-        // Element not found - it may be inside a collapsed section, try expanding
-        const settingId = highlightSettingId;
-        serversExpanded = true;
-        toolsExpanded = true;
-        advancedExpanded = true;
-        await tick();
-        await new Promise(r => setTimeout(r, 50));
-        const el2 = document.getElementById(settingId) ||
-                     document.querySelector(`[data-setting-id="${settingId}"]`);
-        if (el2) {
-          el2.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          const target2 = el2.closest('.settings-card') || el2.closest('.form-group') || el2;
-          target2.classList.add('highlight-pulse');
-          setTimeout(() => target2.classList.remove('highlight-pulse'), 1500);
-        }
-      }
-      highlightSettingId = undefined;
-    })();
+    highlightSetting(highlightSettingId, async () => {
+      serversExpanded = true;
+      toolsExpanded = true;
+      advancedExpanded = true;
+    });
+    highlightSettingId = undefined;
   }
 
   // Debug logging state (T061)
@@ -1275,14 +1255,5 @@
   .message.error {
     color: var(--browserx-error);
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
-  }
-
-  @keyframes highlightPulse {
-    0%, 100% { background-color: transparent; }
-    25%, 75% { background-color: color-mix(in srgb, var(--browserx-primary) 15%, transparent); }
-  }
-
-  :global(.highlight-pulse) {
-    animation: highlightPulse 0.75s ease-in-out 2;
   }
 </style>

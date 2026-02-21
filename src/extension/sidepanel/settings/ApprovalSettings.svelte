@@ -8,9 +8,12 @@
   import type { IApprovalConfig, ApprovalMode } from '@/core/approval/types';
   import { DEFAULT_APPROVAL_CONFIG } from '@/core/approval/types';
   import { t, _t } from '../lib/i18n';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
   export let isDirty = false;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -26,6 +29,11 @@
   // Domain input state
   let newTrustedDomain = '';
   let newBlockedDomain = '';
+
+  $: if (highlightSettingId) {
+    highlightSetting(highlightSettingId);
+    highlightSettingId = undefined;
+  }
 
   const APPROVAL_MODES: ApprovalMode[] = ['balanced', 'high_speed', 'yolo'];
 
@@ -141,7 +149,7 @@
   {:else}
     <div class="settings-body">
       <!-- Approval Mode -->
-      <section class="setting-section">
+      <section class="setting-section" data-setting-id="approval-mode">
         <h4 class="subsection-title">{$_t("Approval Mode")}</h4>
         <p class="subsection-description">{$_t("Controls how aggressively the agent asks for approval.")}</p>
 
@@ -165,7 +173,7 @@
       </section>
 
       <!-- Trusted Domains -->
-      <section class="setting-section">
+      <section class="setting-section" data-setting-id="trusted-domains">
         <h4 class="subsection-title">{$_t("Trusted Domains")}</h4>
         <p class="subsection-description">{$_t("All actions are auto-approved on these domains.")}</p>
 
@@ -193,7 +201,7 @@
       </section>
 
       <!-- Blocked Domains -->
-      <section class="setting-section">
+      <section class="setting-section" data-setting-id="blocked-domains">
         <h4 class="subsection-title">{$_t("Blocked Domains")}</h4>
         <p class="subsection-description">{$_t("All actions are denied on these domains.")}</p>
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import Fuse from 'fuse.js';
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { settingsRegistry, type SettingsSearchItem } from '../settingsSearchRegistry';
   import { _t } from '../../lib/i18n';
 
@@ -31,6 +31,10 @@
   let focusedIndex: number = -1;
 
   const MAX_VISIBLE_RESULTS = 10;
+
+  onDestroy(() => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+  });
 
   /**
    * Build the searchable items array from the registry,

@@ -214,6 +214,7 @@
     {:else if currentView === 'approval'}
       <ApprovalSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}

@@ -23,6 +23,7 @@ export enum SettingsSection {
   STORAGE = 'storage',
   TOOLS = 'tools',
   MCP_SERVERS = 'mcp-servers',
+  APPROVAL = 'approval',
   EXTENSION = 'extension',
 }
 
@@ -31,7 +32,7 @@ export interface ConditionalRule {
   value: string;
 }
 
-export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension';
+export type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'approval' | 'extension';
 
 export const settingsRegistry: SettingsSearchItem[] = [
   // ── Model Config ──────────────────────────────────────────────────────
@@ -427,6 +428,38 @@ export const settingsRegistry: SettingsSearchItem[] = [
     keywords: ['debug', 'logging', 'console', 'mcp', 'protocol', 'troubleshoot'],
     navigationTarget: 'mcp-servers',
     elementId: 'mcp-debug-logging',
+  },
+
+  // ── Approval & Safety ───────────────────────────────────────────────
+  {
+    id: 'approval.mode',
+    labelKey: 'Approval Mode',
+    descriptionKey: 'Controls how aggressively the agent asks for approval.',
+    section: SettingsSection.APPROVAL,
+    sectionLabelKey: 'Approval & Safety',
+    keywords: ['approval', 'mode', 'balanced', 'yolo', 'auto-approve', 'risk', 'safety'],
+    navigationTarget: 'approval',
+    elementId: 'approval-mode',
+  },
+  {
+    id: 'approval.trustedDomains',
+    labelKey: 'Trusted Domains',
+    descriptionKey: 'All actions are auto-approved on these domains.',
+    section: SettingsSection.APPROVAL,
+    sectionLabelKey: 'Approval & Safety',
+    keywords: ['trusted', 'domains', 'whitelist', 'auto-approve', 'safe', 'allow'],
+    navigationTarget: 'approval',
+    elementId: 'trusted-domains',
+  },
+  {
+    id: 'approval.blockedDomains',
+    labelKey: 'Blocked Domains',
+    descriptionKey: 'All actions are denied on these domains.',
+    section: SettingsSection.APPROVAL,
+    sectionLabelKey: 'Approval & Safety',
+    keywords: ['blocked', 'domains', 'blacklist', 'deny', 'block', 'restrict'],
+    navigationTarget: 'approval',
+    elementId: 'blocked-domains',
   },
 
   // ── Extension & Permission ────────────────────────────────────────────
