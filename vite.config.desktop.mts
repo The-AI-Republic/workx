@@ -42,7 +42,7 @@ export default defineConfig({
     outDir: resolve(__dirname, 'dist/desktop'),
     emptyOutDir: true,
     sourcemap: true,
-    minify: true,
+    minify: false,  // Disabled for debugging production builds. Re-enable when done.
   },
   resolve: {
     alias: {

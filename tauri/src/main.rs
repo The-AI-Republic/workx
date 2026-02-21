@@ -1,5 +1,7 @@
-// Prevents additional console window on Windows in release
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// Prevents additional console window on Windows in release.
+// Temporarily disabled to show console for debugging production builds.
+// Re-enable when debugging is complete:
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod browser_commands;
 mod commands;
@@ -140,8 +142,20 @@ fn main() {
             }
         }))
         .setup(|app| {
+            println!("[Pi] === Debug Build Starting ===");
+            println!("[Pi] Tauri version: {}", tauri::VERSION);
+            println!("[Pi] App data dir: {:?}", app.path().app_data_dir());
+            println!("[Pi] Resource dir: {:?}", app.path().resource_dir());
+
             // Initialize the updater plugin at runtime (requires app handle)
             app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+
+            // Open WebView devtools for debugging production builds.
+            // Remove this block when debugging is complete.
+            if let Some(window) = app.get_webview_window("main") {
+                println!("[Pi] Opening WebView devtools...");
+                window.open_devtools();
+            }
 
             // If launched via autostart (--autostarted flag), hide the window so the
             // app starts minimized to the system tray. Users can open it from the tray.
