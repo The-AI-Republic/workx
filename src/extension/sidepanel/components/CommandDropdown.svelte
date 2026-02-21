@@ -46,145 +46,81 @@
 
 {#if visible && commands.length > 0}
   <div
-    class="command-dropdown {currentTheme}"
-    class:above={renderAbove}
-    class:below={!renderAbove}
+    class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto rounded border border-[var(--color-term-dim-green,#00cc00)] bg-black/95 {currentTheme === 'chatgpt' ? 'chatgpt-dropdown' : ''}"
+    class:bottom-full={renderAbove}
+    class:mb-1={renderAbove}
+    class:top-full={!renderAbove}
+    class:mt-1={!renderAbove}
     bind:this={dropdownEl}
     role="listbox"
     aria-label="Available commands"
   >
     {#each commands as item, i}
       <div
-        class="command-item"
-        class:selected={i === selectedIndex}
+        class="flex items-baseline gap-2 px-3 py-1.5 cursor-pointer transition-colors duration-100 text-base
+          {i === selectedIndex ? 'bg-green-500/15' : ''}"
         role="option"
         aria-selected={i === selectedIndex}
         on:mouseenter={() => dispatch('hover', i)}
         on:click={() => dispatch('select', item)}
       >
-        <span class="command-name">/{item.command.name}</span>
+        <span class="font-semibold font-mono text-base text-[var(--color-term-green,#00ff00)] shrink-0">/{item.command.name}</span>
         {#if item.command.argumentHint}
-          <span class="command-hint">{item.command.argumentHint}</span>
+          <span class="text-base text-[var(--color-term-dim-green,#00cc00)] opacity-70 shrink-0">{item.command.argumentHint}</span>
         {/if}
-        <span class="command-desc">{item.command.description}</span>
+        <span class="text-base text-green-500/60 truncate">{item.command.description}</span>
       </div>
     {/each}
   </div>
 {:else if visible && commands.length === 0}
   <div
-    class="command-dropdown {currentTheme}"
-    class:above={renderAbove}
-    class:below={!renderAbove}
+    class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto rounded border border-[var(--color-term-dim-green,#00cc00)] bg-black/95 {currentTheme === 'chatgpt' ? 'chatgpt-dropdown' : ''}"
+    class:bottom-full={renderAbove}
+    class:mb-1={renderAbove}
+    class:top-full={!renderAbove}
+    class:mt-1={!renderAbove}
     role="listbox"
   >
-    <div class="command-item empty">No matching commands</div>
+    <div class="flex items-baseline gap-2 px-3 py-1.5 cursor-default opacity-50 italic text-base">No matching commands</div>
   </div>
 {/if}
 
 <style>
-  .command-dropdown {
-    position: absolute;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    max-height: 200px;
-    overflow-y: auto;
-    border-radius: 4px;
-
-    /* Terminal theme defaults */
-    background-color: rgba(0, 0, 0, 0.95);
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-  }
-
-  /* Adaptive positioning */
-  .command-dropdown.above {
-    bottom: 100%;
-    margin-bottom: 4px;
-  }
-
-  .command-dropdown.below {
-    top: 100%;
-    margin-top: 4px;
-  }
-
-  .command-item {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    padding: 6px 12px;
-    cursor: pointer;
-    transition: background-color 0.1s;
-  }
-
-  .command-item.selected {
-    background-color: rgba(0, 255, 0, 0.15);
-  }
-
-  .command-item.empty {
-    cursor: default;
-    opacity: 0.5;
-    font-style: italic;
-  }
-
-  .command-name {
-    font-weight: 600;
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 13px;
-    color: var(--color-term-green, #00ff00);
-    flex-shrink: 0;
-  }
-
-  .command-hint {
-    font-size: 12px;
-    color: var(--color-term-dim-green, #00cc00);
-    opacity: 0.7;
-    flex-shrink: 0;
-  }
-
-  .command-desc {
-    font-size: 12px;
-    color: rgba(0, 255, 0, 0.6);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* ChatGPT theme */
-  .command-dropdown.chatgpt {
+  /* ChatGPT theme overrides */
+  .chatgpt-dropdown {
     background-color: var(--chat-dropdown-bg, #ffffff);
     border: 1px solid var(--chat-border, #e5e5e5);
     border-radius: 0.75rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
-  .command-dropdown.chatgpt .command-item.selected {
+  .chatgpt-dropdown :global(div[role="option"].bg-green-500\/15),
+  .chatgpt-dropdown :global(div[role="option"]):hover {
     background-color: var(--chat-hover-bg, #f5f5f5);
   }
 
-  .command-dropdown.chatgpt .command-name {
+  .chatgpt-dropdown :global(span.font-mono) {
     color: var(--chat-text, #0d0d0d);
     font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   }
 
-  .command-dropdown.chatgpt .command-hint {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .command-dropdown.chatgpt .command-desc {
+  .chatgpt-dropdown :global(span.text-green-500\/60),
+  .chatgpt-dropdown :global(span.opacity-70) {
     color: var(--chat-text-muted, #8e8ea0);
   }
 
   @media (prefers-color-scheme: dark) {
-    .command-dropdown.chatgpt {
+    .chatgpt-dropdown {
       background-color: var(--chat-dropdown-bg-dark, #2d2d2d);
       border-color: var(--chat-border-dark, #444444);
     }
 
-    .command-dropdown.chatgpt .command-item.selected {
+    .chatgpt-dropdown :global(div[role="option"].bg-green-500\/15),
+    .chatgpt-dropdown :global(div[role="option"]):hover {
       background-color: rgba(255, 255, 255, 0.1);
     }
 
-    .command-dropdown.chatgpt .command-name {
+    .chatgpt-dropdown :global(span.font-mono) {
       color: var(--chat-text-dark, #ececec);
     }
   }
