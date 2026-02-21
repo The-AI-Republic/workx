@@ -63,7 +63,6 @@ export async function loadPrompt(): Promise<string> {
         currentDateTime: new Date().toISOString(),
       };
       const prompt = composer.composeMainInstruction(configuredAgentType, context);
-      console.log(`[PromptLoader] System prompt (${configuredAgentType}, composed):\n`, prompt);
       return prompt;
     } catch (error) {
       console.error('[PromptLoader] composeMainInstruction failed, falling back to default prompt:', error);
@@ -76,7 +75,6 @@ export async function loadPrompt(): Promise<string> {
   } else {
     fallback = defaultPiExtensionPrompt;
   }
-  console.log(`[PromptLoader] System prompt (${configuredAgentType}, fallback):\n`, fallback);
   return fallback;
 }
 
