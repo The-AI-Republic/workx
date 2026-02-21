@@ -17,7 +17,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
+    Emitter, Listener, Manager, RunEvent, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -89,10 +89,10 @@ fn load_png_image(bytes: &[u8]) -> Option<Image<'static>> {
 }
 
 // Embed icons at compile time
-const ICON_LIGHT: &[u8] = include_bytes!("../icons/icon.png");
-// Note: icon-dark.png must exist, or use ICON_LIGHT as fallback
+const ICON_LIGHT: &[u8] = include_bytes!("../icons/tray-icon.png");
+// Note: tray-icon-dark.png must exist, or use ICON_LIGHT as fallback
 #[cfg(feature = "dark-icon")]
-const ICON_DARK: &[u8] = include_bytes!("../icons/icon-dark.png");
+const ICON_DARK: &[u8] = include_bytes!("../icons/tray-icon-dark.png");
 
 /// Get the appropriate icon based on theme
 fn get_theme_icon(is_dark: bool) -> Option<Image<'static>> {
@@ -119,6 +119,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostarted"])))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_process::init())
         // Single instance plugin handles deep links on Windows/Linux
         // When a second instance is launched with a deep link URL,
         // it forwards the URL to the existing instance
@@ -140,6 +141,9 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // Initialize the updater plugin at runtime (requires app handle)
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+
             // If launched via autostart (--autostarted flag), hide the window so the
             // app starts minimized to the system tray. Users can open it from the tray.
             let is_autostarted = std::env::args().any(|a| a == "--autostarted");
@@ -239,6 +243,7 @@ fn main() {
 
             Ok(())
         })
+        .manage(terminal_commands::PtySessionRegistry::new())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,
@@ -267,6 +272,7 @@ fn main() {
             browser_commands::kill_process,
             // Terminal command execution
             terminal_commands::terminal_execute,
+            terminal_commands::terminal_write_stdin,
             // Sandbox commands
             sandbox::status::sandbox_check_status,
             sandbox::status::sandbox_install_runtime,
@@ -278,6 +284,20 @@ fn main() {
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::CloseRequested { api, .. },
+                ..
+            } = event
+            {
+                // Prevent the window from being destroyed — hide it to tray instead
+                api.prevent_close();
+                if let Some(window) = app.get_webview_window(&label) {
+                    let _ = window.hide();
+                }
+            }
+        });
 }

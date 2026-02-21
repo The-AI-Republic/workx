@@ -679,7 +679,7 @@ describe('PiAgent', () => {
       const result = await agent.isReady();
 
       expect(result.ready).toBe(false);
-      expect(result.authMode).toBe('none');
+      expect(result.authMode).toBe('api_key');
       expect(result.message).toContain('No API key configured');
     });
 
@@ -689,7 +689,7 @@ describe('PiAgent', () => {
       const result = await agent.isReady();
 
       expect(result.ready).toBe(false);
-      expect(result.authMode).toBe('none');
+      expect(result.authMode).toBe('api_key');
     });
 
     it('should return ready=false when API key is null', async () => {
@@ -698,7 +698,7 @@ describe('PiAgent', () => {
       const result = await agent.isReady();
 
       expect(result.ready).toBe(false);
-      expect(result.authMode).toBe('none');
+      expect(result.authMode).toBe('api_key');
     });
 
     it('should return ready=false when the selected model is not found', async () => {

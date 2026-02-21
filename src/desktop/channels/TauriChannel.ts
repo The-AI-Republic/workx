@@ -20,6 +20,7 @@ import type {
 } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import type { Op } from '@/core/protocol/types';
+import { t } from '@/extension/sidepanel/lib/i18n';
 
 /**
  * Connection state for the channel
@@ -209,7 +210,7 @@ export class TauriChannel implements ChannelAdapter {
       await this.sendEvent({
         type: 'Error',
         data: {
-          message: 'Invalid submission format: missing op field',
+          message: t('Invalid submission format: missing op field'),
         },
       });
       return;
@@ -220,7 +221,7 @@ export class TauriChannel implements ChannelAdapter {
       await this.sendEvent({
         type: 'Error',
         data: {
-          message: 'Invalid submission format: op missing type field',
+          message: t('Invalid submission format: op missing type field'),
         },
       });
       return;
@@ -241,7 +242,7 @@ export class TauriChannel implements ChannelAdapter {
       await this.sendEvent({
         type: 'Error',
         data: {
-          message: error instanceof Error ? error.message : 'Unknown error processing submission',
+          message: error instanceof Error ? error.message : t('Unknown error processing submission'),
         },
       });
     }

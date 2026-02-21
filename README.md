@@ -1,4 +1,4 @@
-# Pi
+# Pi (Personal AI)
 
 **AI-Powered Personal Assistant - Chrome Extension & Desktop App**
 
@@ -303,6 +303,86 @@ cd tauri && cargo tauri build
 **Note:** The environment variables (like `WEBKIT_DISABLE_COMPOSITING_MODE`) are only needed during development. Production builds create standalone applications that users can run normally. End users experiencing GPU issues should launch the app with the environment variable:
 ```bash
 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./pi
+```
+
+---
+
+## Internationalization (i18n)
+
+Pi supports 50+ languages via Chrome's `_locales` system. All user-facing strings are wrapped in translation functions and auto-translated using a Fireworks AI-powered pipeline.
+
+### How It Works
+
+1. **Wrap strings** in source code using `t()` or `$_t()`
+2. **Extract keys** from source into locale files
+3. **Auto-translate** missing translations via LLM
+
+### Translation Functions
+
+| Function | Usage | Context |
+|----------|-------|---------|
+| `t("text")` | Non-reactive translation | Script sections, TS files |
+| `$_t("text")` | Reactive Svelte store | Svelte template sections |
+
+**With substitutions:**
+```typescript
+// Script
+t('Hello $1$', { substitutions: [userName] })
+
+// Template
+{$_t('$1$ items remaining', { substitutions: [count.toString()] })}
+```
+
+**Import:**
+```typescript
+// Svelte components
+import { t, _t } from '../lib/i18n';
+
+// TypeScript files (using path alias)
+import { t } from '@/extension/sidepanel/lib/i18n';
+```
+
+### Adding New Translatable Strings
+
+1. Wrap the string with `t()` (script) or `$_t()` (template)
+2. Run extraction to generate keys:
+   ```bash
+   npm run extract-i18n
+   ```
+3. Run translation to fill in all locales:
+   ```bash
+   # Via CLI argument
+   npm run translate -- --api-key=YOUR_FIREWORKS_API_KEY
+
+   # Or via environment variable
+   FIREWORKS_API_KEY=YOUR_FIREWORKS_API_KEY npm run translate
+   ```
+
+### i18n Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run extract-i18n` | Scan source for `t()`/`$_t()` calls, update `key_map.json` and all locale `messages.json` files |
+| `npm run translate -- --api-key=KEY` | Auto-translate missing entries across all 50+ locales using Fireworks AI |
+| `npm run translate-validate` | Validate existing translations for consistency |
+
+### File Structure
+
+```
+src/
+  extension/
+    _locales/
+      supported_languages.json   # List of 50+ supported locales
+      key_map.json               # Text-to-key mappings (auto-generated)
+      en/messages.json           # English (source of truth)
+      zh_CN/messages.json        # Simplified Chinese
+      ja_JP/messages.json        # Japanese
+      ...                        # 47+ more locales
+    sidepanel/lib/i18n/
+      index.ts                   # i18n module (t, _t exports)
+scripts/
+  extract-i18n.js               # Key extraction script
+  translate-i18n.js              # Auto-translation script
 ```
 
 ---

@@ -221,7 +221,7 @@
             {#if $userStore.userEmail}
               <span class="user-email">{$userStore.userEmail}</span>
             {:else if !$userStore.userName}
-              <span class="user-status">Logged in</span>
+              <span class="user-status">{$_t("Logged in")}</span>
             {/if}
           </div>
         </a>

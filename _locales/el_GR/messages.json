@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Γενικός πράκτορας AI εντός του προγράμματος περιήγησης για επαγγελματικές εργασίες"
+  },
+  "1_API_Key": {
+    "message": "$1$ API Key",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API key αφαιρέθηκε με επιτυχία",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} εργασία(ες) έχασε(σαν) τον προγραμματισμένο χρόνο ενώ το πρόγραμμα περιήγησης ήταν κλειστό."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - η ακρίβεια μπορεί να μειωθεί)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(ενεργό)"
+  },
+  "multiple_files": {
+    "message": "(πολλαπλά αρχεία)"
+  },
+  "no_output": {
+    "message": "(χωρίς έξοδο)"
+  },
+  "no_result": {
+    "message": "(χωρίς αποτέλεσμα)"
+  },
+  "patch_details": {
+    "message": "(λεπτομέρειες διόρθωσης)"
+  },
+  "Enter_command": {
+    "message": ">> Εισάγετε εντολή..."
+  },
+  "A2A_Agents": {
+    "message": "A2A Agents"
+  },
+  "API_Key": {
+    "message": "Κλειδί API"
+  },
+  "API_Key_Configuration": {
+    "message": "Διαμόρφωση Κλειδιού API"
+  },
+  "API_Version": {
+    "message": "Έκδοση API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Η επεξεργασία κλειδιού API είναι απενεργοποιημένη σε λειτουργία backend"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "Κλειδί API για έλεγχο ταυτότητας (αποθηκευμένο κρυπτογραφημένο)"
+  },
+  "API_key_has_expired": {
+    "message": "Το κλειδί API έχει λήξει"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "Το κλειδί API δεν έχει επαρκή δικαιώματα"
+  },
+  "API_key_saved_successfully": {
+    "message": "Το κλειδί API αποθηκεύτηκε με επιτυχία!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "Τα κλειδιά API κρυπτογραφούνται και αποθηκεύονται τοπικά στον περιηγητή σας. Δεν αποστέλλονται ποτέ σε εξωτερικούς διακομιστές, εκτός από κλήσεις API."
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Πρόσβαση στην αποθήκευση του περιηγητή (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Δράση"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "Λεπτομέρειες Ενέργειας"
+    "message": "Λειτουργία έγκρισης ενέργειας, αξιόπιστοι τομείς, ρυθμίσεις κινδύνου"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "Ενεργές Συνεδρίες"
   },
   "Add": {
-    "message": ""
+    "message": "Προσθήκη"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "Προσθήκη Τροποποίησης"
+  "Add_Agent": {
+    "message": "Προσθήκη πράκτορα"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Προσθήκη διακομιστή"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Προσθήκη εργασίας"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "Προσθέστε έναν διακομιστή για σύνδεση με εξωτερικά εργαλεία."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Προσθέστε έναν πράκτορα για σύνδεση με εξωτερικές δεξιότητες."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Πρόσθετες Bind Mounts"
   },
   "Advanced_Configuration": {
     "message": "Προηγμένη Διαμόρφωση"
   },
-  "Advanced_Options": {
-    "message": "Προηγμένες Επιλογές"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Προηγμένες ρυθμίσεις"
+  },
+  "Agent": {
+    "message": "Πράκτορας"
   },
   "Agent_Execution_Tools": {
     "message": "Εργαλεία Εκτέλεσης Πράκτορα"
   },
+  "Agent_Turn_Complete": {
+    "message": "Ο γύρος του πράκτορα ολοκληρώθηκε"
+  },
+  "Agent_URL_is_required": {
+    "message": "Απαιτείται URL πράκτορα"
+  },
+  "Agent_added_successfully": {
+    "message": "Ο πράκτορας προστέθηκε με επιτυχία"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Το όνομα του πράκτορα μπορεί να περιέχει μόνο γράμματα, αριθμούς και παύλες"
+  },
+  "Agent_name_is_required": {
+    "message": "Απαιτείται όνομα πράκτορα"
+  },
+  "Agent_not_initialized": {
+    "message": "Ο πράκτορας δεν έχει αρχικοποιηθεί"
+  },
+  "Agent_removed_successfully": {
+    "message": "Ο πράκτορας αφαιρέθηκε με επιτυχία"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Ο γύρος του πράκτορα ολοκληρώθηκε με επιτυχία"
+  },
+  "Agent_updated_successfully": {
+    "message": "Ο πράκτορας ενημερώθηκε με επιτυχία"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Όλες οι ενέργειες εγκρίνονται αυτόματα σε αυτούς τους τομείς."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Όλες οι ενέργειες απορρίπτονται σε αυτούς τους τομείς."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "Όλες οι εντολές εκτελούνται σε sandbox εγγενές στο OS. Οι εγγραφές περιορίζονται στον φάκελο εργασίας."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Να επιτραπεί στον πράκτορα η εκτέλεση εντολών συστήματος (χρησιμοποιήστε με προσοχή)"
@@ -57,58 +168,108 @@
     "message": "Να επιτραπεί η εκτέλεση scripts περιεχομένου σε ιστοσελίδες"
   },
   "Allowed": {
-    "message": ""
+    "message": "Επιτρέπεται"
   },
   "Allowed_Origins": {
     "message": "Επιτρεπόμενες Προελεύσεις"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Μόνο αλφαριθμητικούς χαρακτήρες και παύλες (1-50 χαρακτήρες)"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "Πάντα Έγκριση"
   },
-  "API_Key_Configuration": {
-    "message": "Διαμόρφωση Κλειδιού API"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "Τα κλειδιά API κρυπτογραφούνται και αποθηκεύονται τοπικά στον περιηγητή σας. Δεν αποστέλλονται ποτέ σε εξωτερικούς διακομιστές, εκτός από κλήσεις API."
-  },
-  "Approval_History": {
-    "message": "Ιστορικό Εγκρίσεων"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: Η προσωπική σας AI (Alpha)"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "Έγκριση & Ασφάλεια"
+  },
+  "Approval_Mode": {
+    "message": "Λειτουργία Έγκρισης"
+  },
+  "Approval_Required": {
+    "message": "Απαιτείται Έγκριση"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Απαιτείται Έγκριση: Εφαρμογή Διορθώματος"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Απαιτείται Έγκριση: Εκτέλεση Εντολής"
   },
   "Approve": {
     "message": "Έγκριση"
   },
-  "Approve_this_action": {
-    "message": "Έγκριση αυτής της ενέργειας"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Έγκριση αλλαγών στο: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Έγκριση εκτέλεσης: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Είστε βέβαιοι ότι θέλετε να ακυρώσετε αυτήν την εργασία;"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Είστε βέβαιοι ότι θέλετε να αφαιρέσετε αυτόν τον πράκτορα;"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Είστε βέβαιοι ότι θέλετε να αφαιρέσετε το κλειδί API $1$ σας;",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Ζητήστε από το Browserx να εξάγει δομημένα δεδομένα από οποιαδήποτε ιστοσελίδα"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Ζητήστε για ενδιάμεσο κίνδυνο και άνω (κίνδυνος > 30). Συνιστάται για τους περισσότερους χρήστες."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Ζητήστε μόνο για ενέργειες υψηλού κινδύνου (κίνδυνος > 60). Για έμπειρους χρήστες."
+  },
+  "Auth_Type": {
+    "message": "Τύπος Αυθεντικοποίησης"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Διαπιστευτήριο αυθεντικοποίησης (αποθηκευμένο κρυπτογραφημένο)"
+  },
+  "Authentication_failed": {
+    "message": "Αποτυχία αυθεντικοποίησης"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Μέθοδος ελέγχου ταυτότητας για τον πράκτορα"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "Αυτόματο (προεπιλογή)"
+  },
+  "Auto_approve_everything": {
+    "message": "Αυτόματη έγκριση όλων"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Αυτόματη έγκριση όλων. Οι κανόνες άρνησης ισχύουν ακόμη. Χρησιμοποιήστε με δική σας ευθύνη."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Αυτόματη έγκριση -- έληξε το χρονικό όριο"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "Αυτόματη εκκίνηση της εφαρμογής όταν συνδέεστε στον υπολογιστή σας"
+  },
+  "Available_Skills": {
+    "message": "Διαθέσιμες δεξιότητες"
+  },
+  "Available_Tools": {
+    "message": "Διαθέσιμα εργαλεία"
   },
   "Available": {
     "message": "Διαθέσιμο:"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "Πίσω"
+  },
+  "Back_to_Model_Config": {
+    "message": "Επιστροφή στη διαμόρφωση μοντέλου"
   },
   "Backend_Mode": {
     "message": "Λειτουργία Backend"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "Λειτουργία Backend Ενεργή"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Το backend δεν είναι διαθέσιμο. Παρακαλώ περιμένετε λίγο και δοκιμάστε ξανά."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Σφάλμα διακομιστή backend - δοκιμάστε ξανά αργότερα"
+  },
+  "Backoff_Multiplier": {
+    "message": "Πολλαπλασιαστής Backoff"
+  },
+  "Balanced": {
+    "message": "Ισορροπημένο"
+  },
+  "Base_URL": {
+    "message": "Base URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Η Base URL δεν έχει ρυθμιστεί για αυτόν τον πάροχο"
+  },
+  "Bearer_Token": {
+    "message": "Bearer Token"
+  },
   "Beta": {
     "message": "Beta"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Διακόπτες αυτοματοποίησης περιηγητή"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Η διαδρομή bind mount πρέπει να είναι απόλυτη"
+  },
+  "Blocked_Domains": {
+    "message": "Αποκλεισμένοι τομείς"
   },
   "Browser_Tools": {
     "message": "Εργαλεία Περιηγητή"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "Συμπεριφορά προσωρινής αποθήκευσης και διατήρηση δεδομένων"
+  "Browser_automation_tool_toggles": {
+    "message": "Διακόπτες αυτοματοποίησης περιηγητή"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "Ρυθμίσεις προσωρινής αποθήκευσης"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "Cache TTL (δευτερόλεπτα)"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "Συμπεριφορά προσωρινής αποθήκευσης και διατήρηση δεδομένων"
+  },
   "Cancel": {
     "message": "Ακύρωση"
   },
+  "Cancelled": {
+    "message": "Ακυρώθηκε"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Δεν είναι δυνατή η εκτέλεση της εργασίας: Δεν έχει ρυθμιστεί κλειδί API για ${providerName}. Παρακαλώ μεταβείτε στις Ρυθμίσεις → Διαμόρφωση Μοντέλου και προσθέστε το κλειδί API σας."
+  },
+  "Cannot_select_model_1": {
+    "message": "Δεν είναι δυνατή η επιλογή μοντέλου: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Δεν είναι δυνατή η αποστολή μηνύματος: Δεν έχει ρυθμιστεί κλειδί API για $1$. Παρακαλώ κάντε κλικ στο κουμπί Ρυθμίσεις και διαμορφώστε το κλειδί API σας.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Δυνατότητες"
+  },
   "Chat_History": {
     "message": "Ιστορικό Συνομιλίας"
+  },
+  "Checking_agent_status": {
+    "message": "Έλεγχος κατάστασης πράκτορα..."
   },
   "Choose_AI_Model": {
     "message": "Επιλογή μοντέλου AI"
@@ -159,22 +387,37 @@
     "message": "Κάντε κλικ στο εικονίδιο Browserx στη γραμμή εργαλείων ή πατήστε Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "Κάντε κλικ για να ακυρώσετε τη σύνδεση"
   },
   "Click_to_select_a_model": {
     "message": "Κάντε κλικ για να επιλέξετε ένα μοντέλο"
   },
+  "Close": {
+    "message": "Κλείσιμο"
+  },
   "Close_settings": {
     "message": "Κλείσιμο ρυθμίσεων"
+  },
+  "Collapse": {
+    "message": "Σύμπτυξη"
+  },
+  "Command_Approval_Required": {
+    "message": "Απαιτείται Έγκριση Εντολής"
+  },
+  "Command_completed": {
+    "message": "Η εντολή ολοκληρώθηκε"
   },
   "Command": {
     "message": "Εντολή"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "Οι εντολές εκτελούνται απευθείας στον κεντρικό υπολογιστή. Το φίλτρο ασφαλείας εξακολουθεί να ισχύει."
   },
   "Completed": {
-    "message": ""
+    "message": "Ολοκληρώθηκε"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Ολοκληρώθηκε: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Συμπιέστε τα δεδομένα της προσωρινής αποθήκευσης για να εξοικονομήσετε χώρο αποθήκευσης"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Διαμορφώστε το μοντέλο AI και τα κλειδιά API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Διαμορφώστε ένα κλειδί API στις Ρυθμίσεις"
+  },
+  "Configured": {
+    "message": "Διαμορφώθηκε"
+  },
+  "Configured_Agents": {
+    "message": "Διαμορφωμένοι Πράκτορες"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Διαμορφωμένοι Διακομιστές"
   },
   "Connect": {
-    "message": ""
+    "message": "Σύνδεση"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Συνδέστε με πράκτορες πρωτοκόλλου Agent-to-Agent (A2A) για να επεκτείνετε τις δυνατότητες με εξωτερικές δεξιότητες πρακτόρων."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Συνδέστε με διακομιστές Model Context Protocol (MCP) για να επεκτείνετε τον πράκτορα με εξωτερικά εργαλεία."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Συνδέστε με έναν πράκτορα A2A για να ανακαλύψετε δεξιότητες."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "Συνδέστε με έναν διακομιστή MCP για να ανακαλύψετε εργαλεία."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "Συνδέστε με εξωτερικούς διακομιστές εργαλείων MCP"
   },
   "Connected": {
     "message": "Συνδεδεμένο"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Συνδέθηκε επιτυχώς"
   },
-  "Context": {
-    "message": "Πλαίσιο"
+  "Connecting": {
+    "message": "Γίνεται σύνδεση..."
+  },
+  "Connection_error": {
+    "message": "Σφάλμα σύνδεσης"
+  },
+  "Connection_failed_1": {
+    "message": "Αποτυχία σύνδεσης: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Αποτυχία σύνδεσης: Η βασική διεύθυνση URL δεν έχει ρυθμιστεί"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Αποτυχία σύνδεσης: Η επιλεγμένη διαμόρφωση μοντέλου λείπει"
+  },
+  "Connection_successful": {
+    "message": "Σύνδεση επιτυχής!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Αποτυχία δοκιμής σύνδεσης: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Αποτυχία δοκιμής σύνδεσης: Μη έγκυρο κλειδί API"
+  },
+  "Connection_test_successful": {
+    "message": "Δοκιμή σύνδεσης επιτυχής!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Δοκιμή σύνδεσης επιτυχής! (Το κλειδί API είναι έγκυρο)"
+  },
+  "Connection_was_refused": {
+    "message": "Η σύνδεση απορρίφθηκε"
+  },
+  "Connection_was_reset": {
+    "message": "Η σύνδεση επαναφέρθηκε"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Το περιεχόμενο παραβιάζει την πολιτική: το περιεχόμενο ${contentType} δεν επιτρέπεται"
+  },
+  "Context_Window": {
+    "message": "Παράθυρο Συμφραζομένου"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Συμπίεση περιεχομένου: αποθηκεύτηκαν ~ $1$k διακριτικά",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Ελέγχει πόσο επιθετικά ζητά έγκριση ο πράκτορας."
   },
   "Create_New_Tab": {
     "message": "Δημιουργία νέας καρτέλας"
   },
   "Created": {
-    "message": ""
+    "message": "Δημιουργήθηκε"
+  },
+  "Creator": {
+    "message": "Δημιουργός"
   },
   "Credit_Details": {
     "message": "Λεπτομέρειες πίστωσης"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "Τρέχων Σχέδιο:"
   },
-  "Current_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "Απέτυχε η αναζήτηση DNS"
+  },
+  "DOM_Tool": {
+    "message": "Εργαλείο DOM"
   },
   "Daily_Credits": {
     "message": "Ημερήσιες Πιστώσεις"
@@ -228,10 +552,34 @@
     "message": "Εργαλείο Εξαγωγής Δεδομένων"
   },
   "Date": {
-    "message": ""
+    "message": "Ημερομηνία"
   },
   "Days_until_expiration": {
     "message": "Ημέρες μέχρι τη λήξη"
+  },
+  "Debug_logging_disabled": {
+    "message": "Καταγραφή αποσφαλμάτωσης απενεργοποιήθηκε"
+  },
+  "Debug_logging_enabled": {
+    "message": "Καταγραφή αποσφαλμάτωσης ενεργοποιήθηκε"
+  },
+  "Default": {
+    "message": "Προεπιλογή"
+  },
+  "Deny": {
+    "message": "Άρνηση"
+  },
+  "Deprecated": {
+    "message": "Παρωχημένο"
+  },
+  "Deprecation_Message": {
+    "message": "Μήνυμα Απόσυρσης"
+  },
+  "Description": {
+    "message": "Περιγραφή"
+  },
+  "Desktop_mode": {
+    "message": "Λειτουργία επιφάνειας εργασίας"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Αναπτύχθηκε και υποστηρίζεται από την AI Republic"
@@ -240,37 +588,43 @@
     "message": "Απόρριψη αλλαγών"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Αποσύνδεση"
+  },
+  "Disconnected_successfully": {
+    "message": "Αποσυνδέθηκε επιτυχώς"
   },
   "Dismiss": {
-    "message": ""
+    "message": "Απόρριψη"
+  },
+  "Dismiss_notification": {
+    "message": "Απόρριψη ειδοποίησης"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Εμφάνιση κατανάλωσης token (εισερχόμενα/εξερχόμενα token) όταν ολοκληρωθούν οι εργασίες"
   },
-  "DOM_Tool": {
-    "message": "Εργαλείο DOM"
+  "Draft": {
+    "message": "Πρόχειρο"
   },
   "Duration": {
-    "message": ""
+    "message": "Διάρκεια"
+  },
+  "ERROR": {
+    "message": "ΣΦΑΛΜΑ"
   },
   "Edit": {
-    "message": ""
+    "message": "Επεξεργασία"
+  },
+  "Edit_Agent": {
+    "message": "Επεξεργασία πράκτορα"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Επεξεργασία διακομιστή"
   },
   "Enable_All_Tools": {
     "message": "Ενεργοποίηση όλων των εργαλείων"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "Ενεργοποίηση προσωρινής μνήμης"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Ενεργοποίηση της προσωρινής αποθήκευσης (cache) για βελτίωση της απόδοσης, αποθηκεύοντας δεδομένα στα οποία γίνεται συχνή πρόσβαση."
   },
   "Enable_Compression": {
     "message": "Ενεργοποίηση συμπίεσης"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "Ενεργοποίηση σεναρίων περιεχομένου"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "Ενεργοποίηση επέκτασης"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Ενεργοποίηση εργαλείων Πρωτοκόλλου Περιβάλλοντος Μοντέλου από συνδεδεμένους διακομιστές MCP"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Ενεργοποίηση αυτόματης σύνδεσης κατά την εκκίνηση του browserx"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Ενεργοποίηση της προσωρινής αποθήκευσης (cache) για βελτίωση της απόδοσης, αποθηκεύοντας δεδομένα στα οποία γίνεται συχνή πρόσβαση."
+  },
+  "Enable_debug_logging": {
+    "message": "Ενεργοποίηση καταγραφής εντοπισμού σφαλμάτων"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Ενεργοποίηση δυνατοτήτων αναζήτησης web για τον πράκτορα"
   },
   "Enabled": {
-    "message": ""
+    "message": "Ενεργοποιημένο"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Εισάγετε κλειδί API εάν απαιτείται"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Εισάγετε κλειδί API ή διακριτικό πρόσβασης"
   },
   "Enter_your_LLM_API_key": {
     "message": "Εισάγετε το κλειδί API του LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Εισάγετε την εργασία σας..."
   },
   "Error": {
-    "message": ""
+    "message": "Σφάλμα"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Σφάλμα: Δεν υπάρχει σύνδεση με τον πράκτορα. Παρακαλώ ανανεώστε τη σελίδα."
   },
   "Execute_Commands": {
     "message": "Εκτέλεση εντολών"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Λειτουργία εκτέλεσης"
+  },
+  "Exit_Code": {
+    "message": "Κωδικός εξόδου:"
+  },
+  "Expand": {
+    "message": "Ανάπτυξη"
   },
   "Expire_after_days": {
     "message": "Λήξη μετά από ημέρες"
   },
-  "Explain_your_decision": {
-    "message": "Εξηγήστε την απόφασή σας..."
+  "Explain_this_info_selectionText": {
+    "message": "Εξηγήστε αυτό: ${info.selectionText}"
   },
-  "Extension_Configuration": {
-    "message": "Διαμόρφωση επέκτασης"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "Διαμόρφωση επέκτασης και δικαιώματα"
-  },
-  "extension_description": {
-    "message": "Γενικός πράκτορας AI εντός του προγράμματος περιήγησης για επαγγελματικές εργασίες"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "Εξήγηση με Browserx"
   },
   "Extension_Permission": {
     "message": "Επέκταση και Δικαιώματα"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "Ρυθμίσεις επέκτασης και δικαιωμάτων"
   },
+  "Extension_Configuration": {
+    "message": "Διαμόρφωση επέκτασης"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Διαμόρφωση επέκτασης και δικαιώματα"
+  },
   "Extra_Credits": {
     "message": "Επιπλέον Πίστωση"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Επιπλέον κατάλογοι προσβάσιμοι στο περιβάλλον απομόνωσης"
   },
   "Extract_Data": {
     "message": "Εξαγωγή Δεδομένων:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Εξαγωγή δεδομένων με Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Εξαγωγή συγκεκριμένων προτύπων δεδομένων από σελίδες"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "Εξαγωγή δομημένων δεδομένων από αυτή τη σελίδα"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "Εξαγωγή δομημένων δεδομένων από ιστοσελίδες"
   },
+  "Failed": {
+    "message": "Απέτυχε"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Απέτυχε η αλλαγή μοντέλου: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Απέτυχε η σύνδεση: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Απέτυχε η δημιουργία νέας καρτέλας. Παρακαλώ δοκιμάστε ξανά."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Απέτυχε η δημιουργία καρτέλας προγράμματος περιήγησης: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Απέτυχε η αποσύνδεση: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Απέτυχε η φόρτωση ρυθμίσεων A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Απέτυχε η φόρτωση συνομιλίας. Παρακαλώ δοκιμάστε ξανά."
+  },
   "Failed_to_load_preferences": {
     "message": "Αποτυχία φόρτωσης προτιμήσεων"
+  },
+  "Failed_to_load_settings": {
+    "message": "Απέτυχε η φόρτωση ρυθμίσεων"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Απέτυχε η αφαίρεση κλειδιού API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Απέτυχε η αφαίρεση πράκτορα: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Απέτυχε η αποθήκευση κλειδιού API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Απέτυχε η αποθήκευση ρύθμισης καταγραφής αποσφαλμάτωσης: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "Αποτυχία αποθήκευσης ρυθμίσεων"
   },
+  "Failed_to_save_settings_1": {
+    "message": "Απέτυχε η αποθήκευση ρυθμίσεων: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Απέτυχε η αποθήκευση: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Απέτυχε η αποστολή μηνύματος. Παρακαλώ δοκιμάστε ξανά."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Απέτυχε η έναρξη νέας συνομιλίας. Παρακαλώ δοκιμάστε ξανά."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Απέτυχε η διακοπή της εργασίας. Παρακαλώ δοκιμάστε ξανά."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Απέτυχε η εναλλαγή στην καρτέλα ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Απέτυχε η δοκιμή σύνδεσης"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Απέτυχε η ενημέρωση της λειτουργίας API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Απέτυχε η ενημέρωση του επιπέδου υπηρεσίας: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Απαιτείται έγκριση αλλαγής αρχείου"
+  },
   "File_Operations_Not_Available": {
     "message": "Λειτουργίες αρχείου (Δεν είναι διαθέσιμες)"
   },
-  "File_Path": {
-    "message": "Διαδρομή Αρχείου"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Συμπλήρωση φορμών, υποβολή δεδομένων, αλληλεπίδραση με στοιχεία φόρμας"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Εργαλείο Αυτοματοποίησης Φορμών"
@@ -372,16 +856,16 @@
     "message": "Πλήρης Πρόσβαση (Επικίνδυνο)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "Πλήρης Είσοδος"
   },
   "General": {
     "message": "Γενικά"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "Γενικές Ρυθμίσεις"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "Ξεκινήστε"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "Γεια σου Κόσμε"
   },
-  "History": {
-    "message": "Ιστορικό"
+  "Hide_API_key": {
+    "message": "Απόκρυψη κλειδιού API"
+  },
+  "High_Speed": {
+    "message": "Υψηλή Ταχύτητα"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "Πώς ο φάκελος χώρου εργασίας προσαρτάται στο sandbox"
   },
-  "Impact": {
-    "message": "Αντίκτυπο"
+  "Image_Input": {
+    "message": "Είσοδος Εικόνας"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Βελτιώστε αυτό το κείμενο: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Βελτιώστε με το Browserx"
+  },
+  "In": {
+    "message": "Σε:"
+  },
+  "Incompatible_features": {
+    "message": "Μη συμβατές λειτουργίες:"
+  },
+  "Initial_Delay": {
+    "message": "Αρχική Καθυστέρηση"
+  },
+  "Input_Token_Price": {
+    "message": "Τιμή Token Εισόδου"
+  },
+  "Input": {
+    "message": "Είσοδος:"
+  },
+  "Input_1": {
+    "message": "Είσοδος: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Παρεμβολή και τροποποίηση αιτημάτων/απαντήσεων δικτύου"
   },
+  "Invalid_API_key": {
+    "message": "Μη έγκυρο κλειδί API"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Μη έγκυρο κλειδί API"
+  },
+  "Invalid_URL_format": {
+    "message": "Μη έγκυρη μορφή URL"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Μη έγκυρη μορφή υποβολής: λείπει το πεδίο op"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Μη έγκυρη μορφή υποβολής: στο op λείπει το πεδίο type"
+  },
   "Keyboard_Shortcuts": {
     "message": "Συντομεύσεις Πληκτρολογίου"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "Τα αιτήματα LLM πηγαίνουν απευθείας στα API των παρόχων"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "Τα αιτήματα LLM δρομολογούνται μέσω του backend του AI Republic"
   },
   "Language": {
     "message": "Γλώσσα"
@@ -419,37 +956,52 @@
     "message": "Μάθετε περισσότερα"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Αφήστε κενό για να διατηρήσετε το υπάρχον"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Λίστα επιτρεπόμενων προελεύσεων (μία ανά γραμμή). Υποστηρίζει wildcards (*)."
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "Τα αιτήματα LLM πηγαίνουν απευθείας στα API των παρόχων"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "Τα αιτήματα LLM δρομολογούνται μέσω του backend του AI Republic"
-  },
   "Load_More": {
-    "message": ""
+    "message": "Φόρτωση περισσότερων"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "Φόρτωση περισσότερων"
+  },
+  "Loading_configuration": {
+    "message": "Φόρτωση ρυθμίσεων..."
   },
   "Loading_credits": {
     "message": "Φόρτωση πιστώσεων..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "Φόρτωση λεπτομερειών..."
+  },
+  "Loading_history": {
+    "message": "Φόρτωση ιστορικού..."
   },
   "Loading_settings": {
     "message": "Φόρτωση ρυθμίσεων..."
   },
+  "Loading_tabs": {
+    "message": "Φόρτωση καρτελών..."
+  },
+  "Loading": {
+    "message": "Φόρτωση..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Καταγραφή μηνυμάτων πρωτοκόλλου A2A στην κονσόλα του προγράμματος περιήγησης για εντοπισμό σφαλμάτων"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Καταγραφή μηνυμάτων πρωτοκόλλου MCP στην κονσόλα του προγράμματος περιήγησης για εντοπισμό σφαλμάτων"
+  },
+  "Log_in_to_your_account": {
+    "message": "Συνδεθείτε στον λογαριασμό σας"
+  },
+  "Logged_in": {
+    "message": "Συνδεδεμένος"
   },
   "Logging_in": {
-    "message": ""
+    "message": "Γίνεται σύνδεση..."
   },
   "Login": {
     "message": "Σύνδεση"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "Συνδεθείτε για να λάβετε δωρεάν μονάδες"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Παρατεταμένη πίεση για προγραμματισμό εργασίας"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "Παρατεταμένη πίεση του κουμπιού αποστολής για προγραμματισμό εργασίας"
   },
   "Low_credits_remaining": {
     "message": "Χαμηλό υπόλοιπο πιστώσεων"
+  },
+  "MCP_Servers": {
+    "message": "Διακομιστές MCP"
+  },
+  "MCP_Tools": {
+    "message": "Εργαλεία MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Διαχείριση καρτελών προγράμματος περιήγησης (άνοιγμα, κλείσιμο, εναλλαγή, ερώτηση)"
@@ -479,40 +1037,102 @@
     "message": "Μέγιστο μέγεθος προσωρινής μνήμης (MB)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "Μέγιστος αριθμός ταυτόχρονων συνεδριών"
+  },
+  "Max_Delay": {
+    "message": "Μέγιστη Καθυστέρηση"
+  },
+  "Max_Output": {
+    "message": "Μέγιστη Έξοδος"
+  },
+  "Max_Output_Tokens": {
+    "message": "Μέγιστος αριθμός token εξόδου"
+  },
+  "Max_Retries": {
+    "message": "Μέγιστες Προσπάθειες"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Μέγιστο μέγεθος προσωρινής μνήμης σε megabytes (προεπιλογή: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "Μέγιστος αριθμός παράλληλων συνεδριών πράκτορα, συμπεριλαμβανομένων των προγραμματισμένων εργασιών"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Έχει φτάσει το μέγιστο των 5 πρακτόρων"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Έχει φτάσει το μέγιστο των 5 διακομιστών"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Μέγιστος χρόνος (σε χιλιοστά του δευτερολέπτου) που μπορεί να εκτελείται ένα εργαλείο πριν λήξει το χρονικό όριο (προεπιλογή: 30000)"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "Μεσαίου κινδύνου και άνω"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "Η υπηρεσία μηνυμάτων δεν είναι διαθέσιμη"
   },
   "Missed": {
-    "message": ""
+    "message": "Απώλεια"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Απώλεια Προγραμματισμένων Εργασιών"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Το μοντέλο \"$1$\" δεν υποστηρίζει είσοδο εικόνας. Ορισμένα εργαλεία θα απενεργοποιηθούν.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Διαμόρφωση μοντέλου"
   },
+  "Model_Configuration": {
+    "message": "Διαμόρφωση Μοντέλου"
+  },
+  "Model_Key_API": {
+    "message": "Κλειδί Μοντέλου (API)"
+  },
+  "Model_Name": {
+    "message": "Όνομα Μοντέλου"
+  },
   "Model_Selection": {
     "message": "Επιλογή μοντέλου"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Οι ρυθμίσεις μοντέλου και παρόχου φορτώθηκαν από την προεπιλεγμένη διαμόρφωση (μόνο για ανάγνωση)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Το μοντέλο άλλαξε σε $1$. Παρακαλώ διαμορφώστε το κλειδί API σας.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Το μοντέλο άλλαξε σε $1$. Η συνεδρία θα επανεκκινηθεί.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Μοντέλο:"
+  },
+  "Model_1": {
+    "message": "Μοντέλο: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Σύγχρονη Συνομιλία"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Τροποποίηση παραμέτρων κατά την αίτηση για αλλαγές"
   },
   "Monthly_Credits": {
     "message": "Μηνιαίες Πιστώσεις"
@@ -521,7 +1141,7 @@
     "message": "Περισσότερες Ρυθμίσεις"
   },
   "Name": {
-    "message": ""
+    "message": "Όνομα"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Περιήγηση σε σελίδες, κλικ σε συνδέσμους, διαχείριση πλοήγησης του προγράμματος περιήγησης"
@@ -530,10 +1150,16 @@
     "message": "Εργαλείο Πλοήγησης"
   },
   "Network_Access": {
-    "message": ""
+    "message": "Πρόσβαση δικτύου"
   },
   "Network_Intercept_Tool": {
     "message": "Εργαλείο Παρεμβολής Δικτύου"
+  },
+  "Network_error": {
+    "message": "Σφάλμα δικτύου"
+  },
+  "Network_error_occurred": {
+    "message": "Παρουσιάστηκε σφάλμα δικτύου"
   },
   "Never_expire_permanent": {
     "message": "Δεν λήγει ποτέ (μόνιμο)"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "Νέα Συζήτηση"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "Δεν έχουν ρυθμιστεί ακόμη πράκτορες A2A."
+  },
   "No_Access": {
-    "message": ""
+    "message": "Καμία πρόσβαση"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Δεν υπάρχει ακόμη ιστορικό εγκρίσεων."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "Δεν έχει ρυθμιστεί πρόσβαση"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "Δεν έχουν ρυθμιστεί ακόμη διακομιστές MCP."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Δεν έχει ρυθμιστεί πρόσβαση. Παρακαλώ συνδεθείτε ή ρυθμίστε ένα κλειδί API."
+  },
+  "No_active_sessions": {
+    "message": "Δεν υπάρχουν ενεργές συνεδρίες"
+  },
+  "No_chat_history_yet": {
+    "message": "Δεν υπάρχει ακόμη ιστορικό συνομιλίας"
+  },
+  "No_completed_tasks_yet": {
+    "message": "Δεν υπάρχουν ολοκληρωμένες εργασίες ακόμη"
+  },
+  "No_models_available": {
+    "message": "Δεν υπάρχουν διαθέσιμα μοντέλα"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Δεν υπάρχουν διαθέσιμα μοντέλα. Παρακαλώ ελέγξτε τη ρύθμιση."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Δεν υπάρχουν προγραμματισμένες εργασίες"
+  },
+  "No_scheduled_time": {
+    "message": "Δεν υπάρχει προγραμματισμένος χρόνος"
+  },
+  "No_skills_available": {
+    "message": "Δεν υπάρχουν διαθέσιμες δεξιότητες."
+  },
+  "No_steps_in_plan": {
+    "message": "Δεν υπάρχουν βήματα στο σχέδιο"
   },
   "No_tabs_available": {
     "message": "Δεν υπάρχουν διαθέσιμες καρτέλες"
   },
+  "No_time_set": {
+    "message": "Δεν έχει οριστεί χρόνος"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Δεν υπάρχουν διαθέσιμα εργαλεία."
+  },
+  "None": {
+    "message": "Κανένα"
   },
   "Not_Connected": {
     "message": "Δεν είναι συνδεδεμένο"
+  },
+  "Notification": {
+    "message": "Ειδοποίηση"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Αριθμός ημερών πριν λήξει τα δεδομένα rollout (προεπιλογή: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "Εκτός σύνδεσης - οι εργασίες θα εκτελεστούν όταν συνδεθείτε"
+  },
+  "Older": {
+    "message": "Παλαιότερα"
+  },
+  "Only_high_risk_actions": {
+    "message": "Μόνο ενέργειες υψηλού κινδύνου"
+  },
+  "Open_1_settings": {
+    "message": "Άνοιγμα ρυθμίσεων $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Άνοιγμα Πλευρικού Πάνελ:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "Οργανισμός"
+  },
+  "Organization_ID": {
+    "message": "ID οργανισμού"
+  },
+  "Out": {
+    "message": "Έξοδος:"
+  },
+  "Output_Token_Price": {
+    "message": "Τιμή token εξόδου"
+  },
+  "Output": {
+    "message": "Έξοδος:"
+  },
+  "Output_1": {
+    "message": "Έξοδος: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "Εργαλείο Δράσης Σελίδας"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "Εργαλείο Όρασης Σελίδας"
   },
-  "Parameter_Modifications": {
-    "message": "Τροποποιήσεις Παραμέτρων"
+  "Past_Month": {
+    "message": "Τελευταίος μήνας"
+  },
+  "Past_Week": {
+    "message": "Τελευταία εβδομάδα"
+  },
+  "Patch_applied_successfully": {
+    "message": "Η διόρθωση εφαρμόστηκε με επιτυχία"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Διόρθωση για $1$ αρχείο(α)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Παύση ουράς"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Εκτέλεση ενεργειών σελίδας (κύλιση, στιγμιότυπο, αναμονή)"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "Διατήρηση της κρυφής μνήμης στην αποθήκευση"
   },
+  "Plan_1_step_s": {
+    "message": "Σχέδιο: $1$ βήμα(α)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Παρακαλώ ελέγξτε το κλειδί API σας στις ρυθμίσεις."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Παρακαλώ εισάγετε περιγραφή εργασίας"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Παρακαλώ εισάγετε πρώτα ένα κλειδί API"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Παρακαλώ εισάγετε ένα έγκυρο κλειδί API."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Παρακαλώ συνδεθείτε ξανά για να συνεχίσετε τη χρήση του AI πράκτορα."
+  },
+  "Please_select_a_provider": {
+    "message": "Παρακαλώ επιλέξτε πάροχο"
   },
   "Please_type_a_valid_command": {
     "message": "Παρακαλώ πληκτρολογήστε μια έγκυρη εντολή"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Παρακαλώ αναβαθμίστε το πρόγραμμα για να ξεκλειδώσετε τα πιο προηγμένα μοντέλα του κόσμου"
+  },
   "Power": {
-    "message": ""
+    "message": "Ισχύς"
+  },
+  "Pricing_Information": {
+    "message": "Πληροφορίες τιμολόγησης"
+  },
+  "Pricing_Page": {
+    "message": "Σελίδα τιμών"
+  },
+  "Priority": {
+    "message": "Προτεραιότητα"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Το επίπεδο προτεραιότητας προσφέρει ταχύτερους χρόνους απόκρισης με υψηλότερη τιμολόγηση."
   },
+  "Processing": {
+    "message": "Επεξεργασία..."
+  },
+  "Protocol": {
+    "message": "Πρωτόκολλο"
+  },
   "Provider": {
     "message": "Πάροχος"
+  },
+  "Provider_Configuration": {
+    "message": "Διαμόρφωση παρόχου"
+  },
+  "Provider_ID": {
+    "message": "ID παρόχου"
+  },
+  "Provider_Name": {
+    "message": "Όνομα παρόχου"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Ερώτημα και τροποποίηση του DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Η ουρά είναι σε παύση"
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "Γρήγορη ενέργεια"
+    "message": "Σε ουρά"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Γρήγορο χρονοδιάγραμμα"
   },
   "Quick_Start": {
     "message": "Γρήγορη Έναρξη"
   },
+  "Quick_action": {
+    "message": "Γρήγορη ενέργεια"
+  },
+  "Read_Only": {
+    "message": "Μόνο ανάγνωση"
+  },
+  "Read_Write": {
+    "message": "Ανάγνωση-εγγραφή"
+  },
   "Read_only": {
     "message": "Μόνο για ανάγνωση"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "Συλλογισμός"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "Προσπάθειες Συλλογισμού"
   },
-  "Reason_optional": {
-    "message": "Αιτία (προαιρετικό)"
+  "Reasoning_Summaries": {
+    "message": "Περίληψη Συλλογισμού"
+  },
+  "Reasoning_levels": {
+    "message": "Επίπεδα συλλογισμού:"
+  },
+  "Reasoning_1": {
+    "message": "Συλλογισμός: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Ανανεώνεται σε"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "Απόρριψη"
   },
-  "Reject_this_action": {
-    "message": "Απόρριψε αυτήν την ενέργεια"
+  "Release_Date": {
+    "message": "Ημερομηνία κυκλοφορίας"
+  },
+  "Release_date_unknown": {
+    "message": "Άγνωστη ημερομηνία κυκλοφορίας"
+  },
+  "Released": {
+    "message": "Κυκλοφόρησε:"
   },
   "Remaining": {
     "message": "Απομένει:"
   },
   "Remove": {
-    "message": ""
+    "message": "Αφαίρεση"
   },
   "Remove_API_Key": {
     "message": "Αφαίρεση κλειδιού API"
   },
-  "Remove_modification": {
-    "message": "Αφαίρεση τροποποίησης"
+  "Request_Timeout": {
+    "message": "Λήξη χρόνου αιτήματος"
   },
-  "Request_Changes": {
-    "message": "Αίτημα αλλαγών"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Αίτηση αλλαγών σε αυτήν την ενέργεια"
+  "Request_timed_out": {
+    "message": "Το αίτημα έληξε"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Χρονικό όριο αιτήματος σε χιλιοστά του δευτερολέπτου (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Χρονικό όριο αιτήματος σε χιλιοστά του δευτερολέπτου (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Το αίτημα ακυρώθηκε"
+  },
+  "Response_failed": {
+    "message": "Αποτυχία απόκρισης"
   },
   "Restricted": {
-    "message": ""
+    "message": "Περιορισμένο"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Περίληψη αποτελέσματος"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Συνέχιση ουράς"
+  },
+  "Retry_Configuration": {
+    "message": "Διαμόρφωση επανάληψης"
+  },
+  "Retrying": {
+    "message": "Επανάληψη"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Κάντε δεξί κλικ σε οποιοδήποτε κείμενο για να το εξηγήσετε ή να το βελτιώσετε με το Browserx"
+  },
+  "Risk_Score": {
+    "message": "Σκορ κινδύνου:"
   },
   "Rollout_Expiration": {
     "message": "Λήξη σταδιακής κυκλοφορίας"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Εκτέλεση τώρα"
   },
   "Running": {
-    "message": ""
+    "message": "Εκτελείται"
+  },
+  "STREAM_ERROR": {
+    "message": "ΣΦΑΛΜΑ ΡΟΗΣ"
   },
   "Safe": {
-    "message": ""
+    "message": "Ασφαλές"
   },
   "Sandbox_Policy": {
     "message": "Πολιτική δοκιμαστικού περιβάλλοντος"
   },
   "Save_API_Key": {
     "message": "Αποθήκευση κλειδιού API"
+  },
+  "Save_Changes": {
+    "message": "Αποθήκευση αλλαγών"
   },
   "Save_Settings": {
     "message": "Αποθήκευση ρυθμίσεων"
@@ -713,25 +1511,48 @@
     "message": "Αποθήκευση..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Προγραμματισμός"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Προγραμματισμός νέας εργασίας"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Προγραμματισμένο"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Προγραμματισμένη εργασία"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Έναρξη προγραμματισμένης εργασίας"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Προγραμματισμένες εργασίες"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Ο προγραμματισμένος χρόνος πρέπει να είναι τουλάχιστον 1 λεπτό στο μέλλον"
+  },
+  "Search_complete": {
+    "message": "Η αναζήτηση ολοκληρώθηκε"
+  },
+  "Searching": {
+    "message": "Αναζήτηση..."
+  },
+  "Security_Privacy": {
+    "message": "Ασφάλεια & Απόρρητο"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Επίπεδο ασφαλείας για το περιβάλλον εκτέλεσης εργαλείων"
   },
-  "Security_Privacy": {
-    "message": "Ασφάλεια & Απόρρητο"
+  "Select_Model": {
+    "message": "Επιλογή μοντέλου"
+  },
+  "Select_model_1": {
+    "message": "Επιλογή μοντέλου: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Επιλέξτε το μοντέλο AI για τις συνομιλίες."
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Επιλέξτε την προτιμώμενη γλώσσα για τη διεπαφή"
   },
+  "Selected": {
+    "message": "Επιλεγμένο"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Λείπει η διαμόρφωση του επιλεγμένου μοντέλου"
+  },
+  "Send": {
+    "message": "Αποστολή"
+  },
   "Service_Tier": {
     "message": "Επίπεδο Υπηρεσίας"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "Συνεδρία"
+  "Service_tier_updated_to_1": {
+    "message": "Το επίπεδο υπηρεσίας ενημερώθηκε σε $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "Σφάλμα συνεδρίας"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Η συνεδρία έληξε - παρακαλώ συνδεθείτε ξανά για να συνεχίσετε τη χρήση του AI πράκτορα"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "Έχει επιτευχθεί το όριο συνεδρίας. Οι νέες εργασίες θα τοποθετηθούν σε ουρά."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Ορίστε πότε πρέπει να λήξουν τα δεδομένα rollout"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς"
   },
+  "Show_API_key": {
+    "message": "Εμφάνιση κλειδιού API"
+  },
+  "Show_all": {
+    "message": "Εμφάνιση όλων"
+  },
+  "Show_less": {
+    "message": "Εμφάνιση λιγότερων"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Εμφάνιση χρήσης token στις εργασίες"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Συνδεθείτε στο λογαριασμό σας"
   },
+  "Skills": {
+    "message": "Δεξιότητες"
+  },
   "Stable": {
     "message": "Σταθερό"
   },
+  "Standard_capabilities": {
+    "message": "Τυπικές δυνατότητες"
+  },
+  "Start_New_Conversation": {
+    "message": "Έναρξη νέας συνομιλίας"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "Έναρξη κατά τη σύνδεση"
   },
   "Status": {
-    "message": ""
+    "message": "Κατάσταση"
+  },
+  "Stop_Agent": {
+    "message": "Διακοπή πράκτορα"
+  },
+  "Stop_the_current_task": {
+    "message": "Διακοπή τρέχουσας εργασίας"
   },
   "Stop_the_current_task_run": {
     "message": "Διακοπή τρέχουσας εργασίας"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Αποθήκευση δεδομένων προσωρινής μνήμης μόνιμα μεταξύ περιόδων περιήγησης"
   },
+  "Suggest_Alternative": {
+    "message": "Πρόταση εναλλακτικού"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Μετάβαση σε λειτουργία backend. Τα αιτήματα LLM θα δρομολογούνται μέσω του διακομιστή AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Μετάβαση σε απευθείας λειτουργία API. Παρακαλώ διαμορφώστε το κλειδί API σας."
+  },
+  "System": {
+    "message": "Σύστημα"
+  },
   "Tab_Tool": {
     "message": "Εργαλείο Καρτέλας"
   },
+  "Tab_unavailable": {
+    "message": "Η καρτέλα δεν είναι διαθέσιμη"
+  },
+  "Take_Over": {
+    "message": "Ανάληψη"
+  },
   "Task": {
-    "message": ""
+    "message": "Εργασία"
   },
   "Task_Details": {
-    "message": ""
+    "message": "Λεπτομέρειες Εργασίας"
+  },
+  "Task_Failed": {
+    "message": "Αποτυχία εργασίας"
   },
   "Task_History": {
-    "message": ""
+    "message": "Ιστορικό Εργασίας"
   },
   "Task_ID": {
-    "message": ""
+    "message": "ID Εργασίας"
+  },
+  "Task_Plan": {
+    "message": "Σχέδιο Εργασίας"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Η εργασία ακυρώθηκε από τον χρήστη"
+  },
+  "Task_complete": {
+    "message": "Η εργασία ολοκληρώθηκε"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Η εργασία ολοκληρώθηκε σε $1$ γύρο(ους)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Η εργασία απέτυχε"
+  },
+  "Task_started": {
+    "message": "Η εργασία ξεκίνησε"
   },
   "Terminal": {
     "message": "Τερματικό"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "Τερματικό Sandbox"
   },
   "Test_Connection": {
     "message": "Δοκιμή Σύνδεσης"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "Δοκιμή..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "Το URL του τελικού σημείου του πράκτορα A2A (http ή https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "Η AI αποφασίζει ανά εντολή αν θα χρησιμοποιήσει sandbox βάσει εκτίμησης κινδύνου."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "Το URL του τελικού σημείου του διακομιστή MCP (http ή https)"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Ο πράκτορας χρησιμοποιεί αυτή τη στιγμή λειτουργία backend. Τα αιτήματα LLM θα δρομολογηθούν μέσω του διακομιστή AI Republic. Οι συνομιλίες σας υποβάλλονται σε επεξεργασία με ασφάλεια μέσω της υποδομής μας."
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Η αλλαγή μοντέλου θα διαγράψει την τρέχουσα συνομιλία. Θέλετε να συνεχίσετε;"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Ο διακομιστής αντιμετώπισε σφάλμα. Παρακαλώ δοκιμάστε ξανά αργότερα."
   },
   "Time": {
     "message": "Χρόνος"
-  },
-  "Time_remaining": {
-    "message": "Χρόνος που απομένει"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Χρόνος ζωής (TTL) για αντικείμενα cache σε δευτερόλεπτα (προεπιλογή: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Χρονικό όριο (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Για να χρησιμοποιήσετε τον πράκτορα AI, παρακαλώ είτε:"
+  },
+  "Today": {
+    "message": "Σήμερα"
   },
   "Toggle_side_panel": {
     "message": "Εναλλαγή πλευρικού πάνελ"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "Εναλλαγή χρήσης δικού σας κλειδιού API"
   },
-  "Tool": {
-    "message": "Εργαλείο"
+  "Token_Usage": {
+    "message": "Χρήση Token"
+  },
+  "Tokens": {
+    "message": "Διακριτικά:"
+  },
+  "Tokens_1": {
+    "message": "Διακριτικά: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Χρονικό όριο εργαλείου (ms)"
+  },
+  "Tool_name": {
+    "message": "Όνομα εργαλείου:"
+  },
+  "Tool": {
+    "message": "Εργαλείο"
   },
   "Tools": {
     "message": "Εργαλεία"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "Ρυθμίσεις εργαλείων"
   },
-  "Turn": {
-    "message": "Σειρά παίκτη"
+  "Trusted": {
+    "message": "Αξιόπιστο"
+  },
+  "Trusted_Domains": {
+    "message": "Αξιόπιστοι τομείς"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Οι αξιόπιστοι πράκτορες εγκρίνονται αυτόματα για κλήσεις δεξιοτήτων"
+  },
+  "Turns": {
+    "message": "Γύροι:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Πληκτρολογήστε εναλλακτικές οδηγίες..."
   },
   "UI_Theme": {
     "message": "Θέμα UI"
   },
+  "URL": {
+    "message": "URL"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "Το URL πρέπει να χρησιμοποιεί πρωτόκολλο http ή https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Αδυναμία ελέγχου κατάστασης πράκτορα"
+  },
   "Unable_to_load_credit_information": {
     "message": "Δεν ήταν δυνατή η φόρτωση των πληροφοριών πίστωσης"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Αδυναμία πρόσβασης στον διακομιστή backend - ελέγξτε τη σύνδεσή σας"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Αδυναμία πρόσβασης στον διακομιστή. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά."
+  },
+  "Unknown_Event": {
+    "message": "Άγνωστο συμβάν"
+  },
+  "Unknown_error": {
+    "message": "Άγνωστο σφάλμα"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Άγνωστο σφάλμα κατά τον έλεγχο της κατάστασης του πράκτορα"
+  },
+  "Unknown_error_occurred": {
+    "message": "Παρουσιάστηκε άγνωστο σφάλμα"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Παρουσιάστηκε άγνωστο σφάλμα κατά την εκτέλεση της εργασίας"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Άγνωστο σφάλμα κατά την επεξεργασία της υποβολής"
+  },
+  "Unknown_model_1": {
+    "message": "Άγνωστο μοντέλο ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Μη αποθηκευμένες αλλαγές"
   },
+  "Untitled": {
+    "message": "Ανώνυμο"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Επερχόμενα"
   },
   "Update": {
-    "message": ""
+    "message": "Ενημέρωση"
   },
   "Update_Channel": {
     "message": "Κανάλι ενημέρωσης"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "Αναβάθμιση σε Premium"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Αναβαθμίστε για να εξερευνήσετε τα πιο ισχυρά μοντέλα του κόσμου"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Αναβαθμίστε τη συνδρομή σας για να εξερευνήσετε τα πιο ισχυρά μοντέλα του κόσμου"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Use_Context_Menu": {
     "message": "Χρήση του μενού περιβάλλοντος:"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "Χρήση δικού σας κλειδιού API"
   },
-  "User_approved_action": {
-    "message": "Δράση που εγκρίθηκε από τον χρήστη"
-  },
   "User_Center": {
     "message": "Κέντρο χρήστη"
   },
-  "User_decision": {
-    "message": "Απόφαση χρήστη"
+  "User_Session": {
+    "message": "Συνεδρία χρήστη"
   },
   "User_preferences_and_interface_settings": {
     "message": "Προτιμήσεις χρήστη και ρυθμίσεις διεπαφής"
   },
-  "User_rejected_action": {
-    "message": "Ο χρήστης απέρριψε τη δράση"
-  },
-  "User_requested_modifications": {
-    "message": "Τροποποιήσεις που ζήτησε ο χρήστης"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "Χρήση επιπλέον πιστώσεων"
+  },
+  "Verbosity": {
+    "message": "Αναλυτικότητα"
+  },
+  "Verbosity_Control": {
+    "message": "Έλεγχος αναλυτικότητας"
+  },
+  "Verbosity_Levels": {
+    "message": "Επίπεδα αναλυτικότητας"
+  },
+  "Verbosity_levels": {
+    "message": "Επίπεδα αναλυτικότητας:"
+  },
+  "Version": {
+    "message": "Έκδοση"
   },
   "View_Chat_History": {
     "message": "Προβολή ιστορικού συνομιλίας"
   },
   "View_History": {
-    "message": ""
+    "message": "Προβολή ιστορικού"
   },
   "View_Session": {
-    "message": ""
+    "message": "Προβολή συνεδρίας"
+  },
+  "View_pricing_details": {
+    "message": "Προβολή λεπτομερειών τιμολόγησης"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Οπτική ανάλυση περιεχομένου και διάταξης σελίδας"
+  },
+  "Waiting_for_approval": {
+    "message": "Αναμονή έγκρισης"
   },
   "Web_Scraping_Tool": {
     "message": "Εργαλείο Web Scraping"
@@ -956,13 +1950,22 @@
     "message": "Καλώς ήρθατε στο Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "Εάν οι εντολές σε απομονωμένο περιβάλλον μπορούν να έχουν πρόσβαση στο δίκτυο"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "Πρόσβαση χώρου εργασίας"
   },
   "Workspace_Write": {
     "message": "Γραφή στο Χώρο Εργασίας"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Χθες"
+  },
+  "You": {
+    "message": "Εσείς"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Έχετε μη αποθηκευμένες αλλαγές. Θέλετε να τις απορρίψετε;"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Το κλειδί API σας είναι κρυπτογραφημένο"
   },
-  "Your_Decision": {
-    "message": "Η απόφασή σας"
+  "Your_personal_AI_assistant": {
+    "message": "Ο προσωπικός σας βοηθός AI"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Η συνεδρία σας έχει λήξει. Παρακαλώ συνδεθείτε ξανά."
+  },
+  "DISCONNECTED": {
+    "message": "[ΑΠΟΣΥΝΔΕΤΟ]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Σφάλμα: Η ροή διακόπηκε]"
+  },
+  "NO_ACCESS": {
+    "message": "[ΧΩΡΙΣ ΠΡΟΣΒΑΣΗ]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[ΧΩΡΙΣ API KEY - ΚΑΝΤΕ ΚΛΙΚ ΣΤΙΣ ΡΥΘΜΙΣΕΙΣ]"
+  },
+  "PROCESSING": {
+    "message": "[ΕΠΕΞΕΡΓΑΣΙΑ]"
+  },
+  "available": {
+    "message": "διαθέσιμο"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "στην κρυφή μνήμη"
+  },
+  "detailed_thinking": {
+    "message": "λεπτομερής σκέψη"
+  },
+  "disconnected": {
+    "message": "αποσυνδεδεμένο"
+  },
+  "exec_unknown_command": {
+    "message": "exec (άγνωστη εντολή)"
+  },
+  "optional": {
+    "message": "προαιρετικό"
+  },
+  "remaining": {
+    "message": "υπόλοιπο"
+  },
+  "session": {
+    "message": "συνεδρία"
+  },
+  "sessions": {
+    "message": "συνεδρίες"
+  },
+  "streaming": {
+    "message": "μετάδοση..."
+  },
+  "thinking": {
+    "message": "σκέψη"
+  },
+  "tokens": {
+    "message": "διακριτικά"
+  },
+  "trusted": {
+    "message": "έμπιστο"
+  },
+  "user": {
+    "message": "χρήστης"
+  },
+  "web_search": {
+    "message": "αναζήτηση web"
   }
 }

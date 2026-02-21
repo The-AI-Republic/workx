@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
 
   export let show: boolean = false;
   export let input: string = '';
@@ -108,7 +108,7 @@
 
     // Validate input
     if (!taskInput) {
-      errorMessage = 'Please enter a task description';
+      errorMessage = t('Please enter a task description');
       return;
     }
 
@@ -117,7 +117,7 @@
 
     // Must be at least 1 minute in the future
     if (scheduledTime <= now + 60000) {
-      errorMessage = 'Scheduled time must be at least 1 minute in the future';
+      errorMessage = t('Scheduled time must be at least 1 minute in the future');
       return;
     }
 
@@ -164,7 +164,7 @@
       <!-- Header -->
       <div class="modal-header">
         <h2 id="schedule-modal-title" class="modal-title">
-          {$_t('Schedule Task')}
+          {$_t('Schedule A New Task')}
         </h2>
         <button class="close-button" on:click={handleClose} aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -611,6 +611,12 @@
 
   .modal-backdrop.chatgpt .picker-input::-webkit-calendar-picker-indicator {
     filter: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .modal-backdrop.chatgpt .picker-input::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
   }
 
   .modal-backdrop.chatgpt .schedule-preview {

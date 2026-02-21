@@ -1,6 +1,5 @@
-use super::{SandboxExecutor, SandboxOutput, SandboxProfile, WorkspaceAccess};
+use super::{SandboxCommand, SandboxExecutor, SandboxProfile, WorkspaceAccess};
 use std::collections::HashMap;
-use tokio::process::Command;
 
 pub struct WindowsSandbox;
 
@@ -15,51 +14,31 @@ impl WindowsSandbox {
 
 #[async_trait::async_trait]
 impl SandboxExecutor for WindowsSandbox {
-    async fn execute(
+    fn build_command(
         &self,
         command: &str,
         shell: &str,
         shell_flag: &str,
         profile: &SandboxProfile,
         env: Option<&HashMap<String, String>>,
-    ) -> Result<SandboxOutput, String> {
-        // Windows AppContainer implementation
-        // For now, execute directly with a warning — full AppContainer
-        // integration with CreateAppContainerProfile, DACL setup,
-        // and PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES requires
-        // extensive Win32 API work that will be completed in a future iteration.
+    ) -> Result<SandboxCommand, String> {
         log::warn!("Windows AppContainer sandbox is not yet fully implemented, executing directly");
 
-        let mut cmd = Command::new(shell);
-        cmd.arg(shell_flag).arg(command);
-
         let ws = profile.workspace_dir.to_string_lossy().to_string();
-        if profile.workspace_access != WorkspaceAccess::None {
-            cmd.current_dir(&ws);
-        }
+        let cwd = if profile.workspace_access != WorkspaceAccess::None {
+            Some(ws)
+        } else {
+            None
+        };
 
-        if let Some(env_vars) = env {
-            for (key, value) in env_vars {
-                cmd.env(key, value);
-            }
-        }
+        let env_map = env.map(|e| e.clone());
 
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute command: {}", e))?;
-
-        let exit_code = output.status.code().unwrap_or(-1);
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        Ok(SandboxOutput {
-            exit_code,
-            stdout,
-            stderr: format!(
-                "WARNING: Windows sandbox not fully implemented, command ran without full AppContainer isolation.\n{}",
-                stderr
-            ),
+        Ok(SandboxCommand {
+            program: shell.to_string(),
+            args: vec![shell_flag.to_string(), command.to_string()],
+            cwd,
+            env: env_map,
+            held_resources: Vec::new(),
         })
     }
 }

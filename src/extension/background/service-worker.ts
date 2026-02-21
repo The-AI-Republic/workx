@@ -62,6 +62,7 @@ import type { TaskResultRecord } from '../../core/models/types/Scheduler';
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
+import { t } from '../../extension/sidepanel/lib/i18n';
 
 // Global instances
 /**
@@ -372,7 +373,7 @@ function setupMessageHandlers(): void {
       return {
         type: MessageType.HEALTH_STATUS,
         ready: false,
-        message: 'Agent not initialized',
+        message: t('Agent not initialized'),
         timestamp: Date.now(),
       };
     }
@@ -785,8 +786,8 @@ async function initializeScheduler(): Promise<void> {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: 'Missed Scheduled Tasks',
-        message: `${missedTasks.length} task(s) missed their scheduled time while the browser was closed.`,
+        title: t('Missed Scheduled Tasks'),
+        message: t(`${missedTasks.length} task(s) missed their scheduled time while the browser was closed.`),
         priority: 2,
       });
     }
@@ -1429,19 +1430,19 @@ function setupChromeListeners(): void {
 function setupContextMenus(): void {
   chrome.contextMenus.create({
     id: 'browserx-explain',
-    title: 'Explain with Browserx',
+    title: t('Explain with Browserx'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
     id: 'browserx-improve',
-    title: 'Improve with Browserx',
+    title: t('Improve with Browserx'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
     id: 'browserx-extract',
-    title: 'Extract data with Browserx',
+    title: t('Extract data with Browserx'),
     contexts: ['page', 'frame'],
   });
 }
@@ -1495,7 +1496,7 @@ async function handleContextMenuClick(
           items: [
             {
               type: 'text',
-              text: `Explain this: ${info.selectionText}`,
+              text: t(`Explain this: ${info.selectionText}`),
             },
           ],
         };
@@ -1509,7 +1510,7 @@ async function handleContextMenuClick(
           items: [
             {
               type: 'text',
-              text: `Improve this text: ${info.selectionText}`,
+              text: t(`Improve this text: ${info.selectionText}`),
             },
           ],
         };
@@ -1522,7 +1523,7 @@ async function handleContextMenuClick(
         items: [
           {
             type: 'text',
-            text: `Extract structured data from this page`,
+            text: t(`Extract structured data from this page`),
           },
           {
             type: 'context',

@@ -8,6 +8,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { ModelMetadata, ConfiguredFeatures } from '@/config/types.js';
   import ModelInfoTooltip from './ModelInfoTooltip.svelte';
+  import { _t } from '../../lib/i18n';
 
   export let model: ModelMetadata;
   export let isSelected = false;
@@ -93,7 +94,7 @@
 
         {#if model.deprecated}
           <span class="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">
-            Deprecated
+            {$_t('Deprecated')}
           </span>
         {/if}
 
@@ -110,18 +111,18 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          {formatContextWindow(model.contextWindow)} tokens
+          {formatContextWindow(model.contextWindow)} {$_t('tokens')}
         </span>
 
         {#if model.supportsReasoning}
           <span class="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
-            Reasoning
+            {$_t('Reasoning')}
           </span>
         {/if}
 
         {#if model.supportsVerbosity}
           <span class="px-1.5 py-0.5 text-xs bg-purple-500/20 text-purple-400 rounded">
-            Verbosity
+            {$_t('Verbosity')}
           </span>
         {/if}
       </div>
@@ -141,7 +142,7 @@
           {/each}
           {#if validation.incompatibleFeatures && validation.incompatibleFeatures.length > 0}
             <p class="mt-1 text-red-300">
-              Incompatible features: {validation.incompatibleFeatures.join(', ')}
+              {$_t('Incompatible features:')} {validation.incompatibleFeatures.join(', ')}
             </p>
           {/if}
         </div>

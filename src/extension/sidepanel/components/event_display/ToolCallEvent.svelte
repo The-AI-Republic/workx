@@ -4,6 +4,7 @@
    */
   import type { ProcessedEvent } from '@/types/ui';
   import { formatDuration } from '@/utils/formatters';
+  import { _t } from '../../lib/i18n';
 
   export let event: ProcessedEvent;
 </script>
@@ -24,16 +25,16 @@
   {#if event.metadata}
     <div class="text-xs text-gray-500 mt-1">
       {#if event.metadata.command}
-        <div>Command: {event.metadata.command}</div>
+        <div>{$_t("Command:")} {event.metadata.command}</div>
       {/if}
       {#if event.metadata.workingDir}
-        <div>CWD: {event.metadata.workingDir}</div>
+        <div>{$_t("CWD:")} {event.metadata.workingDir}</div>
       {/if}
       {#if event.metadata.exitCode !== undefined}
-        <div>Exit Code: {event.metadata.exitCode}</div>
+        <div>{$_t("Exit Code:")} {event.metadata.exitCode}</div>
       {/if}
       {#if event.metadata.toolName}
-        <div>Tool: {event.metadata.toolName}</div>
+        <div>{$_t("Tool:")} {event.metadata.toolName}</div>
       {/if}
     </div>
   {/if}

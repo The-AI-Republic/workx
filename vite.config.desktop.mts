@@ -40,6 +40,9 @@ export default defineConfig({
         '@tauri-apps/plugin-global-shortcut',
         '@tauri-apps/plugin-notification',
         '@tauri-apps/plugin-shell',
+        '@tauri-apps/plugin-autostart',
+        '@tauri-apps/plugin-updater',
+        '@tauri-apps/plugin-process',
       ],
       output: {
         entryFileNames: '[name].js',
