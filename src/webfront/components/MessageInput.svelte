@@ -9,6 +9,7 @@
   import CommandError from './CommandError.svelte';
   import { uiTheme } from '../stores/themeStore';
   import { platform } from '../stores/platformStore';
+  import { schedulerStore } from '../stores/schedulerStore';
   import { t, _t } from '../lib/i18n';
   import { commandRegistry, parseCommandInput } from '../commands';
   import type { FilteredCommand } from '../commands';
@@ -26,7 +27,6 @@
   const dispatch = createEventDispatcher<{
     modelChanged: { modelId: string; modelName: string };
     tabSelected: { tabId: number };
-    showScheduleModal: { input: string };
     commandOutput: { title: string; content: string };
   }>();
 
@@ -302,8 +302,9 @@
     isLongPress = false;
     pressTimer = setTimeout(() => {
       isLongPress = true;
-      // Dispatch event to show schedule modal
-      dispatch('showScheduleModal', { input: value });
+      // Set pending input and navigate to scheduler page
+      schedulerStore.setPendingInput(value);
+      push('/scheduler');
     }, LONG_PRESS_DURATION);
   }
 

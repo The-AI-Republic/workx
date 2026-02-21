@@ -27,9 +27,6 @@
   import { agentStore } from '../../stores/agentStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Scheduler components
-  import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
-
   // Message service (platform-agnostic)
   let service: IMessageService | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -52,9 +49,6 @@
   };
   // Current UI theme (reactive from store)
   let currentTheme: UITheme = 'terminal';
-  // Scheduler modal state
-  let showScheduleModal = false;
-  let scheduleTaskInput = '';
   // Scheduled task execution state (US3)
   let scheduledTaskId: string | null = null;
   let scheduledSessionId: string | null = null;
@@ -663,72 +657,6 @@
     processedEvents = [...processedEvents, cmdEvent];
   }
 
-  /**
-   * Handle long-press on send button to show schedule modal
-   */
-  function handleShowScheduleModal(event: CustomEvent<{ input: string }>) {
-    scheduleTaskInput = event.detail.input;
-    showScheduleModal = true;
-  }
-
-  /**
-   * Handle schedule task from modal
-   */
-  async function handleScheduleTask(event: CustomEvent<{ input: string; scheduledTime: number }>) {
-    const { input, scheduledTime } = event.detail;
-    showScheduleModal = false;
-
-    try {
-      if (!service) throw new Error('Message service not available');
-      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_TASK, {
-        input,
-        scheduledTime,
-      });
-
-      if (response?.success) {
-        // Clear the input since task was scheduled
-        inputText = '';
-
-        // Show confirmation notification
-        const scheduledDate = new Date(scheduledTime);
-        const formattedTime = scheduledDate.toLocaleString(undefined, {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-
-        // Add system message to show task was scheduled
-        const scheduledEvent: ProcessedEvent = {
-          id: `scheduled_${Date.now()}`,
-          category: 'system',
-          timestamp: new Date(),
-          title: 'system',
-          content: `Task scheduled for ${formattedTime}`,
-          style: { textColor: 'text-green-400' },
-          streaming: false,
-          collapsible: false,
-        };
-        processedEvents = [...processedEvents, scheduledEvent];
-      } else {
-        throw new Error(response?.error || 'Failed to schedule task');
-      }
-    } catch (error) {
-      console.error('[App] Failed to schedule task:', error);
-      messages = [...messages, {
-        type: 'agent',
-        content: `Failed to schedule task: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: Date.now(),
-      }];
-    }
-  }
-
-  function handleCloseScheduleModal() {
-    showScheduleModal = false;
-    scheduleTaskInput = '';
-  }
-
   async function startNewConversation() {
     // Clear UI state
     messages = [];
@@ -1083,7 +1011,6 @@
               {isProcessing}
               placeholder={$_t(">> Enter command...")}
               on:tabSelected={handleTabSelected}
-              on:showScheduleModal={handleShowScheduleModal}
               on:commandOutput={handleCommandOutput}
             />
           </div>
@@ -1094,14 +1021,6 @@
       </div>
     </TerminalContainer>
   </div>
-
-<!-- Schedule Task Modal -->
-<ScheduleTaskModal
-  show={showScheduleModal}
-  input={scheduleTaskInput}
-  on:close={handleCloseScheduleModal}
-  on:schedule={handleScheduleTask}
-/>
 
 <style>
   /* ============================================
