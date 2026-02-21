@@ -136,3 +136,97 @@ pub fn config_storage_clear() -> Result<(), String> {
     let mut storage = STORAGE.lock().unwrap();
     storage.clear()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Create a ConfigStorage backed by a temp directory for isolated testing.
+    /// Returns (ConfigStorage, TempDir) — caller must keep TempDir alive.
+    fn make_test_storage() -> (ConfigStorage, tempfile::TempDir) {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("config.json");
+        let storage = ConfigStorage {
+            data: Map::new(),
+            path: Some(path),
+        };
+        (storage, tmp)
+    }
+
+    #[test]
+    fn test_get_returns_none_for_missing_key() {
+        let (storage, _tmp) = make_test_storage();
+        assert!(storage.get("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_set_and_get() {
+        let (mut storage, _tmp) = make_test_storage();
+        storage.set("key1", "value1").unwrap();
+        let val = storage.get("key1").unwrap();
+        assert_eq!(val, "\"value1\"");
+    }
+
+    #[test]
+    fn test_set_json_value() {
+        let (mut storage, _tmp) = make_test_storage();
+        storage.set("obj", r#"{"a":1}"#).unwrap();
+        let val = storage.get("obj").unwrap();
+        assert_eq!(val, r#"{"a":1}"#);
+    }
+
+    #[test]
+    fn test_remove() {
+        let (mut storage, _tmp) = make_test_storage();
+        storage.set("key1", "val").unwrap();
+        storage.remove("key1").unwrap();
+        assert!(storage.get("key1").is_none());
+    }
+
+    #[test]
+    fn test_get_all() {
+        let (mut storage, _tmp) = make_test_storage();
+        storage.set("a", "1").unwrap();
+        storage.set("b", "2").unwrap();
+        let all = storage.get_all();
+        assert_eq!(all.len(), 2);
+    }
+
+    #[test]
+    fn test_clear() {
+        let (mut storage, _tmp) = make_test_storage();
+        storage.set("a", "1").unwrap();
+        storage.clear().unwrap();
+        assert!(storage.get_all().is_empty());
+    }
+
+    #[test]
+    fn test_persistence_write_and_reread() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("config.json");
+
+        // Write data with one storage instance
+        {
+            let mut storage = ConfigStorage {
+                data: Map::new(),
+                path: Some(path.clone()),
+            };
+            storage.set("persist_key", "persist_value").unwrap();
+            storage.set("num", "42").unwrap();
+        }
+
+        // Read it back with a fresh storage instance loading from the same file
+        {
+            let data: Map<String, Value> = {
+                let content = std::fs::read_to_string(&path).unwrap();
+                serde_json::from_str(&content).unwrap()
+            };
+            let storage = ConfigStorage {
+                data,
+                path: Some(path.clone()),
+            };
+            assert_eq!(storage.get("persist_key").unwrap(), "\"persist_value\"");
+            assert_eq!(storage.get("num").unwrap(), "42");
+        }
+    }
+}

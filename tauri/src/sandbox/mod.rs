@@ -228,3 +228,86 @@ pub fn get_executor() -> Option<Box<dyn SandboxExecutor>> {
     }
     Option::None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_workspace_access_from_str_opt_rw() {
+        assert_eq!(WorkspaceAccess::from_str_opt(Some("rw")), WorkspaceAccess::Rw);
+    }
+
+    #[test]
+    fn test_workspace_access_from_str_opt_ro() {
+        assert_eq!(WorkspaceAccess::from_str_opt(Some("ro")), WorkspaceAccess::Ro);
+    }
+
+    #[test]
+    fn test_workspace_access_from_str_opt_none_input() {
+        assert_eq!(WorkspaceAccess::from_str_opt(None), WorkspaceAccess::Rw);
+    }
+
+    #[test]
+    fn test_workspace_access_from_str_opt_none_value() {
+        assert_eq!(WorkspaceAccess::from_str_opt(Some("none")), WorkspaceAccess::None);
+    }
+
+    #[test]
+    fn test_workspace_access_from_str_opt_unknown() {
+        assert_eq!(WorkspaceAccess::from_str_opt(Some("xyz")), WorkspaceAccess::Rw);
+    }
+
+    #[test]
+    fn test_network_mode_from_str_opt_host() {
+        assert_eq!(NetworkMode::from_str_opt(Some("host")), NetworkMode::Host);
+    }
+
+    #[test]
+    fn test_network_mode_from_str_opt_sandbox() {
+        assert_eq!(NetworkMode::from_str_opt(Some("sandbox")), NetworkMode::Sandbox);
+    }
+
+    #[test]
+    fn test_network_mode_from_str_opt_none() {
+        assert_eq!(NetworkMode::from_str_opt(None), NetworkMode::Host);
+    }
+
+    #[test]
+    fn test_build_profile_defaults() {
+        let profile = build_profile(None, None, None, None, 30000);
+        assert_eq!(profile.workspace_access, WorkspaceAccess::Rw);
+        assert_eq!(profile.network_mode, NetworkMode::Host);
+        assert_eq!(profile.timeout_ms, 30000);
+        assert!(!profile.standard_writable.is_empty());
+        assert!(profile.bind_mounts.is_empty());
+    }
+
+    #[test]
+    fn test_build_profile_with_cwd() {
+        let profile = build_profile(Some("/tmp"), Some("ro"), Some("sandbox"), None, 5000);
+        assert_eq!(profile.workspace_access, WorkspaceAccess::Ro);
+        assert_eq!(profile.network_mode, NetworkMode::Sandbox);
+        assert_eq!(profile.timeout_ms, 5000);
+    }
+
+    #[test]
+    fn test_build_profile_with_bind_mounts() {
+        let mounts = vec![
+            BindMount {
+                host_path: "/tmp".to_string(),
+                access: "rw".to_string(),
+            },
+            BindMount {
+                host_path: "/tmp".to_string(),
+                access: "ro".to_string(),
+            },
+        ];
+        let profile = build_profile(Some("/tmp"), None, None, Some(&mounts), 10000);
+        assert_eq!(profile.bind_mounts.len(), 2);
+        assert_eq!(profile.bind_mounts[0].access, "rw");
+        assert_eq!(profile.bind_mounts[1].access, "ro");
+        // Bind mount paths should be canonicalized (for /tmp this resolves on the system)
+        assert!(!profile.bind_mounts[0].host_path.is_empty());
+    }
+}

@@ -112,6 +112,23 @@ fn get_theme_icon(is_dark: bool) -> Option<Image<'static>> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_png_image_invalid_data() {
+        let result = load_png_image(b"not a png file");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_load_png_image_empty() {
+        let result = load_png_image(b"");
+        assert!(result.is_none());
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

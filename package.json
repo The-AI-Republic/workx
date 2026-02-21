@@ -15,8 +15,8 @@
     "translate-validate": "node scripts/translate-i18n.js validate",
     "build:watch": "vite build --watch",
     "build:testtool": "vite build --config tests/tools/e2e/vite.config.ts",
-    "test": "vitest",
-    "test:all": "vitest run",
+    "test": "bash tauri/scripts/test-rust.sh && vitest",
+    "test:rust": "bash tauri/scripts/test-rust.sh",
     "type-check": "tsc --noEmit",
     "lint": "eslint src",
     "format": "prettier --write 'src/**/*.{ts,svelte,html,css}'"

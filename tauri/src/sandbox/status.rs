@@ -15,6 +15,36 @@ pub struct SandboxInstallResult {
     pub message: String,
 }
 
+/// Parse the distro ID from /etc/os-release content.
+/// Returns the value of the ID= line, or empty string if not found.
+fn parse_distro_id(os_release: &str) -> &str {
+    os_release
+        .lines()
+        .find(|line| line.starts_with("ID="))
+        .map(|line| line.trim_start_matches("ID=").trim_matches('"'))
+        .unwrap_or("")
+}
+
+/// Select the package manager and args for a given distro ID.
+/// Returns None if the distro is unsupported.
+fn select_package_manager(distro_id: &str) -> Option<(&'static str, Vec<&'static str>)> {
+    match distro_id {
+        "ubuntu" | "debian" | "pop" | "linuxmint" | "elementary" | "zorin" => {
+            Some(("apt-get", vec!["install", "-y", "bubblewrap"]))
+        }
+        "fedora" | "rhel" | "centos" | "rocky" | "alma" => {
+            Some(("dnf", vec!["install", "-y", "bubblewrap"]))
+        }
+        "arch" | "manjaro" | "endeavouros" => {
+            Some(("pacman", vec!["-S", "--noconfirm", "bubblewrap"]))
+        }
+        "opensuse" | "suse" | "opensuse-leap" | "opensuse-tumbleweed" => {
+            Some(("zypper", vec!["install", "-y", "bubblewrap"]))
+        }
+        _ => None,
+    }
+}
+
 /// Check sandbox runtime availability on the current platform
 #[tauri::command]
 pub async fn sandbox_check_status() -> Result<SandboxStatusResult, String> {
@@ -341,26 +371,11 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
         .await
         .unwrap_or_default();
 
-    let distro_id = os_release
-        .lines()
-        .find(|line| line.starts_with("ID="))
-        .map(|line| line.trim_start_matches("ID=").trim_matches('"'))
-        .unwrap_or("");
+    let distro_id = parse_distro_id(&os_release);
 
-    let (pm, args): (&str, Vec<&str>) = match distro_id {
-        "ubuntu" | "debian" | "pop" | "linuxmint" | "elementary" | "zorin" => {
-            ("apt-get", vec!["install", "-y", "bubblewrap"])
-        }
-        "fedora" | "rhel" | "centos" | "rocky" | "alma" => {
-            ("dnf", vec!["install", "-y", "bubblewrap"])
-        }
-        "arch" | "manjaro" | "endeavouros" => {
-            ("pacman", vec!["-S", "--noconfirm", "bubblewrap"])
-        }
-        "opensuse" | "suse" | "opensuse-leap" | "opensuse-tumbleweed" => {
-            ("zypper", vec!["install", "-y", "bubblewrap"])
-        }
-        _ => {
+    let (pm, args) = match select_package_manager(distro_id) {
+        Some(result) => result,
+        None => {
             return Ok(SandboxInstallResult {
                 success: false,
                 message: format!(
@@ -450,5 +465,85 @@ async fn install_bwrap_linux() -> Result<SandboxInstallResult, String> {
                     .to_string(),
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_distro_id_ubuntu() {
+        let content = "NAME=\"Ubuntu\"\nID=ubuntu\nVERSION_ID=\"24.04\"";
+        assert_eq!(parse_distro_id(content), "ubuntu");
+    }
+
+    #[test]
+    fn test_parse_distro_id_fedora() {
+        let content = "NAME=Fedora\nID=fedora\nVERSION_ID=40";
+        assert_eq!(parse_distro_id(content), "fedora");
+    }
+
+    #[test]
+    fn test_parse_distro_id_arch() {
+        let content = "NAME=\"Arch Linux\"\nID=arch\n";
+        assert_eq!(parse_distro_id(content), "arch");
+    }
+
+    #[test]
+    fn test_parse_distro_id_quoted() {
+        let content = "ID=\"debian\"";
+        assert_eq!(parse_distro_id(content), "debian");
+    }
+
+    #[test]
+    fn test_parse_distro_id_missing() {
+        let content = "NAME=SomeOS\nVERSION=1.0";
+        assert_eq!(parse_distro_id(content), "");
+    }
+
+    #[test]
+    fn test_parse_distro_id_empty() {
+        assert_eq!(parse_distro_id(""), "");
+    }
+
+    #[test]
+    fn test_select_package_manager_ubuntu() {
+        let (pm, _) = select_package_manager("ubuntu").unwrap();
+        assert_eq!(pm, "apt-get");
+    }
+
+    #[test]
+    fn test_select_package_manager_debian() {
+        let (pm, _) = select_package_manager("debian").unwrap();
+        assert_eq!(pm, "apt-get");
+    }
+
+    #[test]
+    fn test_select_package_manager_fedora() {
+        let (pm, _) = select_package_manager("fedora").unwrap();
+        assert_eq!(pm, "dnf");
+    }
+
+    #[test]
+    fn test_select_package_manager_arch() {
+        let (pm, _) = select_package_manager("arch").unwrap();
+        assert_eq!(pm, "pacman");
+    }
+
+    #[test]
+    fn test_select_package_manager_opensuse() {
+        let (pm, _) = select_package_manager("opensuse").unwrap();
+        assert_eq!(pm, "zypper");
+    }
+
+    #[test]
+    fn test_select_package_manager_unsupported() {
+        assert!(select_package_manager("gentoo").is_none());
+    }
+
+    #[test]
+    fn test_select_package_manager_empty() {
+        assert!(select_package_manager("").is_none());
     }
 }
