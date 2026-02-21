@@ -1,15 +1,20 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
   import Tooltip from './common/Tooltip.svelte';
   import ChatHistoryPopup from './chat/ChatHistoryPopup.svelte';
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import CommandDropdown from './CommandDropdown.svelte';
+  import CommandError from './CommandError.svelte';
+  import { uiTheme } from '../stores/themeStore';
   import { platform } from '../stores/platformStore';
-  import { _t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
+  import { commandRegistry, parseCommandInput } from '../commands';
+  import type { FilteredCommand } from '../commands';
+  import { initBuiltinCommands } from '../commands/builtinCommands';
 
   export let value: string = '';
-  export let placeholder: string = '>> Enter command...';
+  export let placeholder: string = t('>> Enter command...');
   export let onSubmit: (value: string) => void = () => {};
   export let onStop: () => void = () => {};
   export let onSelectConversation: (conversationId: string) => void = () => {};
@@ -21,15 +26,46 @@
     modelChanged: { modelId: string; modelName: string };
     tabSelected: { tabId: number };
     showScheduleModal: { input: string };
+    commandOutput: { title: string; content: string };
+    openSettings: void;
   }>();
 
   let isFocused = false;
-  let currentTheme: UITheme = 'terminal';
+
+  $: currentTheme = $uiTheme;
 
   // Long-press detection for scheduling
   const LONG_PRESS_DURATION = 500; // milliseconds
   let pressTimer: ReturnType<typeof setTimeout> | null = null;
   let isLongPress = false;
+
+  // Command mode state
+  let isCommandMode = false;
+  let filterText = '';
+  let showDropdown = false;
+  let selectedIndex = 0;
+  let filteredCommands: FilteredCommand[] = [];
+  let errorMessage: string | null = null;
+  let errorTimeout: ReturnType<typeof setTimeout> | null = null;
+  let lastExecuted = new Map<string, number>();
+  let builtinsInitialized = false;
+
+  const DEBOUNCE_MS = 500;
+
+  // Initialize built-in commands once
+  function ensureBuiltins(): void {
+    if (builtinsInitialized) return;
+    builtinsInitialized = true;
+    initBuiltinCommands({
+      onNewConversation: () => onNewConversation(),
+      onCommandOutput: (title: string, content: string) => {
+        dispatch('commandOutput', { title, content });
+      },
+      onOpenSettings: () => {
+        dispatch('openSettings');
+      },
+    });
+  }
 
   // Reactive tooltip content based on state
   $: buttonTooltipContent = isProcessing
@@ -38,23 +74,197 @@
       ? $_t('Please type a valid command')
       : $_t('Long press to schedule task');
 
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
   function handleModelChanged(event: CustomEvent<{ modelId: string; modelName: string }>) {
     dispatch('modelChanged', event.detail);
   }
 
+  function resetCommandMode(): void {
+    isCommandMode = false;
+    filterText = '';
+    showDropdown = false;
+    selectedIndex = 0;
+    filteredCommands = [];
+  }
+
+  function clearError(): void {
+    errorMessage = null;
+    if (errorTimeout) {
+      clearTimeout(errorTimeout);
+      errorTimeout = null;
+    }
+  }
+
+  function showError(message: string): void {
+    clearError();
+    errorMessage = message;
+    errorTimeout = setTimeout(() => {
+      errorMessage = null;
+      errorTimeout = null;
+    }, 60000);
+  }
+
+  function updateFilter(): void {
+    const query = filterText;
+    filteredCommands = commandRegistry.filter(query);
+    selectedIndex = 0;
+  }
+
+  function executeCommand(commandName: string, args?: string): void {
+    const now = Date.now();
+    const lastTime = lastExecuted.get(commandName);
+    if (lastTime && now - lastTime < DEBOUNCE_MS) {
+      return; // debounced
+    }
+
+    const command = commandRegistry.get(commandName);
+    if (!command) {
+      showError(`Unknown command: /${commandName}. Type / to see available commands.`);
+      resetCommandMode();
+      value = '';
+      return;
+    }
+
+    lastExecuted.set(commandName, now);
+    resetCommandMode();
+    value = '';
+
+    try {
+      command.action(args);
+    } catch (err) {
+      showError(`Command /${commandName} failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   function handleKeyDown(event: KeyboardEvent) {
-    // Submit on Enter (without Shift)
+    ensureBuiltins();
+
+    // Clear error on any typing
+    if (errorMessage && event.key.length === 1) {
+      clearError();
+    }
+
+    // Command mode keyboard handling
+    if (isCommandMode) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (filteredCommands.length > 0) {
+          selectedIndex = (selectedIndex + 1) % filteredCommands.length;
+        }
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (filteredCommands.length > 0) {
+          selectedIndex = (selectedIndex - 1 + filteredCommands.length) % filteredCommands.length;
+        }
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        resetCommandMode();
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        if (filteredCommands.length > 0 && selectedIndex < filteredCommands.length) {
+          // Execute selected command from dropdown
+          const selected = filteredCommands[selectedIndex];
+          executeCommand(selected.command.name);
+        } else {
+          // Try to parse and execute directly
+          const parsed = parseCommandInput(value);
+          if (parsed) {
+            executeCommand(parsed.commandName, parsed.args);
+          }
+        }
+        return;
+      }
+    }
+
+    // Normal mode: Submit on Enter (without Shift)
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       if (value.trim()) {
+        // Check if it looks like a command
+        if (value.trim().startsWith('/')) {
+          const parsed = parseCommandInput(value);
+          if (parsed) {
+            ensureBuiltins();
+            executeCommand(parsed.commandName, parsed.args);
+            return;
+          }
+        }
         onSubmit(value);
       }
     }
     // Allow Shift+Enter for new line (default textarea behavior)
+  }
+
+  function handleInput(): void {
+    ensureBuiltins();
+
+    // Clear error on input
+    if (errorMessage) {
+      clearError();
+    }
+
+    // Check for command mode activation: "/" as first char in field
+    if (value === '/') {
+      isCommandMode = true;
+      showDropdown = true;
+      filterText = '';
+      updateFilter();
+      return;
+    }
+
+    // Update filter if in command mode
+    if (isCommandMode && value.startsWith('/')) {
+      filterText = value.slice(1).split(' ')[0]; // filter by command name only
+      updateFilter();
+      return;
+    }
+
+    // Exit command mode if "/" was deleted or text doesn't start with /
+    if (isCommandMode && !value.startsWith('/')) {
+      resetCommandMode();
+    }
+  }
+
+  function handleBlur(): void {
+    isFocused = false;
+    // Delay closing to allow click events on dropdown to fire
+    setTimeout(() => {
+      if (!isFocused) {
+        resetCommandMode();
+      }
+    }, 150);
+  }
+
+  function handlePaste(event: ClipboardEvent): void {
+    ensureBuiltins();
+    // If field is empty and pasted text starts with "/", enter command mode after paste
+    if (value === '' || value === undefined) {
+      const pastedText = event.clipboardData?.getData('text') || '';
+      if (pastedText.startsWith('/')) {
+        // Let the paste happen, then check in next tick
+        setTimeout(() => {
+          if (value.startsWith('/')) {
+            isCommandMode = true;
+            showDropdown = true;
+            filterText = value.slice(1).split(' ')[0];
+            updateFilter();
+          }
+        }, 0);
+      }
+    }
+  }
+
+  function handleDropdownHover(index: number): void {
+    selectedIndex = index;
+  }
+
+  function handleDropdownSelect(command: FilteredCommand): void {
+    executeCommand(command.command.name);
   }
 
   function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
@@ -72,6 +282,15 @@
     if (isProcessing) {
       onStop();
     } else if (value.trim()) {
+      // Check if it looks like a command
+      if (value.trim().startsWith('/')) {
+        ensureBuiltins();
+        const parsed = parseCommandInput(value);
+        if (parsed) {
+          executeCommand(parsed.commandName, parsed.args);
+          return;
+        }
+      }
       onSubmit(value);
     }
   }
@@ -101,6 +320,12 @@
       pressTimer = null;
     }
   }
+
+  onDestroy(() => {
+    if (errorTimeout) {
+      clearTimeout(errorTimeout);
+    }
+  });
 </script>
 
 <div class="message-input-container {currentTheme}">
@@ -120,7 +345,7 @@
         <button
           class="new-conv-button"
           on:click={onNewConversation}
-          aria-label="Start New Conversation"
+          aria-label={$_t("Start New Conversation")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="new-conv-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 5C5.34315 5 4 6.34315 4 8V16C4 17.6569 5.34315 19 7 19H17C18.6569 19 20 17.6569 20 16V12.5C20 11.9477 20.4477 11.5 21 11.5C21.5523 11.5 22 11.9477 22 12.5V16C22 18.7614 19.7614 21 17 21H7C4.23858 21 2 18.7614 2 16V8C2 5.23858 4.23858 3 7 3H10.5C11.0523 3 11.5 3.44772 11.5 4C11.5 4.55228 11.0523 5 10.5 5H7Z"/>
@@ -133,13 +358,27 @@
 
   <!-- Message Input -->
   <div class="terminal-input-wrapper">
+    <!-- Command Error (above input) -->
+    <CommandError message={errorMessage} visible={errorMessage !== null} />
+
+    <!-- Command Dropdown (above input) -->
+    <CommandDropdown
+      commands={filteredCommands}
+      {selectedIndex}
+      visible={showDropdown}
+      on:hover={(e) => handleDropdownHover(e.detail)}
+      on:select={(e) => handleDropdownSelect(e.detail)}
+    />
+
     <div class="terminal-input-shell">
       <textarea
         bind:value
         {placeholder}
         on:keydown={handleKeyDown}
+        on:input={handleInput}
+        on:paste={handlePaste}
         on:focus={() => isFocused = true}
-        on:blur={() => isFocused = false}
+        on:blur={handleBlur}
         class="terminal-input"
         class:expanded={isFocused}
         aria-label="Message input"
@@ -165,7 +404,7 @@
               on:pointerup={handlePointerUp}
               on:pointerleave={handlePointerLeave}
               disabled={!isProcessing && !value.trim()}
-              aria-label={isProcessing ? 'Stop the current task' : 'Long press to schedule task'}
+              aria-label={isProcessing ? $_t('Stop the current task') : $_t('Long press to schedule task')}
             >
               {#if isProcessing}
                 <!-- Stop Icon (Square) -->

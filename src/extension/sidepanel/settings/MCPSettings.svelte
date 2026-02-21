@@ -15,8 +15,11 @@
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/mcp/MCPConfig';
   import { sendMessage, MessageType } from '../lib/messaging';
   import { _t } from '../lib/i18n';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -47,6 +50,15 @@
   let serversExpanded = true;
   let toolsExpanded = false;
   let advancedExpanded = false;
+
+  $: if (highlightSettingId) {
+    highlightSetting(highlightSettingId, async () => {
+      serversExpanded = true;
+      toolsExpanded = true;
+      advancedExpanded = true;
+    });
+    highlightSettingId = undefined;
+  }
 
   // Debug logging state (T061)
   let debugLogging = false;
@@ -416,7 +428,7 @@
   {:else}
     <div class="settings-form">
       <!-- Server List Section -->
-      <div class="collapsible-section settings-card">
+      <div class="collapsible-section settings-card" data-setting-id="mcp-configured-servers">
         <button
           class="section-header"
           on:click={() => toggleSection('servers')}
@@ -529,7 +541,7 @@
       </div>
 
       <!-- Tools Section -->
-      <div class="collapsible-section settings-card">
+      <div class="collapsible-section settings-card" data-setting-id="mcp-available-tools">
         <button
           class="section-header"
           on:click={() => toggleSection('tools')}
@@ -600,7 +612,7 @@
 
         {#if advancedExpanded}
           <div class="section-content">
-            <div class="form-group">
+            <div class="form-group" data-setting-id="mcp-debug-logging">
               <label class="checkbox-label">
                 <input
                   type="checkbox"

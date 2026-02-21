@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
   import type { SchedulerTaskStatus } from '@/core/models/types/Scheduler';
 
   export let id: string;
@@ -39,20 +39,20 @@
 
   function getStatusLabel(status: SchedulerTaskStatus): string {
     switch (status) {
-      case 'running': return 'Running';
-      case 'scheduled': return 'Scheduled';
-      case 'waiting': return 'Queued';
-      case 'missed': return 'Missed';
-      case 'draft': return 'Draft';
-      case 'completed': return 'Completed';
-      case 'failed': return 'Failed';
-      case 'cancelled': return 'Cancelled';
+      case 'running': return t('Running');
+      case 'scheduled': return t('Scheduled');
+      case 'waiting': return t('Queued');
+      case 'missed': return t('Missed');
+      case 'draft': return t('Draft');
+      case 'completed': return t('Completed');
+      case 'failed': return t('Failed');
+      case 'cancelled': return t('Cancelled');
       default: return status;
     }
   }
 
   function formatTime(timestamp: number | null): string {
-    if (!timestamp) return 'No time set';
+    if (!timestamp) return t('No time set');
     const date = new Date(timestamp);
     return date.toLocaleString(undefined, {
       month: 'short',
@@ -118,7 +118,7 @@
         <span class="time-absolute">{formatTime(scheduledTime)}</span>
         <span class="time-relative">({getRelativeTime(scheduledTime)})</span>
       {:else}
-        <span class="time-draft">No scheduled time</span>
+        <span class="time-draft">{$_t('No scheduled time')}</span>
       {/if}
     </div>
   </div>

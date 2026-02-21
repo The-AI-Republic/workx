@@ -1,10 +1,18 @@
-# BrowserX
+# Pi (Personal AI)
 
 **AI-Powered Personal Assistant - Chrome Extension & Desktop App**
 
-BrowserX is a privacy-preserving, general-purpose AI personal assistant available as both a **Chrome extension (BrowserX)** and a **desktop application (Pi)**. The agent operates entirely within the user's local environment, interpreting natural language commands and autonomously performing tasks across web browsing, file management, and more. All interactions occur client-side, ensuring that sensitive data never leaves your machine.
+Pi is a privacy-preserving, general-purpose AI personal assistant available as both a **Chrome extension (BrowserX)** and a **desktop application (Apple Pi)**. The agent operates entirely within the user's local environment, interpreting natural language commands and autonomously performing tasks across web browsing, file management, and more. All interactions occur client-side, ensuring that sensitive data never leaves your machine.
 
-![BrowserX UI Screenshot](/src/static/browserx_UI.png)
+## Naming Convention
+
+| Name | Usage | Context |
+|------|-------|---------|
+| **Pi** | Project/repo name | Git repository, package name, internal references |
+| **BrowserX** | Chrome extension name | Extension store listing, extension UI, browser branding |
+| **Apple Pi** | Desktop app name | Desktop application UI, window title, installer |
+
+![Pi UI Screenshot](/src/static/pi_UI.png)
 
 ---
 
@@ -13,7 +21,7 @@ BrowserX is a privacy-preserving, general-purpose AI personal assistant availabl
 | App | Platform | Description | Best For |
 |-----|----------|-------------|----------|
 | **BrowserX** | Chrome Extension | Browser-based agent with web automation | Quick web tasks, browsing assistance |
-| **Pi** | Desktop (Win/Mac/Linux) | Native application with full system access | Terminal commands, file operations, advanced automation |
+| **Apple Pi** | Desktop (Win/Mac/Linux) | Native application with full system access | Terminal commands, file operations, advanced automation |
 
 ---
 
@@ -27,7 +35,7 @@ BrowserX is a privacy-preserving, general-purpose AI personal assistant availabl
 
 **Current Status:** Alpha Testing
 
-BrowserX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code is publicly available for transparency and educational purposes, but this project is **not open source** at this time.
+Pi is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code is publicly available for transparency and educational purposes, but this project is **not open source** at this time.
 
 **Usage Restrictions:**
 - Personal evaluation and learning: ✅ Allowed
@@ -101,8 +109,8 @@ cp .env.example src/desktop/.env
 
 1. **Clone the repository:**
    ```bash
-   git clone git@github.com:The-AI-Republic/browserx.git
-   cd browserx
+   git clone git@github.com:The-AI-Republic/pi.git
+   cd pi
    ```
 
 2. **Install dependencies:**
@@ -135,7 +143,7 @@ cp .env.example src/desktop/.env
 
 ---
 
-### Pi (Desktop App)
+### Apple Pi (Desktop App)
 
 #### Prerequisites (Ubuntu/Linux)
 ```bash
@@ -190,7 +198,7 @@ cp .env.example src/desktop/.env
 npm run tauri:dev
 ```
 
-This will start the Vite frontend server and launch the Pi desktop window with hot-reload enabled.
+This will start the Vite frontend server and launch the Apple Pi desktop window with hot-reload enabled.
 
 #### Environment Variables (Linux)
 
@@ -299,6 +307,86 @@ WEBKIT_DISABLE_COMPOSITING_MODE=1 ./pi
 
 ---
 
+## Internationalization (i18n)
+
+Pi supports 50+ languages via Chrome's `_locales` system. All user-facing strings are wrapped in translation functions and auto-translated using a Fireworks AI-powered pipeline.
+
+### How It Works
+
+1. **Wrap strings** in source code using `t()` or `$_t()`
+2. **Extract keys** from source into locale files
+3. **Auto-translate** missing translations via LLM
+
+### Translation Functions
+
+| Function | Usage | Context |
+|----------|-------|---------|
+| `t("text")` | Non-reactive translation | Script sections, TS files |
+| `$_t("text")` | Reactive Svelte store | Svelte template sections |
+
+**With substitutions:**
+```typescript
+// Script
+t('Hello $1$', { substitutions: [userName] })
+
+// Template
+{$_t('$1$ items remaining', { substitutions: [count.toString()] })}
+```
+
+**Import:**
+```typescript
+// Svelte components
+import { t, _t } from '../lib/i18n';
+
+// TypeScript files (using path alias)
+import { t } from '@/extension/sidepanel/lib/i18n';
+```
+
+### Adding New Translatable Strings
+
+1. Wrap the string with `t()` (script) or `$_t()` (template)
+2. Run extraction to generate keys:
+   ```bash
+   npm run extract-i18n
+   ```
+3. Run translation to fill in all locales:
+   ```bash
+   # Via CLI argument
+   npm run translate -- --api-key=YOUR_FIREWORKS_API_KEY
+
+   # Or via environment variable
+   FIREWORKS_API_KEY=YOUR_FIREWORKS_API_KEY npm run translate
+   ```
+
+### i18n Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run extract-i18n` | Scan source for `t()`/`$_t()` calls, update `key_map.json` and all locale `messages.json` files |
+| `npm run translate -- --api-key=KEY` | Auto-translate missing entries across all 50+ locales using Fireworks AI |
+| `npm run translate-validate` | Validate existing translations for consistency |
+
+### File Structure
+
+```
+src/
+  extension/
+    _locales/
+      supported_languages.json   # List of 50+ supported locales
+      key_map.json               # Text-to-key mappings (auto-generated)
+      en/messages.json           # English (source of truth)
+      zh_CN/messages.json        # Simplified Chinese
+      ja_JP/messages.json        # Japanese
+      ...                        # 47+ more locales
+    sidepanel/lib/i18n/
+      index.ts                   # i18n module (t, _t exports)
+scripts/
+  extract-i18n.js               # Key extraction script
+  translate-i18n.js              # Auto-translation script
+```
+
+---
+
 ## Tool Testing Framework
 
 For developers working on browser tool integrations, we provide a standalone testing extension.
@@ -328,7 +416,7 @@ We welcome collaboration from the developer community and business partners.
 
 ### Areas of Interest
 - **Investment opportunities:** Strategic partnerships and funding discussions
-- **Enterprise adoption:** Integrating BrowserX/Pi into organizational workflows
+- **Enterprise adoption:** Integrating BrowserX/Apple Pi into organizational workflows
 - **Collaboration:** Bug reports, feature suggestions, and feedback
 
 ### How You Can Help

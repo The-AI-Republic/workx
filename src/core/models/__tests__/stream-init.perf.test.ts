@@ -60,7 +60,7 @@ describe('Stream Initialization Performance', () => {
         status: 200,
         headers: new Headers({
           'content-type': 'text/event-stream',
-          'x-browserx-primary-used-percent': '50.0',
+          'x-pi-primary-used-percent': '50.0',
         }),
         body: stream,
       };

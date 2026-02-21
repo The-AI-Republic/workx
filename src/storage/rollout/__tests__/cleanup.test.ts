@@ -23,7 +23,7 @@ try {
 }
 
 /**
- * Helper: ensure the BrowserxRollouts DB exists with proper stores
+ * Helper: ensure the PiRollouts DB exists with proper stores
  * by creating and closing a RolloutWriter.
  */
 async function ensureDatabase(): Promise<void> {

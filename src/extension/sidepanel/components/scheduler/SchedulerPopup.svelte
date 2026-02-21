@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
   import SchedulerTaskItem from './SchedulerTaskItem.svelte';
   import ArchivedTasksView from './ArchivedTasksView.svelte';
@@ -168,7 +168,7 @@
   }
 
   async function handleCancelTask(event: CustomEvent<{ taskId: string }>) {
-    if (!confirm('Are you sure you want to cancel this task?')) return;
+    if (!confirm(t('Are you sure you want to cancel this task?'))) return;
 
     try {
       await sendMessage(MessageType.SCHEDULER_CANCEL_TASK, { taskId: event.detail.taskId });
@@ -324,7 +324,7 @@
     <!-- Content -->
     <div class="popup-content">
       {#if isLoading}
-        <div class="loading-state">Loading...</div>
+        <div class="loading-state">{$_t('Loading...')}</div>
       {:else if totalTasks === 0}
         <div class="empty-state">
           <p>{$_t('No scheduled tasks')}</p>

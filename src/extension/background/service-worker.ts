@@ -8,7 +8,7 @@
  * - Session-aware message routing
  */
 
-import { BrowserxAgent } from '../../core/BrowserxAgent';
+import { PiAgent } from '../../core/PiAgent';
 import { MessageRouter, MessageType } from '../../core/MessageRouter';
 import { AuthManager } from '../../core/models/types/Auth';
 import type { Submission } from '../../core/protocol/types';
@@ -62,6 +62,7 @@ import type { TaskResultRecord } from '../../core/models/types/Scheduler';
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
+import { t } from '../../extension/sidepanel/lib/i18n';
 
 // Global instances
 /**
@@ -69,7 +70,7 @@ import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts'
  * This variable is kept only for backward compatibility during migration.
  * All new code should use AgentRegistry to access agent instances.
  */
-let agent: BrowserxAgent | null = null;
+let agent: PiAgent | null = null;
 let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
 let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
@@ -279,7 +280,7 @@ async function initializeSessionPersistence(): Promise<void> {
  * @param message The incoming message with optional sessionId
  * @returns The agent to use for this message
  */
-function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): BrowserxAgent | null {
+function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): PiAgent | null {
   // Feature 015: Route by sessionId if provided, otherwise use primary session
   // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
   const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
@@ -372,7 +373,7 @@ function setupMessageHandlers(): void {
       return {
         type: MessageType.HEALTH_STATUS,
         ready: false,
-        message: 'Agent not initialized',
+        message: t('Agent not initialized'),
         timestamp: Date.now(),
       };
     }
@@ -436,7 +437,7 @@ function setupMessageHandlers(): void {
     }
 
     // Recreate agent with resumed session
-    agent = new BrowserxAgent(agentConfig!, router!, {
+    agent = new PiAgent(agentConfig!, router!, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -637,7 +638,7 @@ function setupMessageHandlers(): void {
           await agent.cleanup();
         }
 
-        agent = new BrowserxAgent(agentConfig, router!);
+        agent = new PiAgent(agentConfig, router!);
 
         // Set up event dispatcher for chrome extension mode
         agent.setEventDispatcher((event) => {
@@ -785,8 +786,8 @@ async function initializeScheduler(): Promise<void> {
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: 'Missed Scheduled Tasks',
-        message: `${missedTasks.length} task(s) missed their scheduled time while the browser was closed.`,
+        title: t('Missed Scheduled Tasks'),
+        message: t(`${missedTasks.length} task(s) missed their scheduled time while the browser was closed.`),
         priority: 2,
       });
     }
@@ -1429,19 +1430,19 @@ function setupChromeListeners(): void {
 function setupContextMenus(): void {
   chrome.contextMenus.create({
     id: 'browserx-explain',
-    title: 'Explain with Browserx',
+    title: t('Explain with Browserx'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
     id: 'browserx-improve',
-    title: 'Improve with Browserx',
+    title: t('Improve with Browserx'),
     contexts: ['selection'],
   });
 
   chrome.contextMenus.create({
     id: 'browserx-extract',
-    title: 'Extract data with Browserx',
+    title: t('Extract data with Browserx'),
     contexts: ['page', 'frame'],
   });
 }
@@ -1495,7 +1496,7 @@ async function handleContextMenuClick(
           items: [
             {
               type: 'text',
-              text: `Explain this: ${info.selectionText}`,
+              text: t(`Explain this: ${info.selectionText}`),
             },
           ],
         };
@@ -1509,7 +1510,7 @@ async function handleContextMenuClick(
           items: [
             {
               type: 'text',
-              text: `Improve this text: ${info.selectionText}`,
+              text: t(`Improve this text: ${info.selectionText}`),
             },
           ],
         };
@@ -1522,7 +1523,7 @@ async function handleContextMenuClick(
         items: [
           {
             type: 'text',
-            text: `Extract structured data from this page`,
+            text: t(`Extract structured data from this page`),
           },
           {
             type: 'context',

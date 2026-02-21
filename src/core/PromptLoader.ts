@@ -12,7 +12,7 @@
  */
 
 // Import default prompts as raw strings at build time (fallbacks)
-import defaultBrowserxPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
+import defaultPiExtensionPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
 import defaultPiPrompt from '../prompts/default_pi_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
 import { PromptComposer, type AgentType, type RuntimeContext } from '../prompts/PromptComposer';
@@ -38,7 +38,7 @@ export function configurePromptComposer(
 
 /**
  * Check if the PromptComposer has already been configured.
- * Used by BrowserxAgent to skip re-configuration when the desktop bootstrap
+ * Used by PiAgent to skip re-configuration when the desktop bootstrap
  * has already called configurePromptComposer() with platform context.
  */
 export function isComposerConfigured(): boolean {
@@ -63,7 +63,6 @@ export async function loadPrompt(): Promise<string> {
         currentDateTime: new Date().toISOString(),
       };
       const prompt = composer.composeMainInstruction(configuredAgentType, context);
-      console.log(`[PromptLoader] System prompt (${configuredAgentType}, composed):\n`, prompt);
       return prompt;
     } catch (error) {
       console.error('[PromptLoader] composeMainInstruction failed, falling back to default prompt:', error);
@@ -74,9 +73,8 @@ export async function loadPrompt(): Promise<string> {
   if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
     fallback = defaultPiPrompt;
   } else {
-    fallback = defaultBrowserxPrompt;
+    fallback = defaultPiExtensionPrompt;
   }
-  console.log(`[PromptLoader] System prompt (${configuredAgentType}, fallback):\n`, fallback);
   return fallback;
 }
 

@@ -25,6 +25,9 @@
   let showUnsavedDialog = false;
   let pendingNavigation: NavigationView | null = null;
 
+  // Highlight setting after navigation from search
+  let highlightSettingId: string | undefined = undefined;
+
   // Advanced config context (for 3rd level menu)
   let advancedConfigModelId = '';
   let advancedConfigProviderId = '';
@@ -90,11 +93,13 @@
     }
   }
 
-  function handleCategorySelected(event: CustomEvent<{ categoryId: string }>) {
+  function handleCategorySelected(event: CustomEvent<{ categoryId: string; scrollToId?: string }>) {
+    highlightSettingId = event.detail.scrollToId;
     navigateTo(event.detail.categoryId as NavigationView);
   }
 
   function handleBack() {
+    highlightSettingId = undefined;
     navigateTo('menu');
   }
 
@@ -150,6 +155,7 @@
     {:else if currentView === 'model-config'}
       <ModelSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         on:authUpdated={handleAuthUpdated}
@@ -168,6 +174,7 @@
     {:else if currentView === 'general'}
       <GeneralSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}
@@ -175,6 +182,7 @@
     {:else if currentView === 'storage'}
       <StorageSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}
@@ -182,6 +190,7 @@
     {:else if currentView === 'tools'}
       <ToolsSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}
@@ -189,6 +198,7 @@
     {:else if currentView === 'mcp-servers'}
       <MCPSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}
@@ -196,6 +206,7 @@
     {:else if currentView === 'extension'}
       <ExtensionSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}
@@ -203,6 +214,7 @@
     {:else if currentView === 'approval'}
       <ApprovalSettings
         {settingsConfig}
+        {highlightSettingId}
         on:back={handleBack}
         on:saved={() => {}}
         bind:isDirty={hasUnsavedChanges}

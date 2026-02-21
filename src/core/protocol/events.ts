@@ -98,7 +98,8 @@ export type EventMsg =
   // Browser action events
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
-  | { type: 'NavigationActionStart'; data: NavigationActionStartEvent };
+  | { type: 'NavigationActionStart'; data: NavigationActionStartEvent }
+;
 
 // Individual event payload types
 
@@ -536,13 +537,16 @@ export interface ToolUnregisteredEvent {
 
 export interface ToolExecutionStartEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
   turn_id?: string;
   start_time?: number;
+  params?: Record<string, unknown>;
 }
 
 export interface ToolExecutionEndEvent {
   tool_name: string;
+  call_id?: string;
   session_id?: string;
   success: boolean;
   duration?: number;
@@ -620,3 +624,4 @@ export interface NavigationActionStartEvent {
   url?: string;
   options?: Record<string, unknown>;
 }
+

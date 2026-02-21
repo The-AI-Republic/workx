@@ -24,6 +24,7 @@
   export let offset: [number, number] = [0, 8];
   export let trigger: string = 'mouseenter focus'; // 'mouseenter', 'focus', 'click', or combinations
   export let hideOnClick: boolean | 'toggle' = true;
+  export let fixedPosition: boolean = false; // When true, tooltip stays at initial position on scroll
 
   let containerRef: HTMLSpanElement;
   let tippyInstance: Instance | null = null;
@@ -56,6 +57,16 @@
         theme: currentTheme === 'chatgpt' ? 'chatgpt' : 'terminal',
         // Append to body to escape overflow constraints
         appendTo: () => document.body,
+        ...(fixedPosition ? {
+          popperOptions: {
+            modifiers: [
+              {
+                name: 'eventListeners',
+                options: { scroll: false, resize: true },
+              },
+            ],
+          },
+        } : {}),
       });
 
       // Handle disabled state

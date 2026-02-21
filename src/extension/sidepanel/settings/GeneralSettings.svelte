@@ -5,12 +5,15 @@
   import { uiTheme, type UITheme } from '../stores/themeStore';
   import { showTokenUsage } from '../stores/tokenUsageStore';
   import Switch from '../components/common/Switch.svelte';
-  import { _t, getCurrentLocale, setLocale } from '../lib/i18n';
+  import { t, _t, getCurrentLocale, setLocale } from '../lib/i18n';
   import supportedLanguages from '../../../../_locales/supported_languages.json';
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
   import { platform } from '../stores/platformStore';
+  import { highlightSetting } from './utils/highlightSetting';
+  import './utils/highlight-pulse.css';
 
   export let settingsConfig: AgentConfig;
+  export let highlightSettingId: string | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     back: void;
@@ -27,6 +30,11 @@
   // Language state
   let selectedLanguage = getCurrentLocale();
   let browserLanguage = getCurrentLocale();
+
+  $: if (highlightSettingId) {
+    highlightSetting(highlightSettingId);
+    highlightSettingId = undefined;
+  }
 
   // Theme options - reactive to locale changes
   $: themeOptions = [
@@ -89,7 +97,7 @@
       }, 3000);
     } catch (error) {
       console.error('[GeneralSettings] Failed to save preferences:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      const errorMsg = error instanceof Error ? error.message : t('Unknown error');
       saveMessage = t('Failed to save settings') + `: ${errorMsg}`;
       saveMessageType = 'error';
 
@@ -172,7 +180,7 @@
 
   <div class="settings-form">
     <!-- UI Theme Selection -->
-    <div class="settings-card">
+    <div class="settings-card" data-setting-id="uiTheme">
       <div class="form-group">
         <label for="uiTheme" class="form-label">{$_t("UI Theme")}</label>
         <div class="theme-options">
@@ -213,7 +221,7 @@
     </div>
 
     <!-- Show Token Usage Toggle -->
-    <div class="settings-card">
+    <div class="settings-card" data-setting-id="showTokenUsage">
       <div class="form-group">
         <div class="switch-row">
           <div class="switch-label">

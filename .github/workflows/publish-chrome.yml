@@ -1,0 +1,83 @@
+name: Publish Chrome Extension
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    # Only run when a chrome-release PR is merged (not just closed)
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'chrome-release-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH#chrome-release-}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing Chrome extension v$VERSION"
+
+      - name: Download browserx.zip from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v${{ steps.version.outputs.version }}" --pattern "browserx.zip"
+          if [ ! -f "browserx.zip" ]; then
+            echo "Error: Failed to download browserx.zip from release"
+            exit 1
+          fi
+          ls -lh browserx.zip
+
+      - name: Upload to Chrome Web Store
+        id: chrome_upload
+        continue-on-error: true
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: browserx.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_APP_ID }}
+          client-id: ${{ secrets.CHROME_EXTENSION_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_EXTENSION_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_EXTENSION_REFRESH_TOKEN }}
+          publish: true
+
+      - name: Update release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          if [ "${{ steps.chrome_upload.outcome }}" == "success" ]; then
+            CHROME_STATUS="Chrome Web Store: Published successfully"
+          else
+            CHROME_STATUS="Chrome Web Store: Upload failed — manual upload required"
+          fi
+
+          # Append Chrome status to existing release notes
+          EXISTING_NOTES=$(gh release view "v${VERSION}" --json body -q '.body')
+          gh release edit "v${VERSION}" \
+            --notes "${EXISTING_NOTES}
+
+          ---
+          ### Chrome Extension
+          ${CHROME_STATUS}"
+
+      - name: Warn on upload failure
+        if: steps.chrome_upload.outcome == 'failure'
+        run: |
+          echo "::warning::Chrome Web Store upload failed."
+          echo "::warning::Download browserx.zip from the GitHub Release and upload manually."
+          echo ""
+          echo "Common reasons:"
+          echo "  - Invalid or expired credentials (check secrets)"
+          echo "  - Extension already has this version published"
+          echo "  - Chrome Web Store API rate limits"

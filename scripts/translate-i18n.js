@@ -20,8 +20,10 @@ const path = require('path');
 // CONFIGURATION - Edit these values
 // ============================================================================
 const CONFIG = {
-  // Fireworks API configuration (set FIREWORKS_API_KEY environment variable)
-  apiKey: process.env.FIREWORKS_API_KEY,
+  // Fireworks API configuration
+  // Usage: npm run translate -- --api-key=fw_xxx
+  //    OR: FIREWORKS_API_KEY=fw_xxx npm run translate
+  apiKey: process.argv.find(a => a.startsWith('--api-key='))?.split('=')[1] || process.env.FIREWORKS_API_KEY,
   apiUrl: 'https://api.fireworks.ai/inference/v1/chat/completions',
 
   // Model for TRANSLATION

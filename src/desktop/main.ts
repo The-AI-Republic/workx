@@ -11,6 +11,7 @@
 import { initializeHotkeys } from './hotkeys';
 import { initializeTray } from './tray';
 import { initializeAutoStart } from './autostart';
+import { initializeUpdater } from './updater';
 import { getDesktopAgentBootstrap } from './agent/DesktopAgentBootstrap';
 import { AgentConfig } from '@/config/AgentConfig';
 
@@ -47,6 +48,14 @@ async function initializeDesktop(): Promise<void> {
     console.log('[Desktop] Auto-start initialized');
   } catch (error) {
     console.warn('[Desktop] Failed to initialize auto-start (continuing):', error);
+  }
+
+  // Initialize auto-updater (non-critical, catch errors)
+  try {
+    await initializeUpdater();
+    console.log('[Desktop] Auto-updater initialized');
+  } catch (error) {
+    console.warn('[Desktop] Failed to initialize auto-updater (continuing):', error);
   }
 
   console.log('[Desktop] Desktop services initialization complete');

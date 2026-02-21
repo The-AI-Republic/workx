@@ -1,5 +1,5 @@
 /**
- * OpenAI Responses API client implementation for browserx-chrome
+ * OpenAI Responses API client implementation for pi
  * Uses official OpenAI SDK for API calls (supports OpenAI, xAI, and other compatible providers)
  */
 
@@ -1218,7 +1218,7 @@ export class OpenAIResponsesClient extends ModelClient {
         type: 'json_schema',
         strict: true,
         schema: outputSchema,
-        name: 'browserx_output_schema',
+        name: 'pi_output_schema',
       };
     }
 
@@ -1235,16 +1235,16 @@ export class OpenAIResponsesClient extends ModelClient {
     if (!headers) return undefined;
     const primary = this.parseRateLimitWindow(
       headers,
-      'x-browserx-primary-used-percent',
-      'x-browserx-primary-window-minutes',
-      'x-browserx-primary-resets-in-seconds'
+      'x-pi-primary-used-percent',
+      'x-pi-primary-window-minutes',
+      'x-pi-primary-resets-in-seconds'
     );
 
     const secondary = this.parseRateLimitWindow(
       headers,
-      'x-browserx-secondary-used-percent',
-      'x-browserx-secondary-window-minutes',
-      'x-browserx-secondary-resets-in-seconds'
+      'x-pi-secondary-used-percent',
+      'x-pi-secondary-window-minutes',
+      'x-pi-secondary-resets-in-seconds'
     );
 
     if (!primary && !secondary) {

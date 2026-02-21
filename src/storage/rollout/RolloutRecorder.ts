@@ -110,7 +110,6 @@ export class RolloutRecorder {
       sessionMeta: {
         id: conversationId,
         timestamp: getCurrentTimestamp(),
-        cwd: '/',
         originator: 'chrome-extension',
         cliVersion: '1.0.0', // TODO: Load from package.json or config
         instructions,
