@@ -26,7 +26,6 @@ import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotC
 // Compaction imports
 import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
-import { estimateRequestTokens } from './compact/utils';
 import type { ModelClient } from './models/ModelClient';
 
 // Title generation imports
@@ -339,13 +338,6 @@ export class Session {
    */
   isEmpty(): boolean {
     return this.sessionState.getConversationHistory().items.length === 0;
-  }
-
-  /**
-   * Estimate token count of the current conversation history.
-   */
-  estimateHistoryTokens(): number {
-    return estimateRequestTokens(this.sessionState.getConversationHistory().items);
   }
 
   /**
