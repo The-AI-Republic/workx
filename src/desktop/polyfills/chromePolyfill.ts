@@ -10,6 +10,8 @@
  * @module desktop/polyfills/chromePolyfill
  */
 
+import { t } from '@/extension/sidepanel/lib/i18n';
+
 type MessageCallback = (message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => boolean | void;
 type UnlistenFn = () => void;
 
@@ -133,7 +135,7 @@ const runtimePolyfill = {
           responseCallback?.({
             type: 'HEALTH_STATUS',
             ready: true,
-            message: 'Desktop mode',
+            message: t('Desktop mode'),
             authMode: 'api_key',
           });
           return;

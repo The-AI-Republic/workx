@@ -8,6 +8,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import type { ModelMetadata } from '@/config/types.js';
+  import { t, _t } from '../../lib/i18n';
 
   export let model: ModelMetadata;
   export let anchorElement: HTMLElement | null = null;
@@ -74,7 +75,7 @@
 
   // Format release date
   function formatReleaseDate(dateStr: string | undefined): string {
-    if (!dateStr) return 'Release date unknown';
+    if (!dateStr) return t('Release date unknown');
     try {
       const date = new Date(dateStr);
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
@@ -98,7 +99,7 @@
         {model.displayName}
       </h4>
       <p class="text-xs text-gray-400">
-        Provider: {model.provider.toUpperCase()}
+        {$_t('Provider:')} {model.provider.toUpperCase()}
       </p>
     </div>
 
@@ -108,7 +109,7 @@
         <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <span class="text-sm font-medium text-gray-200">Context Window</span>
+        <span class="text-sm font-medium text-gray-200">{$_t('Context Window')}</span>
       </div>
       <p class="text-sm text-gray-300 ml-6">
         {formatContextWindow(model.contextWindow)}
@@ -122,7 +123,7 @@
           <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
-          <span class="text-sm font-medium text-gray-200">Max Output</span>
+          <span class="text-sm font-medium text-gray-200">{$_t('Max Output')}</span>
         </div>
         <p class="text-sm text-gray-300 ml-6">
           {formatContextWindow(model.maxOutputTokens)}
@@ -136,26 +137,26 @@
         <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="text-sm font-medium text-gray-200">Capabilities</span>
+        <span class="text-sm font-medium text-gray-200">{$_t('Capabilities')}</span>
       </div>
       <div class="flex flex-wrap gap-2 ml-6">
         {#if model.supportsReasoning}
           <span class="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">
-            Reasoning
+            {$_t('Reasoning')}
           </span>
         {/if}
         {#if model.supportsVerbosity}
           <span class="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded border border-purple-500/30">
-            Verbosity Control
+            {$_t('Verbosity Control')}
           </span>
         {/if}
         {#if model.supportsReasoningSummaries}
           <span class="px-2 py-1 text-xs bg-indigo-500/20 text-indigo-400 rounded border border-indigo-500/30">
-            Reasoning Summaries
+            {$_t('Reasoning Summaries')}
           </span>
         {/if}
         {#if !model.supportsReasoning && !model.supportsVerbosity && !model.supportsReasoningSummaries}
-          <span class="text-xs text-gray-500">Standard capabilities</span>
+          <span class="text-xs text-gray-500">{$_t('Standard capabilities')}</span>
         {/if}
       </div>
     </div>
@@ -164,7 +165,7 @@
     {#if model.supportsReasoning && model.reasoningEfforts && model.reasoningEfforts.length > 0}
       <div class="mb-3">
         <p class="text-xs text-gray-400 mb-1 ml-6">
-          Reasoning levels: {model.reasoningEfforts.join(', ')}
+          {$_t('Reasoning levels:')} {model.reasoningEfforts.join(', ')}
         </p>
       </div>
     {/if}
@@ -173,7 +174,7 @@
     {#if model.supportsVerbosity && model.verbosityLevels && model.verbosityLevels.length > 0}
       <div class="mb-3">
         <p class="text-xs text-gray-400 mb-1 ml-6">
-          Verbosity levels: {model.verbosityLevels.join(', ')}
+          {$_t('Verbosity levels:')} {model.verbosityLevels.join(', ')}
         </p>
       </div>
     {/if}
@@ -182,7 +183,7 @@
     {#if model.releaseDate}
       <div class="pt-3 border-t border-gray-700">
         <p class="text-xs text-gray-400">
-          Released: {formatReleaseDate(model.releaseDate)}
+          {$_t('Released:')} {formatReleaseDate(model.releaseDate)}
         </p>
       </div>
     {/if}
@@ -195,7 +196,7 @@
             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
           </svg>
           <div class="flex-1">
-            <p class="text-xs font-medium text-yellow-400 mb-1">Deprecated</p>
+            <p class="text-xs font-medium text-yellow-400 mb-1">{$_t('Deprecated')}</p>
             <p class="text-xs text-yellow-400/80">
               {model.deprecationMessage}
             </p>

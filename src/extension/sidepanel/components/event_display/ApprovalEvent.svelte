@@ -5,6 +5,7 @@
    */
   import { onDestroy } from 'svelte';
   import type { ProcessedEvent } from '@/types/ui';
+  import { t, _t } from '../../lib/i18n';
 
   export let event: ProcessedEvent;
 
@@ -138,29 +139,29 @@
     {/if}
     {#if event.requiresApproval?.riskScore !== undefined}
       <span class="text-yellow-400">
-        Risk Score: {event.requiresApproval.riskScore}/100
+        {$_t("Risk Score:")} {event.requiresApproval.riskScore}/100
       </span>
     {/if}
     {#if hasCountdown && !timedOut}
-      <span class="text-yellow-400">{timeRemaining}s remaining</span>
+      <span class="text-yellow-400">{timeRemaining}s {$_t("remaining")}</span>
     {:else if !hasCountdown}
-      <span class="text-yellow-400">Waiting for approval</span>
+      <span class="text-yellow-400">{$_t("Waiting for approval")}</span>
     {/if}
   </div>
 
   {#if event.requiresApproval}
     <div class="text-yellow-400 mb-3">
       {#if event.requiresApproval.type === 'exec'}
-        <div class="mb-2">Tool name: {event.requiresApproval.command}</div>
+        <div class="mb-2">{$_t("Tool name:")} {event.requiresApproval.command}</div>
       {:else if event.requiresApproval.type === 'tool' && event.requiresApproval.toolName}
         <div class="mb-2">
-          Tool name: {event.requiresApproval.toolName}
+          {$_t("Tool name:")} {event.requiresApproval.toolName}
           {#if event.requiresApproval.command}
             : {event.requiresApproval.command}
           {/if}
         </div>
       {:else if event.requiresApproval.type === 'patch'}
-        <div class="mb-2">Tool name: patch</div>
+        <div class="mb-2">{$_t("Tool name:")} patch</div>
       {/if}
 
       {#if event.requiresApproval.riskFactors && event.requiresApproval.riskFactors.length > 0}
@@ -182,7 +183,7 @@
 
       {#if timedOut}
         <div class="text-green-400 font-semibold mt-2">
-          Auto-approved — timeout reached
+          {$_t("Auto-approved -- timeout reached")}
         </div>
       {/if}
     </div>
@@ -194,7 +195,7 @@
           disabled={processing || timedOut}
           on:click={handleApprove}
         >
-          {processing ? 'Processing...' : 'Approve'}
+          {processing ? t('Processing...') : t('Approve')}
         </button>
 
         {#if event.requiresApproval.onRemember}
@@ -203,7 +204,7 @@
             disabled={processing || timedOut}
             on:click={handleAlwaysApprove}
           >
-            Always Approve
+            {$_t("Always Approve")}
           </button>
         {/if}
 
@@ -212,7 +213,7 @@
           disabled={processing || timedOut}
           on:click={handleDeny}
         >
-          Deny
+          {$_t("Deny")}
         </button>
 
         {#if event.requiresApproval.onRequestChange}
@@ -221,7 +222,7 @@
             disabled={processing || timedOut}
             on:click={() => { showAlternativeInput = !showAlternativeInput; }}
           >
-            Suggest Alternative
+            {$_t("Suggest Alternative")}
           </button>
         {/if}
       </div>
@@ -232,7 +233,7 @@
             type="text"
             bind:value={alternativeText}
             on:keydown={handleAlternativeKeydown}
-            placeholder="Type alternative instructions..."
+            placeholder={t("Type alternative instructions...")}
             class="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
             disabled={processing}
           />
@@ -241,7 +242,7 @@
             disabled={processing || !alternativeText.trim()}
             on:click={handleSendAlternative}
           >
-            Send
+            {$_t("Send")}
           </button>
         </div>
       {/if}

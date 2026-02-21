@@ -504,7 +504,7 @@ describe('TabContext Component', () => {
       expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
     });
 
-    it('should display "(current)" marker on the active tab in dropdown', async () => {
+    it('should display "(active)" marker on the active tab in dropdown', async () => {
       const activeTab = { id: 100, title: 'Active Tab', url: 'https://active.com' };
       const otherTab = { id: 200, title: 'Other Tab', url: 'https://other.com' };
 
@@ -533,13 +533,13 @@ describe('TabContext Component', () => {
         expect(items.length).toBe(2);
       });
 
-      // Verify active tab shows "(current)" marker
+      // Verify active tab shows "(active)" marker
       const items = screen.getAllByTestId('tab-dropdown-item');
-      expect(items[0].textContent).toContain('(current)');
+      expect(items[0].textContent).toContain('(active)');
       expect(items[0].textContent).toContain('Active Tab');
 
-      // Verify other tab does NOT show "(current)" marker
-      expect(items[1].textContent).not.toContain('(current)');
+      // Verify other tab does NOT show "(active)" marker
+      expect(items[1].textContent).not.toContain('(active)');
       expect(items[1].textContent).toContain('Other Tab');
     });
   });

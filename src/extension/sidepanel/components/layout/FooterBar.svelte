@@ -5,14 +5,14 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import SchedulerButton from '../scheduler/SchedulerButton.svelte';
-  import SchedulerPopup from '../scheduler/SchedulerPopup.svelte';
+  // import SchedulerButton from '../scheduler/SchedulerButton.svelte';
+  // import SchedulerPopup from '../scheduler/SchedulerPopup.svelte';
   import ApprovalModeIndicator from '../common/ApprovalModeIndicator.svelte';
 
   const dispatch = createEventDispatcher();
 
   let currentTheme: UITheme = 'terminal';
-  let showSchedulerPopup = false;
+  // let showSchedulerPopup = false;
 
   // Subscribe to theme store
   uiTheme.subscribe((theme) => {
@@ -23,21 +23,21 @@
     dispatch('openSettings');
   }
 
-  function handleSchedulerClick() {
-    showSchedulerPopup = !showSchedulerPopup;
-  }
+  // function handleSchedulerClick() {
+  //   showSchedulerPopup = !showSchedulerPopup;
+  // }
 
-  function handleCloseSchedulerPopup() {
-    showSchedulerPopup = false;
-  }
+  // function handleCloseSchedulerPopup() {
+  //   showSchedulerPopup = false;
+  // }
 </script>
 
 <div class="footer-bar {currentTheme}">
   <!-- User Login Status (includes Settings in menu when logged in) -->
   <UserLoginStatus on:openSettings={handleOpenSettings} />
 
-  <!-- Scheduler Button -->
-  <SchedulerButton on:click={handleSchedulerClick} />
+  <!-- Scheduler Button (hidden while feature is being improved) -->
+  <!-- <SchedulerButton on:click={handleSchedulerClick} /> -->
 
   <!-- Approval Mode Indicator -->
   <ApprovalModeIndicator />
@@ -63,8 +63,8 @@
   {/if}
 </div>
 
-<!-- Scheduler Popup -->
-<SchedulerPopup show={showSchedulerPopup} onClose={handleCloseSchedulerPopup} />
+<!-- Scheduler Popup (hidden while feature is being improved) -->
+<!-- <SchedulerPopup show={showSchedulerPopup} onClose={handleCloseSchedulerPopup} /> -->
 
 <style>
   .footer-bar {

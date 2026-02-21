@@ -10,7 +10,7 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
-  import { _t } from '../../lib/i18n';
+  import { t, _t } from '../../lib/i18n';
   import { notifyConfigUpdate } from '../../lib/messaging';
 
   const dispatch = createEventDispatcher<{
@@ -195,7 +195,7 @@
     }
 
     // Confirm model switch
-    if (!confirm('The model switch will clear the current conversation. Do you want to continue?')) {
+    if (!confirm(t('The model switch will clear the current conversation. Do you want to continue?'))) {
       isOpen = false;
       return;
     }
@@ -235,7 +235,7 @@
           class="model-trigger {currentTheme}"
           on:click={toggleDropdown}
           disabled={isLoading}
-          aria-label="Select model: {selectedModelName}"
+          aria-label={$_t('Select model: $1$', { substitutions: [selectedModelName] })}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
         >
@@ -243,7 +243,7 @@
             {#if isLoading}
               ...
             {:else}
-              {selectedModelName || 'Select Model'}
+              {selectedModelName || $_t('Select Model')}
             {/if}
           </span>
           <svg
@@ -283,7 +283,7 @@
                 {/if}
               </div>
               {#if isLockedForFreeUser}
-                <div class="locked-message">Upgrade to explore world's most powerful models</div>
+                <div class="locked-message">{$_t("Upgrade to explore world's most powerful models")}</div>
               {:else}
                 <div class="provider-options">
                   {#each group.providers as provider (provider.modelId)}

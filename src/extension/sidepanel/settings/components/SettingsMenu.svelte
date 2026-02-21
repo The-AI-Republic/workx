@@ -95,7 +95,7 @@
       <button
         class="category-card"
         on:click={() => selectCategory(category.id)}
-        aria-label={`Open ${category.label} settings`}
+        aria-label={t('Open $1$ settings', { substitutions: [category.label] })}
       >
         <div class="category-header">
           <div class="category-icon">

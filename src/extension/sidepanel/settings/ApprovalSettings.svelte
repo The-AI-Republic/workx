@@ -7,7 +7,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IApprovalConfig, ApprovalMode } from '@/core/approval/types';
   import { DEFAULT_APPROVAL_CONFIG } from '@/core/approval/types';
-  import { _t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
   export let isDirty = false;
@@ -30,9 +30,9 @@
   const APPROVAL_MODES: ApprovalMode[] = ['balanced', 'high_speed', 'yolo'];
 
   const MODE_DESCRIPTIONS: Record<ApprovalMode, string> = {
-    balanced: 'Ask for medium-risk and above (risk > 30). Recommended for most users.',
-    high_speed: 'Ask only for high-risk actions (risk > 60). For experienced users.',
-    yolo: 'Auto-approve everything. Deny rules still apply. Use at your own risk.',
+    balanced: t('Ask for medium-risk and above (risk > 30). Recommended for most users.'),
+    high_speed: t('Ask only for high-risk actions (risk > 60). For experienced users.'),
+    yolo: t('Auto-approve everything. Deny rules still apply. Use at your own risk.'),
   };
 
   function formatModeLabel(mode: ApprovalMode): string {
@@ -81,11 +81,11 @@
         );
       });
       isDirty = false;
-      saveMessage = 'Settings saved successfully';
+      saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
       dispatch('saved', { success: true });
     } catch (error) {
-      saveMessage = `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      saveMessage = t('Failed to save: $1$', { substitutions: [error instanceof Error ? error.message : 'Unknown error'] });
       saveMessageType = 'error';
     } finally {
       isSaving = false;
@@ -131,19 +131,19 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 12H5M12 19l-7-7 7-7"></path>
       </svg>
-      Back
+      {$_t("Back")}
     </button>
-    <h3 class="section-title">Approval & Safety</h3>
+    <h3 class="section-title">{$_t("Approval & Safety")}</h3>
   </div>
 
   {#if isLoading}
-    <div class="loading">Loading settings...</div>
+    <div class="loading">{$_t("Loading settings...")}</div>
   {:else}
     <div class="settings-body">
       <!-- Approval Mode -->
       <section class="setting-section">
-        <h4 class="subsection-title">Approval Mode</h4>
-        <p class="subsection-description">Controls how aggressively the agent asks for approval.</p>
+        <h4 class="subsection-title">{$_t("Approval Mode")}</h4>
+        <p class="subsection-description">{$_t("Controls how aggressively the agent asks for approval.")}</p>
 
         <div class="mode-options">
           {#each APPROVAL_MODES as mode}
@@ -166,8 +166,8 @@
 
       <!-- Trusted Domains -->
       <section class="setting-section">
-        <h4 class="subsection-title">Trusted Domains</h4>
-        <p class="subsection-description">All actions are auto-approved on these domains.</p>
+        <h4 class="subsection-title">{$_t("Trusted Domains")}</h4>
+        <p class="subsection-description">{$_t("All actions are auto-approved on these domains.")}</p>
 
         <div class="domain-input-row">
           <input
@@ -177,7 +177,7 @@
             class="domain-input"
             on:keydown={(e) => e.key === 'Enter' && addTrustedDomain()}
           />
-          <button class="add-button" on:click={addTrustedDomain}>Add</button>
+          <button class="add-button" on:click={addTrustedDomain}>{$_t("Add")}</button>
         </div>
 
         {#if config.trustedDomains.length > 0}
@@ -194,8 +194,8 @@
 
       <!-- Blocked Domains -->
       <section class="setting-section">
-        <h4 class="subsection-title">Blocked Domains</h4>
-        <p class="subsection-description">All actions are denied on these domains.</p>
+        <h4 class="subsection-title">{$_t("Blocked Domains")}</h4>
+        <p class="subsection-description">{$_t("All actions are denied on these domains.")}</p>
 
         <div class="domain-input-row">
           <input
@@ -205,7 +205,7 @@
             class="domain-input"
             on:keydown={(e) => e.key === 'Enter' && addBlockedDomain()}
           />
-          <button class="add-button" on:click={addBlockedDomain}>Add</button>
+          <button class="add-button" on:click={addBlockedDomain}>{$_t("Add")}</button>
         </div>
 
         {#if config.blockedDomains.length > 0}
@@ -227,7 +227,7 @@
           disabled={!isDirty || isSaving}
           on:click={handleSave}
         >
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? $_t('Saving...') : $_t('Save Changes')}
         </button>
         {#if saveMessage}
           <span class="save-message" class:success={saveMessageType === 'success'} class:error={saveMessageType === 'error'}>

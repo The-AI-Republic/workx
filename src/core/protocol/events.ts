@@ -98,7 +98,8 @@ export type EventMsg =
   // Browser action events
   | { type: 'DOMActionStart'; data: DOMActionStartEvent }
   | { type: 'StorageActionStart'; data: StorageActionStartEvent }
-  | { type: 'NavigationActionStart'; data: NavigationActionStartEvent };
+  | { type: 'NavigationActionStart'; data: NavigationActionStartEvent }
+;
 
 // Individual event payload types
 
@@ -623,3 +624,4 @@ export interface NavigationActionStartEvent {
   url?: string;
   options?: Record<string, unknown>;
 }
+
