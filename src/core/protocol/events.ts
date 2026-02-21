@@ -345,26 +345,58 @@ export enum StepStatus {
   Pending = "Pending",
   InProgress = "InProgress",
   Completed = "Completed",
+  Blocked = "Blocked",
+}
+
+/**
+ * Plan-level status
+ */
+export enum PlanStatus {
+  Active = "active",
+  Completed = "completed",
+}
+
+/**
+ * Action to perform on a plan
+ */
+export enum PlanAction {
+  Create = "create",
+  Update = "update",
+  Resume = "resume",
 }
 
 /**
  * A single step in the task plan
  */
 export interface PlanItemArg {
+  /** Stable identifier for dependency references (UUID) */
+  id?: string;
   /** Human-readable step description (recommended 5-7 words) */
   step: string;
   /** Current execution state */
   status: StepStatus;
+  /** Critical file paths relevant to this step */
+  files?: string[];
+  /** Existing code/functions to leverage */
+  reuse?: string[];
+  /** How to verify this step succeeded */
+  verification?: string;
+  /** Present-tense description shown during InProgress (e.g., "Analyzing auth module") */
+  activeDescription?: string;
+  /** IDs of steps that must complete before this step can start */
+  dependsOn?: string[];
 }
 
 /**
  * Input arguments for the PlanningTool
  */
 export interface UpdatePlanArgs {
+  /** Action to perform: create, update, or resume */
+  action: PlanAction;
   /** Optional explanation for plan creation/update */
   explanation?: string;
-  /** Ordered list of plan steps */
-  plan: PlanItemArg[];
+  /** Ordered list of plan steps (required for create/update, ignored for resume) */
+  plan?: PlanItemArg[];
 }
 
 export interface TurnAbortedEvent {

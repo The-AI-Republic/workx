@@ -20,7 +20,7 @@ import type {
  * IndexedDB database constants
  */
 export const DB_NAME = 'pi_cache';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /**
  * Object store names
@@ -37,7 +37,9 @@ export const STORE_NAMES = {
   /** Scheduler tasks */
   SCHEDULER_TASKS: 'scheduler_tasks',
   /** Feature 015: Agent session persistence */
-  AGENT_SESSIONS: 'agent_sessions'
+  AGENT_SESSIONS: 'agent_sessions',
+  /** Feature 029: Plan persistence */
+  PLANS: 'plans'
 } as const;
 
 /**
@@ -249,6 +251,15 @@ export class IndexedDBAdapter {
               'state',
               { unique: false }
             );
+          }
+        }
+
+        // Version 4: Feature 029 - Add plans object store for plan persistence
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.PLANS)) {
+            db.createObjectStore(STORE_NAMES.PLANS, {
+              keyPath: 'sessionId'
+            });
           }
         }
       };

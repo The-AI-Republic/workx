@@ -115,3 +115,53 @@ export interface LLMCacheConfig {
   /** Session quota eviction percentage (0-1, default 0.5 = 50%) */
   sessionEvictionPercentage: number;
 }
+
+// ============================================================================
+// Plan Storage Types (Feature 029-planning-tool-v2)
+// ============================================================================
+
+import type { PlanStatus, StepStatus } from '../core/protocol/events';
+
+/**
+ * A plan step as stored in IndexedDB
+ */
+export interface StoredPlanStep {
+  /** Stable UUID identifier */
+  id: string;
+  /** Human-readable step description */
+  step: string;
+  /** Current execution state */
+  status: StepStatus;
+  /** Critical file paths relevant to this step */
+  files?: string[];
+  /** Existing code/functions to leverage */
+  reuse?: string[];
+  /** How to verify this step succeeded */
+  verification?: string;
+  /** Present-tense description shown during InProgress */
+  activeDescription?: string;
+  /** IDs of steps that must complete before this step can start */
+  dependsOn?: string[];
+}
+
+/**
+ * A persisted plan stored in IndexedDB, keyed by sessionId
+ */
+export interface StoredPlan {
+  /** Unique plan identifier (UUID) */
+  id: string;
+  /** Session this plan belongs to (primary key in IndexedDB) */
+  sessionId: string;
+  /** Plan-level status */
+  status: PlanStatus;
+  /** Agent's explanation for creating/updating this plan */
+  explanation?: string;
+  /** Ordered list of plan steps */
+  steps: StoredPlanStep[];
+  /** Monotonically increasing counter, incremented on every update */
+  version: number;
+  /** Unix timestamp (ms) of plan creation */
+  createdAt: number;
+  /** Unix timestamp (ms) of last modification */
+  updatedAt: number;
+}
