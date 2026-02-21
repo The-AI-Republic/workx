@@ -175,6 +175,8 @@ fn execute_via_pty(
             }
             Err(e) => {
                 exit_code = -1;
+                cancelled.store(true, Ordering::Relaxed);
+                child.kill().ok();
                 log::warn!("Error waiting for child: {}", e);
                 break;
             }
