@@ -1751,7 +1751,7 @@ function setupPeriodicTasks(): void {
         if (session?.agent) {
           const event = await session.agent.getNextEvent();
           if (event) {
-            await router.broadcast(MessageType.EVENT, event);
+            await router.broadcast(MessageType.EVENT, { ...event, sessionId: sessionMeta.sessionId });
           }
         }
       }

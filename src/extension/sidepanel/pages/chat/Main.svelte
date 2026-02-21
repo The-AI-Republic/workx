@@ -121,8 +121,15 @@
       // Listen for events from backend
       unsubscribers.push(
         service.on(MessageType.EVENT, (payload) => {
-          const event = payload as Event;
-          handleEvent(event);
+          const eventPayload = payload as Event & { sessionId?: string };
+          const event: Event = { id: eventPayload.id, msg: eventPayload.msg };
+          const eventSessionId = eventPayload.sessionId;
+
+          if (eventSessionId && eventSessionId !== activeSessionId) {
+            handleEventForSession(event, eventSessionId);
+          } else {
+            handleEvent(event);
+          }
         })
       );
 
@@ -1026,7 +1033,7 @@
       const restoredState = await tabStore.restoreTabs();
 
       // Get list of active primary sessions from backend
-      const response = await router.send(MessageType.SIDEPANEL_LIST_SESSIONS);
+      const response = await service!.send(MessageType.SIDEPANEL_LIST_SESSIONS);
       const activeSessions = response?.sessions || [];
       const maxConcurrent = response?.maxConcurrent || 5;
       const activeCount = response?.activeCount || 0;
@@ -1079,7 +1086,7 @@
   async function createNewTab() {
     try {
       // Request new session from backend
-      const response = await router.send(MessageType.SIDEPANEL_CREATE_SESSION);
+      const response = await service!.send(MessageType.SIDEPANEL_CREATE_SESSION);
 
       if (!response?.success) {
         console.error('[App] Failed to create session:', response?.error);
@@ -1229,7 +1236,7 @@
 
     // Terminate the session in backend
     try {
-      await router.send(MessageType.SIDEPANEL_CLOSE_SESSION, {
+      await service!.send(MessageType.SIDEPANEL_CLOSE_SESSION, {
         sessionId: tabToClose.sessionId,
       });
     } catch (error) {
@@ -1335,7 +1342,7 @@
    */
   async function updateSessionLimits() {
     try {
-      const response = await router.send(MessageType.SESSION_GET_ACTIVE_COUNT);
+      const response = await service!.send(MessageType.SESSION_GET_ACTIVE_COUNT);
       canCreateTab = response?.canCreateSession ?? true;
       maxSessionsReached = !canCreateTab;
     } catch (error) {
