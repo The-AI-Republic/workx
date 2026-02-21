@@ -16,16 +16,16 @@ pub struct TerminalResult {
     pub sandboxed: bool,
 }
 
-/// Registry of active PTY sessions, keyed by session UUID.
-/// Each session holds the master writer so callers can write stdin.
+/// Registry of active PTY command executions, keyed by execution UUID.
+/// Each entry holds the master writer so callers can write stdin.
 pub struct PtySessionRegistry {
-    sessions: Arc<tokio::sync::Mutex<HashMap<String, Box<dyn Write + Send>>>>,
+    executions: Arc<tokio::sync::Mutex<HashMap<String, Box<dyn Write + Send>>>>,
 }
 
 impl PtySessionRegistry {
     pub fn new() -> Self {
         Self {
-            sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            executions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         }
     }
 }
@@ -54,7 +54,7 @@ fn execute_via_pty(
     registry: Arc<tokio::sync::Mutex<HashMap<String, Box<dyn Write + Send>>>>,
     held_resources: Vec<Box<dyn std::any::Any + Send>>,
 ) -> Result<DirectResult, String> {
-    let session_id = uuid::Uuid::new_v4().to_string();
+    let cmd_execution_id = uuid::Uuid::new_v4().to_string();
 
     // Open PTY pair
     let pty_system = native_pty_system();
@@ -97,14 +97,14 @@ fn execute_via_pty(
         .take_writer()
         .map_err(|e| format!("Failed to get PTY master writer: {}", e))?;
 
-    // Register in session registry (block_on is fine here — we're already in spawn_blocking)
+    // Register in execution registry (block_on is fine here — we're already in spawn_blocking)
     {
         let rt = tokio::runtime::Handle::current();
         let registry_clone = registry.clone();
-        let sid = session_id.clone();
+        let eid = cmd_execution_id.clone();
         rt.block_on(async move {
-            let mut sessions = registry_clone.lock().await;
-            sessions.insert(sid, master_writer);
+            let mut executions = registry_clone.lock().await;
+            executions.insert(eid, master_writer);
         });
     }
 
@@ -155,14 +155,14 @@ fn execute_via_pty(
                     drop(pty_pair.master);
                     let _ = read_handle.join();
 
-                    // Unregister session
+                    // Unregister execution
                     {
                         let rt = tokio::runtime::Handle::current();
                         let registry_clone = registry.clone();
-                        let sid = session_id.clone();
+                        let eid = cmd_execution_id.clone();
                         rt.block_on(async move {
-                            let mut sessions = registry_clone.lock().await;
-                            sessions.remove(&sid);
+                            let mut executions = registry_clone.lock().await;
+                            executions.remove(&eid);
                         });
                     }
 
@@ -187,14 +187,14 @@ fn execute_via_pty(
     // Collect output
     let raw_output = read_handle.join().unwrap_or_default();
 
-    // Unregister session
+    // Unregister execution
     {
         let rt = tokio::runtime::Handle::current();
         let registry_clone = registry.clone();
-        let sid = session_id.clone();
+        let eid = cmd_execution_id.clone();
         rt.block_on(async move {
-            let mut sessions = registry_clone.lock().await;
-            sessions.remove(&sid);
+            let mut executions = registry_clone.lock().await;
+            executions.remove(&eid);
         });
     }
 
@@ -249,7 +249,7 @@ pub async fn terminal_execute(
         "-c"
     };
 
-    let registry = state.sessions.clone();
+    let registry = state.executions.clone();
 
     // If sandboxing requested, try to use the sandbox executor
     log::info!("Terminal execute: sandboxed={}, cwd={:?}", should_sandbox, cwd);
@@ -380,17 +380,17 @@ pub async fn terminal_execute(
     })
 }
 
-/// Write bytes to an active PTY session's stdin.
+/// Write bytes to an active PTY command execution's stdin.
 /// Used for interactive input (future: sudo prompts, SSH, etc.)
 #[tauri::command]
 pub async fn terminal_write_stdin(
     state: tauri::State<'_, PtySessionRegistry>,
     #[allow(non_snake_case)]
-    sessionId: String,
+    cmdExecutionId: String,
     data: String,
 ) -> Result<(), String> {
-    let mut sessions = state.sessions.lock().await;
-    if let Some(writer) = sessions.get_mut(&sessionId) {
+    let mut executions = state.executions.lock().await;
+    if let Some(writer) = executions.get_mut(&cmdExecutionId) {
         writer
             .write_all(data.as_bytes())
             .map_err(|e| format!("Failed to write to PTY: {}", e))?;
@@ -399,6 +399,6 @@ pub async fn terminal_write_stdin(
             .map_err(|e| format!("Failed to flush PTY: {}", e))?;
         Ok(())
     } else {
-        Err(format!("No active PTY session with id: {}", sessionId))
+        Err(format!("No active PTY execution with id: {}", cmdExecutionId))
     }
 }
