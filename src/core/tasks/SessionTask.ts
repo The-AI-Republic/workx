@@ -1,12 +1,12 @@
 /**
  * SessionTask Interface
  *
- * Defines the contract for task execution in the BrowserxAgent system.
+ * Defines the contract for task execution in the PiAgent system.
  */
 
 import type { Session } from '../Session';
 import type { TurnContext } from '../TurnContext';
-import type { InputItem } from '../../protocol/types';
+import type { InputItem } from '../protocol/types';
 import type { TaskKind } from '../session/state/types';
 
 /**

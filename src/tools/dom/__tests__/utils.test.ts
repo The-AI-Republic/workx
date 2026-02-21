@@ -296,7 +296,7 @@ describe('getTextContent', () => {
     expect(text).toBe('Hello World');
   });
 
-  it('should aggregate text from children', () => {
+  it('should return undefined for element nodes (does not aggregate from children)', () => {
     const node: VirtualNode = {
       nodeId: 1,
       backendNodeId: 100,
@@ -323,32 +323,24 @@ describe('getTextContent', () => {
       ]
     };
 
+    // getTextContent only works on text nodes directly, not on parent elements
     const text = getTextContent(node);
-    expect(text).toBe('Hello World'); // Trimmed, single space between words
+    expect(text).toBeUndefined();
   });
 
-  it('should limit text to 100 characters', () => {
+  it('should return text for text nodes regardless of length', () => {
     const longText = 'a'.repeat(150);
     const node: VirtualNode = {
       nodeId: 1,
       backendNodeId: 100,
-      nodeType: NODE_TYPE_ELEMENT,
-      nodeName: 'DIV',
-      tier: 'structural',
-      children: [
-        {
-          nodeId: 2,
-          backendNodeId: 101,
-          nodeType: NODE_TYPE_TEXT,
-          nodeName: '#text',
-          nodeValue: longText,
-          tier: 'structural'
-        }
-      ]
+      nodeType: NODE_TYPE_TEXT,
+      nodeName: '#text',
+      nodeValue: longText,
+      tier: 'structural'
     };
 
     const text = getTextContent(node);
-    expect(text!.length).toBeLessThanOrEqual(100);
+    expect(text).toBe(longText);
   });
 
   it('should return undefined for empty content', () => {

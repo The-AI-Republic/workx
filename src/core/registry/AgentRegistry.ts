@@ -6,7 +6,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AgentSession } from './AgentSession';
 import { SessionStorage, type PersistedSession } from './SessionStorage';
-import { BrowserxAgent } from '../BrowserxAgent';
+import { PiAgent } from '../PiAgent';
 import { AgentConfig } from '../../config/AgentConfig';
 import { MessageRouter } from '../MessageRouter';
 import { TabManager } from '../TabManager';
@@ -25,7 +25,7 @@ import {
 } from './types';
 
 /**
- * AgentRegistry manages multiple BrowserxAgent instances, each wrapped in an AgentSession.
+ * AgentRegistry manages multiple PiAgent instances, each wrapped in an AgentSession.
  *
  * Key responsibilities:
  * - Create and track agent sessions
@@ -139,9 +139,23 @@ export class AgentRegistry {
     }
 
     // T057: Wrap agent creation in try-catch for graceful error handling
-    let agent: BrowserxAgent;
+    let agent: PiAgent;
     try {
-      agent = new BrowserxAgent(this._config, this._router);
+      agent = new PiAgent(this._config, this._router);
+
+      // Set up event dispatcher for chrome extension mode
+      // Events are sent via chrome.runtime to the UI
+      agent.setEventDispatcher((event) => {
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          chrome.runtime.sendMessage({
+            type: 'EVENT',
+            payload: event,
+          }).catch(() => {
+            // Ignore errors if no listeners
+          });
+        }
+      });
+
       await agent.initialize();
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event

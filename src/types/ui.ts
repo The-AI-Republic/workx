@@ -5,7 +5,7 @@
  * into UI-ready representations for the side panel display.
  */
 
-import type { Event } from '../protocol/types';
+import type { Event } from '../core/protocol/types';
 
 // ============================================================================
 // Core Event Display Types
@@ -102,6 +102,10 @@ export const STYLE_PRESETS: Record<string, EventStyle> = {
   },
   dimmed: {
     textColor: 'text-gray-500',
+  },
+  system: {
+    textColor: 'text-gray-400',
+    icon: 'info',
   },
 };
 
@@ -201,7 +205,7 @@ export interface StreamingState {
  */
 export interface ApprovalRequest {
   id: string;                          // Approval request ID
-  type: 'exec' | 'patch';              // What needs approval
+  type: 'exec' | 'patch' | 'tool';    // What needs approval
 
   // Content
   command?: string;                    // For exec approvals
@@ -212,10 +216,18 @@ export interface ApprovalRequest {
     diff: string;
   };
 
+  // Risk metadata (from approval gate)
+  toolName?: string;                   // Tool being called
+  riskScore?: number;                  // 0-100
+  riskLevel?: string;                  // 'none' | 'low' | 'medium' | 'high' | 'critical'
+  riskFactors?: string[];              // Human-readable risk factors
+  countdown?: number;                  // Seconds remaining for auto-timeout
+
   // Response callbacks
   onApprove: () => void;               // Callback for approval
   onReject: () => void;                // Callback for rejection
-  onRequestChange?: () => void;        // Optional: request changes
+  onRequestChange?: (text: string) => void; // Optional: send alternative instructions
+  onRemember?: (scope: 'session' | 'no') => void; // Optional: remember decision
 }
 
 /**
@@ -243,7 +255,7 @@ export interface ProcessedEvent {
   timestamp: Date;                     // When event occurred
 
   // Display
-  title: string;                       // Header text (e.g., "browserx", "exec ls", "tool Read")
+  title: string;                       // Header text (e.g., "pi", "exec ls", "tool Read")
   content: string | ContentBlock[];    // Main content (text or structured)
   style: EventStyle;                   // Visual styling category
 

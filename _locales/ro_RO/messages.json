@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Agent AI general în browser pentru sarcini de lucru"
   },
+  "1_API_Key": {
+    "message": "$1$ Cheie API",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ Cheie API eliminată cu succes",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} sarcină(e) și-au ratat timpul programat în timp ce browserul era închis."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - acuratețea poate fi redusă)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(activ)"
+  },
+  "multiple_files": {
+    "message": "(mai multe fișiere)"
+  },
+  "no_output": {
+    "message": "(fără ieșire)"
+  },
+  "no_result": {
+    "message": "(niciun rezultat)"
+  },
+  "patch_details": {
+    "message": "(detalii patch)"
+  },
+  "Enter_command": {
+    "message": ">> Introduceți comanda..."
+  },
+  "A2A_Agents": {
+    "message": "Agenți A2A"
+  },
   "API_Key": {
-    "message": ""
+    "message": "Cheie API"
   },
   "API_Key_Configuration": {
     "message": "Configurare cheie API"
   },
+  "API_Version": {
+    "message": "Versiune API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Editarea cheii API este dezactivată în modul backend"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "Cheie API pentru autentificare (stocată criptată)"
+  },
+  "API_key_has_expired": {
+    "message": "Cheia API a expirat"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "Cheia API are permisiuni insuficiente"
+  },
+  "API_key_saved_successfully": {
+    "message": "Cheia API a fost salvată cu succes!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Cheile API sunt criptate și stocate local în browserul tău. Nu sunt niciodată trimise către servere externe, cu excepția apelurilor API."
@@ -20,38 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Acces la stocarea browserului (localStorage, sessionStorage, cookie-uri)"
   },
-  "Action": {
-    "message": "Acțiune"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Mod de aprobare a acțiunilor, domenii de încredere, setări de risc"
   },
-  "Action_Details": {
-    "message": "Detalii acțiune"
+  "Active_Sessions": {
+    "message": "Sesiuni active"
   },
   "Add": {
-    "message": ""
+    "message": "Adaugă"
   },
-  "Add_Modification": {
-    "message": "Adaugă modificare"
+  "Add_Agent": {
+    "message": "Adaugă agent"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Adaugă server"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Adaugă sarcină"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Adaugă un server pentru a te conecta la instrumente externe."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Adaugă un agent pentru a te conecta la abilități externe."
+  },
+  "Additional_Bind_Mounts": {
+    "message": "Montări suplimentare de legare"
   },
   "Advanced_Configuration": {
     "message": "Configurare avansată"
   },
-  "Advanced_Options": {
-    "message": "Opțiuni avansate"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Setări avansate"
+  },
+  "Agent": {
+    "message": "Agent"
   },
   "Agent_Execution_Tools": {
     "message": "Instrumente de execuție pentru agent"
+  },
+  "Agent_Turn_Complete": {
+    "message": "Runda agentului finalizată"
+  },
+  "Agent_URL_is_required": {
+    "message": "URL-ul agentului este obligatoriu"
+  },
+  "Agent_added_successfully": {
+    "message": "Agent adăugat cu succes"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Numele agentului poate conține doar litere, cifre și cratime"
+  },
+  "Agent_name_is_required": {
+    "message": "Numele agentului este obligatoriu"
+  },
+  "Agent_not_initialized": {
+    "message": "Agentul nu este inițializat"
+  },
+  "Agent_removed_successfully": {
+    "message": "Agent eliminat cu succes"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Runda agentului a fost finalizată cu succes"
+  },
+  "Agent_updated_successfully": {
+    "message": "Agent actualizat cu succes"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Toate acțiunile sunt aprobate automat pe aceste domenii."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Toate acțiunile sunt refuzate pe aceste domenii."
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "Toate comenzile rulează în interiorul unui sandbox nativ al sistemului de operare. Scrierile sunt limitate la directorul spațiului de lucru."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Permite agentului să execute comenzi de sistem (folosiți cu prudență)"
@@ -62,26 +167,100 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Permite rularea scripturilor de conținut pe paginile web"
   },
+  "Allowed": {
+    "message": "Permis"
+  },
   "Allowed_Origins": {
     "message": "Origini autorizate"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Doar caractere alfanumerice și liniuțe (1-50 caractere)"
   },
-  "Approval_History": {
-    "message": "Istoric aprobare"
+  "Always_Approve": {
+    "message": "Aprobă întotdeauna"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: AI-ul tău personal (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Aprobare și siguranță"
+  },
+  "Approval_Mode": {
+    "message": "Mod de aprobare"
+  },
+  "Approval_Required": {
+    "message": "Aprobare necesară"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Aprobare necesară: Aplică patch-ul"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Aprobare necesară: Execută comanda"
   },
   "Approve": {
     "message": "Aprobă"
   },
-  "Approve_this_action": {
-    "message": "Aprobă această acțiune"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Aprobă modificările la: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Aprobă execuția: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Sunteți sigur că doriți să anulați această sarcină?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Sunteți sigur că doriți să eliminați acest agent?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Sunteți sigur că doriți să eliminați cheia API $1$?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Solicită Browserx să extragă date structurate din orice pagină web"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Solicită pentru riscuri medii și mai mari (risc > 30). Recomandat pentru majoritatea utilizatorilor."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Solicită doar pentru acțiuni cu risc ridicat (risc > 60). Pentru utilizatori experimentați."
+  },
+  "Auth_Type": {
+    "message": "Tip autentificare"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Credențial de autentificare (stocat criptat)"
+  },
+  "Authentication_failed": {
+    "message": "Autentificare eșuată"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Metoda de autentificare pentru agent"
+  },
+  "Auto_default": {
+    "message": "Auto (implicit)"
+  },
+  "Auto_approve_everything": {
+    "message": "Aprobare automată pentru tot"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Aprobare automată pentru tot. Reglementările de refuz rămân în vigoare. Folosiți pe propriul risc."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Aprobat automat -- timpul limită a fost atins"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Porniți automat aplicația când vă conectați la computer"
+  },
+  "Available_Skills": {
+    "message": "Abilități disponibile"
+  },
   "Available_Tools": {
-    "message": ""
+    "message": "Instrumente disponibile"
   },
   "Available": {
     "message": "Disponibil:"
@@ -89,20 +268,62 @@
   "Back": {
     "message": "Înapoi"
   },
+  "Back_to_Model_Config": {
+    "message": "Înapoi la Configurarea modelului"
+  },
   "Backend_Mode": {
     "message": "Mod backend"
   },
   "Backend_Mode_Active": {
     "message": "Mod backend activ"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Backend indisponibil. Vă rugăm așteptați un moment și încercați din nou."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Eroare server backend - vă rugăm încercați din nou mai târziu"
+  },
+  "Backoff_Multiplier": {
+    "message": "Multiplicator de întârziere"
+  },
+  "Balanced": {
+    "message": "Echilibrat"
+  },
+  "Base_URL": {
+    "message": "URL de bază"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "URL de bază neconfigurat pentru acest furnizor"
+  },
+  "Bearer_Token": {
+    "message": "Token Bearer"
+  },
   "Beta": {
     "message": "Beta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Calea de montare bind trebuie să fie absolută"
+  },
+  "Blocked_Domains": {
+    "message": "Domenii blocate"
   },
   "Browser_Tools": {
     "message": "Instrumente browser"
   },
   "Browser_automation_tool_toggles": {
     "message": "Comutatoare pentru automatizarea browserului"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "Setări cache"
@@ -116,8 +337,36 @@
   "Cancel": {
     "message": "Anulare"
   },
+  "Cancelled": {
+    "message": "Anulat"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Nu se poate executa sarcina: Nicio cheie API configurată pentru ${providerName}. Vă rugăm să accesați Setări → Configurare model și să adăugați cheia API."
+  },
+  "Cannot_select_model_1": {
+    "message": "Nu se poate selecta modelul: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Nu se poate trimite mesajul: Nicio cheie API configurată pentru $1$. Vă rugăm să faceți clic pe butonul Setări și să configurați cheia API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Capabilități"
+  },
   "Chat_History": {
     "message": "Istoric chat"
+  },
+  "Checking_agent_status": {
+    "message": "Se verifică starea agentului..."
   },
   "Choose_AI_Model": {
     "message": "Alege modelul AI"
@@ -137,14 +386,38 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Fă clic pe pictograma Browserx din bara de instrumente sau apasă Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": "Faceți clic pentru a anula autentificarea"
+  },
   "Click_to_select_a_model": {
     "message": "Fă clic pentru a selecta un model"
+  },
+  "Close": {
+    "message": "Închide"
   },
   "Close_settings": {
     "message": "Închide setările"
   },
+  "Collapse": {
+    "message": "Restrânge"
+  },
+  "Command_Approval_Required": {
+    "message": "Este necesară aprobarea comenzii"
+  },
+  "Command_completed": {
+    "message": "Comandă finalizată"
+  },
   "Command": {
     "message": "Comandă"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "Comenzile rulează direct pe gazdă. Filtrul de securitate se aplică în continuare."
+  },
+  "Completed": {
+    "message": "Finalizat"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Finalizat: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Comprimă datele în cache pentru a economisi spațiu de stocare"
@@ -152,38 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Configurează modelul AI și cheile API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Configurați o cheie API în Setări"
+  },
+  "Configured": {
+    "message": "Configurat"
+  },
+  "Configured_Agents": {
+    "message": "Agenți configurați"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Servere configurate"
   },
   "Connect": {
-    "message": ""
+    "message": "Conectare"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Conectează-te la agenții protocol Agent-la-Agent (A2A) pentru a extinde capacitățile cu abilități externe ale agenților."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Conectează-te la serverele Model Context Protocol (MCP) pentru a extinde agentul cu instrumente externe."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Conectează-te la un agent A2A pentru a descoperi abilități."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Conectează-te la un server MCP pentru a descoperi instrumente."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Conectează-te la servere externe de instrumente MCP"
   },
   "Connected": {
     "message": "Conectat"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Conectat cu succes"
   },
-  "Context": {
-    "message": "Context"
+  "Connecting": {
+    "message": "Se conectează..."
+  },
+  "Connection_error": {
+    "message": "Eroare de conexiune"
+  },
+  "Connection_failed_1": {
+    "message": "Conexiune eșuată: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Conexiune eșuată: URL de bază neconfigurat"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Conexiune eșuată: configurația modelului selectat lipsește"
+  },
+  "Connection_successful": {
+    "message": "Conexiune reușită!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Testul de conexiune a eșuat: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Testul de conexiune a eșuat: Cheie API invalidă"
+  },
+  "Connection_test_successful": {
+    "message": "Testul de conexiune reușit!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Testul de conexiune reușit! (Cheia API este validă)"
+  },
+  "Connection_was_refused": {
+    "message": "Conexiunea a fost refuzată"
+  },
+  "Connection_was_reset": {
+    "message": "Conexiunea a fost resetată"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Conținutul încalcă politica: conținutul ${contentType} nu este permis"
+  },
+  "Context_Window": {
+    "message": "Fereastră de context"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Context compactat: salvați ~$1$k tokeni",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Controlează cât de agresiv agentul cere aprobare."
   },
   "Create_New_Tab": {
     "message": "Creează filă nouă"
+  },
+  "Created": {
+    "message": "Creat"
+  },
+  "Creator": {
+    "message": "Creator"
   },
   "Credit_Details": {
     "message": "Detalii credit"
   },
   "Current_Plan": {
     "message": "Plan curent:"
+  },
+  "DNS_lookup_failed": {
+    "message": "Rezolvare DNS eșuată"
   },
   "DOM_Tool": {
     "message": "Instrument DOM"
@@ -195,10 +552,34 @@
     "message": "Instrument de extragere a datelor"
   },
   "Date": {
-    "message": ""
+    "message": "Data"
   },
   "Days_until_expiration": {
     "message": "Zile până la expirare"
+  },
+  "Debug_logging_disabled": {
+    "message": "Jurnalizare de depanare dezactivată"
+  },
+  "Debug_logging_enabled": {
+    "message": "Jurnalizare de depanare activată"
+  },
+  "Default": {
+    "message": "Implicit"
+  },
+  "Deny": {
+    "message": "Refuză"
+  },
+  "Deprecated": {
+    "message": "Învechit"
+  },
+  "Deprecation_Message": {
+    "message": "Mesaj de învechire"
+  },
+  "Description": {
+    "message": "Descriere"
+  },
+  "Desktop_mode": {
+    "message": "Mod desktop"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Dezvoltat și susținut de AI Republic"
@@ -207,16 +588,37 @@
     "message": "Renunță la modificări"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Deconectare"
+  },
+  "Disconnected_successfully": {
+    "message": "Deconectat cu succes"
+  },
+  "Dismiss": {
+    "message": "Respinge"
+  },
+  "Dismiss_notification": {
+    "message": "Respinge notificarea"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Afișează consumul de tokeni (tokeni de intrare/ieșire) la finalizarea sarcinilor"
   },
+  "Draft": {
+    "message": "Ciornă"
+  },
+  "Duration": {
+    "message": "Durată"
+  },
+  "ERROR": {
+    "message": "EROARE"
+  },
   "Edit": {
-    "message": ""
+    "message": "Editează"
+  },
+  "Edit_Agent": {
+    "message": "Editează Agentul"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Editează Serverul"
   },
   "Enable_All_Tools": {
     "message": "Activează toate instrumentele"
@@ -234,40 +636,61 @@
     "message": "Activează extensia"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Activează instrumentele Model Context Protocol de pe serverele MCP conectate"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Activează reconectarea automată la pornirea browserx"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activează caching-ul pentru a îmbunătăți performanța prin stocarea datelor accesate frecvent"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Activează jurnalizarea de depanare"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Activează căutarea web pentru agent"
   },
   "Enabled": {
-    "message": ""
+    "message": "Activat"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Introdu cheia API dacă este necesară"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Introdu cheia API sau tokenul de tip bearer"
   },
   "Enter_your_LLM_API_key": {
     "message": "Introduceți cheia API LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Introdu sarcina ta..."
+  },
+  "Error": {
+    "message": "Eroare"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Eroare: Nu ești conectat la agent. Te rugăm să reîncarci pagina."
   },
   "Execute_Commands": {
     "message": "Execută comenzi"
   },
+  "Execution_Mode": {
+    "message": "Mod de execuție"
+  },
+  "Exit_Code": {
+    "message": "Cod de ieșire:"
+  },
+  "Expand": {
+    "message": "Extinde"
+  },
   "Expire_after_days": {
     "message": "Expiră după zile"
   },
-  "Explain_your_decision": {
-    "message": "Explicați decizia..."
+  "Explain_this_info_selectionText": {
+    "message": "Explică asta: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Explică cu Browserx"
   },
   "Extension_Permission": {
     "message": "Extensie și permisiuni"
@@ -284,35 +707,156 @@
   "Extra_Credits": {
     "message": "Credite suplimentare"
   },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "Directoare suplimentare accesibile în interiorul sandbox-ului"
+  },
   "Extract_Data": {
     "message": "Extrage date:"
+  },
+  "Extract_data_with_Browserx": {
+    "message": "Extrage date cu Browserx"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extrage modele specifice de date din pagini"
   },
+  "Extract_structured_data_from_this_page": {
+    "message": "Extrage date structurate din această pagină"
+  },
   "Extract_structured_data_from_web_pages": {
     "message": "Extrage date structurate din pagini web"
+  },
+  "Failed": {
+    "message": "Eșuat"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Eșec la schimbarea modelului: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Eșec la conectare: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Eșec la crearea unui nou tab. Vă rugăm să încercați din nou."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Eșec la crearea tab-ului de browser: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Eșec la deconectare: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Eșec la încărcarea setărilor A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Eșec la încărcarea conversației. Vă rugăm să încercați din nou."
   },
   "Failed_to_load_preferences": {
     "message": "Încărcarea preferințelor a eșuat"
   },
+  "Failed_to_load_settings": {
+    "message": "Eșec la încărcarea setărilor"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Eșec la eliminarea cheii API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Eșec la eliminarea agentului: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Eșec la salvarea cheii API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Eșec la salvarea setării de jurnalizare de depanare: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Failed_to_save_settings": {
     "message": "Salvarea setărilor a eșuat"
+  },
+  "Failed_to_save_settings_1": {
+    "message": "Eșec la salvarea setărilor: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Eșec la salvare: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Eșec la trimiterea mesajului. Vă rugăm să încercați din nou."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Eșec la începerea unei noi conversații. Vă rugăm să încercați din nou."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Eșec la oprirea sarcinii. Vă rugăm să încercați din nou."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Nu s-a reușit trecerea la fila ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Testarea conexiunii a eșuat"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Actualizarea modului API a eșuat"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Actualizarea nivelului de serviciu a eșuat: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Este necesară aprobarea modificării fișierului"
   },
   "File_Operations_Not_Available": {
     "message": "Operații cu fișiere (Indisponibil)"
   },
-  "File_Path": {
-    "message": "Cale fișier"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Completează formulare, trimite date, interacționează cu elementele formularului"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Instrument de automatizare a formularelor"
   },
   "Full_Access_Dangerous": {
     "message": "Acces complet (Periculos)"
+  },
+  "Full_Input": {
+    "message": "Intrare completă"
   },
   "General": {
     "message": "General"
@@ -337,14 +881,64 @@
   "Hello_World": {
     "message": "Salut lume"
   },
-  "History": {
-    "message": "Istoric"
+  "Hide_API_key": {
+    "message": "Ascunde cheia API"
   },
-  "Impact": {
-    "message": "Impact"
+  "High_Speed": {
+    "message": "Viteză mare"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "Cum este montat directorul spațiului de lucru în sandbox"
+  },
+  "Image_Input": {
+    "message": "Intrare imagine"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Îmbunătățește acest text: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Îmbunătățește cu Browserx"
+  },
+  "In": {
+    "message": "In:"
+  },
+  "Incompatible_features": {
+    "message": "Funcționalități incompatibile:"
+  },
+  "Initial_Delay": {
+    "message": "Întârziere inițială"
+  },
+  "Input_Token_Price": {
+    "message": "Preț token de intrare"
+  },
+  "Input": {
+    "message": "Intrare:"
+  },
+  "Input_1": {
+    "message": "Intrare: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Interceptă și modifică cererile/răspunsurile de rețea"
+  },
+  "Invalid_API_key": {
+    "message": "Cheie API invalidă"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Cheie API invalidă furnizată"
+  },
+  "Invalid_URL_format": {
+    "message": "Format URL invalid"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Format de trimitere invalid: câmpul op lipsă"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Format de trimitere invalid: op lipsește câmpul type"
   },
   "Keyboard_Shortcuts": {
     "message": "Scurtături de tastatură"
@@ -362,25 +956,52 @@
     "message": "Află mai multe"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Lăsați gol pentru a păstra existentul"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Listă de origini permise (câte una pe linie). Suportă wildcard-uri (*)"
   },
   "Load_More": {
-    "message": ""
+    "message": "Încarcă mai multe"
+  },
+  "Load_more": {
+    "message": "Încarcă mai multe"
+  },
+  "Loading_configuration": {
+    "message": "Se încarcă configurația..."
   },
   "Loading_credits": {
     "message": "Se încarcă creditele..."
   },
+  "Loading_details": {
+    "message": "Se încarcă detaliile..."
+  },
+  "Loading_history": {
+    "message": "Se încarcă istoricul..."
+  },
   "Loading_settings": {
     "message": "Se încarcă setările..."
   },
+  "Loading_tabs": {
+    "message": "Se încarcă filele..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Se încarcă..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Înregistrează mesajele protocolului A2A în consola browserului pentru depanare"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Înregistrează mesajele protocolului MCP în consola browserului pentru depanare"
+  },
+  "Log_in_to_your_account": {
+    "message": "Autentifică-te în contul tău"
+  },
+  "Logged_in": {
+    "message": "Autentificat"
+  },
+  "Logging_in": {
+    "message": "Se autentifică..."
   },
   "Login": {
     "message": "Autentificare"
@@ -389,19 +1010,19 @@
     "message": "Autentificați-vă pentru a obține credite gratuite"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Apăsare lungă pentru a programa sarcina"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Apăsați lung butonul de trimitere pentru a programa o sarcină"
   },
   "Low_credits_remaining": {
     "message": "Credite aproape epuizate"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "Servere MCP"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "Instrumente MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Gestionare file de browser (deschidere, închidere, comutare, interogare)"
@@ -415,29 +1036,103 @@
   "Max_Cache_Size_MB": {
     "message": "Dimensiune maximă a cache-ului (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Număr maxim de sesiuni concurente"
+  },
+  "Max_Delay": {
+    "message": "Întârziere maximă"
+  },
+  "Max_Output": {
+    "message": "Ieșire maximă"
+  },
+  "Max_Output_Tokens": {
+    "message": "Tokeni de ieșire maximi"
+  },
+  "Max_Retries": {
+    "message": "Încercări maxime"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Dimensiunea maximă a cache-ului în megabytes (implicit: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Numărul maxim de sesiuni de agent paralele, inclusiv sarcinile programate"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "S-a atins numărul maxim de 5 agenți"
+  },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "S-a atins numărul maxim de 5 servere"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Timp maxim (în milisecunde) în care un instrument poate rula înainte de timeout (implicit: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Risc mediu și mai sus"
+  },
+  "Message_service_not_available": {
+    "message": "Serviciul de mesaje nu este disponibil"
+  },
   "Missed": {
-    "message": ""
+    "message": "Rătat"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Sarcini programate ratate"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Modelul „$1$” nu acceptă intrare de tip imagine. Unele instrumente vor fi dezactivate.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Configurare model"
   },
+  "Model_Configuration": {
+    "message": "Configurare model"
+  },
+  "Model_Key_API": {
+    "message": "Cheie model (API)"
+  },
+  "Model_Name": {
+    "message": "Nume model"
+  },
   "Model_Selection": {
     "message": "Selectare model"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Setările modelului și ale furnizorului încărcate din configurația implicită (doar citire)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Modelul a fost schimbat în $1$. Vă rugăm să configurați cheia API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Modelul a fost schimbat în $1$. Sesiunea va fi reinițializată.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Model:"
+  },
+  "Model_1": {
+    "message": "Model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Chat modern"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Modifică parametrii la solicitarea de modificări"
   },
   "Monthly_Credits": {
     "message": "Credite lunare"
@@ -446,7 +1141,7 @@
     "message": "Configurare suplimentară"
   },
   "Name": {
-    "message": ""
+    "message": "Nume"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigare pagini, clic pe linkuri, gestionare navigare în browser"
@@ -454,8 +1149,17 @@
   "Navigation_Tool": {
     "message": "Instrument de navigare"
   },
+  "Network_Access": {
+    "message": "Acces la rețea"
+  },
   "Network_Intercept_Tool": {
     "message": "Instrument de interceptare a rețelei"
+  },
+  "Network_error": {
+    "message": "Eroare de rețea"
+  },
+  "Network_error_occurred": {
+    "message": "A apărut o eroare de rețea"
   },
   "Never_expire_permanent": {
     "message": "Nu expiră niciodată (permanent)"
@@ -463,29 +1167,85 @@
   "New_Conversation": {
     "message": "Conversație nouă"
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
+  "No_A2A_agents_configured_yet": {
+    "message": "Încă nu există agenți A2A configurați."
   },
-  "No_approval_history_yet": {
-    "message": "Încă nu există istoric de aprobare."
+  "No_Access": {
+    "message": "Fără acces"
+  },
+  "No_Access_Configured": {
+    "message": "Niciun acces configurat"
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": "Încă nu există servere MCP configurate."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Niciun acces configurat. Vă rugăm să vă autentificați sau să configurați o cheie API."
+  },
+  "No_active_sessions": {
+    "message": "Nicio sesiune activă"
+  },
+  "No_chat_history_yet": {
+    "message": "Încă nu există istoric de chat"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Încă nu există sarcini finalizate"
+  },
+  "No_models_available": {
+    "message": "Niciun model disponibil"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Niciun model disponibil. Vă rugăm să verificați configurația."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Nicio sarcină programată"
+  },
+  "No_scheduled_time": {
+    "message": "Nicio oră programată"
+  },
+  "No_skills_available": {
+    "message": "Nicio abilitate disponibilă."
+  },
+  "No_steps_in_plan": {
+    "message": "Niciun pas în plan"
   },
   "No_tabs_available": {
     "message": "Nu există file disponibile"
   },
+  "No_time_set": {
+    "message": "Nicio oră setată"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Niciun instrument disponibil."
+  },
+  "None": {
+    "message": "Nimic"
   },
   "Not_Connected": {
     "message": "Neconectat"
   },
+  "Notification": {
+    "message": "Notificare"
+  },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Număr de zile înainte ca datele de lansare să expire (implicit: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Offline - sarcinile vor rula când ești conectat"
+  },
+  "Older": {
+    "message": "Mai vechi"
+  },
+  "Only_high_risk_actions": {
+    "message": "Doar acțiuni cu risc ridicat"
+  },
+  "Open_1_settings": {
+    "message": "Deschide setările $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Deschide panoul lateral:"
@@ -493,17 +1253,51 @@
   "Organization": {
     "message": "Organizație"
   },
+  "Organization_ID": {
+    "message": "ID organizație"
+  },
+  "Out": {
+    "message": "Ieșire:"
+  },
+  "Output_Token_Price": {
+    "message": "Preț token de ieșire"
+  },
+  "Output": {
+    "message": "Ieșire:"
+  },
+  "Output_1": {
+    "message": "Ieșire: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Instrument de acțiune pe pagină"
   },
   "Page_Vision_Tool": {
     "message": "Instrument de viziune a paginii"
   },
-  "Parameter_Modifications": {
-    "message": "Modificări de parametri"
+  "Past_Month": {
+    "message": "Luna trecută"
+  },
+  "Past_Week": {
+    "message": "Săptămâna trecută"
+  },
+  "Patch_applied_successfully": {
+    "message": "Patch aplicat cu succes"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Patch pentru $1$ fișier(e)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Pauzează coada"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Execută acțiuni pe pagină (derulare, captură de ecran, așteptare)"
@@ -511,29 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Persistă cache-ul în stocare"
   },
+  "Plan_1_step_s": {
+    "message": "Plan: $1$ pas(e)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Vă rugăm să verificați cheia API în setări."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Vă rugăm să introduceți o descriere a sarcinii"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Vă rugăm să introduceți mai întâi o cheie API"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Introduceți o cheie API validă."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Vă rugăm să vă autentificați din nou pentru a continua să utilizați agentul AI."
+  },
+  "Please_select_a_provider": {
+    "message": "Vă rugăm să selectați un furnizor"
   },
   "Please_type_a_valid_command": {
     "message": "Introduceți o comandă validă"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Vă rugăm să faceți upgrade la plan pentru a debloca cele mai avansate modele din lume"
+  },
+  "Power": {
+    "message": "Putere"
+  },
+  "Pricing_Information": {
+    "message": "Informații despre prețuri"
+  },
+  "Pricing_Page": {
+    "message": "Pagina de prețuri"
+  },
+  "Priority": {
+    "message": "Prioritate"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Nivelul prioritar oferă timpi de răspuns mai rapizi, cu prețuri mai mari."
   },
+  "Processing": {
+    "message": "Se procesează..."
+  },
+  "Protocol": {
+    "message": "Protocol"
+  },
   "Provider": {
     "message": "Furnizor"
+  },
+  "Provider_Configuration": {
+    "message": "Configurare furnizor"
+  },
+  "Provider_ID": {
+    "message": "ID furnizor"
+  },
+  "Provider_Name": {
+    "message": "Nume furnizor"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Interoghează și manipulează DOM-ul (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Coada este în pauză"
   },
   "Queued": {
-    "message": ""
+    "message": "În coadă"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Programare rapidă"
   },
   "Quick_Start": {
     "message": "Start rapid"
@@ -541,11 +1388,34 @@
   "Quick_action": {
     "message": "Acțiune rapidă"
   },
+  "Read_Only": {
+    "message": "Doar citire"
+  },
+  "Read_Write": {
+    "message": "Citire-scriere"
+  },
   "Read_only": {
     "message": "Doar citire"
   },
-  "Reason_optional": {
-    "message": "Motiv (opțional)"
+  "Reasoning": {
+    "message": "Raționament"
+  },
+  "Reasoning_Efforts": {
+    "message": "Eforturi de raționament"
+  },
+  "Reasoning_Summaries": {
+    "message": "Rezumate de raționament"
+  },
+  "Reasoning_levels": {
+    "message": "Niveluri de raționament:"
+  },
+  "Reasoning_1": {
+    "message": "Raționament: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Se reîmprospătează în"
@@ -553,50 +1423,86 @@
   "Reject": {
     "message": "Respinge"
   },
-  "Reject_this_action": {
-    "message": "Respinge această acțiune"
+  "Release_Date": {
+    "message": "Data lansării"
+  },
+  "Release_date_unknown": {
+    "message": "Data lansării necunoscută"
+  },
+  "Released": {
+    "message": "Lansat:"
   },
   "Remaining": {
     "message": "Rămase:"
   },
   "Remove": {
-    "message": ""
+    "message": "Elimină"
   },
   "Remove_API_Key": {
     "message": "Elimină cheia API"
   },
-  "Remove_modification": {
-    "message": "Elimină modificarea"
+  "Request_Timeout": {
+    "message": "Timp de așteptare al cererii"
   },
-  "Request_Changes": {
-    "message": "Solicită modificări"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Solicită modificări pentru această acțiune"
+  "Request_timed_out": {
+    "message": "Cererea a expirat"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Timp de așteptare al cererii în milisecunde (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Timp de așteptare al cererii în milisecunde (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Cererea a fost anulată"
+  },
+  "Response_failed": {
+    "message": "Răspuns eșuat"
+  },
+  "Restricted": {
+    "message": "Restricționat"
+  },
+  "Result_Summary": {
+    "message": "Rezumat rezultat"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Reluare coadă"
+  },
+  "Retry_Configuration": {
+    "message": "Configurare reîncercare"
+  },
+  "Retrying": {
+    "message": "Se reîncearcă"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Fă clic dreapta pe orice text pentru a-l explica sau îmbunătăți cu Browserx"
+  },
+  "Risk_Score": {
+    "message": "Scor de risc:"
   },
   "Rollout_Expiration": {
     "message": "Expirarea fazei de lansare"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Rulează acum"
   },
   "Running": {
-    "message": ""
+    "message": "În desfășurare"
+  },
+  "STREAM_ERROR": {
+    "message": "EROARE DE STREAM"
+  },
+  "Safe": {
+    "message": "Sigur"
   },
   "Sandbox_Policy": {
     "message": "Politica Sandbox"
   },
   "Save_API_Key": {
     "message": "Salvează cheia API"
+  },
+  "Save_Changes": {
+    "message": "Salvează modificările"
   },
   "Save_Settings": {
     "message": "Salvează setările"
@@ -605,13 +1511,31 @@
     "message": "Se salvează..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Programare"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Programează o sarcină nouă"
+  },
+  "Scheduled": {
+    "message": "Programat"
+  },
+  "Scheduled_Task": {
+    "message": "Sarcină programată"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Începerea sarcinii programate"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Sarcini programate"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Ora programată trebuie să fie cu cel puțin 1 minut în viitor"
+  },
+  "Search_complete": {
+    "message": "Căutare finalizată"
+  },
+  "Searching": {
+    "message": "Se caută..."
   },
   "Security_Privacy": {
     "message": "Securitate și confidențialitate"
@@ -619,17 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Nivel de securitate pentru mediul de execuție al unui instrument"
   },
+  "Select_Model": {
+    "message": "Selectează modelul"
+  },
+  "Select_model_1": {
+    "message": "Selectează modelul: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Selectați modelul AI de utilizat pentru conversații."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selectați limba preferată pentru interfață"
   },
+  "Selected": {
+    "message": "Selectat"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Configurarea modelului selectat lipsește"
+  },
+  "Send": {
+    "message": "Trimite"
+  },
   "Service_Tier": {
     "message": "Nivel de serviciu"
   },
-  "Session": {
-    "message": "Sesiune"
+  "Service_tier_updated_to_1": {
+    "message": "Nivelul serviciului a fost actualizat la $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Session_error": {
+    "message": "Eroare sesiune"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Sesiunea a expirat - vă rugăm să vă autentificați din nou pentru a continua să utilizați agentul AI"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "Limita de sesiuni atinsă. Noile sarcini vor fi puse în coadă."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Stabilește când datele din faza de lansare ar trebui să expire"
@@ -640,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Setările au fost salvate cu succes"
   },
+  "Show_API_key": {
+    "message": "Afișează cheia API"
+  },
+  "Show_all": {
+    "message": "Afișează tot"
+  },
+  "Show_less": {
+    "message": "Afișează mai puțin"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Afișează utilizarea token-urilor în sarcini"
   },
@@ -649,8 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Conectează-te la contul tău"
   },
+  "Skills": {
+    "message": "Abilități"
+  },
   "Stable": {
     "message": "Stabil"
+  },
+  "Standard_capabilities": {
+    "message": "Capacități standard"
+  },
+  "Start_New_Conversation": {
+    "message": "Începe o nouă conversație"
+  },
+  "Start_on_login": {
+    "message": "Pornește la autentificare"
+  },
+  "Status": {
+    "message": "Stare"
+  },
+  "Stop_Agent": {
+    "message": "Oprește agentul"
+  },
+  "Stop_the_current_task": {
+    "message": "Oprește sarcina curentă"
   },
   "Stop_the_current_task_run": {
     "message": "Oprește rularea curentă a sarcinii"
@@ -673,17 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Stochează datele cache în mod persistent între sesiunile browserului"
   },
+  "Suggest_Alternative": {
+    "message": "Sugerează alternativă"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Comutat în modul backend. Cererile LLM vor fi direcționate prin serverul AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Comutat în modul API direct. Vă rugăm să configurați cheia API."
+  },
+  "System": {
+    "message": "Sistem"
+  },
   "Tab_Tool": {
     "message": "Instrument de file"
   },
+  "Tab_unavailable": {
+    "message": "Fila indisponibilă"
+  },
+  "Take_Over": {
+    "message": "Preia controlul"
+  },
   "Task": {
-    "message": ""
+    "message": "Sarcină"
+  },
+  "Task_Details": {
+    "message": "Detalii sarcină"
+  },
+  "Task_Failed": {
+    "message": "Sarcină eșuată"
   },
   "Task_History": {
-    "message": ""
+    "message": "Istoric sarcini"
+  },
+  "Task_ID": {
+    "message": "ID sarcină"
+  },
+  "Task_Plan": {
+    "message": "Plan sarcină"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Sarcină anulată de utilizator"
+  },
+  "Task_complete": {
+    "message": "Sarcină finalizată"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Sarcină finalizată în $1$ tur(e)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Sarcină eșuată"
+  },
+  "Task_started": {
+    "message": "Sarcină începută"
   },
   "Terminal": {
     "message": "Terminal"
+  },
+  "Terminal_Sandbox": {
+    "message": "Terminal Sandbox"
   },
   "Test_Connection": {
     "message": "Testează conexiunea"
@@ -691,32 +1732,67 @@
   "Testing": {
     "message": "Se testează..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "URL-ul endpoint-ului agentului A2A (http sau https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "AI-ul decide per comandă dacă să folosească sandbox-ul pe baza evaluării riscului."
+  },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "URL-ul endpoint-ului serverului MCP (http sau https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agentul folosește în prezent modul backend. Cererile LLM vor fi direcționate prin serverul AI Republic. Conversațiile tale sunt procesate în mod securizat prin infrastructura noastră."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Schimbarea modelului va curăța conversația curentă. Doriți să continuați?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Serverul a întâmpinat o eroare. Vă rugăm să încercați din nou mai târziu."
+  },
   "Time": {
     "message": "Timp"
-  },
-  "Time_remaining": {
-    "message": "Timp rămas"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Timpul de viață pentru elementele cache, în secunde (implicit: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Timp de expirare (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Pentru a folosi agentul AI, vă rugăm să:"
+  },
+  "Today": {
+    "message": "Astăzi"
   },
   "Toggle_side_panel": {
     "message": "Comută panoul lateral"
   },
-  "Tool": {
-    "message": "Instrument"
+  "Toggle_use_own_API_key": {
+    "message": "Comută utilizarea propriei chei API"
+  },
+  "Token_Usage": {
+    "message": "Utilizare token"
+  },
+  "Tokens": {
+    "message": "Tokenuri:"
+  },
+  "Tokens_1": {
+    "message": "Tokenuri: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Timeout instrument (ms)"
+  },
+  "Tool_name": {
+    "message": "Nume instrument:"
+  },
+  "Tool": {
+    "message": "Instrument"
   },
   "Tools": {
     "message": "Instrumente"
@@ -724,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Setări instrumente"
   },
-  "Turn": {
-    "message": "Întoarce"
+  "Trusted": {
+    "message": "De încredere"
+  },
+  "Trusted_Domains": {
+    "message": "Domenii de încredere"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Agenții de încredere sunt aprobați automat pentru invocarea abilităților"
+  },
+  "Turns": {
+    "message": "Ture:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Introduceți instrucțiuni alternative..."
   },
   "UI_Theme": {
     "message": "Temă UI"
@@ -733,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL-ul trebuie să folosească protocolul http sau https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Imposibil de verificat starea agentului"
+  },
   "Unable_to_load_credit_information": {
     "message": "Nu s-a putut încărca informațiile despre credit"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Imposibil de accesat serverul backend - vă rugăm să verificați conexiunea"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Imposibil de accesat serverul. Vă rugăm să verificați conexiunea și să încercați din nou."
+  },
+  "Unknown_Event": {
+    "message": "Eveniment necunoscut"
+  },
+  "Unknown_error": {
+    "message": "Eroare necunoscută"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Eroare necunoscută la verificarea stării agentului"
+  },
+  "Unknown_error_occurred": {
+    "message": "A apărut o eroare necunoscută"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "A apărut o eroare necunoscută în timpul execuției sarcinii"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Eroare necunoscută la procesarea trimiterii"
+  },
+  "Unknown_model_1": {
+    "message": "Model necunoscut ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Modificări nesalvate"
   },
+  "Untitled": {
+    "message": "Fără titlu"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "În curând"
   },
   "Update": {
-    "message": ""
+    "message": "Actualizare"
   },
   "Update_Channel": {
     "message": "Canal de actualizare"
@@ -753,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Actualizează la Premium"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Actualizați pentru a explora cele mai puternice modele din lume"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Actualizează abonamentul pentru a explora cele mai puternice modele din lume"
@@ -766,32 +1898,47 @@
   "User_Center": {
     "message": "Centru utilizator"
   },
-  "User_approved_action": {
-    "message": "Acțiune aprobată de utilizator"
-  },
-  "User_decision": {
-    "message": "Decizia utilizatorului"
+  "User_Session": {
+    "message": "Sesiune utilizator"
   },
   "User_preferences_and_interface_settings": {
     "message": "Preferințele utilizatorului și setările interfeței"
   },
-  "User_rejected_action": {
-    "message": "Acțiune respinsă de utilizator"
-  },
-  "User_requested_modifications": {
-    "message": "Modificări solicitate de utilizator"
-  },
   "Using_extra_credits": {
     "message": "Utilizarea creditelor suplimentare"
+  },
+  "Verbosity": {
+    "message": "Verbositate"
+  },
+  "Verbosity_Control": {
+    "message": "Controlul verbosității"
+  },
+  "Verbosity_Levels": {
+    "message": "Niveluri de verbositate"
+  },
+  "Verbosity_levels": {
+    "message": "Niveluri de verbositate:"
+  },
+  "Version": {
+    "message": "Versiune"
   },
   "View_Chat_History": {
     "message": "Vizualizează istoricul conversațiilor"
   },
   "View_History": {
-    "message": ""
+    "message": "Vezi istoricul"
+  },
+  "View_Session": {
+    "message": "Vezi sesiunea"
+  },
+  "View_pricing_details": {
+    "message": "Vezi detaliile de preț"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Analiză vizuală a conținutului și aspectului paginii"
+  },
+  "Waiting_for_approval": {
+    "message": "În așteptarea aprobării"
   },
   "Web_Scraping_Tool": {
     "message": "Instrument de scraping web"
@@ -802,8 +1949,23 @@
   "Welcome_to_Browserx": {
     "message": "Bine ați venit la Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "Dacă comenzile sandbox pot accesa rețeaua"
+  },
+  "Workspace_Access": {
+    "message": "Acces la spațiul de lucru"
+  },
   "Workspace_Write": {
     "message": "Scriere în spațiul de lucru"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Ieri"
+  },
+  "You": {
+    "message": "Tu"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Aveți modificări nesalvate. Doriți să le renunțați?"
@@ -814,10 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Cheia dvs. API este criptată"
   },
-  "Your_Decision": {
-    "message": "Decizia dvs."
+  "Your_personal_AI_assistant": {
+    "message": "Asistentul tău AI personal"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Sesiunea dvs. a expirat. Vă rugăm să vă autentificați din nou."
+  },
+  "DISCONNECTED": {
+    "message": "[DISCONNECTED]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Error: Stream interrupted]"
+  },
+  "NO_ACCESS": {
+    "message": "[NO ACCESS]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[NO API KEY - CLICK SETTINGS]"
+  },
+  "PROCESSING": {
+    "message": "[PROCESSING]"
+  },
+  "available": {
+    "message": "disponibil"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "în cache"
+  },
+  "detailed_thinking": {
+    "message": "gândire detaliată"
+  },
+  "disconnected": {
+    "message": "deconectat"
+  },
+  "exec_unknown_command": {
+    "message": "exec (comandă necunoscută)"
   },
   "optional": {
-    "message": ""
+    "message": "opțional"
+  },
+  "remaining": {
+    "message": "rămas"
+  },
+  "session": {
+    "message": "sesiune"
+  },
+  "sessions": {
+    "message": "sesiuni"
+  },
+  "streaming": {
+    "message": "streaming..."
+  },
+  "thinking": {
+    "message": "gândire"
+  },
+  "tokens": {
+    "message": "tokenuri"
+  },
+  "trusted": {
+    "message": "de încredere"
+  },
+  "user": {
+    "message": "utilizator"
+  },
+  "web_search": {
+    "message": "căutare pe web"
   }
 }

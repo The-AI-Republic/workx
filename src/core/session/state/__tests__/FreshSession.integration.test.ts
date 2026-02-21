@@ -54,8 +54,7 @@ describe('Fresh Session Creation', () => {
       const context = session.getTurnContext();
 
       expect(context).toBeDefined();
-      expect(context.cwd).toBeDefined();
-      expect(context.approval_policy).toBeDefined();
+      expect(context.getApprovalPolicy()).toBeDefined();
     });
   });
 
@@ -78,7 +77,7 @@ describe('Fresh Session Creation', () => {
       const state2 = new SessionState();
 
       state1.recordItems([
-        { role: 'user' as const, content: 'Test', timestamp: Date.now() },
+        { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Test' }] } as any,
       ]);
 
       expect(state1.historySnapshot()).toHaveLength(1);
@@ -255,8 +254,8 @@ describe('Fresh Session Creation', () => {
       session1.updateTurnContext({ model: 'gpt-4' });
       session2.updateTurnContext({ model: 'gpt-3.5' });
 
-      expect(session1.getTurnContext().model).toBe('gpt-4');
-      expect(session2.getTurnContext().model).toBe('gpt-3.5');
+      expect(session1.getTurnContext().getModel()).toBe('gpt-4');
+      expect(session2.getTurnContext().getModel()).toBe('gpt-3.5');
     });
   });
 

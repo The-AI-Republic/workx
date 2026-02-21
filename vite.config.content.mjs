@@ -8,6 +8,9 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 // Separate build config for content script
 // Must be IIFE format with all dependencies bundled inline
 export default defineConfig({
+  define: {
+    __BUILD_MODE__: JSON.stringify('extension'),
+  },
   plugins: [
     svelte({
       compilerOptions: {
@@ -24,7 +27,7 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/content/content-script.ts'),
+      entry: resolve(__dirname, 'src/extension/content/content-script.ts'),
       name: 'BrowserxContentScript',
       formats: ['iife'],
       fileName: () => 'content.js'

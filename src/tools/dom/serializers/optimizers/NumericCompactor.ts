@@ -17,7 +17,7 @@
  * Stage 3 Payload Optimization
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 
 export class NumericCompactor {
   /**

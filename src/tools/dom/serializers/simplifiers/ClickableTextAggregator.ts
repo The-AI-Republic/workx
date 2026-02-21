@@ -28,7 +28,8 @@
  * Stage 2 Structure Simplification
  */
 
-import { VirtualNode, NODE_TYPE_TEXT } from '../../types';
+import type { VirtualNode } from '../../types';
+import { NODE_TYPE_TEXT } from '../../types';
 
 export class ClickableTextAggregator {
   /**

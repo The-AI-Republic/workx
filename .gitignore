@@ -15,6 +15,8 @@ coverage/
 .env
 .env.local
 .env.*.local
+src/extension/.env
+src/desktop/.env
 
 # Editor directories and files
 .vscode/*
@@ -65,6 +67,16 @@ tmp/
 
 # Vitest
 .vitest/
+
+# Tauri / Desktop App (Pi)
+tauri/target/
+tauri/gen/
+*.AppImage
+*.deb
+*.dmg
+*.msi
+*.exe
+!*.exe.manifest
 
 # Source maps (uncomment if you don't want to commit them)
 # *.map

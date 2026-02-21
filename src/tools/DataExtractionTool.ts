@@ -1,12 +1,54 @@
-import type {
-  DataExtractionParams,
-  DataExtractionResult,
-  ExtractedData,
-  DataPattern,
-  StructuredData,
-  ExportFormat
-} from '../types/tools';
 import { BaseTool, type ToolDefinition } from './BaseTool';
+
+/** Extraction mode */
+export type ExportFormat = 'json' | 'csv' | 'xml' | 'markdown';
+
+/** Data pattern definition */
+export interface DataPattern {
+  name: string;
+  regex: RegExp;
+  type: string;
+  description: string;
+}
+
+/** Structured data result */
+export interface StructuredData {
+  fields?: Record<string, any>;
+  arrays?: Record<string, any[]>;
+  nested?: Record<string, any>;
+  tables?: any;
+  [key: string]: any;
+}
+
+/** Extracted data */
+export interface ExtractedData {
+  raw: any;
+  structured: StructuredData;
+  metadata: Record<string, any>;
+}
+
+/** Data extraction parameters */
+export interface DataExtractionParams {
+  mode: 'semantic' | 'structured' | 'pattern' | 'table' | 'auto';
+  patterns?: string[];
+  selectors?: Record<string, string>;
+  schema?: any;
+  format?: ExportFormat;
+  tableSelector?: string;
+  context?: string;
+}
+
+/** Data extraction result */
+export interface DataExtractionResult {
+  success: boolean;
+  data?: ExtractedData;
+  dataId?: string;
+  exported?: string;
+  formatted?: string;
+  statistics?: Record<string, number>;
+  warnings?: string[];
+  error?: string;
+}
 
 export class DataExtractionTool extends BaseTool {
   protected toolDefinition: ToolDefinition;
@@ -21,48 +63,59 @@ export class DataExtractionTool extends BaseTool {
 
     // Initialize tool definition
     this.toolDefinition = {
-      name: 'data_extraction',
-      description: 'Extract structured data from web pages using patterns and semantic analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          mode: {
-            type: 'string',
-            description: 'Extraction mode: semantic, structured, pattern, table, or auto',
-            enum: ['semantic', 'structured', 'pattern', 'table', 'auto']
-          },
-          patterns: {
-            type: 'array',
-            description: 'Patterns to match for extraction',
-            items: {
-              type: 'string'
+      type: 'function' as const,
+      function: {
+        name: 'data_extraction',
+        description: 'Extract structured data from web pages using patterns and semantic analysis',
+        strict: false,
+        parameters: {
+          type: 'object',
+          properties: {
+            mode: {
+              type: 'string',
+              description: 'Extraction mode: semantic, structured, pattern, table, or auto',
+              enum: ['semantic', 'structured', 'pattern', 'table', 'auto']
+            },
+            patterns: {
+              type: 'array',
+              description: 'Patterns to match for extraction',
+              items: {
+                type: 'string'
+              }
+            },
+            selectors: {
+              type: 'object',
+              description: 'CSS selectors or XPath for targeted extraction'
+            },
+            schema: {
+              type: 'object',
+              description: 'Expected data schema. Must be a valid JSON schema object defining the structure of the data to extract.'
+            },
+            format: {
+              type: 'string',
+              description: 'Export format: json, csv, xml, or markdown',
+              enum: ['json', 'csv', 'xml', 'markdown']
+            },
+            tableSelector: {
+              type: 'string',
+              description: 'CSS selector for table extraction'
+            },
+            context: {
+              type: 'string',
+              description: 'Additional context for extraction'
             }
           },
-          selectors: {
-            type: 'object',
-            description: 'CSS selectors or XPath for targeted extraction'
-          },
-          schema: {
-            type: 'object',
-            description: 'Expected data schema. Must be a valid JSON schema object defining the structure of the data to extract.'
-          },
-          format: {
-            type: 'string',
-            description: 'Export format: json, csv, xml, or markdown',
-            enum: ['json', 'csv', 'xml', 'markdown']
-          },
-          tableSelector: {
-            type: 'string',
-            description: 'CSS selector for table extraction'
-          },
-          context: {
-            type: 'string',
-            description: 'Additional context for extraction'
-          }
-        },
-        required: [],
-        additionalProperties: false
-      }
+          required: [],
+          additionalProperties: false
+        }
+      },
+      metadata: {
+        capabilities: ['data_extraction', 'pattern_matching', 'semantic_analysis', 'table_extraction'],
+        permissions: ['activeTab', 'scripting'],
+        platforms: ['extension'] as const,
+      },
+      category: 'data',
+      version: '1.0.0',
     };
   }
 
@@ -177,7 +230,7 @@ export class DataExtractionTool extends BaseTool {
       args: [patternNames.map(name => {
         const pattern = this.patterns.get(name);
         return pattern ? { name: pattern.name, regex: pattern.regex.source } : null;
-      }).filter(Boolean)]
+      }).filter((p): p is { name: string; regex: string } => p !== null)]
     });
 
     return {
@@ -214,7 +267,7 @@ export class DataExtractionTool extends BaseTool {
       args: [selectors]
     });
 
-    const structured = schema ? this.applySchema(results[0]?.result, schema) : results[0]?.result;
+    const structured: StructuredData = schema ? this.applySchema(results[0]?.result, schema) : (results[0]?.result || {});
 
     return {
       raw: results[0]?.result || {},
@@ -408,14 +461,14 @@ export class DataExtractionTool extends BaseTool {
     Object.entries(raw).forEach(([key, value]) => {
       if (Array.isArray(value)) {
         if (value.length === 1) {
-          structured.fields[key] = value[0];
+          structured.fields![key] = value[0];
         } else {
-          structured.arrays[key] = value;
+          structured.arrays![key] = value;
         }
       } else if (typeof value === 'object' && value !== null) {
-        structured.nested[key] = value;
+        structured.nested![key] = value;
       } else {
-        structured.fields[key] = value;
+        structured.fields![key] = value;
       }
     });
 
@@ -450,12 +503,12 @@ export class DataExtractionTool extends BaseTool {
 
     // Process microdata
     if (raw.microdata) {
-      structured.arrays.microdata = raw.microdata;
+      structured.arrays!.microdata = raw.microdata;
     }
 
     // Process JSON-LD
     if (raw.jsonLd) {
-      structured.nested.jsonLd = raw.jsonLd;
+      structured.nested!.jsonLd = raw.jsonLd;
     }
 
     // Process Open Graph
@@ -467,10 +520,10 @@ export class DataExtractionTool extends BaseTool {
     if (context) {
       // Filter based on context keywords
       const contextKeywords = context.toLowerCase().split(' ');
-      Object.entries(structured.fields).forEach(([key, value]) => {
+      Object.entries(structured.fields || {}).forEach(([key, value]) => {
         const valueStr = String(value).toLowerCase();
-        if (!contextKeywords.some(keyword => valueStr.includes(keyword))) {
-          delete structured.fields[key];
+        if (!contextKeywords.some((keyword: string) => valueStr.includes(keyword))) {
+          delete structured.fields![key];
         }
       });
     }
@@ -490,7 +543,7 @@ export class DataExtractionTool extends BaseTool {
     if (schema.fields) {
       Object.entries(schema.fields).forEach(([key, config]: [string, any]) => {
         if (data[key] !== undefined) {
-          structured.fields[key] = this.transformValue(data[key], config.type);
+          structured.fields![key] = this.transformValue(data[key], config.type);
         }
       });
     }

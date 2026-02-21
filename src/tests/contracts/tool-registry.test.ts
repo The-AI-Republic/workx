@@ -85,22 +85,25 @@ describe('ToolRegistry Contract', () => {
   describe('Tool Registration', () => {
     it('should register tools with valid definitions', async () => {
       const toolDefinition: ToolDefinition = {
-        name: 'test_tool',
-        description: 'A test tool for validation',
-        parameters: {
-          type: 'object',
-          properties: {
-            message: {
-              type: 'string',
-              description: 'Message to process',
+        type: 'function',
+        function: {
+          name: 'test_tool',
+          description: 'A test tool for validation',
+          strict: false,
+          parameters: {
+            type: 'object',
+            properties: {
+              message: {
+                type: 'string',
+                description: 'Message to process',
+              },
+              count: {
+                type: 'number',
+                description: 'Number of times to repeat',
+              },
             },
-            count: {
-              type: 'number',
-              description: 'Number of times to repeat',
-              default: 1,
-            },
+            required: ['message'],
           },
-          required: ['message'],
         },
         category: 'testing',
         version: '1.0.0',
@@ -116,7 +119,11 @@ describe('ToolRegistry Contract', () => {
       const mockRegistry: ToolRegistry = {
         async register(tool: ToolDefinition, toolHandler: ToolHandler): Promise<void> {
           // Validate tool definition
-          if (!tool.name || !tool.description || !tool.parameters) {
+          const t = tool as any;
+          const name = t.type === 'function' ? t.function?.name : t.name;
+          const desc = t.type === 'function' ? t.function?.description : t.description;
+          const params = t.type === 'function' ? t.function?.parameters : t.parameters;
+          if (!name || !desc || !params) {
             throw new Error('Invalid tool definition');
           }
 
@@ -125,9 +132,9 @@ describe('ToolRegistry Contract', () => {
             msg: {
               type: 'ToolRegistered',
               data: {
-                tool_name: tool.name,
-                category: tool.category,
-                version: tool.version,
+                tool_name: name,
+                category: t.category,
+                version: t.version,
               },
             },
           });
@@ -158,14 +165,21 @@ describe('ToolRegistry Contract', () => {
     });
 
     it('should reject invalid tool definitions', async () => {
-      const invalidTool: Partial<ToolDefinition> = {
-        name: '',  // Empty name should be rejected
-        description: 'Invalid tool',
-      };
+      const invalidTool = {
+        type: 'function',
+        function: {
+          name: '',  // Empty name should be rejected
+          description: 'Invalid tool',
+        },
+      } as ToolDefinition;
 
       const mockRegistry: ToolRegistry = {
         async register(tool: ToolDefinition): Promise<void> {
-          if (!tool.name || !tool.description || !tool.parameters) {
+          const t = tool as any;
+          const name = t.type === 'function' ? t.function?.name : t.name;
+          const desc = t.type === 'function' ? t.function?.description : t.description;
+          const params = t.type === 'function' ? t.function?.parameters : t.parameters;
+          if (!name || !desc || !params) {
             throw new Error('Tool definition missing required fields');
           }
         },
@@ -251,41 +265,53 @@ describe('ToolRegistry Contract', () => {
     it('should support tool discovery with filters', async () => {
       const mockTools: ToolDefinition[] = [
         {
-          name: 'browser_tab_create',
-          description: 'Create a new browser tab',
-          parameters: {
-            type: 'object',
-            properties: {
-              url: { type: 'string', description: 'URL to open' },
+          type: 'function',
+          function: {
+            name: 'browser_tab_create',
+            description: 'Create a new browser tab',
+            strict: false,
+            parameters: {
+              type: 'object',
+              properties: {
+                url: { type: 'string', description: 'URL to open' },
+              },
+              required: ['url'],
             },
-            required: ['url'],
           },
           category: 'browser',
           version: '1.0.0',
         },
         {
-          name: 'dom_query',
-          description: 'Query DOM elements',
-          parameters: {
-            type: 'object',
-            properties: {
-              selector: { type: 'string', description: 'CSS selector' },
+          type: 'function',
+          function: {
+            name: 'dom_query',
+            description: 'Query DOM elements',
+            strict: false,
+            parameters: {
+              type: 'object',
+              properties: {
+                selector: { type: 'string', description: 'CSS selector' },
+              },
+              required: ['selector'],
             },
-            required: ['selector'],
           },
           category: 'dom',
           version: '1.0.0',
         },
         {
-          name: 'storage_set',
-          description: 'Set storage value',
-          parameters: {
-            type: 'object',
-            properties: {
-              key: { type: 'string' },
-              value: { type: 'string' },
+          type: 'function',
+          function: {
+            name: 'storage_set',
+            description: 'Set storage value',
+            strict: false,
+            parameters: {
+              type: 'object',
+              properties: {
+                key: { type: 'string' },
+                value: { type: 'string' },
+              },
+              required: ['key', 'value'],
             },
-            required: ['key', 'value'],
           },
           category: 'storage',
           version: '1.0.0',
@@ -299,15 +325,18 @@ describe('ToolRegistry Contract', () => {
           let filteredTools = [...mockTools];
 
           if (query?.category) {
-            filteredTools = filteredTools.filter(t => t.category === query.category);
+            filteredTools = filteredTools.filter(t => (t as any).category === query.category);
           }
 
           if (query?.namePattern) {
             const regex = new RegExp(query.namePattern, 'i');
-            filteredTools = filteredTools.filter(t => regex.test(t.name));
+            filteredTools = filteredTools.filter(t => {
+              const name = t.type === 'function' ? t.function.name : '';
+              return regex.test(name);
+            });
           }
 
-          const categories = [...new Set(mockTools.map(t => t.category || 'uncategorized'))];
+          const categories = [...new Set(mockTools.map(t => (t as any).category || 'uncategorized'))];
 
           return {
             tools: filteredTools,
@@ -339,28 +368,32 @@ describe('ToolRegistry Contract', () => {
       // Test discovery with category filter
       const browserTools = await mockRegistry.discover({ category: 'browser' });
       expect(browserTools.tools).toHaveLength(1);
-      expect(browserTools.tools[0].name).toBe('browser_tab_create');
+      expect((browserTools.tools[0] as any).function.name).toBe('browser_tab_create');
 
       // Test discovery with name pattern
       const domTools = await mockRegistry.discover({ namePattern: 'dom_' });
       expect(domTools.tools).toHaveLength(1);
-      expect(domTools.tools[0].name).toBe('dom_query');
+      expect((domTools.tools[0] as any).function.name).toBe('dom_query');
     });
   });
 
   describe('Parameter Validation', () => {
     it('should validate tool parameters against schema', () => {
       const toolDef: ToolDefinition = {
-        name: 'validation_test',
-        description: 'Tool for testing parameter validation',
-        parameters: {
-          type: 'object',
-          properties: {
-            requiredString: { type: 'string', description: 'Required string param' },
-            optionalNumber: { type: 'number', description: 'Optional number param' },
-            enumValue: { type: 'string', enum: ['option1', 'option2', 'option3'] },
+        type: 'function',
+        function: {
+          name: 'validation_test',
+          description: 'Tool for testing parameter validation',
+          strict: false,
+          parameters: {
+            type: 'object',
+            properties: {
+              requiredString: { type: 'string', description: 'Required string param' },
+              optionalNumber: { type: 'number', description: 'Optional number param' },
+              enumValue: { type: 'string', enum: ['option1', 'option2', 'option3'] },
+            },
+            required: ['requiredString'],
           },
-          required: ['requiredString'],
         },
       };
 
@@ -469,7 +502,6 @@ describe('ToolRegistry Contract', () => {
             data: {
               tool_name: context.toolName,
               session_id: context.sessionId,
-              turn_id: context.turnId,
             },
           },
         });
@@ -512,7 +544,6 @@ describe('ToolRegistry Contract', () => {
                   tool_name: request.toolName,
                   session_id: request.sessionId,
                   success: true,
-                  duration: Date.now() - startTime,
                 },
               },
             });
@@ -694,16 +725,29 @@ describe('ToolRegistry Contract', () => {
           } catch (error: any) {
             const isTimeout = error.message.includes('timeout');
 
-            eventCollector.collect({
-              id: 'evt_timeout',
-              msg: {
-                type: isTimeout ? 'ToolExecutionTimeout' : 'ToolExecutionError',
-                data: {
-                  tool_name: request.toolName,
-                  timeout_ms: timeout,
+            if (isTimeout) {
+              eventCollector.collect({
+                id: 'evt_timeout',
+                msg: {
+                  type: 'ToolExecutionTimeout',
+                  data: {
+                    tool_name: request.toolName,
+                    timeout_ms: timeout,
+                  },
                 },
-              },
-            });
+              });
+            } else {
+              eventCollector.collect({
+                id: 'evt_timeout',
+                msg: {
+                  type: 'ToolExecutionError',
+                  data: {
+                    tool_name: request.toolName,
+                    error: error.message,
+                  },
+                },
+              });
+            }
 
             return {
               success: false,

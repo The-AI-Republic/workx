@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "İş görevleri için genel tarayıcı içi AI ajanı"
   },
+  "1_API_Key": {
+    "message": "$1$ API Anahtarı",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API anahtarı başarıyla kaldırıldı",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} görev(ler) tarayıcı kapalıyken planlanan zamanlarını kaçırdı."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - doğruluk azalabilir)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(aktif)"
+  },
+  "multiple_files": {
+    "message": "(birden fazla dosya)"
+  },
+  "no_output": {
+    "message": "(çıktı yok)"
+  },
+  "no_result": {
+    "message": "(sonuç yok)"
+  },
+  "patch_details": {
+    "message": "(yama detayları)"
+  },
+  "Enter_command": {
+    "message": ">> Komut girin..."
+  },
+  "A2A_Agents": {
+    "message": "A2A Ajanları"
+  },
   "API_Key": {
-    "message": ""
+    "message": "API Anahtarı"
   },
   "API_Key_Configuration": {
     "message": "API Anahtar Yapılandırması"
   },
+  "API_Version": {
+    "message": "API Sürümü"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "API anahtarı düzenleme, arka uç modunda devre dışı bırakıldı"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "Kimlik doğrulama için API anahtarı (şifreli olarak saklanır)"
+  },
+  "API_key_has_expired": {
+    "message": "API anahtarı süresi doldu"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API anahtarı yetersiz izinlere sahip"
+  },
+  "API_key_saved_successfully": {
+    "message": "API anahtarı başarıyla kaydedildi!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API anahtarları şifrelenir ve tarayıcınızda yerel olarak saklanır. API istekleri dışındaki durumlarda dış sunuculara gönderilmez."
@@ -20,38 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Tarayıcı depolamasına eriş (localStorage, sessionStorage, çerezler)"
   },
-  "Action": {
-    "message": "Eylem"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Eylem onay modu, güvenilir alanlar, risk ayarları"
   },
-  "Action_Details": {
-    "message": "Eylem Ayrıntıları"
+  "Active_Sessions": {
+    "message": "Aktif Oturumlar"
   },
   "Add": {
-    "message": ""
+    "message": "Ekle"
   },
-  "Add_Modification": {
-    "message": "Değişiklik Ekle"
+  "Add_Agent": {
+    "message": "Ajan Ekle"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Sunucu Ekle"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Görev Ekle"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Harici araçlara bağlanmak için bir sunucu ekleyin."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Harici becerilere bağlanmak için bir ajan ekleyin."
+  },
+  "Additional_Bind_Mounts": {
+    "message": "Ek Bağlama Bağları"
   },
   "Advanced_Configuration": {
     "message": "Gelişmiş Yapılandırma"
   },
-  "Advanced_Options": {
-    "message": "Gelişmiş Seçenekler"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Gelişmiş Ayarlar"
+  },
+  "Agent": {
+    "message": "Ajan"
   },
   "Agent_Execution_Tools": {
     "message": "Ajan Yürütme Araçları"
+  },
+  "Agent_Turn_Complete": {
+    "message": "Ajan Tur Tamamlandı"
+  },
+  "Agent_URL_is_required": {
+    "message": "Ajan URL'si gerekli"
+  },
+  "Agent_added_successfully": {
+    "message": "Ajan başarıyla eklendi"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Ajan adı yalnızca harf, rakam ve tire içerebilir"
+  },
+  "Agent_name_is_required": {
+    "message": "Ajan adı gerekli"
+  },
+  "Agent_not_initialized": {
+    "message": "Ajan başlatılmadı"
+  },
+  "Agent_removed_successfully": {
+    "message": "Ajan başarıyla kaldırıldı"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Ajan turu başarıyla tamamlandı"
+  },
+  "Agent_updated_successfully": {
+    "message": "Ajan başarıyla güncellendi"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Bu alan adlarında tüm eylemler otomatik olarak onaylanır."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Bu alan adlarında tüm eylemler reddedilir."
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "Tüm komutlar OS yerel sandbox içinde çalıştırılır. Yazma işlemleri yalnızca çalışma alanı diziniyle sınırlıdır."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Ajanın sistem komutlarını çalıştırmasına izin ver (dikkatli kullanın)"
@@ -62,26 +167,100 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "İçerik betiklerinin web sayfalarında çalışmasına izin ver"
   },
+  "Allowed": {
+    "message": "İzin Verildi"
+  },
   "Allowed_Origins": {
     "message": "İzin Verilen Kaynaklar"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Yalnızca alfanümerik karakterler ve tire (1-50 karakter)"
   },
-  "Approval_History": {
-    "message": "Onay Geçmişi"
+  "Always_Approve": {
+    "message": "Her zaman onayla"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: Kişisel AI'niz (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Onay ve Güvenlik"
+  },
+  "Approval_Mode": {
+    "message": "Onay Modu"
+  },
+  "Approval_Required": {
+    "message": "Onay Gerekli"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Onay Gerekli: Yama Uygula"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Onay Gerekli: Komut Çalıştır"
   },
   "Approve": {
     "message": "Onayla"
   },
-  "Approve_this_action": {
-    "message": "Bu eylemi onayla"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Şu yola yapılan değişiklikleri onayla: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Yürütmeyi onayla: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Bu görevi iptal etmek istediğinizden emin misiniz?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Bu ajanı kaldırmak istediğinizden emin misiniz?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "$1$ API anahtarınızı kaldırmak istediğinizden emin misiniz?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Herhangi bir web sayfasından yapılandırılmış veri çıkarmak için Browserx'i kullanın"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Orta risk ve üzeri için sor (risk > 30). Çoğu kullanıcı için önerilir."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Yalnızca yüksek riskli eylemler için sor (risk > 60). Deneyimli kullanıcılar için."
+  },
+  "Auth_Type": {
+    "message": "Kimlik Doğrulama Türü"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Kimlik doğrulama kimlik bilgisi (şifreli olarak saklanır)"
+  },
+  "Authentication_failed": {
+    "message": "Kimlik doğrulama başarısız"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Aracı için kimlik doğrulama yöntemi"
+  },
+  "Auto_default": {
+    "message": "Otomatik (varsayılan)"
+  },
+  "Auto_approve_everything": {
+    "message": "Her şeyi otomatik onayla"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Her şeyi otomatik onayla. Reddetme kuralları hâlâ geçerlidir. Kendi sorumluluğunuzda kullanın."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Otomatik onaylandı -- zaman aşımı aşıldı"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Bilgisayarınıza giriş yaptığınızda uygulamayı otomatik başlat"
+  },
+  "Available_Skills": {
+    "message": "Mevcut Yetenekler"
+  },
   "Available_Tools": {
-    "message": ""
+    "message": "Mevcut Araçlar"
   },
   "Available": {
     "message": "Mevcut:"
@@ -89,20 +268,62 @@
   "Back": {
     "message": "Geri"
   },
+  "Back_to_Model_Config": {
+    "message": "Model Yapılandırmasına Dön"
+  },
   "Backend_Mode": {
     "message": "Arka Uç Modu"
   },
   "Backend_Mode_Active": {
     "message": "Arka Uç Modu Etkin"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Arka uç mevcut değil. Lütfen bir süre bekleyin ve tekrar deneyin."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Arka uç sunucu hatası - lütfen daha sonra tekrar deneyin"
+  },
+  "Backoff_Multiplier": {
+    "message": "Geri çekilme çarpanı"
+  },
+  "Balanced": {
+    "message": "Dengeli"
+  },
+  "Base_URL": {
+    "message": "Base URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Bu sağlayıcı için Base URL yapılandırılmadı"
+  },
+  "Bearer_Token": {
+    "message": "Bearer Token"
+  },
   "Beta": {
     "message": "Beta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Bind mount yolu mutlak olmalıdır"
+  },
+  "Blocked_Domains": {
+    "message": "Engellenen Alan Adları"
   },
   "Browser_Tools": {
     "message": "Tarayıcı Araçları"
   },
   "Browser_automation_tool_toggles": {
     "message": "Tarayıcı otomasyon aracı anahtarları"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alfa)"
+  },
+  "CWD": {
+    "message": "Çalışma Dizini:"
   },
   "Cache_Settings": {
     "message": "Önbellek Ayarları"
@@ -116,8 +337,36 @@
   "Cancel": {
     "message": "İptal"
   },
+  "Cancelled": {
+    "message": "İptal edildi"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Görev yürütülemiyor: ${providerName} için API anahtarı yapılandırılmamış. Lütfen Ayarlar → Model Yapılandırması'na gidin ve API anahtarınızı ekleyin."
+  },
+  "Cannot_select_model_1": {
+    "message": "Model seçilemiyor: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Mesaj gönderilemiyor: $1$ için API anahtarı yapılandırılmamış. Lütfen Ayarlar düğmesine tıklayın ve API anahtarınızı yapılandırın.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Yetenekler"
+  },
   "Chat_History": {
     "message": "Sohbet Geçmişi"
+  },
+  "Checking_agent_status": {
+    "message": "Aracı durumu kontrol ediliyor..."
   },
   "Choose_AI_Model": {
     "message": "AI Modelini Seç"
@@ -137,14 +386,38 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Araç çubuğunuzdaki Browserx simgesine tıklayın veya Alt+Shift+C tuşlarına basın"
   },
+  "Click_to_cancel_login": {
+    "message": "Oturumu iptal etmek için tıklayın"
+  },
   "Click_to_select_a_model": {
     "message": "Modeli seçmek için tıklayın"
+  },
+  "Close": {
+    "message": "Kapat"
   },
   "Close_settings": {
     "message": "Ayarları kapat"
   },
+  "Collapse": {
+    "message": "Daralt"
+  },
+  "Command_Approval_Required": {
+    "message": "Komut Onayı Gerekli"
+  },
+  "Command_completed": {
+    "message": "Komut tamamlandı"
+  },
   "Command": {
     "message": "Komut"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "Komutlar doğrudan ana bilgisayarda çalıştırılır. Güvenlik filtresi hâlâ geçerlidir."
+  },
+  "Completed": {
+    "message": "Tamamlandı"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Tamamlandı: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Depolama alanından tasarruf etmek için önbellek verilerini sıkıştır"
@@ -152,38 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Yapay Zeka modeli ve API anahtarlarını yapılandır"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Ayarlar'da bir API anahtarı yapılandırın"
+  },
+  "Configured": {
+    "message": "Yapılandırıldı"
+  },
+  "Configured_Agents": {
+    "message": "Yapılandırılmış Ajanlar"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Yapılandırılmış Sunucular"
   },
   "Connect": {
-    "message": ""
+    "message": "Bağlan"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Agent-to-Agent (A2A) protokol ajanlarına bağlanarak dış ajan becerileriyle yetenekleri genişlet."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Model Context Protocol (MCP) sunucularına bağlanarak ajanı dış araçlarla genişlet."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Bir A2A ajanına bağlanarak becerileri keşfet."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Bir MCP sunucusuna bağlanarak araçları keşfet."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Harici MCP araç sunucularına bağlan"
   },
   "Connected": {
     "message": "Bağlı"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Bağlantı başarılı"
   },
-  "Context": {
-    "message": "Bağlam"
+  "Connecting": {
+    "message": "Bağlanıyor..."
+  },
+  "Connection_error": {
+    "message": "Bağlantı hatası"
+  },
+  "Connection_failed_1": {
+    "message": "Bağlantı başarısız: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Bağlantı başarısız: Temel URL yapılandırılmadı"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Bağlantı başarısız: seçilen model yapılandırması eksik"
+  },
+  "Connection_successful": {
+    "message": "Bağlantı başarılı!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Bağlantı testi başarısız: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Bağlantı testi başarısız: Geçersiz API anahtarı"
+  },
+  "Connection_test_successful": {
+    "message": "Bağlantı testi başarılı!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Bağlantı testi başarılı! (API anahtarı geçerli)"
+  },
+  "Connection_was_refused": {
+    "message": "Bağlantı reddedildi"
+  },
+  "Connection_was_reset": {
+    "message": "Bağlantı sıfırlandı"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "İçerik politikayı ihlal ediyor: ${contentType} içeriğine izin verilmiyor"
+  },
+  "Context_Window": {
+    "message": "Bağlam Penceresi"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Bağlam sıkıştırıldı: ~$1$k token kaydedildi",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Aracının onay isteme agresifliğini kontrol eder."
   },
   "Create_New_Tab": {
     "message": "Yeni Sekme Oluştur"
+  },
+  "Created": {
+    "message": "Oluşturuldu"
+  },
+  "Creator": {
+    "message": "Oluşturan"
   },
   "Credit_Details": {
     "message": "Kredi Detayları"
   },
   "Current_Plan": {
     "message": "Mevcut Plan:"
+  },
+  "DNS_lookup_failed": {
+    "message": "DNS sorgulaması başarısız"
   },
   "DOM_Tool": {
     "message": "DOM Aracı"
@@ -195,10 +552,34 @@
     "message": "Veri Çıkarma Aracı"
   },
   "Date": {
-    "message": ""
+    "message": "Tarih"
   },
   "Days_until_expiration": {
     "message": "Son kullanma tarihine kalan gün"
+  },
+  "Debug_logging_disabled": {
+    "message": "Hata ayıklama kaydı devre dışı"
+  },
+  "Debug_logging_enabled": {
+    "message": "Hata ayıklama kaydı etkin"
+  },
+  "Default": {
+    "message": "Varsayılan"
+  },
+  "Deny": {
+    "message": "Reddet"
+  },
+  "Deprecated": {
+    "message": "Kullanımdan kaldırıldı"
+  },
+  "Deprecation_Message": {
+    "message": "Kullanımdan Kaldırma Mesajı"
+  },
+  "Description": {
+    "message": "Açıklama"
+  },
+  "Desktop_mode": {
+    "message": "Masaüstü modu"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republic geliştirir ve destekler"
@@ -207,16 +588,37 @@
     "message": "Değişikliklerden Vazgeç"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Bağlantıyı Kes"
+  },
+  "Disconnected_successfully": {
+    "message": "Bağlantı başarıyla kesildi"
+  },
+  "Dismiss": {
+    "message": "Kapat"
+  },
+  "Dismiss_notification": {
+    "message": "Bildirim'i kapat"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Görevler tamamlandığında token tüketimini (giriş/çıkış tokenları) göster"
   },
+  "Draft": {
+    "message": "Taslak"
+  },
+  "Duration": {
+    "message": "Süre"
+  },
+  "ERROR": {
+    "message": "HATA"
+  },
   "Edit": {
-    "message": ""
+    "message": "Düzenle"
+  },
+  "Edit_Agent": {
+    "message": "Ajanı Düzenle"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Sunucuyu Düzenle"
   },
   "Enable_All_Tools": {
     "message": "Tüm Araçları Etkinleştir"
@@ -234,40 +636,61 @@
     "message": "Eklentiyi Etkinleştir"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Bağlı MCP sunucularından Model Bağlam Protokolü araçlarını etkinleştir"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Browserx başlatıldığında otomatik bağlanmayı etkinleştir"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Sık kullanılan verileri depolayarak performansı artırmak için önbelleği etkinleştir"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Hata ayıklama kaydını etkinleştir"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Ajan için web arama yeteneklerini etkinleştir"
   },
   "Enabled": {
-    "message": ""
+    "message": "Etkin"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Gerekliyse API anahtarını girin"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "API anahtarını veya taşıyıcı token'ı girin"
   },
   "Enter_your_LLM_API_key": {
     "message": "LLM API anahtarınızı girin"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Görevinizi girin..."
+  },
+  "Error": {
+    "message": "Hata"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Hata: Ajanla bağlantı yok. Lütfen sayfayı yenileyin."
   },
   "Execute_Commands": {
     "message": "Komutları Çalıştır"
   },
+  "Execution_Mode": {
+    "message": "Çalıştırma Modu"
+  },
+  "Exit_Code": {
+    "message": "Çıkış Kodu:"
+  },
+  "Expand": {
+    "message": "Genişlet"
+  },
   "Expire_after_days": {
     "message": "Süresi şu kadar gün sonra dolsun"
   },
-  "Explain_your_decision": {
-    "message": "Kararınızı açıklayın..."
+  "Explain_this_info_selectionText": {
+    "message": "Bunu açıkla: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Browserx ile Açıkla"
   },
   "Extension_Permission": {
     "message": "Eklenti ve İzin"
@@ -284,35 +707,156 @@
   "Extra_Credits": {
     "message": "Ek Krediler"
   },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "Kum havuzu içinde erişilebilen ek dizinler"
+  },
   "Extract_Data": {
     "message": "Veri Çıkar:"
+  },
+  "Extract_data_with_Browserx": {
+    "message": "Browserx ile veri çıkar"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Sayfalardan belirli veri kalıplarını çıkar"
   },
+  "Extract_structured_data_from_this_page": {
+    "message": "Bu sayfadan yapılandırılmış veri çıkar"
+  },
   "Extract_structured_data_from_web_pages": {
     "message": "Web sayfalarından yapılandırılmış veri çıkar"
+  },
+  "Failed": {
+    "message": "Başarısız"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Model değiştirilemedi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Bağlanılamadı: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Yeni sekme oluşturulamadı. Lütfen tekrar deneyin."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Tarayıcı sekmesi oluşturulamadı: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Bağlantı kesilemedi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "A2A ayarları yüklenemedi"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Sohbet yüklenemedi. Lütfen tekrar deneyin."
   },
   "Failed_to_load_preferences": {
     "message": "Tercihler yüklenemedi"
   },
+  "Failed_to_load_settings": {
+    "message": "Ayarlar yüklenemedi"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "API anahtarı kaldırılamadı"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Ajan kaldırılamadı: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "API anahtarı kaydedilemedi"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Hata ayıklama kaydı ayarı kaydedilemedi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Failed_to_save_settings": {
     "message": "Ayarlar kaydedilemedi"
+  },
+  "Failed_to_save_settings_1": {
+    "message": "Ayarlar kaydedilemedi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Kaydedilemedi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Mesaj gönderilemedi. Lütfen tekrar deneyin."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Yeni sohbet başlatılamadı. Lütfen tekrar deneyin."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Görev durdurulamadı. Lütfen tekrar deneyin."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Sekmeye geçilemedi ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Bağlantı testi başarısız"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "API modu güncellenemedi"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Hizmet katmanı güncellenemedi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Dosya Değişikliği Onayı Gerekli"
   },
   "File_Operations_Not_Available": {
     "message": "Dosya İşlemleri (Kullanılamaz)"
   },
-  "File_Path": {
-    "message": "Dosya Yolu"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Formları doldur, veri gönder, form öğeleriyle etkileşim kur"
+  },
+  "Flex": {
+    "message": "Esnek"
   },
   "Form_Automation_Tool": {
     "message": "Form Otomasyon Aracı"
   },
   "Full_Access_Dangerous": {
     "message": "Tam Erişim (Tehlikeli)"
+  },
+  "Full_Input": {
+    "message": "Tam Girdi"
   },
   "General": {
     "message": "Genel"
@@ -337,14 +881,64 @@
   "Hello_World": {
     "message": "Merhaba Dünya"
   },
-  "History": {
-    "message": "Geçmiş"
+  "Hide_API_key": {
+    "message": "API anahtarını gizle"
   },
-  "Impact": {
-    "message": "Etki"
+  "High_Speed": {
+    "message": "Yüksek Hız"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "Çalışma alanı dizini sandbox içinde nasıl bağlanır"
+  },
+  "Image_Input": {
+    "message": "Görsel Girişi"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Bu metni iyileştir: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Browserx ile iyileştir"
+  },
+  "In": {
+    "message": "İçinde:"
+  },
+  "Incompatible_features": {
+    "message": "Uyumsuz özellikler:"
+  },
+  "Initial_Delay": {
+    "message": "İlk Gecikme"
+  },
+  "Input_Token_Price": {
+    "message": "Girdi Token Fiyatı"
+  },
+  "Input": {
+    "message": "Girdi:"
+  },
+  "Input_1": {
+    "message": "Girdi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Ağ isteklerini/yanıtlarını yakala ve değiştir"
+  },
+  "Invalid_API_key": {
+    "message": "Geçersiz API anahtarı"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Geçersiz API anahtarı sağlandı"
+  },
+  "Invalid_URL_format": {
+    "message": "Geçersiz URL biçimi"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Geçersiz gönderim biçimi: eksik op alanı"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Geçersiz gönderim biçimi: op alanında type eksik"
   },
   "Keyboard_Shortcuts": {
     "message": "Klavye Kısayolları"
@@ -362,25 +956,52 @@
     "message": "Daha fazla bilgi"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Boş bırakın, mevcut olanı korusun"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "İzin verilen kaynakların listesi (satır başına bir). Joker karakter (*) desteklenir."
   },
   "Load_More": {
-    "message": ""
+    "message": "Daha Fazla Yükle"
+  },
+  "Load_more": {
+    "message": "Daha fazla yükle"
+  },
+  "Loading_configuration": {
+    "message": "Yapılandırma yükleniyor..."
   },
   "Loading_credits": {
     "message": "Krediler yükleniyor..."
   },
+  "Loading_details": {
+    "message": "Ayrıntılar yükleniyor..."
+  },
+  "Loading_history": {
+    "message": "Geçmiş yükleniyor..."
+  },
   "Loading_settings": {
     "message": "Ayarlar yükleniyor..."
   },
+  "Loading_tabs": {
+    "message": "Sekmeler yükleniyor..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Yükleniyor..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "A2A protokol mesajlarını hata ayıklama için tarayıcı konsoluna kaydet"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "MCP protokol mesajlarını hata ayıklama için tarayıcı konsoluna kaydet"
+  },
+  "Log_in_to_your_account": {
+    "message": "Hesabınıza giriş yapın"
+  },
+  "Logged_in": {
+    "message": "Giriş yapıldı"
+  },
+  "Logging_in": {
+    "message": "Giriş yapılıyor..."
   },
   "Login": {
     "message": "Giriş"
@@ -389,19 +1010,19 @@
     "message": "Ücretsiz kredi almak için giriş yapın"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Görevi zamanlamak için uzun basın"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Görevi zamanlamak için gönder düğmesine uzun basın"
   },
   "Low_credits_remaining": {
     "message": "Az Kredi Kaldı"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "MCP Sunucuları"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "MCP Araçları"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Tarayıcı sekmelerini yönet (aç, kapat, geçiş yap, sorgula)"
@@ -415,29 +1036,103 @@
   "Max_Cache_Size_MB": {
     "message": "Maksimum Önbellek Boyutu (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Maksimum Eşzamanlı Oturumlar"
+  },
+  "Max_Delay": {
+    "message": "Maksimum Gecikme"
+  },
+  "Max_Output": {
+    "message": "Maksimum Çıktı"
+  },
+  "Max_Output_Tokens": {
+    "message": "Maksimum Çıktı Token'ları"
+  },
+  "Max_Retries": {
+    "message": "Maksimum Yeniden Deneme"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Megabayt cinsinden maksimum önbellek boyutu (varsayılan: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Planlanmış görevler dahil, paralel ajan oturumlarının maksimum sayısı"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Maksimum 5 ajan sınırına ulaşıldı"
+  },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Maksimum 5 sunucu sınırına ulaşıldı"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Bir aracın zaman aşımına uğramadan çalışabileceği maksimum süre (milisaniye, varsayılan: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Orta risk ve üzeri"
+  },
+  "Message_service_not_available": {
+    "message": "Mesaj hizmeti mevcut değil"
+  },
   "Missed": {
-    "message": ""
+    "message": "Kaçırıldı"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Kaçırılan Planlanmış Görevler"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Model \"$1$\" görüntü girişini desteklemiyor. Bazı araçlar devre dışı bırakılacak.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Model Yapılandırması"
   },
+  "Model_Configuration": {
+    "message": "Model Yapılandırması"
+  },
+  "Model_Key_API": {
+    "message": "Model Anahtarı (API)"
+  },
+  "Model_Name": {
+    "message": "Model Adı"
+  },
   "Model_Selection": {
     "message": "Model Seçimi"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Model ve sağlayıcı ayarları varsayılan yapılandırmadan yüklendi (salt okunur)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model $1$ olarak değiştirildi. Lütfen API anahtarınızı yapılandırın.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Model $1$ olarak değiştirildi. Oturum yeniden başlatılacak.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Model:"
+  },
+  "Model_1": {
+    "message": "Model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Modern Chat"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Değişiklik talep edilirken parametreleri düzenle"
   },
   "Monthly_Credits": {
     "message": "Aylık Krediler"
@@ -446,7 +1141,7 @@
     "message": "Daha Fazla Yapılandırma"
   },
   "Name": {
-    "message": ""
+    "message": "İsim"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Sayfalarda gezin, bağlantılara tıkla, tarayıcı gezintisini yönet"
@@ -454,8 +1149,17 @@
   "Navigation_Tool": {
     "message": "Gezinti Aracı"
   },
+  "Network_Access": {
+    "message": "Ağ Erişimi"
+  },
   "Network_Intercept_Tool": {
     "message": "Ağ Yakalama Aracı"
+  },
+  "Network_error": {
+    "message": "Ağ hatası"
+  },
+  "Network_error_occurred": {
+    "message": "Ağ hatası oluştu"
   },
   "Never_expire_permanent": {
     "message": "Asla süresi dolmaz (kalıcı)"
@@ -463,29 +1167,85 @@
   "New_Conversation": {
     "message": "Yeni Konuşma"
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
+  "No_A2A_agents_configured_yet": {
+    "message": "Henüz A2A ajanı yapılandırılmadı."
   },
-  "No_approval_history_yet": {
-    "message": "Henüz onay geçmişi yok."
+  "No_Access": {
+    "message": "Erişim Yok"
+  },
+  "No_Access_Configured": {
+    "message": "Erişim Yapılandırılmadı"
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": "Henüz MCP sunucusu yapılandırılmadı."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Erişim yapılandırılmadı. Lütfen oturum açın veya bir API anahtarı yapılandırın."
+  },
+  "No_active_sessions": {
+    "message": "Aktif oturum yok"
+  },
+  "No_chat_history_yet": {
+    "message": "Henüz sohbet geçmişi yok"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Henüz tamamlanmış görev yok"
+  },
+  "No_models_available": {
+    "message": "Kullanılabilir model yok"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Kullanılabilir model yok. Lütfen yapılandırmayı kontrol edin."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Planlanmış görev yok"
+  },
+  "No_scheduled_time": {
+    "message": "Planlanmış zaman yok"
+  },
+  "No_skills_available": {
+    "message": "Kullanılabilir beceri yok."
+  },
+  "No_steps_in_plan": {
+    "message": "Planda adım yok"
   },
   "No_tabs_available": {
     "message": "Kullanılabilir sekme yok"
   },
+  "No_time_set": {
+    "message": "Zaman ayarlanmadı"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Kullanılabilir araç yok."
+  },
+  "None": {
+    "message": "Yok"
   },
   "Not_Connected": {
     "message": "Bağlı değil"
   },
+  "Notification": {
+    "message": "Bildirim"
+  },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Dağıtım verilerinin geçerliliğinin bitmesinden önceki gün sayısı (varsayılan: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Çevrim dışı - görevler bağlandığınızda çalışacak"
+  },
+  "Older": {
+    "message": "Daha eski"
+  },
+  "Only_high_risk_actions": {
+    "message": "Yalnızca yüksek riskli eylemler"
+  },
+  "Open_1_settings": {
+    "message": "Aç $1$ ayarları",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Yan Paneli Aç:"
@@ -493,17 +1253,51 @@
   "Organization": {
     "message": "Kuruluş"
   },
+  "Organization_ID": {
+    "message": "Organizasyon Kimliği"
+  },
+  "Out": {
+    "message": "Çıktı:"
+  },
+  "Output_Token_Price": {
+    "message": "Çıktı Token Fiyatı"
+  },
+  "Output": {
+    "message": "Çıktı:"
+  },
+  "Output_1": {
+    "message": "Çıktı: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Sayfa İşlem Aracı"
   },
   "Page_Vision_Tool": {
     "message": "Sayfa Görselleştirme Aracı"
   },
-  "Parameter_Modifications": {
-    "message": "Parametre Değişiklikleri"
+  "Past_Month": {
+    "message": "Geçen Ay"
+  },
+  "Past_Week": {
+    "message": "Geçen Hafta"
+  },
+  "Patch_applied_successfully": {
+    "message": "Yama başarıyla uygulandı"
+  },
+  "Patch_for_1_file_s": {
+    "message": "$1$ dosya(lar) için yama",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Kuyruğu Duraklat"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Sayfa eylemlerini gerçekleştir (kaydır, ekran görüntüsü al, bekle)"
@@ -511,29 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Önbelleği Depolamada Sakla"
   },
+  "Plan_1_step_s": {
+    "message": "Plan: $1$ adım(lar)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Lütfen ayarlardan API anahtarınızı kontrol edin."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Lütfen bir görev açıklaması girin"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Lütfen önce bir API anahtarı girin"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Lütfen geçerli bir API anahtarı girin."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "AI ajanını kullanmaya devam etmek için lütfen yeniden giriş yapın."
+  },
+  "Please_select_a_provider": {
+    "message": "Lütfen bir sağlayıcı seçin"
   },
   "Please_type_a_valid_command": {
     "message": "Lütfen geçerli bir komut girin"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Dünyanın en gelişmiş modellerinin kilidini açmak için lütfen planı yükseltin"
+  },
+  "Power": {
+    "message": "Güç"
+  },
+  "Pricing_Information": {
+    "message": "Fiyatlandırma Bilgileri"
+  },
+  "Pricing_Page": {
+    "message": "Fiyatlandırma Sayfası"
+  },
+  "Priority": {
+    "message": "Öncelik"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Öncelikli seviye, daha yüksek fiyatla daha hızlı yanıt süreleri sunar."
   },
+  "Processing": {
+    "message": "İşleniyor..."
+  },
+  "Protocol": {
+    "message": "Protokol"
+  },
   "Provider": {
     "message": "Sağlayıcı"
+  },
+  "Provider_Configuration": {
+    "message": "Sağlayıcı Yapılandırması"
+  },
+  "Provider_ID": {
+    "message": "Sağlayıcı Kimliği"
+  },
+  "Provider_Name": {
+    "message": "Sağlayıcı Adı"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "DOM'u (Document Object Model) sorgula ve değiştir"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Kuyruk duraklatıldı"
   },
   "Queued": {
-    "message": ""
+    "message": "Kuyruğa alındı"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Hızlı Planlama"
   },
   "Quick_Start": {
     "message": "Hızlı Başlangıç"
@@ -541,11 +1388,34 @@
   "Quick_action": {
     "message": "Hızlı eylem"
   },
+  "Read_Only": {
+    "message": "Yalnızca Okunur"
+  },
+  "Read_Write": {
+    "message": "Okuma-Yazma"
+  },
   "Read_only": {
     "message": "Salt okunur"
   },
-  "Reason_optional": {
-    "message": "Sebep (isteğe bağlı)"
+  "Reasoning": {
+    "message": "Akıl Yürütme"
+  },
+  "Reasoning_Efforts": {
+    "message": "Akıl Yürütme Çabaları"
+  },
+  "Reasoning_Summaries": {
+    "message": "Akıl Yürütme Özetleri"
+  },
+  "Reasoning_levels": {
+    "message": "Akıl yürütme seviyeleri:"
+  },
+  "Reasoning_1": {
+    "message": "Akıl yürütme: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Yenilenme süresi"
@@ -553,50 +1423,86 @@
   "Reject": {
     "message": "Reddet"
   },
-  "Reject_this_action": {
-    "message": "Bu eylemi reddet"
+  "Release_Date": {
+    "message": "Yayın Tarihi"
+  },
+  "Release_date_unknown": {
+    "message": "Yayın tarihi bilinmiyor"
+  },
+  "Released": {
+    "message": "Yayınlandı:"
   },
   "Remaining": {
     "message": "Kalan:"
   },
   "Remove": {
-    "message": ""
+    "message": "Kaldır"
   },
   "Remove_API_Key": {
     "message": "API Anahtarını Kaldır"
   },
-  "Remove_modification": {
-    "message": "Değişikliği kaldır"
+  "Request_Timeout": {
+    "message": "İstek Zaman Aşımı"
   },
-  "Request_Changes": {
-    "message": "Değişiklik İste"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Bu eylem için değişiklik iste"
+  "Request_timed_out": {
+    "message": "İstek zaman aşımına uğradı"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "İstek zaman aşımı milisaniye cinsinden (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "İstek zaman aşımı milisaniye cinsinden (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "İstek iptal edildi"
+  },
+  "Response_failed": {
+    "message": "Yanıt başarısız oldu"
+  },
+  "Restricted": {
+    "message": "Kısıtlı"
+  },
+  "Result_Summary": {
+    "message": "Sonuç Özeti"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Kuyruğu Devam Ettir"
+  },
+  "Retry_Configuration": {
+    "message": "Yeniden Deneme Yapılandırması"
+  },
+  "Retrying": {
+    "message": "Yeniden deneniyor"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Herhangi bir metne sağ tıklayarak Browserx ile açıklama ekleyin veya geliştirin"
+  },
+  "Risk_Score": {
+    "message": "Risk Puanı:"
   },
   "Rollout_Expiration": {
     "message": "Yayılım Sonu"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Şimdi Çalıştır"
   },
   "Running": {
-    "message": ""
+    "message": "Çalışıyor"
+  },
+  "STREAM_ERROR": {
+    "message": "AKIŞ HATASI"
+  },
+  "Safe": {
+    "message": "Güvenli"
   },
   "Sandbox_Policy": {
     "message": "Sandbox Politikası"
   },
   "Save_API_Key": {
     "message": "API Anahtarını Kaydet"
+  },
+  "Save_Changes": {
+    "message": "Değişiklikleri Kaydet"
   },
   "Save_Settings": {
     "message": "Ayarları Kaydet"
@@ -605,13 +1511,31 @@
     "message": "Kaydediliyor..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Planla"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Yeni Bir Görev Planla"
+  },
+  "Scheduled": {
+    "message": "Planlandı"
+  },
+  "Scheduled_Task": {
+    "message": "Planlanmış Görev"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Planlanmış Görev Başlatılıyor"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Planlanmış Görevler"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Planlanan zaman, en az 1 dakika ileri olmalıdır"
+  },
+  "Search_complete": {
+    "message": "Arama tamamlandı"
+  },
+  "Searching": {
+    "message": "Aranıyor..."
   },
   "Security_Privacy": {
     "message": "Güvenlik ve Gizlilik"
@@ -619,17 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Araç yürütme ortamı için güvenlik seviyesi"
   },
+  "Select_Model": {
+    "message": "Model Seç"
+  },
+  "Select_model_1": {
+    "message": "Model seç: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Sohbetler için kullanılacak AI modelini seçin."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Arayüz için tercih ettiğiniz dili seçin"
   },
+  "Selected": {
+    "message": "Seçildi"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Seçilen model yapılandırması eksik"
+  },
+  "Send": {
+    "message": "Gönder"
+  },
   "Service_Tier": {
     "message": "Hizmet Seviyesi"
   },
-  "Session": {
-    "message": "Oturum"
+  "Service_tier_updated_to_1": {
+    "message": "Hizmet katmanı $1$ olarak güncellendi",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Session_error": {
+    "message": "Oturum hatası"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Oturum süresi doldu - AI ajanını kullanmaya devam etmek için lütfen tekrar giriş yapın"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "Oturum sınırına ulaşıldı. Yeni görevler sıraya eklenecek."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Yayılım verilerinin ne zaman sona ereceğini ayarla"
@@ -640,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Ayarlar başarıyla kaydedildi"
   },
+  "Show_API_key": {
+    "message": "API anahtarını göster"
+  },
+  "Show_all": {
+    "message": "Hepsini göster"
+  },
+  "Show_less": {
+    "message": "Daha az göster"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Görevlerde token kullanımını göster"
   },
@@ -649,8 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Hesabınıza giriş yapın"
   },
+  "Skills": {
+    "message": "Beceriler"
+  },
   "Stable": {
     "message": "Stable"
+  },
+  "Standard_capabilities": {
+    "message": "Standart yetenekler"
+  },
+  "Start_New_Conversation": {
+    "message": "Yeni Konuşma Başlat"
+  },
+  "Start_on_login": {
+    "message": "Girişte başlat"
+  },
+  "Status": {
+    "message": "Durum"
+  },
+  "Stop_Agent": {
+    "message": "Ajanı Durdur"
+  },
+  "Stop_the_current_task": {
+    "message": "Mevcut görevi durdur"
   },
   "Stop_the_current_task_run": {
     "message": "Mevcut görev çalışmasını durdur"
@@ -673,17 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Önbellek verilerini tarayıcı oturumları arasında kalıcı olarak sakla"
   },
+  "Suggest_Alternative": {
+    "message": "Alternatif Öner"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Arka uç moduna geçildi. LLM istekleri AI Republic sunucusu üzerinden yönlendirilecek."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Doğrudan API moduna geçildi. Lütfen API anahtarınızı yapılandırın."
+  },
+  "System": {
+    "message": "Sistem"
+  },
   "Tab_Tool": {
     "message": "Sekme Aracı"
   },
+  "Tab_unavailable": {
+    "message": "Sekme kullanılamıyor"
+  },
+  "Take_Over": {
+    "message": "Devral"
+  },
   "Task": {
-    "message": ""
+    "message": "Görev"
+  },
+  "Task_Details": {
+    "message": "Görev Ayrıntıları"
+  },
+  "Task_Failed": {
+    "message": "Görev Başarısız"
   },
   "Task_History": {
-    "message": ""
+    "message": "Görev Geçmişi"
+  },
+  "Task_ID": {
+    "message": "Görev Kimliği"
+  },
+  "Task_Plan": {
+    "message": "Görev Planı"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Görev kullanıcı tarafından iptal edildi"
+  },
+  "Task_complete": {
+    "message": "Görev tamamlandı"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Görev $1$ turda tamamlandı",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Görev başarısız"
+  },
+  "Task_started": {
+    "message": "Görev başlatıldı"
   },
   "Terminal": {
     "message": "Terminal"
+  },
+  "Terminal_Sandbox": {
+    "message": "Terminal Sandbox"
   },
   "Test_Connection": {
     "message": "Bağlantıyı Test Et"
@@ -691,32 +1732,67 @@
   "Testing": {
     "message": "Test ediliyor..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "A2A ajan uç noktası URL'si (http veya https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "Yapay zeka, risk değerlendirmesine göre komut başına kum ortamı kullanıp kullanmayacağını belirler."
+  },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "MCP sunucu uç noktası URL'si (http veya https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Aracı şu anda arka uç modunda kullanıyor. LLM istekleri AI Republic sunucusu üzerinden yönlendirilecek. Konuşmalarınız altyapımız üzerinden güvenli bir şekilde işlenir."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Model değişikliği mevcut sohbeti temizleyecek. Devam etmek istiyor musunuz?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Sunucu bir hata ile karşılaştı. Lütfen daha sonra tekrar deneyin."
+  },
   "Time": {
     "message": "Zaman"
-  },
-  "Time_remaining": {
-    "message": "Kalan süre"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Önbellek öğelerinin saniye cinsinden yaşam süresi (varsayılan: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Zaman aşımı (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Yapay zeka ajanını kullanmak için lütfen şunlardan birini yapın:"
+  },
+  "Today": {
+    "message": "Bugün"
   },
   "Toggle_side_panel": {
     "message": "Yan paneli aç/kapat"
   },
-  "Tool": {
-    "message": "Araç"
+  "Toggle_use_own_API_key": {
+    "message": "Kendi API anahtarını kullanmayı değiştir"
+  },
+  "Token_Usage": {
+    "message": "Token Kullanımı"
+  },
+  "Tokens": {
+    "message": "Tokenlar:"
+  },
+  "Tokens_1": {
+    "message": "Tokenlar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Araç Zaman Aşımı (ms)"
+  },
+  "Tool_name": {
+    "message": "Araç adı:"
+  },
+  "Tool": {
+    "message": "Araç"
   },
   "Tools": {
     "message": "Araçlar"
@@ -724,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Araç Ayarları"
   },
-  "Turn": {
-    "message": "Döndür"
+  "Trusted": {
+    "message": "Güvenilir"
+  },
+  "Trusted_Domains": {
+    "message": "Güvenilir Alanlar"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Güvenilir ajanlar, beceri çağrıları için otomatik onaylanır"
+  },
+  "Turns": {
+    "message": "Hamleler:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Alternatif talimatları yazın..."
   },
   "UI_Theme": {
     "message": "Arayüz Teması"
@@ -733,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL http veya https protokolü kullanmalı"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Ajan durumu kontrol edilemedi"
+  },
   "Unable_to_load_credit_information": {
     "message": "Kredi bilgileri yüklenemedi"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Arka uç sunucuya ulaşılamıyor - lütfen bağlantınızı kontrol edin"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Sunucuya ulaşılamıyor. Lütfen bağlantınızı kontrol edin ve tekrar deneyin."
+  },
+  "Unknown_Event": {
+    "message": "Bilinmeyen Olay"
+  },
+  "Unknown_error": {
+    "message": "Bilinmeyen hata"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Ajan durumu kontrol edilirken bilinmeyen hata"
+  },
+  "Unknown_error_occurred": {
+    "message": "Bilinmeyen bir hata oluştu"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Görev yürütülürken bilinmeyen bir hata oluştu"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Gönderim işlenirken bilinmeyen hata"
+  },
+  "Unknown_model_1": {
+    "message": "Bilinmeyen model ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Kaydedilmemiş Değişiklikler"
   },
+  "Untitled": {
+    "message": "Başlıksız"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Yaklaşan"
   },
   "Update": {
-    "message": ""
+    "message": "Güncelle"
   },
   "Update_Channel": {
     "message": "Güncelleme Kanalı"
@@ -753,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Premium'a Yükselt"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Dünyanın en güçlü modellerini keşfetmek için yükseltin"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Dünyanın en güçlü modellerini keşfetmek için aboneliğinizi yükseltin"
@@ -766,32 +1898,47 @@
   "User_Center": {
     "message": "Kullanıcı Merkezi"
   },
-  "User_approved_action": {
-    "message": "Kullanıcı Onaylı Eylem"
-  },
-  "User_decision": {
-    "message": "Kullanıcı Kararı"
+  "User_Session": {
+    "message": "Kullanıcı Oturumu"
   },
   "User_preferences_and_interface_settings": {
     "message": "Kullanıcı tercihleri ve arayüz ayarları"
   },
-  "User_rejected_action": {
-    "message": "Kullanıcı eylemi reddetti"
-  },
-  "User_requested_modifications": {
-    "message": "Kullanıcı değişiklik talep etti"
-  },
   "Using_extra_credits": {
     "message": "Ekstra Kredi Kullanma"
+  },
+  "Verbosity": {
+    "message": "Ayrıntı"
+  },
+  "Verbosity_Control": {
+    "message": "Ayrıntı Kontrolü"
+  },
+  "Verbosity_Levels": {
+    "message": "Ayrıntı Seviyeleri"
+  },
+  "Verbosity_levels": {
+    "message": "Ayrıntı seviyeleri:"
+  },
+  "Version": {
+    "message": "Sürüm"
   },
   "View_Chat_History": {
     "message": "Sohbet Geçmişini Görüntüle"
   },
   "View_History": {
-    "message": ""
+    "message": "Geçmişi Görüntüle"
+  },
+  "View_Session": {
+    "message": "Oturumu Görüntüle"
+  },
+  "View_pricing_details": {
+    "message": "Fiyatlandırma detaylarını görüntüle"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Sayfa içeriği ve düzeninin görsel analizi"
+  },
+  "Waiting_for_approval": {
+    "message": "Onay bekleniyor"
   },
   "Web_Scraping_Tool": {
     "message": "Web Kazıma Aracı"
@@ -802,8 +1949,23 @@
   "Welcome_to_Browserx": {
     "message": "Browserx'e Hoş Geldiniz"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "Korumalı komutların ağa erişip erişemeyeceği"
+  },
+  "Workspace_Access": {
+    "message": "Çalışma Alanı Erişimi"
+  },
   "Workspace_Write": {
     "message": "Çalışma Alanında Yaz"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Dün"
+  },
+  "You": {
+    "message": "Sen"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Kaydedilmemiş değişiklikleriniz var. Bunları yok saymak istiyor musunuz?"
@@ -814,10 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "API anahtarınız şifrelenmiştir"
   },
-  "Your_Decision": {
-    "message": "Kararınız"
+  "Your_personal_AI_assistant": {
+    "message": "Kişisel AI asistanınız"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Oturumunuz süresi doldu. Lütfen tekrar giriş yapın."
+  },
+  "DISCONNECTED": {
+    "message": "[BAĞLANTI KESİLDİ]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Hata: Akış kesildi]"
+  },
+  "NO_ACCESS": {
+    "message": "[ERİŞİM YOK]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[API ANAHTARI YOK - AYARLARA TIKLAYIN]"
+  },
+  "PROCESSING": {
+    "message": "[İŞLENİYOR]"
+  },
+  "available": {
+    "message": "mevcut"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "önbelleğe alındı"
+  },
+  "detailed_thinking": {
+    "message": "detaylı düşünme"
+  },
+  "disconnected": {
+    "message": "bağlantı kesildi"
+  },
+  "exec_unknown_command": {
+    "message": "exec (bilinmeyen komut)"
   },
   "optional": {
-    "message": ""
+    "message": "isteğe bağlı"
+  },
+  "remaining": {
+    "message": "kalan"
+  },
+  "session": {
+    "message": "oturum"
+  },
+  "sessions": {
+    "message": "oturumlar"
+  },
+  "streaming": {
+    "message": "akış yapılıyor..."
+  },
+  "thinking": {
+    "message": "düşünüyor"
+  },
+  "tokens": {
+    "message": "tokenlar"
+  },
+  "trusted": {
+    "message": "güvenilir"
+  },
+  "user": {
+    "message": "kullanıcı"
+  },
+  "web_search": {
+    "message": "web araması"
   }
 }

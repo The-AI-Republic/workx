@@ -4,7 +4,7 @@
  */
 
 import { expect, vi } from 'vitest';
-import type { Event, EventMsg, Submission, Op } from '../../protocol/types';
+import type { Event, EventMsg, Submission, Op } from '../../core/protocol/types';
 
 /**
  * Wait for a condition to be true

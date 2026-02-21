@@ -1,0 +1,53 @@
+[package]
+name = "pi"
+version = "0.1.0"
+description = "Pi - AI-powered personal assistant agent"
+authors = ["AI Republic"]
+license = "UNLICENSED"
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-shell = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+lazy_static = "1.4"
+uuid = { version = "1.0", features = ["v4"] }
+png = "0.17"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+directories = "5"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
+base64 = "0.22"
+rmcp = { version = "0.15", features = ["client", "transport-child-process"] }
+which = "7"
+tempfile = "3"
+log = "0.4"
+async-trait = "0.1"
+dirs = "5"
+portable-pty = "0.8"
+strip-ansi-escapes = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_Foundation",
+] }
+win32job = "2"
+
+[features]
+default = ["custom-protocol", "dark-icon"]
+custom-protocol = ["tauri/custom-protocol"]
+dark-icon = []

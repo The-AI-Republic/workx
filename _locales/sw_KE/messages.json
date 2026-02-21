@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Wakala wa AI kwenye kivinjari kwa ajili ya majukumu ya kazi"
   },
+  "1_API_Key": {
+    "message": "$1$ Ufunguo wa API",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ Ufunguo wa API umeondolewa kwa mafanikio",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} kazi zilipoteza muda uliopangwa wakati kivinjari kilikuwa kimefungwa."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - usahihi unaweza kupungua)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(hai)"
+  },
+  "multiple_files": {
+    "message": "(faili nyingi)"
+  },
+  "no_output": {
+    "message": "(hakuna pato)"
+  },
+  "no_result": {
+    "message": "(hakuna matokeo)"
+  },
+  "patch_details": {
+    "message": "(maelezo ya marekebisho)"
+  },
+  "Enter_command": {
+    "message": ">> Ingiza amri..."
+  },
+  "A2A_Agents": {
+    "message": "Wakala wa A2A"
+  },
   "API_Key": {
-    "message": ""
+    "message": "Ufunguo wa API"
   },
   "API_Key_Configuration": {
     "message": "Usanidi wa Ufunguo wa API"
   },
+  "API_Version": {
+    "message": "Toleo la API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Uhariri wa ufunguo wa API hauwezeshwi katika hali ya nyuma"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "Ufunguo wa API kwa uthibitishaji (hufanyiwa usimbaji fiche)"
+  },
+  "API_key_has_expired": {
+    "message": "Ufunguo wa API umekwisha muda"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "Ufunguo wa API huna ruhusa za kutosha"
+  },
+  "API_key_saved_successfully": {
+    "message": "Ufunguo wa API umehifadhiwa kwa mafanikio!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Funguo za API hushifirishwa na kuhifadhiwa kwa ndani katika kivinjari chako. Hawatumiwi kamwe kwa seva za nje isipokuwa kwa API calls."
@@ -20,38 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Fikia hifadhi ya kivinjari (localStorage, sessionStorage, vidakuzi)"
   },
-  "Action": {
-    "message": "Kitendo"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Njia ya idhini ya kitendo, vikoa vya kuaminika, mipangilio ya hatari"
   },
-  "Action_Details": {
-    "message": "Maelezo ya Kitendo"
+  "Active_Sessions": {
+    "message": "Vikao Hai"
   },
   "Add": {
-    "message": ""
+    "message": "Ongeza"
   },
-  "Add_Modification": {
-    "message": "Ongeza Mabadiliko"
+  "Add_Agent": {
+    "message": "Ongeza Wakala"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Ongeza Seva"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Ongeza Kazi"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Ongeza seva ili kuunganisha kwa zana za nje."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Ongeza wakala ili kuunganisha kwa ujuzi wa nje."
+  },
+  "Additional_Bind_Mounts": {
+    "message": "Mounts za Bind Ziada"
   },
   "Advanced_Configuration": {
     "message": "Usanidi wa Juu"
   },
-  "Advanced_Options": {
-    "message": "Chaguzi za Juu"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Mipangilio ya Juu"
+  },
+  "Agent": {
+    "message": "Wakala"
   },
   "Agent_Execution_Tools": {
     "message": "Zana za Utekelezaji wa Wakala"
+  },
+  "Agent_Turn_Complete": {
+    "message": "Mzunguko wa Wakala Umekamilika"
+  },
+  "Agent_URL_is_required": {
+    "message": "URL ya wakala inahitajika"
+  },
+  "Agent_added_successfully": {
+    "message": "Wakala ameongezwa kwa mafanikio"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Jina la wakala linaweza tu kuwa na herufi, nambari, na alama ya dash"
+  },
+  "Agent_name_is_required": {
+    "message": "Jina la wakala linahitajika"
+  },
+  "Agent_not_initialized": {
+    "message": "Wakala haijaanzishwa"
+  },
+  "Agent_removed_successfully": {
+    "message": "Wakala ameondolewa kwa mafanikio"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Mzunguko wa wakala umekamilika kwa mafanikio"
+  },
+  "Agent_updated_successfully": {
+    "message": "Wakala amesasishwa kwa mafanikio"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Vitendo vyote vinakubaliwa kiotomatiki kwenye vikoa hivi."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Vitendo vyote vinanyimwa kwenye vikoa hivi."
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "Amri zote zinafanywa ndani ya sandikiti asili ya OS. Uandishi umepunguzwa kwenye saraka ya eneo la kazi."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Ruhusu wakala kutekeleza amri za mfumo (tumia kwa tahadhari)"
@@ -62,26 +167,100 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Ruhusu content scripts kutekelezwa kwenye kurasa za wavuti"
   },
+  "Allowed": {
+    "message": "Kuruhusiwa"
+  },
   "Allowed_Origins": {
     "message": "Asili Zilizoruhusiwa"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Herufi na nambari pamoja na dash pekee (1-50 herufi)"
   },
-  "Approval_History": {
-    "message": "Historia ya Idhini"
+  "Always_Approve": {
+    "message": "Idhinisha daima"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: AI yako binafsi (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Idhini & Usalama"
+  },
+  "Approval_Mode": {
+    "message": "Njia ya Idhini"
+  },
+  "Approval_Required": {
+    "message": "Idhini Inahitajika"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Idhini Inahitajika: Tumia Patch"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Idhini Inahitajika: Endesha Amri"
   },
   "Approve": {
     "message": "Idhinisha"
   },
-  "Approve_this_action": {
-    "message": "Idhinisha kitendo hiki"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Idhinisha mabadiliko ya: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Idhinisha utekelezaji: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Una uhakika unataka kughairi kazi hii?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Una uhakika unataka kuondoa wakala huyu?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Una uhakika unataka kuondoa ufunguo wako wa API $1$?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Tumia Browserx kutoa data iliyopangwa muundo kutoka kwa ukurasa wowote wa wavuti"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Uliza kwa hatari ya kati na juu (hatari > 30). Inapendekezwa kwa watumiaji wengi."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Uliza tu kwa vitendo vya hatari kubwa (hatari > 60). Kwa watumiaji wenye uzoefu."
+  },
+  "Auth_Type": {
+    "message": "Aina ya Uthibitishaji"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Cheti cha uthibitishaji (hifadhiwa kwa usimbuaji)"
+  },
+  "Authentication_failed": {
+    "message": "Uthibitishaji umeshindwa"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Njia ya uthibitishaji kwa wakala"
+  },
+  "Auto_default": {
+    "message": "Kiotomatiki (chaguo-msingi)"
+  },
+  "Auto_approve_everything": {
+    "message": "Idhinisha kiotomatiki kila kitu"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Idhinisha kiotomatiki kila kitu. Sheria za kukataa bado zinafaa. Tumia kwa hatari yako mwenyewe."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Imeidhinishwa kiotomatiki -- muda umekwisha"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Anzisha programu kiotomatiki unapoingia kwenye kompyuta yako"
+  },
+  "Available_Skills": {
+    "message": "Ujuzi unaopatikana"
+  },
   "Available_Tools": {
-    "message": ""
+    "message": "Zana zinazopatikana"
   },
   "Available": {
     "message": "Inapatikana:"
@@ -89,20 +268,62 @@
   "Back": {
     "message": "Rudi"
   },
+  "Back_to_Model_Config": {
+    "message": "Rudi kwenye Usanidi wa Modeli"
+  },
   "Backend_Mode": {
     "message": "Hali ya Backend"
   },
   "Backend_Mode_Active": {
     "message": "Hali ya Backend Inayotumika"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Seva ya nyuma haipatikani. Tafadhali subiri kidogo na ujaribu tena."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Hitilafu ya seva ya nyuma - tafadhali jaribu tena baadaye"
+  },
+  "Backoff_Multiplier": {
+    "message": "Kiwango cha kupunguza"
+  },
+  "Balanced": {
+    "message": "Imbalansi"
+  },
+  "Base_URL": {
+    "message": "URL ya msingi"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "URL ya msingi haijapakuliwa kwa mtoa huduma huyu"
+  },
+  "Bearer_Token": {
+    "message": "Token ya Mshikaji"
+  },
   "Beta": {
     "message": "Beta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Njia ya ufungaji lazima iwe kamili"
+  },
+  "Blocked_Domains": {
+    "message": "Vikoa vilivyofungwa"
   },
   "Browser_Tools": {
     "message": "Zana za Kivinjari"
   },
   "Browser_automation_tool_toggles": {
     "message": "Vibadilisha zana za otomatiki za kivinjari"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "Mipangilio ya Cache"
@@ -116,8 +337,36 @@
   "Cancel": {
     "message": "Batilisha"
   },
+  "Cancelled": {
+    "message": "Imesitishwa"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Haiwezi kutekeleza kazi: Hakuna ufunguo wa API uliosetiwa kwa ${providerName}. Tafadhali nenda kwenye Mipangilio → Usanidi wa Modeli na uongeze ufunguo wako wa API."
+  },
+  "Cannot_select_model_1": {
+    "message": "Haiwezi kuchagua modeli: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Haiwezi kutuma ujumbe: Hakuna ufunguo wa API uliosetiwa kwa $1$. Tafadhali bonyeza kitufe cha Mipangilio na useti ufunguo wako wa API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Uwezo"
+  },
   "Chat_History": {
     "message": "Historia ya Mazungumzo"
+  },
+  "Checking_agent_status": {
+    "message": "Inakagua hali ya wakala..."
   },
   "Choose_AI_Model": {
     "message": "Chagua Modeli ya AI"
@@ -137,14 +386,38 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Bofya ikoni ya Browserx kwenye toolbar au bonyeza Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": "Bofya ili kughairi kuingia"
+  },
   "Click_to_select_a_model": {
     "message": "Bofya ili kuchagua modeli"
+  },
+  "Close": {
+    "message": "Funga"
   },
   "Close_settings": {
     "message": "Funga mipangilio"
   },
+  "Collapse": {
+    "message": "Fupisha"
+  },
+  "Command_Approval_Required": {
+    "message": "Uidhinishaji wa Amri Unahitajika"
+  },
+  "Command_completed": {
+    "message": "Amri imekamilika"
+  },
   "Command": {
     "message": "Amri"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "Amri zinaendeshwa moja kwa moja kwenye mwenyeji. Kichujio cha usalama bado kinatumika."
+  },
+  "Completed": {
+    "message": "Imekamilika"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Imekamilika: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Shinikiza data ya cache ili kuokoa nafasi ya uhifadhi"
@@ -152,38 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Sanidi muundo wa AI na funguo za API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Sanidi ufunguo wa API katika Mipangilio"
+  },
+  "Configured": {
+    "message": "Imesanidiwa"
+  },
+  "Configured_Agents": {
+    "message": "Wakala Waliosanidiwa"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Seva Waliosanidiwa"
   },
   "Connect": {
-    "message": ""
+    "message": "Unganisha"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Unganisha kwa mawakala wa itifaki ya Agent-to-Agent (A2A) ili kupanua uwezo kwa ujuzi wa mawakala wa nje."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Unganisha kwa seva za Itifaki ya Muktadha wa Modeli (MCP) ili kupanua wakala kwa zana za nje."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Unganisha kwa wakala wa A2A ili kugundua ujuzi."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Unganisha kwa seva ya MCP ili kugundua zana."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Unganisha kwa seva za zana za MCP za nje"
   },
   "Connected": {
     "message": "Imeunganishwa"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Imeunganishwa kwa mafanikio"
   },
-  "Context": {
-    "message": "Muktadha"
+  "Connecting": {
+    "message": "Inaunganisha..."
+  },
+  "Connection_error": {
+    "message": "Hitilafu ya muunganisho"
+  },
+  "Connection_failed_1": {
+    "message": "Uunganishaji umeshindwa: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Uunganishaji umeshindwa: URL ya msingi haijasanidiwa"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Uunganishaji umeshindwa: usanidi wa modeli uliochaguliwa haipo"
+  },
+  "Connection_successful": {
+    "message": "Uunganishaji umefanikiwa!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Jaribio la uunganishaji limefeli: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Jaribio la uunganishaji limefeli: Ufunguo wa API si sahihi"
+  },
+  "Connection_test_successful": {
+    "message": "Jaribio la uunganishaji limefanikiwa!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Jaribio la uunganishaji limefanikiwa! (Ufunguo wa API ni sahihi)"
+  },
+  "Connection_was_refused": {
+    "message": "Uunganishaji ulikataliwa"
+  },
+  "Connection_was_reset": {
+    "message": "Uunganishaji uliregeshwa"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Maudhui yanakiuka sera: maudhui ya ${contentType} hairuhusiwi"
+  },
+  "Context_Window": {
+    "message": "Dirisha la Muktadha"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Muktadha umefupishwa: imehifadhi ~$1$k tokeni",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Inadhibiti jinsi wakala anavyotaka idhini kwa ukali."
   },
   "Create_New_Tab": {
     "message": "Unda Kichupo Kipya"
+  },
+  "Created": {
+    "message": "Imeundwa"
+  },
+  "Creator": {
+    "message": "Muundaji"
   },
   "Credit_Details": {
     "message": "Maelezo ya Mikopo"
   },
   "Current_Plan": {
     "message": "Mpango wa Sasa:"
+  },
+  "DNS_lookup_failed": {
+    "message": "Utafutaji wa DNS umeshindwa"
   },
   "DOM_Tool": {
     "message": "Zana ya DOM"
@@ -195,10 +552,34 @@
     "message": "Zana ya Kuchota Data"
   },
   "Date": {
-    "message": ""
+    "message": "Tarehe"
   },
   "Days_until_expiration": {
     "message": "Siku hadi kumalizika kwa muda"
+  },
+  "Debug_logging_disabled": {
+    "message": "Usajili wa utatuzi umezimwa"
+  },
+  "Debug_logging_enabled": {
+    "message": "Usajili wa utatuzi umewezeshwa"
+  },
+  "Default": {
+    "message": "Chaguo-msingi"
+  },
+  "Deny": {
+    "message": "Kataa"
+  },
+  "Deprecated": {
+    "message": "Imepitwa na wakati"
+  },
+  "Deprecation_Message": {
+    "message": "Ujumbe wa Kupita na Wakati"
+  },
+  "Description": {
+    "message": "Maelezo"
+  },
+  "Desktop_mode": {
+    "message": "Modi ya Desktop"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Imetengenezwa na kudumishwa na AI Republic"
@@ -207,16 +588,37 @@
     "message": "Ondoa Mabadiliko"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Tenganisha"
+  },
+  "Disconnected_successfully": {
+    "message": "Umejitenganisha kwa mafanikio"
+  },
+  "Dismiss": {
+    "message": "Ondoa"
+  },
+  "Dismiss_notification": {
+    "message": "Ondoa taarifa"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Onyesha matumizi ya token (token za ingizo/pato) wakati majukumu yanapokamilika"
   },
+  "Draft": {
+    "message": "Rasimu"
+  },
+  "Duration": {
+    "message": "Muda"
+  },
+  "ERROR": {
+    "message": "KOSA"
+  },
   "Edit": {
-    "message": ""
+    "message": "Hariri"
+  },
+  "Edit_Agent": {
+    "message": "Hariri Wakala"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Hariri Seva"
   },
   "Enable_All_Tools": {
     "message": "Wezesha Zana Zote"
@@ -234,40 +636,61 @@
     "message": "Wezesha Kiendelezo"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Washa zana za Model Context Protocol kutoka kwa seva za MCP zilizounganishwa"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Washa kuunganisha kiotomatiki wakati browserx inapoanza"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Wezesha uhifadhi wa kache ili kuboresha utendaji kwa kuhifadhi data inayotumiwa mara kwa mara"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Washa uandikishaji wa utatuzi"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Wezesha uwezo wa utafutaji mtandaoni kwa wakala"
   },
   "Enabled": {
-    "message": ""
+    "message": "Imewashwa"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Ingiza ufunguo wa API ikiwa unahitajika"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Ingiza ufunguo wa API au token ya bearer"
   },
   "Enter_your_LLM_API_key": {
     "message": "Ingiza funguo yako ya API ya LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Ingiza kazi yako..."
+  },
+  "Error": {
+    "message": "Kosa"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Kosa: Haijauanishwa na wakala. Tafadhali onyesha upya ukurasa."
   },
   "Execute_Commands": {
     "message": "Tekeleza Amri"
   },
+  "Execution_Mode": {
+    "message": "Modi ya Utendaji"
+  },
+  "Exit_Code": {
+    "message": "Msimbo wa Kuondoka:"
+  },
+  "Expand": {
+    "message": "Panua"
+  },
   "Expire_after_days": {
     "message": "Mwisho wa muda baada ya siku"
   },
-  "Explain_your_decision": {
-    "message": "Eleza uamuzi wako..."
+  "Explain_this_info_selectionText": {
+    "message": "Eleza hii: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Eleza kwa Browserx"
   },
   "Extension_Permission": {
     "message": "Kiendelezo & Ruhusa"
@@ -284,35 +707,156 @@
   "Extra_Credits": {
     "message": "Staha za Ziada"
   },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "Saraka za ziada zinazopatikana ndani ya sanduku la udhibiti"
+  },
   "Extract_Data": {
     "message": "Chambua Data:"
+  },
+  "Extract_data_with_Browserx": {
+    "message": "Chukua data kwa Browserx"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Chambua mifumo maalum ya data kutoka kwenye kurasa"
   },
+  "Extract_structured_data_from_this_page": {
+    "message": "Chukua data iliyojengwa kutoka kwenye ukurasa huu"
+  },
   "Extract_structured_data_from_web_pages": {
     "message": "Toa data iliyopangwa kutoka kurasa za wavuti"
+  },
+  "Failed": {
+    "message": "Imeshindwa"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Imeshindwa kubadilisha modeli: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Imeshindwa kuunganisha: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Imeshindwa kutengeneza kichupo kipya. Tafadhali jaribu tena."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Imeshindwa kutengeneza kichupo cha kivinjari: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Imeshindwa kutenganisha: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Imeshindwa kupakia mipangilio ya A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Imeshindwa kupakia mazungumzo. Tafadhali jaribu tena."
   },
   "Failed_to_load_preferences": {
     "message": "Imeshindwa kupakia mapendeleo"
   },
+  "Failed_to_load_settings": {
+    "message": "Imeshindwa kupakia mipangilio"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Imeshindwa kuondoa ufunguo wa API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Imeshindwa kuondoa wakala: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Imeshindwa kuhifadhi ufunguo wa API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Imeshindwa kuhifadhi mpangilio wa logi ya utatuzi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Failed_to_save_settings": {
     "message": "Imeshindwa kuhifadhi mipangilio"
+  },
+  "Failed_to_save_settings_1": {
+    "message": "Imeshindwa kuhifadhi mipangilio: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Imeshindwa kuhifadhi: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Imeshindwa kutuma ujumbe. Tafadhali jaribu tena."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Imeshindwa kuanzisha mazungumzo mapya. Tafadhali jaribu tena."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Imeshindwa kusitisha kazi. Tafadhali jaribu tena."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Imeshindwa kubadili kwenye kichupo ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Imeshindwa kujaribu muunganisho"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Imeshindwa kusasisha modi ya API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Imeshindwa kusasisha ngazi ya huduma: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Inahitajika idhini ya mabadiliko ya faili"
   },
   "File_Operations_Not_Available": {
     "message": "Operesheni za Faili (Haipatikani)"
   },
-  "File_Path": {
-    "message": "Njia ya Faili"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Jaza fomu, tuma data, shirikiana na vipengele vya fomu"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Zana ya Kujaza Fomu Otomatiki"
   },
   "Full_Access_Dangerous": {
     "message": "Ufikiaji Kamili (Hatari)"
+  },
+  "Full_Input": {
+    "message": "Ingizo kamili"
   },
   "General": {
     "message": "Jumla"
@@ -337,14 +881,64 @@
   "Hello_World": {
     "message": "Habari Dunia"
   },
-  "History": {
-    "message": "Historia"
+  "Hide_API_key": {
+    "message": "Ficha funguo la API"
   },
-  "Impact": {
-    "message": "Athari"
+  "High_Speed": {
+    "message": "Kasi ya juu"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "Jinsi saraka ya eneo la kazi imefungwa katika sanduku la udhibiti"
+  },
+  "Image_Input": {
+    "message": "Ingizo la picha"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Boresha maandishi haya: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Boresha kwa Browserx"
+  },
+  "In": {
+    "message": "Katika:"
+  },
+  "Incompatible_features": {
+    "message": "Vipengele visivyolingana:"
+  },
+  "Initial_Delay": {
+    "message": "Chelewa ya awali"
+  },
+  "Input_Token_Price": {
+    "message": "Bei ya tokeni ya ingizo"
+  },
+  "Input": {
+    "message": "Ingizo:"
+  },
+  "Input_1": {
+    "message": "Ingizo: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Kukamata na kubadilisha maombi/majibu ya mtandao"
+  },
+  "Invalid_API_key": {
+    "message": "Funguo la API batili"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Ufunguo wa API uliotolewa si sahihi"
+  },
+  "Invalid_URL_format": {
+    "message": "Muundo wa URL si sahihi"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Muundo wa usajili si sahihi: sehemu ya op haipo"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Muundo wa usajili si sahihi: op haipo sehemu ya aina"
   },
   "Keyboard_Shortcuts": {
     "message": "Vifupisho vya Kibodi"
@@ -362,25 +956,52 @@
     "message": "Jifunze zaidi"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Acha tupu ili kudumisha iliyopo"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Orodha ya vyanzo vinavyoruhusiwa (moja kwa kila mstari). Inaruhusu matumizi ya wildcards (*)"
   },
   "Load_More": {
-    "message": ""
+    "message": "Pakia Zaidi"
+  },
+  "Load_more": {
+    "message": "Pakia zaidi"
+  },
+  "Loading_configuration": {
+    "message": "Inapakia usanidi..."
   },
   "Loading_credits": {
     "message": "Inapakia mikopo..."
   },
+  "Loading_details": {
+    "message": "Inapakia maelezo..."
+  },
+  "Loading_history": {
+    "message": "Inapakia historia..."
+  },
   "Loading_settings": {
     "message": "Inapakia mipangilio..."
   },
+  "Loading_tabs": {
+    "message": "Inapakia tabu..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Inapakia..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Rekodi ujumbe wa itifaki ya A2A kwenye console ya kivinjari kwa ajili ya utatuzi"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Rekodi ujumbe wa itifaki ya MCP kwenye console ya kivinjari kwa ajili ya utatuzi"
+  },
+  "Log_in_to_your_account": {
+    "message": "Ingia kwenye akaunti yako"
+  },
+  "Logged_in": {
+    "message": "Umeingia"
+  },
+  "Logging_in": {
+    "message": "Inaingia..."
   },
   "Login": {
     "message": "Ingia"
@@ -389,19 +1010,19 @@
     "message": "Ingia ili upate mikopo ya bure"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Bofya kwa muda mrefu ili kupanga kazi"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Bofya kwa muda mrefu kitufe cha kutuma ili kupanga kazi"
   },
   "Low_credits_remaining": {
     "message": "Mikopo inayobaki ni ndogo"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "Seva za MCP"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "Zana za MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Dhibiti tabu za kivinjari (fungua, funga, badilisha, tafuta)"
@@ -415,29 +1036,103 @@
   "Max_Cache_Size_MB": {
     "message": "Ukubwa wa Juu wa Cache (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Upeo wa Vikao Vinavyofanyika"
+  },
+  "Max_Delay": {
+    "message": "Ucheleweshaji wa Juu"
+  },
+  "Max_Output": {
+    "message": "Matokeo ya Juu"
+  },
+  "Max_Output_Tokens": {
+    "message": "Token za Matokeo ya Juu"
+  },
+  "Max_Retries": {
+    "message": "Majaribio ya Juu"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Ukubwa wa juu wa cache katika megabytes (chaguo-msingi: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Idadi ya juu ya vikao vya wakala sambamba, ikijumuisha kazi zilizopangwa"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Upeo wa mawakala 5 umefikiwa"
+  },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Upeo wa seva 5 umefikiwa"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Muda wa juu kabisa (kwa milisekunde) ambao zana inaweza kufanya kazi kabla ya kukatisha (chaguo-msingi: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Hatari ya kati na juu"
+  },
+  "Message_service_not_available": {
+    "message": "Huduma ya ujumbe haipatikani"
+  },
   "Missed": {
-    "message": ""
+    "message": "Imekosa"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Kazi zilizopangwa zilizokosa"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Mfano \"$1$\" hairuhusu ingizo la picha. Baadhi ya zana hazitafunguliwa.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Usanidi wa Modeli"
   },
+  "Model_Configuration": {
+    "message": "Usanidi wa Mfano"
+  },
+  "Model_Key_API": {
+    "message": "Ufunguo wa Mfano (API)"
+  },
+  "Model_Name": {
+    "message": "Jina la Mfano"
+  },
   "Model_Selection": {
     "message": "Uchaguzi wa Modeli"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Mipangilio ya mfano na mtoa huduma imepakuliwa kutoka usanidi chaguo-msingi (kusoma tu)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Mfano umebadilishwa kuwa $1$. Tafadhali sanidi ufunguo wako wa API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Mfano umebadilishwa kuwa $1$. Kikao kitaanzishwa upya.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Modeli:"
+  },
+  "Model_1": {
+    "message": "Modeli: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Mazungumzo ya Kisasa"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Badilisha vigezo unapoomba mabadiliko"
   },
   "Monthly_Credits": {
     "message": "Staha za Kila Mwezi"
@@ -446,7 +1141,7 @@
     "message": "Usanidi Zaidi"
   },
   "Name": {
-    "message": ""
+    "message": "Jina"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Nenda kurasa, bofya viungo, shughulikia urambazaji wa kivinjari"
@@ -454,8 +1149,17 @@
   "Navigation_Tool": {
     "message": "Zana ya Urambazaji"
   },
+  "Network_Access": {
+    "message": "Ufikiaji wa Mtandao"
+  },
   "Network_Intercept_Tool": {
     "message": "Zana ya Kukamata Trafiki ya Mtandao"
+  },
+  "Network_error": {
+    "message": "Hitilafu ya mtandao"
+  },
+  "Network_error_occurred": {
+    "message": "Hitilafu ya mtandao imetokea"
   },
   "Never_expire_permanent": {
     "message": "Haiisha kamwe (ya kudumu)"
@@ -463,29 +1167,85 @@
   "New_Conversation": {
     "message": "Mazungumzo Mpya"
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
+  "No_A2A_agents_configured_yet": {
+    "message": "Bado hakuna mawakala wa A2A yaliyo sanidiwa."
   },
-  "No_approval_history_yet": {
-    "message": "Bado hakuna historia ya idhini."
+  "No_Access": {
+    "message": "Hakuna Ufikiaji"
+  },
+  "No_Access_Configured": {
+    "message": "Hakuna Ufikiaji Uliosanidiwa"
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": "Bado hakuna seva za MCP zilizosanidiwa."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Hakuna ufikiaji uliosanidiwa. Tafadhali ingia au sanidi ufunguo wa API."
+  },
+  "No_active_sessions": {
+    "message": "Hakuna vikao vinavyofanya kazi"
+  },
+  "No_chat_history_yet": {
+    "message": "Bado hakuna historia ya gumzo"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Bado hakuna kazi zilizokamilika"
+  },
+  "No_models_available": {
+    "message": "Hakuna modeli zinazopatikana"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Hakuna modeli zinazopatikana. Tafadhali angalia usanidi."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Hakuna kazi zilizopangwa"
+  },
+  "No_scheduled_time": {
+    "message": "Hakuna muda uliopangwa"
+  },
+  "No_skills_available": {
+    "message": "Hakuna ujuzi unaopatikana."
+  },
+  "No_steps_in_plan": {
+    "message": "Hakuna hatua katika mpango"
   },
   "No_tabs_available": {
     "message": "Hakuna tabu zinazopatikana"
   },
+  "No_time_set": {
+    "message": "Hakuna muda uliowekwa"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Hakuna zana zinazopatikana."
+  },
+  "None": {
+    "message": "Hakuna"
   },
   "Not_Connected": {
     "message": "Haijounganishwa"
   },
+  "Notification": {
+    "message": "Arifa"
+  },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Idadi ya siku kabla ya data ya uzinduzi kukoma (chaguo-msingi: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Nje ya mtandao - kazi zitaendeshwa unapounganishwa"
+  },
+  "Older": {
+    "message": "Zilizopita"
+  },
+  "Only_high_risk_actions": {
+    "message": "Vitendo vya hatari kubwa tu"
+  },
+  "Open_1_settings": {
+    "message": "Fungua mipangilio ya $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Fungua Side Panel:"
@@ -493,17 +1253,51 @@
   "Organization": {
     "message": "Shirika"
   },
+  "Organization_ID": {
+    "message": "ID ya Shirika"
+  },
+  "Out": {
+    "message": "Nje:"
+  },
+  "Output_Token_Price": {
+    "message": "Bei ya Token ya Matokeo"
+  },
+  "Output": {
+    "message": "Matokeo:"
+  },
+  "Output_1": {
+    "message": "Matokeo: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Zana ya Vitendo vya Ukurasa"
   },
   "Page_Vision_Tool": {
     "message": "Zana ya Kuona Ukurasa"
   },
-  "Parameter_Modifications": {
-    "message": "Marekebisho ya Vigezo"
+  "Past_Month": {
+    "message": "Mwezi uliopita"
+  },
+  "Past_Week": {
+    "message": "Wiki iliyopita"
+  },
+  "Patch_applied_successfully": {
+    "message": "Urekebishaji umefanywa kwa mafanikio"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Urekebishaji wa faili $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Simamisha foleni"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Fanya vitendo vya ukurasa (kusonga, chukua skrini, subiri)"
@@ -511,29 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Hifadhi Cache kwa Kudumu kwenye Hifadhi"
   },
+  "Plan_1_step_s": {
+    "message": "Mpango: hatua $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Tafadhali angalia ufunguo wako wa API katika mipangilio."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Tafadhali ingiza maelezo ya kazi"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Tafadhali ingiza funguo ya API kwanza"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Tafadhali ingiza funguo sahihi ya API."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Tafadhali ingia tena ili kuendelea kutumia wakala wa AI."
+  },
+  "Please_select_a_provider": {
+    "message": "Tafadhali chagua mtoa huduma"
   },
   "Please_type_a_valid_command": {
     "message": "Tafadhali andika amri sahihi"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Tafadhali boresha mpango ili kufungua modeli za kisasa zaidi duniani"
+  },
+  "Power": {
+    "message": "Nguvu"
+  },
+  "Pricing_Information": {
+    "message": "Taarifa za Bei"
+  },
+  "Pricing_Page": {
+    "message": "Ukurasa wa Bei"
+  },
+  "Priority": {
+    "message": "Kipaumbele"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Kiwango cha kipaumbele kinatoa majibu ya haraka zaidi kwa bei inayoongezeka."
   },
+  "Processing": {
+    "message": "Inashughulikia..."
+  },
+  "Protocol": {
+    "message": "Itifaki"
+  },
   "Provider": {
     "message": "Provider"
+  },
+  "Provider_Configuration": {
+    "message": "Usanidi wa Mtoa Huduma"
+  },
+  "Provider_ID": {
+    "message": "Kitambulisho cha Mtoa Huduma"
+  },
+  "Provider_Name": {
+    "message": "Jina la Mtoa Huduma"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Tafuta na ubadilishe DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Foleni imesitishwa"
   },
   "Queued": {
-    "message": ""
+    "message": "Imewekwa kwenye foleni"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Ratiba ya Haraka"
   },
   "Quick_Start": {
     "message": "Kuanzisha Haraka"
@@ -541,11 +1388,34 @@
   "Quick_action": {
     "message": "Kitendo cha Haraka"
   },
+  "Read_Only": {
+    "message": "Soma-Peke"
+  },
+  "Read_Write": {
+    "message": "Soma-Andika"
+  },
   "Read_only": {
     "message": "Usomaji pekee"
   },
-  "Reason_optional": {
-    "message": "Sababu (hiari)"
+  "Reasoning": {
+    "message": "Ufafanuzi"
+  },
+  "Reasoning_Efforts": {
+    "message": "Juhudi za Ufikiri"
+  },
+  "Reasoning_Summaries": {
+    "message": "Muhtasari wa Ufikiri"
+  },
+  "Reasoning_levels": {
+    "message": "Viwango vya ufikiri:"
+  },
+  "Reasoning_1": {
+    "message": "Ufikiri: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Inasasishwa katika"
@@ -553,50 +1423,86 @@
   "Reject": {
     "message": "Kataa"
   },
-  "Reject_this_action": {
-    "message": "Kataa kitendo hiki"
+  "Release_Date": {
+    "message": "Tarehe ya Kutolewa"
+  },
+  "Release_date_unknown": {
+    "message": "Tarehe ya kutolewa haijulikani"
+  },
+  "Released": {
+    "message": "Imetolewa:"
   },
   "Remaining": {
     "message": "Imebaki:"
   },
   "Remove": {
-    "message": ""
+    "message": "Ondoa"
   },
   "Remove_API_Key": {
     "message": "Ondoa ufunguo wa API"
   },
-  "Remove_modification": {
-    "message": "Ondoa mabadiliko"
+  "Request_Timeout": {
+    "message": "Muda wa Ombi Kumalizika"
   },
-  "Request_Changes": {
-    "message": "Omba mabadiliko"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Omba mabadiliko kwa kitendo hiki"
+  "Request_timed_out": {
+    "message": "Ombi limeisha muda"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Muda wa ombi kumalizika kwa milisekunde (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Muda wa ombi kumalizika kwa milisekunde (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Ombi ilisitishwa"
+  },
+  "Response_failed": {
+    "message": "Jibu limefeli"
+  },
+  "Restricted": {
+    "message": "Kukomo"
+  },
+  "Result_Summary": {
+    "message": "Muhtasari wa Matokeo"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Endeleza Foleni"
+  },
+  "Retry_Configuration": {
+    "message": "Usanidi wa Jaribio Tena"
+  },
+  "Retrying": {
+    "message": "Inajaribu tena"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Bofya kulia kwenye maandishi yoyote ili kuyafafanua au kuyaboresha kwa Browserx"
+  },
+  "Risk_Score": {
+    "message": "Alama ya Hatari:"
   },
   "Rollout_Expiration": {
     "message": "Muda wa kumalizika wa utoaji"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Endesha Sasa"
   },
   "Running": {
-    "message": ""
+    "message": "Inafanya"
+  },
+  "STREAM_ERROR": {
+    "message": "KOSA LA MTIRIRIKO"
+  },
+  "Safe": {
+    "message": "Salama"
   },
   "Sandbox_Policy": {
     "message": "Sera ya Sandbox"
   },
   "Save_API_Key": {
     "message": "Hifadhi ufunguo wa API"
+  },
+  "Save_Changes": {
+    "message": "Hifadhi Mabadiliko"
   },
   "Save_Settings": {
     "message": "Hifadhi mipangilio"
@@ -605,13 +1511,31 @@
     "message": "Inahifadhi..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Ratiba"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Panga Kazi Mpya"
+  },
+  "Scheduled": {
+    "message": "Imeratibiwa"
+  },
+  "Scheduled_Task": {
+    "message": "Kazi Imeratibiwa"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Kazi Imeratibiwa Inaanza"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Kazi Zimeratibiwa"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Muda ulioratibiwa lazima uwe angalau dakika 1 baadaye"
+  },
+  "Search_complete": {
+    "message": "Utafutaji umekamilika"
+  },
+  "Searching": {
+    "message": "Inatafuta..."
   },
   "Security_Privacy": {
     "message": "Usalama & Faragha"
@@ -619,17 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Kiwango cha usalama cha mazingira ya utekelezaji wa zana"
   },
+  "Select_Model": {
+    "message": "Chagua Modeli"
+  },
+  "Select_model_1": {
+    "message": "Chagua modeli: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Chagua mfano wa AI wa kutumia katika mazungumzo."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Chagua lugha unayopendelea kwa kiolesura"
   },
+  "Selected": {
+    "message": "Imechaguliwa"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Usanidi wa modeli uliyochaguliwa haipo"
+  },
+  "Send": {
+    "message": "Tuma"
+  },
   "Service_Tier": {
     "message": "Kiwango cha Huduma"
   },
-  "Session": {
-    "message": "Kikao"
+  "Service_tier_updated_to_1": {
+    "message": "Kiwango cha huduma kimesasishwa hadi $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Session_error": {
+    "message": "Hitilafu ya kikao"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Kikao kimeisha - tafadhali ingia tena ili kuendelea kutumia wakala wa AI"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "Kikomo cha kikao kimefikiwa. Kazi mpya zitaweka foleni."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Weka wakati data ya utoaji itakapokwisha"
@@ -640,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Mipangilio imehifadhiwa kwa mafanikio"
   },
+  "Show_API_key": {
+    "message": "Onyesha ufunguo wa API"
+  },
+  "Show_all": {
+    "message": "Onyesha yote"
+  },
+  "Show_less": {
+    "message": "Onyesha kidogo"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Onyesha matumizi ya token katika kazi"
   },
@@ -649,8 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Ingia kwenye akaunti yako"
   },
+  "Skills": {
+    "message": "Ujuzi"
+  },
   "Stable": {
     "message": "Imara"
+  },
+  "Standard_capabilities": {
+    "message": "Uwezo wa kawaida"
+  },
+  "Start_New_Conversation": {
+    "message": "Anzisha Mazungumzo Mapya"
+  },
+  "Start_on_login": {
+    "message": "Anzisha wakati wa kuingia"
+  },
+  "Status": {
+    "message": "Hali"
+  },
+  "Stop_Agent": {
+    "message": "Simamisha Wakala"
+  },
+  "Stop_the_current_task": {
+    "message": "Simamisha kazi ya sasa"
   },
   "Stop_the_current_task_run": {
     "message": "Simamisha kazi inayoendelea"
@@ -673,17 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Hifadhi data ya cache kwa kudumu katika vikao vya kivinjari"
   },
+  "Suggest_Alternative": {
+    "message": "Pendekeza Mbadala"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Imebadilishwa hadi hali ya backend. Maombi ya LLM yataelekezwa kupitia seva ya AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Imebadilishwa hadi hali ya direct API. Tafadhali sanidi ufunguo wako wa API."
+  },
+  "System": {
+    "message": "Mfumo"
+  },
   "Tab_Tool": {
     "message": "Zana ya Tab"
   },
+  "Tab_unavailable": {
+    "message": "Kichupo hakipatikani"
+  },
+  "Take_Over": {
+    "message": "Chukua Udhibiti"
+  },
   "Task": {
-    "message": ""
+    "message": "Kazi"
+  },
+  "Task_Details": {
+    "message": "Maelezo ya Kazi"
+  },
+  "Task_Failed": {
+    "message": "Kazi Imeshindwa"
   },
   "Task_History": {
-    "message": ""
+    "message": "Historia ya Kazi"
+  },
+  "Task_ID": {
+    "message": "Kitambulisho cha Kazi"
+  },
+  "Task_Plan": {
+    "message": "Mpango wa Kazi"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Kazi imeghairiwa na mtumiaji"
+  },
+  "Task_complete": {
+    "message": "Kazi imekamilika"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Kazi imekamilika katika $1$ mzunguko",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Kazi imeshindwa"
+  },
+  "Task_started": {
+    "message": "Kazi imeanza"
   },
   "Terminal": {
     "message": "Terminali"
+  },
+  "Terminal_Sandbox": {
+    "message": "Sandbox ya Terminali"
   },
   "Test_Connection": {
     "message": "Jaribu Muunganisho"
@@ -691,32 +1732,67 @@
   "Testing": {
     "message": "Inajaribu..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "URL ya mwisho wa wakala wa A2A (http au https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "AI inaamua kwa kila amri kama itatumia sandbox kulingana na tathmini ya hatari."
+  },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "URL ya mwisho wa seva ya MCP (http au https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Wakala kwa sasa anatumia hali ya backend. Maombi ya LLM yataelekezwa kupitia seva ya AI Republic. Mazungumzo yako yanashughulikiwa salama kupitia miundombinu yetu."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Kubadilisha mtindo kutafuta mazungumzo ya sasa. Je, unataka kuendelea?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Seva ilikumbana na hitilafu. Tafadhali jaribu tena baadaye."
+  },
   "Time": {
     "message": "Muda"
-  },
-  "Time_remaining": {
-    "message": "Muda uliobaki"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Muda wa kukaa kwa cache (sekunde) (default: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Muda wa kukoma (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Ili kutumia wakala wa AI, tafadhali chagua moja ya yafuatayo:"
+  },
+  "Today": {
+    "message": "Leo"
   },
   "Toggle_side_panel": {
     "message": "Badilisha paneli ya upande"
   },
-  "Tool": {
-    "message": "Zana"
+  "Toggle_use_own_API_key": {
+    "message": "Badilisha matumizi ya funguo yako ya API"
+  },
+  "Token_Usage": {
+    "message": "Matumizi ya Token"
+  },
+  "Tokens": {
+    "message": "Tokeni:"
+  },
+  "Tokens_1": {
+    "message": "Tokeni: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Muda wa Zana (ms)"
+  },
+  "Tool_name": {
+    "message": "Jina la zana:"
+  },
+  "Tool": {
+    "message": "Zana"
   },
   "Tools": {
     "message": "Zana"
@@ -724,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Mipangilio ya Zana"
   },
-  "Turn": {
-    "message": "Geuza"
+  "Trusted": {
+    "message": "Imethibitishwa"
+  },
+  "Trusted_Domains": {
+    "message": "Vikoa Vinavyotegemewa"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Wakala wanaoaminika wanapewa idhini kiotomatiki kwa utekelezaji wa ujuzi"
+  },
+  "Turns": {
+    "message": "Mizunguko:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Andika maelekezo mbadala..."
   },
   "UI_Theme": {
     "message": "Mandhari ya UI"
@@ -733,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL lazima itumie itifaki ya http au https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Imeshindwa kukagua hali ya wakala"
+  },
   "Unable_to_load_credit_information": {
     "message": "Imeshindwa kupakia taarifa za mkopo"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Imeshindwa kufikia seva ya nyuma - tafadhali angalia muunganisho wako"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Imeshindwa kufikia seva. Tafadhali angalia muunganisho wako na ujaribu tena."
+  },
+  "Unknown_Event": {
+    "message": "Tukio lisilotambulika"
+  },
+  "Unknown_error": {
+    "message": "Hitilafu isiyojulikana"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Hitilafu isiyojulikana wakati wa kukagua hali ya wakala"
+  },
+  "Unknown_error_occurred": {
+    "message": "Hitilafu isiyojulikana imetokea"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Hitilafu isiyojulikana imetokea wakati wa utekelezaji wa kazi"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Hitilafu isiyojulikana wakati wa kuchakata uwasilishaji"
+  },
+  "Unknown_model_1": {
+    "message": "Mfano usiojulikana ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Mabadiliko Yasiyohifadhiwa"
   },
+  "Untitled": {
+    "message": "Bila jina"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Ijayo"
   },
   "Update": {
-    "message": ""
+    "message": "Sasisha"
   },
   "Update_Channel": {
     "message": "Njia ya Sasisho"
@@ -753,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Boresha hadi Premium"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Boresha ili uchunguze miundo yenye nguvu zaidi duniani"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Boresha usajili wako ili kugundua modeli zenye nguvu zaidi ulimwenguni"
@@ -766,32 +1898,47 @@
   "User_Center": {
     "message": "Kituo cha Mtumiaji"
   },
-  "User_approved_action": {
-    "message": "Kitendo kilichokubaliwa na mtumiaji"
-  },
-  "User_decision": {
-    "message": "Uamuzi wa mtumiaji"
+  "User_Session": {
+    "message": "Kipindi cha Mtumiaji"
   },
   "User_preferences_and_interface_settings": {
     "message": "Mapendeleo ya mtumiaji na mipangilio ya kiolesura"
   },
-  "User_rejected_action": {
-    "message": "Kitendo kilichokataliwa na mtumiaji"
-  },
-  "User_requested_modifications": {
-    "message": "Marekebisho yaliyotakiwa na mtumiaji"
-  },
   "Using_extra_credits": {
     "message": "Kutumia mikopo ya ziada"
+  },
+  "Verbosity": {
+    "message": "Ufafanuzi"
+  },
+  "Verbosity_Control": {
+    "message": "Udhibiti wa Ufafanuzi"
+  },
+  "Verbosity_Levels": {
+    "message": "Viwango vya Ufafanuzi"
+  },
+  "Verbosity_levels": {
+    "message": "Viwango vya ufafanuzi:"
+  },
+  "Version": {
+    "message": "Toleo"
   },
   "View_Chat_History": {
     "message": "Tazama Historia ya Mazungumzo"
   },
   "View_History": {
-    "message": ""
+    "message": "Angalia Historia"
+  },
+  "View_Session": {
+    "message": "Angalia Kipindi"
+  },
+  "View_pricing_details": {
+    "message": "Angalia maelezo ya bei"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Uchambuzi wa kuona wa maudhui na mpangilio wa ukurasa"
+  },
+  "Waiting_for_approval": {
+    "message": "Inasubiri idhini"
   },
   "Web_Scraping_Tool": {
     "message": "Zana ya Kukusanya Data Kutoka Tovuti"
@@ -802,8 +1949,23 @@
   "Welcome_to_Browserx": {
     "message": "Karibu kwenye Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "Je, amri za sandbox zinaweza kufikia mtandao"
+  },
+  "Workspace_Access": {
+    "message": "Ufikiaji wa Eneo la Kazi"
+  },
   "Workspace_Write": {
     "message": "Andika Kwenye Eneo la Kazi"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Jana"
+  },
+  "You": {
+    "message": "Wewe"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Una mabadiliko yasiyohifadhiwa. Je, unataka kuyapuuza?"
@@ -814,10 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Ufunguo wako wa API umesimbwa"
   },
-  "Your_Decision": {
-    "message": "Uamuzi Wako"
+  "Your_personal_AI_assistant": {
+    "message": "Msaidizi wako binafsi wa AI"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Kipindi chako kimeisha. Tafadhali ingia tena."
+  },
+  "DISCONNECTED": {
+    "message": "[HAIUNGANISHWA]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Hitilafu: Mtiririko umekatizwa]"
+  },
+  "NO_ACCESS": {
+    "message": "[HAKUNA UFIKU]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[NO API KEY - BOFYA MIPANGILIO]"
+  },
+  "PROCESSING": {
+    "message": "[INASHUGHULIKA]"
+  },
+  "available": {
+    "message": "inapatikana"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "imehifadhiwa"
+  },
+  "detailed_thinking": {
+    "message": "ufikiri wa kina"
+  },
+  "disconnected": {
+    "message": "haijunganishwa"
+  },
+  "exec_unknown_command": {
+    "message": "exec (amri isiyojulikana)"
   },
   "optional": {
-    "message": ""
+    "message": "hiari"
+  },
+  "remaining": {
+    "message": "iliyobaki"
+  },
+  "session": {
+    "message": "kipindi"
+  },
+  "sessions": {
+    "message": "vipindi"
+  },
+  "streaming": {
+    "message": "inasambaza..."
+  },
+  "thinking": {
+    "message": "inafikiria"
+  },
+  "tokens": {
+    "message": "vitokeni"
+  },
+  "trusted": {
+    "message": "aminifu"
+  },
+  "user": {
+    "message": "mtumiaji"
+  },
+  "web_search": {
+    "message": "Utafutaji wa wavuti"
   }
 }

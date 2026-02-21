@@ -8,7 +8,7 @@ import { Session } from './Session';
 import { TurnManager } from './TurnManager';
 import { TurnContext } from './TurnContext';
 import type { ProcessedResponseItem, TurnRunResult } from './TurnManager';
-import type { InputItem, Event, ResponseItem } from '../protocol/types';
+import type { InputItem, Event, ResponseItem } from './protocol/types';
 import type {
   EventMsg,
   TaskCompleteEvent,
@@ -16,7 +16,7 @@ import type {
   TokenUsage,
   TurnAbortReason,
   CompactionCompletedEvent,
-} from '../protocol/events';
+} from './protocol/events';
 import type { CompactionResult } from './compact/types';
 
 /**

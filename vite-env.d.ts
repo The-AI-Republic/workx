@@ -21,8 +21,8 @@
 interface ImportMetaEnv {
   /** Cookie domain for reading auth cookies (e.g., '.airepublic.com') */
   readonly VITE_COOKIE_DOMAIN: string;
-  /** Login page URL to redirect unauthenticated users */
-  readonly VITE_LOGIN_PAGE: string;
+  /** Home page base URL (e.g., 'https://airepublic.com') */
+  readonly VITE_HOME_PAGE_BASE_URL: string;
   /** API base URL for fetching user profile */
   readonly VITE_API_BASE_URL: string;
 }

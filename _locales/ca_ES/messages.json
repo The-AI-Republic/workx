@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Agent d'IA general al navegador per a tasques de treball"
   },
+  "1_API_Key": {
+    "message": "$1$ clau API",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ clau API eliminada correctament",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} tasca(es) van perdre l'hora programada mentre el navegador estava tancat."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - la precisió pot ser reduïda)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(actiu)"
+  },
+  "multiple_files": {
+    "message": "(varis fitxers)"
+  },
+  "no_output": {
+    "message": "(sense sortida)"
+  },
+  "no_result": {
+    "message": "(sense resultat)"
+  },
+  "patch_details": {
+    "message": "(detalls del patch)"
+  },
+  "Enter_command": {
+    "message": ">> Introdueix una ordre..."
+  },
+  "A2A_Agents": {
+    "message": "Agents A2A"
+  },
   "API_Key": {
-    "message": ""
+    "message": "Clau API"
   },
   "API_Key_Configuration": {
     "message": "Configuració de la clau API"
   },
+  "API_Version": {
+    "message": "Versió API"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "L'edició de la clau API està desactivada en mode de backend"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "Clau API per a autenticació (emmagatzemada encriptada)"
+  },
+  "API_key_has_expired": {
+    "message": "La clau API ha caducat"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "La clau API té permisos insuficients"
+  },
+  "API_key_saved_successfully": {
+    "message": "Clau API desada correctament!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Les claus API s’encripten i s’emmagatzemen localment al teu navegador. Mai s’envien a servidors externs, excepte per a trucades API."
@@ -20,38 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Accedir a l'emmagatzematge del navegador (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Acció"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Mode d'aprovació d'accions, dominis de confiança, configuració de risc"
   },
-  "Action_Details": {
-    "message": "Detalls de l'acció"
+  "Active_Sessions": {
+    "message": "Sessions actives"
   },
   "Add": {
-    "message": ""
+    "message": "Afegeix"
   },
-  "Add_Modification": {
-    "message": "Afegir modificació"
+  "Add_Agent": {
+    "message": "Afegeix agent"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Afegeix servidor"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Afegeix tasca"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Afegeix un servidor per connectar amb eines externes."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Afegeix un agent per connectar amb habilitats externes."
+  },
+  "Additional_Bind_Mounts": {
+    "message": "Muntatges de vinculació addicionals"
   },
   "Advanced_Configuration": {
     "message": "Configuració avançada"
   },
-  "Advanced_Options": {
-    "message": "Opcions avançades"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Configuració avançada"
+  },
+  "Agent": {
+    "message": "Agent"
   },
   "Agent_Execution_Tools": {
     "message": "Eines d'execució de l'agent"
+  },
+  "Agent_Turn_Complete": {
+    "message": "Torn d'agent completat"
+  },
+  "Agent_URL_is_required": {
+    "message": "Cal l'URL de l'agent"
+  },
+  "Agent_added_successfully": {
+    "message": "Agent afegit correctament"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "El nom de l'agent només pot contenir lletres, números i guions"
+  },
+  "Agent_name_is_required": {
+    "message": "Cal el nom de l'agent"
+  },
+  "Agent_not_initialized": {
+    "message": "Agent no inicialitzat"
+  },
+  "Agent_removed_successfully": {
+    "message": "Agent eliminat correctament"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Torn d'agent completat correctament"
+  },
+  "Agent_updated_successfully": {
+    "message": "Agent actualitzat correctament"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Totes les accions s'aproven automàticament en aquests dominis."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Totes les accions són denegades en aquests dominis."
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "Totes les ordres s'executen dins d'un entorn aïllat natiu del SO. Les escriptures estan restringides al directori de l'espai de treball."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Permetre que l'agent executi ordres del sistema (utilitzar amb precaució)"
@@ -62,26 +167,100 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Permetre que els scripts de contingut s'executin a les pàgines web"
   },
+  "Allowed": {
+    "message": "Permès"
+  },
   "Allowed_Origins": {
     "message": "Orígens permesos"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Només caràcters alfanumèrics i guions (1-50 caràcters)"
   },
-  "Approval_History": {
-    "message": "Historial d'aprovacions"
+  "Always_Approve": {
+    "message": "Aprovar sempre"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: La teva IA personal (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Aprovació i seguretat"
+  },
+  "Approval_Mode": {
+    "message": "Mode d'aprovació"
+  },
+  "Approval_Required": {
+    "message": "Cal aprovació"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Cal aprovació: Aplicar Patch"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Cal aprovació: Executar ordre"
   },
   "Approve": {
     "message": "Aprovar"
   },
-  "Approve_this_action": {
-    "message": "Aprovar aquesta acció"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Aprovar canvis a: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Aprovar execució: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Esteu segur que voleu cancel·lar aquesta tasca?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Esteu segur que voleu eliminar aquest agent?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Esteu segur que voleu eliminar la vostra clau API $1$?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Demaneu a Browserx que extregui dades estructurades de qualsevol pàgina web"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Demana per a riscos mitjans i superiors (risc > 30). Recomanat per a la majoria d'usuaris."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Demana només per a accions d'alt risc (risc > 60). Per a usuaris experimentats."
+  },
+  "Auth_Type": {
+    "message": "Tipus d'autenticació"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Credencial d'autenticació (emmagatzemada encriptada)"
+  },
+  "Authentication_failed": {
+    "message": "Autenticació fallida"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Mètode d'autenticació per a l'agent"
+  },
+  "Auto_default": {
+    "message": "Auto (per defecte)"
+  },
+  "Auto_approve_everything": {
+    "message": "Aprova tot automàticament"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Aprova tot automàticament. Les regles de denegació encara s'apliquen. Utilitzeu-ho sota la vostra responsabilitat."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Aprovat automàticament — temps d'espera superat"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Inicia automàticament l'aplicació en iniciar sessió al vostre ordinador"
+  },
+  "Available_Skills": {
+    "message": "Habilitats disponibles"
+  },
   "Available_Tools": {
-    "message": ""
+    "message": "Eines disponibles"
   },
   "Available": {
     "message": "Disponible:"
@@ -89,20 +268,62 @@
   "Back": {
     "message": "Enrere"
   },
+  "Back_to_Model_Config": {
+    "message": "Tornar a la configuració del model"
+  },
   "Backend_Mode": {
     "message": "Mode de backend"
   },
   "Backend_Mode_Active": {
     "message": "Mode de backend actiu"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "El backend no està disponible. Espereu un moment i torneu-ho a provar."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Error del servidor backend - torneu-ho a provar més tard"
+  },
+  "Backoff_Multiplier": {
+    "message": "Multiplicador de retrocés"
+  },
+  "Balanced": {
+    "message": "Equilibrat"
+  },
+  "Base_URL": {
+    "message": "URL base"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "URL base no configurada per a aquest proveïdor"
+  },
+  "Bearer_Token": {
+    "message": "Token Bearer"
+  },
   "Beta": {
     "message": "Beta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "El camí del muntatge d'enllaç ha de ser absolut"
+  },
+  "Blocked_Domains": {
+    "message": "Dominis bloquejats"
   },
   "Browser_Tools": {
     "message": "Eines del navegador"
   },
   "Browser_automation_tool_toggles": {
     "message": "Commutadors d'eines d'automatització del navegador"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alfa)"
+  },
+  "CWD": {
+    "message": "CWD:"
   },
   "Cache_Settings": {
     "message": "Configuració de la memòria cau"
@@ -116,8 +337,36 @@
   "Cancel": {
     "message": "Cancel·lar"
   },
+  "Cancelled": {
+    "message": "Cancel·lat"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "No es pot executar la tasca: No hi ha cap clau API configurada per a ${providerName}. Aneu a Configuració → Configuració del model i afegiu la vostra clau API."
+  },
+  "Cannot_select_model_1": {
+    "message": "No es pot seleccionar el model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "No es pot enviar el missatge: No hi ha cap clau API configurada per a $1$. Feu clic al botó Configuració i configureu la vostra clau API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Capacitats"
+  },
   "Chat_History": {
     "message": "Historial de xat"
+  },
+  "Checking_agent_status": {
+    "message": "Comprovant l'estat de l'agent..."
   },
   "Choose_AI_Model": {
     "message": "Trieu el model d'IA"
@@ -137,14 +386,38 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Feu clic a la icona de Browserx a la barra d'eines o premeu Alt+Maj+C"
   },
+  "Click_to_cancel_login": {
+    "message": "Feu clic per cancel·lar l'inici de sessió"
+  },
   "Click_to_select_a_model": {
     "message": "Feu clic per seleccionar un model"
+  },
+  "Close": {
+    "message": "Tancar"
   },
   "Close_settings": {
     "message": "Tancar configuració"
   },
+  "Collapse": {
+    "message": "Contraure"
+  },
+  "Command_Approval_Required": {
+    "message": "Cal aprovació de l'ordre"
+  },
+  "Command_completed": {
+    "message": "Ordre completada"
+  },
   "Command": {
     "message": "Comanda"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "Les ordres s'executen directament a l'amfitrió. El filtre de seguretat encara s'aplica."
+  },
+  "Completed": {
+    "message": "Completat"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Completat: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Comprimeix les dades de la memòria cau per estalviar espai"
@@ -152,38 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Configureu el model d'IA i les claus API"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Configureu una clau API a Configuració"
+  },
+  "Configured": {
+    "message": "Configurat"
+  },
+  "Configured_Agents": {
+    "message": "Agents configurats"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Servidors configurats"
   },
   "Connect": {
-    "message": ""
+    "message": "Connecta"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Connecta't a agents del protocol Agent-to-Agent (A2A) per ampliar les capacitats amb habilitats d'agents externs."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Connecta't a servidors del Model Context Protocol (MCP) per ampliar l'agent amb eines externes."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Connecta't a un agent A2A per descobrir habilitats."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Connecta't a un servidor MCP per descobrir eines."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Connecta't a servidors d'eines MCP externs"
   },
   "Connected": {
     "message": "Connectat"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Connectat correctament"
   },
-  "Context": {
-    "message": "Context"
+  "Connecting": {
+    "message": "Connectant..."
+  },
+  "Connection_error": {
+    "message": "Error de connexió"
+  },
+  "Connection_failed_1": {
+    "message": "Connexió fallida: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Connexió fallida: URL base no configurada"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Connexió fallida: falta la configuració del model seleccionat"
+  },
+  "Connection_successful": {
+    "message": "Connexió correcta!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Prova de connexió fallida: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Prova de connexió fallida: Clau API invàlida"
+  },
+  "Connection_test_successful": {
+    "message": "Prova de connexió correcta!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Prova de connexió correcta! (La clau API és vàlida)"
+  },
+  "Connection_was_refused": {
+    "message": "Connexió refusada"
+  },
+  "Connection_was_reset": {
+    "message": "Connexió restablerta"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "El contingut viola la política: no es permet contingut ${contentType}"
+  },
+  "Context_Window": {
+    "message": "Finestra de context"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Context compactat: s'han estalviat ~$1$k tokens",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Controla com d'agressiu demana l'agent l'aprovació."
   },
   "Create_New_Tab": {
     "message": "Crea una pestanya nova"
+  },
+  "Created": {
+    "message": "Creat"
+  },
+  "Creator": {
+    "message": "Creador"
   },
   "Credit_Details": {
     "message": "Detalls del crèdit"
   },
   "Current_Plan": {
     "message": "Pla actual:"
+  },
+  "DNS_lookup_failed": {
+    "message": "Ha fallat la resolució DNS"
   },
   "DOM_Tool": {
     "message": "Eina DOM"
@@ -195,10 +552,34 @@
     "message": "Eina d'extracció de dades"
   },
   "Date": {
-    "message": ""
+    "message": "Data"
   },
   "Days_until_expiration": {
     "message": "Dies fins a l'expiració"
+  },
+  "Debug_logging_disabled": {
+    "message": "Registre de depuració desactivat"
+  },
+  "Debug_logging_enabled": {
+    "message": "Registre de depuració activat"
+  },
+  "Default": {
+    "message": "Per defecte"
+  },
+  "Deny": {
+    "message": "Denegar"
+  },
+  "Deprecated": {
+    "message": "Obsolet"
+  },
+  "Deprecation_Message": {
+    "message": "Missatge d'obsolescència"
+  },
+  "Description": {
+    "message": "Descripció"
+  },
+  "Desktop_mode": {
+    "message": "Mode d'escriptori"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Desenvolupat i mantingut per AI Republic"
@@ -207,16 +588,37 @@
     "message": "Descartar canvis"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Desconnectar"
+  },
+  "Disconnected_successfully": {
+    "message": "Desconnectat correctament"
+  },
+  "Dismiss": {
+    "message": "Descartar"
+  },
+  "Dismiss_notification": {
+    "message": "Descartar notificació"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Mostra el consum de tokens (tokens d'entrada/sortida) en completar les tasques"
   },
+  "Draft": {
+    "message": "Esborrany"
+  },
+  "Duration": {
+    "message": "Durada"
+  },
+  "ERROR": {
+    "message": "ERROR"
+  },
   "Edit": {
-    "message": ""
+    "message": "Edita"
+  },
+  "Edit_Agent": {
+    "message": "Edita agent"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Edita servidor"
   },
   "Enable_All_Tools": {
     "message": "Activa totes les eines"
@@ -234,40 +636,61 @@
     "message": "Activa l'extensió"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Activa les eines del Model Context Protocol des dels servidors MCP connectats"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Activa la connexió automàtica en iniciar browserx"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Activa la memòria cau per millorar el rendiment emmagatzemant dades d'accés freqüent"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Activa el registre de depuració"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Activa les capacitats de cerca web per a l'agent"
   },
   "Enabled": {
-    "message": ""
+    "message": "Activat"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Introdueix la clau API si cal"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Introdueix la clau API o el token d'autorització"
   },
   "Enter_your_LLM_API_key": {
     "message": "Introdueix la teva clau API LLM"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Introdueix la teva tasca..."
+  },
+  "Error": {
+    "message": "Error"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Error: No s'ha connectat a l'agent. Si us plau, actualitza la pàgina."
   },
   "Execute_Commands": {
     "message": "Executa ordres"
   },
+  "Execution_Mode": {
+    "message": "Mode d'execució"
+  },
+  "Exit_Code": {
+    "message": "Codi de sortida:"
+  },
+  "Expand": {
+    "message": "Amplia"
+  },
   "Expire_after_days": {
     "message": "Caduca després de dies"
   },
-  "Explain_your_decision": {
-    "message": "Explica la teva decisió..."
+  "Explain_this_info_selectionText": {
+    "message": "Explica això: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Explica amb Browserx"
   },
   "Extension_Permission": {
     "message": "Extensió i permisos"
@@ -284,35 +707,156 @@
   "Extra_Credits": {
     "message": "Crèdits addicionals"
   },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "Directoris addicionals accessibles dins del sandbox"
+  },
   "Extract_Data": {
     "message": "Extreu dades:"
+  },
+  "Extract_data_with_Browserx": {
+    "message": "Extreu dades amb Browserx"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Extreu patrons de dades específics de les pàgines"
   },
+  "Extract_structured_data_from_this_page": {
+    "message": "Extreu dades estructurades d'aquesta pàgina"
+  },
   "Extract_structured_data_from_web_pages": {
     "message": "Extreu dades estructurades de pàgines web"
+  },
+  "Failed": {
+    "message": "Fallat"
+  },
+  "Failed_to_change_model_1": {
+    "message": "No s'ha pogut canviar el model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "No s'ha pogut connectar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "No s'ha pogut crear una pestanya nova. Torneu-ho a provar."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "No s'ha pogut crear la pestanya del navegador: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "No s'ha pogut desconnectar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "No s'han pogut carregar els paràmetres A2A"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "No s'ha pogut carregar la conversa. Torneu-ho a provar."
   },
   "Failed_to_load_preferences": {
     "message": "No s'ha pogut carregar les preferències"
   },
+  "Failed_to_load_settings": {
+    "message": "No s'han pogut carregar els paràmetres"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "No s'ha pogut eliminar la clau API"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "No s'ha pogut eliminar l'agent: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "No s'ha pogut desar la clau API"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "No s'ha pogut desar la configuració del registre de depuració: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Failed_to_save_settings": {
     "message": "No s'ha pogut desar la configuració"
+  },
+  "Failed_to_save_settings_1": {
+    "message": "No s'han pogut desar els paràmetres: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "No s'ha pogut desar: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "No s'ha pogut enviar el missatge. Torneu-ho a provar."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "No s'ha pogut iniciar una conversa nova. Torneu-ho a provar."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "No s'ha pogut aturar la tasca. Torneu-ho a provar."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "No s'ha pogut canviar a la pestanya ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "No s'ha pogut provar la connexió"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "No s'ha pogut actualitzar el mode API"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "No s'ha pogut actualitzar el nivell del servei: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Cal aprovació per al canvi de fitxer"
   },
   "File_Operations_Not_Available": {
     "message": "Operacions de fitxer (No disponible)"
   },
-  "File_Path": {
-    "message": "Camí del fitxer"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Omple formularis, envia dades, interactua amb elements del formulari"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Eina d'automatització de formularis"
   },
   "Full_Access_Dangerous": {
     "message": "Accés complet (Perillós)"
+  },
+  "Full_Input": {
+    "message": "Entrada completa"
   },
   "General": {
     "message": "General"
@@ -337,14 +881,64 @@
   "Hello_World": {
     "message": "Hola món"
   },
-  "History": {
-    "message": "Historial"
+  "Hide_API_key": {
+    "message": "Amaga la clau API"
   },
-  "Impact": {
-    "message": "Impacte"
+  "High_Speed": {
+    "message": "Alta velocitat"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "Com es munta el directori de l'espai de treball a l'entorn aïllat"
+  },
+  "Image_Input": {
+    "message": "Entrada d'imatge"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Millora aquest text: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Millora amb Browserx"
+  },
+  "In": {
+    "message": "A:"
+  },
+  "Incompatible_features": {
+    "message": "Funcionalitats incompatibles:"
+  },
+  "Initial_Delay": {
+    "message": "Retard inicial"
+  },
+  "Input_Token_Price": {
+    "message": "Preu del token d'entrada"
+  },
+  "Input": {
+    "message": "Entrada:"
+  },
+  "Input_1": {
+    "message": "Entrada: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Intercepta i modifica sol·licituds/respostes de xarxa"
+  },
+  "Invalid_API_key": {
+    "message": "Clau API invàlida"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Clau API invàlida proporcionada"
+  },
+  "Invalid_URL_format": {
+    "message": "Format d'URL invàlid"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Format d'enviament invàlid: falta el camp op"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Format d'enviament invàlid: l'op manca del camp type"
   },
   "Keyboard_Shortcuts": {
     "message": "Dreceres de teclat"
@@ -362,25 +956,52 @@
     "message": "Més informació"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Deixa buit per mantenir l'existent"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Llista d’orígens permesos (un per línia). Admet comodins (*)."
   },
   "Load_More": {
-    "message": ""
+    "message": "Carrega'n més"
+  },
+  "Load_more": {
+    "message": "Carrega més"
+  },
+  "Loading_configuration": {
+    "message": "Carregant configuració..."
   },
   "Loading_credits": {
     "message": "Carregant crèdits..."
   },
+  "Loading_details": {
+    "message": "Carregant detalls..."
+  },
+  "Loading_history": {
+    "message": "Carregant historial..."
+  },
   "Loading_settings": {
     "message": "Carregant configuració..."
   },
+  "Loading_tabs": {
+    "message": "Carregant pestanyes..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Carregant..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Registra els missatges del protocol A2A a la consola del navegador per depuració"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Registra els missatges del protocol MCP a la consola del navegador per depuració"
+  },
+  "Log_in_to_your_account": {
+    "message": "Inicia sessió al teu compte"
+  },
+  "Logged_in": {
+    "message": "Sessió iniciada"
+  },
+  "Logging_in": {
+    "message": "Iniciant sessió..."
   },
   "Login": {
     "message": "Iniciar sessió"
@@ -389,19 +1010,19 @@
     "message": "Inicia sessió per obtenir crèdits gratuïts"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Mantén premut per programar una tasca"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Mantén premut el botó d'enviament per programar una tasca"
   },
   "Low_credits_remaining": {
     "message": "Queden pocs crèdits"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "Servidors MCP"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "Eines MCP"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Gestió de pestanyes del navegador (obrir, tancar, canviar, consultar)"
@@ -415,29 +1036,103 @@
   "Max_Cache_Size_MB": {
     "message": "Mida màxima de la cache (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Màxim de sessions concurrentes"
+  },
+  "Max_Delay": {
+    "message": "Retard màxim"
+  },
+  "Max_Output": {
+    "message": "Sortida màxima"
+  },
+  "Max_Output_Tokens": {
+    "message": "Màxim de tokens de sortida"
+  },
+  "Max_Retries": {
+    "message": "Reintents màxims"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Mida màxima de la cache en megabytes (per defecte: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Nombre màxim de sessions d'agent paral·leles, incloent tasques programades"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "S'ha assolit el màxim de 5 agents"
+  },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "S'ha assolit el màxim de 5 servidors"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Temps màxim (en mil·lisegons) que una eina pot executar-se abans del límit de temps (per defecte: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Risc mitjà o superior"
+  },
+  "Message_service_not_available": {
+    "message": "Servei de missatges no disponible"
+  },
   "Missed": {
-    "message": ""
+    "message": "Perdut"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Tasques programades perdudes"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "El model \\\"$1$\\\" no admet entrada d'imatge. Algunes eines quedaran desactivades.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Configuració del model"
   },
+  "Model_Configuration": {
+    "message": "Configuració del model"
+  },
+  "Model_Key_API": {
+    "message": "Clau del model (API)"
+  },
+  "Model_Name": {
+    "message": "Nom del model"
+  },
   "Model_Selection": {
     "message": "Selecció del model"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Configuració del model i del proveïdor carregada des de la configuració per defecte (només lectura)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model canviat a $1$. Si us plau, configura la teva clau API.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Model canviat a $1$. La sessió es tornarà a inicialitzar.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Model:"
+  },
+  "Model_1": {
+    "message": "Model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Xat modern"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Modifica els paràmetres en sol·licitar canvis"
   },
   "Monthly_Credits": {
     "message": "Crèdits mensuals"
@@ -446,7 +1141,7 @@
     "message": "Més configuració"
   },
   "Name": {
-    "message": ""
+    "message": "Nom"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navegar pàgines, fer clic en enllaços, gestionar la navegació del navegador"
@@ -454,8 +1149,17 @@
   "Navigation_Tool": {
     "message": "Eina de navegació"
   },
+  "Network_Access": {
+    "message": "Accés a la xarxa"
+  },
   "Network_Intercept_Tool": {
     "message": "Eina d'intercepció de xarxa"
+  },
+  "Network_error": {
+    "message": "Error de xarxa"
+  },
+  "Network_error_occurred": {
+    "message": "S'ha produït un error de xarxa"
   },
   "Never_expire_permanent": {
     "message": "Mai caduca (permanent)"
@@ -463,29 +1167,85 @@
   "New_Conversation": {
     "message": "Nova conversa"
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
+  "No_A2A_agents_configured_yet": {
+    "message": "Encara no s'han configurat agents A2A."
   },
-  "No_approval_history_yet": {
-    "message": "Encara no hi ha historial d'aprovacions."
+  "No_Access": {
+    "message": "Sense accés"
+  },
+  "No_Access_Configured": {
+    "message": "Cap accés configurat"
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": "Encara no s'han configurat servidors MCP."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Cap accés configurat. Inicieu sessió o configureu una clau API."
+  },
+  "No_active_sessions": {
+    "message": "Cap sessió activa"
+  },
+  "No_chat_history_yet": {
+    "message": "Encara no hi ha historial de xat"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Encara no hi ha tasques completades"
+  },
+  "No_models_available": {
+    "message": "No hi ha models disponibles"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "No hi ha models disponibles. Si us plau, comproveu la configuració."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Cap tasca programada"
+  },
+  "No_scheduled_time": {
+    "message": "Cap hora programada"
+  },
+  "No_skills_available": {
+    "message": "No hi ha habilitats disponibles."
+  },
+  "No_steps_in_plan": {
+    "message": "Cap pas al pla"
   },
   "No_tabs_available": {
     "message": "No hi ha pestanyes disponibles"
   },
+  "No_time_set": {
+    "message": "No s'ha establert cap hora"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "No hi ha eines disponibles."
+  },
+  "None": {
+    "message": "Cap"
   },
   "Not_Connected": {
     "message": "No connectat"
   },
+  "Notification": {
+    "message": "Notificació"
+  },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Nombre de dies abans que les dades de llançament caduquin (per defecte: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Desconnectat - les tasques s'executaran quan hi hagi connexió"
+  },
+  "Older": {
+    "message": "Més antic"
+  },
+  "Only_high_risk_actions": {
+    "message": "Només accions d'alt risc"
+  },
+  "Open_1_settings": {
+    "message": "Obre la configuració de $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Obrir el panell lateral:"
@@ -493,17 +1253,51 @@
   "Organization": {
     "message": "Organització"
   },
+  "Organization_ID": {
+    "message": "ID d'organització"
+  },
+  "Out": {
+    "message": "Sortida:"
+  },
+  "Output_Token_Price": {
+    "message": "Preu del token de sortida"
+  },
+  "Output": {
+    "message": "Sortida:"
+  },
+  "Output_1": {
+    "message": "Sortida: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Eina d'acció de pàgina"
   },
   "Page_Vision_Tool": {
     "message": "Eina de visió de pàgina"
   },
-  "Parameter_Modifications": {
-    "message": "Modificacions de paràmetres"
+  "Past_Month": {
+    "message": "Últim mes"
+  },
+  "Past_Week": {
+    "message": "Última setmana"
+  },
+  "Patch_applied_successfully": {
+    "message": "Actualització aplicada amb èxit"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Actualització per a $1$ fitxer(s)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Posa en pausa la cua"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Executar accions de pàgina (desplaçament, captura de pantalla, espera)"
@@ -511,29 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Persistir la memòria cau a l'emmagatzematge"
   },
+  "Plan_1_step_s": {
+    "message": "Pla: $1$ pas(s)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Si us plau, revisa la teva clau API a la configuració."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Introduïu una descripció de la tasca"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Introduïu primer una clau API"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Introduïu una clau API vàlida."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Torneu a iniciar sessió per continuar utilitzant l'agent d'IA."
+  },
+  "Please_select_a_provider": {
+    "message": "Seleccioneu un proveïdor"
   },
   "Please_type_a_valid_command": {
     "message": "Escriviu una ordre vàlida"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Actualitzeu el pla per desbloquejar els models més avançats del món"
+  },
+  "Power": {
+    "message": "Potència"
+  },
+  "Pricing_Information": {
+    "message": "Informació de preus"
+  },
+  "Pricing_Page": {
+    "message": "Pàgina de preus"
+  },
+  "Priority": {
+    "message": "Prioritat"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "El nivell prioritari ofereix temps de resposta més ràpids amb preus més alts."
   },
+  "Processing": {
+    "message": "Processant..."
+  },
+  "Protocol": {
+    "message": "Protocol"
+  },
   "Provider": {
     "message": "Proveïdor"
+  },
+  "Provider_Configuration": {
+    "message": "Configuració del proveïdor"
+  },
+  "Provider_ID": {
+    "message": "ID del proveïdor"
+  },
+  "Provider_Name": {
+    "message": "Nom del proveïdor"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Consultar i manipular el DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "La cua està pausada"
   },
   "Queued": {
-    "message": ""
+    "message": "En cua"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Programació ràpida"
   },
   "Quick_Start": {
     "message": "Inici ràpid"
@@ -541,11 +1388,34 @@
   "Quick_action": {
     "message": "Acció ràpida"
   },
+  "Read_Only": {
+    "message": "Només lectura"
+  },
+  "Read_Write": {
+    "message": "Lectura-escriptura"
+  },
   "Read_only": {
     "message": "Només lectura"
   },
-  "Reason_optional": {
-    "message": "Motiu (opcional)"
+  "Reasoning": {
+    "message": "Raonament"
+  },
+  "Reasoning_Efforts": {
+    "message": "Esforços de raonament"
+  },
+  "Reasoning_Summaries": {
+    "message": "Resums de raonament"
+  },
+  "Reasoning_levels": {
+    "message": "Nivells de raonament:"
+  },
+  "Reasoning_1": {
+    "message": "Raonament: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "S'actualitza en"
@@ -553,50 +1423,86 @@
   "Reject": {
     "message": "Rebutjar"
   },
-  "Reject_this_action": {
-    "message": "Rebutja aquesta acció"
+  "Release_Date": {
+    "message": "Data de llançament"
+  },
+  "Release_date_unknown": {
+    "message": "Data de llançament desconeguda"
+  },
+  "Released": {
+    "message": "Llançat:"
   },
   "Remaining": {
     "message": "Restant:"
   },
   "Remove": {
-    "message": ""
+    "message": "Eliminar"
   },
   "Remove_API_Key": {
     "message": "Eliminar clau API"
   },
-  "Remove_modification": {
-    "message": "Eliminar modificació"
+  "Request_Timeout": {
+    "message": "Temps d'espera de la sol·licitud"
   },
-  "Request_Changes": {
-    "message": "Sol·licitar canvis"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Sol·licitar canvis per a aquesta acció"
+  "Request_timed_out": {
+    "message": "La sol·licitud ha excedit el temps d'espera"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Temps d'espera de la sol·licitud en mil·lisegons (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Temps d'espera de la sol·licitud en mil·lisegons (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "La sol·licitud ha estat interrompuda"
+  },
+  "Response_failed": {
+    "message": "Resposta fallida"
+  },
+  "Restricted": {
+    "message": "Restringit"
+  },
+  "Result_Summary": {
+    "message": "Resum del resultat"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Reprendre cua"
+  },
+  "Retry_Configuration": {
+    "message": "Configuració de reintent"
+  },
+  "Retrying": {
+    "message": "Reintentant"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Fes clic dret a qualsevol text per explicar-lo o millorar-lo amb Browserx"
+  },
+  "Risk_Score": {
+    "message": "Puntuació de risc:"
   },
   "Rollout_Expiration": {
     "message": "Venciment del desplegament"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Executa ara"
   },
   "Running": {
-    "message": ""
+    "message": "En execució"
+  },
+  "STREAM_ERROR": {
+    "message": "ERROR DE FLUX"
+  },
+  "Safe": {
+    "message": "Segur"
   },
   "Sandbox_Policy": {
     "message": "Política de Sandbox"
   },
   "Save_API_Key": {
     "message": "Desar clau API"
+  },
+  "Save_Changes": {
+    "message": "Desa els canvis"
   },
   "Save_Settings": {
     "message": "Desar configuració"
@@ -605,13 +1511,31 @@
     "message": "Desant..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Programar"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Programa una tasca nova"
+  },
+  "Scheduled": {
+    "message": "Programat"
+  },
+  "Scheduled_Task": {
+    "message": "Tasca programada"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Iniciant tasca programada"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Tasques programades"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "L'hora programada ha de ser almenys 1 minut en el futur"
+  },
+  "Search_complete": {
+    "message": "Cerca completada"
+  },
+  "Searching": {
+    "message": "Cercant..."
   },
   "Security_Privacy": {
     "message": "Seguretat i privacitat"
@@ -619,17 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Nivell de seguretat per a l'entorn d'execució d'eines"
   },
+  "Select_Model": {
+    "message": "Selecciona el model"
+  },
+  "Select_model_1": {
+    "message": "Selecciona el model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Selecciona el model d'IA a utilitzar per a les converses."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selecciona l'idioma preferit per a la interfície"
   },
+  "Selected": {
+    "message": "Seleccionat"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Falta la configuració del model seleccionat"
+  },
+  "Send": {
+    "message": "Envia"
+  },
   "Service_Tier": {
     "message": "Nivell de servei"
   },
-  "Session": {
-    "message": "Sessió"
+  "Service_tier_updated_to_1": {
+    "message": "Nivell de servei actualitzat a $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Session_error": {
+    "message": "Error de sessió"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Sessió caducada - si us plau, torneu a iniciar sessió per continuar utilitzant l'agent d'IA"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "S'ha arribat al límit de sessions. Les noves tasques es posaran a la cua."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Estableix quan han de caducar les dades del desplegament"
@@ -640,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Configuració desada correctament"
   },
+  "Show_API_key": {
+    "message": "Mostrar clau API"
+  },
+  "Show_all": {
+    "message": "Mostrar tot"
+  },
+  "Show_less": {
+    "message": "Mostrar menys"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Mostra l'ús de tokens a les tasques"
   },
@@ -649,8 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Inicia sessió al teu compte"
   },
+  "Skills": {
+    "message": "Habilitats"
+  },
   "Stable": {
     "message": "Estable"
+  },
+  "Standard_capabilities": {
+    "message": "Capacitats estàndard"
+  },
+  "Start_New_Conversation": {
+    "message": "Iniciar una nova conversa"
+  },
+  "Start_on_login": {
+    "message": "Iniciar en iniciar sessió"
+  },
+  "Status": {
+    "message": "Estat"
+  },
+  "Stop_Agent": {
+    "message": "Aturar agent"
+  },
+  "Stop_the_current_task": {
+    "message": "Aturar la tasca actual"
   },
   "Stop_the_current_task_run": {
     "message": "Atura l'execució de la tasca actual"
@@ -673,17 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Emmagatzema dades de memòria cau de manera persistent entre sessions del navegador"
   },
+  "Suggest_Alternative": {
+    "message": "Suggereix una alternativa"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Canviat al mode de rerefons. Les sol·licituds LLM s'enviaran a través del servidor AI Republic."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Canviat al mode d'API directe. Si us plau, configureu la vostra clau API."
+  },
+  "System": {
+    "message": "Sistema"
+  },
   "Tab_Tool": {
     "message": "Eina de pestanya"
   },
+  "Tab_unavailable": {
+    "message": "Pestanya no disponible"
+  },
+  "Take_Over": {
+    "message": "Pren el control"
+  },
   "Task": {
-    "message": ""
+    "message": "Tasca"
+  },
+  "Task_Details": {
+    "message": "Detalls de la tasca"
+  },
+  "Task_Failed": {
+    "message": "Tasca fallida"
   },
   "Task_History": {
-    "message": ""
+    "message": "Historial de tasques"
+  },
+  "Task_ID": {
+    "message": "ID de la tasca"
+  },
+  "Task_Plan": {
+    "message": "Pla de la tasca"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Tasca cancel·lada per l'usuari"
+  },
+  "Task_complete": {
+    "message": "Tasca completada"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Tasca completada en $1$ torn(s)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Tasca fallida"
+  },
+  "Task_started": {
+    "message": "Tasca iniciada"
   },
   "Terminal": {
     "message": "Terminal"
+  },
+  "Terminal_Sandbox": {
+    "message": "Entorn aïllat del terminal"
   },
   "Test_Connection": {
     "message": "Prova la connexió"
@@ -691,32 +1732,67 @@
   "Testing": {
     "message": "Provant..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "L'URL del punt final de l'agent A2A (http o https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "La IA decideix per cada ordre si s'utilitza l'entorn aïllat basat en l'avaluació de riscos."
+  },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "L'URL del punt final del servidor MCP (http o https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "L'agent està utilitzant el mode de backend. Les sol·licituds LLM es dirigiran a través del servidor d'AI Republic. Les teves converses es processen de forma segura a través de la nostra infraestructura."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Canviar el model esborrarà la conversa actual. Vols continuar?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "El servidor ha trobat un error. Torna-ho a intentar més tard."
+  },
   "Time": {
     "message": "Temps"
-  },
-  "Time_remaining": {
-    "message": "Temps restant"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Temps de vida per a elements en memòria cau en segons (per defecte: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Temps d'espera (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Per utilitzar l'agent IA, si us plau, fes una de les següents:"
+  },
+  "Today": {
+    "message": "Avui"
   },
   "Toggle_side_panel": {
     "message": "Panell lateral"
   },
-  "Tool": {
-    "message": "Eina"
+  "Toggle_use_own_API_key": {
+    "message": "Alternar ús de la teva clau API"
+  },
+  "Token_Usage": {
+    "message": "Ús de tokens"
+  },
+  "Tokens": {
+    "message": "Tokens:"
+  },
+  "Tokens_1": {
+    "message": "Tokens: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Temps d'espera de l'eina (ms)"
+  },
+  "Tool_name": {
+    "message": "Nom de l'eina:"
+  },
+  "Tool": {
+    "message": "Eina"
   },
   "Tools": {
     "message": "Eines"
@@ -724,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Configuració d'eines"
   },
-  "Turn": {
-    "message": "Torn"
+  "Trusted": {
+    "message": "De confiança"
+  },
+  "Trusted_Domains": {
+    "message": "Dominis de confiança"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Els agents de confiança s'aproven automàticament per a invocacions d'habilitats"
+  },
+  "Turns": {
+    "message": "Torns:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Escriviu instruccions alternatives..."
   },
   "UI_Theme": {
     "message": "Tema de la interfície d'usuari"
@@ -733,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "L'URL ha d'utilitzar el protocol http o https"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "No s'ha pogut comprovar l'estat de l'agent"
+  },
   "Unable_to_load_credit_information": {
     "message": "No s'ha pogut carregar la informació de crèdit"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "No s'ha pogut contactar amb el servidor de back-end - si us plau, comproveu la vostra connexió"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "No s'ha pogut contactar amb el servidor. Si us plau, comproveu la vostra connexió i torneu-ho a provar."
+  },
+  "Unknown_Event": {
+    "message": "Esdeveniment desconegut"
+  },
+  "Unknown_error": {
+    "message": "Error desconegut"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Error desconegut en comprovar l'estat de l'agent"
+  },
+  "Unknown_error_occurred": {
+    "message": "S'ha produït un error desconegut"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "S'ha produït un error desconegut durant l'execució de la tasca"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Error desconegut en processar l'enviament"
+  },
+  "Unknown_model_1": {
+    "message": "Model desconegut ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Canvis no desats"
   },
+  "Untitled": {
+    "message": "Sense títol"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Proper"
   },
   "Update": {
-    "message": ""
+    "message": "Actualitzar"
   },
   "Update_Channel": {
     "message": "Canal d'actualitzacions"
@@ -753,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Actualitza a Premium"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Actualitza per explorar els models més potents del món"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Actualitza la teva subscripció per explorar els models més potents del món"
@@ -766,32 +1898,47 @@
   "User_Center": {
     "message": "Centre d'usuari"
   },
-  "User_approved_action": {
-    "message": "Acció aprovada per l'usuari"
-  },
-  "User_decision": {
-    "message": "Decisió de l'usuari"
+  "User_Session": {
+    "message": "Sessió d'usuari"
   },
   "User_preferences_and_interface_settings": {
     "message": "Preferències d'usuari i configuració de la interfície"
   },
-  "User_rejected_action": {
-    "message": "Acció rebutjada per l'usuari"
-  },
-  "User_requested_modifications": {
-    "message": "Modificacions sol·licitades per l'usuari"
-  },
   "Using_extra_credits": {
     "message": "Utilitzant crèdits addicionals"
+  },
+  "Verbosity": {
+    "message": "Verbositat"
+  },
+  "Verbosity_Control": {
+    "message": "Control de verbositat"
+  },
+  "Verbosity_Levels": {
+    "message": "Nivells de verbositat"
+  },
+  "Verbosity_levels": {
+    "message": "Nivells de verbositat:"
+  },
+  "Version": {
+    "message": "Versió"
   },
   "View_Chat_History": {
     "message": "Veure l'historial del xat"
   },
   "View_History": {
-    "message": ""
+    "message": "Veure historial"
+  },
+  "View_Session": {
+    "message": "Veure sessió"
+  },
+  "View_pricing_details": {
+    "message": "Veure detalls de preus"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Anàlisi visual del contingut i disseny de la pàgina"
+  },
+  "Waiting_for_approval": {
+    "message": "Esperant aprovació"
   },
   "Web_Scraping_Tool": {
     "message": "Eina d'extracció web"
@@ -802,8 +1949,23 @@
   "Welcome_to_Browserx": {
     "message": "Benvingut a Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "Si les ordres aïllades poden accedir a la xarxa"
+  },
+  "Workspace_Access": {
+    "message": "Accés a l'espai de treball"
+  },
   "Workspace_Write": {
     "message": "Escriptura de l'espai de treball"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Ahir"
+  },
+  "You": {
+    "message": "Tu"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Tens canvis sense desar. Vols descartar-los?"
@@ -814,10 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "La teva clau API està encriptada"
   },
-  "Your_Decision": {
-    "message": "La teva decisió"
+  "Your_personal_AI_assistant": {
+    "message": "El teu assistent personal d'IA"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "La teva sessió ha caducat. Torna a iniciar sessió."
+  },
+  "DISCONNECTED": {
+    "message": "[DESCONNECTAT]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Error: Flux interromput]"
+  },
+  "NO_ACCESS": {
+    "message": "[SENSE ACCÉS]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[SENSE CLAU API - CLICA A CONFIGURACIÓ]"
+  },
+  "PROCESSING": {
+    "message": "[PROCESSANT]"
+  },
+  "available": {
+    "message": "disponible"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "en memòria cau"
+  },
+  "detailed_thinking": {
+    "message": "pensament detallat"
+  },
+  "disconnected": {
+    "message": "desconnectat"
+  },
+  "exec_unknown_command": {
+    "message": "exec (ordre desconeguda)"
   },
   "optional": {
-    "message": ""
+    "message": "opcional"
+  },
+  "remaining": {
+    "message": "restant"
+  },
+  "session": {
+    "message": "sessió"
+  },
+  "sessions": {
+    "message": "sessions"
+  },
+  "streaming": {
+    "message": "transmetent..."
+  },
+  "thinking": {
+    "message": "pensant"
+  },
+  "tokens": {
+    "message": "tokens"
+  },
+  "trusted": {
+    "message": "de confiança"
+  },
+  "user": {
+    "message": "usuari"
+  },
+  "web_search": {
+    "message": "cerca web"
   }
 }

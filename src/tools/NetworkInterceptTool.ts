@@ -186,6 +186,7 @@ export class NetworkInterceptTool extends BaseTool {
         category: 'browser',
         metadata: {
           permissions: ['declarativeNetRequest', 'webRequest', 'webNavigation'],
+          platforms: ['extension'],
         },
       }
     );
@@ -455,8 +456,9 @@ export class NetworkInterceptTool extends BaseTool {
       }
 
       // Before request
-      const onBeforeRequest = (details: chrome.webRequest.WebRequestBodyDetails) => {
+      const onBeforeRequest = (details: chrome.webRequest.OnBeforeRequestDetails): undefined => {
         this.logRequest(details, config);
+        return undefined;
       };
       chrome.webRequest.onBeforeRequest.addListener(
         onBeforeRequest,
@@ -467,8 +469,9 @@ export class NetworkInterceptTool extends BaseTool {
 
       // Headers received
       if (config.monitoring.logResponses) {
-        const onHeadersReceived = (details: chrome.webRequest.WebResponseHeadersDetails) => {
+        const onHeadersReceived = (details: chrome.webRequest.OnHeadersReceivedDetails): undefined => {
           this.logResponse(details, config);
+          return undefined;
         };
         chrome.webRequest.onHeadersReceived.addListener(
           onHeadersReceived,
@@ -479,14 +482,14 @@ export class NetworkInterceptTool extends BaseTool {
       }
 
       // Request completed
-      const onCompleted = (details: chrome.webRequest.WebResponseCacheDetails) => {
+      const onCompleted = (details: chrome.webRequest.OnCompletedDetails) => {
         this.updateMetrics(details);
       };
       chrome.webRequest.onCompleted.addListener(onCompleted, filter);
       this.listeners.set('onCompleted', onCompleted);
 
       // Request error
-      const onErrorOccurred = (details: chrome.webRequest.WebResponseErrorDetails) => {
+      const onErrorOccurred = (details: chrome.webRequest.OnErrorOccurredDetails) => {
         this.logError(details);
       };
       chrome.webRequest.onErrorOccurred.addListener(onErrorOccurred, filter);
@@ -522,7 +525,7 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Log request details
    */
-  private logRequest(details: chrome.webRequest.WebRequestBodyDetails, config: NetworkInterceptConfig): void {
+  private logRequest(details: chrome.webRequest.OnBeforeRequestDetails, config: NetworkInterceptConfig): void {
     const request: NetworkRequest = {
       id: details.requestId,
       url: details.url,
@@ -550,7 +553,7 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Log response details
    */
-  private logResponse(details: chrome.webRequest.WebResponseHeadersDetails, config: NetworkInterceptConfig): void {
+  private logResponse(details: chrome.webRequest.OnHeadersReceivedDetails, config: NetworkInterceptConfig): void {
     const request = this.requestLog.get(details.requestId);
     if (request) {
       request.status = details.statusCode;
@@ -569,7 +572,7 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Update metrics on request completion
    */
-  private updateMetrics(details: chrome.webRequest.WebResponseCacheDetails): void {
+  private updateMetrics(details: chrome.webRequest.OnCompletedDetails): void {
     const request = this.requestLog.get(details.requestId);
     if (request && request.timestamp) {
       const duration = details.timeStamp - request.timestamp;
@@ -600,7 +603,7 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Log request error
    */
-  private logError(details: chrome.webRequest.WebResponseErrorDetails): void {
+  private logError(details: chrome.webRequest.OnErrorOccurredDetails): void {
     const request = this.requestLog.get(details.requestId);
     if (request) {
       request.error = details.error;
@@ -611,14 +614,14 @@ export class NetworkInterceptTool extends BaseTool {
   /**
    * Extract request body
    */
-  private extractRequestBody(requestBody: chrome.webRequest.WebRequestBody): string {
+  private extractRequestBody(requestBody: any): string {
     if (requestBody.formData) {
       return JSON.stringify(requestBody.formData);
     }
     if (requestBody.raw && requestBody.raw.length > 0) {
       // Convert ArrayBuffer to string
       const decoder = new TextDecoder();
-      return requestBody.raw.map(item => {
+      return requestBody.raw.map((item: any) => {
         if (item.bytes) {
           return decoder.decode(new Uint8Array(item.bytes));
         }

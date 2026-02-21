@@ -25,7 +25,7 @@
  * Stage 2 Structure Simplification
  */
 
-import { VirtualNode } from '../../types';
+import type { VirtualNode } from '../../types';
 import { ClickableCache } from '../utils/ClickableCache';
 
 export class PropagatingBoundsFilter {

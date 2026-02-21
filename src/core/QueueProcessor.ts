@@ -1,10 +1,10 @@
 /**
  * Queue processing utilities for managing submission and event queues
- * Implements async queue patterns from browserx.rs
+ * Implements async queue patterns from pi.rs
  */
 
-import type { Submission, Event, Op } from '../protocol/types';
-import type { EventMsg } from '../protocol/events';
+import type { Submission, Event, Op } from './protocol/types';
+import type { EventMsg } from './protocol/events';
 
 /**
  * Priority levels for queue items
@@ -264,7 +264,7 @@ export class EventQueue extends PriorityQueue<Event> {
 export class QueueProcessor {
   private submissionQueue: SubmissionQueue;
   private eventQueue: EventQueue;
-  private processingInterval?: number;
+  private processingInterval?: ReturnType<typeof setInterval>;
   private batchSize: number;
 
   constructor(

@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Algemene in-browser AI-agent voor werktaken"
   },
+  "1_API_Key": {
+    "message": "$1$ API-sleutel",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API-sleutel succesvol verwijderd",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} taak(en) hebben hun geplande tijd gemist terwijl de browser gesloten was."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - nauwkeurigheid kan afnemen)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(actief)"
+  },
+  "multiple_files": {
+    "message": "(meerdere bestanden)"
+  },
+  "no_output": {
+    "message": "(geen uitvoer)"
+  },
+  "no_result": {
+    "message": "(geen resultaat)"
+  },
+  "patch_details": {
+    "message": "(patchdetails)"
+  },
+  "Enter_command": {
+    "message": ">> Voer commando in..."
+  },
+  "A2A_Agents": {
+    "message": "A2A-agenten"
+  },
   "API_Key": {
-    "message": ""
+    "message": "API-sleutel"
   },
   "API_Key_Configuration": {
     "message": "API-sleutelconfiguratie"
   },
+  "API_Version": {
+    "message": "API-versie"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Bewerken van API-sleutel is uitgeschakeld in backend-modus"
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "API-sleutel voor authenticatie (versleuteld opgeslagen)"
+  },
+  "API_key_has_expired": {
+    "message": "API-sleutel is verlopen"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API-sleutel heeft onvoldoende rechten"
+  },
+  "API_key_saved_successfully": {
+    "message": "API-sleutel succesvol opgeslagen!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "API-sleutels worden versleuteld en lokaal in uw browser opgeslagen. Ze worden nooit naar externe servers verzonden, behalve voor API-aanroepen."
@@ -20,38 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Toegang tot browseropslag (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Actie"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Actiegoedkeuringsmodus, vertrouwde domeinen, risicoinstellingen"
   },
-  "Action_Details": {
-    "message": "Actiedetails"
+  "Active_Sessions": {
+    "message": "Actieve sessies"
   },
   "Add": {
-    "message": ""
+    "message": "Toevoegen"
   },
-  "Add_Modification": {
-    "message": "Wijziging toevoegen"
+  "Add_Agent": {
+    "message": "Agent toevoegen"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Server toevoegen"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Taak toevoegen"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Voeg een server toe om verbinding te maken met externe tools."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Voeg een agent toe om verbinding te maken met externe vaardigheden."
+  },
+  "Additional_Bind_Mounts": {
+    "message": "Extra bind-mounts"
   },
   "Advanced_Configuration": {
     "message": "Geavanceerde configuratie"
   },
-  "Advanced_Options": {
-    "message": "Geavanceerde opties"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Geavanceerde instellingen"
+  },
+  "Agent": {
+    "message": "Agent"
   },
   "Agent_Execution_Tools": {
     "message": "Agent-uitvoeringshulpmiddelen"
+  },
+  "Agent_Turn_Complete": {
+    "message": "Agentbeurt voltooid"
+  },
+  "Agent_URL_is_required": {
+    "message": "Agent-URL is vereist"
+  },
+  "Agent_added_successfully": {
+    "message": "Agent succesvol toegevoegd"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Agentnaam mag alleen letters, cijfers en koppeltekens bevatten"
+  },
+  "Agent_name_is_required": {
+    "message": "Agentnaam is vereist"
+  },
+  "Agent_not_initialized": {
+    "message": "Agent niet geïnitialiseerd"
+  },
+  "Agent_removed_successfully": {
+    "message": "Agent succesvol verwijderd"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Agentbeurt succesvol voltooid"
+  },
+  "Agent_updated_successfully": {
+    "message": "Agent succesvol bijgewerkt"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Alle acties worden automatisch goedgekeurd op deze domeinen."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Alle acties worden geweigerd op deze domeinen."
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "Alle commando's worden uitgevoerd in een OS-native sandbox. Schrijfbewerkingen zijn beperkt tot de werkmap."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Agent toestaan systeemopdrachten uit te voeren (met voorzichtigheid gebruiken)"
@@ -62,26 +167,100 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Toestaan dat inhoudsscripts op webpagina's worden uitgevoerd"
   },
+  "Allowed": {
+    "message": "Toegestaan"
+  },
   "Allowed_Origins": {
     "message": "Toegestane origins"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Alleen alfanumerieke tekens en koppeltekens (1-50 tekens)"
   },
-  "Approval_History": {
-    "message": "Goedkeuringsgeschiedenis"
+  "Always_Approve": {
+    "message": "Altijd goedkeuren"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: jouw persoonlijke AI (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Goedkeuring & Veiligheid"
+  },
+  "Approval_Mode": {
+    "message": "Goedkeuringsmodus"
+  },
+  "Approval_Required": {
+    "message": "Goedkeuring vereist"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Goedkeuring vereist: patch toepassen"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Goedkeuring vereist: commando uitvoeren"
   },
   "Approve": {
     "message": "Goedkeuren"
   },
-  "Approve_this_action": {
-    "message": "Deze actie goedkeuren"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Wijzigingen goedkeuren voor: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Uitvoering goedkeuren: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Weet je zeker dat je deze taak wilt annuleren?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Weet je zeker dat je deze agent wilt verwijderen?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Weet je zeker dat je je $1$ API-sleutel wilt verwijderen?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Vraag Browserx om gestructureerde gegevens van elke webpagina te extraheren"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Vraag om toestemming voor gemiddeld risico en hoger (risico > 30). Aanbevolen voor de meeste gebruikers."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Vraag alleen om toestemming voor acties met hoog risico (risico > 60). Voor ervaren gebruikers."
+  },
+  "Auth_Type": {
+    "message": "Authenticatietype"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Authenticatiegegevens (versleuteld opgeslagen)"
+  },
+  "Authentication_failed": {
+    "message": "Authenticatie mislukt"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Authenticatiemethode voor de agent"
+  },
+  "Auto_default": {
+    "message": "Auto (standaard)"
+  },
+  "Auto_approve_everything": {
+    "message": "Alles automatisch goedkeuren"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Alles automatisch goedkeuren. Weigerregels blijven van kracht. Gebruik op eigen risico."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Automatisch goedgekeurd -- time-out bereikt"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Start de app automatisch wanneer u zich aanmeldt op uw computer"
+  },
+  "Available_Skills": {
+    "message": "Beschikbare vaardigheden"
+  },
   "Available_Tools": {
-    "message": ""
+    "message": "Beschikbare hulpmiddelen"
   },
   "Available": {
     "message": "Beschikbaar:"
@@ -89,20 +268,62 @@
   "Back": {
     "message": "Terug"
   },
+  "Back_to_Model_Config": {
+    "message": "Terug naar modelconfiguratie"
+  },
   "Backend_Mode": {
     "message": "Backend-modus"
   },
   "Backend_Mode_Active": {
     "message": "Backend-modus actief"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Backend niet beschikbaar. Even wachten en opnieuw proberen."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Backend serverfout - probeer later opnieuw"
+  },
+  "Backoff_Multiplier": {
+    "message": "Backoff-multiplier"
+  },
+  "Balanced": {
+    "message": "Gebalanceerd"
+  },
+  "Base_URL": {
+    "message": "Basis-URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Basis-URL niet geconfigureerd voor deze provider"
+  },
+  "Bearer_Token": {
+    "message": "Bearer-token"
+  },
   "Beta": {
     "message": "Beta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Bind-mountpad moet absoluut zijn"
+  },
+  "Blocked_Domains": {
+    "message": "Geblokkeerde domeinen"
   },
   "Browser_Tools": {
     "message": "Browserhulpmiddelen"
   },
   "Browser_automation_tool_toggles": {
     "message": "Schakelaars voor browserautomatiseringstools"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "Huidige map:"
   },
   "Cache_Settings": {
     "message": "Cache-instellingen"
@@ -116,8 +337,36 @@
   "Cancel": {
     "message": "Annuleren"
   },
+  "Cancelled": {
+    "message": "Geannuleerd"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Kan taak niet uitvoeren: geen API-sleutel geconfigureerd voor ${providerName}. Ga naar Instellingen → Modelconfiguratie en voeg uw API-sleutel toe."
+  },
+  "Cannot_select_model_1": {
+    "message": "Kan model niet selecteren: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Kan bericht niet verzenden: geen API-sleutel geconfigureerd voor $1$. Klik op de knop Instellingen en configureer uw API-sleutel.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Mogelijkheden"
+  },
   "Chat_History": {
     "message": "Chatgeschiedenis"
+  },
+  "Checking_agent_status": {
+    "message": "Agentstatus controleren..."
   },
   "Choose_AI_Model": {
     "message": "Kies AI-model"
@@ -137,14 +386,38 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klik op het Browserx-pictogram in uw werkbalk of druk op Alt+Shift+C"
   },
+  "Click_to_cancel_login": {
+    "message": "Klik om inloggen te annuleren"
+  },
   "Click_to_select_a_model": {
     "message": "Klik om een model te selecteren"
+  },
+  "Close": {
+    "message": "Sluiten"
   },
   "Close_settings": {
     "message": "Instellingen sluiten"
   },
+  "Collapse": {
+    "message": "Inklappen"
+  },
+  "Command_Approval_Required": {
+    "message": "Goedkeuring van opdracht vereist"
+  },
+  "Command_completed": {
+    "message": "Opdracht voltooid"
+  },
   "Command": {
     "message": "Opdracht"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "Opdrachten worden direct op de host uitgevoerd. Beveiligingsfilter blijft van toepassing."
+  },
+  "Completed": {
+    "message": "Voltooid"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Voltooid: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Cachegegevens comprimeren om opslagruimte te besparen"
@@ -152,38 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Configureer AI-model en API-sleutels"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Configureer een API-sleutel in Instellingen"
+  },
+  "Configured": {
+    "message": "Geconfigureerd"
+  },
+  "Configured_Agents": {
+    "message": "Geconfigureerde agenten"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Geconfigureerde servers"
   },
   "Connect": {
-    "message": ""
+    "message": "Verbinden"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Maak verbinding met Agent-naar-Agent (A2A) protocolagents om de mogelijkheden uit te breiden met externe agentvaardigheden."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Maak verbinding met Model Context Protocol (MCP) servers om de agent uit te breiden met externe tools."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Maak verbinding met een A2A-agent om vaardigheden te ontdekken."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Maak verbinding met een MCP-server om tools te ontdekken."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Maak verbinding met externe MCP-toolservers"
   },
   "Connected": {
     "message": "Verbonden"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Succesvol verbonden"
   },
-  "Context": {
-    "message": "Context"
+  "Connecting": {
+    "message": "Verbinden..."
+  },
+  "Connection_error": {
+    "message": "Verbindingsfout"
+  },
+  "Connection_failed_1": {
+    "message": "Verbinding mislukt: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Verbinding mislukt: basis-URL niet geconfigureerd"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Verbinding mislukt: geselecteerde modelconfiguratie ontbreekt"
+  },
+  "Connection_successful": {
+    "message": "Verbinding geslaagd!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Connectietest mislukt: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Connectietest mislukt: ongeldige API-sleutel"
+  },
+  "Connection_test_successful": {
+    "message": "Connectietest geslaagd!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Connectietest geslaagd! (API-sleutel is geldig)"
+  },
+  "Connection_was_refused": {
+    "message": "Verbinding geweigerd"
+  },
+  "Connection_was_reset": {
+    "message": "Verbinding gereset"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Inhoud schendt beleid: ${contentType} inhoud is niet toegestaan"
+  },
+  "Context_Window": {
+    "message": "Contextvenster"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Context gecomprimeerd: ~ $1$k tokens bespaard",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Bepaalt hoe agressief de agent om goedkeuring vraagt."
   },
   "Create_New_Tab": {
     "message": "Nieuw tabblad maken"
+  },
+  "Created": {
+    "message": "Aangemaakt"
+  },
+  "Creator": {
+    "message": "Maker"
   },
   "Credit_Details": {
     "message": "Creditdetails"
   },
   "Current_Plan": {
     "message": "Huidig plan:"
+  },
+  "DNS_lookup_failed": {
+    "message": "DNS-lookup mislukt"
   },
   "DOM_Tool": {
     "message": "DOM-tool"
@@ -195,10 +552,34 @@
     "message": "Gegevens-extractietool"
   },
   "Date": {
-    "message": ""
+    "message": "Datum"
   },
   "Days_until_expiration": {
     "message": "Dagen tot vervaldatum"
+  },
+  "Debug_logging_disabled": {
+    "message": "Debuglogboek uitgeschakeld"
+  },
+  "Debug_logging_enabled": {
+    "message": "Debuglogboek ingeschakeld"
+  },
+  "Default": {
+    "message": "Standaard"
+  },
+  "Deny": {
+    "message": "Weigeren"
+  },
+  "Deprecated": {
+    "message": "Verouderd"
+  },
+  "Deprecation_Message": {
+    "message": "Verouderingsbericht"
+  },
+  "Description": {
+    "message": "Beschrijving"
+  },
+  "Desktop_mode": {
+    "message": "Desktopmodus"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Ontwikkeld en ondersteund door AI Republic"
@@ -207,16 +588,37 @@
     "message": "Wijzigingen negeren"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Verbinding verbreken"
+  },
+  "Disconnected_successfully": {
+    "message": "Verbinding succesvol verbroken"
+  },
+  "Dismiss": {
+    "message": "Negeren"
+  },
+  "Dismiss_notification": {
+    "message": "Melding negeren"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Toon tokenverbruik (invoer-/uitvoertokens) bij voltooiing van taken"
   },
+  "Draft": {
+    "message": "Concept"
+  },
+  "Duration": {
+    "message": "Duur"
+  },
+  "ERROR": {
+    "message": "FOUT"
+  },
   "Edit": {
-    "message": ""
+    "message": "Bewerken"
+  },
+  "Edit_Agent": {
+    "message": "Agent bewerken"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Server bewerken"
   },
   "Enable_All_Tools": {
     "message": "Alle tools inschakelen"
@@ -234,40 +636,61 @@
     "message": "Extensie inschakelen"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Model Context Protocol-tools inschakelen van verbonden MCP-servers"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Automatisch verbinden inschakelen wanneer Browserx start"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Caching inschakelen om de prestaties te verbeteren door vaak geraadpleegde gegevens op te slaan"
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Debuglogboek inschakelen"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Webzoekfunctionaliteit voor de agent inschakelen"
   },
   "Enabled": {
-    "message": ""
+    "message": "Ingeschakeld"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Voer API-sleutel in indien vereist"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Voer API-sleutel of bearer-token in"
   },
   "Enter_your_LLM_API_key": {
     "message": "Voer uw LLM API-sleutel in"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Voer uw taak in..."
+  },
+  "Error": {
+    "message": "Fout"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Fout: Niet verbonden met agent. Ververs de pagina."
   },
   "Execute_Commands": {
     "message": "Opdrachten uitvoeren"
   },
+  "Execution_Mode": {
+    "message": "Uitvoeringsmodus"
+  },
+  "Exit_Code": {
+    "message": "Exitcode:"
+  },
+  "Expand": {
+    "message": "Uitvouwen"
+  },
   "Expire_after_days": {
     "message": "Verloopt na dagen"
   },
-  "Explain_your_decision": {
-    "message": "Leg uw beslissing uit..."
+  "Explain_this_info_selectionText": {
+    "message": "Leg dit uit: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Uitleg met Browserx"
   },
   "Extension_Permission": {
     "message": "Extensie & toestemming"
@@ -284,35 +707,156 @@
   "Extra_Credits": {
     "message": "Extra Credits"
   },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "Extra mappen toegankelijk binnen de sandbox"
+  },
   "Extract_Data": {
     "message": "Gegevens extraheren:"
+  },
+  "Extract_data_with_Browserx": {
+    "message": "Gegevens extraheren met Browserx"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Specifieke gegevenspatronen van pagina's extraheren"
   },
+  "Extract_structured_data_from_this_page": {
+    "message": "Gestructureerde gegevens van deze pagina extraheren"
+  },
   "Extract_structured_data_from_web_pages": {
     "message": "Gestructureerde gegevens van webpagina's extraheren"
+  },
+  "Failed": {
+    "message": "Mislukt"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Kan model niet wijzigen: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Kan geen verbinding maken: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Kan geen nieuw tabblad maken. Probeer het opnieuw."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Kan geen browsertabblad maken: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Kan niet verbreken: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Kan A2A-instellingen niet laden"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Kan gesprek niet laden. Probeer het opnieuw."
   },
   "Failed_to_load_preferences": {
     "message": "Kan voorkeuren niet laden"
   },
+  "Failed_to_load_settings": {
+    "message": "Kan instellingen niet laden"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Kan API-sleutel niet verwijderen"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Kan agent niet verwijderen: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Kan API-sleutel niet opslaan"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Kan debugloginstelling niet opslaan: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Failed_to_save_settings": {
     "message": "Kan instellingen niet opslaan"
+  },
+  "Failed_to_save_settings_1": {
+    "message": "Kan instellingen niet opslaan: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Kan niet opslaan: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Kan bericht niet verzenden. Probeer het opnieuw."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Kan nieuw gesprek niet starten. Probeer het opnieuw."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Kan taak niet stoppen. Probeer het opnieuw."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Kan niet overschakelen naar tabblad ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Testen van verbinding mislukt"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Bijwerken van API-modus mislukt"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Bijwerken van servicelaag mislukt: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Goedkeuring voor bestandswijziging vereist"
   },
   "File_Operations_Not_Available": {
     "message": "Bestandsbewerkingen (niet beschikbaar)"
   },
-  "File_Path": {
-    "message": "Bestandspad"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Formulieren invullen, gegevens verzenden, interactie met formulierelementen"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Tool voor formulierautomatisering"
   },
   "Full_Access_Dangerous": {
     "message": "Volledige toegang (gevaarlijk)"
+  },
+  "Full_Input": {
+    "message": "Volledige invoer"
   },
   "General": {
     "message": "Algemeen"
@@ -337,14 +881,64 @@
   "Hello_World": {
     "message": "Hallo wereld"
   },
-  "History": {
-    "message": "Geschiedenis"
+  "Hide_API_key": {
+    "message": "API-sleutel verbergen"
   },
-  "Impact": {
-    "message": "Impact"
+  "High_Speed": {
+    "message": "Hoge snelheid"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "Hoe de werkruimte‑map wordt gemonteerd in de sandbox"
+  },
+  "Image_Input": {
+    "message": "Afbeeldingsinvoer"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Verbeter deze tekst: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Verbeter met Browserx"
+  },
+  "In": {
+    "message": "In:"
+  },
+  "Incompatible_features": {
+    "message": "Incompatibele functies:"
+  },
+  "Initial_Delay": {
+    "message": "Initiële vertraging"
+  },
+  "Input_Token_Price": {
+    "message": "Invoertokenprijs"
+  },
+  "Input": {
+    "message": "Invoer:"
+  },
+  "Input_1": {
+    "message": "Invoer: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Netwerkverzoeken en -reacties onderscheppen en aanpassen"
+  },
+  "Invalid_API_key": {
+    "message": "Ongeldige API-sleutel"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Ongeldige API-sleutel opgegeven"
+  },
+  "Invalid_URL_format": {
+    "message": "Ongeldig URL-formaat"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Ongeldig indieningsformaat: ontbrekend op-veld"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Ongeldig indieningsformaat: op mist type-veld"
   },
   "Keyboard_Shortcuts": {
     "message": "Sneltoetsen"
@@ -362,25 +956,52 @@
     "message": "Meer info"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Laat leeg om bestaande te behouden"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Lijst met toegestane origins (één per regel). Ondersteunt wildcards (*)."
   },
   "Load_More": {
-    "message": ""
+    "message": "Meer laden"
+  },
+  "Load_more": {
+    "message": "Meer laden"
+  },
+  "Loading_configuration": {
+    "message": "Configuratie laden..."
   },
   "Loading_credits": {
     "message": "Credits laden..."
   },
+  "Loading_details": {
+    "message": "Details laden..."
+  },
+  "Loading_history": {
+    "message": "Geschiedenis laden..."
+  },
   "Loading_settings": {
     "message": "Instellingen laden..."
   },
+  "Loading_tabs": {
+    "message": "Tabbladen laden..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Laden..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Log A2A-protocolberichten naar browserconsole voor debugging"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Log MCP-protocolberichten naar browserconsole voor debugging"
+  },
+  "Log_in_to_your_account": {
+    "message": "Log in op uw account"
+  },
+  "Logged_in": {
+    "message": "Ingelogd"
+  },
+  "Logging_in": {
+    "message": "Inloggen..."
   },
   "Login": {
     "message": "Inloggen"
@@ -389,19 +1010,19 @@
     "message": "Log in om gratis credits te krijgen"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Lang indrukken om taak in te plannen"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Houd de verzendknop lang ingedrukt om een taak in te plannen"
   },
   "Low_credits_remaining": {
     "message": "Weinig credits over"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "MCP-servers"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "MCP Tools"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Beheer browsertabbladen (openen, sluiten, wisselen, opvragen)"
@@ -415,29 +1036,103 @@
   "Max_Cache_Size_MB": {
     "message": "Maximale cachegrootte (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Maximale gelijktijdige sessies"
+  },
+  "Max_Delay": {
+    "message": "Maximale vertraging"
+  },
+  "Max_Output": {
+    "message": "Maximale uitvoer"
+  },
+  "Max_Output_Tokens": {
+    "message": "Maximale uitvoertokens"
+  },
+  "Max_Retries": {
+    "message": "Maximale pogingen"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maximale cachegrootte in megabytes (standaard: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Maximum aantal parallelle agentsessies, inclusief geplande taken"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Maximum van 5 agenten bereikt"
+  },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Maximum van 5 servers bereikt"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximumtijd (in milliseconden) dat een tool kan draaien voordat er een time‑out optreedt (standaard: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Middelmatig risico en hoger"
+  },
+  "Message_service_not_available": {
+    "message": "Berichtendienst niet beschikbaar"
+  },
   "Missed": {
-    "message": ""
+    "message": "Gemist"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Gemiste geplande taken"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Model \"$1$\" ondersteunt geen invoer van afbeeldingen. Sommige tools worden uitgeschakeld.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Modelconfiguratie"
   },
+  "Model_Configuration": {
+    "message": "Modelconfiguratie"
+  },
+  "Model_Key_API": {
+    "message": "Modelsleutel (API)"
+  },
+  "Model_Name": {
+    "message": "Modelnaam"
+  },
   "Model_Selection": {
     "message": "Modelselectie"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Model- en providerinstellingen geladen vanuit standaardconfiguratie (alleen-lezen)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model gewijzigd naar $1$. Configureer uw API-sleutel.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Model gewijzigd naar $1$. Sessie wordt opnieuw geïnitialiseerd.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Model:"
+  },
+  "Model_1": {
+    "message": "Model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Moderne chat"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Parameters aanpassen bij het aanvragen van wijzigingen"
   },
   "Monthly_Credits": {
     "message": "Maandelijkse credits"
@@ -446,7 +1141,7 @@
     "message": "Meer configuratie"
   },
   "Name": {
-    "message": ""
+    "message": "Naam"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Navigeer door pagina's, klik op links, beheer browsernavigatie"
@@ -454,8 +1149,17 @@
   "Navigation_Tool": {
     "message": "Navigatietool"
   },
+  "Network_Access": {
+    "message": "Netwerktoegang"
+  },
   "Network_Intercept_Tool": {
     "message": "Netwerkinterceptietool"
+  },
+  "Network_error": {
+    "message": "Netwerkfout"
+  },
+  "Network_error_occurred": {
+    "message": "Er is een netwerkfout opgetreden"
   },
   "Never_expire_permanent": {
     "message": "Nooit verlopen (permanent)"
@@ -463,29 +1167,85 @@
   "New_Conversation": {
     "message": "Nieuw gesprek"
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
+  "No_A2A_agents_configured_yet": {
+    "message": "Nog geen A2A-agenten geconfigureerd."
   },
-  "No_approval_history_yet": {
-    "message": "Nog geen goedkeuringsgeschiedenis."
+  "No_Access": {
+    "message": "Geen toegang"
+  },
+  "No_Access_Configured": {
+    "message": "Geen toegang geconfigureerd"
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": "Nog geen MCP-servers geconfigureerd."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Geen toegang geconfigureerd. Log in of configureer een API-sleutel."
+  },
+  "No_active_sessions": {
+    "message": "Geen actieve sessies"
+  },
+  "No_chat_history_yet": {
+    "message": "Nog geen chatgeschiedenis"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Nog geen voltooide taken"
+  },
+  "No_models_available": {
+    "message": "Geen modellen beschikbaar"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Geen modellen beschikbaar. Controleer de configuratie."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Geen geplande taken"
+  },
+  "No_scheduled_time": {
+    "message": "Geen geplande tijd"
+  },
+  "No_skills_available": {
+    "message": "Geen vaardigheden beschikbaar."
+  },
+  "No_steps_in_plan": {
+    "message": "Geen stappen in plan"
   },
   "No_tabs_available": {
     "message": "Geen tabbladen beschikbaar"
   },
+  "No_time_set": {
+    "message": "Geen tijd ingesteld"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Geen hulpmiddelen beschikbaar."
+  },
+  "None": {
+    "message": "Geen"
   },
   "Not_Connected": {
     "message": "Niet verbonden"
   },
+  "Notification": {
+    "message": "Melding"
+  },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Aantal dagen voordat implementatiegegevens verlopen (standaard: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Offline - taken worden uitgevoerd wanneer er verbinding is"
+  },
+  "Older": {
+    "message": "Ouder"
+  },
+  "Only_high_risk_actions": {
+    "message": "Alleen hoog-risicovolle acties"
+  },
+  "Open_1_settings": {
+    "message": "Open $1$ instellingen",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Open zijpaneel:"
@@ -493,17 +1253,51 @@
   "Organization": {
     "message": "Organisatie"
   },
+  "Organization_ID": {
+    "message": "Organisatie-ID"
+  },
+  "Out": {
+    "message": "Uit:"
+  },
+  "Output_Token_Price": {
+    "message": "Prijs output-token"
+  },
+  "Output": {
+    "message": "Uitvoer:"
+  },
+  "Output_1": {
+    "message": "Uitvoer: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Pagina-actietool"
   },
   "Page_Vision_Tool": {
     "message": "Pagina Vision Tool"
   },
-  "Parameter_Modifications": {
-    "message": "Parameterwijzigingen"
+  "Past_Month": {
+    "message": "Afgelopen maand"
+  },
+  "Past_Week": {
+    "message": "Afgelopen week"
+  },
+  "Patch_applied_successfully": {
+    "message": "Patch succesvol toegepast"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Patch voor $1$ bestand(en)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Wachtrij pauzeren"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Voer pagina-acties uit (scrollen, screenshot, wachten)"
@@ -511,29 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Cache persistent maken"
   },
+  "Plan_1_step_s": {
+    "message": "Plan: $1$ stap(pen)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Controleer uw API-sleutel in de instellingen."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Voer een taakbeschrijving in"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Voer eerst een API-sleutel in"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Voer een geldige API-sleutel in."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Log opnieuw in om de AI-agent te blijven gebruiken."
+  },
+  "Please_select_a_provider": {
+    "message": "Selecteer een provider"
   },
   "Please_type_a_valid_command": {
     "message": "Typ een geldige opdracht"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Upgrade het abonnement om 's werelds meest geavanceerde modellen te ontgrendelen"
+  },
+  "Power": {
+    "message": "Vermogen"
+  },
+  "Pricing_Information": {
+    "message": "Prijzinformatie"
+  },
+  "Pricing_Page": {
+    "message": "Prijspagina"
+  },
+  "Priority": {
+    "message": "Prioriteit"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Het prioriteitsniveau biedt snellere responstijden tegen hogere kosten."
   },
+  "Processing": {
+    "message": "Bezig..."
+  },
+  "Protocol": {
+    "message": "Protocol"
+  },
   "Provider": {
     "message": "Provider"
+  },
+  "Provider_Configuration": {
+    "message": "Providerconfiguratie"
+  },
+  "Provider_ID": {
+    "message": "Provider-ID"
+  },
+  "Provider_Name": {
+    "message": "Providernaam"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Bevraag en bewerk de DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Wachtrij is gepauzeerd"
   },
   "Queued": {
-    "message": ""
+    "message": "In de wachtrij"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Snelle planning"
   },
   "Quick_Start": {
     "message": "Snel starten"
@@ -541,11 +1388,34 @@
   "Quick_action": {
     "message": "Snelle actie"
   },
+  "Read_Only": {
+    "message": "Alleen-lezen"
+  },
+  "Read_Write": {
+    "message": "Lezen-schrijven"
+  },
   "Read_only": {
     "message": "Alleen-lezen"
   },
-  "Reason_optional": {
-    "message": "Reden (optioneel)"
+  "Reasoning": {
+    "message": "Redeneren"
+  },
+  "Reasoning_Efforts": {
+    "message": "Redeneringsinspanningen"
+  },
+  "Reasoning_Summaries": {
+    "message": "Redeneringssamenvattingen"
+  },
+  "Reasoning_levels": {
+    "message": "Redeneringsniveaus:"
+  },
+  "Reasoning_1": {
+    "message": "Redenering: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Vernieuwt over:"
@@ -553,50 +1423,86 @@
   "Reject": {
     "message": "Afwijzen"
   },
-  "Reject_this_action": {
-    "message": "Deze actie weigeren"
+  "Release_Date": {
+    "message": "Uitgavedatum"
+  },
+  "Release_date_unknown": {
+    "message": "Uitgavedatum onbekend"
+  },
+  "Released": {
+    "message": "Uitgegeven:"
   },
   "Remaining": {
     "message": "Resterend:"
   },
   "Remove": {
-    "message": ""
+    "message": "Verwijderen"
   },
   "Remove_API_Key": {
     "message": "API-sleutel verwijderen"
   },
-  "Remove_modification": {
-    "message": "Wijziging verwijderen"
+  "Request_Timeout": {
+    "message": "Aanvraag time-out"
   },
-  "Request_Changes": {
-    "message": "Wijzigingen aanvragen"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Wijzigingen voor deze actie aanvragen"
+  "Request_timed_out": {
+    "message": "Aanvraag time-out"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Time-out aanvraag in milliseconden (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Time-out aanvraag in milliseconden (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Aanvraag is afgebroken"
+  },
+  "Response_failed": {
+    "message": "Respons mislukt"
+  },
+  "Restricted": {
+    "message": "Beperkt"
+  },
+  "Result_Summary": {
+    "message": "Resultaatsamenvatting"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Wachtrij hervatten"
+  },
+  "Retry_Configuration": {
+    "message": "Herprobeerconfiguratie"
+  },
+  "Retrying": {
+    "message": "Opnieuw proberen"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Klik met de rechtermuisknop op tekst om het uit te leggen of te verbeteren met Browserx"
+  },
+  "Risk_Score": {
+    "message": "Risicoscore:"
   },
   "Rollout_Expiration": {
     "message": "Uitrolvervaldatum"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Nu uitvoeren"
   },
   "Running": {
-    "message": ""
+    "message": "Bezig"
+  },
+  "STREAM_ERROR": {
+    "message": "STROOMFOUT"
+  },
+  "Safe": {
+    "message": "Veilig"
   },
   "Sandbox_Policy": {
     "message": "Sandboxbeleid"
   },
   "Save_API_Key": {
     "message": "API-sleutel opslaan"
+  },
+  "Save_Changes": {
+    "message": "Wijzigingen opslaan"
   },
   "Save_Settings": {
     "message": "Instellingen opslaan"
@@ -605,13 +1511,31 @@
     "message": "Opslaan..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Planning"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Plan een nieuwe taak"
+  },
+  "Scheduled": {
+    "message": "Gepland"
+  },
+  "Scheduled_Task": {
+    "message": "Geplande taak"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Geplande taak start"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Geplande taken"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Geplande tijd moet minstens 1 minuut in de toekomst liggen"
+  },
+  "Search_complete": {
+    "message": "Zoeken voltooid"
+  },
+  "Searching": {
+    "message": "Zoeken..."
   },
   "Security_Privacy": {
     "message": "Beveiliging & privacy"
@@ -619,17 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Beveiligingsniveau voor tool-uitvoeringsomgeving"
   },
+  "Select_Model": {
+    "message": "Model selecteren"
+  },
+  "Select_model_1": {
+    "message": "Selecteer model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Selecteer het AI-model voor gesprekken."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Selecteer uw voorkeurstaal voor de interface"
   },
+  "Selected": {
+    "message": "Geselecteerd"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Geselecteerde modelconfiguratie ontbreekt"
+  },
+  "Send": {
+    "message": "Verzenden"
+  },
   "Service_Tier": {
     "message": "Serviceklasse"
   },
-  "Session": {
-    "message": "Sessie"
+  "Service_tier_updated_to_1": {
+    "message": "Service tier bijgewerkt naar $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Session_error": {
+    "message": "Sessie‑fout"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Sessie verlopen - log opnieuw in om de AI-agent te blijven gebruiken"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "Sessielimiet bereikt. Nieuwe taken worden in de wachtrij geplaatst."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Instellen wanneer rolloutgegevens moeten verlopen"
@@ -640,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Instellingen succesvol opgeslagen"
   },
+  "Show_API_key": {
+    "message": "Toon API-sleutel"
+  },
+  "Show_all": {
+    "message": "Alles tonen"
+  },
+  "Show_less": {
+    "message": "Minder tonen"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Toon tokenverbruik in taken"
   },
@@ -649,8 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Meld u aan bij uw account"
   },
+  "Skills": {
+    "message": "Vaardigheden"
+  },
   "Stable": {
     "message": "Stabiel"
+  },
+  "Standard_capabilities": {
+    "message": "Standaardmogelijkheden"
+  },
+  "Start_New_Conversation": {
+    "message": "Nieuw gesprek starten"
+  },
+  "Start_on_login": {
+    "message": "Start bij inloggen"
+  },
+  "Status": {
+    "message": "Status"
+  },
+  "Stop_Agent": {
+    "message": "Agent stoppen"
+  },
+  "Stop_the_current_task": {
+    "message": "Huidige taak stoppen"
   },
   "Stop_the_current_task_run": {
     "message": "Stop de huidige taakuitvoering"
@@ -673,17 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Cache‑gegevens permanent opslaan tussen browsersessies"
   },
+  "Suggest_Alternative": {
+    "message": "Alternatief voorstellen"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Overgeschakeld naar backend‑modus. LLM‑verzoeken worden via de AI Republic‑server geleid."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Overgeschakeld naar directe API-modus. Configureer uw API‑sleutel."
+  },
+  "System": {
+    "message": "Systeem"
+  },
   "Tab_Tool": {
     "message": "Tabblad-hulpmiddel"
   },
+  "Tab_unavailable": {
+    "message": "Tabblad niet beschikbaar"
+  },
+  "Take_Over": {
+    "message": "Overnemen"
+  },
   "Task": {
-    "message": ""
+    "message": "Taak"
+  },
+  "Task_Details": {
+    "message": "Taakdetails"
+  },
+  "Task_Failed": {
+    "message": "Taak mislukt"
   },
   "Task_History": {
-    "message": ""
+    "message": "Taakgeschiedenis"
+  },
+  "Task_ID": {
+    "message": "Taak-ID"
+  },
+  "Task_Plan": {
+    "message": "Taakplan"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Taak geannuleerd door gebruiker"
+  },
+  "Task_complete": {
+    "message": "Taak voltooid"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Taak voltooid in $1$ beurt(en)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Taak mislukt"
+  },
+  "Task_started": {
+    "message": "Taak gestart"
   },
   "Terminal": {
     "message": "Terminal"
+  },
+  "Terminal_Sandbox": {
+    "message": "Terminal Sandbox"
   },
   "Test_Connection": {
     "message": "Verbinding testen"
@@ -691,32 +1732,67 @@
   "Testing": {
     "message": "Testen..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "De A2A-agent eindpunt-URL (http of https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "De AI beslist per opdracht of de sandbox moet worden gebruikt op basis van risico‑beoordeling."
+  },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "De MCP-server eindpunt-URL (http of https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "De agent gebruikt momenteel de backend‑modus. LLM‑verzoeken worden via de AI Republic‑server geleid. Uw gesprekken worden veilig verwerkt via onze infrastructuur."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Het wisselen van model zal het huidige gesprek wissen. Wilt u doorgaan?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "De server heeft een fout aangetroffen. Probeer later opnieuw."
+  },
   "Time": {
     "message": "Tijd"
-  },
-  "Time_remaining": {
-    "message": "Resterende tijd"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Time-to-live voor gecachte items in seconden (standaard: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Time‑out (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Om de AI‑agent te gebruiken, kunt u:"
+  },
+  "Today": {
+    "message": "Vandaag"
   },
   "Toggle_side_panel": {
     "message": "Zijpaneel tonen/verbergen"
   },
-  "Tool": {
-    "message": "Tool"
+  "Toggle_use_own_API_key": {
+    "message": "Eigen API‑sleutel in-/uitschakelen"
+  },
+  "Token_Usage": {
+    "message": "Tokengebruik"
+  },
+  "Tokens": {
+    "message": "Tokens:"
+  },
+  "Tokens_1": {
+    "message": "Tokens: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Tool-timeout (ms)"
+  },
+  "Tool_name": {
+    "message": "Toolnaam:"
+  },
+  "Tool": {
+    "message": "Tool"
   },
   "Tools": {
     "message": "Tools"
@@ -724,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Tools-instellingen"
   },
-  "Turn": {
-    "message": "Beurt"
+  "Trusted": {
+    "message": "Vertrouwd"
+  },
+  "Trusted_Domains": {
+    "message": "Vertrouwde domeinen"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Vertrouwde agents worden automatisch goedgekeurd voor vaardigheidsaanroepen"
+  },
+  "Turns": {
+    "message": "Beurten:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Typ alternatieve instructies..."
   },
   "UI_Theme": {
     "message": "UI-thema"
@@ -733,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL moet http- of https-protocol gebruiken"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Kan agentstatus niet controleren"
+  },
   "Unable_to_load_credit_information": {
     "message": "Kan creditinformatie niet laden"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Kan backendserver niet bereiken - controleer uw verbinding"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Kan de server niet bereiken. Controleer uw verbinding en probeer het opnieuw."
+  },
+  "Unknown_Event": {
+    "message": "Onbekende gebeurtenis"
+  },
+  "Unknown_error": {
+    "message": "Onbekende fout"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Onbekende fout bij het controleren van de agentstatus"
+  },
+  "Unknown_error_occurred": {
+    "message": "Onbekende fout opgetreden"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Onbekende fout opgetreden tijdens taakuitvoering"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Onbekende fout bij het verwerken van de inzending"
+  },
+  "Unknown_model_1": {
+    "message": "Onbekend model ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Niet-opgeslagen wijzigingen"
   },
+  "Untitled": {
+    "message": "Naamloos"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Komend"
   },
   "Update": {
-    "message": ""
+    "message": "Bijwerken"
   },
   "Update_Channel": {
     "message": "Updatekanaal"
@@ -753,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Upgrade naar Premium"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Upgrade om 's werelds krachtigste modellen te verkennen"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Upgrade je abonnement om de krachtigste modellen van de wereld te verkennen"
@@ -766,32 +1898,47 @@
   "User_Center": {
     "message": "Gebruikerscentrum"
   },
-  "User_approved_action": {
-    "message": "Door gebruiker goedgekeurde actie"
-  },
-  "User_decision": {
-    "message": "Gebruikerskeuze"
+  "User_Session": {
+    "message": "Gebruikerssessie"
   },
   "User_preferences_and_interface_settings": {
     "message": "Gebruikersvoorkeuren en interface-instellingen"
   },
-  "User_rejected_action": {
-    "message": "Gebruiker heeft actie afgewezen"
-  },
-  "User_requested_modifications": {
-    "message": "Door gebruiker aangevraagde wijzigingen"
-  },
   "Using_extra_credits": {
     "message": "Extra credits gebruiken"
+  },
+  "Verbosity": {
+    "message": "Uitvoerigheid"
+  },
+  "Verbosity_Control": {
+    "message": "Uitvoerigheidscontrole"
+  },
+  "Verbosity_Levels": {
+    "message": "Uitvoerigheidsniveaus"
+  },
+  "Verbosity_levels": {
+    "message": "Uitvoerigheidsniveaus:"
+  },
+  "Version": {
+    "message": "Versie"
   },
   "View_Chat_History": {
     "message": "Chatgeschiedenis bekijken"
   },
   "View_History": {
-    "message": ""
+    "message": "Bekijk geschiedenis"
+  },
+  "View_Session": {
+    "message": "Bekijk sessie"
+  },
+  "View_pricing_details": {
+    "message": "Bekijk prijsdetails"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visuele analyse van paginainhoud en -indeling"
+  },
+  "Waiting_for_approval": {
+    "message": "Wachten op goedkeuring"
   },
   "Web_Scraping_Tool": {
     "message": "Webscraping-tool"
@@ -802,8 +1949,23 @@
   "Welcome_to_Browserx": {
     "message": "Welkom bij Browserx"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "Of sandboxed-commando's toegang tot het netwerk hebben"
+  },
+  "Workspace_Access": {
+    "message": "Werkruimte-toegang"
+  },
   "Workspace_Write": {
     "message": "Schrijven in werkruimte"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Gisteren"
+  },
+  "You": {
+    "message": "Jij"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Je hebt niet-opgeslagen wijzigingen. Wil je ze verwijderen?"
@@ -814,10 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Je API-sleutel is versleuteld"
   },
-  "Your_Decision": {
-    "message": "Je beslissing"
+  "Your_personal_AI_assistant": {
+    "message": "Jouw persoonlijke AI-assistent"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Uw sessie is verlopen. Log opnieuw in."
+  },
+  "DISCONNECTED": {
+    "message": "[VERBINDING VERBROKEN]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Fout: Stream onderbroken]"
+  },
+  "NO_ACCESS": {
+    "message": "[GEEN TOEGANG]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[GEEN API-SLEUTEL - KLIK INSTELLINGEN]"
+  },
+  "PROCESSING": {
+    "message": "[VERWERKING]"
+  },
+  "available": {
+    "message": "beschikbaar"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "gecachet"
+  },
+  "detailed_thinking": {
+    "message": "gedetailleerd nadenken"
+  },
+  "disconnected": {
+    "message": "verbinding verbroken"
+  },
+  "exec_unknown_command": {
+    "message": "exec (onbekende opdracht)"
   },
   "optional": {
-    "message": ""
+    "message": "optioneel"
+  },
+  "remaining": {
+    "message": "resterend"
+  },
+  "session": {
+    "message": "sessie"
+  },
+  "sessions": {
+    "message": "sessies"
+  },
+  "streaming": {
+    "message": "streamen..."
+  },
+  "thinking": {
+    "message": "nadenken"
+  },
+  "tokens": {
+    "message": "tokens"
+  },
+  "trusted": {
+    "message": "vertrouwd"
+  },
+  "user": {
+    "message": "gebruiker"
+  },
+  "web_search": {
+    "message": "web zoeken"
   }
 }

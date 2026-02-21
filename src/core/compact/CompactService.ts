@@ -2,7 +2,7 @@
  * CompactService - main orchestration service for chat history compaction
  */
 
-import type { ResponseItem } from '../../protocol/types';
+import type { ResponseItem } from '../protocol/types';
 import type {
   CompactionConfig,
   CompactionResult,
@@ -13,8 +13,8 @@ import { DEFAULT_COMPACTION_CONFIG, SUMMARIZATION_PROMPT } from './constants';
 import { SummaryGenerator } from './SummaryGenerator';
 import { HistoryReconstructor } from './HistoryReconstructor';
 import { calculateBackoff, sleep } from './utils';
-import type { ModelClient } from '../../models/ModelClient';
-import { isOutputTextDelta, isCompleted } from '../../models/types/ResponseEvent';
+import type { ModelClient } from '../models/ModelClient';
+import { isOutputTextDelta, isCompleted } from '../models/types/ResponseEvent';
 
 /**
  * Main service for orchestrating chat history compaction

@@ -17,6 +17,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@/core/*": ["src/core/*"],
+      "@/extension/*": ["src/extension/*"],
+      "@/desktop/*": ["src/desktop/*"],
       "@/storage/rollout": ["src/storage/rollout/index.ts"],
       "@/storage/rollout/*": ["src/storage/rollout/*"]
     }

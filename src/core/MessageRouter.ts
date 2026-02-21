@@ -3,9 +3,9 @@
  * Handles message passing between background, content scripts, and side panel
  */
 
-import type { Submission, Event } from '../protocol/types';
-import type { EventMsg } from '../protocol/events';
-import type { ResponseEvent } from '../models/types/ResponseEvent';
+import type { Submission, Event } from './protocol/types';
+import type { EventMsg } from './protocol/events';
+import type { ResponseEvent } from './models/types/ResponseEvent';
 
 /**
  * Message types for Chrome extension communication
@@ -67,6 +67,9 @@ export enum MessageType {
   RESUME_SESSION = 'RESUME_SESSION',
   RESUME_SESSION_COMPLETE = 'RESUME_SESSION_COMPLETE',
 
+  // Agent control
+  INTERRUPT = 'STOP_AGENT_SESSION', // Stop/interrupt the running agent
+
   // Configuration management
   CONFIG_UPDATE = 'CONFIG_UPDATE',
   AGENT_REINITIALIZED = 'AGENT_REINITIALIZED',
@@ -117,6 +120,19 @@ export enum MessageType {
   SIDEPANEL_CREATE_SESSION = 'SIDEPANEL_CREATE_SESSION', // Create new 'primary' session for tab
   SIDEPANEL_CLOSE_SESSION = 'SIDEPANEL_CLOSE_SESSION', // Terminate session when tab closed
   SIDEPANEL_LIST_SESSIONS = 'SIDEPANEL_LIST_SESSIONS', // Get all 'primary' sessions for restoration
+
+  // A2A Agent-to-Agent Protocol messages (Feature 021)
+  A2A_GET_AGENTS = 'A2A_GET_AGENTS',
+  A2A_ADD_AGENT = 'A2A_ADD_AGENT',
+  A2A_UPDATE_AGENT = 'A2A_UPDATE_AGENT',
+  A2A_REMOVE_AGENT = 'A2A_REMOVE_AGENT',
+  A2A_CONNECT = 'A2A_CONNECT',
+  A2A_DISCONNECT = 'A2A_DISCONNECT',
+  A2A_GET_CONNECTION = 'A2A_GET_CONNECTION',
+  A2A_GET_CONNECTIONS = 'A2A_GET_CONNECTIONS',
+  A2A_GET_ALL_SKILLS = 'A2A_GET_ALL_SKILLS',
+  A2A_EXECUTE_SKILL = 'A2A_EXECUTE_SKILL',
+  A2A_CANCEL_TASK = 'A2A_CANCEL_TASK',
 }
 
 /**

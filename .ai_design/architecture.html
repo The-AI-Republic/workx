@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browserx Architecture Diagram</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+        }
+
+        #diagram-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .controls button {
+            padding: 5px 10px;
+            margin: 0 2px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Hide the source text while loading */
+        .mermaid {
+            visibility: hidden;
+        }
+
+        /* Show it when processed (mermaid adds SVG) or we make it visible */
+        .mermaid svg {
+            visibility: visible;
+        }
+    </style>
+    <!-- Load Mermaid (Non-Module version for file:// compat) -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Load SVG Pan Zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+</head>
+
+<body>
+    <div class="controls">
+        <button onclick="zoomIn()">+</button>
+        <button onclick="zoomOut()">-</button>
+        <button onclick="resetZoom()">Reset</button>
+    </div>
+    <div id="diagram-container">
+        <!-- The graph definition -->
+        <div class="mermaid" id="mermaid-graph">
+            graph TD
+            subgraph Core ["Shared Core (src/core)"]
+            style Core fill:#f9f9f9,stroke:#333,stroke-width:2px
+            Agent[BrowserxAgent]
+            Router[MessageRouter]
+            Models[ModelClientFactory]
+            end
+
+            subgraph Extension ["Chrome Extension (src/extension)"]
+            style Extension fill:#e1f5fe,stroke:#01579b
+            BG["Background Service Worker"]
+            ExtUI["SidePanel UI"]
+            ExtTools["Chrome API Tools"]
+            end
+
+            subgraph Desktop ["Desktop App (src/desktop)"]
+            style Desktop fill:#e8f5e9,stroke:#2e7d32
+            WebView["WebView (UI + Agent)"]
+            TauriChannel["TauriChannel"]
+            DeskTools["CDP Desktop Tools"]
+            end
+
+            %% Relationships
+            Agent --> Models
+            Agent --> Router
+
+            BG --> Agent
+            ExtTools -.-> Agent
+
+            WebView --> Agent
+            WebView --> TauriChannel
+            DeskTools -.-> Agent
+
+            classDef shared fill:#fff3e0,stroke:#e65100;
+        </div>
+    </div>
+
+    <script>
+        // Global var for panZoom instance
+        let panZoomInstance;
+
+        // Initialize mermaid
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const element = document.getElementById('mermaid-graph');
+            // Remove visibility:hidden so SVG can be seen after render
+            element.style.visibility = 'visible';
+
+            try {
+                // Render the graph using the global mermaid object
+                await mermaid.run({
+                    nodes: [element]
+                });
+
+                // Get the SVG that mermaid inserted
+                const svgElement = element.querySelector('svg');
+                if (svgElement) {
+                    // Fix SVG size for pan-zoom
+                    svgElement.style.width = '100%';
+                    svgElement.style.height = '100%';
+                    svgElement.style.minHeight = '100vh'; // Ensure it takes up space
+
+                    // Initialize svg-pan-zoom
+                    panZoomInstance = svgPanZoom(svgElement, {
+                        zoomEnabled: true,
+                        controlIconsEnabled: false,
+                        fit: true,
+                        center: true,
+                        minZoom: 0.5,
+                        maxZoom: 10
+                    });
+                }
+            } catch (err) {
+                console.error("Mermaid rendering failed:", err);
+                element.innerHTML = `<div style="color:red; pading:20px;">Failed to render diagram. Check console for details.<br>${err.message}</div>`;
+            }
+        });
+
+        // Control functions
+        function zoomIn() { if (panZoomInstance) panZoomInstance.zoomIn(); }
+        function zoomOut() { if (panZoomInstance) panZoomInstance.zoomOut(); }
+        function resetZoom() { if (panZoomInstance) panZoomInstance.resetZoom(); }
+    </script>
+</body>
+
+</html>

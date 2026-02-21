@@ -5,14 +5,77 @@
   "extension_description": {
     "message": "Általános, böngészőben futó AI-ügynök munkafeladatokhoz"
   },
+  "1_API_Key": {
+    "message": "$1$ API kulcs",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API kulcs sikeresen eltávolítva",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} feladat maradt le a tervezett időpontról, miközben a böngésző zárva volt."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ – a pontosság csökkenhet)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(aktív)"
+  },
+  "multiple_files": {
+    "message": "(több fájl)"
+  },
+  "no_output": {
+    "message": "(nincs kimenet)"
+  },
+  "no_result": {
+    "message": "(nincs eredmény)"
+  },
+  "patch_details": {
+    "message": "(javítás részletei)"
+  },
+  "Enter_command": {
+    "message": ">> Parancs beírása..."
+  },
+  "A2A_Agents": {
+    "message": "A2A ügynökök"
+  },
   "API_Key": {
-    "message": ""
+    "message": "API kulcs"
   },
   "API_Key_Configuration": {
     "message": "API-kulcs beállítása"
   },
+  "API_Version": {
+    "message": "API verzió"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Az API kulcs szerkesztése le van tiltva a háttér üzemmódban."
+  },
   "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
+    "message": "API kulcs a hitelesítéshez (titkosítva tárolva)"
+  },
+  "API_key_has_expired": {
+    "message": "Az API kulcs lejárt"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "Az API kulcsnak nincs elegendő jogosultsága"
+  },
+  "API_key_saved_successfully": {
+    "message": "Az API kulcs sikeresen mentve!"
   },
   "API_keys_are_encrypted_and_stored_locall_35e2": {
     "message": "Az API-kulcsok titkosítva vannak és helyileg tárolódnak a böngészőben. Soha nem küldődnek külső szerverekre, kivéve az API-hívásokat."
@@ -20,38 +83,80 @@
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Böngészőtároló elérése (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Művelet"
+  "Action_approval_mode_trusted_domains_ris_003b": {
+    "message": "Művelet jóváhagyási mód, megbízható domainek, kockázati beállítások"
   },
-  "Action_Details": {
-    "message": "Művelet részletei"
+  "Active_Sessions": {
+    "message": "Aktív munkamenetek"
   },
   "Add": {
-    "message": ""
+    "message": "Hozzáad"
   },
-  "Add_Modification": {
-    "message": "Módosítás hozzáadása"
+  "Add_Agent": {
+    "message": "Ügynök hozzáadása"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Szerver hozzáadása"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Feladat hozzáadása"
   },
   "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
+    "message": "Adj hozzá egy szervert a külső eszközökhöz való csatlakozáshoz."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Adj hozzá egy ügynököt a külső képességekhez való csatlakozáshoz."
+  },
+  "Additional_Bind_Mounts": {
+    "message": "További kötési csatolások"
   },
   "Advanced_Configuration": {
     "message": "Speciális beállítások"
   },
-  "Advanced_Options": {
-    "message": "Haladó beállítások"
-  },
   "Advanced_Settings": {
-    "message": ""
+    "message": "Speciális beállítások"
+  },
+  "Agent": {
+    "message": "Ügynök"
   },
   "Agent_Execution_Tools": {
     "message": "Ügynök végrehajtási eszközök"
+  },
+  "Agent_Turn_Complete": {
+    "message": "Ügynök kör befejezve"
+  },
+  "Agent_URL_is_required": {
+    "message": "Az ügynök URL-je kötelező"
+  },
+  "Agent_added_successfully": {
+    "message": "Az ügynök sikeresen hozzáadva"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Az ügynök neve csak betűket, számokat és kötőjelet tartalmazhat"
+  },
+  "Agent_name_is_required": {
+    "message": "Az ügynök neve kötelező"
+  },
+  "Agent_not_initialized": {
+    "message": "Az ügynök nincs inicializálva"
+  },
+  "Agent_removed_successfully": {
+    "message": "Az ügynök sikeresen eltávolítva"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Az ügynök kör sikeresen befejezve"
+  },
+  "Agent_updated_successfully": {
+    "message": "Az ügynök sikeresen frissítve"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Minden művelet automatikusan jóváhagyott ezeken a domaineken."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Minden művelet megtagadva ezeken a domaineken."
+  },
+  "All_commands_run_inside_an_OS_native_san_ebab": {
+    "message": "Minden parancs egy natív OS homokozóban fut. Az írások a munkaterület könyvtárára korlátozódnak."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Az ügynök engedélyezése rendszerparancsok végrehajtására (használja óvatosan!)"
@@ -62,26 +167,100 @@
   "Allow_content_scripts_to_run_on_web_page_33c2": {
     "message": "Tartalomszkriptek futtatásának engedélyezése weboldalakon"
   },
+  "Allowed": {
+    "message": "Engedélyezett"
+  },
   "Allowed_Origins": {
     "message": "Engedélyezett források"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Csak alfanumerikus karakterek és kötőjelek (1-50 karakter)"
   },
-  "Approval_History": {
-    "message": "Jóváhagyási előzmények"
+  "Always_Approve": {
+    "message": "Mindig jóváhagy"
+  },
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: A személyes AI (Alpha)"
+  },
+  "Approval_Safety": {
+    "message": "Jóváhagyás és biztonság"
+  },
+  "Approval_Mode": {
+    "message": "Jóváhagyási mód"
+  },
+  "Approval_Required": {
+    "message": "Jóváhagyás szükséges"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Jóváhagyás szükséges: Javítás alkalmazása"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Jóváhagyás szükséges: Parancs végrehajtása"
   },
   "Approve": {
     "message": "Jóváhagy"
   },
-  "Approve_this_action": {
-    "message": "Művelet jóváhagyása"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Jóváhagyja a változtatásokat: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Jóváhagyja a végrehajtást: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Biztosan le szeretné állítani ezt a feladatot?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Biztosan eltávolítja ezt az ügynököt?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Biztosan eltávolítja a $1$ API kulcsát?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "A Browserx képes strukturált adatot kinyerni bármely weboldalról"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Kérdezzen közepes kockázatú és magasabb (kockázat > 30) esetén. A legtöbb felhasználónak ajánlott."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Csak magas kockázatú műveleteknél kérdezzen (kockázat > 60). Tapasztalt felhasználóknak."
+  },
+  "Auth_Type": {
+    "message": "Hitelesítési típus"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Hitelesítési adat (titkosítva tárolva)"
+  },
+  "Authentication_failed": {
+    "message": "A hitelesítés sikertelen"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Az ügynök hitelesítési módja"
+  },
+  "Auto_default": {
+    "message": "Automatikus (alapértelmezett)"
+  },
+  "Auto_approve_everything": {
+    "message": "Mindent automatikusan jóváhagy"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Mindent automatikusan jóváhagy. A tiltási szabályok továbbra is érvényesek. Saját felelősségre használja."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Automatikusan jóváhagyva – időkorlát elérve"
+  },
+  "Automatically_start_the_app_when_you_log_beed": {
+    "message": "Az alkalmazás automatikus indítása a számítógép bejelentkezésekor"
+  },
+  "Available_Skills": {
+    "message": "Elérhető képességek"
+  },
   "Available_Tools": {
-    "message": ""
+    "message": "Elérhető eszközök"
   },
   "Available": {
     "message": "Elérhető:"
@@ -89,20 +268,62 @@
   "Back": {
     "message": "Vissza"
   },
+  "Back_to_Model_Config": {
+    "message": "Vissza a modell beállításához"
+  },
   "Backend_Mode": {
     "message": "Háttérszolgáltatás mód"
   },
   "Backend_Mode_Active": {
     "message": "Háttér mód aktív"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "A háttérszolgáltatás nem érhető el. Kérjük, várjon egy pillanatot, majd próbálja újra."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Háttérszerver hiba – próbálja meg később újra"
+  },
+  "Backoff_Multiplier": {
+    "message": "Visszavonási szorzó"
+  },
+  "Balanced": {
+    "message": "Kiegyensúlyozott"
+  },
+  "Base_URL": {
+    "message": "Alap URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Az alap URL nincs beállítva ehhez a szolgáltatóhoz"
+  },
+  "Bearer_Token": {
+    "message": "Bearer token"
+  },
   "Beta": {
     "message": "Béta"
+  },
+  "Bind_mount_path_must_be_absolute": {
+    "message": "A kötési csatolási útvonalnak abszolútnak kell lennie"
+  },
+  "Blocked_Domains": {
+    "message": "Blokkolt domainek"
   },
   "Browser_Tools": {
     "message": "Böngésző eszközök"
   },
   "Browser_automation_tool_toggles": {
     "message": "Böngészőautomatizálási eszközök kapcsolói"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "Munkakönyvtár:"
   },
   "Cache_Settings": {
     "message": "Gyorsítótár beállítások"
@@ -116,8 +337,36 @@
   "Cancel": {
     "message": "Mégse"
   },
+  "Cancelled": {
+    "message": "Megszakítva"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Nem lehet végrehajtani a feladatot: nincs API-kulcs beállítva a(z) ${providerName} számára. Kérjük, lépjen a Beállítások → Modellkonfiguráció menübe, és adja hozzá az API-kulcsot."
+  },
+  "Cannot_select_model_1": {
+    "message": "Nem választható modell: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Nem lehet üzenetet küldeni: nincs API-kulcs beállítva a(z) $1$ számára. Kérjük, kattintson a Beállítások gombra, és konfigurálja az API-kulcsot.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Képességek"
+  },
   "Chat_History": {
     "message": "Csevegési előzmények"
+  },
+  "Checking_agent_status": {
+    "message": "Ügynök állapota ellenőrzése..."
   },
   "Choose_AI_Model": {
     "message": "Válasszon mesterséges intelligencia modellt"
@@ -137,14 +386,38 @@
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Kattintson a Browserx ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
   },
+  "Click_to_cancel_login": {
+    "message": "Kattintson a bejelentkezés megszakításához"
+  },
   "Click_to_select_a_model": {
     "message": "Kattintson a modell kiválasztásához"
+  },
+  "Close": {
+    "message": "Bezárás"
   },
   "Close_settings": {
     "message": "Beállítások bezárása"
   },
+  "Collapse": {
+    "message": "Összecsukás"
+  },
+  "Command_Approval_Required": {
+    "message": "Parancs jóváhagyása szükséges"
+  },
+  "Command_completed": {
+    "message": "Parancs befejezve"
+  },
   "Command": {
     "message": "Parancs"
+  },
+  "Commands_run_directly_on_the_host_Securi_8e6e": {
+    "message": "A parancsok közvetlenül a gazdagépen futnak. A biztonsági szűrő továbbra is érvényes."
+  },
+  "Completed": {
+    "message": "Befejezve"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Befejezve: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Gyorsítótárazott adatok tömörítése a tárhely megtakarítása érdekében"
@@ -152,38 +425,122 @@
   "Configure_AI_model_and_API_keys": {
     "message": "AI modell és API kulcsok konfigurálása"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Állítson be egy API-kulcsot a Beállításokban"
+  },
+  "Configured": {
+    "message": "Beállítva"
+  },
+  "Configured_Agents": {
+    "message": "Beállított ügynökök"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Beállított szerverek"
   },
   "Connect": {
-    "message": ""
+    "message": "Csatlakozás"
+  },
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Csatlakozzon az Agent-to-Agent (A2A) protokoll ügynökeihez, hogy a külső ügynökök készségeivel bővítse a képességeket."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Csatlakozzon a Model Context Protocol (MCP) szerverekhez, hogy a külső eszközökkel bővítse az ügynököt."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Csatlakozzon egy A2A ügynökhöz a készségek felfedezéséhez."
   },
   "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
+    "message": "Csatlakozzon egy MCP szerverhez az eszközök felfedezéséhez."
   },
   "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+    "message": "Csatlakozzon külső MCP eszközszerverekhez"
   },
   "Connected": {
     "message": "Csatlakoztatva"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Sikeresen csatlakozott"
   },
-  "Context": {
-    "message": "Kontextus"
+  "Connecting": {
+    "message": "Kapcsolódás..."
+  },
+  "Connection_error": {
+    "message": "Kapcsolódási hiba"
+  },
+  "Connection_failed_1": {
+    "message": "Kapcsolódás sikertelen: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Kapcsolódás sikertelen: az alap URL nincs beállítva"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Kapcsolódás sikertelen: a kiválasztott modell konfiguráció hiányzik"
+  },
+  "Connection_successful": {
+    "message": "Kapcsolódás sikeres!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Kapcsolat teszt sikertelen: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Kapcsolat teszt sikertelen: érvénytelen API kulcs"
+  },
+  "Connection_test_successful": {
+    "message": "Kapcsolat teszt sikeres!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Kapcsolat teszt sikeres! (Az API kulcs érvényes)"
+  },
+  "Connection_was_refused": {
+    "message": "A kapcsolatot megtagadták"
+  },
+  "Connection_was_reset": {
+    "message": "A kapcsolat vissza lett állítva"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "A tartalom megsérti a szabályzatot: ${contentType} tartalom nem engedélyezett"
+  },
+  "Context_Window": {
+    "message": "Környezetablak"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Környezet tömörítve: ~$1$k token mentve",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Szabályozza, hogy az ügynök mennyire határozottan kér jóváhagyást."
   },
   "Create_New_Tab": {
     "message": "Új lap létrehozása"
+  },
+  "Created": {
+    "message": "Létrehozva"
+  },
+  "Creator": {
+    "message": "Létrehozó"
   },
   "Credit_Details": {
     "message": "Kredit részletei"
   },
   "Current_Plan": {
     "message": "Jelenlegi csomag:"
+  },
+  "DNS_lookup_failed": {
+    "message": "A DNS-keresés sikertelen"
   },
   "DOM_Tool": {
     "message": "DOM-eszköz"
@@ -195,10 +552,34 @@
     "message": "Adatkinyerő eszköz"
   },
   "Date": {
-    "message": ""
+    "message": "Dátum"
   },
   "Days_until_expiration": {
     "message": "Lejáratig hátralévő napok száma"
+  },
+  "Debug_logging_disabled": {
+    "message": "Hibakeresési naplózás letiltva"
+  },
+  "Debug_logging_enabled": {
+    "message": "Hibakeresési naplózás engedélyezve"
+  },
+  "Default": {
+    "message": "Alapértelmezett"
+  },
+  "Deny": {
+    "message": "Elutasít"
+  },
+  "Deprecated": {
+    "message": "Elavult"
+  },
+  "Deprecation_Message": {
+    "message": "Elavulási üzenet"
+  },
+  "Description": {
+    "message": "Leírás"
+  },
+  "Desktop_mode": {
+    "message": "Asztali mód"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Az AI Republic fejlesztette és támogatja"
@@ -207,16 +588,37 @@
     "message": "Módosítások elvetése"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Kapcsolat bontása"
+  },
+  "Disconnected_successfully": {
+    "message": "A kapcsolat sikeresen bontva"
+  },
+  "Dismiss": {
+    "message": "Elvet"
+  },
+  "Dismiss_notification": {
+    "message": "Értesítés elvetése"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Token-fogyasztás megjelenítése (bemeneti/kimeneti tokenek) a feladatok befejezésekor"
   },
+  "Draft": {
+    "message": "Vázlat"
+  },
+  "Duration": {
+    "message": "Időtartam"
+  },
+  "ERROR": {
+    "message": "HIBA"
+  },
   "Edit": {
-    "message": ""
+    "message": "Szerkesztés"
+  },
+  "Edit_Agent": {
+    "message": "Ügynök szerkesztése"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Szerver szerkesztése"
   },
   "Enable_All_Tools": {
     "message": "Minden eszköz engedélyezése"
@@ -234,40 +636,61 @@
     "message": "Bővítmény engedélyezése"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Model Context Protocol eszközök engedélyezése a csatlakoztatott MCP szerverekről"
   },
   "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
+    "message": "Automatikus csatlakozás engedélyezése a browserx indításakor"
   },
   "Enable_caching_to_improve_performance_by_ea45": {
     "message": "Engedélyezze a gyorsítótárazást a teljesítmény javításához, amely a gyakran használt adatokat tárolja."
   },
   "Enable_debug_logging": {
-    "message": ""
+    "message": "Hibakeresési naplózás engedélyezése"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Webkeresési képességek engedélyezése az ügynök számára"
   },
   "Enabled": {
-    "message": ""
+    "message": "Engedélyezve"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Adja meg az API kulcsot, ha szükséges"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Adja meg az API kulcsot vagy a hozzáférési tokent"
   },
   "Enter_your_LLM_API_key": {
     "message": "Adja meg az LLM API kulcsát"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Adja meg a feladatát..."
+  },
+  "Error": {
+    "message": "Hiba"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Hiba: Nincs kapcsolat az ügynökkel. Kérjük, frissítse az oldalt."
   },
   "Execute_Commands": {
     "message": "Parancsok végrehajtása"
   },
+  "Execution_Mode": {
+    "message": "Végrehajtási mód"
+  },
+  "Exit_Code": {
+    "message": "Kilépési kód:"
+  },
+  "Expand": {
+    "message": "Kibontás"
+  },
   "Expire_after_days": {
     "message": "Lejárat napok után"
   },
-  "Explain_your_decision": {
-    "message": "Magyarázza meg döntését..."
+  "Explain_this_info_selectionText": {
+    "message": "Magyarázd el ezt: ${info.selectionText}"
+  },
+  "Explain_with_Browserx": {
+    "message": "Magyarázd el a Browserx-szel"
   },
   "Extension_Permission": {
     "message": "Bővítmény és engedély"
@@ -284,35 +707,156 @@
   "Extra_Credits": {
     "message": "További kreditek"
   },
+  "Extra_directories_accessible_inside_the__2d86": {
+    "message": "További könyvtárak, amelyek a sandboxon belül elérhetők"
+  },
   "Extract_Data": {
     "message": "Adatok kinyerése:"
+  },
+  "Extract_data_with_Browserx": {
+    "message": "Adatok kinyerése a Browserx segítségével"
   },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Specifikus adatminták kinyerése az oldalakról"
   },
+  "Extract_structured_data_from_this_page": {
+    "message": "Strukturált adatok kinyerése erről az oldalról"
+  },
   "Extract_structured_data_from_web_pages": {
     "message": "Strukturált adatok kinyerése weboldalakról"
+  },
+  "Failed": {
+    "message": "Sikertelen"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Nem sikerült a modell módosítása: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Nem sikerült a csatlakozás: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Nem sikerült új lapot létrehozni. Próbálja újra."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Nem sikerült a böngészőlap létrehozása: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Nem sikerült a szétkapcsolás: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Nem sikerült betölteni az A2A beállításokat"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Nem sikerült betölteni a beszélgetést. Próbálja újra."
   },
   "Failed_to_load_preferences": {
     "message": "Nem sikerült betölteni a beállításokat"
   },
+  "Failed_to_load_settings": {
+    "message": "Nem sikerült betölteni a beállításokat"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Nem sikerült eltávolítani az API kulcsot"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Nem sikerült eltávolítani az ügynököt: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Nem sikerült menteni az API kulcsot"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Nem sikerült menteni a hibakeresési naplózási beállítást: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Failed_to_save_settings": {
     "message": "Nem sikerült menteni a beállításokat"
+  },
+  "Failed_to_save_settings_1": {
+    "message": "Nem sikerült menteni a beállításokat: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Nem sikerült menteni: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Nem sikerült elküldeni az üzenetet. Próbálja újra."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Nem sikerült új beszélgetést indítani. Próbálja újra."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Nem sikerült leállítani a feladatot. Próbálja újra."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Nem sikerült átváltani a(z) ${newTabId} fülre: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Nem sikerült tesztelni a kapcsolatot"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Nem sikerült frissíteni az API módot"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Nem sikerült frissíteni a szolgáltatási szintet: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Fájlváltozás jóváhagyása szükséges"
   },
   "File_Operations_Not_Available": {
     "message": "Fájlműveletek (Nem érhető el)"
   },
-  "File_Path": {
-    "message": "Fájl útvonal"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Űrlapok kitöltése, adatok beküldése, űrlapelemekkel való interakció"
+  },
+  "Flex": {
+    "message": "Rugalmas"
   },
   "Form_Automation_Tool": {
     "message": "Űrlap-automatizálási eszköz"
   },
   "Full_Access_Dangerous": {
     "message": "Teljes hozzáférés (Veszélyes)"
+  },
+  "Full_Input": {
+    "message": "Teljes bemenet"
   },
   "General": {
     "message": "Általános"
@@ -337,14 +881,64 @@
   "Hello_World": {
     "message": "Helló Világ"
   },
-  "History": {
-    "message": "Előzmények"
+  "Hide_API_key": {
+    "message": "API kulcs elrejtése"
   },
-  "Impact": {
-    "message": "Hatás"
+  "High_Speed": {
+    "message": "Magas sebesség"
+  },
+  "How_the_workspace_directory_is_mounted_i_46c1": {
+    "message": "Hogyan csatolódik a munkaterület könyvtára a sandboxba"
+  },
+  "Image_Input": {
+    "message": "Képbemenet"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Javítsa ezt a szöveget: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Javítsa a Browserx segítségével"
+  },
+  "In": {
+    "message": "Be:"
+  },
+  "Incompatible_features": {
+    "message": "Nem kompatibilis funkciók:"
+  },
+  "Initial_Delay": {
+    "message": "Kezdeti késleltetés"
+  },
+  "Input_Token_Price": {
+    "message": "Bemeneti token ára"
+  },
+  "Input": {
+    "message": "Bemenet:"
+  },
+  "Input_1": {
+    "message": "Bemenet: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Hálózati kérések/válaszok elfogása és módosítása"
+  },
+  "Invalid_API_key": {
+    "message": "Érvénytelen API kulcs"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Érvénytelen API kulcs megadva"
+  },
+  "Invalid_URL_format": {
+    "message": "Érvénytelen URL formátum"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Érvénytelen beküldési formátum: hiányzó op mező"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Érvénytelen beküldési formátum: az op mezőből hiányzik a type mező"
   },
   "Keyboard_Shortcuts": {
     "message": "Gyorsbillentyűk"
@@ -362,25 +956,52 @@
     "message": "További információ"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Hagyja üresen a meglévő megtartásához"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Engedélyezett források listája (soronként egy). Támogatja a helyettesítő karaktereket (*)"
   },
   "Load_More": {
-    "message": ""
+    "message": "Továbbiak betöltése"
+  },
+  "Load_more": {
+    "message": "Továbbiak betöltése"
+  },
+  "Loading_configuration": {
+    "message": "Konfiguráció betöltése..."
   },
   "Loading_credits": {
     "message": "Kreditek betöltése..."
   },
+  "Loading_details": {
+    "message": "Részletek betöltése..."
+  },
+  "Loading_history": {
+    "message": "Előzmények betöltése..."
+  },
   "Loading_settings": {
     "message": "Beállítások betöltése..."
   },
+  "Loading_tabs": {
+    "message": "Lapok betöltése..."
+  },
   "Loading": {
-    "message": ""
+    "message": "Betöltés..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Az A2A protokoll üzeneteinek naplózása a böngésző konzoljába hibakereséshez"
   },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Az MCP protokoll üzeneteinek naplózása a böngésző konzoljába hibakereséshez"
+  },
+  "Log_in_to_your_account": {
+    "message": "Jelentkezzen be a fiókjába"
+  },
+  "Logged_in": {
+    "message": "Bejelentkezve"
+  },
+  "Logging_in": {
+    "message": "Bejelentkezés..."
   },
   "Login": {
     "message": "Bejelentkezés"
@@ -389,19 +1010,19 @@
     "message": "Bejelentkezés az ingyenes kreditekért"
   },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Hosszan nyomja meg a feladat ütemezéséhez"
   },
   "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
+    "message": "Hosszan nyomja meg a küldés gombot a feladat ütemezéséhez"
   },
   "Low_credits_remaining": {
     "message": "Kevés kredit maradt"
   },
   "MCP_Servers": {
-    "message": ""
+    "message": "MCP szerverek"
   },
   "MCP_Tools": {
-    "message": ""
+    "message": "MCP Eszközök"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Böngészőlapok kezelése (nyitás, bezárás, váltás, lekérdezés)"
@@ -415,29 +1036,103 @@
   "Max_Cache_Size_MB": {
     "message": "Maximális gyorsítótár méret (MB)"
   },
+  "Max_Concurrent_Sessions": {
+    "message": "Max egyidejű munkamenetek"
+  },
+  "Max_Delay": {
+    "message": "Max késleltetés"
+  },
+  "Max_Output": {
+    "message": "Max kimenet"
+  },
+  "Max_Output_Tokens": {
+    "message": "Max kimeneti tokenek"
+  },
+  "Max_Retries": {
+    "message": "Max újrapróbálkozás"
+  },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "A gyorsítótár maximális mérete megabájtban (alapértelmezett: 100)"
   },
+  "Maximum_number_of_parallel_agent_session_56dd": {
+    "message": "Az ügynök párhuzamos munkameneteinek maximális száma, beleértve az ütemezett feladatokat"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Az 5 ügynök maximális száma elérve"
+  },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Az 5 szerver maximális száma elérve"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maximum idő (ezredmásodpercben), ameddig egy eszköz futhat időtúllépés nélkül (alapértelmezett: 30000)"
   },
+  "Medium_risk_and_above": {
+    "message": "Közepes kockázat és afelett"
+  },
+  "Message_service_not_available": {
+    "message": "Az üzenetszolgáltatás nem elérhető"
+  },
   "Missed": {
-    "message": ""
+    "message": "Elmulasztva"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Elmulasztott ütemezett feladatok"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "A(z) \"$1$\" modell nem támogatja a képbemenetet. Néhány eszköz le lesz tiltva.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Modell beállítások"
   },
+  "Model_Configuration": {
+    "message": "Modell konfiguráció"
+  },
+  "Model_Key_API": {
+    "message": "Modell kulcs (API)"
+  },
+  "Model_Name": {
+    "message": "Modell neve"
+  },
   "Model_Selection": {
     "message": "Modell kiválasztása"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "A modell és a szolgáltató beállításai az alapértelmezett konfigurációból töltődtek be (csak olvasható)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "A modell megváltozott $1$-ra. Kérjük, konfigurálja az API kulcsát.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "A modell megváltozott $1$-ra. A munkamenet újra lesz inicializálva.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Modell:"
+  },
+  "Model_1": {
+    "message": "Modell: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Modern csevegés"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Paraméterek módosítása változtatás kérésénél"
   },
   "Monthly_Credits": {
     "message": "Havi kreditek"
@@ -446,7 +1141,7 @@
     "message": "További beállítások"
   },
   "Name": {
-    "message": ""
+    "message": "Név"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Oldalak navigálása, linkek kattintása, böngésző navigáció kezelése"
@@ -454,8 +1149,17 @@
   "Navigation_Tool": {
     "message": "Navigációs eszköz"
   },
+  "Network_Access": {
+    "message": "Hálózati hozzáférés"
+  },
   "Network_Intercept_Tool": {
     "message": "Hálózati elfogó eszköz"
+  },
+  "Network_error": {
+    "message": "Hálózati hiba"
+  },
+  "Network_error_occurred": {
+    "message": "Hálózati hiba történt"
   },
   "Never_expire_permanent": {
     "message": "Soha nem jár le (állandó)"
@@ -463,29 +1167,85 @@
   "New_Conversation": {
     "message": "Új beszélgetés"
   },
-  "No_MCP_servers_configured_yet": {
-    "message": ""
+  "No_A2A_agents_configured_yet": {
+    "message": "Még nincsenek A2A ügynökök konfigurálva."
   },
-  "No_approval_history_yet": {
-    "message": "Még nincs jóváhagyási előzmény."
+  "No_Access": {
+    "message": "Nincs hozzáférés"
+  },
+  "No_Access_Configured": {
+    "message": "Nincs hozzáférés konfigurálva"
+  },
+  "No_MCP_servers_configured_yet": {
+    "message": "Még nincsenek MCP szerverek konfigurálva."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Nincs hozzáférés konfigurálva. Kérjük, jelentkezzen be vagy állítson be egy API kulcsot."
+  },
+  "No_active_sessions": {
+    "message": "Nincsenek aktív munkamenetek"
+  },
+  "No_chat_history_yet": {
+    "message": "Még nincs csevegéstörténet"
   },
   "No_completed_tasks_yet": {
-    "message": ""
+    "message": "Még nincs befejezett feladat"
+  },
+  "No_models_available": {
+    "message": "Nincs elérhető modell"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Nincs elérhető modell. Kérjük, ellenőrizze a konfigurációt."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Nincs ütemezett feladat"
+  },
+  "No_scheduled_time": {
+    "message": "Nincs ütemezett idő"
+  },
+  "No_skills_available": {
+    "message": "Nincs elérhető készség."
+  },
+  "No_steps_in_plan": {
+    "message": "Nincs lépés a tervben"
   },
   "No_tabs_available": {
     "message": "Nincs elérhető lap"
   },
+  "No_time_set": {
+    "message": "Nincs beállítva idő"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Nincsenek elérhető eszközök."
+  },
+  "None": {
+    "message": "Nincs"
   },
   "Not_Connected": {
     "message": "Nincs csatlakozva"
   },
+  "Notification": {
+    "message": "Értesítés"
+  },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "A bevezetési adatok érvényességi ideje napokban (alapértelmezett: 60)"
+  },
+  "Offline_tasks_will_run_when_connected": {
+    "message": "Offline - a feladatok a csatlakozáskor fognak futni"
+  },
+  "Older": {
+    "message": "Régebbi"
+  },
+  "Only_high_risk_actions": {
+    "message": "Csak magas kockázatú műveletek"
+  },
+  "Open_1_settings": {
+    "message": "Nyissa meg a $1$ beállításait",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Oldalsó panel megnyitása:"
@@ -493,17 +1253,51 @@
   "Organization": {
     "message": "Szervezet"
   },
+  "Organization_ID": {
+    "message": "Szervezet azonosító"
+  },
+  "Out": {
+    "message": "Kimenet:"
+  },
+  "Output_Token_Price": {
+    "message": "Kimeneti token ára"
+  },
+  "Output": {
+    "message": "Kimenet:"
+  },
+  "Output_1": {
+    "message": "Kimenet: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Page_Action_Tool": {
     "message": "Oldalművelet eszköz"
   },
   "Page_Vision_Tool": {
     "message": "Oldalelemző eszköz"
   },
-  "Parameter_Modifications": {
-    "message": "Paraméter módosítások"
+  "Past_Month": {
+    "message": "Elmúlt hónap"
+  },
+  "Past_Week": {
+    "message": "Elmúlt hét"
+  },
+  "Patch_applied_successfully": {
+    "message": "A javítás sikeresen alkalmazva"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Javítás $1$ fájlhoz",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Sor szüneteltetése"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Oldalműveletek végrehajtása (görgetés, képernyőkép, várakozás)"
@@ -511,29 +1305,82 @@
   "Persist_Cache_to_Storage": {
     "message": "Gyorsítótár tartós tárolása"
   },
+  "Plan_1_step_s": {
+    "message": "Terv: $1$ lépés",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Ellenőrizze az API kulcsát a beállításokban."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Kérjük, adja meg a feladat leírását"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Kérjük, először adja meg az API kulcsot"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Kérjük, adjon meg egy érvényes API kulcsot."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Kérjük, jelentkezzen be újra az AI ügynök használatának folytatásához."
+  },
+  "Please_select_a_provider": {
+    "message": "Kérjük, válasszon szolgáltatót"
   },
   "Please_type_a_valid_command": {
     "message": "Kérjük, írjon be egy érvényes parancsot"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Kérjük, frissítse a csomagot a világ legfejlettebb modelljeinek feloldásához"
+  },
+  "Power": {
+    "message": "Teljesítmény"
+  },
+  "Pricing_Information": {
+    "message": "Árazási információk"
+  },
+  "Pricing_Page": {
+    "message": "Árazási oldal"
+  },
+  "Priority": {
+    "message": "Prioritás"
+  },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "A prioritási szint gyorsabb válaszidőket biztosít magasabb árral."
   },
+  "Processing": {
+    "message": "Feldolgozás..."
+  },
+  "Protocol": {
+    "message": "Protokoll"
+  },
   "Provider": {
     "message": "Szolgáltató"
+  },
+  "Provider_Configuration": {
+    "message": "Szolgáltató beállítása"
+  },
+  "Provider_ID": {
+    "message": "Szolgáltató azonosító"
+  },
+  "Provider_Name": {
+    "message": "Szolgáltató neve"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "A DOM (Document Object Model) lekérdezése és módosítása"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "A sor szüneteltetve"
   },
   "Queued": {
-    "message": ""
+    "message": "Sorba állítva"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Gyors ütemezés"
   },
   "Quick_Start": {
     "message": "Gyors indítás"
@@ -541,11 +1388,34 @@
   "Quick_action": {
     "message": "Gyors művelet"
   },
+  "Read_Only": {
+    "message": "Csak olvasható"
+  },
+  "Read_Write": {
+    "message": "Olvasás-írás"
+  },
   "Read_only": {
     "message": "Csak olvasható"
   },
-  "Reason_optional": {
-    "message": "Indok (opcionális)"
+  "Reasoning": {
+    "message": "Érvelés"
+  },
+  "Reasoning_Efforts": {
+    "message": "Érvelési erőfeszítések"
+  },
+  "Reasoning_Summaries": {
+    "message": "Érvelési összefoglalók"
+  },
+  "Reasoning_levels": {
+    "message": "Érvelési szintek:"
+  },
+  "Reasoning_1": {
+    "message": "Érvelés: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Frissítés: $1"
@@ -553,50 +1423,86 @@
   "Reject": {
     "message": "Elutasít"
   },
-  "Reject_this_action": {
-    "message": "Művelet elutasítása"
+  "Release_Date": {
+    "message": "Kiadás dátuma"
+  },
+  "Release_date_unknown": {
+    "message": "Kiadási dátum ismeretlen"
+  },
+  "Released": {
+    "message": "Kiadva:"
   },
   "Remaining": {
     "message": "Hátralévő:"
   },
   "Remove": {
-    "message": ""
+    "message": "Eltávolítás"
   },
   "Remove_API_Key": {
     "message": "API kulcs eltávolítása"
   },
-  "Remove_modification": {
-    "message": "Módosítás eltávolítása"
+  "Request_Timeout": {
+    "message": "Kérés időtúllépése"
   },
-  "Request_Changes": {
-    "message": "Változtatás kérése"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Változtatás kérése ehhez a művelethez"
+  "Request_timed_out": {
+    "message": "A kérés időtúllépett"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Kérés időtúllépése ezredmásodpercben (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Kérés időtúllépése ezredmásodpercben (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "A kérés megszakadt"
+  },
+  "Response_failed": {
+    "message": "Válasz sikertelen"
+  },
+  "Restricted": {
+    "message": "Korlátozott"
+  },
+  "Result_Summary": {
+    "message": "Eredmény összefoglaló"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Sor folytatása"
+  },
+  "Retry_Configuration": {
+    "message": "Újrapróbálkozási beállítások"
+  },
+  "Retrying": {
+    "message": "Újrapróbálkozás"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Kattintson jobb gombbal bármely szövegre, hogy a Browserx-szel magyarázzon vagy javítson rajta"
+  },
+  "Risk_Score": {
+    "message": "Kockázati pontszám:"
   },
   "Rollout_Expiration": {
     "message": "Kihelyezés lejárata"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Futtatás most"
   },
   "Running": {
-    "message": ""
+    "message": "Fut"
+  },
+  "STREAM_ERROR": {
+    "message": "STREAM HIBA"
+  },
+  "Safe": {
+    "message": "Biztonságos"
   },
   "Sandbox_Policy": {
     "message": "Sandbox szabályzat"
   },
   "Save_API_Key": {
     "message": "API kulcs mentése"
+  },
+  "Save_Changes": {
+    "message": "Változások mentése"
   },
   "Save_Settings": {
     "message": "Beállítások mentése"
@@ -605,13 +1511,31 @@
     "message": "Mentés..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Ütemezés"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Új feladat ütemezése"
+  },
+  "Scheduled": {
+    "message": "Ütemezve"
+  },
+  "Scheduled_Task": {
+    "message": "Ütemezett feladat"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Ütemezett feladat indítása"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Ütemezett feladatok"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Az ütemezett időnek legalább 1 perccel a jövőben kell lennie"
+  },
+  "Search_complete": {
+    "message": "Keresés befejezve"
+  },
+  "Searching": {
+    "message": "Keresés..."
   },
   "Security_Privacy": {
     "message": "Biztonság és adatvédelem"
@@ -619,17 +1543,51 @@
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Eszközvégrehajtási környezet biztonsági szintje"
   },
+  "Select_Model": {
+    "message": "Modell kiválasztása"
+  },
+  "Select_model_1": {
+    "message": "Modell kiválasztása: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Válassza ki a beszélgetésekhez használandó AI modellt."
   },
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Válassza ki a felület preferált nyelvét"
   },
+  "Selected": {
+    "message": "Kiválasztva"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "A kiválasztott modell konfigurációja hiányzik"
+  },
+  "Send": {
+    "message": "Küldés"
+  },
   "Service_Tier": {
     "message": "Szolgáltatás szintje"
   },
-  "Session": {
-    "message": "Munkamenet"
+  "Service_tier_updated_to_1": {
+    "message": "A szolgáltatási szint frissítve: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Session_error": {
+    "message": "Munkamenet hiba"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "A munkamenet lejárt – kérjük, jelentkezzen be újra az AI ügynök használatának folytatásához"
+  },
+  "Session_limit_reached_New_tasks_will_que_2877": {
+    "message": "A munkamenetkorlát elérve. Az új feladatok sorba kerülnek."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Állítsa be, hogy mikor járjon le a bevezetés adata"
@@ -640,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Beállítások sikeresen mentve"
   },
+  "Show_API_key": {
+    "message": "API kulcs megjelenítése"
+  },
+  "Show_all": {
+    "message": "Összes megjelenítése"
+  },
+  "Show_less": {
+    "message": "Kevesebb megjelenítése"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Token-felhasználás megjelenítése a feladatokban"
   },
@@ -649,8 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Jelentkezzen be a fiókjába"
   },
+  "Skills": {
+    "message": "Képességek"
+  },
   "Stable": {
     "message": "Stabil"
+  },
+  "Standard_capabilities": {
+    "message": "Alapvető képességek"
+  },
+  "Start_New_Conversation": {
+    "message": "Új beszélgetés indítása"
+  },
+  "Start_on_login": {
+    "message": "Bejelentkezéskor indítás"
+  },
+  "Status": {
+    "message": "Állapot"
+  },
+  "Stop_Agent": {
+    "message": "Ügynök leállítása"
+  },
+  "Stop_the_current_task": {
+    "message": "Az aktuális feladat leállítása"
   },
   "Stop_the_current_task_run": {
     "message": "Állítsa le az aktuális feladatot"
@@ -673,17 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Gyorsítótár adatok tartós tárolása a böngésző munkamenetek között"
   },
+  "Suggest_Alternative": {
+    "message": "Alternatívát javasol"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Átváltva háttér módra. Az LLM kérések az AI Republic szerveren keresztül fognak menni."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Átváltva közvetlen API módra. Kérjük, állítsa be az API kulcsát."
+  },
+  "System": {
+    "message": "Rendszer"
+  },
   "Tab_Tool": {
     "message": "Lap eszköz"
   },
+  "Tab_unavailable": {
+    "message": "Fül nem elérhető"
+  },
+  "Take_Over": {
+    "message": "Átvétel"
+  },
   "Task": {
-    "message": ""
+    "message": "Feladat"
+  },
+  "Task_Details": {
+    "message": "Feladat részletei"
+  },
+  "Task_Failed": {
+    "message": "Feladat sikertelen"
   },
   "Task_History": {
-    "message": ""
+    "message": "Feladat előzmények"
+  },
+  "Task_ID": {
+    "message": "Feladat azonosító"
+  },
+  "Task_Plan": {
+    "message": "Feladat terv"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Feladatot a felhasználó megszakította"
+  },
+  "Task_complete": {
+    "message": "Feladat befejezve"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Feladat befejezve $1$ körben",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Feladat sikertelen"
+  },
+  "Task_started": {
+    "message": "Feladat elindítva"
   },
   "Terminal": {
     "message": "Terminál"
+  },
+  "Terminal_Sandbox": {
+    "message": "Terminál homokozó"
   },
   "Test_Connection": {
     "message": "Kapcsolat tesztelése"
@@ -691,32 +1732,67 @@
   "Testing": {
     "message": "Tesztelés..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "Az A2A ügynök végpont URL-je (http vagy https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "Az MI minden parancsnál eldönti, hogy a kockázatértékelés alapján használja-e a homokozót."
+  },
   "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+    "message": "Az MCP szerver végpont URL-je (http vagy https)"
   },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Az ügynök jelenleg backend módban működik. Az LLM kérések az AI Republic szerveren keresztül irányítódnak. Beszélgetéseit biztonságosan dolgozzuk fel infrastruktúránk segítségével."
   },
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "A modell váltása törli a jelenlegi beszélgetést. Folytatni szeretné?"
+  },
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "A szerver hibát észlelt. Kérjük, próbálja meg később."
+  },
   "Time": {
     "message": "Idő"
-  },
-  "Time_remaining": {
-    "message": "Hátralévő idő"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "A gyorsítótárazott elemek élettartama másodpercben (alapértelmezett: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Időtúllépés (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "Az MI ügynök használatához kérjük, válasszon:"
+  },
+  "Today": {
+    "message": "Ma"
   },
   "Toggle_side_panel": {
     "message": "Oldalsáv ki-/bekapcsolása"
   },
-  "Tool": {
-    "message": "Eszköz"
+  "Toggle_use_own_API_key": {
+    "message": "Saját API kulcs használata be/ki"
+  },
+  "Token_Usage": {
+    "message": "Token használat"
+  },
+  "Tokens": {
+    "message": "Tokenek:"
+  },
+  "Tokens_1": {
+    "message": "Tokenek: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Eszköz időkorlát (ms)"
+  },
+  "Tool_name": {
+    "message": "Eszköz neve:"
+  },
+  "Tool": {
+    "message": "Eszköz"
   },
   "Tools": {
     "message": "Eszközök"
@@ -724,8 +1800,20 @@
   "Tools_Settings": {
     "message": "Eszközök beállításai"
   },
-  "Turn": {
-    "message": "Bekapcsolás"
+  "Trusted": {
+    "message": "Megbízható"
+  },
+  "Trusted_Domains": {
+    "message": "Megbízható domainek"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "A megbízható ügynökök automatikusan jóváhagyottak a képesség meghívásokhoz"
+  },
+  "Turns": {
+    "message": "Fordulatok:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Írja be az alternatív utasításokat..."
   },
   "UI_Theme": {
     "message": "Felhasználói felület témája"
@@ -733,17 +1821,58 @@
   "URL": {
     "message": "URL"
   },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "Az URL-nek http vagy https protokollt kell használnia"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Nem lehet ellenőrizni az ügynök állapotát"
+  },
   "Unable_to_load_credit_information": {
     "message": "Nem sikerült betölteni a kreditinformációkat"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Nem sikerült elérni a háttérszervert – ellenőrizze a kapcsolatot"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Nem sikerült elérni a szervert. Ellenőrizze a kapcsolatot, és próbálja újra."
+  },
+  "Unknown_Event": {
+    "message": "Ismeretlen esemény"
+  },
+  "Unknown_error": {
+    "message": "Ismeretlen hiba"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Ismeretlen hiba az ügynök állapotának ellenőrzésekor"
+  },
+  "Unknown_error_occurred": {
+    "message": "Ismeretlen hiba történt"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Ismeretlen hiba történt a feladat végrehajtása során"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Ismeretlen hiba a beküldés feldolgozása közben"
+  },
+  "Unknown_model_1": {
+    "message": "Ismeretlen modell ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Mentetlen módosítások"
   },
+  "Untitled": {
+    "message": "Névtelen"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Közelgő"
   },
   "Update": {
-    "message": ""
+    "message": "Frissítés"
   },
   "Update_Channel": {
     "message": "Frissítési csatorna"
@@ -753,6 +1882,9 @@
   },
   "Upgrade_to_Premium": {
     "message": "Frissítés Prémiumra"
+  },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Frissíts, hogy felfedezd a világ legfejlettebb modelljeit"
   },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Frissítsd előfizetésedet, hogy felfedezhesd a világ legfejlettebb modelljeit"
@@ -766,32 +1898,47 @@
   "User_Center": {
     "message": "Felhasználói központ"
   },
-  "User_approved_action": {
-    "message": "Felhasználó által jóváhagyott művelet"
-  },
-  "User_decision": {
-    "message": "Felhasználói döntés"
+  "User_Session": {
+    "message": "Felhasználói munkamenet"
   },
   "User_preferences_and_interface_settings": {
     "message": "Felhasználói beállítások és felületi beállítások"
   },
-  "User_rejected_action": {
-    "message": "Felhasználó által elutasított művelet"
-  },
-  "User_requested_modifications": {
-    "message": "Felhasználó által kért módosítások"
-  },
   "Using_extra_credits": {
     "message": "Extra kreditek használata"
+  },
+  "Verbosity": {
+    "message": "Részletesség"
+  },
+  "Verbosity_Control": {
+    "message": "Részletesség szabályozása"
+  },
+  "Verbosity_Levels": {
+    "message": "Részletességi szintek"
+  },
+  "Verbosity_levels": {
+    "message": "Részletességi szintek:"
+  },
+  "Version": {
+    "message": "Verzió"
   },
   "View_Chat_History": {
     "message": "Csevegési előzmények megtekintése"
   },
   "View_History": {
-    "message": ""
+    "message": "Előzmények megtekintése"
+  },
+  "View_Session": {
+    "message": "Munkamenet megtekintése"
+  },
+  "View_pricing_details": {
+    "message": "Ár részleteinek megtekintése"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Az oldal tartalmának és elrendezésének vizuális elemzése"
+  },
+  "Waiting_for_approval": {
+    "message": "Jóváhagyásra vár"
   },
   "Web_Scraping_Tool": {
     "message": "Webkaparó eszköz"
@@ -802,8 +1949,23 @@
   "Welcome_to_Browserx": {
     "message": "Üdvözöljük a Browserx-nél"
   },
+  "Whether_sandboxed_commands_can_access_th_af7f": {
+    "message": "A sandboxolt parancsok hozzáférhetnek-e a hálózathoz"
+  },
+  "Workspace_Access": {
+    "message": "Munkaterület hozzáférés"
+  },
   "Workspace_Write": {
     "message": "Írás a munkaterületen"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "Tegnap"
+  },
+  "You": {
+    "message": "Te"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Nem mentett módosításai vannak. El szeretné vetni őket?"
@@ -814,10 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Az API kulcsa titkosítva van"
   },
-  "Your_Decision": {
-    "message": "Az Ön döntése"
+  "Your_personal_AI_assistant": {
+    "message": "Személyes AI asszisztensed"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "A munkamenet lejárt. Jelentkezzen be újra."
+  },
+  "DISCONNECTED": {
+    "message": "[LECSATLAKOZVA]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Hiba: Stream megszakítva]"
+  },
+  "NO_ACCESS": {
+    "message": "[NINCS HOZZÁFÉRÉS]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[NINCS API KULCS - KATTINTSON A BEÁLLÍTÁSOKRA]"
+  },
+  "PROCESSING": {
+    "message": "[FELDOLGOZÁS]"
+  },
+  "available": {
+    "message": "elérhető"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "gyorsítótárazott"
+  },
+  "detailed_thinking": {
+    "message": "részletes gondolkodás"
+  },
+  "disconnected": {
+    "message": "leválasztva"
+  },
+  "exec_unknown_command": {
+    "message": "exec (ismeretlen parancs)"
   },
   "optional": {
-    "message": ""
+    "message": "opcionális"
+  },
+  "remaining": {
+    "message": "maradék"
+  },
+  "session": {
+    "message": "munkamenet"
+  },
+  "sessions": {
+    "message": "munkamenetek"
+  },
+  "streaming": {
+    "message": "streamelés..."
+  },
+  "thinking": {
+    "message": "gondolkodik"
+  },
+  "tokens": {
+    "message": "tokenek"
+  },
+  "trusted": {
+    "message": "megbízható"
+  },
+  "user": {
+    "message": "felhasználó"
+  },
+  "web_search": {
+    "message": "webes keresés"
   }
 }

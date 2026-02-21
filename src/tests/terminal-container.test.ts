@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import TerminalContainer from '../sidepanel/components/TerminalContainer.svelte';
+import TerminalContainer from '../extension/sidepanel/components/TerminalContainer.svelte';
 
 describe('TerminalContainer', () => {
   it('should render with black background', () => {
