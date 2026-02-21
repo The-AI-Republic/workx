@@ -6,8 +6,8 @@
  *
  * In desktop mode, both UI and agent run in the same WebView process.
  * This service:
- * 1. Emits submissions to 'browserx:submit' for TauriChannel to receive
- * 2. Listens for events on 'browserx:event' from TauriChannel
+ * 1. Emits submissions to 'pi:submit' for TauriChannel to receive
+ * 2. Listens for events on 'pi:event' from TauriChannel
  * 3. Delegates queries (HEALTH_CHECK, etc.) to the DesktopAgentBootstrap
  *
  * @module core/messaging/TauriMessageService
@@ -87,14 +87,14 @@ export class TauriMessageService implements IMessageService {
     // Set up event listeners
     try {
       // Listen for events from agent (via TauriChannel)
-      const unlistenEvent = await this.listen<EventMsg>('browserx:event', (event) => {
+      const unlistenEvent = await this.listen<EventMsg>('pi:event', (event) => {
         this.handleIncomingEvent(event.payload);
       });
       this.unlistenFunctions.push(unlistenEvent);
 
       // Listen for message router events (STATE_UPDATE, etc.)
       const unlistenMessage = await this.listen<{ type: MessageType; payload: unknown }>(
-        'browserx:message',
+        'pi:message',
         (event) => {
           this.handleIncomingMessage(event.payload);
         }
@@ -114,7 +114,7 @@ export class TauriMessageService implements IMessageService {
    * Send a message and wait for response
    *
    * Message routing:
-   * - SUBMISSION: Emit to 'browserx:submit' for agent processing (fire-and-forget)
+   * - SUBMISSION: Emit to 'pi:submit' for agent processing (fire-and-forget)
    * - HEALTH_CHECK, GET_STATE, etc.: Query agent bootstrap directly
    * - Other messages: Handle locally or emit as events
    */
@@ -150,13 +150,13 @@ export class TauriMessageService implements IMessageService {
       default:
         // For other message types, emit as event and return success
         console.log('[TauriMessageService] Emitting message:', type);
-        await this.emit('browserx:message', { type, payload });
+        await this.emit('pi:message', { type, payload });
         return { success: true } as T;
     }
   }
 
   /**
-   * Handle submission - emit to 'browserx:submit' for TauriChannel
+   * Handle submission - emit to 'pi:submit' for TauriChannel
    */
   private async handleSubmission(payload: unknown): Promise<{ success: boolean }> {
     if (!this.emit) {
@@ -167,8 +167,8 @@ export class TauriMessageService implements IMessageService {
 
     console.log('[TauriMessageService] Emitting submission:', submission.op?.type);
 
-    // Emit to 'browserx:submit' which TauriChannel listens for
-    await this.emit('browserx:submit', {
+    // Emit to 'pi:submit' which TauriChannel listens for
+    await this.emit('pi:submit', {
       op: submission.op,
       context: submission.context,
     });

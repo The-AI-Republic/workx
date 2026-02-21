@@ -2,9 +2,9 @@
  * Contract Test: ResponseEvent Type Compliance
  *
  * This test validates that the TypeScript ResponseEvent discriminated union
- * matches the Rust ResponseEvent enum from browserx-rs
+ * matches the Rust ResponseEvent enum from pi-rs
  *
- * Rust Reference: browserx-rs/core/src/client_common.rs Lines 72-87
+ * Rust Reference: pi-rs/core/src/client_common.rs Lines 72-87
  */
 
 import { describe, it, expect } from 'vitest';
@@ -307,7 +307,7 @@ describe('ResponseEvent Contract Compliance', () => {
 
       const summary = {
         totalTypes: 9,
-        rustReference: 'browserx-rs/core/src/client_common.rs:72-87',
+        rustReference: 'pi-rs/core/src/client_common.rs:72-87',
         aligned: true,
       };
 

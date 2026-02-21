@@ -4,7 +4,7 @@
  * Tests that idle timeout is detected and stream closes with error
  *
  * **Quickstart Reference**: Edge Case 2
- * **Rust Reference**: browserx-rs/core/src/client.rs SSE processing with timeout
+ * **Rust Reference**: pi-rs/core/src/client.rs SSE processing with timeout
  * **Implementation**: ResponseStream.ts Lines 229-270 (waitForEvent timeout)
  */
 

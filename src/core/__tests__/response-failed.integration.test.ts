@@ -4,7 +4,7 @@
  * Tests that response.failed events are parsed and thrown correctly
  *
  * **Quickstart Reference**: Edge Case 4
- * **Rust Reference**: browserx-rs/core/src/client.rs Lines 785-808 (response.failed handling)
+ * **Rust Reference**: pi-rs/core/src/client.rs Lines 785-808 (response.failed handling)
  * **Functional Requirement**: FR-012 (parse error.message from response.failed)
  */
 

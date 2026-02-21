@@ -1,5 +1,5 @@
 /**
- * Model clients for browserx-chrome extension
+ * Model clients for pi
  * Exports all model client components
  */
 

@@ -2,7 +2,7 @@
  * Unit Tests: convertTokenUsage()
  *
  * Tests the TokenUsage conversion from API format to internal format
- * Rust Reference: browserx-rs/core/src/client.rs lines 525-540
+ * Rust Reference: pi-rs/core/src/client.rs lines 525-540
  */
 
 import { describe, it, expect } from 'vitest';

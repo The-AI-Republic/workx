@@ -101,13 +101,114 @@ describe('estimateRequestTokens', () => {
     expect(estimateRequestTokens([item])).toBe(Math.ceil(19 / 4));
   });
 
-  it('skips non-message items (reasoning, function_call, etc)', () => {
+  it('counts reasoning item summary text', () => {
+    const summaryText = 'thinking about it'; // 17 chars => ceil(17/4) = 5
     const items: ResponseItem[] = [
       {
         type: 'reasoning',
         id: 'r1',
-        summary: [{ type: 'summary_text', text: 'thinking about it' }],
+        summary: [{ type: 'summary_text', text: summaryText }],
       },
+      createUserMessage('Hello'), // 5 chars => ceil(5/4) = 2
+    ];
+    // All chars summed then divided: ceil((17 + 5) / 4) = 6
+    expect(estimateRequestTokens(items)).toBe(Math.ceil((summaryText.length + 5) / 4));
+  });
+
+  it('counts function_call arguments', () => {
+    const args = '{"query": "test search"}'; // 24 chars => ceil(24/4) = 6
+    const items: ResponseItem[] = [
+      {
+        type: 'function_call',
+        id: 'fc1',
+        name: 'search',
+        arguments: args,
+        call_id: 'call_1',
+      },
+    ];
+    expect(estimateRequestTokens(items)).toBe(Math.ceil(args.length / 4));
+  });
+
+  it('counts function_call_output', () => {
+    const output = 'Search results: found 5 items'; // 29 chars => ceil(29/4) = 8
+    const items: ResponseItem[] = [
+      {
+        type: 'function_call_output',
+        call_id: 'call_1',
+        output,
+      },
+    ];
+    expect(estimateRequestTokens(items)).toBe(Math.ceil(output.length / 4));
+  });
+
+  it('counts custom_tool_call input', () => {
+    const input = '{"url": "https://example.com"}'; // 30 chars => ceil(30/4) = 8
+    const items: ResponseItem[] = [
+      {
+        type: 'custom_tool_call',
+        id: 'ct1',
+        call_id: 'call_2',
+        name: 'fetch',
+        input,
+      },
+    ];
+    expect(estimateRequestTokens(items)).toBe(Math.ceil(input.length / 4));
+  });
+
+  it('counts custom_tool_call_output', () => {
+    const output = 'Page content here'; // 17 chars => ceil(17/4) = 5
+    const items: ResponseItem[] = [
+      {
+        type: 'custom_tool_call_output',
+        call_id: 'call_2',
+        output,
+      },
+    ];
+    expect(estimateRequestTokens(items)).toBe(Math.ceil(output.length / 4));
+  });
+
+  it('counts message tool_calls arguments', () => {
+    const args1 = '{"a": 1}'; // 8 chars
+    const args2 = '{"b": 2}'; // 8 chars
+    const msgText = 'Let me help'; // 11 chars
+    const items: ResponseItem[] = [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: msgText }],
+        tool_calls: [
+          { id: 'tc1', type: 'function', function: { name: 'fn1', arguments: args1 } },
+          { id: 'tc2', type: 'function', function: { name: 'fn2', arguments: args2 } },
+        ],
+      },
+    ];
+    const expected = Math.ceil((msgText.length + args1.length + args2.length) / 4);
+    expect(estimateRequestTokens(items)).toBe(expected);
+  });
+
+  it('counts message reasoning_content', () => {
+    const reasoning = 'I need to think about this carefully'; // 36 chars
+    const msgText = 'Here is my answer'; // 17 chars
+    const items: ResponseItem[] = [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: msgText }],
+        reasoning_content: reasoning,
+      },
+    ];
+    const expected = Math.ceil((msgText.length + reasoning.length) / 4);
+    expect(estimateRequestTokens(items)).toBe(expected);
+  });
+
+  it('skips web_search_call and other items', () => {
+    const items: ResponseItem[] = [
+      {
+        type: 'web_search_call',
+        id: 'ws1',
+        action: { type: 'search', query: 'test' },
+      } as ResponseItem,
+      { type: 'other' } as ResponseItem,
       createUserMessage('Hello'), // 5 chars => ceil(5/4) = 2
     ];
     expect(estimateRequestTokens(items)).toBe(Math.ceil(5 / 4));

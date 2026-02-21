@@ -683,14 +683,17 @@ export class TaskRunner {
     const userLen = this.turnContext.getUserInstructions?.()?.length ?? 0;
     const instructionsLength = baseLen + userLen;
 
-    const estimatedTokens = estimateRequestTokens(turnInput, instructionsLength);
+    const toolsConfig = this.turnContext.getToolsConfig();
+    const toolCount = Object.values(toolsConfig).filter(Boolean).length;
+    const estimatedTokens = estimateRequestTokens(turnInput, instructionsLength, toolCount);
     const threshold = contextWindow * TaskRunner.COMPACTION_THRESHOLD;
 
     if (estimatedTokens >= threshold) {
       console.debug('[TaskRunner] Pre-request compaction check', {
         estimatedTokens,
         contextWindow,
-        threshold: TaskRunner.COMPACTION_THRESHOLD,
+        thresholdTokens: threshold,
+        thresholdRatio: TaskRunner.COMPACTION_THRESHOLD,
       });
       return true;
     }

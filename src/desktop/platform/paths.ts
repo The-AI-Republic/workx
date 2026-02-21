@@ -143,7 +143,7 @@ export async function getLogPath(): Promise<string> {
  */
 export async function getDatabasePath(): Promise<string> {
   const dataDir = await appDataDir();
-  return `${dataDir}/browserx.db`;
+  return `${dataDir}/pi.db`;
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
  * Queue processing utilities for managing submission and event queues
- * Implements async queue patterns from browserx.rs
+ * Implements async queue patterns from pi.rs
  */
 
 import type { Submission, Event, Op } from './protocol/types';

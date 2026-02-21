@@ -1,7 +1,7 @@
 /**
  * MCP Server Integration Type Definitions
  *
- * These types define the contracts for MCP server integration in browserx.
+ * These types define the contracts for MCP server integration in Pi.
  * They are used for configuration, runtime state, and tool integration.
  */
 
@@ -377,7 +377,7 @@ export interface IMCPManager {
 // =============================================================================
 
 /**
- * Adapts MCP tools to browserx ToolDefinition format.
+ * Adapts MCP tools to Pi ToolDefinition format.
  */
 export interface IMCPToolAdapter {
   /**

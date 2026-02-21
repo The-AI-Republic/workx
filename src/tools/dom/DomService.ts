@@ -918,7 +918,7 @@ export class DomService {
     // try {
     //   // Check if visual effects are initialized in the page
     //   const checkResult = await this.sendCommand<any>('Runtime.evaluate', {
-    //     expression: '!!window.__browserx_visual_effects_initialized__',
+    //     expression: '!!window.__pi_visual_effects_initialized__',
     //     returnByValue: true
     //   });
 
@@ -931,7 +931,7 @@ export class DomService {
     //     await this.sendCommand('Runtime.evaluate', {
     //       expression: `
     //         (function() {
-    //           const event = new CustomEvent('browserx:init-visual-effects', {
+    //           const event = new CustomEvent('pi:init-visual-effects', {
     //             bubbles: false,
     //             cancelable: false
     //           });
