@@ -126,17 +126,25 @@ async function rustFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   const { method, url, headers, body } = await parseRequest(input, init);
 
   const bodyLen = body?.length ?? 0;
+  console.log(`[FetchProxy] ${method} ${url} body=${bodyLen}B threshold=${LARGE_PAYLOAD_THRESHOLD}B`);
 
   // For large bodies, chunk them into Rust's buffer before invoking http_fetch
   let requestId: string | null = null;
   if (body && bodyLen > LARGE_PAYLOAD_THRESHOLD) {
     requestId = crypto.randomUUID();
+    const totalChunks = Math.ceil(bodyLen / CHUNK_SIZE);
+    console.log(`[FetchProxy] Large body — sending ${totalChunks} chunks of ${CHUNK_SIZE}B (id=${requestId})`);
     for (let i = 0; i < bodyLen; i += CHUNK_SIZE) {
+      const chunkIndex = Math.floor(i / CHUNK_SIZE);
+      console.log(`[FetchProxy] Sending chunk ${chunkIndex + 1}/${totalChunks}`);
       await invoke('http_append_body_chunk', {
         requestId,
         chunk: body.slice(i, i + CHUNK_SIZE),
       });
     }
+    console.log(`[FetchProxy] All chunks sent, invoking http_fetch with requestId`);
+  } else {
+    console.log(`[FetchProxy] Small body — sending directly (${bodyLen}B)`);
   }
 
   // Channel for streaming response from Rust
@@ -201,6 +209,7 @@ async function rustFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     };
 
     // Invoke the Rust command
+    console.log(`[FetchProxy] invoke http_fetch — method=${method} url=${url} hasRequestId=${!!requestId} bodyLen=${requestId ? 'buffered' : bodyLen}`);
     invoke('http_fetch', {
       method,
       url,

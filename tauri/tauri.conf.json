@@ -24,7 +24,7 @@
     ],
     "longDescription": "Pi - AI-powered personal assistant agent",
     "shortDescription": "Pi - Personal Assistant",
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": "all",
     "linux": {
       "deb": {

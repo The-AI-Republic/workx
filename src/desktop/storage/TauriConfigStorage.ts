@@ -10,8 +10,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
-/** Threshold above which chunked IPC is used — safe margin for WebView2's ~1MB postMessage limit */
-const LARGE_VALUE_THRESHOLD = 512 * 1024; // 512KB
+/** Threshold above which chunked IPC is used — conservative for WebView2 */
+const LARGE_VALUE_THRESHOLD = 64 * 1024; // 64KB
 const CHUNK_SIZE = 48 * 1024; // 48KB per chunk
 
 /**
@@ -36,11 +36,14 @@ export class TauriConfigStorage implements ConfigStorageProvider {
       const size = await invoke<number | null>('config_storage_get_size', { key });
       if (size === null) return null;
 
+      console.log(`[TauriConfigStorage] get '${key}' size=${size} threshold=${LARGE_VALUE_THRESHOLD}`);
       let value: string;
       if (size <= LARGE_VALUE_THRESHOLD) {
         value = await invoke<string>('config_storage_get', { key }) ?? 'null';
       } else {
         // Read in chunks to stay under WebView2 postMessage limit
+        const totalChunks = Math.ceil(size / CHUNK_SIZE);
+        console.log(`[TauriConfigStorage] Chunked read '${key}': ${totalChunks} chunks`);
         const parts: string[] = [];
         for (let offset = 0; offset < size; offset += CHUNK_SIZE) {
           const chunk = await invoke<string>('config_storage_get_chunk', {
@@ -65,10 +68,13 @@ export class TauriConfigStorage implements ConfigStorageProvider {
   async set<T>(key: string, value: T): Promise<void> {
     try {
       const json = JSON.stringify(value);
+      console.log(`[TauriConfigStorage] set '${key}' size=${json.length} threshold=${LARGE_VALUE_THRESHOLD}`);
       if (json.length <= LARGE_VALUE_THRESHOLD) {
         await invoke('config_storage_set', { key, value: json });
       } else {
         // Write in chunks then commit to stay under WebView2 postMessage limit
+        const totalChunks = Math.ceil(json.length / CHUNK_SIZE);
+        console.log(`[TauriConfigStorage] Chunked write '${key}': ${totalChunks} chunks`);
         for (let i = 0; i < json.length; i += CHUNK_SIZE) {
           await invoke('config_storage_append_chunk', {
             key,
