@@ -153,7 +153,18 @@ export class PiAgent {
     }
 
     // Connect config storage for history tracking (I2)
-    const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+    // Desktop mode uses TauriConfigStorage; extension mode uses chrome.storage.local
+    let configStorage: ApprovalConfigStorage;
+    if (platform === 'desktop') {
+      const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
+      const tauriStorage = new TauriConfigStorage();
+      configStorage = new ApprovalConfigStorage(() => ({
+        get: (keys: string[]) => tauriStorage.getMany(keys),
+        set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
+      }));
+    } else {
+      configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+    }
     approvalGate.setConfigStorage(configStorage);
 
     // Load stored approval config and apply to gate (I1)

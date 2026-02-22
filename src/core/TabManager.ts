@@ -76,6 +76,10 @@ export class TabManager {
    * Setup Chrome tab event listeners
    */
   private setupChromeEventListeners(): void {
+    if (typeof chrome === 'undefined' || !chrome.tabs?.onRemoved) {
+      return;
+    }
+
     // Listen for tab closure
     chrome.tabs.onRemoved.addListener((tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => {
       console.log(`[TabManager] Tab ${tabId} closed`);

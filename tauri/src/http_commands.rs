@@ -4,8 +4,24 @@
 //! This is the desktop equivalent of Chrome extension's service worker fetch.
 
 use std::collections::HashMap;
+use std::sync::Mutex;
 use serde::Serialize;
 use tauri::ipc::Channel;
+
+lazy_static::lazy_static! {
+    /// Buffer for large request bodies sent in chunks from JS
+    static ref BODY_BUFFER: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+}
+
+/// Append a chunk to a buffered request body.
+/// Call this multiple times before http_fetch when the body is too large
+/// to send in a single postMessage.
+#[tauri::command]
+pub fn http_append_body_chunk(request_id: String, chunk: String) -> Result<(), String> {
+    let mut buf = BODY_BUFFER.lock().map_err(|e| e.to_string())?;
+    buf.entry(request_id).or_default().push_str(&chunk);
+    Ok(())
+}
 
 /// Events streamed back to TypeScript via Tauri Channel
 #[derive(Clone, Serialize)]
@@ -31,15 +47,25 @@ pub enum HttpEvent {
 
 /// Make an HTTP request and stream the response back via Channel.
 /// This bypasses WebView CORS restrictions.
+/// For large bodies, use http_append_body_chunk first, then pass the request_id here.
 #[tauri::command]
 pub async fn http_fetch(
     method: String,
     url: String,
     headers: HashMap<String, String>,
     body: Option<String>,
+    request_id: Option<String>,
     on_event: Channel<HttpEvent>,
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
+
+    // Resolve body: from buffer (large body) or direct (small body)
+    let resolved_body = if let Some(id) = request_id {
+        let mut buf = BODY_BUFFER.lock().map_err(|e| e.to_string())?;
+        buf.remove(&id)
+    } else {
+        body
+    };
 
     // Build request
     let http_method: reqwest::Method = method
@@ -52,7 +78,7 @@ pub async fn http_fetch(
         req = req.header(key.as_str(), value.as_str());
     }
 
-    if let Some(body) = body {
+    if let Some(body) = resolved_body {
         req = req.body(body);
     }
 

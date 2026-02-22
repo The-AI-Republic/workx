@@ -276,6 +276,10 @@ fn main() {
             storage_commands::config_storage_remove_many,
             storage_commands::config_storage_get_all,
             storage_commands::config_storage_clear,
+            storage_commands::config_storage_get_size,
+            storage_commands::config_storage_get_chunk,
+            storage_commands::config_storage_append_chunk,
+            storage_commands::config_storage_commit,
             // Browser detection and CDP commands
             browser_commands::find_running_browsers,
             browser_commands::file_exists,
@@ -292,6 +296,7 @@ fn main() {
             sandbox::status::sandbox_install_runtime,
             // HTTP proxy command
             http_commands::http_fetch,
+            http_commands::http_append_body_chunk,
             // Keychain commands
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,
