@@ -62,7 +62,7 @@ import type { TaskResultRecord } from '../../core/models/types/Scheduler';
 import { AgentRegistry, SessionStorage } from '../../core/registry';
 import type { SessionConfig } from '../../core/registry/types';
 import { PRIMARY_SESSION_ALIAS } from '../../core/models/types/SessionContracts';
-import { t } from '../../extension/sidepanel/lib/i18n';
+import { t } from '../../webfront/lib/i18n';
 
 // Global instances
 /**

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EventProcessor } from '@/extension/sidepanel/components/event_display/EventProcessor';
+import { EventProcessor } from '@/webfront/components/event_display/EventProcessor';
 import type { Event } from '@/core/protocol/types';
 
 describe('EventProcessor Contract Tests', () => {
