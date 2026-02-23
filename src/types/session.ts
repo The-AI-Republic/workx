@@ -1,7 +1,7 @@
 /**
  * Session Tab Type Definitions
  *
- * Types and interfaces for managing tabs in BrowserX
+ * Types and interfaces for managing tabs in Pi
  */
 
 /**

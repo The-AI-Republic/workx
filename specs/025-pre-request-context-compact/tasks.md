@@ -17,9 +17,9 @@
 
 **Purpose**: Align compaction thresholds and create the shared token estimation utility that US1 and US3 both depend on.
 
-- [ ] T001 Update `triggerThreshold` from `0.9` to `0.85` in `DEFAULT_COMPACTION_CONFIG` in `src/core/compact/constants.ts`
-- [ ] T002 [P] Add `estimateRequestTokens(items: ResponseItem[], instructionsLength?: number, toolCount?: number): number` function in `src/core/compact/utils.ts` — iterate over ResponseItem content, sum `Math.ceil(text.length / 4)` for each text segment, add `Math.ceil((instructionsLength ?? 0) / 4)` for instructions, add `(toolCount ?? 0) * 500` for tool schema overhead. Import `ResponseItem` type from `../protocol/types`
-- [ ] T003 [P] Update `triggerThreshold` mock value from `0.9` to `0.85` in `src/core/compact/__tests__/CompactService.test.ts` (line 21 in the `vi.mock('../constants', ...)` block)
+- [X] T001 Update `triggerThreshold` from `0.9` to `0.85` in `DEFAULT_COMPACTION_CONFIG` in `src/core/compact/constants.ts`
+- [X] T002 [P] Add `estimateRequestTokens(items: ResponseItem[], instructionsLength?: number, toolCount?: number): number` function in `src/core/compact/utils.ts` — iterate over ResponseItem content, sum `Math.ceil(text.length / 4)` for each text segment, add `Math.ceil((instructionsLength ?? 0) / 4)` for instructions, add `(toolCount ?? 0) * 500` for tool schema overhead. Import `ResponseItem` type from `../protocol/types`
+- [X] T003 [P] Update `triggerThreshold` mock value from `0.9` to `0.85` in `src/core/compact/__tests__/CompactService.test.ts` (line 21 in the `vi.mock('../constants', ...)` block)
 
 **Checkpoint**: Threshold is unified at 0.85 across the codebase. `estimateRequestTokens()` utility is available. Existing tests pass with updated mock.
 
@@ -33,10 +33,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Add private method `shouldCompactBeforeRequest(turnInput: ResponseItem[]): boolean` in `src/core/TaskRunner.ts` — get context window via `this.turnContext.getModelContextWindow()`, return `false` if undefined; get instructions length from `this.turnContext.getBaseInstructions()?.length` and `this.turnContext.getUserInstructions()?.length`; call `estimateRequestTokens(turnInput, instructionsLength, toolCount)` from `../compact/utils`; return `estimatedTokens >= contextWindow * TaskRunner.COMPACTION_THRESHOLD`. Add import for `estimateRequestTokens` at top of file
-- [ ] T005 [US1] Modify `runLoop()` in `src/core/TaskRunner.ts` to insert pre-request compaction check between `buildNormalTurnInput()` (line ~289) and `runTurnWithTimeout()` (line ~303): change `const turnInput` to `let turnInput`; after `turnInput = await this.buildNormalTurnInput(pendingInput)`, add: `if (this.options.autoCompact && this.shouldCompactBeforeRequest(turnInput)) { const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage); if (compacted) { compactionPerformed = true; turnInput = await this.buildNormalTurnInput([]); } }`. Pass empty array on rebuild to avoid double-recording pending input. Keep existing post-response compaction check (lines 315-320) unchanged as safety net
-- [ ] T006 [P] [US1] Add public method `estimateHistoryTokens(): number` in `src/core/Session.ts` — call `estimateRequestTokens()` from `./compact/utils` on `this.sessionState.getConversationHistory().items` and return the result. Add import for `estimateRequestTokens`
-- [ ] T007 [US1] Add `console.debug('[TaskRunner] Pre-request compaction check', { estimatedTokens, contextWindow, threshold })` logging in `shouldCompactBeforeRequest()` method in `src/core/TaskRunner.ts` when the check triggers compaction (when returning `true`)
+- [X] T004 [US1] Add private method `shouldCompactBeforeRequest(turnInput: ResponseItem[]): boolean` in `src/core/TaskRunner.ts` — get context window via `this.turnContext.getModelContextWindow()`, return `false` if undefined; get instructions length from `this.turnContext.getBaseInstructions()?.length` and `this.turnContext.getUserInstructions()?.length`; call `estimateRequestTokens(turnInput, instructionsLength, toolCount)` from `../compact/utils`; return `estimatedTokens >= contextWindow * TaskRunner.COMPACTION_THRESHOLD`. Add import for `estimateRequestTokens` at top of file
+- [X] T005 [US1] Modify `runLoop()` in `src/core/TaskRunner.ts` to insert pre-request compaction check between `buildNormalTurnInput()` (line ~289) and `runTurnWithTimeout()` (line ~303): change `const turnInput` to `let turnInput`; after `turnInput = await this.buildNormalTurnInput(pendingInput)`, add: `if (this.options.autoCompact && this.shouldCompactBeforeRequest(turnInput)) { const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage); if (compacted) { compactionPerformed = true; turnInput = await this.buildNormalTurnInput([]); } }`. Pass empty array on rebuild to avoid double-recording pending input. Keep existing post-response compaction check (lines 315-320) unchanged as safety net
+- [X] T006 [P] [US1] Add public method `estimateHistoryTokens(): number` in `src/core/Session.ts` — call `estimateRequestTokens()` from `./compact/utils` on `this.sessionState.getConversationHistory().items` and return the result. Add import for `estimateRequestTokens`
+- [X] T007 [US1] Add `console.debug('[TaskRunner] Pre-request compaction check', { estimatedTokens, contextWindow, threshold })` logging in `shouldCompactBeforeRequest()` method in `src/core/TaskRunner.ts` when the check triggers compaction (when returning `true`)
 
 **Checkpoint**: Pre-request compaction check is active. The system estimates tokens before each LLM request and compacts if estimated usage >= 85% of context window. Post-response check remains as fallback. User Story 1 is independently testable.
 
@@ -50,7 +50,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Verify and update context window values for all models in `src/core/models/providers/default.json` against official provider documentation: GPT-5.1 (400,000), GPT-5.2 (400,000), Gemini 3 Pro Preview (1,000,000), Gemini 2.5 Pro (1,000,000), Grok 4.1 Fast Reasoning (2,000,000), Kimi K2 Thinking (256,000 — Moonshot, Fireworks, Together), Kimi K2 Thinking Turbo (256,000), Kimi K2.5 (262,100). Also verify `maxOutputTokens` values are accurate (Gemini 2.5 Pro may support up to 65,536 output tokens vs current 8,192). Document verification sources as code comments or in research.md
+- [X] T008 [US2] Verify and update context window values for all models in `src/core/models/providers/default.json` against official provider documentation: GPT-5.1 (400,000), GPT-5.2 (400,000), Gemini 3 Pro Preview (1,000,000), Gemini 2.5 Pro (1,000,000), Grok 4.1 Fast Reasoning (2,000,000), Kimi K2 Thinking (256,000 — Moonshot, Fireworks, Together), Kimi K2 Thinking Turbo (256,000), Kimi K2.5 (262,100). Also verify `maxOutputTokens` values are accurate (Gemini 2.5 Pro may support up to 65,536 output tokens vs current 8,192). Document verification sources as code comments or in research.md
 
 **Checkpoint**: All model context window values verified correct. Any corrections applied. User Story 2 is independently verifiable.
 
@@ -64,8 +64,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T009 [P] [US3] Add unit tests for `estimateRequestTokens()` in `src/core/compact/__tests__/utils.test.ts` (new file) — test empty items returns 0; test single user message estimates correctly using `Math.ceil(text.length / 4)`; test multiple messages sums correctly; test with instructionsLength adds `Math.ceil(length / 4)`; test with toolCount adds `count * 500`; test with all parameters combined; test with items containing non-text content (type !== 'input_text'/'output_text') skips them. Mock constants with `vi.mock('../constants', ...)` similar to CompactService.test.ts
-- [ ] T010 [US3] Add accuracy validation test in `src/core/compact/__tests__/utils.test.ts` — test that estimation for a 1000-character English text paragraph produces a result within 20% of the expected ~250 tokens (1000/4); test that estimation for a 10,000-character text produces a result within 20% of ~2500 tokens; test performance: verify `estimateRequestTokens` on a 100-item history completes in under 10ms using `performance.now()`
+- [X] T009 [P] [US3] Add unit tests for `estimateRequestTokens()` in `src/core/compact/__tests__/utils.test.ts` (new file) — test empty items returns 0; test single user message estimates correctly using `Math.ceil(text.length / 4)`; test multiple messages sums correctly; test with instructionsLength adds `Math.ceil(length / 4)`; test with toolCount adds `count * 500`; test with all parameters combined; test with items containing non-text content (type !== 'input_text'/'output_text') skips them. Mock constants with `vi.mock('../constants', ...)` similar to CompactService.test.ts
+- [X] T010 [US3] Add accuracy validation test in `src/core/compact/__tests__/utils.test.ts` — test that estimation for a 1000-character English text paragraph produces a result within 20% of the expected ~250 tokens (1000/4); test that estimation for a 10,000-character text produces a result within 20% of ~2500 tokens; test performance: verify `estimateRequestTokens` on a 100-item history completes in under 10ms using `performance.now()`
 
 **Checkpoint**: Token estimation function validated for accuracy (within 20%) and performance (<10ms). User Story 3 is independently testable.
 
@@ -75,9 +75,9 @@
 
 **Purpose**: Final validation across all user stories
 
-- [ ] T011 Run full test suite (`npm test`) and fix any regressions in `src/`
-- [ ] T012 Run linter (`npm run lint`) and fix any issues in modified files
-- [ ] T013 Run quickstart.md validation — verify the manual testing flow described in `specs/025-pre-request-context-compact/quickstart.md` can be followed
+- [X] T011 Run full test suite (`npm test`) and fix any regressions in `src/`
+- [X] T012 Run linter (`npm run lint`) and fix any issues in modified files
+- [X] T013 Run quickstart.md validation — verify the manual testing flow described in `specs/025-pre-request-context-compact/quickstart.md` can be followed
 
 ---
 

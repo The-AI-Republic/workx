@@ -4,7 +4,7 @@
  * Tests that authentication errors (401) throw immediately without retry
  *
  * **Quickstart Reference**: Edge Case 1
- * **Rust Reference**: browserx-rs/core/src/client.rs Lines 245-264 (retry logic)
+ * **Rust Reference**: pi-rs/core/src/client.rs Lines 245-264 (retry logic)
  * **Functional Requirement**: FR-033 (distinguish retryable from fatal errors)
  */
 

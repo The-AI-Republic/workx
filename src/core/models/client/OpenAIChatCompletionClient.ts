@@ -1,5 +1,5 @@
 /**
- * OpenAI Chat Completion API client implementation for browserx-chrome
+ * OpenAI Chat Completion API client implementation for pi
  * Uses official OpenAI SDK for Chat Completions API calls (supports compatible providers)
  */
 
@@ -580,7 +580,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
           toolCallsArray = Array.from(this.chatCompletionToolCalls.values());
 
           if (toolCallsArray.length > 1) {
-            console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but BrowserX uses parallel_tool_calls=false:', toolCallsArray);
+            console.warn('[OpenAIChatCompletionClient] Multiple tool calls detected, but Pi uses parallel_tool_calls=false:', toolCallsArray);
           }
         }
 

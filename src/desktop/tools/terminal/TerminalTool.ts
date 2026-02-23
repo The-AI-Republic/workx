@@ -115,7 +115,7 @@ export class TerminalTool {
   }
 
   /**
-   * Execute a terminal command
+   * Execute a terminal command.
    */
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };

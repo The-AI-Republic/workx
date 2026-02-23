@@ -102,34 +102,20 @@ export class SandboxManager {
   }
 
   /**
-   * Initialize sandbox manager — fetch status, auto-fix if needed, load config.
+   * Initialize sandbox manager — fetch status and load config.
    *
-   * If the sandbox runtime is missing or broken (e.g. AppArmor blocking bwrap
-   * on Ubuntu 24.04+, or unprivileged_userns_clone=0 on older Debian), this
-   * will automatically attempt to install/fix it so the user doesn't have to
-   * do anything manually.
+   * Only checks whether the sandbox runtime is available; does NOT
+   * attempt automatic installation or repair (which requires sudo).
+   * Users can trigger installation explicitly from the Settings UI.
    */
   async initialize(): Promise<void> {
     await this.checkStatus();
 
-    // Auto-fix: if sandbox is not working, try to install/repair it
     if (this._status && (this._status.status === 'unavailable' || this._status.status === 'needs-installation')) {
       console.log(
-        '[SandboxManager] Sandbox not ready (%s), attempting automatic fix...',
+        '[SandboxManager] Sandbox not ready (%s). Use Settings → Tools to install.',
         this._status.status,
       );
-      try {
-        const result = await this.installRuntime();
-        if (result.success) {
-          console.log('[SandboxManager] Auto-fix succeeded:', result.message);
-          // Re-check status after successful fix
-          await this.checkStatus();
-        } else {
-          console.warn('[SandboxManager] Auto-fix failed:', result.message);
-        }
-      } catch (error) {
-        console.warn('[SandboxManager] Auto-fix error:', error);
-      }
     }
 
     await this.loadConfig();

@@ -26,6 +26,7 @@ import { isDOMSnapshotOutput, compressSnapshot } from './session/state/SnapshotC
 // Compaction imports
 import { CompactService } from './compact/CompactService';
 import type { CompactionResult, CompactionTrigger } from './compact/types';
+import { estimateRequestTokens } from './compact/utils';
 import type { ModelClient } from './models/ModelClient';
 
 // Title generation imports
@@ -55,7 +56,7 @@ export class Session {
   private _mockCwd = '/'; // For backward compatibility in tests
   private eventEmitter: ((event: Event) => Promise<void>) | null = null;
   private isPersistent: boolean = true;
-  private toolRegistry: ToolRegistry | null = null; // Tool registry from BrowserxAgent
+  private toolRegistry: ToolRegistry | null = null; // Tool registry from PiAgent
 
   // Runtime state (not persisted, lives in Session only)
   private toolUsageStats: Map<string, number> = new Map();
@@ -97,7 +98,7 @@ export class Session {
 
     // Initialize session state
     this.sessionState = new SessionState(); // Pure data state
-    this.toolRegistry = toolRegistry ?? null; // Tool registry from BrowserxAgent
+    this.toolRegistry = toolRegistry ?? null; // Tool registry from PiAgent
     this.compactService = new CompactService(); // Initialize compaction service
     this.titleGenerator = new TitleGenerator(); // Initialize title generation service
 
@@ -180,12 +181,15 @@ export class Session {
     if (!this.services?.rollout) return;
 
     // Record session metadata to rollout
+    // Include both cwd (for desktop) and tabId (for extension) so the
+    // session can be restored correctly in either runtime mode.
+    const tabId = this.sessionState.getTabId();
     const sessionMetaItems: RolloutItem[] = [{
       type: 'session_meta',
       payload: {
         id: this.conversationId,
         timestamp: new Date().toISOString(),
-        cwd: String(this.sessionState.getTabId()), // Use tabId as cwd for browser context
+        ...(tabId > 0 ? { tabId } : {}),
         originator: 'chrome-extension',
         cliVersion: '1.0.0'
       }
@@ -335,6 +339,13 @@ export class Session {
    */
   isEmpty(): boolean {
     return this.sessionState.getConversationHistory().items.length === 0;
+  }
+
+  /**
+   * Estimate token count of the current conversation history.
+   */
+  estimateHistoryTokens(): number {
+    return estimateRequestTokens(this.sessionState.getConversationHistory().items);
   }
 
   /**
@@ -881,7 +892,7 @@ export class Session {
   }
 
   /**
-   * Set tool registry (called by BrowserxAgent)
+   * Set tool registry (called by PiAgent)
    */
   setToolRegistry(toolRegistry: ToolRegistry): void {
     this.toolRegistry = toolRegistry;

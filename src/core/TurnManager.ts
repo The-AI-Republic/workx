@@ -20,6 +20,15 @@ import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
 
 /**
+ * Optional MCP capability interface for sessions that support MCP tools.
+ * Used for runtime duck-typing of Session subclasses with MCP support.
+ */
+interface MCPCapableSession {
+  getMcpTools(): Promise<ToolDefinition[]>;
+  executeMcpTool(name: string, params: any): Promise<any>;
+}
+
+/**
  * Result of processing a single response item
  */
 export interface ProcessedResponseItem {
@@ -351,11 +360,12 @@ export class TurnManager {
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
+    const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
     if (
       (enableAllTools || toolsConfig.mcpTools === true) &&
-      typeof (this.session as any).getMcpTools === 'function'
+      typeof mcpSession.getMcpTools === 'function'
     ) {
-      const mcpTools = await (this.session as any).getMcpTools();
+      const mcpTools = await mcpSession.getMcpTools();
       // Convert MCP tools to ModelClient format
       const convertedMcpTools = mcpTools.map((tool: any) => ({
         type: 'function' as const,
@@ -483,13 +493,11 @@ export class TurnManager {
 
     // Convert input items to messages
     for (const item of prompt.input) {
-      const anyItem = item as any;
-      if (anyItem.role && anyItem.content) {
+      if (item.type === 'message') {
         messages.push({
-          role: anyItem.role,
-          content: anyItem.content,
-          toolCalls: anyItem.toolCalls,
-          toolCallId: anyItem.toolCallId,
+          role: item.role,
+          content: item.content,
+          toolCalls: item.tool_calls,
         });
       }
     }
@@ -746,7 +754,11 @@ export class TurnManager {
     });
 
     try {
-      const result = await (this.session as any).executeMcpTool(toolName, parameters);
+      const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
+      if (typeof mcpSession.executeMcpTool !== 'function') {
+        throw new Error(`MCP tool execution not available on this session`);
+      }
+      const result = await mcpSession.executeMcpTool(toolName, parameters);
 
       await this.emitEvent({
         type: 'McpToolCallEnd',

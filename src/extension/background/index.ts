@@ -4,7 +4,7 @@
  */
 
 export * from './service-worker';
-export { BrowserxAgent } from '../../core/BrowserxAgent';
+export { PiAgent } from '../../core/PiAgent';
 export { MessageRouter, MessageType } from '../../core/MessageRouter';
 export { ModelClientFactory } from '../../core/models/ModelClientFactory';
 export { ToolRegistry } from '../../tools/ToolRegistry';

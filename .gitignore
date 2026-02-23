@@ -71,7 +71,6 @@ tmp/
 
 # Tauri / Desktop App (Pi)
 tauri/target/
-tauri/Cargo.lock
 tauri/gen/
 *.AppImage
 *.deb

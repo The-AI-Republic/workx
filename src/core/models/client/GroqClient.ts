@@ -1,5 +1,5 @@
 /**
- * Groq API client implementation for browserx-chrome
+ * Groq API client implementation for pi
  * Extends OpenAIResponsesClient with Groq-specific behavior
  *
  * Key Groq Differences:

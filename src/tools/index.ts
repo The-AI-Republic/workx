@@ -1,5 +1,5 @@
 /**
- * Tool registration and management for browserx-chrome
+ * Tool registration and management for pi
  */
 
 import { ToolRegistry } from './ToolRegistry';

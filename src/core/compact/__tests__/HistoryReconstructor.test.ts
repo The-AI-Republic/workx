@@ -6,7 +6,7 @@ vi.mock('../constants', () => ({
   NO_SUMMARY_PLACEHOLDER: '(no summary available)',
   TRUNCATION_MARKER: '\n[...tokens truncated]',
   DEFAULT_COMPACTION_CONFIG: {
-    triggerThreshold: 0.9,
+    triggerThreshold: 0.85,
     userMessageBudget: 20000,
     maxRetries: 3,
     baseBackoffMs: 100,
@@ -186,7 +186,7 @@ describe('HistoryReconstructor', () => {
       const messages = ['Hello', 'World', 'Test'];
 
       const result = reconstructor.selectUserMessages(messages, {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -204,7 +204,7 @@ describe('HistoryReconstructor', () => {
       const messages = [longText, longText, 'short recent'];
 
       const result = reconstructor.selectUserMessages(messages, {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 10, // very small budget
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -222,7 +222,7 @@ describe('HistoryReconstructor', () => {
       const messages = ['first', 'second', 'third'];
 
       const result = reconstructor.selectUserMessages(messages, {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -237,7 +237,7 @@ describe('HistoryReconstructor', () => {
       const messages = [longMessage];
 
       const result = reconstructor.selectUserMessages(messages, {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 50, // tight budget forces truncation
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -255,7 +255,7 @@ describe('HistoryReconstructor', () => {
       const messages = [longMessage, longMessage, 'recent short'];
 
       const result = reconstructor.selectUserMessages(messages, {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 10, // extremely tight
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -281,7 +281,7 @@ describe('HistoryReconstructor', () => {
 
     it('returns empty result for empty messages array', () => {
       const result = reconstructor.selectUserMessages([], {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,
@@ -297,7 +297,7 @@ describe('HistoryReconstructor', () => {
       const messages = ['Hello world'];
 
       const result = reconstructor.selectUserMessages(messages, {
-        triggerThreshold: 0.9,
+        triggerThreshold: 0.85,
         userMessageBudget: 20000,
         maxRetries: 3,
         baseBackoffMs: 100,

@@ -17,8 +17,8 @@
 
 **Purpose**: Discover all files that reference ResponseItem and set up the test scaffold
 
-- [ ] T001 Discover all source files importing or referencing ResponseItem by searching `src/**/*.ts` (excluding `__tests__/` and `node_modules/`). Categorize each file as: client class (`src/core/models/client/`), type definition, shared component, or other. Output a categorized list for use in subsequent test tasks.
-- [ ] T002 Create the architectural guard-rail test file scaffold at `src/core/models/__tests__/provider-agnostic.architecture.test.ts`. Define the banned provider SDK import patterns (`openai`, `@google/genai`, `@anthropic-ai/sdk`, `groq-sdk`, `fireworks`, `together-ai`) and the allowed provider directory (`src/core/models/client/`) as test-level constants. Include empty `describe` blocks for: "ResponseItem Import Boundary", "Shared Component Isolation", "Client Containment", "Field Neutrality". Use `fs.readFileSync` and `path.resolve` for file reading. Follow existing Vitest patterns (globals enabled, no explicit imports for describe/it/expect).
+- [X] T001 Discover all source files importing or referencing ResponseItem by searching `src/**/*.ts` (excluding `__tests__/` and `node_modules/`). Categorize each file as: client class (`src/core/models/client/`), type definition, shared component, or other. Output a categorized list for use in subsequent test tasks.
+- [X] T002 Create the architectural guard-rail test file scaffold at `src/core/models/__tests__/provider-agnostic.architecture.test.ts`. Define the banned provider SDK import patterns (`openai`, `@google/genai`, `@anthropic-ai/sdk`, `groq-sdk`, `fireworks`, `together-ai`) and the allowed provider directory (`src/core/models/client/`) as test-level constants. Include empty `describe` blocks for: "ResponseItem Import Boundary", "Shared Component Isolation", "Client Containment", "Field Neutrality". Use `fs.readFileSync` and `path.resolve` for file reading. Follow existing Vitest patterns (globals enabled, no explicit imports for describe/it/expect).
 
 **Checkpoint**: Test file scaffold exists with constants defined and empty test groups ready to fill
 
@@ -32,13 +32,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T003 [US1] Write test "ResponseItem type definition has zero provider SDK imports" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "ResponseItem Import Boundary" describe block. Read `src/core/protocol/types.ts` with `fs.readFileSync`, extract all `import` and `from` statements, and assert none match the banned provider SDK patterns. Test must fail if any provider SDK import is added to types.ts in the future.
-- [ ] T004 [P] [US1] Write test "ResponseItem field names are provider-neutral" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Field Neutrality" describe block. Parse the ResponseItem type definition from `src/core/protocol/types.ts`, extract all field/property names, and assert none contain provider name substrings (openai, gemini, groq, anthropic, fireworks, together, google, xai). Allow known acceptable fields: `thoughtSignature` (documented opaque metadata).
-- [ ] T005 [P] [US1] Write test "ResponseItem metadata fields are opaque types" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Field Neutrality" describe block. Verify that `thoughtSignature`, `reasoning_content`, and `encrypted_content` fields use primitive types (string) and do not reference any provider-specific type aliases or interfaces.
+- [X] T003 [US1] Write test "ResponseItem type definition has zero provider SDK imports" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "ResponseItem Import Boundary" describe block. Read `src/core/protocol/types.ts` with `fs.readFileSync`, extract all `import` and `from` statements, and assert none match the banned provider SDK patterns. Test must fail if any provider SDK import is added to types.ts in the future.
+- [X] T004 [P] [US1] Write test "ResponseItem field names are provider-neutral" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Field Neutrality" describe block. Parse the ResponseItem type definition from `src/core/protocol/types.ts`, extract all field/property names, and assert none contain provider name substrings (openai, gemini, groq, anthropic, fireworks, together, google, xai). Allow known acceptable fields: `thoughtSignature` (documented opaque metadata).
+- [X] T005 [P] [US1] Write test "ResponseItem metadata fields are opaque types" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Field Neutrality" describe block. Verify that `thoughtSignature`, `reasoning_content`, and `encrypted_content` fields use primitive types (string) and do not reference any provider-specific type aliases or interfaces.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Run the US1 tests. If any test fails, audit `src/core/protocol/types.ts` to identify the violation and fix it by replacing provider-specific references with generic alternatives. Re-run tests until all pass.
+- [X] T006 [US1] Run the US1 tests. If any test fails, audit `src/core/protocol/types.ts` to identify the violation and fix it by replacing provider-specific references with generic alternatives. Re-run tests until all pass.
 
 **Checkpoint**: All ResponseItem type definition boundary tests pass. types.ts confirmed provider-agnostic.
 
@@ -52,13 +52,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T007 [US2] Write test "Provider SDK imports exist only in client/ directory" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Client Containment" describe block. Dynamically discover all `.ts` source files under `src/` (excluding `__tests__/`, `node_modules/`, `__test-utils__/`). For each file NOT in `src/core/models/client/`, read its contents and assert it does not import from any banned provider SDK pattern. This ensures provider imports are contained to client classes only.
-- [ ] T008 [P] [US2] Write test "Shared components have zero provider-specific branching" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Shared Component Isolation" describe block. For each known shared component (`src/core/events/EventMapping.ts`, `src/core/models/PromptHelpers.ts`, `src/core/compact/CompactService.ts`, `src/core/TurnManager.ts`, `src/core/session/state/SessionState.ts`, `src/core/session/state/SnapshotCompressor.ts`, `src/core/TaskRunner.ts`, `src/core/AgentTask.ts`, `src/core/title/TitleGenerator.ts`), read the file and assert it does not contain provider name string literals used in conditional checks (e.g., `=== 'openai'`, `=== 'groq'`, `=== 'google'`, `=== 'xai'`, `=== 'fireworks'`, `=== 'together'`, `=== 'anthropic'`).
-- [ ] T009 [P] [US2] Write test "All client subclasses are within client/ directory" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Client Containment" describe block. Verify that the 7 known client files (`OpenAIResponsesClient.ts`, `OpenAIChatCompletionClient.ts`, `GoogleCompletionClient.ts`, `GroqClient.ts`, `FireworksClient.ts`, `FireworksChatCompletionClient.ts`, `TogetherChatCompletionClient.ts`) all exist within `src/core/models/client/` and that no other `.ts` files in `src/core/models/client/` directory exist that are not in this expected list (detect unexpected client additions).
+- [X] T007 [US2] Write test "Provider SDK imports exist only in client/ directory" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Client Containment" describe block. Dynamically discover all `.ts` source files under `src/` (excluding `__tests__/`, `node_modules/`, `__test-utils__/`). For each file NOT in `src/core/models/client/`, read its contents and assert it does not import from any banned provider SDK pattern. This ensures provider imports are contained to client classes only.
+- [X] T008 [P] [US2] Write test "Shared components have zero provider-specific branching" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Shared Component Isolation" describe block. For each known shared component (`src/core/events/EventMapping.ts`, `src/core/models/PromptHelpers.ts`, `src/core/compact/CompactService.ts`, `src/core/TurnManager.ts`, `src/core/session/state/SessionState.ts`, `src/core/session/state/SnapshotCompressor.ts`, `src/core/TaskRunner.ts`, `src/core/AgentTask.ts`, `src/core/title/TitleGenerator.ts`), read the file and assert it does not contain provider name string literals used in conditional checks (e.g., `=== 'openai'`, `=== 'groq'`, `=== 'google'`, `=== 'xai'`, `=== 'fireworks'`, `=== 'together'`, `=== 'anthropic'`).
+- [X] T009 [P] [US2] Write test "All client subclasses are within client/ directory" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Client Containment" describe block. Verify that the 7 known client files (`OpenAIResponsesClient.ts`, `OpenAIChatCompletionClient.ts`, `GoogleCompletionClient.ts`, `GroqClient.ts`, `FireworksClient.ts`, `FireworksChatCompletionClient.ts`, `TogetherChatCompletionClient.ts`) all exist within `src/core/models/client/` and that no other `.ts` files in `src/core/models/client/` directory exist that are not in this expected list (detect unexpected client additions).
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Run the US2 tests. If any test fails, audit the failing file(s) to identify provider-specific logic that leaked outside of client classes. Fix by moving provider-specific logic into the appropriate client subclass. Re-run tests until all pass.
+- [X] T010 [US2] Run the US2 tests. If any test fails, audit the failing file(s) to identify provider-specific logic that leaked outside of client classes. Fix by moving provider-specific logic into the appropriate client subclass. Re-run tests until all pass.
 
 **Checkpoint**: All shared component isolation and client containment tests pass. Provider-specific logic confirmed isolated to client/ directory.
 
@@ -72,12 +72,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T011 [US3] Write test "EventMapping has zero provider-specific code paths" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Shared Component Isolation" describe block. Read `src/core/events/EventMapping.ts` and assert: (a) no provider SDK imports, (b) no provider name string conditionals, (c) no references to provider-specific response formats. This ensures the UI layer never needs to know which provider generated a response.
-- [ ] T012 [P] [US3] Write test "ResponseEvent type definition is provider-agnostic" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Shared Component Isolation" describe block. Read `src/core/models/types/ResponseEvent.ts` and assert it contains no provider SDK imports and references only generic ResponseItem types.
+- [X] T011 [US3] Write test "EventMapping has zero provider-specific code paths" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Shared Component Isolation" describe block. Read `src/core/events/EventMapping.ts` and assert: (a) no provider SDK imports, (b) no provider name string conditionals, (c) no references to provider-specific response formats. This ensures the UI layer never needs to know which provider generated a response.
+- [X] T012 [P] [US3] Write test "ResponseEvent type definition is provider-agnostic" in `src/core/models/__tests__/provider-agnostic.architecture.test.ts` under the "Shared Component Isolation" describe block. Read `src/core/models/types/ResponseEvent.ts` and assert it contains no provider SDK imports and references only generic ResponseItem types.
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Run the US3 tests. If any test fails, audit `src/core/events/EventMapping.ts` and `src/core/models/types/ResponseEvent.ts` to identify violations. Fix by extracting provider-specific logic into the appropriate client class's `convertSDKEventToResponseEvent` method. Re-run tests until all pass.
+- [X] T013 [US3] Run the US3 tests. If any test fails, audit `src/core/events/EventMapping.ts` and `src/core/models/types/ResponseEvent.ts` to identify violations. Fix by extracting provider-specific logic into the appropriate client class's `convertSDKEventToResponseEvent` method. Re-run tests until all pass.
 
 **Checkpoint**: Event mapping and reverse conversion path confirmed provider-agnostic.
 
@@ -87,9 +87,9 @@
 
 **Purpose**: Final validation and documentation
 
-- [ ] T014 Run the full test suite with `npm test -- --run` to confirm no regressions from any changes made during the audit
-- [ ] T015 Run TypeScript type-check with `npm run type-check` to confirm no type errors introduced
-- [ ] T016 Update `specs/026-provider-agnostic-audit/research.md` Audit Findings Summary section with final pass/fail status for each file category, noting any violations that were fixed
+- [X] T014 Run the full test suite with `npm test -- --run` to confirm no regressions from any changes made during the audit
+- [X] T015 Run TypeScript type-check with `npm run type-check` to confirm no type errors introduced
+- [X] T016 Update `specs/026-provider-agnostic-audit/research.md` Audit Findings Summary section with final pass/fail status for each file category, noting any violations that were fixed
 
 ---
 

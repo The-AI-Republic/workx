@@ -21,6 +21,7 @@ export default defineConfig({
       configFile: resolve(__dirname, 'svelte.config.mjs'),
     }),
   ],
+  base: './',
   root: 'src/desktop',
   envDir: resolve(__dirname, 'src/desktop'), // Load .env from src/desktop
   define: {
@@ -31,16 +32,6 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'src/desktop/index.html'),
       },
-      external: [
-        // Tauri v2 API packages
-        '@tauri-apps/api/core',
-        '@tauri-apps/api/window',
-        '@tauri-apps/api/event',
-        '@tauri-apps/api/path',
-        '@tauri-apps/plugin-global-shortcut',
-        '@tauri-apps/plugin-notification',
-        '@tauri-apps/plugin-shell',
-      ],
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name]-[hash].js',

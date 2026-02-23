@@ -1,51 +1,162 @@
 {
+  "extension_name": {
+    "message": "BrowserX"
+  },
+  "extension_description": {
+    "message": "Generel AI-agent i browseren til arbejdsopgaver"
+  },
+  "1_API_Key": {
+    "message": "$1$ API-nøgle",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "1_API_key_removed_successfully": {
+    "message": "$1$ API-nøgle fjernet med succes",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "missedTasks_length_task_s_missed_their_s_a402": {
+    "message": "${missedTasks.length} opgave(r) gik glip af deres planlagte tidspunkt, mens browseren var lukket."
+  },
+  "1_accuracy_may_be_reduced": {
+    "message": "(#$1$ - nøjagtigheden kan være reduceret)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Active_tab_marker": {
+    "message": "(aktiv)"
+  },
+  "multiple_files": {
+    "message": "(flere filer)"
+  },
+  "no_output": {
+    "message": "(ingen output)"
+  },
+  "no_result": {
+    "message": "(intet resultat)"
+  },
+  "patch_details": {
+    "message": "(patch-detaljer)"
+  },
+  "Enter_command": {
+    "message": ">> Indtast kommando..."
+  },
+  "A2A_Agents": {
+    "message": "A2A-agenter"
+  },
+  "API_Key": {
+    "message": "API-nøgle"
+  },
+  "API_Key_Configuration": {
+    "message": "API-nøglekonfiguration"
+  },
+  "API_Version": {
+    "message": "API-version"
+  },
+  "API_key_editing_is_disabled_in_backend_m_715b": {
+    "message": "Redigering af API-nøgle er deaktiveret i backend-tilstand"
+  },
+  "API_key_for_authentication_stored_encryp_0d20": {
+    "message": "API-nøgle til godkendelse (gemt krypteret)"
+  },
+  "API_key_has_expired": {
+    "message": "API-nøgle er udløbet"
+  },
+  "API_key_has_insufficient_permissions": {
+    "message": "API-nøgle har utilstrækkelige tilladelser"
+  },
+  "API_key_saved_successfully": {
+    "message": "API-nøgle gemt med succes!"
+  },
+  "API_keys_are_encrypted_and_stored_locall_35e2": {
+    "message": "API-nøgler er krypteret og gemt lokalt i din browser. De sendes aldrig til eksterne servere, undtagen ved API‑kald."
+  },
   "Access_browser_storage_localStorage_sess_f762": {
     "message": "Adgang til browserlagring (localStorage, sessionStorage, cookies)"
   },
-  "Action": {
-    "message": "Handling"
-  },
   "Action_approval_mode_trusted_domains_ris_003b": {
-    "message": ""
-  },
-  "Action_Details": {
-    "message": "Handlingsdetaljer"
+    "message": "Godkendelsestilstand for handling, betroede domæner, risikoinstillinger"
   },
   "Active_Sessions": {
-    "message": ""
+    "message": "Aktive sessioner"
   },
   "Add": {
-    "message": ""
+    "message": "Tilføj"
   },
-  "Add_a_server_to_connect_to_external_tool_e357": {
-    "message": ""
-  },
-  "Add_Modification": {
-    "message": "Tilføj ændring"
+  "Add_Agent": {
+    "message": "Tilføj agent"
   },
   "Add_Server": {
-    "message": ""
+    "message": "Tilføj server"
   },
   "Add_Task": {
-    "message": ""
+    "message": "Tilføj opgave"
+  },
+  "Add_a_server_to_connect_to_external_tool_e357": {
+    "message": "Tilføj en server for at oprette forbindelse til eksterne værktøjer."
+  },
+  "Add_an_agent_to_connect_to_external_skil_5a00": {
+    "message": "Tilføj en agent for at oprette forbindelse til eksterne færdigheder."
   },
   "Additional_Bind_Mounts": {
-    "message": ""
+    "message": "Yderligere bind-monteringer"
   },
   "Advanced_Configuration": {
     "message": "Avanceret konfiguration"
   },
-  "Advanced_Options": {
+  "Advanced_Settings": {
     "message": "Avancerede indstillinger"
   },
-  "Advanced_Settings": {
-    "message": ""
+  "Agent": {
+    "message": "Agent"
   },
   "Agent_Execution_Tools": {
     "message": "Agentens eksekveringsværktøjer"
   },
+  "Agent_Turn_Complete": {
+    "message": "Agentens tur fuldført"
+  },
+  "Agent_URL_is_required": {
+    "message": "Agent-URL er påkrævet"
+  },
+  "Agent_added_successfully": {
+    "message": "Agent tilføjet succesfuldt"
+  },
+  "Agent_name_can_only_contain_letters_numb_051c": {
+    "message": "Agentnavn kan kun indeholde bogstaver, tal og bindestreger"
+  },
+  "Agent_name_is_required": {
+    "message": "Agentnavn er påkrævet"
+  },
+  "Agent_not_initialized": {
+    "message": "Agent er ikke initialiseret"
+  },
+  "Agent_removed_successfully": {
+    "message": "Agent fjernet succesfuldt"
+  },
+  "Agent_turn_completed_successfully": {
+    "message": "Agentens tur afsluttet succesfuldt"
+  },
+  "Agent_updated_successfully": {
+    "message": "Agent opdateret succesfuldt"
+  },
+  "All_actions_are_auto_approved_on_these_d_ffda": {
+    "message": "Alle handlinger godkendes automatisk på disse domæner."
+  },
+  "All_actions_are_denied_on_these_domains": {
+    "message": "Alle handlinger nægtes på disse domæner."
+  },
   "All_commands_run_inside_an_OS_native_san_ebab": {
-    "message": ""
+    "message": "Alle kommandoer kører i en OS‑native sandbox. Skrivelser er begrænset til arbejdsområdets mappe."
   },
   "Allow_agent_to_execute_system_commands_u_1182": {
     "message": "Tillad agenten at udføre systemkommandoer (brug med forsigtighed)"
@@ -57,58 +168,108 @@
     "message": "Tillad indholdsscripts at køre på websider"
   },
   "Allowed": {
-    "message": ""
+    "message": "Tilladt"
   },
   "Allowed_Origins": {
     "message": "Tilladte oprindelser"
   },
   "Alphanumeric_characters_and_hyphens_only_fa49": {
-    "message": ""
+    "message": "Kun alfanumeriske tegn og bindestreger (1‑50 tegn)"
   },
-  "API_Key": {
-    "message": ""
+  "Always_Approve": {
+    "message": "Godkend altid"
   },
-  "API_Key_Configuration": {
-    "message": "API-nøglekonfiguration"
-  },
-  "API_key_for_authentication_stored_encryp_0d20": {
-    "message": ""
-  },
-  "API_keys_are_encrypted_and_stored_locall_35e2": {
-    "message": "API-nøgler er krypteret og gemt lokalt i din browser. De sendes aldrig til eksterne servere, undtagen ved API‑kald."
-  },
-  "Approval_History": {
-    "message": "Godkendelseshistorik"
-  },
-  "Approval_Mode": {
-    "message": ""
+  "Apple_Pi_Your_personal_AI_Alpha": {
+    "message": "Apple Pi: Din personlige AI (Alpha)"
   },
   "Approval_Safety": {
-    "message": ""
+    "message": "Godkendelse & Sikkerhed"
+  },
+  "Approval_Mode": {
+    "message": "Godkendelsestilstand"
+  },
+  "Approval_Required": {
+    "message": "Godkendelse påkrævet"
+  },
+  "Approval_Required_Apply_Patch": {
+    "message": "Godkendelse påkrævet: Anvend patch"
+  },
+  "Approval_Required_Execute_Command": {
+    "message": "Godkendelse påkrævet: Udfør kommando"
   },
   "Approve": {
     "message": "Godkend"
   },
-  "Approve_this_action": {
-    "message": "Godkend denne handling"
+  "Approve_changes_to_eventMsg_data_path": {
+    "message": "Godkend ændringer til: ${eventMsg.data.path}"
+  },
+  "Approve_execution_eventMsg_data_command": {
+    "message": "Godkend udførelse: ${eventMsg.data.command}"
+  },
+  "Are_you_sure_you_want_to_cancel_this_tas_8573": {
+    "message": "Er du sikker på, at du vil annullere denne opgave?"
+  },
+  "Are_you_sure_you_want_to_remove_this_age_b9ba": {
+    "message": "Er du sikker på, at du vil fjerne denne agent?"
+  },
+  "Are_you_sure_you_want_to_remove_your_1_A_4b91": {
+    "message": "Er du sikker på, at du vil fjerne din $1$ API-nøgle?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Ask_Browserx_to_extract_structured_data__88fc": {
     "message": "Bed Browserx om at udtrække strukturerede data fra enhver webside"
   },
+  "Ask_for_medium_risk_and_above_risk_30_Re_1c08": {
+    "message": "Spørg om handlinger med medium risiko og derover (risiko > 30). Anbefales for de fleste brugere."
+  },
+  "Ask_only_for_high_risk_actions_risk_60_F_bc0a": {
+    "message": "Spørg kun om handlinger med høj risiko (risiko > 60). For erfarne brugere."
+  },
+  "Auth_Type": {
+    "message": "Godkendelsestype"
+  },
+  "Authentication_credential_stored_encrypt_c46a": {
+    "message": "Godkendelsesoplysning (lagret krypteret)"
+  },
+  "Authentication_failed": {
+    "message": "Godkendelse mislykkedes"
+  },
+  "Authentication_method_for_the_agent": {
+    "message": "Godkendelsesmetode for agenten"
+  },
   "Auto_default": {
-    "message": ""
+    "message": "Auto (standard)"
+  },
+  "Auto_approve_everything": {
+    "message": "Godkend alt automatisk"
+  },
+  "Auto_approve_everything_Deny_rules_still_1411": {
+    "message": "Godkend alt automatisk. Afvisningsregler gælder stadig. Brug på egen risiko."
+  },
+  "Auto_approved_timeout_reached": {
+    "message": "Godkendt automatisk – timeout nået"
   },
   "Automatically_start_the_app_when_you_log_beed": {
-    "message": ""
+    "message": "Start appen automatisk, når du logger ind på din computer"
+  },
+  "Available_Skills": {
+    "message": "Tilgængelige færdigheder"
+  },
+  "Available_Tools": {
+    "message": "Tilgængelige værktøjer"
   },
   "Available": {
     "message": "Tilgængelig:"
   },
-  "Available_Tools": {
-    "message": ""
-  },
   "Back": {
     "message": "Tilbage"
+  },
+  "Back_to_Model_Config": {
+    "message": "Tilbage til modelkonfiguration"
   },
   "Backend_Mode": {
     "message": "Backend-tilstand"
@@ -116,17 +277,53 @@
   "Backend_Mode_Active": {
     "message": "Backend-tilstand aktiv"
   },
+  "Backend_not_available_Please_wait_a_mome_9218": {
+    "message": "Backend er ikke tilgængelig. Vent et øjeblik og prøv igen."
+  },
+  "Backend_server_error_please_try_again_la_0515": {
+    "message": "Backend-serverfejl – prøv igen senere"
+  },
+  "Backoff_Multiplier": {
+    "message": "Tilbagekoblingsmultiplikator"
+  },
+  "Balanced": {
+    "message": "Balanceret"
+  },
+  "Base_URL": {
+    "message": "Base-URL"
+  },
+  "Base_URL_not_configured_for_this_provide_2bfd": {
+    "message": "Base-URL er ikke konfigureret for denne udbyder"
+  },
+  "Bearer_Token": {
+    "message": "Bearer-token"
+  },
   "Beta": {
     "message": "Beta"
   },
-  "Browser_automation_tool_toggles": {
-    "message": "Skift for browserautomatiseringsværktøjer"
+  "Bind_mount_path_must_be_absolute": {
+    "message": "Bind-mount-sti skal være absolut"
+  },
+  "Blocked_Domains": {
+    "message": "Blokerede domæner"
   },
   "Browser_Tools": {
     "message": "Browserværktøjer"
   },
-  "Cache_behavior_and_data_retention": {
-    "message": "Cache-adfærd og datalagring"
+  "Browser_automation_tool_toggles": {
+    "message": "Skift for browserautomatiseringsværktøjer"
+  },
+  "BrowserX": {
+    "message": "BrowserX"
+  },
+  "Browserx": {
+    "message": "Browserx"
+  },
+  "Browserx_Alpha": {
+    "message": "Browserx (Alpha)"
+  },
+  "CWD": {
+    "message": "Aktuel mappe:"
   },
   "Cache_Settings": {
     "message": "Cache-indstillinger"
@@ -134,11 +331,42 @@
   "Cache_TTL_seconds": {
     "message": "Cache TTL (sekunder)"
   },
+  "Cache_behavior_and_data_retention": {
+    "message": "Cache-adfærd og datalagring"
+  },
   "Cancel": {
     "message": "Fortryd"
   },
+  "Cancelled": {
+    "message": "Annulleret"
+  },
+  "Cannot_execute_task_No_API_key_configure_c622": {
+    "message": "Kan ikke udføre opgaven: Ingen API-nøgle konfigureret for ${providerName}. Gå til Indstillinger → Modelkonfiguration og tilføj din API-nøgle."
+  },
+  "Cannot_select_model_1": {
+    "message": "Kan ikke vælge model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Cannot_send_message_No_API_key_configure_5219": {
+    "message": "Kan ikke sende besked: Ingen API-nøgle konfigureret for $1$. Klik på Indstillinger-knappen og konfigurer din API-nøgle.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Capabilities": {
+    "message": "Funktioner"
+  },
   "Chat_History": {
     "message": "Chat-historik"
+  },
+  "Checking_agent_status": {
+    "message": "Kontrollerer agentstatus..."
   },
   "Choose_AI_Model": {
     "message": "Vælg AI-model"
@@ -159,22 +387,37 @@
     "message": "Klik på Browserx‑ikonet i værktøjslinjen eller tryk Alt+Shift+C"
   },
   "Click_to_cancel_login": {
-    "message": ""
+    "message": "Klik for at annullere login"
   },
   "Click_to_select_a_model": {
     "message": "Klik for at vælge en model"
   },
+  "Close": {
+    "message": "Luk"
+  },
   "Close_settings": {
     "message": "Luk indstillinger"
+  },
+  "Collapse": {
+    "message": "Skjul"
+  },
+  "Command_Approval_Required": {
+    "message": "Godkendelse af kommando påkrævet"
+  },
+  "Command_completed": {
+    "message": "Kommando fuldført"
   },
   "Command": {
     "message": "Kommando"
   },
   "Commands_run_directly_on_the_host_Securi_8e6e": {
-    "message": ""
+    "message": "Kommandoer køres direkte på værten. Sikkerhedsfilteret gælder stadig."
   },
   "Completed": {
-    "message": ""
+    "message": "Fuldført"
+  },
+  "Completed_lastAssistantMessage_substring_40c8": {
+    "message": "Fuldført: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimer cachedata for at spare lagerplads"
@@ -182,35 +425,113 @@
   "Configure_AI_model_and_API_keys": {
     "message": "Konfigurer AI-model og API-nøgler"
   },
+  "Configure_an_API_key_in_Settings": {
+    "message": "Konfigurer en API-nøgle i Indstillinger"
+  },
+  "Configured": {
+    "message": "Konfigureret"
+  },
+  "Configured_Agents": {
+    "message": "Konfigurerede agenter"
+  },
   "Configured_Servers": {
-    "message": ""
+    "message": "Konfigurerede servere"
   },
   "Connect": {
-    "message": ""
+    "message": "Opret forbindelse"
   },
-  "Connect_to_an_MCP_server_to_discover_too_c35e": {
-    "message": ""
-  },
-  "Connect_to_external_MCP_tool_servers": {
-    "message": ""
+  "Connect_to_Agent_to_Agent_A2A_protocol_a_cad4": {
+    "message": "Opret forbindelse til Agent-to-Agent (A2A) protokolagenter for at udvide funktionerne med eksterne agentfærdigheder."
   },
   "Connect_to_Model_Context_Protocol_MCP_se_2a71": {
-    "message": ""
+    "message": "Opret forbindelse til Model Context Protocol (MCP) servere for at udvide agenten med eksterne værktøjer."
+  },
+  "Connect_to_an_A2A_agent_to_discover_skil_4d36": {
+    "message": "Opret forbindelse til en A2A-agent for at opdage færdigheder."
+  },
+  "Connect_to_an_MCP_server_to_discover_too_c35e": {
+    "message": "Opret forbindelse til en MCP-server for at opdage værktøjer."
+  },
+  "Connect_to_external_MCP_tool_servers": {
+    "message": "Opret forbindelse til eksterne MCP-værktøjsservere"
   },
   "Connected": {
     "message": "Tilsluttet"
   },
-  "Connecting": {
-    "message": ""
+  "Connected_successfully": {
+    "message": "Forbindelse oprettet"
   },
-  "Context": {
-    "message": "Kontekst"
+  "Connecting": {
+    "message": "Opretter forbindelse..."
+  },
+  "Connection_error": {
+    "message": "Forbindelsesfejl"
+  },
+  "Connection_failed_1": {
+    "message": "Forbindelse mislykkedes: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_failed_Base_URL_not_configure_40c4": {
+    "message": "Forbindelse mislykkedes: Basis-URL er ikke konfigureret"
+  },
+  "Connection_failed_selected_model_configu_0b70": {
+    "message": "Forbindelse mislykkedes: valgt modelkonfiguration mangler"
+  },
+  "Connection_successful": {
+    "message": "Forbindelse lykkedes!"
+  },
+  "Connection_test_failed_1": {
+    "message": "Forbindelsestest mislykkedes: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Connection_test_failed_Invalid_API_key": {
+    "message": "Forbindelsestest mislykkedes: Ugyldig API-nøgle"
+  },
+  "Connection_test_successful": {
+    "message": "Forbindelsestest lykkedes!"
+  },
+  "Connection_test_successful_API_key_is_va_3e34": {
+    "message": "Forbindelsestest lykkedes! (API-nøgle er gyldig)"
+  },
+  "Connection_was_refused": {
+    "message": "Forbindelsen blev afvist"
+  },
+  "Connection_was_reset": {
+    "message": "Forbindelsen blev nulstillet"
+  },
+  "Content_violates_policy_contentType_cont_2034": {
+    "message": "Indhold overtræder politik: ${contentType} indhold er ikke tilladt"
+  },
+  "Context_Window": {
+    "message": "Kontekstvindue"
+  },
+  "Context_compacted_saved_1_k_tokens": {
+    "message": "Kontekst komprimeret: gemte ~$1$k tokens",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Controls_how_aggressively_the_agent_asks_d3ba": {
+    "message": "Styrer, hvor aggressivt agenten beder om godkendelse."
   },
   "Create_New_Tab": {
     "message": "Opret ny fane"
   },
   "Created": {
-    "message": ""
+    "message": "Oprettet"
+  },
+  "Creator": {
+    "message": "Skaber"
   },
   "Credit_Details": {
     "message": "Kreditoplysninger"
@@ -218,8 +539,11 @@
   "Current_Plan": {
     "message": "Nuværende plan:"
   },
-  "Current_tab_marker": {
-    "message": ""
+  "DNS_lookup_failed": {
+    "message": "DNS-opslag mislykkedes"
+  },
+  "DOM_Tool": {
+    "message": "DOM-værktøj"
   },
   "Daily_Credits": {
     "message": "Daglige kreditter"
@@ -228,10 +552,34 @@
     "message": "Dataudtrækningsværktøj"
   },
   "Date": {
-    "message": ""
+    "message": "Dato"
   },
   "Days_until_expiration": {
     "message": "Dage indtil udløb"
+  },
+  "Debug_logging_disabled": {
+    "message": "Fejlsøgningslogning deaktiveret"
+  },
+  "Debug_logging_enabled": {
+    "message": "Fejlsøgningslogning aktiveret"
+  },
+  "Default": {
+    "message": "Standard"
+  },
+  "Deny": {
+    "message": "Afvis"
+  },
+  "Deprecated": {
+    "message": "Forældet"
+  },
+  "Deprecation_Message": {
+    "message": "Forældelsesmeddelelse"
+  },
+  "Description": {
+    "message": "Beskrivelse"
+  },
+  "Desktop_mode": {
+    "message": "Skrivebordstilstand"
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Udviklet og understøttet af AI Republic"
@@ -240,37 +588,43 @@
     "message": "Forkast ændringer"
   },
   "Disconnect": {
-    "message": ""
+    "message": "Afbryd"
+  },
+  "Disconnected_successfully": {
+    "message": "Afbrydning lykkedes"
   },
   "Dismiss": {
-    "message": ""
+    "message": "Afvis"
+  },
+  "Dismiss_notification": {
+    "message": "Afvis notifikation"
   },
   "Display_token_consumption_input_output_t_4979": {
     "message": "Vis tokenforbrug (input/output‑tokens) når opgaver er afsluttet"
   },
-  "DOM_Tool": {
-    "message": "DOM-værktøj"
+  "Draft": {
+    "message": "Udkast"
   },
   "Duration": {
-    "message": ""
+    "message": "Varighed"
+  },
+  "ERROR": {
+    "message": "FEJL"
   },
   "Edit": {
-    "message": ""
+    "message": "Rediger"
+  },
+  "Edit_Agent": {
+    "message": "Rediger agent"
   },
   "Edit_Server": {
-    "message": ""
+    "message": "Rediger server"
   },
   "Enable_All_Tools": {
     "message": "Aktiver alle værktøjer"
   },
-  "Enable_auto_connect_when_browserx_starts": {
-    "message": ""
-  },
   "Enable_Cache": {
     "message": "Aktiver cache"
-  },
-  "Enable_caching_to_improve_performance_by_ea45": {
-    "message": "Aktiver caching for at forbedre ydeevnen ved at gemme ofte tilgået data"
   },
   "Enable_Compression": {
     "message": "Aktiver komprimering"
@@ -278,56 +632,65 @@
   "Enable_Content_Scripts": {
     "message": "Aktiver indholdsscripts"
   },
-  "Enable_debug_logging": {
-    "message": ""
-  },
   "Enable_Extension": {
     "message": "Aktiver udvidelse"
   },
   "Enable_Model_Context_Protocol_tools_from_29ac": {
-    "message": ""
+    "message": "Aktiver Model Context Protocol-værktøjer fra tilsluttede MCP-servere"
+  },
+  "Enable_auto_connect_when_browserx_starts": {
+    "message": "Aktiver automatisk tilslutning, når browserx starter"
+  },
+  "Enable_caching_to_improve_performance_by_ea45": {
+    "message": "Aktiver caching for at forbedre ydeevnen ved at gemme ofte tilgået data"
+  },
+  "Enable_debug_logging": {
+    "message": "Aktiver fejlsøgningslogning"
   },
   "Enable_web_search_capabilities_for_the_a_e8a0": {
     "message": "Aktiver websøgefunktioner for agenten"
   },
   "Enabled": {
-    "message": ""
+    "message": "Aktiveret"
   },
   "Enter_API_key_if_required": {
-    "message": ""
+    "message": "Indtast API-nøgle, hvis påkrævet"
+  },
+  "Enter_API_key_or_bearer_token": {
+    "message": "Indtast API-nøgle eller bearer-token"
   },
   "Enter_your_LLM_API_key": {
     "message": "Indtast din LLM API‑nøgle"
   },
   "Enter_your_task": {
-    "message": ""
+    "message": "Indtast din opgave..."
   },
   "Error": {
-    "message": ""
+    "message": "Fejl"
+  },
+  "Error_Not_connected_to_agent_Please_refr_d7f7": {
+    "message": "Fejl: Ikke forbundet til agent. Opdater venligst siden."
   },
   "Execute_Commands": {
     "message": "Udfør kommandoer"
   },
   "Execution_Mode": {
-    "message": ""
+    "message": "Eksekveringsmode"
+  },
+  "Exit_Code": {
+    "message": "Afslutningskode:"
+  },
+  "Expand": {
+    "message": "Udvid"
   },
   "Expire_after_days": {
     "message": "Udløber efter antal dage"
   },
-  "Explain_your_decision": {
-    "message": "Forklar din beslutning…"
+  "Explain_this_info_selectionText": {
+    "message": "Forklar dette: ${info.selectionText}"
   },
-  "Extension_Configuration": {
-    "message": "Udvidelseskonfiguration"
-  },
-  "Extension_configuration_and_permissions": {
-    "message": "Udvidelseskonfiguration og tilladelser"
-  },
-  "extension_description": {
-    "message": "Generel AI-agent i browseren til arbejdsopgaver"
-  },
-  "extension_name": {
-    "message": "BrowserX"
+  "Explain_with_Browserx": {
+    "message": "Forklar med Browserx"
   },
   "Extension_Permission": {
     "message": "Udvidelse & tilladelse"
@@ -335,35 +698,156 @@
   "Extension_Permission_Settings": {
     "message": "Udvidelse‑ og tilladelsesindstillinger"
   },
+  "Extension_Configuration": {
+    "message": "Udvidelseskonfiguration"
+  },
+  "Extension_configuration_and_permissions": {
+    "message": "Udvidelseskonfiguration og tilladelser"
+  },
   "Extra_Credits": {
     "message": "Ekstra kreditter"
   },
   "Extra_directories_accessible_inside_the__2d86": {
-    "message": ""
+    "message": "Ekstra mapper tilgængelige i sandkassen"
   },
   "Extract_Data": {
     "message": "Udtræk data:"
   },
+  "Extract_data_with_Browserx": {
+    "message": "Udtræk data med Browserx"
+  },
   "Extract_specific_data_patterns_from_page_4658": {
     "message": "Udtræk specifikke datamønstre fra sider"
+  },
+  "Extract_structured_data_from_this_page": {
+    "message": "Udtræk strukturerede data fra denne side"
   },
   "Extract_structured_data_from_web_pages": {
     "message": "Udtræk struktureret data fra websider"
   },
+  "Failed": {
+    "message": "Mislykket"
+  },
+  "Failed_to_change_model_1": {
+    "message": "Kunne ikke ændre model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_connect_1": {
+    "message": "Kunne ikke oprette forbindelse: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
+    "message": "Kunne ikke oprette en ny fane. Prøv igen."
+  },
+  "Failed_to_create_browser_tab_errorMsg": {
+    "message": "Kunne ikke oprette browserfane: ${errorMsg}"
+  },
+  "Failed_to_disconnect_1": {
+    "message": "Kunne ikke afbryde: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_load_A2A_settings": {
+    "message": "Kunne ikke indlæse A2A-indstillinger"
+  },
+  "Failed_to_load_conversation_Please_try_a_e294": {
+    "message": "Kunne ikke indlæse samtale. Prøv igen."
+  },
   "Failed_to_load_preferences": {
     "message": "Kunne ikke indlæse indstillinger"
+  },
+  "Failed_to_load_settings": {
+    "message": "Kunne ikke indlæse indstillinger"
+  },
+  "Failed_to_remove_API_key": {
+    "message": "Kunne ikke fjerne API-nøgle"
+  },
+  "Failed_to_remove_agent_1": {
+    "message": "Kunne ikke fjerne agent: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_API_key": {
+    "message": "Kunne ikke gemme API-nøgle"
+  },
+  "Failed_to_save_debug_logging_setting_1": {
+    "message": "Kunne ikke gemme indstilling for fejlsøgningslogning: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Failed_to_save_settings": {
     "message": "Kunne ikke gemme indstillinger"
   },
+  "Failed_to_save_settings_1": {
+    "message": "Kunne ikke gemme indstillinger: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_save_1": {
+    "message": "Kunne ikke gemme: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Failed_to_send_message_Please_try_again": {
+    "message": "Kunne ikke sende besked. Prøv igen."
+  },
+  "Failed_to_start_new_conversation_Please__0fb1": {
+    "message": "Kunne ikke starte ny samtale. Prøv igen."
+  },
+  "Failed_to_stop_the_task_Please_try_again": {
+    "message": "Kunne ikke stoppe opgaven. Prøv igen."
+  },
+  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
+    "message": "Kunne ikke skifte til fanen ${newTabId}: ${errorMsg}"
+  },
+  "Failed_to_test_connection": {
+    "message": "Kunne ikke teste forbindelsen"
+  },
+  "Failed_to_update_API_mode": {
+    "message": "Kunne ikke opdatere API-tilstand"
+  },
+  "Failed_to_update_service_tier_1": {
+    "message": "Kunne ikke opdatere serviceniveau: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "File_Change_Approval_Required": {
+    "message": "Godkendelse af filændring påkrævet"
+  },
   "File_Operations_Not_Available": {
     "message": "Filoperationer (ikke tilgængelige)"
   },
-  "File_Path": {
-    "message": "Filsti"
-  },
   "Fill_forms_submit_data_interact_with_for_7a1b": {
     "message": "Udfyld formularer, indsend data, interagér med formelementer"
+  },
+  "Flex": {
+    "message": "Flex"
   },
   "Form_Automation_Tool": {
     "message": "Værktøj til formularautomatisering"
@@ -372,16 +856,16 @@
     "message": "Fuld adgang (farligt)"
   },
   "Full_Input": {
-    "message": ""
+    "message": "Fuld input"
   },
   "General": {
     "message": "Generelt"
   },
-  "General_in_browser_AI_agent_for_work_tas_2753": {
-    "message": "General_in_browser_AI_agent_for_work_tas_2753"
-  },
   "General_Settings": {
     "message": "Generelle indstillinger"
+  },
+  "General_in_browser_AI_agent_for_work_tas_2753": {
+    "message": "General_in_browser_AI_agent_for_work_tas_2753"
   },
   "Get_Started": {
     "message": "Kom i gang"
@@ -397,20 +881,73 @@
   "Hello_World": {
     "message": "Hej verden"
   },
-  "History": {
-    "message": "Historik"
+  "Hide_API_key": {
+    "message": "Skjul API-nøgle"
+  },
+  "High_Speed": {
+    "message": "Høj hastighed"
   },
   "How_the_workspace_directory_is_mounted_i_46c1": {
-    "message": ""
+    "message": "Hvordan arbejdsområdets mappe er monteret i sandboxen"
   },
-  "Impact": {
-    "message": "Effekt"
+  "Image_Input": {
+    "message": "Billedinput"
+  },
+  "Improve_this_text_info_selectionText": {
+    "message": "Forbedr denne tekst: ${info.selectionText}"
+  },
+  "Improve_with_Browserx": {
+    "message": "Forbedr med Browserx"
+  },
+  "In": {
+    "message": "I:"
+  },
+  "Incompatible_features": {
+    "message": "Inkompatible funktioner:"
+  },
+  "Initial_Delay": {
+    "message": "Startforsinkelse"
+  },
+  "Input_Token_Price": {
+    "message": "Pris for input‑token"
+  },
+  "Input": {
+    "message": "Inddata:"
+  },
+  "Input_1": {
+    "message": "Inddata: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Intercept_and_modify_network_requests_re_e52d": {
     "message": "Opsnap og modificer netværksanmodninger/svar"
   },
+  "Invalid_API_key": {
+    "message": "Ugyldig API-nøgle"
+  },
+  "Invalid_API_key_provided": {
+    "message": "Ugyldig API-nøgle angivet"
+  },
+  "Invalid_URL_format": {
+    "message": "Ugyldigt URL-format"
+  },
+  "Invalid_submission_format_missing_op_fie_4293": {
+    "message": "Ugyldigt indsendelsesformat: mangler op-felt"
+  },
+  "Invalid_submission_format_op_missing_typ_0fc0": {
+    "message": "Ugyldigt indsendelsesformat: op mangler type-felt"
+  },
   "Keyboard_Shortcuts": {
     "message": "Tastaturgenveje"
+  },
+  "LLM_requests_go_directly_to_provider_API_6fc3": {
+    "message": "LLM-anmodninger går direkte til leverandør-API'er"
+  },
+  "LLM_requests_route_through_AI_Republic_b_9ab9": {
+    "message": "LLM-anmodninger rutes gennem AI Republic-backend"
   },
   "Language": {
     "message": "Sprog"
@@ -419,37 +956,52 @@
     "message": "Læs mere"
   },
   "Leave_empty_to_keep_existing": {
-    "message": ""
+    "message": "Lad stå tomt for at beholde eksisterende"
   },
   "List_of_allowed_origins_one_per_line_Sup_394d": {
     "message": "Liste over tilladte origins (én per linje). Understøtter jokertegn (*)."
   },
-  "LLM_requests_go_directly_to_provider_API_6fc3": {
-    "message": "LLM-anmodninger går direkte til leverandør-API'er"
-  },
-  "LLM_requests_route_through_AI_Republic_b_9ab9": {
-    "message": "LLM-anmodninger rutes gennem AI Republic-backend"
-  },
   "Load_More": {
-    "message": ""
+    "message": "Indlæs mere"
   },
-  "Loading": {
-    "message": ""
+  "Load_more": {
+    "message": "Indlæs mere"
+  },
+  "Loading_configuration": {
+    "message": "Indlæser konfiguration..."
   },
   "Loading_credits": {
     "message": "Indlæser kreditter..."
   },
   "Loading_details": {
-    "message": ""
+    "message": "Indlæser detaljer..."
+  },
+  "Loading_history": {
+    "message": "Indlæser historik..."
   },
   "Loading_settings": {
     "message": "Indlæser indstillinger..."
   },
+  "Loading_tabs": {
+    "message": "Indlæser faner..."
+  },
+  "Loading": {
+    "message": "Indlæser..."
+  },
+  "Log_A2A_protocol_messages_to_browser_con_3702": {
+    "message": "Log A2A-protokolbeskeder til browserkonsollen for fejlfinding"
+  },
   "Log_MCP_protocol_messages_to_browser_con_f380": {
-    "message": ""
+    "message": "Log MCP-protokolbeskeder til browserkonsollen for fejlfinding"
+  },
+  "Log_in_to_your_account": {
+    "message": "Log ind på din konto"
+  },
+  "Logged_in": {
+    "message": "Logget ind"
   },
   "Logging_in": {
-    "message": ""
+    "message": "Logger ind..."
   },
   "Login": {
     "message": "Log ind"
@@ -457,14 +1009,20 @@
   "Login_to_get_free_credits": {
     "message": "Log ind for at få gratis kreditter"
   },
-  "Long_press_the_send_button_to_schedule_a_2a2d": {
-    "message": ""
-  },
   "Long_press_to_schedule_task": {
-    "message": ""
+    "message": "Hold nede for at planlægge opgave"
+  },
+  "Long_press_the_send_button_to_schedule_a_2a2d": {
+    "message": "Hold nede på send-knappen for at planlægge en opgave"
   },
   "Low_credits_remaining": {
     "message": "Få kreditter tilbage"
+  },
+  "MCP_Servers": {
+    "message": "MCP-servere"
+  },
+  "MCP_Tools": {
+    "message": "MCP-værktøjer"
   },
   "Manage_browser_tabs_open_close_switch_qu_aedb": {
     "message": "Administrer browserfaner (åbn, luk, skift, forespørg)"
@@ -479,40 +1037,102 @@
     "message": "Maks. cache-størrelse (MB)"
   },
   "Max_Concurrent_Sessions": {
-    "message": ""
+    "message": "Maks. samtidige sessioner"
+  },
+  "Max_Delay": {
+    "message": "Maks. forsinkelse"
+  },
+  "Max_Output": {
+    "message": "Maks. output"
+  },
+  "Max_Output_Tokens": {
+    "message": "Maks. output‑tokens"
+  },
+  "Max_Retries": {
+    "message": "Maks. forsøg"
   },
   "Maximum_cache_size_in_megabytes_default__2788": {
     "message": "Maksimal cache-størrelse i megabytes (standard: 100)"
   },
   "Maximum_number_of_parallel_agent_session_56dd": {
-    "message": ""
+    "message": "Maksimalt antal parallelle agentsessioner, inklusiv planlagte opgaver"
+  },
+  "Maximum_of_5_agents_reached": {
+    "message": "Maksimum på 5 agenter nået"
   },
   "Maximum_of_5_servers_reached": {
-    "message": ""
+    "message": "Maksimum på 5 servere nået"
   },
   "Maximum_time_in_milliseconds_a_tool_can__00c0": {
     "message": "Maksimal tid (i millisekunder) et værktøj kan køre før timeout (standard: 30000)"
   },
-  "MCP_Servers": {
-    "message": ""
+  "Medium_risk_and_above": {
+    "message": "Mellemrisiko og højere"
   },
-  "MCP_Tools": {
-    "message": ""
+  "Message_service_not_available": {
+    "message": "Beskedservice ikke tilgængelig"
   },
   "Missed": {
-    "message": ""
+    "message": "Mistet"
+  },
+  "Missed_Scheduled_Tasks": {
+    "message": "Mistet planlagte opgaver"
+  },
+  "Model_1_does_not_support_image_input_Som_cde8": {
+    "message": "Modellen \"$1$\" understøtter ikke billedinput. Nogle værktøjer vil blive deaktiveret.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Model_Config": {
     "message": "Modelkonfiguration"
   },
+  "Model_Configuration": {
+    "message": "Modelkonfiguration"
+  },
+  "Model_Key_API": {
+    "message": "Modelnøgle (API)"
+  },
+  "Model_Name": {
+    "message": "Modelnavn"
+  },
   "Model_Selection": {
     "message": "Modelvalg"
   },
+  "Model_and_provider_settings_loaded_from__55a3": {
+    "message": "Model- og udbyderindstillinger indlæst fra standardkonfiguration (kun læse)"
+  },
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model ændret til $1$. Angiv venligst din API-nøgle.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model_changed_to_1_Session_will_be_reini_e2ce": {
+    "message": "Model ændret til $1$. Sessionen vil blive geninitialiseret.",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Model": {
+    "message": "Model:"
+  },
+  "Model_1": {
+    "message": "Model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
   "Modern_Chat": {
     "message": "Modern Chat"
-  },
-  "Modify_parameters_when_requesting_change_268e": {
-    "message": "Ændr parametre ved anmodning om ændringer"
   },
   "Monthly_Credits": {
     "message": "Månedlige kreditter"
@@ -521,7 +1141,7 @@
     "message": "Mere konfiguration"
   },
   "Name": {
-    "message": ""
+    "message": "Navn"
   },
   "Navigate_pages_click_links_handle_browse_6066": {
     "message": "Naviger på sider, klik på links, håndter browsernavigation"
@@ -530,10 +1150,16 @@
     "message": "Navigationsværktøj"
   },
   "Network_Access": {
-    "message": ""
+    "message": "Netværksadgang"
   },
   "Network_Intercept_Tool": {
     "message": "Netværksinterceptværktøj"
+  },
+  "Network_error": {
+    "message": "Netværksfejl"
+  },
+  "Network_error_occurred": {
+    "message": "Der opstod en netværksfejl"
   },
   "Never_expire_permanent": {
     "message": "Udløber aldrig (permanent)"
@@ -541,47 +1167,111 @@
   "New_Conversation": {
     "message": "Ny samtale"
   },
+  "No_A2A_agents_configured_yet": {
+    "message": "Ingen A2A-agenter konfigureret endnu."
+  },
   "No_Access": {
-    "message": ""
+    "message": "Ingen adgang"
   },
-  "No_active_sessions": {
-    "message": ""
-  },
-  "No_approval_history_yet": {
-    "message": "Ingen godkendelseshistorik endnu."
-  },
-  "No_completed_tasks_yet": {
-    "message": ""
+  "No_Access_Configured": {
+    "message": "Ingen adgang konfigureret"
   },
   "No_MCP_servers_configured_yet": {
-    "message": ""
+    "message": "Ingen MCP-servere konfigureret endnu."
+  },
+  "No_access_configured_Please_log_in_or_co_83eb": {
+    "message": "Ingen adgang konfigureret. Log venligst ind eller konfigurer en API-nøgle."
+  },
+  "No_active_sessions": {
+    "message": "Ingen aktive sessioner"
+  },
+  "No_chat_history_yet": {
+    "message": "Ingen chat-historik endnu"
+  },
+  "No_completed_tasks_yet": {
+    "message": "Ingen afsluttede opgaver endnu"
+  },
+  "No_models_available": {
+    "message": "Ingen modeller tilgængelige"
+  },
+  "No_models_available_Please_check_configu_166d": {
+    "message": "Ingen modeller tilgængelige. Kontroller venligst konfigurationen."
   },
   "No_scheduled_tasks": {
-    "message": ""
+    "message": "Ingen planlagte opgaver"
+  },
+  "No_scheduled_time": {
+    "message": "Ingen planlagt tid"
+  },
+  "No_skills_available": {
+    "message": "Ingen færdigheder tilgængelige."
+  },
+  "No_steps_in_plan": {
+    "message": "Ingen trin i planen"
   },
   "No_tabs_available": {
     "message": "Ingen faner tilgængelige"
   },
+  "No_time_set": {
+    "message": "Ingen tid angivet"
+  },
   "No_tools_available": {
-    "message": ""
+    "message": "Ingen værktøjer tilgængelige."
+  },
+  "None": {
+    "message": "Ingen"
   },
   "Not_Connected": {
     "message": "Ikke tilsluttet"
+  },
+  "Notification": {
+    "message": "Notifikation"
   },
   "Number_of_days_before_rollout_data_expir_0673": {
     "message": "Antal dage før data for udrulning udløber (standard: 60)"
   },
   "Offline_tasks_will_run_when_connected": {
-    "message": ""
+    "message": "Offline - opgaver vil køre, når der er forbindelse"
+  },
+  "Older": {
+    "message": "Ældre"
+  },
+  "Only_high_risk_actions": {
+    "message": "Kun handlinger med høj risiko"
+  },
+  "Open_1_settings": {
+    "message": "Åbn $1$ indstillinger",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Open_Side_Panel": {
     "message": "Åbn sidepanel:"
   },
-  "optional": {
-    "message": ""
-  },
   "Organization": {
     "message": "Organisation"
+  },
+  "Organization_ID": {
+    "message": "Organisations-ID"
+  },
+  "Out": {
+    "message": "Ud:"
+  },
+  "Output_Token_Price": {
+    "message": "Output-tokenpris"
+  },
+  "Output": {
+    "message": "Output:"
+  },
+  "Output_1": {
+    "message": "Output: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Page_Action_Tool": {
     "message": "Værktøj til sidehandlinger"
@@ -589,11 +1279,25 @@
   "Page_Vision_Tool": {
     "message": "Værktøj til sidevision"
   },
-  "Parameter_Modifications": {
-    "message": "Parameterændringer"
+  "Past_Month": {
+    "message": "Seneste måned"
+  },
+  "Past_Week": {
+    "message": "Seneste uge"
+  },
+  "Patch_applied_successfully": {
+    "message": "Patch anvendt succesfuldt"
+  },
+  "Patch_for_1_file_s": {
+    "message": "Patch for $1$ fil(er)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Pause_Queue": {
-    "message": ""
+    "message": "Pause kø"
   },
   "Perform_page_actions_scroll_screenshot_w_6214": {
     "message": "Udfør sidehandlinger (rul, skærmbillede, vent)"
@@ -601,50 +1305,117 @@
   "Persist_Cache_to_Storage": {
     "message": "Gem cache permanent"
   },
+  "Plan_1_step_s": {
+    "message": "Plan: $1$ trin",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Please_check_your_API_key_in_settings": {
+    "message": "Kontroller venligst din API-nøgle i indstillingerne."
+  },
+  "Please_enter_a_task_description": {
+    "message": "Indtast venligst en opgavebeskrivelse"
+  },
+  "Please_enter_an_API_key_first": {
+    "message": "Indtast venligst en API-nøgle først"
+  },
   "Please_input_a_valid_API_key": {
     "message": "Indtast venligst en gyldig API-nøgle."
+  },
+  "Please_log_in_again_to_continue_using_th_3d8f": {
+    "message": "Log venligst ind igen for at fortsætte med at bruge AI-agenten."
+  },
+  "Please_select_a_provider": {
+    "message": "Vælg venligst en udbyder"
   },
   "Please_type_a_valid_command": {
     "message": "Indtast venligst en gyldig kommando"
   },
+  "Please_upgrade_the_plan_to_unblock_world_9fed": {
+    "message": "Opgrader venligst planen for at låse op for verdens mest avancerede modeller"
+  },
   "Power": {
-    "message": ""
+    "message": "Strøm"
+  },
+  "Pricing_Information": {
+    "message": "Prisoplysninger"
+  },
+  "Pricing_Page": {
+    "message": "Prisside"
+  },
+  "Priority": {
+    "message": "Prioritet"
   },
   "Priority_tier_provides_faster_response_t_155f": {
     "message": "Prioritetstrin giver hurtigere svartider med højere priser."
   },
+  "Processing": {
+    "message": "Behandler..."
+  },
+  "Protocol": {
+    "message": "Protokol"
+  },
   "Provider": {
     "message": "Udbyder"
+  },
+  "Provider_Configuration": {
+    "message": "Udbyderkonfiguration"
+  },
+  "Provider_ID": {
+    "message": "Udbyder-ID"
+  },
+  "Provider_Name": {
+    "message": "Udbydernavn"
   },
   "Query_and_manipulate_the_DOM_Document_Ob_b829": {
     "message": "Forespørg og manipulér DOM (Document Object Model)"
   },
   "Queue_is_paused": {
-    "message": ""
+    "message": "Køen er sat på pause"
   },
   "Queued": {
-    "message": ""
-  },
-  "Quick_action": {
-    "message": "Hurtig handling"
+    "message": "I kø"
   },
   "Quick_Schedule": {
-    "message": ""
+    "message": "Hurtig planlægning"
   },
   "Quick_Start": {
     "message": "Hurtig start"
   },
+  "Quick_action": {
+    "message": "Hurtig handling"
+  },
+  "Read_Only": {
+    "message": "Skrivebeskyttet"
+  },
+  "Read_Write": {
+    "message": "Læse‑Skriv"
+  },
   "Read_only": {
     "message": "Skrivebeskyttet"
   },
-  "Read_Only": {
-    "message": ""
+  "Reasoning": {
+    "message": "Resonering"
   },
-  "Read_Write": {
-    "message": ""
+  "Reasoning_Efforts": {
+    "message": "Resoneringsindsatser"
   },
-  "Reason_optional": {
-    "message": "Årsag (valgfri)"
+  "Reasoning_Summaries": {
+    "message": "Resoneringsoversigter"
+  },
+  "Reasoning_levels": {
+    "message": "Resoneringsniveauer:"
+  },
+  "Reasoning_1": {
+    "message": "Resonering: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Refreshes_in": {
     "message": "Opdateres om"
@@ -652,59 +1423,86 @@
   "Reject": {
     "message": "Afvis"
   },
-  "Reject_this_action": {
-    "message": "Afvis denne handling"
+  "Release_Date": {
+    "message": "Udgivelsesdato"
+  },
+  "Release_date_unknown": {
+    "message": "Udgivelsesdato ukendt"
+  },
+  "Released": {
+    "message": "Udgivet:"
   },
   "Remaining": {
     "message": "Resterende:"
   },
   "Remove": {
-    "message": ""
+    "message": "Fjern"
   },
   "Remove_API_Key": {
     "message": "Fjern API-nøgle"
   },
-  "Remove_modification": {
-    "message": "Fjern ændring"
+  "Request_Timeout": {
+    "message": "Forespørgsel timeout"
   },
-  "Request_Changes": {
-    "message": "Anmod om ændringer"
-  },
-  "Request_changes_to_this_action": {
-    "message": "Anmod om ændringer af denne handling"
+  "Request_timed_out": {
+    "message": "Forespørgslen timed ud"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
-    "message": ""
+    "message": "Forespørgsel timeout i millisekunder (5000-120000)"
+  },
+  "Request_timeout_in_milliseconds_5000_180_5766": {
+    "message": "Forespørgsel timeout i millisekunder (5000-180000)"
+  },
+  "Request_was_aborted": {
+    "message": "Forespørgslen blev afbrudt"
+  },
+  "Response_failed": {
+    "message": "Respons fejlede"
   },
   "Restricted": {
-    "message": ""
+    "message": "Begrænset"
   },
   "Result_Summary": {
-    "message": ""
+    "message": "Resultatsammendrag"
   },
   "Resume_Queue": {
-    "message": ""
+    "message": "Genoptag kø"
+  },
+  "Retry_Configuration": {
+    "message": "Genforsøgsindstillinger"
+  },
+  "Retrying": {
+    "message": "Genforsøger"
   },
   "Right_click_on_any_text_to_explain_or_im_b2fb": {
     "message": "Højreklik på enhver tekst for at forklare eller forbedre den med Browserx"
+  },
+  "Risk_Score": {
+    "message": "Risikoscore:"
   },
   "Rollout_Expiration": {
     "message": "Udløb af udrulning"
   },
   "Run_Now": {
-    "message": ""
+    "message": "Kør nu"
   },
   "Running": {
-    "message": ""
+    "message": "Kører"
+  },
+  "STREAM_ERROR": {
+    "message": "STREAM-FEJL"
   },
   "Safe": {
-    "message": ""
+    "message": "Sikker"
   },
   "Sandbox_Policy": {
     "message": "Sandbox-politik"
   },
   "Save_API_Key": {
     "message": "Gem API-nøgle"
+  },
+  "Save_Changes": {
+    "message": "Gem ændringer"
   },
   "Save_Settings": {
     "message": "Gem indstillinger"
@@ -713,25 +1511,48 @@
     "message": "Gemmer..."
   },
   "Schedule": {
-    "message": ""
+    "message": "Planlæg"
   },
-  "Schedule_Task": {
-    "message": ""
+  "Schedule_A_New_Task": {
+    "message": "Planlæg en ny opgave"
   },
   "Scheduled": {
-    "message": ""
+    "message": "Planlagt"
   },
   "Scheduled_Task": {
-    "message": ""
+    "message": "Planlagt opgave"
+  },
+  "Scheduled_Task_Starting": {
+    "message": "Planlagt opgave starter"
   },
   "Scheduled_Tasks": {
-    "message": ""
+    "message": "Planlagte opgaver"
+  },
+  "Scheduled_time_must_be_at_least_1_minute_ce1a": {
+    "message": "Planlagt tidspunkt skal være mindst 1 minut ude i fremtiden"
+  },
+  "Search_complete": {
+    "message": "Søgning fuldført"
+  },
+  "Searching": {
+    "message": "Søger..."
+  },
+  "Security_Privacy": {
+    "message": "Sikkerhed & privatlivsindstillinger"
   },
   "Security_level_for_tool_execution_enviro_6e94": {
     "message": "Sikkerhedsniveau for værktøjsudførelsesmiljø"
   },
-  "Security_Privacy": {
-    "message": "Sikkerhed & privatlivsindstillinger"
+  "Select_Model": {
+    "message": "Vælg model"
+  },
+  "Select_model_1": {
+    "message": "Vælg model: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Select_the_AI_model_to_use_for_conversat_1acc": {
     "message": "Vælg AI-modellen, der skal bruges til samtaler."
@@ -739,23 +1560,34 @@
   "Select_your_preferred_language_for_the_i_c7cc": {
     "message": "Vælg dit foretrukne sprog til grænsefladen"
   },
+  "Selected": {
+    "message": "Valgt"
+  },
+  "Selected_model_configuration_missing": {
+    "message": "Valgt modelkonfiguration mangler"
+  },
+  "Send": {
+    "message": "Send"
+  },
   "Service_Tier": {
     "message": "Serviceniveau"
   },
-  "session": {
-    "message": ""
-  },
-  "Session": {
-    "message": "Session"
+  "Service_tier_updated_to_1": {
+    "message": "Service-niveau opdateret til $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Session_error": {
-    "message": ""
+    "message": "Sessionsfejl"
+  },
+  "Session_expired_please_log_in_again_to_c_5d31": {
+    "message": "Session udløbet - log ind igen for at fortsætte med at bruge AI-agenten"
   },
   "Session_limit_reached_New_tasks_will_que_2877": {
-    "message": ""
-  },
-  "sessions": {
-    "message": ""
+    "message": "Sessionsgrænsen nået. Nye opgaver vil blive sat i kø."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Indstil hvornår udrulningsdata skal udløbe"
@@ -766,6 +1598,15 @@
   "Settings_saved_successfully": {
     "message": "Indstillinger gemt med succes"
   },
+  "Show_API_key": {
+    "message": "Vis API-nøgle"
+  },
+  "Show_all": {
+    "message": "Vis alle"
+  },
+  "Show_less": {
+    "message": "Vis færre"
+  },
   "Show_token_usage_in_tasks": {
     "message": "Vis tokenforbrug i opgaver"
   },
@@ -775,14 +1616,29 @@
   "Sign_in_to_your_account": {
     "message": "Log ind på din konto"
   },
+  "Skills": {
+    "message": "Færdigheder"
+  },
   "Stable": {
     "message": "Stabil"
   },
+  "Standard_capabilities": {
+    "message": "Standardfunktioner"
+  },
+  "Start_New_Conversation": {
+    "message": "Start ny samtale"
+  },
   "Start_on_login": {
-    "message": ""
+    "message": "Start ved login"
   },
   "Status": {
-    "message": ""
+    "message": "Status"
+  },
+  "Stop_Agent": {
+    "message": "Stop agent"
+  },
+  "Stop_the_current_task": {
+    "message": "Stop den aktuelle opgave"
   },
   "Stop_the_current_task_run": {
     "message": "Stop den aktuelle opgavekørsel"
@@ -805,26 +1661,70 @@
   "Store_cache_data_persistently_across_bro_5356": {
     "message": "Gem cachedata permanent på tværs af browsersessioner"
   },
+  "Suggest_Alternative": {
+    "message": "Foreslå alternativ"
+  },
+  "Switched_to_backend_mode_LLM_requests_wi_f1c4": {
+    "message": "Skiftet til backend-tilstand. LLM-anmodninger vil blive sendt via AI Republic-serveren."
+  },
+  "Switched_to_direct_API_mode_Please_confi_35fe": {
+    "message": "Skiftet til direkte API-tilstand. Konfigurer venligst din API-nøgle."
+  },
+  "System": {
+    "message": "System"
+  },
   "Tab_Tool": {
     "message": "Fanebladværktøj"
   },
+  "Tab_unavailable": {
+    "message": "Fane utilgængelig"
+  },
+  "Take_Over": {
+    "message": "Overtag"
+  },
   "Task": {
-    "message": ""
+    "message": "Opgave"
   },
   "Task_Details": {
-    "message": ""
+    "message": "Opgavedetaljer"
+  },
+  "Task_Failed": {
+    "message": "Opgave mislykkedes"
   },
   "Task_History": {
-    "message": ""
+    "message": "Opgavehistorik"
   },
   "Task_ID": {
-    "message": ""
+    "message": "Opgave-ID"
+  },
+  "Task_Plan": {
+    "message": "Opgaveplan"
+  },
+  "Task_cancelled_by_user": {
+    "message": "Opgave annulleret af bruger"
+  },
+  "Task_complete": {
+    "message": "Opgave fuldført"
+  },
+  "Task_completed_in_1_turn_s": {
+    "message": "Opgave fuldført på $1$ tur(er)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
+  },
+  "Task_failed": {
+    "message": "Opgave fejlet"
+  },
+  "Task_started": {
+    "message": "Opgave startet"
   },
   "Terminal": {
     "message": "Terminal"
   },
   "Terminal_Sandbox": {
-    "message": ""
+    "message": "Terminal Sandbox"
   },
   "Test_Connection": {
     "message": "Test forbindelse"
@@ -832,38 +1732,67 @@
   "Testing": {
     "message": "Tester..."
   },
+  "The_A2A_agent_endpoint_URL_http_or_https": {
+    "message": "A2A-agentens endpoint-URL (http eller https)"
+  },
+  "The_AI_decides_per_command_whether_to_us_8d0b": {
+    "message": "AI'en beslutter pr. kommando, om sandbox skal bruges baseret på risikovurdering."
+  },
+  "The_MCP_server_endpoint_URL_http_or_http_265b": {
+    "message": "MCP-serverens endpoint-URL (http eller https)"
+  },
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agenten bruger i øjeblikket backend-tilstand. LLM-anmodninger vil blive routet gennem AI Republic-serveren. Dine samtaler behandles sikkert via vores infrastruktur."
   },
-  "The_AI_decides_per_command_whether_to_us_8d0b": {
-    "message": ""
+  "The_model_switch_will_clear_the_current__3cd7": {
+    "message": "Skift af model vil rydde den aktuelle samtale. Vil du fortsætte?"
   },
-  "The_MCP_server_endpoint_URL_http_or_http_265b": {
-    "message": ""
+  "The_server_encountered_an_error_Please_t_9ecc": {
+    "message": "Serveren stødte på en fejl. Prøv igen senere."
   },
   "Time": {
     "message": "Tid"
-  },
-  "Time_remaining": {
-    "message": "Resterende tid"
   },
   "Time_to_live_for_cached_items_in_seconds_5107": {
     "message": "Levetid for cachede elementer i sekunder (standard: 3600)"
   },
   "Timeout_ms": {
-    "message": ""
+    "message": "Tidsgrænse (ms)"
+  },
+  "To_use_the_AI_agent_please_either": {
+    "message": "For at bruge AI-agenten, skal du enten:"
+  },
+  "Today": {
+    "message": "I dag"
   },
   "Toggle_side_panel": {
     "message": "Skift sidepanel"
   },
-  "Tokens": {
-    "message": ""
+  "Toggle_use_own_API_key": {
+    "message": "Skift brug af egen API-nøgle"
   },
-  "Tool": {
-    "message": "Værktøj"
+  "Token_Usage": {
+    "message": "Tokenforbrug"
+  },
+  "Tokens": {
+    "message": "Tokens:"
+  },
+  "Tokens_1": {
+    "message": "Tokens: $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Tool_Timeout_ms": {
     "message": "Værktøjs timeout (ms)"
+  },
+  "Tool_name": {
+    "message": "Værktøjsnavn:"
+  },
+  "Tool": {
+    "message": "Værktøj"
   },
   "Tools": {
     "message": "Værktøjer"
@@ -871,23 +1800,79 @@
   "Tools_Settings": {
     "message": "Værktøjsindstillinger"
   },
-  "Turn": {
-    "message": "Tur"
+  "Trusted": {
+    "message": "Betroet"
+  },
+  "Trusted_Domains": {
+    "message": "Betroede domæner"
+  },
+  "Trusted_agents_are_auto_approved_for_ski_f1ac": {
+    "message": "Betroede agenter godkendes automatisk til færdighedsopkald"
+  },
+  "Turns": {
+    "message": "Træk:"
+  },
+  "Type_alternative_instructions": {
+    "message": "Skriv alternative instruktioner..."
   },
   "UI_Theme": {
     "message": "UI-tema"
   },
+  "URL": {
+    "message": "URL"
+  },
+  "URL_must_use_http_or_https_protocol": {
+    "message": "URL skal bruge http- eller https-protokol"
+  },
+  "Unable_to_check_agent_status": {
+    "message": "Kan ikke kontrollere agentstatus"
+  },
   "Unable_to_load_credit_information": {
     "message": "Kunne ikke indlæse kreditoplysninger"
+  },
+  "Unable_to_reach_the_backend_server_pleas_3350": {
+    "message": "Kan ikke nå backend-serveren – tjek venligst din forbindelse"
+  },
+  "Unable_to_reach_the_server_Please_check__e5d0": {
+    "message": "Kan ikke nå serveren. Tjek venligst din forbindelse og prøv igen."
+  },
+  "Unknown_Event": {
+    "message": "Ukendt hændelse"
+  },
+  "Unknown_error": {
+    "message": "Ukendt fejl"
+  },
+  "Unknown_error_checking_agent_status": {
+    "message": "Ukendt fejl ved kontrol af agentstatus"
+  },
+  "Unknown_error_occurred": {
+    "message": "Der opstod en ukendt fejl"
+  },
+  "Unknown_error_occurred_during_task_execu_c6be": {
+    "message": "Der opstod en ukendt fejl under udførelse af opgaven"
+  },
+  "Unknown_error_processing_submission": {
+    "message": "Ukendt fejl ved behandling af indsendelse"
+  },
+  "Unknown_model_1": {
+    "message": "Ukendt model ($1$)",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Unsaved_Changes": {
     "message": "Ugemte ændringer"
   },
+  "Untitled": {
+    "message": "Uden titel"
+  },
   "Upcoming": {
-    "message": ""
+    "message": "Kommende"
   },
   "Update": {
-    "message": ""
+    "message": "Opdater"
   },
   "Update_Channel": {
     "message": "Opdateringskanal"
@@ -898,11 +1883,11 @@
   "Upgrade_to_Premium": {
     "message": "Opgrader til Premium"
   },
+  "Upgrade_to_explore_world_s_most_powerful_7c76": {
+    "message": "Opgrader for at udforske verdens mest kraftfulde modeller"
+  },
   "Upgrade_your_subscription_to_explore_wor_c5db": {
     "message": "Opgrader dit abonnement for at udforske verdens mest kraftfulde modeller"
-  },
-  "URL": {
-    "message": "URL"
   },
   "Use_Context_Menu": {
     "message": "Brug kontekstmenu:"
@@ -910,41 +1895,50 @@
   "Use_Own_API_Key": {
     "message": "Brug egen API-nøgle"
   },
-  "User_approved_action": {
-    "message": "Bruger godkendte handling"
-  },
   "User_Center": {
     "message": "Brugercenter"
   },
-  "User_decision": {
-    "message": "Brugerbeslutning"
+  "User_Session": {
+    "message": "Brugersession"
   },
   "User_preferences_and_interface_settings": {
     "message": "Brugerpræferencer og grænsefladeindstillinger"
   },
-  "User_rejected_action": {
-    "message": "Bruger afviste handling"
-  },
-  "User_requested_modifications": {
-    "message": "Brugeranmodede ændringer"
-  },
-  "User_Session": {
-    "message": ""
-  },
   "Using_extra_credits": {
     "message": "Brug af ekstra kreditter"
+  },
+  "Verbosity": {
+    "message": "Detaljeringsgrad"
+  },
+  "Verbosity_Control": {
+    "message": "Kontrol af detaljeringsgrad"
+  },
+  "Verbosity_Levels": {
+    "message": "Detaljeringsgrader"
+  },
+  "Verbosity_levels": {
+    "message": "Detaljeringsgrader:"
+  },
+  "Version": {
+    "message": "Version"
   },
   "View_Chat_History": {
     "message": "Vis chat-historik"
   },
   "View_History": {
-    "message": ""
+    "message": "Vis historik"
   },
   "View_Session": {
-    "message": ""
+    "message": "Vis session"
+  },
+  "View_pricing_details": {
+    "message": "Vis prisoplysninger"
   },
   "Visual_analysis_of_page_content_and_layo_2a93": {
     "message": "Visuel analyse af sideindhold og layout"
+  },
+  "Waiting_for_approval": {
+    "message": "Venter på godkendelse"
   },
   "Web_Scraping_Tool": {
     "message": "Webscrapingværktøj"
@@ -956,13 +1950,22 @@
     "message": "Velkommen til Browserx"
   },
   "Whether_sandboxed_commands_can_access_th_af7f": {
-    "message": ""
+    "message": "Om sandboxede kommandoer kan få adgang til netværket"
   },
   "Workspace_Access": {
-    "message": ""
+    "message": "Adgang til arbejdsområde"
   },
   "Workspace_Write": {
     "message": "Skriv til arbejdsområde"
+  },
+  "YOLO": {
+    "message": "YOLO"
+  },
+  "Yesterday": {
+    "message": "I går"
+  },
+  "You": {
+    "message": "Du"
   },
   "You_have_unsaved_changes_Do_you_want_to__0022": {
     "message": "Du har ugemte ændringer. Vil du forkaste dem?"
@@ -973,7 +1976,73 @@
   "Your_API_key_is_encrypted": {
     "message": "Din API-nøgle er krypteret"
   },
-  "Your_Decision": {
-    "message": "Din beslutning"
+  "Your_personal_AI_assistant": {
+    "message": "Din personlige AI-assistent"
+  },
+  "Your_session_has_expired_Please_log_in_a_c52a": {
+    "message": "Din session er udløbet. Log venligst ind igen."
+  },
+  "DISCONNECTED": {
+    "message": "[FRAKOBLET]"
+  },
+  "Error_Stream_interrupted": {
+    "message": "[Fejl: Stream afbrudt]"
+  },
+  "NO_ACCESS": {
+    "message": "[INGEN ADGANG]"
+  },
+  "NO_API_KEY_CLICK_SETTINGS": {
+    "message": "[INGEN API-NØGLE - KLIK PÅ INDSTILLINGER]"
+  },
+  "PROCESSING": {
+    "message": "[BEHANDLER]"
+  },
+  "available": {
+    "message": "tilgængelig"
+  },
+  "browserx": {
+    "message": "browserx"
+  },
+  "cached": {
+    "message": "cachet"
+  },
+  "detailed_thinking": {
+    "message": "detaljeret tænkning"
+  },
+  "disconnected": {
+    "message": "frakoblet"
+  },
+  "exec_unknown_command": {
+    "message": "exec (ukendt kommando)"
+  },
+  "optional": {
+    "message": "valgfri"
+  },
+  "remaining": {
+    "message": "resterende"
+  },
+  "session": {
+    "message": "session"
+  },
+  "sessions": {
+    "message": "sessioner"
+  },
+  "streaming": {
+    "message": "streamer..."
+  },
+  "thinking": {
+    "message": "tænker"
+  },
+  "tokens": {
+    "message": "tokens"
+  },
+  "trusted": {
+    "message": "betroet"
+  },
+  "user": {
+    "message": "bruger"
+  },
+  "web_search": {
+    "message": "websøgning"
   }
 }
