@@ -3,7 +3,7 @@
  */
 
 import { ModelClientError } from './ModelClient';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * Plan type metadata for usage tracking

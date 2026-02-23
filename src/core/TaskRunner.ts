@@ -18,6 +18,7 @@ import type {
   CompactionCompletedEvent,
 } from './protocol/events';
 import type { CompactionResult } from './compact/types';
+import { estimateRequestTokens } from './compact/utils';
 
 /**
  * Task state for tracking execution
@@ -286,7 +287,16 @@ export class TaskRunner {
       }
 
       const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
-      const turnInput = await this.buildNormalTurnInput(pendingInput);
+      let turnInput = await this.buildNormalTurnInput(pendingInput);
+
+      // Pre-request compaction check: estimate tokens and compact if needed
+      if (this.options.autoCompact && this.shouldCompactBeforeRequest(turnInput)) {
+        const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
+        if (compacted) {
+          compactionPerformed = true;
+          turnInput = await this.buildNormalTurnInput([]);
+        }
+      }
 
       if (this.cancelled) {
         return this.buildLoopOutcome({
@@ -659,6 +669,37 @@ export class TaskRunner {
     return undefined;
   }
 
+
+  /**
+   * Determine if compaction should be triggered before sending the LLM request.
+   */
+  private shouldCompactBeforeRequest(turnInput: ResponseItem[]): boolean {
+    const contextWindow = this.turnContext.getModelContextWindow();
+    if (!contextWindow) {
+      return false;
+    }
+
+    const baseLen = this.turnContext.getBaseInstructions?.()?.length ?? 0;
+    const userLen = this.turnContext.getUserInstructions?.()?.length ?? 0;
+    const instructionsLength = baseLen + userLen;
+
+    const toolsConfig = this.turnContext.getToolsConfig();
+    const toolCount = Object.values(toolsConfig).filter(Boolean).length;
+    const estimatedTokens = estimateRequestTokens(turnInput, instructionsLength, toolCount);
+    const threshold = contextWindow * TaskRunner.COMPACTION_THRESHOLD;
+
+    if (estimatedTokens >= threshold) {
+      console.debug('[TaskRunner] Pre-request compaction check', {
+        estimatedTokens,
+        contextWindow,
+        thresholdTokens: threshold,
+        thresholdRatio: TaskRunner.COMPACTION_THRESHOLD,
+      });
+      return true;
+    }
+
+    return false;
+  }
 
   /**
    * Attempt automatic compaction when token limit is reached

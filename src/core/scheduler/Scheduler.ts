@@ -29,7 +29,7 @@ import {
 } from '../models/types/SchedulerContracts';
 import type { AgentRegistry } from '../registry/AgentRegistry';
 import type { AgentSession } from '../registry/AgentSession';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * Event emitter type for scheduler events
