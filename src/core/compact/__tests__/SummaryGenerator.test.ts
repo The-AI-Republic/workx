@@ -5,7 +5,7 @@ vi.mock('../constants', () => ({
   NO_SUMMARY_PLACEHOLDER: '(no summary available)',
   TRUNCATION_MARKER: '\n[...tokens truncated]',
   DEFAULT_COMPACTION_CONFIG: {
-    triggerThreshold: 0.9,
+    triggerThreshold: 0.85,
     userMessageBudget: 20000,
     maxRetries: 3,
     baseBackoffMs: 100,

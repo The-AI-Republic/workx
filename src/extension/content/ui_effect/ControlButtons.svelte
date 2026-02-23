@@ -12,7 +12,7 @@
    */
 
   import { createEventDispatcher } from 'svelte';
-  import { _t } from '../../sidepanel/lib/i18n';
+  import { _t } from '../../../webfront/lib/i18n';
 
   const dispatch = createEventDispatcher<{
     takeover: void;

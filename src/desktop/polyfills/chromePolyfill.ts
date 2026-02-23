@@ -10,7 +10,7 @@
  * @module desktop/polyfills/chromePolyfill
  */
 
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 type MessageCallback = (message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => boolean | void;
 type UnlistenFn = () => void;

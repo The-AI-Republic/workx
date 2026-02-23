@@ -29,7 +29,7 @@ import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivit
 import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
 import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
 import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * Main agent class managing the submission and event queues

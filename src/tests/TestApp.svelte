@@ -1,7 +1,7 @@
 <script lang="ts">
-  import TerminalContainer from '../extension/sidepanel/components/TerminalContainer.svelte';
-  import TerminalMessage from '../extension/sidepanel/components/TerminalMessage.svelte';
-  import TerminalInput from '../extension/sidepanel/components/TerminalInput.svelte';
+  import TerminalContainer from '../webfront/components/TerminalContainer.svelte';
+  import TerminalMessage from '../webfront/components/TerminalMessage.svelte';
+  import TerminalInput from '../webfront/components/TerminalInput.svelte';
 
   let inputValue = '';
 
