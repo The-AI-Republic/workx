@@ -34,7 +34,7 @@ export const TRUNCATION_MARKER = '\n[...tokens truncated]';
  * Default compaction configuration.
  */
 export const DEFAULT_COMPACTION_CONFIG: CompactionConfig = {
-  triggerThreshold: 0.9, // 90% of context window
+  triggerThreshold: 0.85, // 85% of context window
   userMessageBudget: 20000, // tokens for user messages
   maxRetries: 3, // retry attempts
   baseBackoffMs: 100, // exponential backoff base
