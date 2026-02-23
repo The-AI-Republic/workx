@@ -583,10 +583,12 @@ export class MCPManager implements IMCPManager {
 
     try {
       const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
+      console.log('[MCPManager] Using bundled browser sidecar:', sidecarPath);
       command = sidecarPath;
       args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
       // sidecar resolves its own paths — no cwd needed
     } catch {
+      console.log('[MCPManager] Sidecar not found, falling back to npx (dev mode)');
       // Resolve project root so npx can find chrome-devtools-mcp in node_modules
       try {
         cwd = await invoke<string>('get_project_root');
