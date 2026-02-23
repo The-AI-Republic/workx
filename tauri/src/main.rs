@@ -17,7 +17,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager, RunEvent, WindowEvent,
+    Emitter, Manager, RunEvent, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -163,14 +163,58 @@ fn main() {
                 }
             }
 
-            // Handle deep link events on macOS/iOS (they emit events directly)
-            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            // Handle deep link events on all desktop platforms.
+            //
+            // on_open_url is the canonical cross-platform API:
+            // - macOS/iOS: triggered by the OS open-url event
+            // - Windows/Linux: triggered when single-instance plugin forwards the URL
+            //   from a second instance launch (requires `features = ["deep-link"]` in
+            //   tauri-plugin-single-instance, which is already set in Cargo.toml)
+            //
+            // Previously this was guarded by #[cfg(any(target_os = "macos", target_os = "ios"))]
+            // which meant Windows deep links were silently dropped.
+            #[cfg(desktop)]
             {
                 let handle = app.handle().clone();
-                app.listen("deep-link://new-url", move |event: tauri::Event| {
-                    let url = event.payload();
-                    let _ = handle.emit("auth-callback", url);
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        let url_str = url.as_str();
+                        if url_str.starts_with("airepublic-pi://") {
+                            let _ = handle.emit("auth-callback", url_str);
+                            if let Some(window) = handle.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            break;
+                        }
+                    }
                 });
+
+                // Handle the case where the app was NOT running when the deep link
+                // fired and Windows/Linux launched a fresh instance with the URL as
+                // a CLI argument.  get_current() returns those startup URLs.
+                #[cfg(any(target_os = "windows", target_os = "linux"))]
+                if let Ok(Some(urls)) = app.deep_link().get_current() {
+                    let initial: Vec<String> = urls
+                        .iter()
+                        .map(|u| u.to_string())
+                        .collect();
+                    let handle2 = app.handle().clone();
+                    std::thread::spawn(move || {
+                        // Wait for the frontend to mount its auth-callback listener.
+                        std::thread::sleep(Duration::from_millis(1500));
+                        for url in initial {
+                            if url.starts_with("airepublic-pi://") {
+                                let _ = handle2.emit("auth-callback", &url);
+                                if let Some(window) = handle2.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                                break;
+                            }
+                        }
+                    });
+                }
             }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
