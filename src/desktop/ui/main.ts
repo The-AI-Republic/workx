@@ -22,13 +22,13 @@ installChromePolyfill();
 installFetchProxy();
 
 import './desktop.css';
-import '../../extension/sidepanel/sidepanel.css';
-import '../../extension/sidepanel/styles.css';
-import App from '../../extension/sidepanel/App.svelte';
+import '../../webfront/sidepanel.css';
+import '../../webfront/styles.css';
+import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
 import { initializeMessaging, TauriMessageService } from '@/core/messaging';
 import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
-import { initLocale } from '../../extension/sidepanel/lib/i18n';
+import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
 import { initializeConfigStorage, initializeCredentialStore } from '@/core/storage';
 

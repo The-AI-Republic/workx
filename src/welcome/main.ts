@@ -4,7 +4,7 @@
 
 import './welcome.css';
 import Welcome from './Welcome.svelte';
-import { initLocale } from '../extension/sidepanel/lib/i18n';
+import { initLocale } from '../webfront/lib/i18n';
 import { AgentConfig } from '../config/AgentConfig';
 
 // Initialize locale before mounting app
