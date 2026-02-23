@@ -1,5 +1,5 @@
 import type { ResponseEvent } from './types/ResponsesAPI';
-import { t } from '@/extension/sidepanel/lib/i18n';
+import { t } from '@/webfront/lib/i18n';
 
 /**
  * SSE event structure
