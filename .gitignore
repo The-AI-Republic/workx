@@ -71,6 +71,7 @@ tmp/
 # Tauri / Desktop App (Pi)
 tauri/target/
 tauri/gen/
+tauri/binaries/
 *.AppImage
 *.deb
 *.dmg

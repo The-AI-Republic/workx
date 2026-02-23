@@ -268,6 +268,7 @@ fn main() {
             mcp_manager::mcp_list_resources,
             mcp_manager::mcp_read_resource,
             mcp_manager::mcp_disconnect,
+            mcp_manager::get_browser_mcp_sidecar_path,
             // Config storage commands
             storage_commands::config_storage_get,
             storage_commands::config_storage_set,
