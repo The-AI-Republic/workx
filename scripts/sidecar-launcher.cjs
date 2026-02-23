@@ -79,7 +79,11 @@ function copyFromSnapshot(relFiles, srcDir, dstDir) {
     const src = path.join(srcDir, relFile);
     const dst = path.join(dstDir, relFile);
     fs.mkdirSync(path.dirname(dst), { recursive: true });
-    try { fs.writeFileSync(dst, fs.readFileSync(src)); } catch { /* skip */ }
+    try {
+      fs.writeFileSync(dst, fs.readFileSync(src));
+    } catch (err) {
+      process.stderr.write(`[chrome-devtools-mcp] Failed to extract ${relFile}: ${err.message}\n`);
+    }
   }
 }
 

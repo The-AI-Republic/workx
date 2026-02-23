@@ -131,9 +131,7 @@ async function rustFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   let requestId: string | null = null;
   if (body && bodyLen > LARGE_PAYLOAD_THRESHOLD) {
     requestId = crypto.randomUUID();
-    const totalChunks = Math.ceil(bodyLen / CHUNK_SIZE);
     for (let i = 0; i < bodyLen; i += CHUNK_SIZE) {
-      const chunkIndex = Math.floor(i / CHUNK_SIZE);
       await invoke('http_append_body_chunk', {
         requestId,
         chunk: body.slice(i, i + CHUNK_SIZE),

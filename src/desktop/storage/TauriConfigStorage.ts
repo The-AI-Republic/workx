@@ -41,7 +41,6 @@ export class TauriConfigStorage implements ConfigStorageProvider {
         value = await invoke<string>('config_storage_get', { key }) ?? 'null';
       } else {
         // Read in chunks to stay under WebView2 postMessage limit
-        const totalChunks = Math.ceil(size / CHUNK_SIZE);
         const parts: string[] = [];
         for (let offset = 0; offset < size; offset += CHUNK_SIZE) {
           const chunk = await invoke<string>('config_storage_get_chunk', {
@@ -70,7 +69,6 @@ export class TauriConfigStorage implements ConfigStorageProvider {
         await invoke('config_storage_set', { key, value: json });
       } else {
         // Write in chunks then commit to stay under WebView2 postMessage limit
-        const totalChunks = Math.ceil(json.length / CHUNK_SIZE);
         for (let i = 0; i < json.length; i += CHUNK_SIZE) {
           await invoke('config_storage_append_chunk', {
             key,

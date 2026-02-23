@@ -201,11 +201,35 @@ fn main() {
                         .collect();
                     let handle2 = app.handle().clone();
                     std::thread::spawn(move || {
-                        // Wait for the frontend to mount its auth-callback listener.
-                        std::thread::sleep(Duration::from_millis(1500));
-                        for url in initial {
+                        // Retry emitting the deep link until the frontend has mounted
+                        // its auth-callback listener. The webview must be fully loaded
+                        // before it can receive events.
+                        let delays = [500, 1000, 1500, 2000, 3000];
+                        for delay_ms in delays {
+                            std::thread::sleep(Duration::from_millis(delay_ms));
+                            // Check if the main window is ready (visible = frontend loaded)
+                            let window_ready = handle2
+                                .get_webview_window("main")
+                                .and_then(|w| w.is_visible().ok())
+                                .unwrap_or(false);
+                            if !window_ready {
+                                continue;
+                            }
+                            for url in &initial {
+                                if url.starts_with("airepublic-pi://") {
+                                    let _ = handle2.emit("auth-callback", url);
+                                    if let Some(window) = handle2.get_webview_window("main") {
+                                        let _ = window.show();
+                                        let _ = window.set_focus();
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                        // Final attempt regardless of window state
+                        for url in &initial {
                             if url.starts_with("airepublic-pi://") {
-                                let _ = handle2.emit("auth-callback", &url);
+                                let _ = handle2.emit("auth-callback", url);
                                 if let Some(window) = handle2.get_webview_window("main") {
                                     let _ = window.show();
                                     let _ = window.set_focus();
