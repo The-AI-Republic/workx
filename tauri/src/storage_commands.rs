@@ -9,11 +9,25 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Instant;
+
+/// TTL for buffered write chunks — evict after 30 seconds
+const WRITE_BUFFER_TTL_SECS: u64 = 30;
+
+struct WriteBufferEntry {
+    data: String,
+    created: Instant,
+}
 
 lazy_static::lazy_static! {
     static ref STORAGE: Mutex<ConfigStorage> = Mutex::new(ConfigStorage::new());
     /// Buffer for large values being written in chunks from JS
-    static ref WRITE_BUFFER: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    static ref WRITE_BUFFER: Mutex<HashMap<String, WriteBufferEntry>> = Mutex::new(HashMap::new());
+}
+
+/// Remove entries older than TTL
+fn evict_stale_write_entries(buf: &mut HashMap<String, WriteBufferEntry>) {
+    buf.retain(|_, entry| entry.created.elapsed().as_secs() < WRITE_BUFFER_TTL_SECS);
 }
 
 /// Get the config file path
@@ -161,7 +175,11 @@ pub fn config_storage_get_chunk(key: String, offset: usize, length: usize) -> Op
 #[tauri::command]
 pub fn config_storage_append_chunk(key: String, chunk: String) -> Result<(), String> {
     let mut buf = WRITE_BUFFER.lock().map_err(|e| e.to_string())?;
-    buf.entry(key).or_default().push_str(&chunk);
+    evict_stale_write_entries(&mut buf);
+    buf.entry(key)
+        .or_insert_with(|| WriteBufferEntry { data: String::new(), created: Instant::now() })
+        .data
+        .push_str(&chunk);
     Ok(())
 }
 
@@ -170,7 +188,9 @@ pub fn config_storage_append_chunk(key: String, chunk: String) -> Result<(), Str
 pub fn config_storage_commit(key: String) -> Result<(), String> {
     let value = {
         let mut buf = WRITE_BUFFER.lock().map_err(|e| e.to_string())?;
-        buf.remove(&key).ok_or_else(|| format!("No buffered data for key: {}", key))?
+        buf.remove(&key)
+            .map(|entry| entry.data)
+            .ok_or_else(|| format!("No buffered data for key: {}", key))?
     };
     let mut storage = STORAGE.lock().unwrap();
     storage.set(&key, &value)

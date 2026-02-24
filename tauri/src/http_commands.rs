@@ -5,12 +5,26 @@
 
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::time::Instant;
 use serde::Serialize;
 use tauri::ipc::Channel;
 
+/// TTL for buffered request bodies — evict after 30 seconds
+const BODY_BUFFER_TTL_SECS: u64 = 30;
+
+struct BufferEntry {
+    data: String,
+    created: Instant,
+}
+
 lazy_static::lazy_static! {
     /// Buffer for large request bodies sent in chunks from JS
-    static ref BODY_BUFFER: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    static ref BODY_BUFFER: Mutex<HashMap<String, BufferEntry>> = Mutex::new(HashMap::new());
+}
+
+/// Remove entries older than TTL
+fn evict_stale_body_entries(buf: &mut HashMap<String, BufferEntry>) {
+    buf.retain(|_, entry| entry.created.elapsed().as_secs() < BODY_BUFFER_TTL_SECS);
 }
 
 /// Append a chunk to a buffered request body.
@@ -19,7 +33,11 @@ lazy_static::lazy_static! {
 #[tauri::command]
 pub fn http_append_body_chunk(request_id: String, chunk: String) -> Result<(), String> {
     let mut buf = BODY_BUFFER.lock().map_err(|e| e.to_string())?;
-    buf.entry(request_id).or_default().push_str(&chunk);
+    evict_stale_body_entries(&mut buf);
+    buf.entry(request_id)
+        .or_insert_with(|| BufferEntry { data: String::new(), created: Instant::now() })
+        .data
+        .push_str(&chunk);
     Ok(())
 }
 
@@ -62,7 +80,7 @@ pub async fn http_fetch(
     // Resolve body: from buffer (large body) or direct (small body)
     let resolved_body = if let Some(id) = request_id {
         let mut buf = BODY_BUFFER.lock().map_err(|e| e.to_string())?;
-        buf.remove(&id)
+        buf.remove(&id).map(|entry| entry.data)
     } else {
         body
     };
