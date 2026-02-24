@@ -24,6 +24,8 @@ import type {
 import type { EventMsg } from '../protocol/events';
 import type { Op } from '../protocol/types';
 
+import { isPayloadRef, retrievePayload } from '@/desktop/channels/LargePayloadStore';
+
 // Tauri API types (loaded dynamically)
 type TauriEmit = (event: string, payload?: unknown) => Promise<void>;
 type TauriListen = <T>(event: string, handler: (event: { payload: T }) => void) => Promise<() => void>;
@@ -88,7 +90,13 @@ export class TauriMessageService implements IMessageService {
     try {
       // Listen for events from agent (via TauriChannel)
       const unlistenEvent = await this.listen<EventMsg>('pi:event', (event) => {
-        this.handleIncomingEvent(event.payload);
+        let payload: EventMsg;
+        if (isPayloadRef(event.payload)) {
+          payload = retrievePayload(event.payload.__payloadRef) as EventMsg;
+        } else {
+          payload = event.payload;
+        }
+        this.handleIncomingEvent(payload);
       });
       this.unlistenFunctions.push(unlistenEvent);
 

@@ -41,8 +41,11 @@ type ConcreteRunningService =
     rmcp::service::RunningService<rmcp::RoleClient, ClientInfo>;
 
 /// Commands allowed for MCP subprocess spawning.
-/// Only known package runners are permitted to mitigate arbitrary command execution.
-const ALLOWED_COMMANDS: &[&str] = &["npx", "node", "deno", "bun", "uvx", "python3", "python"];
+/// Only known package runners and the bundled sidecar are permitted.
+const ALLOWED_COMMANDS: &[&str] = &[
+    "npx", "node", "deno", "bun", "uvx", "python3", "python",
+    "chrome-devtools-mcp", // bundled sidecar binary
+];
 
 // =============================================================================
 // Result Types (serialized to JS)
@@ -124,10 +127,12 @@ pub async fn mcp_connect(
     env: Option<HashMap<String, String>>,
     cwd: Option<String>,
 ) -> Result<McpConnectResult, String> {
-    // Validate command against allowlist to prevent arbitrary command execution
+    // Validate command against allowlist to prevent arbitrary command execution.
+    // Strip .exe suffix (Windows) before checking so the sidecar binary matches.
     let base_command = std::path::Path::new(&command)
         .file_name()
         .and_then(|n| n.to_str())
+        .map(|n| n.strip_suffix(".exe").unwrap_or(n))
         .unwrap_or(&command);
     if !ALLOWED_COMMANDS.contains(&base_command) {
         return Ok(McpConnectResult {
@@ -477,5 +482,30 @@ pub async fn mcp_disconnect(server_id: String) -> Result<bool, String> {
             Ok(true)
         }
         None => Err(format!("Server not found: {}", server_id)),
+    }
+}
+
+/// Resolve the path to the bundled chrome-devtools-mcp sidecar binary.
+/// Returns an error if the sidecar was not bundled (e.g. in dev mode).
+/// The JS side uses this to decide whether to use the sidecar or fall back to npx.
+#[tauri::command]
+pub fn get_browser_mcp_sidecar_path() -> Result<String, String> {
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| format!("Failed to get exe path: {}", e))?
+        .parent()
+        .ok_or_else(|| "Failed to get exe directory".to_string())?
+        .to_path_buf();
+
+    let binary_name = if cfg!(target_os = "windows") {
+        "chrome-devtools-mcp.exe"
+    } else {
+        "chrome-devtools-mcp"
+    };
+
+    let sidecar_path = exe_dir.join(binary_name);
+    if sidecar_path.exists() {
+        Ok(sidecar_path.to_string_lossy().to_string())
+    } else {
+        Err(format!("Browser MCP sidecar not found at {:?}", sidecar_path))
     }
 }
