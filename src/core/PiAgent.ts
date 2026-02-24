@@ -57,6 +57,9 @@ export class PiAgent {
   private userNotifier: UserNotifier;
   private messageRouter: MessageRouter;
   private eventDispatcher: EventDispatcher | null = null;
+  // Non-null signals a deferred model switch. The actual model is resolved from
+  // AgentConfig.selectedModelKey (which is updated before the config-changed event
+  // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
 
   constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string) {
@@ -303,9 +306,13 @@ export class PiAgent {
     }
 
     // No task running — apply model switch immediately
+    // Clear any stale pending key from a prior deferred switch
+    this.pendingModelKey = null;
     try {
       const modelClient = await this.modelClientFactory.createClientForCurrentModel();
-      this.session.getTurnContext().setModelClient(modelClient);
+      const turnCtx = this.session.getTurnContext();
+      turnCtx.setModelClient(modelClient);
+      turnCtx.setSelectedModelKey(newModelId);
     } catch (error) {
       console.error('Failed to switch model:', error);
       this.emitEvent({
@@ -741,13 +748,16 @@ export class PiAgent {
 
       // Apply pending model switch before processing the new submission
       if (this.pendingModelKey !== null) {
+        const deferredKey = this.pendingModelKey;
+        this.pendingModelKey = null;
         try {
           const newClient = await this.modelClientFactory.createClientForCurrentModel();
-          this.session.getTurnContext().setModelClient(newClient);
+          const turnCtx = this.session.getTurnContext();
+          turnCtx.setModelClient(newClient);
+          turnCtx.setSelectedModelKey(deferredKey);
         } catch (error) {
           console.error('Failed to apply pending model switch:', error);
         }
-        this.pendingModelKey = null;
       }
 
       // Convert input items to InputItem format for SessionTask

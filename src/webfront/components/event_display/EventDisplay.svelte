@@ -341,7 +341,7 @@
   }
 
   .model-indicator {
-    color: #6b7280;
+    color: var(--text-muted, #6b7280);
     font-size: 0.65rem;
     font-style: italic;
   }

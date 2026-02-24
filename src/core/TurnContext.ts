@@ -57,6 +57,7 @@ export class TurnContext {
   private browserEnvironmentPolicy: BrowserEnvironmentPolicy;
   private toolsConfig: IToolsConfig;
   private reviewMode: boolean;
+  private _selectedModelKey?: string;
 
   constructor(
     modelClient: ModelClient,
@@ -270,6 +271,22 @@ export class TurnContext {
    */
   setModelClient(client: ModelClient): void {
     this.modelClient = client;
+  }
+
+  /**
+   * Set the composite model key (format: "providerId:modelId").
+   * Used to track which configured model is active for annotation purposes.
+   */
+  setSelectedModelKey(key: string): void {
+    this._selectedModelKey = key;
+  }
+
+  /**
+   * Get the composite model key (format: "providerId:modelId").
+   * Falls back to the raw model client identifier if not explicitly set.
+   */
+  getSelectedModelKey(): string {
+    return this._selectedModelKey ?? this.modelClient.getModel();
   }
 
   /**
