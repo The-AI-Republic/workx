@@ -1,22 +1,21 @@
-//! Job Object management for process limits.
+//! Job Object management for sandboxed process lifecycle.
 //!
-//! A Windows Job Object groups processes and enforces resource limits.
+//! A Windows Job Object groups processes and enforces lifecycle rules.
 //! We use it to:
-//! - Kill all child processes when the helper exits (kill_on_job_close)
-//! - Limit the number of active processes (prevent fork bombs)
-//! - Optionally cap memory usage
+//! - Kill all child processes when the helper exits (`kill_on_job_close`)
+//!
+//! Note: Process count and memory limits were intentionally removed because
+//! they caused runtime failures — shell sessions (e.g. `npm install`, `cargo build`)
+//! easily exceed a 64-process limit. The AppContainer namespace provides the
+//! primary security boundary; the Job Object's role is cleanup, not resource capping.
 
 #[cfg(windows)]
 mod imp {
     use win32job::Job;
 
-    /// Default maximum number of active processes in the sandbox.
-    const MAX_ACTIVE_PROCESSES: u32 = 64;
-
-    /// Default memory limit: 2 GiB.
-    const MAX_MEMORY_BYTES: usize = 2 * 1024 * 1024 * 1024;
-
-    /// Create a Job Object with sandbox-appropriate limits.
+    /// Create a Job Object that terminates all child processes on close.
+    ///
+    /// This ensures no orphaned processes survive after the sandbox helper exits.
     pub fn create_sandbox_job() -> Result<Job, String> {
         let mut job = Job::create()
             .map_err(|e| format!("Failed to create Job Object: {}", e))?;
@@ -27,17 +26,11 @@ mod imp {
             .map_err(|e| format!("Failed to query job limits: {}", e))?;
 
         info.limit_kill_on_job_close();
-        info.limit_active_process(MAX_ACTIVE_PROCESSES);
-        info.limit_job_memory(MAX_MEMORY_BYTES);
 
         job.set_extended_limit_info(&mut info)
             .map_err(|e| format!("Failed to set job limits: {}", e))?;
 
-        log::info!(
-            "Created Job Object (max_processes={}, max_memory={}MiB, kill_on_close=true)",
-            MAX_ACTIVE_PROCESSES,
-            MAX_MEMORY_BYTES / (1024 * 1024)
-        );
+        log::info!("Created Job Object (kill_on_close=true)");
 
         Ok(job)
     }
@@ -46,10 +39,8 @@ mod imp {
     pub fn assign_process(job: &Job, process_handle: windows::Win32::Foundation::HANDLE) -> Result<(), String> {
         // win32job's assign_process expects a raw handle
         let raw = process_handle.0 as *mut std::ffi::c_void;
-        unsafe {
-            job.assign_process(raw as isize)
-                .map_err(|e| format!("Failed to assign process to Job Object: {}", e))?;
-        }
+        job.assign_process(raw as isize)
+            .map_err(|e| format!("Failed to assign process to Job Object: {}", e))?;
         log::debug!("Assigned process to Job Object");
         Ok(())
     }

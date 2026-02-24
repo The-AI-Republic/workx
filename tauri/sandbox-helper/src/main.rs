@@ -113,7 +113,7 @@ fn run_sandboxed(profile_b64: &str, child_args: &[String]) -> ExitCode {
     #[cfg(windows)]
     {
         use windows::core::PWSTR;
-        use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
+        use windows::Win32::Foundation::CloseHandle;
         use windows::Win32::System::Threading::{
             CreateProcessW, GetExitCodeProcess, InitializeProcThreadAttributeList,
             UpdateProcThreadAttribute, WaitForSingleObject,
