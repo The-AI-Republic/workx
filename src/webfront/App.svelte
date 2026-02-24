@@ -4,6 +4,7 @@
   import Chat from './pages/chat/Main.svelte';
   import Settings from './pages/settings/Settings.svelte';
   import Scheduler from './pages/scheduler/Scheduler.svelte';
+  import AppShell from './components/layout/AppShell.svelte';
   import { userStore } from './stores/userStore';
   import { isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
@@ -205,4 +206,4 @@
   });
 </script>
 
-<Router {routes} />
+<AppShell><Router {routes} /></AppShell>

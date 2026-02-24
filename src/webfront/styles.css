@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --left-panel-width: 220px;
   --color-term-bg: #000000;
   --color-term-green: #00ff00;
   --color-term-yellow: #ffff00;
