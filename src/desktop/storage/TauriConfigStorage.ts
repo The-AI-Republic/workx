@@ -10,8 +10,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
-/** Threshold above which chunked IPC is used — conservative for WebView2 */
-const LARGE_VALUE_THRESHOLD = 64 * 1024; // 64KB
+/** Threshold above which chunked IPC is used — safe margin for WebView2's ~1MB postMessage limit */
+const LARGE_VALUE_THRESHOLD = 512 * 1024; // 512KB
 const CHUNK_SIZE = 48 * 1024; // 48KB per chunk
 
 /**

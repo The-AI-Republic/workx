@@ -10,8 +10,8 @@
 const store = new Map<string, unknown>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-/** Threshold above which payloads are stored by reference (64 KB — conservative for WebView2) */
-export const LARGE_PAYLOAD_THRESHOLD = 64 * 1024;
+/** Threshold above which payloads are stored by reference (512 KB — safe margin for WebView2's ~1MB postMessage limit) */
+export const LARGE_PAYLOAD_THRESHOLD = 512 * 1024;
 
 /** Auto-evict unretrieved payloads after this duration to prevent memory leaks */
 const TTL_MS = 30_000;
