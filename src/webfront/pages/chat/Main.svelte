@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import { MessageType } from '@/core/MessageRouter';
   import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
   import type { TaskStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
@@ -9,7 +10,6 @@
   import TerminalContainer from '../../components/TerminalContainer.svelte';
   import TerminalMessage from '../../components/TerminalMessage.svelte';
   import MessageInput from '../../components/MessageInput.svelte';
-  import Settings from '../../Settings.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
@@ -25,11 +25,10 @@
   import FooterBar from '../../components/layout/FooterBar.svelte';
   // Agent store for auth mode tracking
   import { agentStore } from '../../stores/agentStore';
+  // Scheduler store (for scheduling result feedback)
+  import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Scheduler components
-  import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
-
   // Message service (platform-agnostic)
   let service: IMessageService | null = null;
   let unsubscribers: Array<() => void> = [];
@@ -39,7 +38,6 @@
   let inputText = '';
   let isConnected = false;
   let isProcessing = false;
-  let showSettings = false;
   let showWelcome = false;
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = -1; // Track current session's bound tab
@@ -53,9 +51,6 @@
   };
   // Current UI theme (reactive from store)
   let currentTheme: UITheme = 'terminal';
-  // Scheduler modal state
-  let showScheduleModal = false;
-  let scheduleTaskInput = '';
   // Scheduled task execution state (US3)
   let scheduledTaskId: string | null = null;
   let scheduledSessionId: string | null = null;
@@ -72,6 +67,30 @@
     // Clear messages from previous session
     messages = [];
     processedEvents = [];
+
+    // Check if returning from a successful scheduling
+    const scheduledResult = schedulerStore.getAndClearResult();
+    if (scheduledResult) {
+      const scheduledDate = new Date(scheduledResult.scheduledTime);
+      const dateDisplay = scheduledDate.toLocaleString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const confirmEvent: ProcessedEvent = {
+        id: `scheduled_confirm_${Date.now()}`,
+        category: 'system',
+        timestamp: new Date(),
+        title: 'system',
+        content: t('Task scheduled for $1$', { substitutions: [dateDisplay] }),
+        style: { textColor: 'text-green-400', icon: 'success' },
+        streaming: false,
+        collapsible: false,
+      };
+      processedEvents = [confirmEvent];
+    }
 
     // Initialize EventProcessor
     eventProcessor = new EventProcessor();
@@ -652,20 +671,6 @@
     return 'default';
   }
 
-  function toggleSettings() {
-    showSettings = !showSettings;
-  }
-
-  function handleSettingsClose() {
-    showSettings = false;
-    // Re-check health status in case API key was added
-    checkConnection();
-  }
-
-  function handleAuthUpdated(event: CustomEvent) {
-    // Handle auth updates if needed
-  }
-
   /**
    * Handle command output from slash commands (e.g., /help)
    * Creates a system ProcessedEvent and appends it to the chat
@@ -683,72 +688,6 @@
       collapsible: false,
     };
     processedEvents = [...processedEvents, cmdEvent];
-  }
-
-  /**
-   * Handle long-press on send button to show schedule modal
-   */
-  function handleShowScheduleModal(event: CustomEvent<{ input: string }>) {
-    scheduleTaskInput = event.detail.input;
-    showScheduleModal = true;
-  }
-
-  /**
-   * Handle schedule task from modal
-   */
-  async function handleScheduleTask(event: CustomEvent<{ input: string; scheduledTime: number }>) {
-    const { input, scheduledTime } = event.detail;
-    showScheduleModal = false;
-
-    try {
-      if (!service) throw new Error('Message service not available');
-      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_TASK, {
-        input,
-        scheduledTime,
-      });
-
-      if (response?.success) {
-        // Clear the input since task was scheduled
-        inputText = '';
-
-        // Show confirmation notification
-        const scheduledDate = new Date(scheduledTime);
-        const formattedTime = scheduledDate.toLocaleString(undefined, {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-
-        // Add system message to show task was scheduled
-        const scheduledEvent: ProcessedEvent = {
-          id: `scheduled_${Date.now()}`,
-          category: 'system',
-          timestamp: new Date(),
-          title: 'system',
-          content: `Task scheduled for ${formattedTime}`,
-          style: { textColor: 'text-green-400' },
-          streaming: false,
-          collapsible: false,
-        };
-        processedEvents = [...processedEvents, scheduledEvent];
-      } else {
-        throw new Error(response?.error || 'Failed to schedule task');
-      }
-    } catch (error) {
-      console.error('[App] Failed to schedule task:', error);
-      messages = [...messages, {
-        type: 'agent',
-        content: `Failed to schedule task: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: Date.now(),
-      }];
-    }
-  }
-
-  function handleCloseScheduleModal() {
-    showScheduleModal = false;
-    scheduleTaskInput = '';
   }
 
   async function startNewConversation() {
@@ -1045,7 +984,7 @@
                 </a>
               </li>
               <li>
-                <button on:click={toggleSettings} class="warning-link-button">
+                <button on:click={() => push('/settings')} class="warning-link-button">
                   {$_t("Configure an API key in Settings")}
                 </button>
               </li>
@@ -1105,38 +1044,16 @@
               {isProcessing}
               placeholder={$_t(">> Enter command...")}
               on:tabSelected={handleTabSelected}
-              on:showScheduleModal={handleShowScheduleModal}
               on:commandOutput={handleCommandOutput}
-              on:openSettings={toggleSettings}
             />
           </div>
 
           <!-- Footer Bar -->
-          <FooterBar on:openSettings={toggleSettings} />
+          <FooterBar />
         </div>
       </div>
     </TerminalContainer>
   </div>
-
-<!-- Settings Modal -->
-{#if showSettings}
-  <div class="settings-modal-overlay">
-    <div class="settings-modal-container" class:chatgpt={currentTheme === 'chatgpt'}>
-      <Settings
-        on:authUpdated={handleAuthUpdated}
-        on:close={handleSettingsClose}
-      />
-    </div>
-  </div>
-{/if}
-
-<!-- Schedule Task Modal -->
-<ScheduleTaskModal
-  show={showScheduleModal}
-  input={scheduleTaskInput}
-  on:close={handleCloseScheduleModal}
-  on:schedule={handleScheduleTask}
-/>
 
 <style>
   /* ============================================
@@ -1482,60 +1399,5 @@
 
   .function-button:disabled:hover {
     transform: none;
-  }
-
-  /* ============================================
-     Settings Modal Styles
-     ============================================ */
-
-  .settings-modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-  }
-
-  .settings-modal-container {
-    max-width: 42rem;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    border-radius: 0.5rem;
-    /* Terminal theme (default) - use terminal-styled browserx colors */
-    --browserx-primary: #00ff00;
-    --browserx-secondary: #00cc00;
-    --browserx-background: #000000;
-    --browserx-surface: #0a0a0a;
-    --browserx-text: #00ff00;
-    --browserx-text-secondary: #00cc00;
-    --browserx-border: #00cc00;
-    --browserx-error: #ff0000;
-    --browserx-success: #00ff00;
-    --browserx-warning: #ffff00;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    color-scheme: dark;
-  }
-
-  /* ChatGPT theme for settings modal - use modern light/dark colors */
-  .settings-modal-container.chatgpt {
-    --browserx-primary: var(--chat-primary, #60a5fa);
-    --browserx-secondary: var(--chat-primary, #60a5fa);
-    --browserx-background: var(--chat-bg, #ffffff);
-    --browserx-surface: var(--chat-card-bg, #f7f7f8);
-    --browserx-text: var(--chat-text, #0d0d0d);
-    --browserx-text-secondary: var(--chat-text-secondary, #6e6e80);
-    --browserx-border: var(--chat-border, #e5e5e5);
-    --browserx-error: var(--chat-error, #ef4444);
-    --browserx-success: #10b981;
-    --browserx-warning: #f59e0b;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    border-radius: 1rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    color-scheme: light;
   }
 </style>

@@ -31,7 +31,7 @@ export class TabManager {
   // Tab group management (merged from TabGroupManager - T014)
   private groupId: number | null = null;
   private readonly groupTitle = 'browserx';
-  private readonly groupColor: chrome.tabGroups.ColorEnum = 'blue';
+  private readonly groupColor = 'blue' as const;
 
   // Event callbacks (stateless - just notify about tab events)
   private tabClosureCallbacks: TabClosureCallback[] = [];
@@ -76,6 +76,10 @@ export class TabManager {
    * Setup Chrome tab event listeners
    */
   private setupChromeEventListeners(): void {
+    if (typeof chrome === 'undefined' || !chrome.tabs?.onRemoved) {
+      return;
+    }
+
     // Listen for tab closure
     chrome.tabs.onRemoved.addListener((tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => {
       console.log(`[TabManager] Tab ${tabId} closed`);
