@@ -493,7 +493,11 @@ export const chromePolyfill = {
 };
 
 /**
- * Install the chrome polyfill on the global window object
+ * Install the chrome polyfill on the global window object.
+ *
+ * Only installs if chrome is not already defined. On WebView2 (Windows),
+ * chrome may be partially defined — specific desktop code paths should use
+ * Tauri-native APIs (TauriConfigStorage, etc.) rather than relying on this polyfill.
  */
 export function installChromePolyfill(): void {
   if (typeof window !== 'undefined' && !('chrome' in window)) {

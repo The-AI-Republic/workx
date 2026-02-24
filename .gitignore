@@ -71,7 +71,7 @@ tmp/
 # Tauri / Desktop App (Pi)
 tauri/target/
 tauri/gen/
-tauri/binaries/browserx-sandbox-*
+tauri/binaries/
 *.AppImage
 *.deb
 *.dmg
