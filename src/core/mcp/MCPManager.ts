@@ -573,13 +573,26 @@ export class MCPManager implements IMCPManager {
       }
     }
 
-    // Resolve project root via Tauri so npx can find chrome-devtools-mcp deps
-    let projectRoot: string | undefined;
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    // Try the bundled sidecar binary first (production builds).
+    // Fall back to npx + node_modules for dev mode where no sidecar is built.
+    let command = 'npx';
+    let args = ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+    let cwd: string | undefined;
+
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      projectRoot = await invoke<string>('get_project_root');
-    } catch (err) {
-      console.warn('[MCPManager] Failed to resolve project root, MCP subprocess will inherit cwd:', err);
+      const sidecarPath = await invoke<string>('get_browser_mcp_sidecar_path');
+      command = sidecarPath;
+      args = ['--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'];
+      // sidecar resolves its own paths — no cwd needed
+    } catch {
+      // Resolve project root so npx can find chrome-devtools-mcp in node_modules
+      try {
+        cwd = await invoke<string>('get_project_root');
+      } catch (err) {
+        console.warn('[MCPManager] Failed to resolve project root:', err);
+      }
     }
 
     const now = Date.now();
@@ -590,9 +603,9 @@ export class MCPManager implements IMCPManager {
       transport: 'stdio',
       platform: 'desktop',
       builtin: true,
-      command: 'npx',
-      args: ['chrome-devtools-mcp', '--no-usage-statistics', '--isolated', '--chromeArg=--no-sandbox', '--chromeArg=--disable-setuid-sandbox'],
-      cwd: projectRoot,
+      command,
+      args,
+      cwd,
       enabled: true,
       timeout: 180000, // 3 min — browser tools can be slow
       createdAt: now,

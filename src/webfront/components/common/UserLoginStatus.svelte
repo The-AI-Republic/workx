@@ -69,6 +69,9 @@
         isCancelled = true;
         isLoggingIn = false;
         cancelLogin = null;
+        // Reject the pending login promise so the deep link callback cannot
+        // silently authenticate the user after they cancelled.
+        authService.cancelLogin();
         console.log('[UserLoginStatus] Login cancelled by user');
       };
 

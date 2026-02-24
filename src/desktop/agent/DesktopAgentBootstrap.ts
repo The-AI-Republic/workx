@@ -277,8 +277,10 @@ export class DesktopAgentBootstrap {
     try {
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
       const { HOME_PAGE_BASE_URL, LLM_API_URL } = await import('@/webfront/lib/constants');
+      // Note: do NOT call authService.initialize() here — this function only reads
+      // tokens from the keychain and does not need the deep-link listener.
+      // initialize() is called once by App.svelte and UserLoginStatus.svelte.
       const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
-      await authService.initialize();
 
       const hasToken = await authService.hasValidToken();
 
