@@ -1,16 +1,21 @@
-//! Job Object management for process limits.
+//! Job Object management for sandboxed process lifecycle.
 //!
-//! A Windows Job Object groups processes and enforces resource limits.
+//! A Windows Job Object groups processes and enforces lifecycle rules.
 //! We use it to:
-//! - Kill all child processes when the helper exits (kill_on_job_close)
-//! - Limit the number of active processes (prevent fork bombs)
-//! - Optionally cap memory usage
+//! - Kill all child processes when the helper exits (`kill_on_job_close`)
+//!
+//! Note: Process count and memory limits were intentionally removed because
+//! they caused runtime failures — shell sessions (e.g. `npm install`, `cargo build`)
+//! easily exceed a 64-process limit. The AppContainer namespace provides the
+//! primary security boundary; the Job Object's role is cleanup, not resource capping.
 
 #[cfg(windows)]
 mod imp {
     use win32job::Job;
 
-    /// Create a Job Object with sandbox-appropriate limits.
+    /// Create a Job Object that terminates all child processes on close.
+    ///
+    /// This ensures no orphaned processes survive after the sandbox helper exits.
     pub fn create_sandbox_job() -> Result<Job, String> {
         let mut job = Job::create()
             .map_err(|e| format!("Failed to create Job Object: {}", e))?;

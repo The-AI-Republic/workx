@@ -20,6 +20,8 @@ mod imp {
     use std::path::Path;
     use windows::core::{HSTRING, PCWSTR};
     use windows::Win32::Foundation::WIN32_ERROR;
+    // Note: In windows crate v0.58, PSID moved from windows::core to
+    // windows::Win32::Security.
     use windows::Win32::Security::{
         CreateWellKnownSid, FreeSid, PSID, SECURITY_CAPABILITIES, SID_AND_ATTRIBUTES,
         WinCapabilityInternetClientSid, WinCapabilityInternetClientServerSid,

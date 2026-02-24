@@ -2,7 +2,13 @@
  * Build the windows-sandbox sidecar binary and copy it to tauri/binaries/
  * with the Tauri-expected target-triple filename.
  *
- * On non-Windows platforms this is a no-op (the sandbox helper is Windows-only).
+ * Why this script exists:
+ *   Tauri's `externalBin` requires sidecar binaries to exist at build time,
+ *   named as `<name>-<target-triple>[.exe]`. Previously, `beforeBuildCommand`
+ *   ran `cargo build` directly, which failed on non-Windows platforms because
+ *   the sandbox crate uses Windows-only APIs. This script handles the
+ *   cross-platform logic: build + copy on Windows, create an empty placeholder
+ *   on macOS/Linux so the Tauri bundler doesn't error on the missing file.
  *
  * Run:  node scripts/build-sandbox.mjs
  */
@@ -15,6 +21,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
+// Map Node.js platform-arch to Rust target triple and binary extension.
+// Tauri expects sidecar binaries named: <name>-<triple>[.ext]
 const PLATFORM_MAP = {
   'win32-x64':    { triple: 'x86_64-pc-windows-msvc',   ext: '.exe' },
   'darwin-arm64': { triple: 'aarch64-apple-darwin',      ext: '' },
@@ -32,7 +40,8 @@ if (!mapping) {
 
 if (process.platform !== 'win32') {
   console.log('windows-sandbox is Windows-only, skipping build.');
-  // Still create a placeholder so Tauri bundler doesn't fail
+  // Create an empty placeholder so Tauri bundler doesn't fail on the
+  // missing externalBin entry. The file is never executed on non-Windows.
   const binDir = path.join(root, 'tauri', 'binaries');
   fs.mkdirSync(binDir, { recursive: true });
   const placeholder = path.join(binDir, `windows-sandbox-${mapping.triple}${mapping.ext}`);

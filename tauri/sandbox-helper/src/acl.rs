@@ -15,6 +15,8 @@ mod imp {
         TRUSTEE_W, TRUSTEE_IS_SID,
         NO_MULTIPLE_TRUSTEE, TRUSTEE_IS_WELL_KNOWN_GROUP,
     };
+    // Note: In windows crate v0.58, PSID and SUB_CONTAINERS_AND_OBJECTS_INHERIT
+    // moved from windows::core / Security::Authorization to windows::Win32::Security.
     use windows::Win32::Security::{
         ACL, DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
         SUB_CONTAINERS_AND_OBJECTS_INHERIT,
