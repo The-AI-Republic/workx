@@ -369,6 +369,62 @@ describe('TurnContext Methods', () => {
     });
   });
 
+  describe('setSelectedModelKey() / getSelectedModelKey()', () => {
+    it('should fall back to getModel() when no selected key is set', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      // No explicit key set, should delegate to modelClient.getModel()
+      expect(context.getSelectedModelKey()).toBe('test-model');
+    });
+
+    it('should return the composite key after setSelectedModelKey', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      context.setSelectedModelKey('openai:gpt-5');
+      expect(context.getSelectedModelKey()).toBe('openai:gpt-5');
+    });
+
+    it('should be independent of setModelClient', () => {
+      const context = new TurnContext(mockModelClient, {
+        sessionId: 'test-session',
+      });
+
+      context.setSelectedModelKey('anthropic:claude-4');
+
+      const newClient = {
+        getModel: vi.fn().mockReturnValue('raw-model-name'),
+        setModel: vi.fn(),
+        getModelContextWindow: vi.fn().mockReturnValue(128000),
+        getReasoningEffort: vi.fn().mockReturnValue(undefined),
+        setReasoningEffort: vi.fn(),
+        getReasoningSummary: vi.fn().mockReturnValue({ enabled: false }),
+        setReasoningSummary: vi.fn(),
+        stream: vi.fn(),
+      } as any;
+
+      context.setModelClient(newClient);
+
+      // selectedModelKey should still be the composite key, not the raw model name
+      expect(context.getSelectedModelKey()).toBe('anthropic:claude-4');
+      // getModel() should return the raw name from the new client
+      expect(context.getModel()).toBe('raw-model-name');
+    });
+
+    it('should allow overwriting the selected model key', () => {
+      const context = new TurnContext(mockModelClient);
+
+      context.setSelectedModelKey('openai:gpt-5');
+      expect(context.getSelectedModelKey()).toBe('openai:gpt-5');
+
+      context.setSelectedModelKey('google:gemini-2.0-flash');
+      expect(context.getSelectedModelKey()).toBe('google:gemini-2.0-flash');
+    });
+  });
+
   describe('Breaking Changes: cwd and tabId removal', () => {
     it('should not have getCwd method', () => {
       const context = new TurnContext(mockModelClient);

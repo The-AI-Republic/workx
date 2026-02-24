@@ -95,7 +95,7 @@ declare const __BUILD_MODE__: string;
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { BrowserxAgent } from '@/core/BrowserxAgent';
+import { PiAgent as BrowserxAgent } from '@/core/PiAgent';
 import { AgentConfig } from '@/config/AgentConfig';
 import { MessageRouter } from '@/core/MessageRouter';
 import type { IConfigChangeEvent } from '@/config/types';
@@ -211,6 +211,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       setUserInstructions: vi.fn(),
       setBaseInstructions: vi.fn(),
       setModelClient: vi.fn(),
+      setSelectedModelKey: vi.fn(),
       getModelClient: vi.fn().mockReturnValue(makeMockModelClient('initial-model')),
       getSessionId: vi.fn(() => 'session-1'),
     };
@@ -323,6 +324,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       });
 
       expect(mockTurnContextInstance.setModelClient).toHaveBeenCalledWith(newClient);
+      expect(mockTurnContextInstance.setSelectedModelKey).toHaveBeenCalledWith('anthropic:claude-4');
     });
 
     it('should not call createClientForCurrentModel when oldValue equals newValue', async () => {
@@ -371,6 +373,46 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
 
       await new Promise(r => setTimeout(r, 20));
 
+      expect(mockTurnContextInstance.setModelClient).not.toHaveBeenCalled();
+    });
+
+    it('should clear stale pendingModelKey when an immediate switch is applied', async () => {
+      // Step 1: Defer a switch while a task is running
+      const runningTasksMap = new Map([['task-1', { id: 'task-1' }]]);
+      mockSessionInstance.getRunningTasks.mockReturnValue(runningTasksMap);
+
+      config._emit(makeModelChangeEvent('openai:gpt-5', 'anthropic:claude-4'));
+      await new Promise(r => setTimeout(r, 10));
+
+      // Verify deferred (no client created)
+      expect(mockModelClientFactoryInstance.createClientForCurrentModel).not.toHaveBeenCalled();
+
+      // Step 2: Task completes, then a second model switch happens immediately
+      mockSessionInstance.getRunningTasks.mockReturnValue(new Map());
+
+      const xaiClient = makeMockModelClient('grok-3-client');
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValueOnce(xaiClient);
+
+      config._emit(makeModelChangeEvent('anthropic:claude-4', 'xai:grok-3'));
+
+      await vi.waitFor(() => {
+        expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalled();
+      });
+
+      expect(mockTurnContextInstance.setModelClient).toHaveBeenCalledWith(xaiClient);
+
+      // Step 3: Reset mocks and submit user input — the stale pendingModelKey should NOT trigger another switch
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockClear();
+      mockTurnContextInstance.setModelClient.mockClear();
+      mockTurnContextInstance.setSelectedModelKey.mockClear();
+
+      await agent.submitOperation({
+        type: 'UserInput',
+        items: [{ type: 'text', text: 'test' }],
+      });
+      await new Promise(r => setTimeout(r, 20));
+
+      // No additional model switch should have been applied from the stale pending key
       expect(mockTurnContextInstance.setModelClient).not.toHaveBeenCalled();
     });
   });
@@ -457,6 +499,7 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       // The pending model switch should have been applied
       expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalled();
       expect(mockTurnContextInstance.setModelClient).toHaveBeenCalledWith(pendingClient);
+      expect(mockTurnContextInstance.setSelectedModelKey).toHaveBeenCalledWith('anthropic:claude-4');
     });
 
     it('should clear pendingModelKey after applying the switch', async () => {
