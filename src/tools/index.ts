@@ -14,8 +14,10 @@ import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
 import { PlanningTool } from './PlanningTool';
 import { WebSearchTool } from './WebSearchTool';
+import { SettingTool } from './SettingTool';
 import { DomToolRiskAssessor } from '../core/approval/assessors/DomToolRiskAssessor';
 import { StaticRiskAssessor } from '../core/approval/assessors/StaticRiskAssessor';
+import { SettingToolRiskAssessor } from '../core/approval/assessors/SettingToolRiskAssessor';
 import type { IRiskAssessor } from '../core/approval/types';
 
 // Re-export core tools (non-DOM tools for service worker compatibility)
@@ -32,6 +34,7 @@ export { StorageTool } from './StorageTool';
 export { PageVisionTool } from './PageVisionTool';
 export { PlanningTool } from './PlanningTool';
 export { WebSearchTool } from './WebSearchTool';
+export { SettingTool } from './SettingTool';
 
 /**
  * Register browser automation tools based on configuration
@@ -183,6 +186,11 @@ export async function registerTools(
     const planningTool = new PlanningTool();
     await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
     console.log('PlanningTool registered (always enabled)');
+
+    // Setting Tool - Always enabled for reading/writing allowlisted settings via chat
+    const settingTool = new SettingTool();
+    await registerTool('setting_tool', settingTool, new SettingToolRiskAssessor());
+    console.log('SettingTool registered (always enabled)');
 
     console.log('Advanced browser tools registration completed');
   } catch (error) {
