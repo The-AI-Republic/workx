@@ -5,7 +5,7 @@
   "identifier": "com.airepublic.pi",
   "build": {
     "beforeBuildCommand": { "script": "npm run build:desktop && node scripts/build-sandbox.mjs", "cwd": ".." },
-    "beforeDevCommand": { "script": "npm run dev:desktop", "cwd": ".." },
+    "beforeDevCommand": { "script": "node scripts/build-sandbox.mjs && npm run build:sidecar && npm run dev:desktop", "cwd": ".." },
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist/desktop"
   },
