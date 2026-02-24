@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
   import Tooltip from './common/Tooltip.svelte';
@@ -8,6 +9,7 @@
   import CommandError from './CommandError.svelte';
   import { uiTheme } from '../stores/themeStore';
   import { platform } from '../stores/platformStore';
+  import { schedulerStore } from '../stores/schedulerStore';
   import { t, _t } from '../lib/i18n';
   import { commandRegistry, parseCommandInput } from '../commands';
   import type { FilteredCommand } from '../commands';
@@ -25,9 +27,7 @@
   const dispatch = createEventDispatcher<{
     modelChanged: { modelId: string; modelName: string };
     tabSelected: { tabId: number };
-    showScheduleModal: { input: string };
     commandOutput: { title: string; content: string };
-    openSettings: void;
   }>();
 
   let isFocused = false;
@@ -62,7 +62,7 @@
         dispatch('commandOutput', { title, content });
       },
       onOpenSettings: () => {
-        dispatch('openSettings');
+        push('/settings');
       },
     });
   }
@@ -302,8 +302,9 @@
     isLongPress = false;
     pressTimer = setTimeout(() => {
       isLongPress = true;
-      // Dispatch event to show schedule modal
-      dispatch('showScheduleModal', { input: value });
+      // Set pending input and navigate to scheduler page
+      schedulerStore.setPendingInput(value);
+      push('/scheduler');
     }, LONG_PRESS_DURATION);
   }
 
