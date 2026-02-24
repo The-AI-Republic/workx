@@ -31,7 +31,7 @@ export class TabManager {
   // Tab group management (merged from TabGroupManager - T014)
   private groupId: number | null = null;
   private readonly groupTitle = 'browserx';
-  private readonly groupColor: chrome.tabGroups.ColorEnum = 'blue';
+  private readonly groupColor = 'blue' as const;
 
   // Event callbacks (stateless - just notify about tab events)
   private tabClosureCallbacks: TabClosureCallback[] = [];
