@@ -280,11 +280,13 @@ fn run_sandboxed(profile_b64: &str, child_args: &[String]) -> ExitCode {
 
         log::info!("Child process exited with code {}", exit_code);
 
-        // ACL guards drop here, restoring original DACLs
-        // Job object drops here
-        // AppContainer SID drops here
+        // Explicitly drop RAII guards before exit() to ensure cleanup runs
+        drop(_acl_guards);
+        drop(sandbox_job);
+        drop(container_sid);
 
-        ExitCode::from(exit_code as u8)
+        // Use process::exit to preserve the full 32-bit exit code
+        std::process::exit(exit_code as i32)
     }
 
     #[cfg(not(windows))]

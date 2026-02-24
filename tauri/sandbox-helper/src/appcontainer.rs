@@ -4,30 +4,27 @@
 //! to a minimal set of capabilities. By default an AppContainer process has no
 //! filesystem, network, or registry access beyond what is explicitly granted.
 
+/// FNV-1a 64-bit hash — stable across Rust versions, unlike DefaultHasher.
+fn fnv1a_64(data: &[u8]) -> u64 {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for &byte in data {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
 #[cfg(windows)]
 mod imp {
     use crate::profile::NetworkMode;
     use std::path::Path;
     use windows::core::{HSTRING, PCWSTR, PWSTR, PSID};
-
-    /// FNV-1a 64-bit hash — stable across Rust versions, unlike DefaultHasher.
-    fn fnv1a_64(data: &[u8]) -> u64 {
-        let mut hash: u64 = 0xcbf29ce484222325;
-        for &byte in data {
-            hash ^= byte as u64;
-            hash = hash.wrapping_mul(0x100000001b3);
-        }
-        hash
-    }
-    use windows::Win32::Foundation::{
-        CloseHandle, BOOL, ERROR_ALREADY_EXISTS, HANDLE, LUID, WIN32_ERROR,
-    };
+    use windows::Win32::Foundation::WIN32_ERROR;
     use windows::Win32::Security::{
         CreateWellKnownSid, FreeSid, SECURITY_CAPABILITIES, SID_AND_ATTRIBUTES,
         WinCapabilityInternetClientSid, WinCapabilityInternetClientServerSid,
         WELL_KNOWN_SID_TYPE,
     };
-    use windows::Win32::System::Threading::PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES;
 
     // FFI declarations for AppContainer APIs not yet in the `windows` crate bindings.
     // These live in userenv.dll.
@@ -55,7 +52,7 @@ mod imp {
     /// A deterministic container name derived from the workspace path.
     /// Uses FNV-1a (64-bit) for a stable hash that won't change across Rust versions.
     pub fn container_name(workspace: &Path) -> String {
-        let hash = fnv1a_64(workspace.to_string_lossy().to_lowercase().as_bytes());
+        let hash = super::fnv1a_64(workspace.to_string_lossy().to_lowercase().as_bytes());
         format!("windows-sandbox-{:016x}", hash)
     }
 
@@ -214,14 +211,6 @@ pub use imp::*;
 // Stubs for non-Windows compilation (allows cargo check on Linux/macOS)
 #[cfg(not(windows))]
 pub fn container_name(workspace: &std::path::Path) -> String {
-    fn fnv1a_64(data: &[u8]) -> u64 {
-        let mut hash: u64 = 0xcbf29ce484222325;
-        for &byte in data {
-            hash ^= byte as u64;
-            hash = hash.wrapping_mul(0x100000001b3);
-        }
-        hash
-    }
     let hash = fnv1a_64(workspace.to_string_lossy().to_lowercase().as_bytes());
     format!("windows-sandbox-{:016x}", hash)
 }

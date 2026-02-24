@@ -11,14 +11,19 @@ mod imp {
     use windows::Win32::Foundation::WIN32_ERROR;
     use windows::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW,
-        EXPLICIT_ACCESS_W, SET_ACCESS, SE_FILE_OBJECT, SE_OBJECT_TYPE,
-        TRUSTEE_W, TRUSTEE_IS_SID, TRUSTEE_FORM, TRUSTEE_TYPE,
-        NO_MULTIPLE_TRUSTEE, MULTIPLE_TRUSTEE_OPERATION, TRUSTEE_IS_WELL_KNOWN_GROUP,
-        NO_INHERITANCE, SUB_CONTAINERS_AND_OBJECTS_INHERIT,
+        EXPLICIT_ACCESS_W, SET_ACCESS, SE_FILE_OBJECT,
+        TRUSTEE_W, TRUSTEE_IS_SID,
+        NO_MULTIPLE_TRUSTEE, TRUSTEE_IS_WELL_KNOWN_GROUP,
+        SUB_CONTAINERS_AND_OBJECTS_INHERIT,
     };
     use windows::Win32::Security::{
-        ACL, DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, OBJECT_SECURITY_INFORMATION,
+        ACL, DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
     };
+
+    const FILE_GENERIC_READ: u32 = 0x0012_0089;
+    const FILE_GENERIC_WRITE: u32 = 0x0012_0116;
+    const FILE_GENERIC_EXECUTE: u32 = 0x0012_00A0;
+    const DELETE: u32 = 0x0001_0000;
 
     /// Access mode for ACL grants.
     #[derive(Debug, Clone, Copy)]
@@ -31,10 +36,10 @@ mod imp {
         /// Return the Windows access mask for this mode.
         fn mask(self) -> u32 {
             match self {
-                // GENERIC_READ | GENERIC_WRITE | GENERIC_EXECUTE | DELETE
-                AccessMode::ReadWrite => 0x120116 | 0x120089 | 0x1200A0 | 0x00010000,
-                // GENERIC_READ | GENERIC_EXECUTE
-                AccessMode::ReadOnly => 0x120089 | 0x1200A0,
+                AccessMode::ReadWrite => {
+                    FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE | DELETE
+                }
+                AccessMode::ReadOnly => FILE_GENERIC_READ | FILE_GENERIC_EXECUTE,
             }
         }
     }
@@ -46,7 +51,7 @@ mod imp {
         security_descriptor: PSECURITY_DESCRIPTOR,
     }
 
-    // SAFETY: The pointers are owned by this guard and only accessed in Drop.
+    // SAFETY: The Win32 APIs used in Drop (SetNamedSecurityInfoW, LocalFree) are thread-safe.
     unsafe impl Send for AclGuard {}
 
     impl Drop for AclGuard {

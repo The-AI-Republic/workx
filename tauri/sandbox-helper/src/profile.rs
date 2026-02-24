@@ -1,44 +1,7 @@
 use base64::Engine;
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
-/// How the workspace directory is mounted into the sandbox.
-/// Must stay in sync with the definition in `tauri/src/sandbox/mod.rs`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum WorkspaceAccess {
-    Rw,
-    Ro,
-    None,
-}
-
-/// Network isolation level for the sandbox.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum NetworkMode {
-    Host,
-    Sandbox,
-}
-
-/// An explicit user-configured bind mount.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BindMount {
-    #[serde(rename = "hostPath")]
-    pub host_path: String,
-    pub access: String,
-}
-
-/// Platform-specific sandbox configuration, deserialized from the base64 JSON
-/// argument passed by the main application.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxProfile {
-    pub workspace_dir: PathBuf,
-    pub workspace_access: WorkspaceAccess,
-    pub standard_writable: Vec<PathBuf>,
-    pub bind_mounts: Vec<BindMount>,
-    pub network_mode: NetworkMode,
-    pub timeout_ms: u64,
-}
+#[allow(unused_imports)]
+pub use sandbox_types::{BindMount, NetworkMode, SandboxProfile, WorkspaceAccess};
 
 /// Decode a `SandboxProfile` from a base64-encoded JSON string.
 pub fn decode_profile(encoded: &str) -> Result<SandboxProfile, String> {
@@ -54,6 +17,7 @@ pub fn decode_profile(encoded: &str) -> Result<SandboxProfile, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_profile_deserialization() {

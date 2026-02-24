@@ -1,5 +1,5 @@
 [workspace]
-members = ["sandbox-helper"]
+members = ["sandbox-helper", "sandbox-types"]
 
 [package]
 name = "pi"
@@ -40,6 +40,7 @@ log = "0.4"
 async-trait = "0.1"
 dirs = "5"
 portable-pty = "0.8"
+sandbox-types = { path = "sandbox-types" }
 strip-ansi-escapes = "0.2"
 
 [target.'cfg(windows)'.dependencies]
