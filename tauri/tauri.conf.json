@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.airepublic.pi",
   "build": {
-    "beforeBuildCommand": "npm run build:desktop && cargo build --release -p windows-sandbox",
+    "beforeBuildCommand": "npm run build:desktop && node scripts/build-sandbox.mjs",
     "beforeDevCommand": "npm run dev:desktop",
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist/desktop"
