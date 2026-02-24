@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import { userStore, userInitials, getLoginPageUrl } from '../../stores/userStore';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { platform } from '../../stores/platformStore';
@@ -8,8 +9,6 @@
   import PopupCard from './PopupCard.svelte';
   import { _t } from '../../lib/i18n';
   import { fetchUserProfile } from '../../lib/apis';
-
-  const dispatch = createEventDispatcher();
 
   let isLoggingIn = false;
   let cancelLogin: (() => void) | null = null;
@@ -154,7 +153,7 @@
 
   function openSettings() {
     showMenu = false;
-    dispatch('openSettings');
+    push('/settings');
   }
 
   async function openUserCenter(event: MouseEvent) {

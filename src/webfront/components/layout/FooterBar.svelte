@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import { userStore } from '../../stores/userStore';
   import Tooltip from '../common/Tooltip.svelte';
@@ -8,8 +8,6 @@
   // import SchedulerButton from '../scheduler/SchedulerButton.svelte';
   // import SchedulerPopup from '../scheduler/SchedulerPopup.svelte';
   import ApprovalModeIndicator from '../common/ApprovalModeIndicator.svelte';
-
-  const dispatch = createEventDispatcher();
 
   let currentTheme: UITheme = 'terminal';
   // let showSchedulerPopup = false;
@@ -20,7 +18,7 @@
   });
 
   function handleOpenSettings() {
-    dispatch('openSettings');
+    push('/settings');
   }
 
   // function handleSchedulerClick() {
@@ -34,7 +32,7 @@
 
 <div class="footer-bar {currentTheme}">
   <!-- User Login Status (includes Settings in menu when logged in) -->
-  <UserLoginStatus on:openSettings={handleOpenSettings} />
+  <UserLoginStatus />
 
   <!-- Scheduler Button (hidden while feature is being improved) -->
   <!-- <SchedulerButton on:click={handleSchedulerClick} /> -->
