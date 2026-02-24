@@ -302,6 +302,13 @@ export class PiAgent {
     if (this.session.getRunningTasks().size > 0) {
       // Defer the model switch until the next user submission
       this.pendingModelKey = newModelId;
+      this.emitEvent({
+        type: 'BackgroundEvent',
+        data: {
+          message: `Model switch to ${newModelId} will take effect after the current task completes.`,
+          level: 'info',
+        },
+      });
       return;
     }
 
@@ -313,6 +320,13 @@ export class PiAgent {
       const turnCtx = this.session.getTurnContext();
       turnCtx.setModelClient(modelClient);
       turnCtx.setSelectedModelKey(newModelId);
+      this.emitEvent({
+        type: 'BackgroundEvent',
+        data: {
+          message: `Model switched to ${newModelId}. Conversation preserved.`,
+          level: 'info',
+        },
+      });
     } catch (error) {
       console.error('Failed to switch model:', error);
       this.emitEvent({

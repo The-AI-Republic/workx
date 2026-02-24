@@ -312,6 +312,9 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
 
   describe('Immediate switch (no active task)', () => {
     it('should create a new model client and update TurnContext when no task is running', async () => {
+      const dispatcherSpy = vi.fn();
+      agent.setEventDispatcher(dispatcherSpy);
+
       const newClient = makeMockModelClient('new-model-client');
       mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValueOnce(newClient);
 
@@ -325,6 +328,15 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
 
       expect(mockTurnContextInstance.setModelClient).toHaveBeenCalledWith(newClient);
       expect(mockTurnContextInstance.setSelectedModelKey).toHaveBeenCalledWith('anthropic:claude-4');
+
+      // Should emit a BackgroundEvent confirming the immediate switch
+      const infoEvent = dispatcherSpy.mock.calls.find(
+        (call: any[]) =>
+          call[0]?.msg?.type === 'BackgroundEvent' &&
+          call[0]?.msg?.data?.level === 'info' &&
+          call[0]?.msg?.data?.message?.includes('Model switched to anthropic:claude-4')
+      );
+      expect(infoEvent).toBeDefined();
     });
 
     it('should not call createClientForCurrentModel when oldValue equals newValue', async () => {
@@ -436,6 +448,27 @@ describe('BrowserxAgent - handleModelConfigChange', () => {
       expect(mockModelClientFactoryInstance.createClientForCurrentModel).not.toHaveBeenCalled();
       // Should NOT have called setModelClient
       expect(mockTurnContextInstance.setModelClient).not.toHaveBeenCalled();
+    });
+
+    it('should emit a BackgroundEvent info message when deferring a model switch', async () => {
+      const dispatcherSpy = vi.fn();
+      agent.setEventDispatcher(dispatcherSpy);
+
+      // Simulate a running task
+      const runningTasksMap = new Map([['task-1', { id: 'task-1' }]]);
+      mockSessionInstance.getRunningTasks.mockReturnValue(runningTasksMap);
+
+      config._emit(makeModelChangeEvent('openai:gpt-5', 'anthropic:claude-4'));
+
+      await new Promise(r => setTimeout(r, 10));
+
+      const infoEvent = dispatcherSpy.mock.calls.find(
+        (call: any[]) =>
+          call[0]?.msg?.type === 'BackgroundEvent' &&
+          call[0]?.msg?.data?.level === 'info' &&
+          call[0]?.msg?.data?.message?.includes('Model switch to anthropic:claude-4 will take effect after the current task completes')
+      );
+      expect(infoEvent).toBeDefined();
     });
 
     it('should not store pendingModelKey when oldValue equals newValue even with running tasks', async () => {
