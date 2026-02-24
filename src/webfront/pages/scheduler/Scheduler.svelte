@@ -145,6 +145,7 @@
       });
 
       if (response?.success) {
+        schedulerStore.setResult({ taskInput, scheduledTime });
         push('/');
       } else {
         throw new Error(response?.error || 'Failed to schedule task');

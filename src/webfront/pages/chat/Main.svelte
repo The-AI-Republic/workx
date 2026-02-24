@@ -25,6 +25,8 @@
   import FooterBar from '../../components/layout/FooterBar.svelte';
   // Agent store for auth mode tracking
   import { agentStore } from '../../stores/agentStore';
+  // Scheduler store (for scheduling result feedback)
+  import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
   // Message service (platform-agnostic)
@@ -65,6 +67,30 @@
     // Clear messages from previous session
     messages = [];
     processedEvents = [];
+
+    // Check if returning from a successful scheduling
+    const scheduledResult = schedulerStore.getAndClearResult();
+    if (scheduledResult) {
+      const scheduledDate = new Date(scheduledResult.scheduledTime);
+      const dateDisplay = scheduledDate.toLocaleString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const confirmEvent: ProcessedEvent = {
+        id: `scheduled_confirm_${Date.now()}`,
+        category: 'system',
+        timestamp: new Date(),
+        title: 'system',
+        content: t('Task scheduled for $1$', { substitutions: [dateDisplay] }),
+        style: { textColor: 'text-green-400', icon: 'success' },
+        streaming: false,
+        collapsible: false,
+      };
+      processedEvents = [confirmEvent];
+    }
 
     // Initialize EventProcessor
     eventProcessor = new EventProcessor();
