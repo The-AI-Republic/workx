@@ -7,17 +7,17 @@
 #[cfg(windows)]
 mod imp {
     use std::path::Path;
-    use windows::core::{HSTRING, PCWSTR, PSID, PWSTR};
+    use windows::core::{HSTRING, PCWSTR, PWSTR};
     use windows::Win32::Foundation::WIN32_ERROR;
     use windows::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW,
         EXPLICIT_ACCESS_W, SET_ACCESS, SE_FILE_OBJECT,
         TRUSTEE_W, TRUSTEE_IS_SID,
         NO_MULTIPLE_TRUSTEE, TRUSTEE_IS_WELL_KNOWN_GROUP,
-        SUB_CONTAINERS_AND_OBJECTS_INHERIT,
     };
     use windows::Win32::Security::{
-        ACL, DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
+        ACL, DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
+        SUB_CONTAINERS_AND_OBJECTS_INHERIT,
     };
 
     const FILE_GENERIC_READ: u32 = 0x0012_0089;
@@ -81,7 +81,7 @@ mod imp {
             // Free the security descriptor allocated by GetNamedSecurityInfoW
             if !self.security_descriptor.0.is_null() {
                 unsafe {
-                    windows::Win32::System::Memory::LocalFree(
+                    windows::Win32::Foundation::LocalFree(
                         windows::Win32::Foundation::HLOCAL(self.security_descriptor.0),
                     );
                 }
@@ -151,7 +151,7 @@ mod imp {
             // Free sd before returning
             if !sd.0.is_null() {
                 unsafe {
-                    windows::Win32::System::Memory::LocalFree(
+                    windows::Win32::Foundation::LocalFree(
                         windows::Win32::Foundation::HLOCAL(sd.0),
                     );
                 }
@@ -178,14 +178,14 @@ mod imp {
             // Cleanup
             if !new_dacl.is_null() {
                 unsafe {
-                    windows::Win32::System::Memory::LocalFree(
+                    windows::Win32::Foundation::LocalFree(
                         windows::Win32::Foundation::HLOCAL(new_dacl as *mut _),
                     );
                 }
             }
             if !sd.0.is_null() {
                 unsafe {
-                    windows::Win32::System::Memory::LocalFree(
+                    windows::Win32::Foundation::LocalFree(
                         windows::Win32::Foundation::HLOCAL(sd.0),
                     );
                 }
@@ -199,7 +199,7 @@ mod imp {
         // Free the new DACL (SetNamedSecurityInfoW copies it)
         if !new_dacl.is_null() {
             unsafe {
-                windows::Win32::System::Memory::LocalFree(
+                windows::Win32::Foundation::LocalFree(
                     windows::Win32::Foundation::HLOCAL(new_dacl as *mut _),
                 );
             }

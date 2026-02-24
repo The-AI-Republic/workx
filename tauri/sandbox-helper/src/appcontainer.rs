@@ -18,10 +18,10 @@ fn fnv1a_64(data: &[u8]) -> u64 {
 mod imp {
     use crate::profile::NetworkMode;
     use std::path::Path;
-    use windows::core::{HSTRING, PCWSTR, PWSTR, PSID};
+    use windows::core::{HSTRING, PCWSTR};
     use windows::Win32::Foundation::WIN32_ERROR;
     use windows::Win32::Security::{
-        CreateWellKnownSid, FreeSid, SECURITY_CAPABILITIES, SID_AND_ATTRIBUTES,
+        CreateWellKnownSid, FreeSid, PSID, SECURITY_CAPABILITIES, SID_AND_ATTRIBUTES,
         WinCapabilityInternetClientSid, WinCapabilityInternetClientServerSid,
         WELL_KNOWN_SID_TYPE,
     };
