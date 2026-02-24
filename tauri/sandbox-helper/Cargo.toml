@@ -1,11 +1,11 @@
 [package]
-name = "browserx-sandbox"
+name = "windows-sandbox"
 version = "0.1.0"
 edition = "2021"
 description = "AppContainer sandbox helper for browserx on Windows"
 
 [[bin]]
-name = "browserx-sandbox"
+name = "windows-sandbox"
 path = "src/main.rs"
 
 [dependencies]

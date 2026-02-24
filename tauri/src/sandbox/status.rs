@@ -161,7 +161,7 @@ async fn check_windows_status(os: &str) -> Result<SandboxStatusResult, String> {
     // Locate the helper binary next to the running executable
     let helper_path = std::env::current_exe()
         .ok()
-        .and_then(|exe| exe.parent().map(|p| p.join("browserx-sandbox.exe")));
+        .and_then(|exe| exe.parent().map(|p| p.join("windows-sandbox.exe")));
 
     let helper_path = match helper_path {
         Some(p) if p.exists() => p,
@@ -173,7 +173,7 @@ async fn check_windows_status(os: &str) -> Result<SandboxStatusResult, String> {
                 os: os.to_string(),
                 version: None,
                 message: Some(
-                    "Sandbox helper binary (browserx-sandbox.exe) not found. \
+                    "Sandbox helper binary (windows-sandbox.exe) not found. \
                      It should be bundled with the application."
                         .to_string(),
                 ),

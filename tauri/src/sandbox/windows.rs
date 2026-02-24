@@ -22,7 +22,7 @@ impl WindowsSandbox {
         }
     }
 
-    /// Locate the `browserx-sandbox.exe` helper binary.
+    /// Locate the `windows-sandbox.exe` helper binary.
     /// Tauri bundles `externalBin` entries next to the main executable.
     fn helper_path() -> Option<PathBuf> {
         let exe_dir = std::env::current_exe()
@@ -30,7 +30,7 @@ impl WindowsSandbox {
             .parent()?
             .to_path_buf();
 
-        let helper = exe_dir.join("browserx-sandbox.exe");
+        let helper = exe_dir.join("windows-sandbox.exe");
         Some(helper)
     }
 }

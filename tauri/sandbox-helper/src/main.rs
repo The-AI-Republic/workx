@@ -1,12 +1,12 @@
-//! browserx-sandbox: AppContainer sandbox helper binary for Windows.
+//! windows-sandbox: AppContainer sandbox helper binary for Windows.
 //!
 //! This binary is spawned by portable-pty (via the Tauri app) and in turn
 //! spawns the actual shell command inside an AppContainer sandbox with a
 //! Job Object for process limits.
 //!
 //! Usage:
-//!   browserx-sandbox --profile <base64-json> -- <shell> <shell-flag> <command>
-//!   browserx-sandbox --self-test
+//!   windows-sandbox --profile <base64-json> -- <shell> <shell-flag> <command>
+//!   windows-sandbox --self-test
 
 mod acl;
 mod appcontainer;
@@ -23,8 +23,8 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
-        eprintln!("Usage: browserx-sandbox --profile <base64-json> -- <shell> <flag> <cmd>");
-        eprintln!("       browserx-sandbox --self-test");
+        eprintln!("Usage: windows-sandbox --profile <base64-json> -- <shell> <flag> <cmd>");
+        eprintln!("       windows-sandbox --self-test");
         return ExitCode::from(1);
     }
 
@@ -70,7 +70,7 @@ fn run_self_test() -> ExitCode {
     {
         log::info!("Running self-test...");
 
-        let test_name = "browserx-sandbox-selftest";
+        let test_name = "windows-sandbox-selftest";
 
         // Test AppContainer profile creation
         match appcontainer::create_or_get_profile(test_name) {

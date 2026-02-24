@@ -7,10 +7,18 @@
 #[cfg(windows)]
 mod imp {
     use crate::profile::NetworkMode;
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
     use std::path::Path;
     use windows::core::{HSTRING, PCWSTR, PWSTR, PSID};
+
+    /// FNV-1a 64-bit hash — stable across Rust versions, unlike DefaultHasher.
+    fn fnv1a_64(data: &[u8]) -> u64 {
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for &byte in data {
+            hash ^= byte as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        hash
+    }
     use windows::Win32::Foundation::{
         CloseHandle, BOOL, ERROR_ALREADY_EXISTS, HANDLE, LUID, WIN32_ERROR,
     };
@@ -45,10 +53,10 @@ mod imp {
     }
 
     /// A deterministic container name derived from the workspace path.
+    /// Uses FNV-1a (64-bit) for a stable hash that won't change across Rust versions.
     pub fn container_name(workspace: &Path) -> String {
-        let mut hasher = DefaultHasher::new();
-        workspace.to_string_lossy().to_lowercase().hash(&mut hasher);
-        format!("browserx-sandbox-{:016x}", hasher.finish())
+        let hash = fnv1a_64(workspace.to_string_lossy().to_lowercase().as_bytes());
+        format!("windows-sandbox-{:016x}", hash)
     }
 
     /// RAII wrapper around an AppContainer SID allocated by the system.
@@ -206,11 +214,16 @@ pub use imp::*;
 // Stubs for non-Windows compilation (allows cargo check on Linux/macOS)
 #[cfg(not(windows))]
 pub fn container_name(workspace: &std::path::Path) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    workspace.to_string_lossy().to_lowercase().hash(&mut hasher);
-    format!("browserx-sandbox-{:016x}", hasher.finish())
+    fn fnv1a_64(data: &[u8]) -> u64 {
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for &byte in data {
+            hash ^= byte as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        hash
+    }
+    let hash = fnv1a_64(workspace.to_string_lossy().to_lowercase().as_bytes());
+    format!("windows-sandbox-{:016x}", hash)
 }
 
 #[cfg(not(windows))]
