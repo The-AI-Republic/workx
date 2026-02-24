@@ -1440,10 +1440,10 @@ function setupSkillsMessageHandlers(): void {
     return skillRegistry!.getSkillMetas();
   });
 
-  // Load full skill content
+  // Load full skill content (with optional argument substitution)
   router.on(MessageType.SKILLS_LOAD, async (message) => {
-    const { name } = message.payload as { name: string };
-    return skillRegistry!.invoke(name);
+    const { name, args } = message.payload as { name: string; args?: string };
+    return skillRegistry!.invoke(name, args ? args.split(/\s+/) : []);
   });
 
   // Save a skill (create or update)
@@ -1470,7 +1470,21 @@ function setupSkillsMessageHandlers(): void {
   // Import skill from URL
   router.on(MessageType.SKILLS_IMPORT, async (message) => {
     const { url } = message.payload as { url: string };
-    const skill = await skillRegistry!.importFromUrl(url);
+
+    // Validate URL scheme at the platform boundary
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Only HTTP/HTTPS URLs are supported for skill import');
+    }
+
+    // Fetch is a transport concern — handled here, not in core SkillRegistry
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch skill from ${url}: ${response.statusText}`);
+    }
+    const content = await response.text();
+
+    const skill = await skillRegistry!.importFromContent(content, url);
     return { success: true, skill };
   });
 

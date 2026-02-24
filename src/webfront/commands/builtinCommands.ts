@@ -65,7 +65,7 @@ export async function registerSkillCommands(
         description: skill.description,
         argumentHint: '$ARGUMENTS',
         action: async (args?: string) => {
-          const body = await sendMessage<string | null>(MessageType.SKILLS_LOAD, { name });
+          const body = await sendMessage<string | null>(MessageType.SKILLS_LOAD, { name, args });
           if (body) {
             onSkillInvoked(name, body);
           }

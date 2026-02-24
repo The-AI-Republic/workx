@@ -68,7 +68,8 @@
 
     // Load skill commands asynchronously (non-blocking)
     registerSkillCommands((name, body) => {
-      dispatch('commandOutput', { title: `Skill: ${name}`, content: body });
+      // Submit skill body as a message to the agent so it follows the instructions
+      onSubmit(body);
     });
   }
 

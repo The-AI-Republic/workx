@@ -2,6 +2,9 @@ import type { ISkillProvider } from './SkillProvider';
 import type { Skill, SkillMeta, InvocationMode, ICommandRegistry } from './types';
 import { substituteVariables, validateSkill, parseSkillMd } from './SkillParser';
 
+/** Built-in command names that skills cannot use */
+const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
+
 /**
  * Central coordinator for skill lifecycle.
  * Manages discovery, invocation, CommandRegistry integration, and system prompt generation.
@@ -109,13 +112,19 @@ export class SkillRegistry {
    * Throws if name conflicts with a built-in command.
    */
   async save(skill: Skill): Promise<void> {
-    // Check for reserved names
+    // Check for reserved names (static list ensures this works even without commandRegistry)
+    if (RESERVED_COMMAND_NAMES.has(skill.name)) {
+      throw new Error(
+        `Skill name "${skill.name}" conflicts with a built-in command`
+      );
+    }
+
+    // Also check commandRegistry if available (catches dynamically registered commands)
     if (this.commandRegistry && this.commandRegistry.has(skill.name)) {
-      // Check if it's a skill command we registered (allow updates) vs built-in
       const existingMeta = this.metas.find((m) => m.name === skill.name);
       if (!existingMeta) {
         throw new Error(
-          `Skill name "${skill.name}" conflicts with an existing built-in command`
+          `Skill name "${skill.name}" conflicts with an existing command`
         );
       }
     }
@@ -213,14 +222,12 @@ export class SkillRegistry {
 
   // ── Import / Trust ──────────────────────────────────────────────
 
-  /** Import a skill from URL, flagged as untrusted, defaults to manual mode */
-  async importFromUrl(url: string): Promise<Skill> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch skill from ${url}: ${response.statusText}`);
-    }
-
-    const content = await response.text();
+  /**
+   * Import a skill from pre-fetched SKILL.md content.
+   * The caller is responsible for fetching the content (HTTP is a transport concern).
+   * Imported skills are flagged as untrusted and default to manual mode.
+   */
+  async importFromContent(content: string, sourceUrl?: string): Promise<Skill> {
     const parsed = parseSkillMd(content);
 
     // Validate
@@ -237,7 +244,7 @@ export class SkillRegistry {
       invocationMode: 'manual',
       trusted: false,
       source: 'imported',
-      sourceUrl: url,
+      sourceUrl,
       metadata: parsed.frontmatter.metadata,
       allowedTools: parsed.frontmatter['allowed-tools']
         ? parsed.frontmatter['allowed-tools'].split(/\s+/)

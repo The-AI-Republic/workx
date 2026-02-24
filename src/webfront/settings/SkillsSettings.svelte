@@ -8,7 +8,7 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { SkillMeta, InvocationMode } from '@/core/skills/types';
   import { sendMessage, MessageType } from '../lib/messaging';
-  import { _t } from '../lib/i18n';
+  import { t, _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
   export let isDirty = false;
@@ -114,6 +114,9 @@
   }
 
   async function handleDelete(name: string) {
+    if (!confirm(t('Are you sure you want to delete the skill "/$1$"?', { substitutions: [name] }))) {
+      return;
+    }
     try {
       await sendMessage(MessageType.SKILLS_DELETE, { name });
       await loadSkills();
@@ -123,7 +126,8 @@
     }
   }
 
-  async function handleModeChange(name: string, mode: InvocationMode) {
+  async function handleModeChange(name: string, modeValue: string) {
+    const mode = modeValue as InvocationMode;
     try {
       await sendMessage(MessageType.SKILLS_UPDATE_MODE, { name, mode });
       await loadSkills();
@@ -324,7 +328,7 @@
     </div>
   {:else}
     <div class="skills-list">
-      {#each skills as skill}
+      {#each skills as skill (skill.name)}
         <div class="skill-card">
           <div class="skill-header">
             <div class="skill-info">
@@ -344,7 +348,7 @@
             <select
               class="mode-select"
               value={skill.invocationMode}
-              on:change={(e) => handleModeChange(skill.name, e.currentTarget.value as InvocationMode)}
+              on:change={(e) => handleModeChange(skill.name, e.currentTarget.value)}
             >
               <option value="manual">Manual</option>
               <option value="auto">Auto</option>
@@ -415,15 +419,15 @@
   }
 
   .notification.success {
-    background: color-mix(in srgb, #22c55e 15%, transparent);
-    color: #22c55e;
-    border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+    background: color-mix(in srgb, var(--browserx-success) 15%, transparent);
+    color: var(--browserx-success);
+    border: 1px solid color-mix(in srgb, var(--browserx-success) 30%, transparent);
   }
 
   .notification.error {
-    background: color-mix(in srgb, #ef4444 15%, transparent);
-    color: #ef4444;
-    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+    background: color-mix(in srgb, var(--browserx-error) 15%, transparent);
+    color: var(--browserx-error);
+    border: 1px solid color-mix(in srgb, var(--browserx-error) 30%, transparent);
   }
 
   .actions-bar {
@@ -477,13 +481,13 @@
   }
 
   .btn-danger:hover {
-    color: #ef4444;
-    border-color: #ef4444;
+    color: var(--browserx-error);
+    border-color: var(--browserx-error);
   }
 
   .btn-trust {
-    color: #22c55e;
-    border-color: #22c55e;
+    color: var(--browserx-success);
+    border-color: var(--browserx-success);
   }
 
   /* Form */
@@ -503,8 +507,8 @@
   }
 
   .form-error {
-    background: color-mix(in srgb, #ef4444 15%, transparent);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--browserx-error) 15%, transparent);
+    color: var(--browserx-error);
     padding: 0.5rem 0.75rem;
     border-radius: 0.375rem;
     font-size: 0.875rem;
@@ -613,8 +617,8 @@
   }
 
   .badge-warning {
-    background: color-mix(in srgb, #f59e0b 15%, transparent);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--browserx-warning) 15%, transparent);
+    color: var(--browserx-warning);
   }
 
   .badge-mode {
