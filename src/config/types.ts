@@ -394,6 +394,8 @@ export interface IStoredProviderConfig {
   apiKey: string;
   /** Provider-specific organization ID (optional) */
   organization?: string | null;
+  /** Active authentication method for this provider (optional) */
+  authMethod?: 'api_key' | 'chatgpt_oauth';
 }
 
 /**

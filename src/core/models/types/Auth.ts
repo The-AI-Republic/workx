@@ -11,7 +11,7 @@ export interface AgentReadyState {
   provider?: string;
   model?: string;
   /** Current authentication mode */
-  authMode: 'login' | 'api_key' | 'none';
+  authMode: 'login' | 'api_key' | 'chatgpt_oauth' | 'none';
 }
 
 /**
@@ -38,6 +38,18 @@ export interface IAuthManager {
    * @returns Access token or null
    */
   getAccessToken(): Promise<string | null>;
+
+  /**
+   * Check if ChatGPT OAuth is the active authentication method
+   * @returns true if ChatGPT OAuth is active
+   */
+  isChatGPTOAuthActive?(): boolean;
+
+  /**
+   * Get a valid ChatGPT OAuth access token, auto-refreshing if near expiry
+   * @returns Access token or null if not authenticated
+   */
+  getChatGPTAccessToken?(): Promise<string | null>;
 }
 
 /**

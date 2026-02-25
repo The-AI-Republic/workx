@@ -300,9 +300,48 @@ export class DesktopAgentBootstrap {
         console.log('[DesktopAgentBootstrap] Auth restored from keychain → backend routing');
       } else {
         console.log('[DesktopAgentBootstrap] No valid token in keychain → api_key mode');
+
+        // Check for ChatGPT OAuth tokens
+        await this.restoreChatGPTOAuth();
       }
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not restore auth from keychain:', error);
+    }
+  }
+
+  /**
+   * Restore ChatGPT OAuth session from keychain.
+   * If valid ChatGPT OAuth tokens exist, configure the auth manager
+   * with a token getter that auto-refreshes.
+   */
+  private async restoreChatGPTOAuth(): Promise<void> {
+    try {
+      const { ChatGPTOAuthDesktopStorage } = await import('../auth/ChatGPTOAuthDesktopStorage');
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      const storage = new ChatGPTOAuthDesktopStorage();
+      const oauthService = new ChatGPTOAuthService(storage);
+
+      if (await oauthService.isAuthenticated()) {
+        // Create an AuthManager with ChatGPT OAuth token getter
+        const factory = this.agent?.getModelClientFactory();
+        if (factory) {
+          const currentAuthManager = factory.getAuthManager?.() ?? null;
+          const shouldUseBackend = currentAuthManager?.shouldUseBackend() ?? false;
+          const backendBaseUrl = currentAuthManager?.getBackendBaseUrl() ?? null;
+          const tokenGetter = currentAuthManager ? (() => currentAuthManager.getAccessToken()) : undefined;
+
+          const authManager = new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+          // Extend with ChatGPT OAuth methods
+          (authManager as any).isChatGPTOAuthActive = () => true;
+          (authManager as any).getChatGPTAccessToken = () => oauthService.getValidAccessToken();
+
+          factory.setAuthManager(authManager);
+          console.log('[DesktopAgentBootstrap] ChatGPT OAuth restored from keychain');
+        }
+      }
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not restore ChatGPT OAuth:', error);
     }
   }
 
