@@ -7,36 +7,35 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
+import { IndexedDBRolloutStorageProvider } from '@/storage/rollout/provider/IndexedDBRolloutStorageProvider';
 
 let cleanupExpired: () => Promise<number>;
-let RolloutWriter: any;
+let RolloutRecorder: any;
 
 try {
   const cleanupModule = await import('@/storage/rollout/cleanup');
   cleanupExpired = cleanupModule.cleanupExpired;
-  const writerModule = await import('@/storage/rollout/RolloutWriter');
-  RolloutWriter = writerModule.RolloutWriter;
+  const recorderModule = await import('@/storage/rollout/RolloutRecorder');
+  RolloutRecorder = recorderModule.RolloutRecorder;
 } catch {
   cleanupExpired = async () => {
     throw new Error('cleanup.ts not implemented yet');
   };
 }
 
-/**
- * Helper: ensure the PiRollouts DB exists with proper stores
- * by creating and closing a RolloutWriter.
- */
-async function ensureDatabase(): Promise<void> {
-  const writer = await RolloutWriter.create('00000000-0000-0000-0000-000000000000', 0);
-  await writer.close();
-}
-
 describe('TTL Cleanup', () => {
+  let provider: IndexedDBRolloutStorageProvider;
+
   beforeEach(async () => {
     // @ts-ignore - Reset fake-indexeddb before each test
     globalThis.indexedDB = new IDBFactory();
-    // Ensure the DB and stores exist before running cleanup
-    await ensureDatabase();
+    provider = new IndexedDBRolloutStorageProvider();
+    await provider.initialize();
+    RolloutRecorder.setProvider(provider);
+  });
+
+  afterEach(async () => {
+    RolloutRecorder.resetProvider();
   });
 
   describe('cleanupExpired', () => {

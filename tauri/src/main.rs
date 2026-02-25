@@ -7,6 +7,7 @@ mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod sandbox;
+mod rollout_db;
 mod storage_commands;
 mod terminal_commands;
 
@@ -355,6 +356,20 @@ fn main() {
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
+            // Rollout database commands
+            rollout_db::rollout_db_init,
+            rollout_db::rollout_db_put_metadata,
+            rollout_db::rollout_db_get_metadata,
+            rollout_db::rollout_db_delete_metadata,
+            rollout_db::rollout_db_get_all_metadata,
+            rollout_db::rollout_db_add_items,
+            rollout_db::rollout_db_get_items,
+            rollout_db::rollout_db_get_last_sequence,
+            rollout_db::rollout_db_delete_items_by_rollout_ids,
+            rollout_db::rollout_db_cleanup_expired,
+            rollout_db::rollout_db_get_stats,
+            rollout_db::rollout_db_list_conversations,
+            rollout_db::rollout_db_close,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

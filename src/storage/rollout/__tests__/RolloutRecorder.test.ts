@@ -15,6 +15,7 @@ import type {
   IAgentConfigWithStorage,
   Cursor,
 } from '@/storage/rollout/types';
+import { IndexedDBRolloutStorageProvider } from '@/storage/rollout/provider/IndexedDBRolloutStorageProvider';
 
 // Note: Import will fail until RolloutRecorder.ts is implemented
 let RolloutRecorder: any;
@@ -34,11 +35,16 @@ try {
 describe('RolloutRecorder', () => {
   const conversationId: ConversationId = '5973b6c0-94b8-4f7b-a530-2aeb6098ae0e';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     indexedDB = new IDBFactory();
+    // Inject IndexedDB provider for tests
+    const provider = new IndexedDBRolloutStorageProvider();
+    await provider.initialize();
+    RolloutRecorder.setProvider(provider);
   });
 
   afterEach(() => {
+    RolloutRecorder.resetProvider();
     vi.restoreAllMocks();
   });
 

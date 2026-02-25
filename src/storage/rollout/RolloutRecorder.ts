@@ -5,22 +5,15 @@
  */
 
 import {
-  DB_NAME,
-  DB_VERSION,
-  STORE_ROLLOUTS,
-  STORE_ROLLOUT_ITEMS,
   type RolloutRecorderParams,
   type ConversationId,
   type RolloutItem,
-  type SessionMeta,
-  type SessionMetaLine,
   type InitialHistory,
   type ResumedHistory,
   type ConversationsPage,
   type Cursor,
   type IAgentConfigWithStorage,
   type RolloutMetadataRecord,
-  type RolloutItemRecord,
 } from './types';
 import { RolloutWriter } from './RolloutWriter';
 import { filterPersistedItems } from './policy';
@@ -30,11 +23,12 @@ import {
   isValidConversationId,
   createInvalidIdError,
   createRolloutNotFoundError,
-  createDatabaseError,
   calculateExpiresAt,
   getCurrentTimestamp,
 } from './helpers';
 import { generatePlaceholderTitle } from '../../core/title';
+import type { RolloutStorageProvider, StorageStats } from './provider/RolloutStorageProvider';
+import { createRolloutStorageProvider } from './provider/createRolloutStorageProvider';
 
 // ============================================================================
 // RolloutRecorder Class
@@ -52,6 +46,46 @@ export class RolloutRecorder {
   private initializingPromise: Promise<void> | null = null;
   private pendingMetadata: RolloutMetadataRecord | null = null;
   private pendingSessionMeta: RolloutItem | null = null;
+
+  // ==========================================================================
+  // Provider Singleton
+  // ==========================================================================
+
+  private static _provider: RolloutStorageProvider | null = null;
+  private static _providerPromise: Promise<RolloutStorageProvider> | null = null;
+
+  /**
+   * Get the storage provider (lazy-creates via factory on first call).
+   */
+  static async getProvider(): Promise<RolloutStorageProvider> {
+    if (RolloutRecorder._provider) {
+      return RolloutRecorder._provider;
+    }
+    if (!RolloutRecorder._providerPromise) {
+      RolloutRecorder._providerPromise = createRolloutStorageProvider().then((p) => {
+        RolloutRecorder._provider = p;
+        RolloutRecorder._providerPromise = null;
+        return p;
+      });
+    }
+    return RolloutRecorder._providerPromise;
+  }
+
+  /**
+   * Inject a provider for testing.
+   */
+  static setProvider(provider: RolloutStorageProvider): void {
+    RolloutRecorder._provider = provider;
+    RolloutRecorder._providerPromise = null;
+  }
+
+  /**
+   * Reset the provider (test teardown).
+   */
+  static resetProvider(): void {
+    RolloutRecorder._provider = null;
+    RolloutRecorder._providerPromise = null;
+  }
 
   private constructor(writer: RolloutWriter, rolloutId: ConversationId, initialized = false) {
     this.writer = writer;
@@ -97,8 +131,9 @@ export class RolloutRecorder {
     // Calculate expiration
     const expiresAt = calculateExpiresAt(config);
 
-    // Initialize writer
-    const writer = await RolloutWriter.create(conversationId, 0);
+    // Initialize writer with provider
+    const provider = await RolloutRecorder.getProvider();
+    const writer = await RolloutWriter.create(conversationId, 0, provider);
 
     // Create metadata record with placeholder title
     const now = Date.now();
@@ -147,139 +182,37 @@ export class RolloutRecorder {
     // Load last sequence number
     const lastSequence = await RolloutRecorder.getLastSequenceNumber(rolloutId);
 
-    // Initialize writer with correct sequence
-    const writer = await RolloutWriter.create(rolloutId, lastSequence + 1);
+    // Initialize writer with correct sequence and provider
+    const provider = await RolloutRecorder.getProvider();
+    const writer = await RolloutWriter.create(rolloutId, lastSequence + 1, provider);
 
     return new RolloutRecorder(writer, rolloutId, true);
   }
 
   /**
-   * Write metadata record to IndexedDB.
+   * Write metadata record via provider.
    */
   private static async writeMetadata(metadata: RolloutMetadataRecord): Promise<void> {
-    const db = await RolloutRecorder.openDatabase();
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_ROLLOUTS, 'readwrite');
-        const store = tx.objectStore(STORE_ROLLOUTS);
-
-        store.put(metadata);
-
-        tx.oncomplete = () => {
-          resolve();
-        };
-        tx.onerror = () =>
-          reject(createDatabaseError('writeMetadata', tx.error?.message || 'unknown error'));
-        tx.onabort = () =>
-          reject(createDatabaseError('writeMetadata', 'Transaction aborted'));
-      });
-    } finally {
-      db.close();
-    }
+    const provider = await RolloutRecorder.getProvider();
+    await provider.putMetadata(metadata);
   }
 
   /**
-   * Load metadata record from IndexedDB.
+   * Load metadata record via provider.
    */
   private static async loadMetadata(
     rolloutId: ConversationId
   ): Promise<RolloutMetadataRecord | null> {
-    const db = await RolloutRecorder.openDatabase();
-
-    try {
-      return await new Promise<RolloutMetadataRecord | null>((resolve, reject) => {
-        const tx = db.transaction(STORE_ROLLOUTS, 'readonly');
-        const store = tx.objectStore(STORE_ROLLOUTS);
-
-        const request = store.get(rolloutId);
-
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () =>
-          reject(createDatabaseError('loadMetadata', request.error?.message || 'unknown error'));
-      });
-    } finally {
-      db.close();
-    }
+    const provider = await RolloutRecorder.getProvider();
+    return provider.getMetadata(rolloutId);
   }
 
   /**
-   * Get the last sequence number for a rollout.
+   * Get the last sequence number for a rollout via provider.
    */
   private static async getLastSequenceNumber(rolloutId: ConversationId): Promise<number> {
-    const db = await RolloutRecorder.openDatabase();
-
-    try {
-      return await new Promise<number>((resolve, reject) => {
-        const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
-        const store = tx.objectStore(STORE_ROLLOUT_ITEMS);
-        const index = store.index('rolloutId_sequence');
-
-        const keyRange = IDBKeyRange.bound(
-          [rolloutId, 0],
-          [rolloutId, Number.MAX_SAFE_INTEGER]
-        );
-
-        const request = index.openCursor(keyRange, 'prev'); // Get last item
-
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const record = cursor.value as RolloutItemRecord;
-            resolve(record.sequence);
-          } else {
-            resolve(-1); // No items yet
-          }
-        };
-
-        request.onerror = () =>
-          reject(
-            createDatabaseError('getLastSequenceNumber', request.error?.message || 'unknown error')
-          );
-      });
-    } finally {
-      db.close();
-    }
-  }
-
-  /**
-   * Open IndexedDB database.
-   * Creates schema on first run or version upgrade.
-   */
-  private static openDatabase(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Create rollouts object store (metadata)
-        if (!db.objectStoreNames.contains(STORE_ROLLOUTS)) {
-          const rolloutsStore = db.createObjectStore(STORE_ROLLOUTS, { keyPath: 'id' });
-          rolloutsStore.createIndex('created', 'created', { unique: false });
-          rolloutsStore.createIndex('updated', 'updated', { unique: false });
-          rolloutsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
-          rolloutsStore.createIndex('status', 'status', { unique: false });
-        }
-
-        // Create rollout_items object store (conversation data)
-        if (!db.objectStoreNames.contains(STORE_ROLLOUT_ITEMS)) {
-          const itemsStore = db.createObjectStore(STORE_ROLLOUT_ITEMS, {
-            keyPath: 'id',
-            autoIncrement: true,
-          });
-          itemsStore.createIndex('rolloutId', 'rolloutId', { unique: false });
-          itemsStore.createIndex('timestamp', 'timestamp', { unique: false });
-          itemsStore.createIndex('rolloutId_sequence', ['rolloutId', 'sequence'], {
-            unique: true,
-          });
-        }
-      };
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () =>
-        reject(createDatabaseError('open', request.error?.message || 'unknown error'));
-    });
+    const provider = await RolloutRecorder.getProvider();
+    return provider.getLastSequenceNumber(rolloutId);
   }
 
   // ==========================================================================
@@ -481,39 +414,15 @@ export class RolloutRecorder {
   }
 
   /**
-   * Load all rollout items for a conversation.
+   * Load all rollout items for a conversation via provider.
    */
   private static async loadAllItems(rolloutId: ConversationId): Promise<RolloutItem[]> {
-    const db = await RolloutRecorder.openDatabase();
-
-    try {
-      return await new Promise<RolloutItem[]>((resolve, reject) => {
-        const tx = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly');
-        const store = tx.objectStore(STORE_ROLLOUT_ITEMS);
-        const index = store.index('rolloutId_sequence');
-
-        const keyRange = IDBKeyRange.bound(
-          [rolloutId, 0],
-          [rolloutId, Number.MAX_SAFE_INTEGER]
-        );
-
-        const request = index.getAll(keyRange);
-
-        request.onsuccess = () => {
-          const records = request.result as RolloutItemRecord[];
-          const items: RolloutItem[] = records.map((record) => ({
-            type: record.type as any,
-            payload: record.payload,
-          }));
-          resolve(items);
-        };
-
-        request.onerror = () =>
-          reject(createDatabaseError('loadAllItems', request.error?.message || 'unknown error'));
-      });
-    } finally {
-      db.close();
-    }
+    const provider = await RolloutRecorder.getProvider();
+    const records = await provider.getItemsByRolloutId(rolloutId);
+    return records.map((record) => ({
+      type: record.type as any,
+      payload: record.payload,
+    }));
   }
 
   /**
@@ -525,72 +434,11 @@ export class RolloutRecorder {
   }
 
   /**
-   * Get storage statistics for all rollouts.
+   * Get storage statistics for all rollouts via provider.
    * @returns Promise resolving to storage stats
    */
-  static async getStorageStats(): Promise<{
-    rolloutCount: number;
-    itemCount: number;
-    rolloutBytes: number;
-    itemBytes: number;
-  }> {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(createDatabaseError('openDB', request.error?.message || 'unknown error'));
-    });
-
-    try {
-      const stats = {
-        rolloutCount: 0,
-        itemCount: 0,
-        rolloutBytes: 0,
-        itemBytes: 0,
-      };
-
-      // Count rollouts
-      const rolloutsStore = db.transaction(STORE_ROLLOUTS, 'readonly').objectStore(STORE_ROLLOUTS);
-      const rolloutsCountRequest = rolloutsStore.count();
-      stats.rolloutCount = await new Promise<number>((resolve, reject) => {
-        rolloutsCountRequest.onsuccess = () => resolve(rolloutsCountRequest.result);
-        rolloutsCountRequest.onerror = () => reject(createDatabaseError('countRollouts', rolloutsCountRequest.error?.message || 'unknown error'));
-      });
-
-      // Get all rollouts to calculate size
-      const rolloutsGetAllRequest = rolloutsStore.getAll();
-      const rollouts = await new Promise<RolloutMetadataRecord[]>((resolve, reject) => {
-        rolloutsGetAllRequest.onsuccess = () => resolve(rolloutsGetAllRequest.result as RolloutMetadataRecord[]);
-        rolloutsGetAllRequest.onerror = () => reject(createDatabaseError('getRollouts', rolloutsGetAllRequest.error?.message || 'unknown error'));
-      });
-
-      // Estimate rollout bytes
-      stats.rolloutBytes = rollouts.reduce((total, rollout) => {
-        return total + JSON.stringify(rollout).length;
-      }, 0);
-
-      // Count items
-      const itemsStore = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly').objectStore(STORE_ROLLOUT_ITEMS);
-      const itemsCountRequest = itemsStore.count();
-      stats.itemCount = await new Promise<number>((resolve, reject) => {
-        itemsCountRequest.onsuccess = () => resolve(itemsCountRequest.result);
-        itemsCountRequest.onerror = () => reject(createDatabaseError('countItems', itemsCountRequest.error?.message || 'unknown error'));
-      });
-
-      // Get all items to calculate size
-      const itemsGetAllRequest = itemsStore.getAll();
-      const items = await new Promise<RolloutItemRecord[]>((resolve, reject) => {
-        itemsGetAllRequest.onsuccess = () => resolve(itemsGetAllRequest.result as RolloutItemRecord[]);
-        itemsGetAllRequest.onerror = () => reject(createDatabaseError('getItems', itemsGetAllRequest.error?.message || 'unknown error'));
-      });
-
-      // Estimate item bytes
-      stats.itemBytes = items.reduce((total, item) => {
-        return total + JSON.stringify(item).length;
-      }, 0);
-
-      return stats;
-    } finally {
-      db.close();
-    }
+  static async getStorageStats(): Promise<StorageStats> {
+    const provider = await RolloutRecorder.getProvider();
+    return provider.getStorageStats();
   }
 }

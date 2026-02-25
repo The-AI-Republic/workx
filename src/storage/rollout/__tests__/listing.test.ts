@@ -12,6 +12,8 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import type { Cursor, ConversationsPage, RolloutMetadataRecord, SessionMetaLine } from '@/storage/rollout/types';
 import { listConversations } from '@/storage/rollout/listing';
+import { IndexedDBRolloutStorageProvider } from '@/storage/rollout/provider/IndexedDBRolloutStorageProvider';
+import { RolloutRecorder } from '@/storage/rollout/RolloutRecorder';
 
 // ============================================================================
 // Helpers for setting up test data in IndexedDB
@@ -180,9 +182,17 @@ async function readAllRecords(): Promise<RolloutMetadataRecord[]> {
 // ============================================================================
 
 describe('Conversation Listing', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset fake-indexeddb before each test
     globalThis.indexedDB = new IDBFactory();
+    // Inject IndexedDB provider for tests
+    const provider = new IndexedDBRolloutStorageProvider();
+    await provider.initialize();
+    RolloutRecorder.setProvider(provider);
+  });
+
+  afterEach(() => {
+    RolloutRecorder.resetProvider();
   });
 
   // ========================================================================

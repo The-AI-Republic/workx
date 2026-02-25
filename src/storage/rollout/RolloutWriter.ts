@@ -1,17 +1,11 @@
 /**
- * IndexedDB writer for RolloutRecorder
- * Handles async write operations with batching and sequence management
+ * Writer for RolloutRecorder
+ * Handles async write operations with batching and sequence management.
+ * Delegates all storage to the injected RolloutStorageProvider.
  */
 
-import {
-  DB_NAME,
-  DB_VERSION,
-  STORE_ROLLOUTS,
-  STORE_ROLLOUT_ITEMS,
-  type ConversationId,
-  type RolloutItem,
-  type RolloutMetadataRecord,
-} from './types';
+import type { ConversationId, RolloutItem } from './types';
+import type { RolloutStorageProvider } from './provider/RolloutStorageProvider';
 import { formatTimestamp } from './helpers';
 
 // ============================================================================
@@ -19,18 +13,18 @@ import { formatTimestamp } from './helpers';
 // ============================================================================
 
 /**
- * Manages async write operations to IndexedDB for rollout data.
+ * Manages async write operations for rollout data.
  * Batches writes for performance and maintains sequence numbers.
  */
 export class RolloutWriter {
-  private db: IDBDatabase | null = null;
+  private provider: RolloutStorageProvider;
   private writeQueue: Promise<void> = Promise.resolve();
   private currentSequence: number;
   private rolloutId: ConversationId;
   private closed = false;
 
-  private constructor(db: IDBDatabase, rolloutId: ConversationId, startSequence: number) {
-    this.db = db;
+  private constructor(provider: RolloutStorageProvider, rolloutId: ConversationId, startSequence: number) {
+    this.provider = provider;
     this.rolloutId = rolloutId;
     this.currentSequence = startSequence;
   }
@@ -39,60 +33,22 @@ export class RolloutWriter {
    * Create a new RolloutWriter instance.
    * @param rolloutId - Conversation ID for this rollout
    * @param startSequence - Starting sequence number (default 0)
+   * @param provider - Storage provider to use
    * @returns Promise resolving to RolloutWriter instance
    */
-  static async create(rolloutId: ConversationId, startSequence = 0): Promise<RolloutWriter> {
-    const db = await RolloutWriter.openDatabase();
-    return new RolloutWriter(db, rolloutId, startSequence);
-  }
-
-  /**
-   * Open or create the IndexedDB database.
-   * @returns Promise resolving to IDBDatabase
-   */
-  private static openDatabase(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = () => {
-        reject(new Error(`Failed to open IndexedDB: ${request.error?.message}`));
-      };
-
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Create rollouts object store
-        if (!db.objectStoreNames.contains(STORE_ROLLOUTS)) {
-          const rolloutsStore = db.createObjectStore(STORE_ROLLOUTS, { keyPath: 'id' });
-          rolloutsStore.createIndex('created', 'created', { unique: false });
-          rolloutsStore.createIndex('updated', 'updated', { unique: false });
-          rolloutsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
-          rolloutsStore.createIndex('status', 'status', { unique: false });
-        }
-
-        // Create rollout_items object store
-        if (!db.objectStoreNames.contains(STORE_ROLLOUT_ITEMS)) {
-          const itemsStore = db.createObjectStore(STORE_ROLLOUT_ITEMS, {
-            keyPath: 'id',
-            autoIncrement: true,
-          });
-          itemsStore.createIndex('rolloutId', 'rolloutId', { unique: false });
-          itemsStore.createIndex('timestamp', 'timestamp', { unique: false });
-          itemsStore.createIndex('rolloutId_sequence', ['rolloutId', 'sequence'], {
-            unique: true,
-          });
-        }
-      };
-    });
+  static async create(rolloutId: ConversationId, startSequence = 0, provider?: RolloutStorageProvider): Promise<RolloutWriter> {
+    if (!provider) {
+      // Fallback: get provider from RolloutRecorder singleton
+      // This avoids a circular import by lazy-importing
+      const { RolloutRecorder } = await import('./RolloutRecorder');
+      provider = await RolloutRecorder.getProvider();
+    }
+    return new RolloutWriter(provider, rolloutId, startSequence);
   }
 
   /**
    * Add items to the write queue.
-   * Items will be written in a batched transaction.
+   * Items will be written via the provider.
    * @param rolloutId - Conversation ID
    * @param items - Array of rollout items to persist
    */
@@ -103,49 +59,16 @@ export class RolloutWriter {
 
     // Add write operation to the serialization queue
     this.writeQueue = this.writeQueue.then(async () => {
-      if (!this.db || this.closed) return;
+      if (this.closed) return;
 
-      return new Promise<void>((resolve, reject) => {
-        try {
-          const transaction = this.db!.transaction([STORE_ROLLOUT_ITEMS, STORE_ROLLOUTS], 'readwrite');
-          const itemsStore = transaction.objectStore(STORE_ROLLOUT_ITEMS);
-          const rolloutsStore = transaction.objectStore(STORE_ROLLOUTS);
+      const records = items.map((item) => ({
+        timestamp: formatTimestamp(new Date()),
+        sequence: this.currentSequence++,
+        type: item.type,
+        payload: item.payload,
+      }));
 
-          transaction.oncomplete = () => {
-            resolve();
-          };
-          transaction.onerror = () => {
-            reject(new Error(`Transaction failed: ${transaction.error?.message}`));
-          };
-          transaction.onabort = () => {
-            reject(new Error('Transaction aborted'));
-          };
-
-          for (const item of items) {
-            const record = {
-              rolloutId,
-              timestamp: formatTimestamp(new Date()),
-              sequence: this.currentSequence++,
-              type: item.type,
-              payload: item.payload,
-            };
-            itemsStore.add(record);
-          }
-
-          // Update rollout metadata
-          const getRequest = rolloutsStore.get(rolloutId);
-          getRequest.onsuccess = () => {
-            const metadata = getRequest.result as RolloutMetadataRecord | undefined;
-            if (metadata) {
-              metadata.itemCount += items.length;
-              metadata.updated = Date.now();
-              rolloutsStore.put(metadata);
-            }
-          };
-        } catch (error) {
-          reject(error);
-        }
-      });
+      await this.provider.addItems(rolloutId, records);
     });
 
     return this.writeQueue;
@@ -159,14 +82,10 @@ export class RolloutWriter {
   }
 
   /**
-   * Close the database connection.
+   * Close the writer (provider is managed externally).
    */
   async close(): Promise<void> {
     await this.flush();
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
     this.closed = true;
   }
 
