@@ -58,6 +58,7 @@ tmp/
 
 # Claude Code
 .claude/
+.codex/
 .specify/
 
 # Chrome extension specific
@@ -71,6 +72,7 @@ tmp/
 # Tauri / Desktop App (Pi)
 tauri/target/
 tauri/gen/
+tauri/binaries/
 *.AppImage
 *.deb
 *.dmg
