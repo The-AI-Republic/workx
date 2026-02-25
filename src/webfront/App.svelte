@@ -11,6 +11,8 @@
   import { AgentConfig } from '@/config/AgentConfig';
   import { sendMessage, MessageType } from './lib/messaging';
   import { platform } from './stores/platformStore';
+  import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
+  import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
 
   // Route definitions
   // Add new routes here as the app grows
@@ -173,6 +175,9 @@
   // Check user authentication when sidepanel opens
   // Note: Locale is already initialized in main.ts before app mounts
   onMount(() => {
+    // Check vault lock state
+    refreshVaultStatus();
+
     // Initial auth check
     checkAndUpdateAuth();
 
@@ -205,4 +210,8 @@
   });
 </script>
 
-<Router {routes} />
+{#if $vaultStore.isLocked}
+  <PinUnlockOverlay on:unlocked={() => refreshVaultStatus()} />
+{:else}
+  <Router {routes} />
+{/if}

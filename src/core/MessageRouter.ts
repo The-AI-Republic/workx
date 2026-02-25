@@ -128,6 +128,17 @@ export enum MessageType {
   A2A_GET_ALL_SKILLS = 'A2A_GET_ALL_SKILLS',
   A2A_EXECUTE_SKILL = 'A2A_EXECUTE_SKILL',
   A2A_CANCEL_TASK = 'A2A_CANCEL_TASK',
+
+  // Vault operations (Feature 034: Credential Security)
+  VAULT_STATUS = 'vault:status',
+  VAULT_UNLOCK = 'vault:unlock',
+  VAULT_LOCK = 'vault:lock',
+
+  // PIN operations (Feature 034: Credential Security)
+  PIN_SET = 'vault:pin:set',
+  PIN_CHANGE = 'vault:pin:change',
+  PIN_REMOVE = 'vault:pin:remove',
+  PIN_FORGOT = 'vault:pin:forgot',
 }
 
 /**

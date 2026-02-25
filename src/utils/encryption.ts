@@ -7,11 +7,9 @@
  * Encrypt an API key for storage
  * @param plainText - Unencrypted API key
  * @returns Base64-encoded encrypted string
- * @remarks Uses simple obfuscation (not cryptographically secure)
- * @remarks Future versions may upgrade to Web Crypto API
- * @example
- * const encrypted = encryptApiKey('sk-ant-api03-...');
- * // Returns: "Li4uODBpcGEtdG5hLWtz"
+ * @deprecated Use VaultManager.encryptCredential() instead. This function uses
+ * simple obfuscation (reverse + base64) and is NOT cryptographically secure.
+ * Kept only for legacy migration detection in VaultManager.migrateIfNeeded().
  */
 export function encryptApiKey(plainText: string): string {
   // Simple obfuscation: reverse string and base64 encode
@@ -23,16 +21,8 @@ export function encryptApiKey(plainText: string): string {
  * Decrypt an encrypted API key
  * @param encrypted - Base64-encoded encrypted string
  * @returns Decrypted plain text, or null if decryption fails
- * @remarks Returns null on invalid input rather than throwing
- * @example
- * const decrypted = decryptApiKey(encrypted);
- * if (decrypted) {
- *   // Use decrypted API key
- *   makeApiCall(decrypted);
- * } else {
- *   // Decryption failed, key may be corrupted
- *   console.error('Failed to decrypt API key');
- * }
+ * @deprecated Use VaultManager.decryptCredential() instead. Kept only for
+ * legacy migration detection in VaultManager.migrateIfNeeded().
  */
 export function decryptApiKey(encrypted: string): string | null {
   try {

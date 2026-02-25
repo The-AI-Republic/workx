@@ -48,6 +48,7 @@ import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
+import * as VaultManager from '../../core/crypto/VaultManager';
 import type {
   CreateDraftTaskRequest,
   ScheduleTaskRequest,
@@ -157,6 +158,9 @@ async function doInitialize(): Promise<void> {
 
   // Setup message handlers
   setupMessageHandlers();
+
+  // Setup Vault message handlers (Feature 034: Credential Security)
+  setupVaultMessageHandlers();
 
   // Setup MCP message handlers
   setupMCPMessageHandlers();
@@ -970,6 +974,101 @@ function setupSchedulerMessageHandlers(): void {
 }
 
 /**
+ * Feature 034: Setup vault message handlers for credential security
+ */
+function setupVaultMessageHandlers(): void {
+  if (!router) return;
+
+  // VAULT_STATUS: Get current vault state
+  router.on(MessageType.VAULT_STATUS, async () => {
+    return { success: true, data: VaultManager.getStatus() };
+  });
+
+  // VAULT_UNLOCK: Unlock vault with PIN
+  router.on(MessageType.VAULT_UNLOCK, async (message) => {
+    const { pin } = message.payload || {};
+    if (!pin || typeof pin !== 'string') {
+      return { success: false, error: 'validation_error', message: 'PIN is required' };
+    }
+    const result = await VaultManager.unlock(pin);
+    if (result.success) {
+      return { success: true, data: { isLocked: false } };
+    }
+    return { success: false, ...result };
+  });
+
+  // VAULT_LOCK: Lock vault (clear session)
+  router.on(MessageType.VAULT_LOCK, async () => {
+    await VaultManager.lock();
+    return { success: true };
+  });
+
+  // PIN_SET: Enable PIN protection
+  router.on(MessageType.PIN_SET, async (message) => {
+    const { pin, pinConfirm } = message.payload || {};
+    if (!pin || typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
+      return { success: false, error: 'validation_error', message: 'PIN must be exactly 6 digits' };
+    }
+    if (pin !== pinConfirm) {
+      return { success: false, error: 'validation_error', message: 'PINs do not match' };
+    }
+    try {
+      await VaultManager.enablePin(pin);
+      return { success: true, data: { isPinEnabled: true, isLocked: false } };
+    } catch (err) {
+      return { success: false, error: 'operation_failed', message: (err as Error).message };
+    }
+  });
+
+  // PIN_CHANGE: Change existing PIN
+  router.on(MessageType.PIN_CHANGE, async (message) => {
+    const { currentPin, newPin, newPinConfirm } = message.payload || {};
+    if (!newPin || !/^\d{6}$/.test(newPin)) {
+      return { success: false, error: 'validation_error', message: 'New PIN must be exactly 6 digits' };
+    }
+    if (newPin !== newPinConfirm) {
+      return { success: false, error: 'validation_error', message: 'New PINs do not match' };
+    }
+    try {
+      await VaultManager.changePin(currentPin, newPin);
+      return { success: true, data: { isPinEnabled: true, isLocked: false } };
+    } catch (err) {
+      return { success: false, error: 'incorrect_pin', message: (err as Error).message };
+    }
+  });
+
+  // PIN_REMOVE: Remove PIN protection
+  router.on(MessageType.PIN_REMOVE, async (message) => {
+    const { pin } = message.payload || {};
+    if (!pin) {
+      return { success: false, error: 'validation_error', message: 'PIN is required' };
+    }
+    try {
+      await VaultManager.removePin(pin);
+      return { success: true, data: { isPinEnabled: false, isLocked: false } };
+    } catch (err) {
+      return { success: false, error: 'incorrect_pin', message: (err as Error).message };
+    }
+  });
+
+  // PIN_FORGOT: Reset vault (clear all credentials)
+  router.on(MessageType.PIN_FORGOT, async (message) => {
+    const { confirmReset } = message.payload || {};
+    if (!confirmReset) {
+      return { success: false, error: 'validation_error', message: 'Confirmation required' };
+    }
+    try {
+      await VaultManager.reset();
+      return { success: true, data: { isPinEnabled: false, isLocked: false, credentialsCleared: true } };
+    } catch (err) {
+      return { success: false, error: 'operation_failed', message: (err as Error).message };
+    }
+  });
+
+  console.log('[ServiceWorker] Vault message handlers registered');
+}
+
+/**
  * Feature 015 (T048, T049): Setup session management message handlers
  */
 function setupSessionMessageHandlers(): void {
@@ -1608,6 +1707,14 @@ async function initializeStorage(): Promise<void> {
     console.log('[ServiceWorker] Credential store initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
+  }
+
+  // Initialize vault encryption (Feature 034: Credential Security)
+  try {
+    const vaultStatus = await VaultManager.initialize();
+    console.log('[ServiceWorker] Vault initialized:', vaultStatus);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize vault:', error);
   }
 
   // Initialize cache manager

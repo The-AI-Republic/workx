@@ -17,11 +17,12 @@
   import ExtensionSettings from '../../settings/ExtensionSettings.svelte';
   import MCPSettings from '../../settings/MCPSettings.svelte';
   import ApprovalSettings from '../../settings/ApprovalSettings.svelte';
+  import SecuritySettings from '../../settings/SecuritySettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
-  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval';
+  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security';
   let currentView: NavigationView = 'menu';
   let hasUnsavedChanges = false;
   let showUnsavedDialog = false;
@@ -215,6 +216,14 @@
         />
       {:else if currentView === 'approval'}
         <ApprovalSettings
+          {settingsConfig}
+          {highlightSettingId}
+          on:back={handleBack}
+          on:saved={() => {}}
+          bind:isDirty={hasUnsavedChanges}
+        />
+      {:else if currentView === 'security'}
+        <SecuritySettings
           {settingsConfig}
           {highlightSettingId}
           on:back={handleBack}
