@@ -1,9 +1,8 @@
-# Specification Quality Checklist: Project Rename — Pi Naming Convention
+# Specification Quality Checklist: Pre-Request Context Window Compaction
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-02-16
+**Created**: 2026-02-17
 **Feature**: [spec.md](../spec.md)
-**Clarification session**: 2026-02-16 (3 questions asked, 3 answered)
 
 ## Content Quality
 
@@ -32,7 +31,6 @@
 
 ## Notes
 
-- All items pass validation. Spec is ready for `/rr.plan`.
-- Clarification session resolved: exact npm package name (`pi`), GitHub repo rename scope (in scope), and prompt identity mechanism (dual-file, already split).
-- 33 functional requirements (FR-001 through FR-030 plus FR-004a/b/c) cover project-level, extension, desktop, and code-internal changes.
-- The codebase scan identified ~86 TypeScript files, 50+ locale files, CSS design tokens, custom events, and prompt files that need updating — all captured in requirements.
+- All items pass validation. Spec is ready for `/rr.clarify` or `/rr.plan`.
+- The Assumptions section references current internal component names (e.g., CompactService, TaskRunner) to provide context for what existing behavior is changing. This is intentional context for the planning phase, not implementation specification.
+- Two threshold values exist in the current system (0.85 in TaskRunner, 0.9 in CompactService config) — the spec calls for aligning both to 0.85, documented as an assumption.

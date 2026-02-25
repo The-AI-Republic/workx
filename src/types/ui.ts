@@ -270,4 +270,5 @@ export interface ProcessedEvent {
   requiresApproval?: ApprovalRequest;  // For approval events
   collapsible?: boolean;               // Can be collapsed (reasoning, tool output)
   collapsed?: boolean;                 // Current collapse state
+  modelKey?: string;                   // Model that generated this message (format: "providerId:modelId")
 }
