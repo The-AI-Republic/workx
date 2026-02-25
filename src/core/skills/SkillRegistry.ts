@@ -102,7 +102,7 @@ export class SkillRegistry {
     if (autoSkills.length === 0) return '';
 
     const lines = autoSkills.map((s) => `- ${s.name}: ${s.description}`);
-    return `Available skills:\n${lines.join('\n')}`;
+    return `You have access to user-defined skills. When a skill is relevant to the user's request, invoke it using the use_skill tool.\n\nAvailable skills:\n${lines.join('\n')}`;
   }
 
   // ── CRUD ────────────────────────────────────────────────────────

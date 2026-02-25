@@ -28,6 +28,7 @@ import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
+import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
 
 /**
  * Singleton instance
@@ -228,6 +229,51 @@ export class DesktopAgentBootstrap {
       await this.skillRegistry.discover();
 
       registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
+
+      // Register use_skill tool if there are auto-invocable skills
+      const autoSkills = this.skillRegistry.getAutoInvocableSkills();
+      if (autoSkills.length > 0 && this.agent) {
+        const autoSkillNames = new Set(autoSkills.map((s) => s.name));
+        const registry = this.agent.getToolRegistry();
+
+        await registry.register(
+          {
+            type: 'function',
+            function: {
+              name: 'use_skill',
+              description: 'Invoke a user-defined skill by name. Returns the skill body with instructions to follow.',
+              strict: false,
+              parameters: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'The skill name to invoke' },
+                  arguments: { type: 'string', description: 'Optional space-separated arguments for the skill' },
+                },
+                required: ['name'],
+              },
+            },
+          },
+          async (params) => {
+            const skillName = params.name as string;
+            const args = params.arguments as string | undefined;
+
+            if (!autoSkillNames.has(skillName)) {
+              return { error: `Skill "${skillName}" not found or not available for auto-invocation. Available skills: ${[...autoSkillNames].join(', ')}` };
+            }
+
+            const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
+            if (!body) {
+              return { error: `Failed to load skill "${skillName}"` };
+            }
+
+            return body;
+          },
+          new StaticRiskAssessor(0)
+        );
+
+        console.log('[DesktopAgentBootstrap] use_skill tool registered for', autoSkills.length, 'auto-invocable skills');
+      }
+
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
