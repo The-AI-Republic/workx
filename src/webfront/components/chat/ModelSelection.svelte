@@ -194,12 +194,6 @@
       return;
     }
 
-    // Confirm model switch
-    if (!confirm(t('The model switch will clear the current conversation. Do you want to continue?'))) {
-      isOpen = false;
-      return;
-    }
-
     try {
       const config = await AgentConfig.getInstance();
       await config.setSelectedModel(modelId);

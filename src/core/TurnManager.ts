@@ -208,6 +208,11 @@ export class TurnManager {
             break;
 
           case 'OutputItemDone': {
+            // Annotate assistant messages with the composite model key (providerId:modelId)
+            if (event.item?.type === 'message' && event.item?.role === 'assistant') {
+              event.item.modelKey = this.turnContext.getSelectedModelKey();
+            }
+
             // Item (message or tool call) is complete
             const response = await this.handleResponseItem(event.item);
             processedItems.push({

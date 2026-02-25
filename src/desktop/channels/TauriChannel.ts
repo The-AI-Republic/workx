@@ -12,6 +12,11 @@
 
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
 import type { ChannelAdapter } from '@/core/channels/ChannelAdapter';
+import {
+  LARGE_PAYLOAD_THRESHOLD,
+  storePayload,
+  type PayloadRef,
+} from './LargePayloadStore';
 import type {
   ChannelType,
   SubmissionHandler,
@@ -146,10 +151,15 @@ export class TauriChannel implements ChannelAdapter {
       throw new Error('TauriChannel not initialized');
     }
 
-    console.log('[TauriChannel] Sending event:', event.type);
-
     try {
-      await emit('pi:event', event);
+      const json = JSON.stringify(event);
+      if (json.length > LARGE_PAYLOAD_THRESHOLD) {
+        // Payload too large for WebView2 postMessage — store it and send a ref
+        const id = storePayload(event);
+        await emit('pi:event', { __payloadRef: id } satisfies PayloadRef);
+      } else {
+        await emit('pi:event', event);
+      }
     } catch (error) {
       console.error('[TauriChannel] Failed to send event:', error);
       throw error;
