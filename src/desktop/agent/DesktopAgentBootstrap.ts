@@ -19,8 +19,10 @@ import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelMan
 import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
-import { configurePromptComposer } from '@/core/PromptLoader';
+import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
+import { SkillRegistry } from '@/core/skills/SkillRegistry';
+import { FilesystemSkillProvider } from '../storage/FilesystemSkillProvider';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
@@ -41,6 +43,7 @@ export class DesktopAgentBootstrap {
   private agent: PiAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
+  private skillRegistry: SkillRegistry | null = null;
   private initialized = false;
 
   /**
@@ -104,6 +107,9 @@ export class DesktopAgentBootstrap {
       // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
+
+      // 6b. Initialize skills (filesystem-backed, prompt extension)
+      await this.initializeSkills();
 
       // 7. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
@@ -207,6 +213,32 @@ export class DesktopAgentBootstrap {
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not set up MCP tool registration:', error);
     }
+  }
+
+  /**
+   * Initialize the skill registry with filesystem-backed provider.
+   * Discovers existing skills and registers a prompt extension for auto-invocable skills.
+   */
+  private async initializeSkills(): Promise<void> {
+    try {
+      const provider = new FilesystemSkillProvider();
+      await provider.initialize();
+
+      this.skillRegistry = new SkillRegistry(provider);
+      await this.skillRegistry.discover();
+
+      registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
+      console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
+    }
+  }
+
+  /**
+   * Get the skill registry instance (null if not yet initialized)
+   */
+  getSkillRegistry(): SkillRegistry | null {
+    return this.skillRegistry;
   }
 
   /**
