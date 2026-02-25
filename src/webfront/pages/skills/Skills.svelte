@@ -1,22 +1,20 @@
 <!--
-  Skills Settings - Create, manage, and configure agent skills
+  Skills - Standalone page for creating, managing, and configuring agent skills
   Feature 028: Agent Skills
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
-  import type { AgentConfig } from '@/config/AgentConfig';
+  import { onMount } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import type { SkillMeta, InvocationMode } from '@/core/skills/types';
-  import { sendMessage, MessageType } from '../lib/messaging';
-  import { t, _t } from '../lib/i18n';
+  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { t, _t } from '../../lib/i18n';
+  import { uiTheme, type UITheme } from '../../stores/themeStore';
 
-  export let settingsConfig: AgentConfig;
-  export let isDirty = false;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let currentTheme: UITheme = 'terminal';
+  const unsubTheme = uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
 
   // State
   let skills: SkillMeta[] = [];
@@ -40,15 +38,18 @@
 
   onMount(async () => {
     await loadSkills();
+    return () => {
+      unsubTheme();
+    };
   });
 
   async function loadSkills() {
     isLoading = true;
     try {
       const response = await sendMessage<SkillMeta[]>(MessageType.SKILLS_LIST);
-      skills = response ?? [];
+      skills = Array.isArray(response) ? response : [];
     } catch (error) {
-      console.error('[SkillsSettings] Failed to load skills:', error);
+      console.error('[Skills] Failed to load skills:', error);
       saveMessage = 'Failed to load skills';
       saveMessageType = 'error';
     } finally {
@@ -153,7 +154,6 @@
         { name }
       );
       if (response?.content) {
-        // Copy to clipboard
         await navigator.clipboard.writeText(response.content);
         showNotification('SKILL.md copied to clipboard', 'success');
       }
@@ -207,210 +207,285 @@
       default: return mode;
     }
   }
+
+  function handleClose() {
+    push('/');
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      handleClose();
+    }
+  }
 </script>
 
-<div class="skills-settings">
-  <!-- Header -->
-  <div class="settings-header">
-    <button class="back-button" on:click={() => dispatch('back')}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-      {_t('Back')}
-    </button>
-    <h2 class="section-title">{_t('Skills')}</h2>
-  </div>
+<svelte:window on:keydown={handleKeydown} />
 
-  <!-- Notification -->
-  {#if saveMessage}
-    <div class="notification {saveMessageType}">{saveMessage}</div>
-  {/if}
+<div class="skills-page" class:chatgpt={currentTheme === 'chatgpt'}>
+  <div class="skills-container">
+    <!-- Header -->
+    <div class="skills-header">
+      <h2 class="skills-title">{$_t('Skills')}</h2>
+      <button class="close-button" on:click={handleClose} aria-label={t("Close skills")}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
 
-  <!-- Actions -->
-  <div class="actions-bar">
-    <button class="btn btn-primary" on:click={openCreateForm}>{_t('Create Skill')}</button>
-    <button class="btn btn-secondary" on:click={openImportForm}>{_t('Import from URL')}</button>
-  </div>
-
-  <!-- Create Form -->
-  {#if showCreateForm}
-    <div class="form-card">
-      <h3>{_t('Create New Skill')}</h3>
-
-      {#if formError}
-        <div class="form-error">{formError}</div>
+    <div class="skills-content">
+      <!-- Notification -->
+      {#if saveMessage}
+        <div class="notification {saveMessageType}">{saveMessage}</div>
       {/if}
 
-      <label class="form-label">
-        {_t('Name')}
-        <input
-          type="text"
-          class="form-input"
-          bind:value={formName}
-          placeholder="my-skill-name"
-        />
-      </label>
-
-      <label class="form-label">
-        {_t('Description')}
-        <input
-          type="text"
-          class="form-input"
-          bind:value={formDescription}
-          placeholder="What this skill does"
-        />
-      </label>
-
-      <label class="form-label">
-        {_t('Invocation Mode')}
-        <select class="form-input" bind:value={formMode}>
-          <option value="manual">Manual (/ command only)</option>
-          <option value="auto">Auto (LLM only)</option>
-          <option value="hybrid">Hybrid (both)</option>
-        </select>
-      </label>
-
-      <label class="form-label">
-        {_t('Body (Markdown)')}
-        <textarea
-          class="form-textarea"
-          bind:value={formBody}
-          placeholder="Skill instructions in markdown..."
-          rows="8"
-        ></textarea>
-      </label>
-
-      <div class="form-actions">
-        <button class="btn btn-secondary" on:click={closeCreateForm}>{_t('Cancel')}</button>
-        <button class="btn btn-primary" on:click={handleCreate} disabled={isSaving}>
-          {isSaving ? _t('Creating...') : _t('Create')}
-        </button>
+      <!-- Actions -->
+      <div class="actions-bar">
+        <button class="btn btn-primary" on:click={openCreateForm}>{$_t('Create Skill')}</button>
+        <button class="btn btn-secondary" on:click={openImportForm}>{$_t('Import from URL')}</button>
       </div>
-    </div>
-  {/if}
 
-  <!-- Import Form -->
-  {#if showImportForm}
-    <div class="form-card">
-      <h3>{_t('Import Skill from URL')}</h3>
+      <!-- Create Form -->
+      {#if showCreateForm}
+        <div class="form-card">
+          <h3>{$_t('Create New Skill')}</h3>
 
-      <label class="form-label">
-        {_t('SKILL.md URL')}
-        <input
-          type="url"
-          class="form-input"
-          bind:value={importUrl}
-          placeholder="https://example.com/SKILL.md"
-        />
-      </label>
+          {#if formError}
+            <div class="form-error">{formError}</div>
+          {/if}
 
-      <p class="form-hint">{_t('Imported skills are untrusted by default and cannot auto-invoke.')}</p>
+          <label class="form-label">
+            {$_t('Name')}
+            <input
+              type="text"
+              class="form-input"
+              bind:value={formName}
+              placeholder="my-skill-name"
+            />
+          </label>
 
-      <div class="form-actions">
-        <button class="btn btn-secondary" on:click={closeImportForm}>{_t('Cancel')}</button>
-        <button class="btn btn-primary" on:click={handleImport} disabled={isImporting}>
-          {isImporting ? _t('Importing...') : _t('Import')}
-        </button>
-      </div>
-    </div>
-  {/if}
+          <label class="form-label">
+            {$_t('Description')}
+            <input
+              type="text"
+              class="form-input"
+              bind:value={formDescription}
+              placeholder="What this skill does"
+            />
+          </label>
 
-  <!-- Skills List -->
-  {#if isLoading}
-    <div class="loading">
-      <div class="loading-spinner"></div>
-      <span>{_t('Loading skills...')}</span>
-    </div>
-  {:else if skills.length === 0}
-    <div class="empty-state">
-      <p>{_t('No skills configured yet.')}</p>
-      <p class="empty-hint">{_t('Create a skill to add custom / commands or auto-invocable agent behaviors.')}</p>
-    </div>
-  {:else}
-    <div class="skills-list">
-      {#each skills as skill (skill.name)}
-        <div class="skill-card">
-          <div class="skill-header">
-            <div class="skill-info">
-              <span class="skill-name">/{skill.name}</span>
-              <span class="skill-description">{skill.description}</span>
-            </div>
-            <div class="skill-badges">
-              {#if !skill.trusted}
-                <span class="badge badge-warning">{_t('Untrusted')}</span>
-              {/if}
-              <span class="badge badge-mode">{getModeLabel(skill.invocationMode)}</span>
-              <span class="badge badge-source">{skill.source}</span>
-            </div>
-          </div>
-
-          <div class="skill-actions">
-            <select
-              class="mode-select"
-              value={skill.invocationMode}
-              on:change={(e) => handleModeChange(skill.name, e.currentTarget.value)}
-            >
-              <option value="manual">Manual</option>
-              <option value="auto">Auto</option>
-              <option value="hybrid">Hybrid</option>
+          <label class="form-label">
+            {$_t('Invocation Mode')}
+            <select class="form-input" bind:value={formMode}>
+              <option value="manual">Manual (/ command only)</option>
+              <option value="auto">Auto (LLM only)</option>
+              <option value="hybrid">Hybrid (both)</option>
             </select>
+          </label>
 
-            {#if !skill.trusted}
-              <button class="btn btn-small btn-trust" on:click={() => handleTrust(skill.name)}>
-                {_t('Trust')}
-              </button>
-            {/if}
+          <label class="form-label">
+            {$_t('Body (Markdown)')}
+            <textarea
+              class="form-textarea"
+              bind:value={formBody}
+              placeholder="Skill instructions in markdown..."
+              rows="8"
+            ></textarea>
+          </label>
 
-            <button class="btn btn-small" on:click={() => handleExport(skill.name)}>
-              {_t('Export')}
-            </button>
-
-            <button class="btn btn-small btn-danger" on:click={() => handleDelete(skill.name)}>
-              {_t('Delete')}
+          <div class="form-actions">
+            <button class="btn btn-secondary" on:click={closeCreateForm}>{$_t('Cancel')}</button>
+            <button class="btn btn-primary" on:click={handleCreate} disabled={isSaving}>
+              {isSaving ? $_t('Creating...') : $_t('Create')}
             </button>
           </div>
         </div>
-      {/each}
+      {/if}
+
+      <!-- Import Form -->
+      {#if showImportForm}
+        <div class="form-card">
+          <h3>{$_t('Import Skill from URL')}</h3>
+
+          <label class="form-label">
+            {$_t('SKILL.md URL')}
+            <input
+              type="url"
+              class="form-input"
+              bind:value={importUrl}
+              placeholder="https://example.com/SKILL.md"
+            />
+          </label>
+
+          <p class="form-hint">{$_t('Imported skills are untrusted by default and cannot auto-invoke.')}</p>
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" on:click={closeImportForm}>{$_t('Cancel')}</button>
+            <button class="btn btn-primary" on:click={handleImport} disabled={isImporting}>
+              {isImporting ? $_t('Importing...') : $_t('Import')}
+            </button>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Skills List -->
+      {#if isLoading}
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <span>{$_t('Loading skills...')}</span>
+        </div>
+      {:else if skills.length === 0}
+        <div class="empty-state">
+          <p>{$_t('No skills configured yet.')}</p>
+          <p class="empty-hint">{$_t('Create a skill to add custom / commands or auto-invocable agent behaviors.')}</p>
+        </div>
+      {:else}
+        <div class="skills-list">
+          {#each skills as skill (skill.name)}
+            <div class="skill-card">
+              <div class="skill-header-row">
+                <div class="skill-info">
+                  <span class="skill-name">/{skill.name}</span>
+                  <span class="skill-description">{skill.description}</span>
+                </div>
+                <div class="skill-badges">
+                  {#if !skill.trusted}
+                    <span class="badge badge-warning">{$_t('Untrusted')}</span>
+                  {/if}
+                  <span class="badge badge-mode">{getModeLabel(skill.invocationMode)}</span>
+                  <span class="badge badge-source">{skill.source}</span>
+                </div>
+              </div>
+
+              <div class="skill-actions">
+                <select
+                  class="mode-select"
+                  value={skill.invocationMode}
+                  on:change={(e) => handleModeChange(skill.name, e.currentTarget.value)}
+                >
+                  <option value="manual">Manual</option>
+                  <option value="auto">Auto</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+
+                {#if !skill.trusted}
+                  <button class="btn btn-small btn-trust" on:click={() => handleTrust(skill.name)}>
+                    {$_t('Trust')}
+                  </button>
+                {/if}
+
+                <button class="btn btn-small" on:click={() => handleExport(skill.name)}>
+                  {$_t('Export')}
+                </button>
+
+                <button class="btn btn-small btn-danger" on:click={() => handleDelete(skill.name)}>
+                  {$_t('Delete')}
+                </button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
-  {/if}
+  </div>
 </div>
 
 <style>
-  .skills-settings {
+  .skills-page {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    /* Terminal theme (default) */
+    --browserx-primary: #00ff00;
+    --browserx-secondary: #00cc00;
+    --browserx-background: #000000;
+    --browserx-surface: #0a0a0a;
+    --browserx-text: #00ff00;
+    --browserx-text-secondary: #00cc00;
+    --browserx-border: #00cc00;
+    --browserx-error: #ff0000;
+    --browserx-success: #00ff00;
+    --browserx-warning: #ffff00;
+    color-scheme: dark;
+  }
+
+  /* ChatGPT theme */
+  .skills-page.chatgpt {
+    --browserx-primary: var(--chat-primary, #60a5fa);
+    --browserx-secondary: var(--chat-primary, #60a5fa);
+    --browserx-background: var(--chat-bg, #ffffff);
+    --browserx-surface: var(--chat-card-bg, #f7f7f8);
+    --browserx-text: var(--chat-text, #0d0d0d);
+    --browserx-text-secondary: var(--chat-text-secondary, #6e6e80);
+    --browserx-border: var(--chat-border, #e5e5e5);
+    --browserx-error: var(--chat-error, #ef4444);
+    --browserx-success: #10b981;
+    --browserx-warning: #f59e0b;
+    background: rgba(0, 0, 0, 0.3);
+    color-scheme: light;
+  }
+
+  .skills-container {
+    max-width: 42rem;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    background: var(--browserx-background);
+    border: 1px solid var(--browserx-border);
+    color: var(--browserx-text);
+  }
+
+  .skills-page.chatgpt .skills-container {
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  .skills-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--browserx-border);
   }
 
-  .settings-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .back-button {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: none;
-    border: none;
-    color: var(--browserx-primary);
-    cursor: pointer;
-    font-size: 0.875rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-  }
-
-  .back-button:hover {
-    background: var(--browserx-surface);
-  }
-
-  .section-title {
+  .skills-title {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--browserx-text);
   }
 
+  .close-button {
+    background: none;
+    border: none;
+    color: var(--browserx-text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .close-button:hover {
+    color: var(--browserx-text);
+    background: var(--browserx-surface);
+  }
+
+  .skills-content {
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  /* Notification */
   .notification {
     padding: 0.75rem 1rem;
     border-radius: 0.375rem;
@@ -430,6 +505,7 @@
     border: 1px solid color-mix(in srgb, var(--browserx-error) 30%, transparent);
   }
 
+  /* Actions */
   .actions-bar {
     display: flex;
     gap: 0.5rem;
@@ -574,7 +650,7 @@
     padding: 1rem;
   }
 
-  .skill-header {
+  .skill-header-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
