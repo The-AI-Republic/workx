@@ -218,6 +218,7 @@ export class PiAgent {
 
     // Setup tab closure detection via TabManager callback
     this.setupTabClosureHandler();
+    console.log('[PiAgent] DEBUG: initialize() complete');
   }
 
   /**
