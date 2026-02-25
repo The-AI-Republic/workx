@@ -338,15 +338,11 @@ export class ModelClientFactory {
    * @param provider The provider to set as default
    */
   async setDefaultProvider(provider: ModelProvider): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      chrome.storage.sync.set({ [STORAGE_KEYS.DEFAULT_PROVIDER]: provider }, () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve();
-        }
-      });
-    });
+    try {
+      await chrome.storage.sync.set({ [STORAGE_KEYS.DEFAULT_PROVIDER]: provider });
+    } catch (error) {
+      console.warn(`[ModelClientFactory] Failed to set default provider:`, error);
+    }
   }
 
   /**
@@ -354,15 +350,13 @@ export class ModelClientFactory {
    * @returns Promise resolving to the default provider
    */
   async getDefaultProvider(): Promise<ModelProvider> {
-    return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([STORAGE_KEYS.DEFAULT_PROVIDER], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(result[STORAGE_KEYS.DEFAULT_PROVIDER] || 'openai');
-        }
-      });
-    });
+    try {
+      const result = await chrome.storage.sync.get([STORAGE_KEYS.DEFAULT_PROVIDER]);
+      return (result[STORAGE_KEYS.DEFAULT_PROVIDER] as ModelProvider) || 'openai';
+    } catch (error) {
+      console.warn(`[ModelClientFactory] Failed to get default provider:`, error);
+      return 'openai';
+    }
   }
 
   /**
@@ -519,15 +513,13 @@ export class ModelClientFactory {
    * @returns Promise resolving to the value or null
    */
   private async loadFromStorage(key: string): Promise<string | null> {
-    return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([key], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(result[key] || null);
-        }
-      });
-    });
+    try {
+      const result = await chrome.storage.sync.get([key]);
+      return (result[key] as string) || null;
+    } catch (error) {
+      console.warn(`[ModelClientFactory] Failed to load '${key}' from storage:`, error);
+      return null;
+    }
   }
 
   /**
