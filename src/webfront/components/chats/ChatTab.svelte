@@ -1,24 +1,24 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { SidePanelTab } from '../../stores/tabStore';
+  import type { SidePanelChat } from '../../stores/chatStore';
   import { uiTheme } from '../../stores/themeStore';
 
   /**
-   * Tab Component
+   * ChatTab Component
    *
-   * Individual tab in the tab bar with:
+   * Individual chat tab in the chat bar with:
    * - Truncated title (max 20 chars)
    * - Close button (x) on hover
    * - Active state styling
    * - Theme-aware styles (terminal/chatgpt)
    */
 
-  export let tab: SidePanelTab;
+  export let chat: SidePanelChat;
   export let isActive: boolean = false;
 
   const dispatch = createEventDispatcher<{
-    select: { tabId: string };
-    close: { tabId: string };
+    select: { chatId: string };
+    close: { chatId: string };
   }>();
 
   // Current theme
@@ -28,15 +28,15 @@
   });
 
   // Truncate title to 20 characters
-  $: displayTitle = tab.title.length > 20 ? tab.title.substring(0, 20) + '...' : tab.title;
+  $: displayTitle = chat.title.length > 20 ? chat.title.substring(0, 20) + '...' : chat.title;
 
   function handleSelect() {
-    dispatch('select', { tabId: tab.id });
+    dispatch('select', { chatId: chat.id });
   }
 
   function handleClose(event: MouseEvent) {
     event.stopPropagation();
-    dispatch('close', { tabId: tab.id });
+    dispatch('close', { chatId: chat.id });
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -50,25 +50,25 @@
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       event.stopPropagation();
-      dispatch('close', { tabId: tab.id });
+      dispatch('close', { chatId: chat.id });
     }
   }
 </script>
 
 <div
-  class="tab {currentTheme}"
+  class="chat-tab {currentTheme}"
   class:active={isActive}
   role="tab"
   tabindex="0"
   aria-selected={isActive}
-  title={tab.title}
+  title={chat.title}
   on:click={handleSelect}
   on:keydown={handleKeydown}
 >
-  <span class="tab-title">{displayTitle}</span>
+  <span class="chat-tab-title">{displayTitle}</span>
   <button
-    class="tab-close"
-    aria-label="Close tab"
+    class="chat-tab-close"
+    aria-label="Close chat"
     on:click={handleClose}
     on:keydown={handleCloseKeydown}
   >
@@ -83,7 +83,7 @@
      Terminal Theme (default)
      ============================================ */
 
-  .tab {
+  .chat-tab {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -103,12 +103,12 @@
     transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
-  .tab:hover {
+  .chat-tab:hover {
     background: rgba(0, 255, 0, 0.05);
     border-color: var(--color-term-dim-green, #00cc00);
   }
 
-  .tab.active {
+  .chat-tab.active {
     background: var(--color-term-bg, #000000);
     border-color: var(--color-term-dim-green, #00cc00);
     color: var(--color-term-bright-green, #00ff00);
@@ -116,14 +116,14 @@
     margin-bottom: -1px;
   }
 
-  .tab-title {
+  .chat-tab-title {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .tab-close {
+  .chat-tab-close {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -139,17 +139,17 @@
     transition: opacity 0.15s ease, background-color 0.15s ease;
   }
 
-  .tab:hover .tab-close {
+  .chat-tab:hover .chat-tab-close {
     opacity: 0.7;
   }
 
-  .tab-close:hover {
+  .chat-tab-close:hover {
     opacity: 1 !important;
     background: rgba(255, 0, 0, 0.2);
     color: var(--color-term-dim-red, #ff0000);
   }
 
-  .tab.active .tab-close {
+  .chat-tab.active .chat-tab-close {
     opacity: 0.7;
   }
 
@@ -157,30 +157,30 @@
      ChatGPT Theme
      ============================================ */
 
-  .tab.chatgpt {
+  .chat-tab.chatgpt {
     font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     color: var(--chat-text-secondary, #6e6e80);
     border-radius: 8px 8px 0 0;
     padding: 8px 12px;
   }
 
-  .tab.chatgpt:hover {
+  .chat-tab.chatgpt:hover {
     background: var(--chat-card-hover, #f7f7f8);
     border-color: var(--chat-border, #e5e5e5);
   }
 
-  .tab.chatgpt.active {
+  .chat-tab.chatgpt.active {
     background: var(--chat-bg, #ffffff);
     border-color: var(--chat-border, #e5e5e5);
     color: var(--chat-text, #0d0d0d);
     border-bottom: 1px solid var(--chat-bg, #ffffff);
   }
 
-  .tab.chatgpt .tab-close {
+  .chat-tab.chatgpt .chat-tab-close {
     color: var(--chat-text-secondary, #6e6e80);
   }
 
-  .tab.chatgpt .tab-close:hover {
+  .chat-tab.chatgpt .chat-tab-close:hover {
     background: rgba(239, 68, 68, 0.1);
     color: var(--chat-error, #ef4444);
   }

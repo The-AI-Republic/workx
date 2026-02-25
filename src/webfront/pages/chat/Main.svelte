@@ -31,9 +31,9 @@
   import { t, _t } from '../../lib/i18n';
   // Scheduler components
   import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
-  // Multi-tab support
-  import TabBar from '../../components/tabs/TabBar.svelte';
-  import { tabStore, type SidePanelTab } from '../../stores/tabStore';
+  // Multi-chat support
+  import ChatBar from '../../components/chats/ChatBar.svelte';
+  import { chatStore, type SidePanelChat } from '../../stores/chatStore';
 
   // Message service (platform-agnostic)
   let service: IMessageService | null = null;
@@ -62,8 +62,8 @@
   let scheduledSessionId: string | null = null;
   let isScheduledTaskMode = false;
 
-  // Multi-tab state
-  interface TabConversationState {
+  // Multi-chat state
+  interface ChatConversationState {
     messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
     processedEvents: ProcessedEvent[];
     inputText: string;
@@ -71,9 +71,9 @@
     currentTabId: number;
     eventProcessor: EventProcessor;
   }
-  let tabStates: Map<string, TabConversationState> = new Map();
+  let chatStates: Map<string, ChatConversationState> = new Map();
   let activeSessionId: string | null = null;
-  let canCreateTab: boolean = true;
+  let canCreateChat: boolean = true;
   let maxSessionsReached: boolean = false;
 
   $: showWelcome =
@@ -216,8 +216,8 @@
       return; // Skip normal initialization for scheduled task mode
     }
 
-    // Initialize multi-tab system
-    await initializeTabs();
+    // Initialize multi-chat system
+    await initializeChats();
 
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
@@ -660,10 +660,10 @@
     };
     processedEvents = [...processedEvents, userEvent];
 
-    // Update tab title from first message
-    updateTabTitleFromMessage(text);
+    // Update chat title from first message
+    updateChatTitleFromMessage(text);
 
-    // Send to agent with tab context and session ID
+    // Send to agent with browser tab context and session ID
     try {
       if (!service) throw new Error('Message service not available');
       await service.send(MessageType.SUBMISSION, {
@@ -969,17 +969,17 @@
   }
 
   // ============================================================================
-  // Multi-Tab Management Functions
+  // Multi-Chat Management Functions
   // ============================================================================
 
   /**
-   * Initialize the multi-tab system
-   * Restores persisted tabs and validates against active sessions
+   * Initialize the multi-chat system
+   * Restores persisted chats and validates against active sessions
    */
-  async function initializeTabs() {
+  async function initializeChats() {
     try {
-      // Restore tabs from storage
-      const restoredState = await tabStore.restoreTabs();
+      // Restore chats from storage
+      const restoredState = await chatStore.restoreChats();
 
       // Get list of active primary sessions from backend
       const response = await service!.send(MessageType.SIDEPANEL_LIST_SESSIONS);
@@ -987,52 +987,52 @@
       const maxConcurrent = response?.maxConcurrent || 5;
       const activeCount = response?.activeCount || 0;
 
-      canCreateTab = response?.canCreateSession ?? true;
+      canCreateChat = response?.canCreateSession ?? true;
       maxSessionsReached = activeCount >= maxConcurrent;
 
-      // Match tabs to sessions, remove orphaned tabs
-      const validTabs: SidePanelTab[] = [];
-      for (const tab of restoredState.tabs) {
-        const session = activeSessions.find((s: any) => s.sessionId === tab.sessionId);
+      // Match chats to sessions, remove orphaned chats
+      const validChats: SidePanelChat[] = [];
+      for (const chat of restoredState.chats) {
+        const session = activeSessions.find((s: any) => s.sessionId === chat.sessionId);
         if (session) {
-          validTabs.push(tab);
+          validChats.push(chat);
         } else {
-          console.log(`[App] Removing orphaned tab: ${tab.id} (session ${tab.sessionId} not found)`);
+          console.log(`[App] Removing orphaned chat: ${chat.id} (session ${chat.sessionId} not found)`);
         }
       }
 
-      // If no valid tabs, create a default one
-      if (validTabs.length === 0) {
-        await createNewTab();
+      // If no valid chats, create a default one
+      if (validChats.length === 0) {
+        await createNewChat();
       } else {
-        // Update store with valid tabs only
-        tabStore.setState({
-          tabs: validTabs,
-          activeTabId: validTabs.some(t => t.id === restoredState.activeTabId)
-            ? restoredState.activeTabId
-            : validTabs[0]?.id || null,
+        // Update store with valid chats only
+        chatStore.setState({
+          chats: validChats,
+          activeChatId: validChats.some(c => c.id === restoredState.activeChatId)
+            ? restoredState.activeChatId
+            : validChats[0]?.id || null,
         });
 
-        // Load state for the active tab
-        const activeTab = tabStore.getActiveTab();
-        if (activeTab) {
-          activeSessionId = activeTab.sessionId;
-          loadTabState(activeTab.id);
+        // Load state for the active chat
+        const activeChat = chatStore.getActiveChat();
+        if (activeChat) {
+          activeSessionId = activeChat.sessionId;
+          loadChatState(activeChat.id);
         }
       }
 
-      console.log(`[App] Initialized ${validTabs.length} tabs, can create: ${canCreateTab}`);
+      console.log(`[App] Initialized ${validChats.length} chats, can create: ${canCreateChat}`);
     } catch (error) {
-      console.error('[App] Failed to initialize tabs:', error);
-      // Fallback: create a default tab
-      await createNewTab();
+      console.error('[App] Failed to initialize chats:', error);
+      // Fallback: create a default chat
+      await createNewChat();
     }
   }
 
   /**
-   * Create a new tab with a new session
+   * Create a new chat with a new session
    */
-  async function createNewTab() {
+  async function createNewChat() {
     try {
       // Request new session from backend
       const response = await service!.send(MessageType.SIDEPANEL_CREATE_SESSION);
@@ -1045,11 +1045,11 @@
 
       const { sessionId } = response;
 
-      // Create tab in store
-      const newTab = tabStore.createTab(sessionId, 'New Tab');
+      // Create chat in store
+      const newChat = chatStore.createChat(sessionId, 'New Chat');
 
-      // Initialize state for new tab
-      const newState: TabConversationState = {
+      // Initialize state for new chat
+      const newState: ChatConversationState = {
         messages: [],
         processedEvents: [],
         inputText: '',
@@ -1057,11 +1057,11 @@
         currentTabId: -1,
         eventProcessor: new EventProcessor(),
       };
-      tabStates.set(newTab.id, newState);
+      chatStates.set(newChat.id, newState);
 
-      // Switch to the new tab
+      // Switch to the new chat
       activeSessionId = sessionId;
-      loadTabState(newTab.id);
+      loadChatState(newChat.id);
 
       // Update session limits
       await updateSessionLimits();
@@ -1069,49 +1069,49 @@
       // Auto-bind to active browser tab
       await bindToActiveTab();
 
-      console.log(`[App] Created new tab: ${newTab.id} with session: ${sessionId}`);
+      console.log(`[App] Created new chat: ${newChat.id} with session: ${sessionId}`);
     } catch (error) {
-      console.error('[App] Failed to create new tab:', error);
+      console.error('[App] Failed to create new chat:', error);
     }
   }
 
   /**
-   * Handle tab selection from TabBar
+   * Handle chat selection from ChatBar
    */
-  function handleTabSelect(event: CustomEvent<{ tabId: string }>) {
-    const { tabId } = event.detail;
-    switchToTab(tabId);
+  function handleChatSelect(event: CustomEvent<{ chatId: string }>) {
+    const { chatId } = event.detail;
+    switchToChat(chatId);
   }
 
   /**
-   * Switch to a specific tab
+   * Switch to a specific chat
    */
-  function switchToTab(tabId: string) {
-    const currentActiveTab = tabStore.getActiveTab();
+  function switchToChat(chatId: string) {
+    const currentActiveChat = chatStore.getActiveChat();
 
-    // Save current tab state before switching
-    if (currentActiveTab) {
-      saveTabState(currentActiveTab.id);
+    // Save current chat state before switching
+    if (currentActiveChat) {
+      saveChatState(currentActiveChat.id);
     }
 
-    // Set new active tab
-    tabStore.setActiveTab(tabId);
+    // Set new active chat
+    chatStore.setActiveChat(chatId);
 
-    // Load state for new tab
-    loadTabState(tabId);
+    // Load state for new chat
+    loadChatState(chatId);
 
     // Update active session ID
-    const newTab = tabStore.getActiveTab();
-    if (newTab) {
-      activeSessionId = newTab.sessionId;
+    const newChat = chatStore.getActiveChat();
+    if (newChat) {
+      activeSessionId = newChat.sessionId;
     }
   }
 
   /**
-   * Save current UI state to tab state map
+   * Save current UI state to chat state map
    */
-  function saveTabState(tabId: string) {
-    const state: TabConversationState = {
+  function saveChatState(chatId: string) {
+    const state: ChatConversationState = {
       messages: [...messages],
       processedEvents: [...processedEvents],
       inputText,
@@ -1119,14 +1119,14 @@
       currentTabId,
       eventProcessor: eventProcessor,
     };
-    tabStates.set(tabId, state);
+    chatStates.set(chatId, state);
   }
 
   /**
-   * Load tab state from map to UI
+   * Load chat state from map to UI
    */
-  function loadTabState(tabId: string) {
-    const state = tabStates.get(tabId);
+  function loadChatState(chatId: string) {
+    const state = chatStates.get(chatId);
     if (state) {
       messages = [...state.messages];
       processedEvents = [...state.processedEvents];
@@ -1146,88 +1146,88 @@
   }
 
   /**
-   * Handle tab close from TabBar
+   * Handle chat close from ChatBar
    */
-  async function handleTabClose(event: CustomEvent<{ tabId: string }>) {
-    const { tabId } = event.detail;
-    await closeTab(tabId);
+  async function handleChatClose(event: CustomEvent<{ chatId: string }>) {
+    const { chatId } = event.detail;
+    await closeChat(chatId);
   }
 
   /**
-   * Close a tab and terminate its session
+   * Close a chat and terminate its session
    */
-  async function closeTab(tabId: string) {
-    const tab = tabStore.getTabBySessionId(
-      Array.from(tabStates.keys()).find(k => {
-        const state = tabStates.get(k);
+  async function closeChat(chatId: string) {
+    const chat = chatStore.getChatBySessionId(
+      Array.from(chatStates.keys()).find(k => {
+        const state = chatStates.get(k);
         return state !== undefined;
       }) || ''
     );
 
-    // Find the tab to close
-    let tabToClose: SidePanelTab | undefined;
-    tabStore.subscribe(state => {
-      tabToClose = state.tabs.find(t => t.id === tabId);
+    // Find the chat to close
+    let chatToClose: SidePanelChat | undefined;
+    chatStore.subscribe(state => {
+      chatToClose = state.chats.find(c => c.id === chatId);
     })();
 
-    if (!tabToClose) return;
+    if (!chatToClose) return;
 
-    // If this is the last tab, create a new one first
-    let tabCount = 0;
-    tabStore.subscribe(state => {
-      tabCount = state.tabs.length;
+    // If this is the last chat, create a new one first
+    let chatCount = 0;
+    chatStore.subscribe(state => {
+      chatCount = state.chats.length;
     })();
 
-    if (tabCount <= 1) {
-      // Create new tab before closing the last one
-      await createNewTab();
+    if (chatCount <= 1) {
+      // Create new chat before closing the last one
+      await createNewChat();
     }
 
     // Terminate the session in backend
     try {
       await service!.send(MessageType.SIDEPANEL_CLOSE_SESSION, {
-        sessionId: tabToClose.sessionId,
+        sessionId: chatToClose.sessionId,
       });
     } catch (error) {
-      console.error(`[App] Failed to close session ${tabToClose.sessionId}:`, error);
+      console.error(`[App] Failed to close session ${chatToClose.sessionId}:`, error);
     }
 
-    // Remove tab state
-    tabStates.delete(tabId);
+    // Remove chat state
+    chatStates.delete(chatId);
 
-    // Close tab in store (this handles switching to another tab)
-    tabStore.closeTab(tabId);
+    // Close chat in store (this handles switching to another chat)
+    chatStore.closeChat(chatId);
 
     // Update active session
-    const newActiveTab = tabStore.getActiveTab();
-    if (newActiveTab) {
-      activeSessionId = newActiveTab.sessionId;
-      loadTabState(newActiveTab.id);
+    const newActiveChat = chatStore.getActiveChat();
+    if (newActiveChat) {
+      activeSessionId = newActiveChat.sessionId;
+      loadChatState(newActiveChat.id);
     }
 
     // Update session limits
     await updateSessionLimits();
 
-    console.log(`[App] Closed tab: ${tabId}`);
+    console.log(`[App] Closed chat: ${chatId}`);
   }
 
   /**
-   * Handle new tab button click from TabBar
+   * Handle new chat button click from ChatBar
    */
-  async function handleNewTab() {
-    await createNewTab();
+  async function handleNewChat() {
+    await createNewChat();
   }
 
   /**
-   * Handle event for a specific session (background tab)
+   * Handle event for a specific session (background chat)
    */
   function handleEventForSession(event: Event, sessionId: string) {
-    // Find the tab with this session
-    const tab = tabStore.getTabBySessionId(sessionId);
-    if (!tab) return;
+    // Find the chat with this session
+    const chat = chatStore.getChatBySessionId(sessionId);
+    if (!chat) return;
 
-    // Get or create state for this tab
-    let state = tabStates.get(tab.id);
+    // Get or create state for this chat
+    let state = chatStates.get(chat.id);
     if (!state) {
       state = {
         messages: [],
@@ -1237,10 +1237,10 @@
         currentTabId: -1,
         eventProcessor: new EventProcessor(),
       };
-      tabStates.set(tab.id, state);
+      chatStates.set(chat.id, state);
     }
 
-    // Process event for this tab's state
+    // Process event for this chat's state
     const processed = state.eventProcessor.processEvent(event);
     if (processed) {
       state.processedEvents = [...state.processedEvents, processed];
@@ -1254,31 +1254,31 @@
       state.isProcessing = false;
     }
 
-    tabStates.set(tab.id, state);
+    chatStates.set(chat.id, state);
   }
 
   /**
    * Handle session terminated event
    */
   function handleSessionTerminated(sessionId: string) {
-    const tab = tabStore.getTabBySessionId(sessionId);
-    if (tab) {
-      console.log(`[App] Session ${sessionId} terminated, removing tab ${tab.id}`);
+    const chat = chatStore.getChatBySessionId(sessionId);
+    if (chat) {
+      console.log(`[App] Session ${sessionId} terminated, removing chat ${chat.id}`);
 
-      // Remove tab state
-      tabStates.delete(tab.id);
+      // Remove chat state
+      chatStates.delete(chat.id);
 
-      // Close tab in store
-      tabStore.closeTab(tab.id);
+      // Close chat in store
+      chatStore.closeChat(chat.id);
 
-      // If this was the active tab, load state for the new active tab
-      const newActiveTab = tabStore.getActiveTab();
-      if (newActiveTab) {
-        activeSessionId = newActiveTab.sessionId;
-        loadTabState(newActiveTab.id);
+      // If this was the active chat, load state for the new active chat
+      const newActiveChat = chatStore.getActiveChat();
+      if (newActiveChat) {
+        activeSessionId = newActiveChat.sessionId;
+        loadChatState(newActiveChat.id);
       } else {
-        // No tabs left, create a new one
-        createNewTab();
+        // No chats left, create a new one
+        createNewChat();
       }
     }
 
@@ -1292,22 +1292,22 @@
   async function updateSessionLimits() {
     try {
       const response = await service!.send(MessageType.SESSION_GET_ACTIVE_COUNT);
-      canCreateTab = response?.canCreateSession ?? true;
-      maxSessionsReached = !canCreateTab;
+      canCreateChat = response?.canCreateSession ?? true;
+      maxSessionsReached = !canCreateChat;
     } catch (error) {
       console.error('[App] Failed to update session limits:', error);
     }
   }
 
   /**
-   * Update tab title based on first user message
+   * Update chat title based on first user message
    */
-  function updateTabTitleFromMessage(message: string) {
-    const activeTab = tabStore.getActiveTab();
-    if (activeTab && activeTab.title === 'New Tab') {
+  function updateChatTitleFromMessage(message: string) {
+    const activeChat = chatStore.getActiveChat();
+    if (activeChat && activeChat.title === 'New Chat') {
       // Use first 30 chars of message as title
       const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
-      tabStore.updateTabTitle(activeTab.id, title);
+      chatStore.updateChatTitle(activeChat.id, title);
     }
   }
 </script>
@@ -1316,14 +1316,14 @@
 <div class="main-layout {currentTheme}">
   <TerminalContainer theme={currentTheme}>
     <div class="content-container">
-        <!-- Multi-Tab Bar -->
+        <!-- Multi-Chat Bar -->
         {#if !isScheduledTaskMode}
-          <TabBar
-            {canCreateTab}
+          <ChatBar
+            {canCreateChat}
             {maxSessionsReached}
-            on:tabSelect={handleTabSelect}
-            on:tabClose={handleTabClose}
-            on:newTab={handleNewTab}
+            on:chatSelect={handleChatSelect}
+            on:chatClose={handleChatClose}
+            on:newChat={handleNewChat}
           />
         {/if}
 
