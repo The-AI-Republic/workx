@@ -68,7 +68,7 @@
   </div>
 
   <Tooltip
-    content={maxSessionsReached ? 'Maximum sessions reached' : 'New conversation'}
+    content={maxSessionsReached ? 'Maximum sessions reached' : 'New chat thread'}
     disabled={false}
   >
     <button
@@ -79,7 +79,7 @@
       on:keydown={handleNewChatKeydown}
       disabled={!canCreateChat || maxSessionsReached}
     >
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="18" height="18" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M7 2V12M2 7H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
     </button>
@@ -96,7 +96,7 @@
     align-items: flex-end;
     gap: 2px;
     padding: 4px 8px 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: transparent;
     border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
     min-height: 40px;
     overflow-x: auto;
@@ -128,8 +128,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     margin-bottom: 4px;
     border: 1px solid transparent;
@@ -157,7 +157,7 @@
      ============================================ */
 
   .chat-bar.chatgpt {
-    background: var(--chat-card-bg, #f7f7f8);
+    background: transparent;
     border-bottom: 1px solid var(--chat-border, #e5e5e5);
     padding: 6px 12px 0;
   }
