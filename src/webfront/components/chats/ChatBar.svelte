@@ -68,7 +68,7 @@
   </div>
 
   <Tooltip
-    content={maxSessionsReached ? 'Maximum sessions reached' : 'New chat thread'}
+    content={maxSessionsReached ? 'Maximum sessions reached' : 'New Chat Thread'}
     disabled={false}
   >
     <button
