@@ -743,9 +743,10 @@ describe('ModelClientFactory', () => {
   // loadConfigForProvider integration
   // =========================================================================
   describe('loadConfigForProvider - integration via createClient', () => {
-    it('should load OpenAI organization from chrome storage', async () => {
-      await chrome.storage.sync.set({ openai_organization: 'org-test-123' });
-      await factory.initialize(createMockAgentConfig());
+    it('should load OpenAI organization from provider config', async () => {
+      const config = createMockAgentConfig();
+      config.getProvider.mockReturnValue({ id: 'openai', name: 'OpenAI', organization: 'org-test-123' });
+      await factory.initialize(config);
       const client = await factory.createClient('openai');
       expect((client as any)._opts.organization).toBe('org-test-123');
     });
