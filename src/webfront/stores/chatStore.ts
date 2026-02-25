@@ -3,10 +3,11 @@
  *
  * Manages sidepanel chat UI state using Svelte store.
  * Each chat corresponds to an AgentRegistry session.
- * Persists chat state to chrome.storage.local.
+ * Persists chat state via ConfigStorageProvider.
  */
 
 import { writable, derived, get, type Writable } from 'svelte/store';
+import { getConfigStorage, isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
 
 /**
  * Sidepanel chat representation
@@ -31,7 +32,7 @@ export interface ChatStoreState {
 }
 
 /**
- * Persistence key for chrome.storage.local
+ * Persistence key for config storage
  */
 const STORAGE_KEY = 'browserx_sidepanel_chats';
 
@@ -180,13 +181,16 @@ function createChatStore() {
     },
 
     /**
-     * Restore chats from chrome.storage.local
+     * Restore chats from config storage
      * @returns Promise that resolves with restored state
      */
     restoreChats: async (): Promise<ChatStoreState> => {
       try {
-        const result = await chrome.storage.local.get(STORAGE_KEY);
-        const stored = result[STORAGE_KEY] as ChatStoreState | undefined;
+        if (!isConfigStorageInitialized()) {
+          console.warn('[ChatStore] ConfigStorage not initialized, skipping restore');
+          return initialState;
+        }
+        const stored = await getConfigStorage().get<ChatStoreState>(STORAGE_KEY);
 
         if (stored && stored.chats && stored.chats.length > 0) {
           set(stored);
@@ -218,12 +222,16 @@ function createChatStore() {
 }
 
 /**
- * Persist current chat state to chrome.storage.local
+ * Persist current chat state to config storage
  */
 async function persistChats(): Promise<void> {
   try {
+    if (!isConfigStorageInitialized()) {
+      console.warn('[ChatStore] ConfigStorage not initialized, skipping persist');
+      return;
+    }
     const state = get(chatStore);
-    await chrome.storage.local.set({ [STORAGE_KEY]: state });
+    await getConfigStorage().set(STORAGE_KEY, state);
   } catch (error) {
     console.error('[ChatStore] Failed to persist chats:', error);
   }

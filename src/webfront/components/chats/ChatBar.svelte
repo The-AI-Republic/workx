@@ -26,20 +26,12 @@
     newChat: void;
   }>();
 
-  // Current theme
-  let currentTheme: 'terminal' | 'chatgpt' = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  // Current theme (auto-subscription via $store syntax)
+  $: currentTheme = $uiTheme;
 
-  // Subscribe to chat store
-  let chats: SidePanelChat[] = [];
-  let activeChatId: string | null = null;
-
-  chatStore.subscribe((state) => {
-    chats = state.chats;
-    activeChatId = state.activeChatId;
-  });
+  // Chat store (auto-subscription via $store syntax)
+  $: chats = $chatStore.chats;
+  $: activeChatId = $chatStore.activeChatId;
 
   function handleChatSelect(event: CustomEvent<{ chatId: string }>) {
     dispatch('chatSelect', { chatId: event.detail.chatId });

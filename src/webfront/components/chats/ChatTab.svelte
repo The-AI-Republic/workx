@@ -21,11 +21,8 @@
     close: { chatId: string };
   }>();
 
-  // Current theme
-  let currentTheme: 'terminal' | 'chatgpt' = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  // Current theme (auto-subscription via $store syntax)
+  $: currentTheme = $uiTheme;
 
   // Truncate title to 20 characters
   $: displayTitle = chat.title.length > 20 ? chat.title.substring(0, 20) + '...' : chat.title;

@@ -993,7 +993,7 @@ function setupSessionMessageHandlers(): void {
     };
   });
 
-  // Sidepanel multi-tab: Create new 'primary' session for a tab
+  // Sidepanel multi-chat: Create new 'primary' session for a chat
   router.on(MessageType.SIDEPANEL_CREATE_SESSION, async () => {
     if (!registry!.canCreateSession()) {
       return {
@@ -1027,7 +1027,7 @@ function setupSessionMessageHandlers(): void {
     }
   });
 
-  // Sidepanel multi-tab: Close/terminate a session when tab is closed
+  // Sidepanel multi-chat: Close/terminate a session when chat is closed
   router.on(MessageType.SIDEPANEL_CLOSE_SESSION, async (message) => {
     const { sessionId } = message.payload as { sessionId: string };
 
@@ -1048,10 +1048,10 @@ function setupSessionMessageHandlers(): void {
     }
   });
 
-  // Sidepanel multi-tab: List all 'primary' sessions for restoration
+  // Sidepanel multi-chat: List all 'primary' sessions for restoration
   router.on(MessageType.SIDEPANEL_LIST_SESSIONS, async () => {
     const allSessions = registry!.listSessions();
-    // Filter to only primary sessions (sidepanel tabs)
+    // Filter to only primary sessions (sidepanel chats)
     const primarySessions = allSessions.filter((s) => s.type === 'primary');
 
     return {

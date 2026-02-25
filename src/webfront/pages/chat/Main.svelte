@@ -32,6 +32,7 @@
   // Scheduler components
   import ScheduleTaskModal from '../../components/scheduler/ScheduleTaskModal.svelte';
   // Multi-chat support
+  import { get } from 'svelte/store';
   import ChatBar from '../../components/chats/ChatBar.svelte';
   import { chatStore, type SidePanelChat } from '../../stores/chatStore';
 
@@ -1157,30 +1158,21 @@
    * Close a chat and terminate its session
    */
   async function closeChat(chatId: string) {
-    const chat = chatStore.getChatBySessionId(
-      Array.from(chatStates.keys()).find(k => {
-        const state = chatStates.get(k);
-        return state !== undefined;
-      }) || ''
-    );
-
     // Find the chat to close
-    let chatToClose: SidePanelChat | undefined;
-    chatStore.subscribe(state => {
-      chatToClose = state.chats.find(c => c.id === chatId);
-    })();
+    const state = get(chatStore);
+    const chatToClose = state.chats.find(c => c.id === chatId);
 
     if (!chatToClose) return;
 
     // If this is the last chat, create a new one first
-    let chatCount = 0;
-    chatStore.subscribe(state => {
-      chatCount = state.chats.length;
-    })();
-
-    if (chatCount <= 1) {
-      // Create new chat before closing the last one
+    if (state.chats.length <= 1) {
+      const countBefore = get(chatStore).chats.length;
       await createNewChat();
+      const countAfter = get(chatStore).chats.length;
+      if (countAfter <= countBefore) {
+        console.error('[App] Failed to create replacement chat, aborting close');
+        return;
+      }
     }
 
     // Terminate the session in backend
