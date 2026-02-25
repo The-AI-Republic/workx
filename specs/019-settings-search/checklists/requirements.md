@@ -1,7 +1,7 @@
-# Specification Quality Checklist: Settings Search
+# Specification Quality Checklist: Fix TypeScript Type-Check CI Failures
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-02-14
+**Created**: 2026-02-17
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,8 +31,6 @@
 
 ## Notes
 
-- Spec references "Fuse.js" in the Assumptions section as an acceptable dependency. This is appropriate context for the planning phase rather than an implementation detail in the requirements themselves.
-- All 11 functional requirements are testable and unambiguous.
-- 3 user stories cover the complete user journey: search (P1), navigate (P2), keyboard access (P3).
-- 4 edge cases identified and answered with clear resolution.
-- All checklist items pass. Spec is ready for `/rr.clarify` or `/rr.plan`.
+- All checklist items pass. The spec references specific TypeScript error codes (TS2304, etc.) and configuration settings (`tsconfig.json`) which are inherent to describing the problem domain rather than prescribing implementation solutions.
+- The spec correctly focuses on outcomes (zero errors, CI passes) rather than specific implementation approaches.
+- Ready for `/rr.clarify` or `/rr.plan`.

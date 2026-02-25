@@ -367,7 +367,7 @@
 
         if (text.trim()) {
           // Create ProcessedEvent with proper styling
-          restoredEvents.push({
+          const processedEvent: ProcessedEvent = {
             id: `restored_${i}_${Date.now()}`,
             category: 'message',
             timestamp: new Date(),
@@ -376,7 +376,14 @@
             style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
             streaming: false,
             collapsible: false,
-          });
+          };
+
+          // Carry modelKey from assistant messages for model indicator display
+          if (!isUser && item.modelKey) {
+            processedEvent.modelKey = item.modelKey;
+          }
+
+          restoredEvents.push(processedEvent);
         }
       }
     }
