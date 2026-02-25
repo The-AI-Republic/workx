@@ -86,9 +86,7 @@ pub async fn http_fetch(
     };
 
     // Build request
-    let http_method: reqwest::Method = method
-        .parse()
-        .map_err(|_| format!("Invalid HTTP method: {}", method))?;
+    let http_method = parse_http_method(&method)?;
 
     let mut req = client.request(http_method, &url);
 
@@ -197,14 +195,6 @@ mod tests {
     #[test]
     fn test_parse_http_method_invalid() {
         assert!(parse_http_method("INVALID METHOD").is_err());
-    }
-
-    #[test]
-    fn test_base64_encode_known_bytes() {
-        use base64::{Engine, engine::general_purpose::STANDARD};
-        let input = b"Hello, world!";
-        let encoded = STANDARD.encode(input);
-        assert_eq!(encoded, "SGVsbG8sIHdvcmxkIQ==");
     }
 
     #[test]

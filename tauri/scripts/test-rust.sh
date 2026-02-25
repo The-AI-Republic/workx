@@ -4,10 +4,10 @@
 
 set -euo pipefail
 
-# Verify cargo is available
+# Skip gracefully when cargo is not installed (e.g. frontend-only devs)
 if ! command -v cargo &>/dev/null; then
-  echo "ERROR: cargo not found. Install the Rust toolchain: https://rustup.rs" >&2
-  exit 127
+  echo "SKIP: cargo not found — Rust tests skipped. Install the Rust toolchain if needed: https://rustup.rs" >&2
+  exit 0
 fi
 
 # Resolve the repo root (this script lives in tauri/scripts/)
@@ -26,4 +26,3 @@ mkdir -p "$REPO_ROOT/dist/desktop"
 
 echo "Running Rust tests..."
 cargo test --manifest-path "$MANIFEST" 2>&1
-exit $?

@@ -206,8 +206,7 @@ fn execute_via_pty(
     drop(held_resources);
 
     // Strip ANSI escape codes
-    let stripped = strip_ansi_escapes::strip(&raw_output);
-    let stdout = String::from_utf8_lossy(&stripped).to_string();
+    let stdout = strip_ansi_and_decode(&raw_output);
 
     Ok(DirectResult {
         exit_code,
@@ -439,17 +438,5 @@ mod tests {
         assert!(result.contains("Hello"));
     }
 
-    #[test]
-    fn test_shell_detection_linux() {
-        // Test the shell selection logic
-        let shell = if cfg!(target_os = "windows") {
-            "powershell"
-        } else if cfg!(target_os = "macos") {
-            "zsh"
-        } else {
-            "bash"
-        };
-        // On Linux CI, should be "bash"
-        assert!(!shell.is_empty());
-    }
+
 }
