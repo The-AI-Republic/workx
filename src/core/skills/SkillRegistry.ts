@@ -1,5 +1,5 @@
 import type { ISkillProvider } from './SkillProvider';
-import type { Skill, SkillMeta, InvocationMode, ICommandRegistry } from './types';
+import type { Skill, SkillMeta, InvocationMode } from './types';
 import { substituteVariables, validateSkill, parseSkillMd } from './SkillParser';
 
 /** Built-in command names that skills cannot use */
@@ -7,16 +7,14 @@ const RESERVED_COMMAND_NAMES = new Set(['new', 'help', 'settings']);
 
 /**
  * Central coordinator for skill lifecycle.
- * Manages discovery, invocation, CommandRegistry integration, and system prompt generation.
+ * Manages discovery, invocation, and system prompt generation.
  */
 export class SkillRegistry {
   private metas: SkillMeta[] = [];
   private provider: ISkillProvider;
-  private commandRegistry?: ICommandRegistry;
 
-  constructor(provider: ISkillProvider, commandRegistry?: ICommandRegistry) {
+  constructor(provider: ISkillProvider) {
     this.provider = provider;
-    this.commandRegistry = commandRegistry;
   }
 
   // ── Discovery ───────────────────────────────────────────────────
@@ -42,35 +40,6 @@ export class SkillRegistry {
   /** Re-run discovery */
   async refresh(): Promise<SkillMeta[]> {
     return this.discover();
-  }
-
-  // ── Command Registration ────────────────────────────────────────
-
-  /**
-   * Register skills as commands in CommandRegistry.
-   * - manual/hybrid mode → registered (appears in / dropdown)
-   * - auto mode → NOT registered (hidden from dropdown)
-   * - Skips skills whose name conflicts with existing commands
-   */
-  registerCommands(): void {
-    if (!this.commandRegistry) return;
-
-    for (const meta of this.metas) {
-      if (meta.invocationMode === 'auto') continue;
-
-      // Skip if name conflicts with existing command (e.g., built-in)
-      if (this.commandRegistry.has(meta.name)) continue;
-
-      const name = meta.name;
-      this.commandRegistry.register({
-        name,
-        description: meta.description,
-        argumentHint: '$ARGUMENTS',
-        action: async (args?: string) => {
-          await this.invoke(name, args ? args.split(/\s+/) : []);
-        },
-      });
-    }
   }
 
   // ── Invocation ──────────────────────────────────────────────────
@@ -112,21 +81,10 @@ export class SkillRegistry {
    * Throws if name conflicts with a built-in command.
    */
   async save(skill: Skill): Promise<void> {
-    // Check for reserved names (static list ensures this works even without commandRegistry)
     if (RESERVED_COMMAND_NAMES.has(skill.name)) {
       throw new Error(
         `Skill name "${skill.name}" conflicts with a built-in command`
       );
-    }
-
-    // Also check commandRegistry if available (catches dynamically registered commands)
-    if (this.commandRegistry && this.commandRegistry.has(skill.name)) {
-      const existingMeta = this.metas.find((m) => m.name === skill.name);
-      if (!existingMeta) {
-        throw new Error(
-          `Skill name "${skill.name}" conflicts with an existing command`
-        );
-      }
     }
 
     await this.provider.save(skill);
@@ -145,35 +103,15 @@ export class SkillRegistry {
       this.metas[existingIndex] = meta;
     } else {
       this.metas.push(meta);
-
-      // Register new command if manual/hybrid mode
-      if (this.commandRegistry && skill.invocationMode !== 'auto') {
-        if (!this.commandRegistry.has(skill.name)) {
-          const name = skill.name;
-          this.commandRegistry.register({
-            name,
-            description: skill.description,
-            argumentHint: '$ARGUMENTS',
-            action: async (args?: string) => {
-              await this.invoke(name, args ? args.split(/\s+/) : []);
-            },
-          });
-        }
-      }
     }
   }
 
-  /** Delete a skill and unregister from CommandRegistry */
+  /** Delete a skill */
   async delete(name: string): Promise<void> {
     await this.provider.delete(name);
 
     // Remove from cached metadata
     this.metas = this.metas.filter((m) => m.name !== name);
-
-    // Unregister from CommandRegistry
-    if (this.commandRegistry) {
-      this.commandRegistry.unregister(name);
-    }
   }
 
   /** Export a skill as standard-compliant SKILL.md */
@@ -183,12 +121,11 @@ export class SkillRegistry {
 
   // ── Invocation Mode ─────────────────────────────────────────────
 
-  /** Update a skill's invocation mode and re-sync CommandRegistry + system prompt */
+  /** Update a skill's invocation mode */
   async updateInvocationMode(name: string, mode: InvocationMode): Promise<void> {
     const skill = await this.provider.load(name);
     if (!skill) throw new Error(`Skill "${name}" not found`);
 
-    const oldMode = skill.invocationMode;
     skill.invocationMode = mode;
     skill.updatedAt = new Date().toISOString();
     await this.provider.save(skill);
@@ -197,26 +134,6 @@ export class SkillRegistry {
     const meta = this.metas.find((m) => m.name === name);
     if (meta) {
       meta.invocationMode = mode;
-    }
-
-    // Re-sync CommandRegistry
-    if (this.commandRegistry) {
-      if (oldMode !== 'auto' && mode === 'auto') {
-        // Was in dropdown, now hidden → unregister
-        this.commandRegistry.unregister(name);
-      } else if (oldMode === 'auto' && mode !== 'auto') {
-        // Was hidden, now in dropdown → register
-        if (!this.commandRegistry.has(name)) {
-          this.commandRegistry.register({
-            name,
-            description: skill.description,
-            argumentHint: '$ARGUMENTS',
-            action: async (args?: string) => {
-              await this.invoke(name, args ? args.split(/\s+/) : []);
-            },
-          });
-        }
-      }
     }
   }
 
@@ -231,7 +148,7 @@ export class SkillRegistry {
     const parsed = parseSkillMd(content);
 
     // Validate
-    const validation = validateSkill(parsed, this.commandRegistry);
+    const validation = validateSkill(parsed);
     if (!validation.valid) {
       throw new Error(`Invalid skill: ${validation.errors.join(', ')}`);
     }
