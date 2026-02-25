@@ -39,9 +39,7 @@ export interface ModelClientConfig {
  * Storage keys for Chrome storage
  */
 const STORAGE_KEYS = {
-  OPENAI_API_KEY: 'openai_api_key',
   DEFAULT_PROVIDER: 'default_provider',
-  OPENAI_ORGANIZATION: 'openai_organization',
 } as const;
 
 const DEFAULT_MODEL = 'gpt-5';
@@ -496,30 +494,7 @@ export class ModelClientFactory {
       }
     }
 
-    // Load provider-specific options
-    if (provider === 'openai') {
-      const organization = await this.loadFromStorage(STORAGE_KEYS.OPENAI_ORGANIZATION);
-      if (organization) {
-        config.options!.organization = organization;
-      }
-    }
-
     return config;
-  }
-
-  /**
-   * Load a value from Chrome storage
-   * @param key The storage key
-   * @returns Promise resolving to the value or null
-   */
-  private async loadFromStorage(key: string): Promise<string | null> {
-    try {
-      const result = await chrome.storage.sync.get([key]);
-      return (result[key] as string) || null;
-    } catch (error) {
-      console.warn(`[ModelClientFactory] Failed to load '${key}' from storage:`, error);
-      return null;
-    }
   }
 
   /**
