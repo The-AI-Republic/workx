@@ -613,6 +613,13 @@
     box-sizing: border-box;
   }
 
+  /* Let <select> use system rendering so dropdown options are visible in dark themes */
+  select.form-input {
+    background: revert;
+    color: revert;
+    color-scheme: inherit;
+  }
+
   .form-input:focus,
   .form-textarea:focus {
     outline: none;
@@ -716,10 +723,9 @@
   .mode-select {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
-    background: var(--browserx-background);
-    color: var(--browserx-text);
     border: 1px solid var(--browserx-border);
     border-radius: 0.375rem;
+    color-scheme: inherit;
   }
 
   /* Loading & Empty */
