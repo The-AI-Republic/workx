@@ -11,6 +11,9 @@
  */
 
 import { invoke, Channel } from '@tauri-apps/api/core';
+import { LARGE_PAYLOAD_THRESHOLD } from '@/desktop/channels/LargePayloadStore';
+
+const CHUNK_SIZE = 48 * 1024; // 48KB per chunk — well under WebView2 postMessage limit
 
 /** Events received from Rust http_fetch command */
 interface HttpEvent {
@@ -40,6 +43,7 @@ function shouldProxy(url: string): boolean {
       host === '127.0.0.1' ||
       host === '::1' ||
       host === 'tauri.localhost' ||
+      host === 'ipc.localhost' ||  // Tauri v2 uses this for invoke() HTTP-based IPC
       host === '0.0.0.0'
     ) {
       return false;
@@ -121,6 +125,20 @@ async function parseRequest(
 async function rustFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const { method, url, headers, body } = await parseRequest(input, init);
 
+  const bodyLen = body?.length ?? 0;
+
+  // For large bodies, chunk them into Rust's buffer before invoking http_fetch
+  let requestId: string | null = null;
+  if (body && bodyLen > LARGE_PAYLOAD_THRESHOLD) {
+    requestId = crypto.randomUUID();
+    for (let i = 0; i < bodyLen; i += CHUNK_SIZE) {
+      await invoke('http_append_body_chunk', {
+        requestId,
+        chunk: body.slice(i, i + CHUNK_SIZE),
+      });
+    }
+  }
+
   // Channel for streaming response from Rust
   const onEvent = new Channel<HttpEvent>();
 
@@ -187,7 +205,8 @@ async function rustFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       method,
       url,
       headers,
-      body,
+      body: requestId ? null : body,
+      requestId,
       onEvent,
     }).catch((err) => {
       if (!resolved) {
@@ -215,5 +234,4 @@ async function proxiedFetch(input: RequestInfo | URL, init?: RequestInit): Promi
  */
 export function installFetchProxy(): void {
   globalThis.fetch = proxiedFetch as typeof globalThis.fetch;
-  console.log('[FetchProxy] Installed — external HTTP requests route through Rust (no CORS)');
 }

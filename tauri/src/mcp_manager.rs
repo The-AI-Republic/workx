@@ -41,17 +41,23 @@ type ConcreteRunningService =
     rmcp::service::RunningService<rmcp::RoleClient, ClientInfo>;
 
 /// Commands allowed for MCP subprocess spawning.
-/// Only known package runners are permitted to mitigate arbitrary command execution.
-const ALLOWED_COMMANDS: &[&str] = &["npx", "node", "deno", "bun", "uvx", "python3", "python"];
+/// Only known package runners and the bundled sidecar are permitted.
+const ALLOWED_COMMANDS: &[&str] = &[
+    "npx", "node", "deno", "bun", "uvx", "python3", "python",
+    "chrome-devtools-mcp", // bundled sidecar binary
+];
 
 /// Extract the base command name from a potentially full path and validate
 /// it against the allowlist. Returns the base name on success.
+/// Strips `.exe` suffix (Windows) before checking so the sidecar binary matches.
 fn validate_command_allowlist(command: &str) -> Result<&str, String> {
     let base_command = std::path::Path::new(command)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(command);
-    if ALLOWED_COMMANDS.contains(&base_command) {
+    // Strip .exe suffix so Windows sidecar paths pass validation
+    let base_command_stripped = base_command.strip_suffix(".exe").unwrap_or(base_command);
+    if ALLOWED_COMMANDS.contains(&base_command_stripped) {
         Ok(base_command)
     } else {
         Err(format!(
@@ -490,6 +496,31 @@ pub async fn mcp_disconnect(server_id: String) -> Result<bool, String> {
     }
 }
 
+/// Resolve the path to the bundled chrome-devtools-mcp sidecar binary.
+/// Returns an error if the sidecar was not bundled (e.g. in dev mode).
+/// The JS side uses this to decide whether to use the sidecar or fall back to npx.
+#[tauri::command]
+pub fn get_browser_mcp_sidecar_path() -> Result<String, String> {
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| format!("Failed to get exe path: {}", e))?
+        .parent()
+        .ok_or_else(|| "Failed to get exe directory".to_string())?
+        .to_path_buf();
+
+    let binary_name = if cfg!(target_os = "windows") {
+        "chrome-devtools-mcp.exe"
+    } else {
+        "chrome-devtools-mcp"
+    };
+
+    let sidecar_path = exe_dir.join(binary_name);
+    if sidecar_path.exists() {
+        Ok(sidecar_path.to_string_lossy().to_string())
+    } else {
+        Err(format!("Browser MCP sidecar not found at {:?}", sidecar_path))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -565,5 +596,15 @@ mod tests {
         let result = validate_command_allowlist("/usr/bin/python");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "python");
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_exe_suffix() {
+        assert!(validate_command_allowlist("chrome-devtools-mcp.exe").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_exe_full_path() {
+        assert!(validate_command_allowlist("/usr/local/bin/chrome-devtools-mcp.exe").is_ok());
     }
 }

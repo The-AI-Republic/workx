@@ -93,13 +93,28 @@ export class DesktopAuthService {
   }
 
   /**
-   * Initialize the auth service and set up deep link listener
+   * Initialize the auth service and set up deep link listener.
+   * Idempotent: safe to call multiple times — only one listener is ever registered.
    */
   async initialize(): Promise<void> {
+    if (this.unlistenCallback) return;
     // Listen for auth callback deep links
     this.unlistenCallback = await listen<string>('auth-callback', (event) => {
       this.handleAuthCallback(event.payload);
     });
+  }
+
+  /**
+   * Cancel an in-progress login flow.
+   * Rejects the pending login promise so the caller's await unblocks immediately
+   * and the deep link callback cannot silently authenticate the user afterwards.
+   */
+  cancelLogin(): void {
+    if (this.authCallbackPromiseReject) {
+      this.authCallbackPromiseReject(new Error('Login cancelled'));
+      this.authCallbackPromiseResolve = null;
+      this.authCallbackPromiseReject = null;
+    }
   }
 
   /**

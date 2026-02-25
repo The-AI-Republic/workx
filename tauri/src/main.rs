@@ -17,7 +17,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager, RunEvent, WindowEvent,
+    Emitter, Manager, RunEvent, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -145,7 +145,6 @@ fn main() {
             // Check if any argument looks like our deep link
             for arg in args {
                 if arg.starts_with("airepublic-pi://") {
-                    println!("[Pi] Received deep link via single-instance: {}", &arg[..50.min(arg.len())]);
                     let _ = app.emit("auth-callback", &arg);
 
                     // Bring the window to focus
@@ -168,7 +167,6 @@ fn main() {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
                 }
-                println!("[Pi] Started via autostart — running in background");
             }
 
             // Register the deep link protocol handler at runtime.
@@ -182,14 +180,82 @@ fn main() {
                 }
             }
 
-            // Handle deep link events on macOS/iOS (they emit events directly)
-            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            // Handle deep link events on all desktop platforms.
+            //
+            // on_open_url is the canonical cross-platform API:
+            // - macOS/iOS: triggered by the OS open-url event
+            // - Windows/Linux: triggered when single-instance plugin forwards the URL
+            //   from a second instance launch (requires `features = ["deep-link"]` in
+            //   tauri-plugin-single-instance, which is already set in Cargo.toml)
+            //
+            // Previously this was guarded by #[cfg(any(target_os = "macos", target_os = "ios"))]
+            // which meant Windows deep links were silently dropped.
+            #[cfg(desktop)]
             {
                 let handle = app.handle().clone();
-                app.listen("deep-link://new-url", move |event: tauri::Event| {
-                    let url = event.payload();
-                    let _ = handle.emit("auth-callback", url);
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        let url_str = url.as_str();
+                        if url_str.starts_with("airepublic-pi://") {
+                            let _ = handle.emit("auth-callback", url_str);
+                            if let Some(window) = handle.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            break;
+                        }
+                    }
                 });
+
+                // Handle the case where the app was NOT running when the deep link
+                // fired and Windows/Linux launched a fresh instance with the URL as
+                // a CLI argument.  get_current() returns those startup URLs.
+                #[cfg(any(target_os = "windows", target_os = "linux"))]
+                if let Ok(Some(urls)) = app.deep_link().get_current() {
+                    let initial: Vec<String> = urls
+                        .iter()
+                        .map(|u| u.to_string())
+                        .collect();
+                    let handle2 = app.handle().clone();
+                    std::thread::spawn(move || {
+                        // Retry emitting the deep link until the frontend has mounted
+                        // its auth-callback listener. The webview must be fully loaded
+                        // before it can receive events.
+                        let delays = [500, 1000, 1500, 2000, 3000];
+                        for delay_ms in delays {
+                            std::thread::sleep(Duration::from_millis(delay_ms));
+                            // Check if the main window is ready (visible = frontend loaded)
+                            let window_ready = handle2
+                                .get_webview_window("main")
+                                .and_then(|w| w.is_visible().ok())
+                                .unwrap_or(false);
+                            if !window_ready {
+                                continue;
+                            }
+                            for url in &initial {
+                                if url.starts_with("airepublic-pi://") {
+                                    let _ = handle2.emit("auth-callback", url);
+                                    if let Some(window) = handle2.get_webview_window("main") {
+                                        let _ = window.show();
+                                        let _ = window.set_focus();
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                        // Final attempt regardless of window state
+                        for url in &initial {
+                            if url.starts_with("airepublic-pi://") {
+                                let _ = handle2.emit("auth-callback", url);
+                                if let Some(window) = handle2.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                                break;
+                            }
+                        }
+                    });
+                }
             }
             // Create tray menu
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -271,6 +337,7 @@ fn main() {
             mcp_manager::mcp_list_resources,
             mcp_manager::mcp_read_resource,
             mcp_manager::mcp_disconnect,
+            mcp_manager::get_browser_mcp_sidecar_path,
             // Config storage commands
             storage_commands::config_storage_get,
             storage_commands::config_storage_set,
@@ -279,6 +346,10 @@ fn main() {
             storage_commands::config_storage_remove_many,
             storage_commands::config_storage_get_all,
             storage_commands::config_storage_clear,
+            storage_commands::config_storage_get_size,
+            storage_commands::config_storage_get_chunk,
+            storage_commands::config_storage_append_chunk,
+            storage_commands::config_storage_commit,
             // Browser detection and CDP commands
             browser_commands::find_running_browsers,
             browser_commands::file_exists,
@@ -295,6 +366,7 @@ fn main() {
             sandbox::status::sandbox_install_runtime,
             // HTTP proxy command
             http_commands::http_fetch,
+            http_commands::http_append_body_chunk,
             // Keychain commands
             keychain_commands::keychain_get,
             keychain_commands::keychain_set,

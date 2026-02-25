@@ -9,9 +9,25 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Instant;
+
+/// TTL for buffered write chunks — evict after 30 seconds
+const WRITE_BUFFER_TTL_SECS: u64 = 30;
+
+struct WriteBufferEntry {
+    data: String,
+    created: Instant,
+}
 
 lazy_static::lazy_static! {
     static ref STORAGE: Mutex<ConfigStorage> = Mutex::new(ConfigStorage::new());
+    /// Buffer for large values being written in chunks from JS
+    static ref WRITE_BUFFER: Mutex<HashMap<String, WriteBufferEntry>> = Mutex::new(HashMap::new());
+}
+
+/// Remove entries older than TTL
+fn evict_stale_write_entries(buf: &mut HashMap<String, WriteBufferEntry>) {
+    buf.retain(|_, entry| entry.created.elapsed().as_secs() < WRITE_BUFFER_TTL_SECS);
 }
 
 /// Get the config file path
@@ -135,6 +151,49 @@ pub fn config_storage_get_all() -> HashMap<String, String> {
 pub fn config_storage_clear() -> Result<(), String> {
     let mut storage = STORAGE.lock().unwrap();
     storage.clear()
+}
+
+/// Get the character count of a stored value (to decide if chunked reading is needed).
+/// Uses char count (Unicode scalar values) rather than byte count so JS offsets match.
+#[tauri::command]
+pub fn config_storage_get_size(key: String) -> Option<usize> {
+    let storage = STORAGE.lock().unwrap();
+    storage.get(&key).map(|v| v.chars().count())
+}
+
+/// Get a char-range slice of a stored value for chunked reading.
+/// Offsets are in chars (Unicode scalar values), not bytes, to avoid UTF-8 boundary panics.
+#[tauri::command]
+pub fn config_storage_get_chunk(key: String, offset: usize, length: usize) -> Option<String> {
+    let storage = STORAGE.lock().unwrap();
+    storage.get(&key).map(|v| {
+        v.chars().skip(offset).take(length).collect::<String>()
+    })
+}
+
+/// Append a chunk to a write buffer (for large values that can't be sent in one postMessage)
+#[tauri::command]
+pub fn config_storage_append_chunk(key: String, chunk: String) -> Result<(), String> {
+    let mut buf = WRITE_BUFFER.lock().map_err(|e| e.to_string())?;
+    evict_stale_write_entries(&mut buf);
+    buf.entry(key)
+        .or_insert_with(|| WriteBufferEntry { data: String::new(), created: Instant::now() })
+        .data
+        .push_str(&chunk);
+    Ok(())
+}
+
+/// Flush the write buffer for a key into persistent storage
+#[tauri::command]
+pub fn config_storage_commit(key: String) -> Result<(), String> {
+    let value = {
+        let mut buf = WRITE_BUFFER.lock().map_err(|e| e.to_string())?;
+        buf.remove(&key)
+            .map(|entry| entry.data)
+            .ok_or_else(|| format!("No buffered data for key: {}", key))?
+    };
+    let mut storage = STORAGE.lock().unwrap();
+    storage.set(&key, &value)
 }
 
 #[cfg(test)]
