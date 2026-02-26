@@ -232,6 +232,12 @@ export interface IProviderConfig {
   retryConfig?: IRetryConfig;
 
   /**
+   * Active authentication method for this provider (optional)
+   * When set, determines whether API key or ChatGPT OAuth is used
+   */
+  authMethod?: 'api_key' | 'chatgpt_oauth';
+
+  /**
    * Models hosted by this provider
    * Array of models available through this provider's API
    * MUST contain at least one model

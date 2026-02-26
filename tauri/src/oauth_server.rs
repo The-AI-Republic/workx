@@ -34,6 +34,7 @@ p { color: #a0a0b0; }
   <h1>Authentication Successful</h1>
   <p>You can close this tab and return to BrowserX.</p>
 </div>
+<script>setTimeout(function(){window.close()},1500)</script>
 </body>
 </html>"#;
 
@@ -94,13 +95,13 @@ async fn accept_callback(listener: &TcpListener) -> Result<OAuthCallbackResult, 
 
     let code = params
         .get("code")
-        .ok_or_else(|| "Missing 'code' parameter in callback".to_string())?
-        .to_string();
+        .ok_or_else(|| "Missing 'code' parameter in callback".to_string())?;
+    let code = percent_decode(code);
 
     let state = params
         .get("state")
-        .ok_or_else(|| "Missing 'state' parameter in callback".to_string())?
-        .to_string();
+        .ok_or_else(|| "Missing 'state' parameter in callback".to_string())?;
+    let state = percent_decode(state);
 
     // Send success response
     let response = format!(
@@ -113,4 +114,40 @@ async fn accept_callback(listener: &TcpListener) -> Result<OAuthCallbackResult, 
     let _ = stream.flush().await;
 
     Ok(OAuthCallbackResult { code, state })
+}
+
+/// Percent-decode a URL-encoded string (RFC 3986).
+/// Decodes %XX sequences to their byte values and converts + to space.
+fn percent_decode(input: &str) -> String {
+    let mut output = Vec::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(hi), Some(lo)) = (
+                hex_val(bytes[i + 1]),
+                hex_val(bytes[i + 2]),
+            ) {
+                output.push(hi << 4 | lo);
+                i += 3;
+                continue;
+            }
+        }
+        if bytes[i] == b'+' {
+            output.push(b' ');
+        } else {
+            output.push(bytes[i]);
+        }
+        i += 1;
+    }
+    String::from_utf8(output).unwrap_or_else(|_| input.to_string())
+}
+
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
 }

@@ -77,17 +77,32 @@ export class ModelClientFactory {
     return this.authManager;
   }
 
+  private _chatGPTOAuth401Retries = 0;
+  private static readonly MAX_OAUTH_401_RETRIES = 1;
+
   /**
    * Handle a 401 error when ChatGPT OAuth is active.
    * Clears the client cache so the next request triggers a fresh token fetch.
-   * Returns true if ChatGPT OAuth is active (caller should retry).
+   * Returns true if ChatGPT OAuth is active and retry is allowed (max 1 retry).
    */
   handleChatGPTOAuth401(): boolean {
     if (this.authManager?.isChatGPTOAuthActive?.()) {
+      if (this._chatGPTOAuth401Retries >= ModelClientFactory.MAX_OAUTH_401_RETRIES) {
+        this._chatGPTOAuth401Retries = 0;
+        return false;
+      }
+      this._chatGPTOAuth401Retries++;
       this.clientCache.clear();
       return true;
     }
     return false;
+  }
+
+  /**
+   * Reset the OAuth 401 retry counter. Call after a successful request.
+   */
+  resetOAuth401Retries(): void {
+    this._chatGPTOAuth401Retries = 0;
   }
 
   /**

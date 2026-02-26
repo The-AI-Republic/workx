@@ -332,9 +332,7 @@ export class DesktopAgentBootstrap {
           const tokenGetter = currentAuthManager ? (() => currentAuthManager.getAccessToken()) : undefined;
 
           const authManager = new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
-          // Extend with ChatGPT OAuth methods
-          (authManager as any).isChatGPTOAuthActive = () => true;
-          (authManager as any).getChatGPTAccessToken = () => oauthService.getValidAccessToken();
+          authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
 
           factory.setAuthManager(authManager);
           console.log('[DesktopAgentBootstrap] ChatGPT OAuth restored from keychain');

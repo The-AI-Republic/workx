@@ -63,6 +63,8 @@ export class AuthManager implements IAuthManager {
   private _shouldUseBackend: boolean;
   private _backendBaseUrl: string | null;
   private _tokenGetter: (() => Promise<string | null>) | null;
+  private _chatGPTOAuthActive: boolean;
+  private _chatGPTTokenGetter: (() => Promise<string | null>) | null;
 
   /**
    * Create an AuthManager
@@ -75,6 +77,8 @@ export class AuthManager implements IAuthManager {
     // Only set backend URL if using backend routing
     this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
     this._tokenGetter = tokenGetter ?? null;
+    this._chatGPTOAuthActive = false;
+    this._chatGPTTokenGetter = null;
   }
 
   /**
@@ -98,6 +102,34 @@ export class AuthManager implements IAuthManager {
   async getAccessToken(): Promise<string | null> {
     if (this._tokenGetter) {
       return this._tokenGetter();
+    }
+    return null;
+  }
+
+  /**
+   * Configure ChatGPT OAuth on this auth manager.
+   * @param tokenGetter - Async function that returns a valid ChatGPT OAuth access token
+   */
+  setChatGPTOAuth(tokenGetter: () => Promise<string | null>): void {
+    this._chatGPTOAuthActive = true;
+    this._chatGPTTokenGetter = tokenGetter;
+  }
+
+  /**
+   * Clear ChatGPT OAuth configuration.
+   */
+  clearChatGPTOAuth(): void {
+    this._chatGPTOAuthActive = false;
+    this._chatGPTTokenGetter = null;
+  }
+
+  isChatGPTOAuthActive(): boolean {
+    return this._chatGPTOAuthActive;
+  }
+
+  async getChatGPTAccessToken(): Promise<string | null> {
+    if (this._chatGPTTokenGetter) {
+      return this._chatGPTTokenGetter();
     }
     return null;
   }

@@ -27,6 +27,7 @@ export interface ChatGPTOAuthStorage {
 }
 
 // OpenAI OAuth constants
+// Public client ID from OpenAI's Codex OAuth configuration (https://auth.openai.com)
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
 const AUTH_ENDPOINT = 'https://auth.openai.com/oauth/authorize';
 const TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';

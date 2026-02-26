@@ -229,9 +229,7 @@ async function initializeAuthFromConfig(): Promise<void> {
       const oauthService = new ChatGPTOAuthService(oauthStorage);
 
       if (await oauthService.isAuthenticated()) {
-        // Extend the auth manager with ChatGPT OAuth capabilities
-        (authManager as any).isChatGPTOAuthActive = () => true;
-        (authManager as any).getChatGPTAccessToken = () => oauthService.getValidAccessToken();
+        authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
         factory.setAuthManager(authManager);
         console.log('[ServiceWorker] ChatGPT OAuth restored from storage');
       }

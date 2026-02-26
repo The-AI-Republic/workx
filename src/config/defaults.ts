@@ -349,8 +349,8 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
       if (storedProvider.organization !== undefined) {
         providers[providerId].organization = storedProvider.organization;
       }
-      if ((storedProvider as any).authMethod) {
-        (providers[providerId] as any).authMethod = (storedProvider as any).authMethod;
+      if (storedProvider.authMethod) {
+        providers[providerId].authMethod = storedProvider.authMethod;
       }
     }
   }
@@ -428,12 +428,12 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
 
   for (const [providerId, provider] of Object.entries(config.providers)) {
     // Only store if there's an API key configured or an auth method set
-    if (provider.apiKey || (provider as any).authMethod) {
+    if (provider.apiKey || provider.authMethod) {
       providerKeys[providerId] = {
         id: providerId,
         apiKey: provider.apiKey,
         organization: provider.organization,
-        ...((provider as any).authMethod ? { authMethod: (provider as any).authMethod } : {}),
+        ...(provider.authMethod ? { authMethod: provider.authMethod } : {}),
       };
     }
   }

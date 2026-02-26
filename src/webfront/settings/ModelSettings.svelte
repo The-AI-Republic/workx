@@ -14,6 +14,7 @@
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
+  import { platform } from '../stores/platformStore';
 
   // Default compound key for free users (Fireworks Kimi K2 Thinking)
   // Format: providerId:modelKey (compound key, not a raw model key)
@@ -75,22 +76,18 @@
     try {
       const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
 
-      // Platform-aware: use desktop flow or extension flow
-      const isDesktop = typeof window !== 'undefined' && '__BUILD_MODE__' in window && (window as any).__BUILD_MODE__ === 'desktop';
-      let oauthService: InstanceType<typeof ChatGPTOAuthService>;
-
-      if (isDesktop || (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')) {
+      if (platform.platformName === 'desktop') {
         const { ChatGPTOAuthDesktopFlow } = await import('@/desktop/auth/ChatGPTOAuthDesktopFlow');
         const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
         const storage = new ChatGPTOAuthDesktopStorage();
-        oauthService = new ChatGPTOAuthService(storage);
+        const oauthService = new ChatGPTOAuthService(storage);
         const flow = new ChatGPTOAuthDesktopFlow(oauthService);
         await flow.login();
       } else {
         const { ChatGPTOAuthExtensionFlow } = await import('@/extension/auth/ChatGPTOAuthExtensionFlow');
         const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
         const storage = new ChatGPTOAuthExtensionStorage();
-        oauthService = new ChatGPTOAuthService(storage);
+        const oauthService = new ChatGPTOAuthService(storage);
         const flow = new ChatGPTOAuthExtensionFlow(oauthService);
         await flow.login();
       }
@@ -104,7 +101,7 @@
           await settingsConfig.updateConfig({
             providers: {
               ...config.providers,
-              openai: { ...providerConfig, authMethod: 'chatgpt_oauth' as any },
+              openai: { ...providerConfig, authMethod: 'chatgpt_oauth' },
             },
           });
         }
@@ -126,7 +123,7 @@
 
   async function getChatGPTOAuthService() {
     const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
-    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
+    if (platform.platformName === 'desktop') {
       const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
       return new ChatGPTOAuthService(new ChatGPTOAuthDesktopStorage());
     } else {
@@ -149,7 +146,7 @@
           await settingsConfig.updateConfig({
             providers: {
               ...config.providers,
-              openai: { ...providerConfig, authMethod: 'api_key' as any },
+              openai: { ...providerConfig, authMethod: 'api_key' },
             },
           });
         }
@@ -176,8 +173,8 @@
           chatgptOAuthError = t('ChatGPT session expired. Please sign in again.');
         }
       }
-    } catch {
-      // Not on desktop or module not available
+    } catch (err) {
+      console.warn('[ModelSettings] ChatGPT OAuth status check failed:', err);
       chatgptOAuthConnected = false;
     }
   }

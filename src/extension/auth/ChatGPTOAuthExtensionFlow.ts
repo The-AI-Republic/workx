@@ -37,6 +37,7 @@ export class ChatGPTOAuthExtensionFlow {
     this.isInProgress = true;
     let authTabId: number | undefined;
     let tabUpdateListener: ((tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => void) | null = null;
+    let tabRemovedListener: ((tabId: number, removeInfo: chrome.tabs.TabRemoveInfo) => void) | null = null;
 
     try {
       // 1. Generate PKCE challenge
@@ -60,40 +61,59 @@ export class ChatGPTOAuthExtensionFlow {
             reject(new Error('OAuth callback timed out'));
           }, timeoutMs);
 
+          const cleanup = () => {
+            clearTimeout(timeout);
+            if (tabUpdateListener) {
+              chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+              tabUpdateListener = null;
+            }
+            if (tabRemovedListener) {
+              chrome.tabs.onRemoved.removeListener(tabRemovedListener);
+              tabRemovedListener = null;
+            }
+          };
+
+          // Listen for tab URL changes (redirect to callback)
           tabUpdateListener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
             if (tabId !== authTabId || !changeInfo.url) return;
 
             if (changeInfo.url.startsWith(CALLBACK_URL_PREFIX)) {
-              clearTimeout(timeout);
               try {
                 const url = new URL(changeInfo.url);
                 const code = url.searchParams.get('code');
                 const receivedState = url.searchParams.get('state');
 
                 if (!code) {
+                  cleanup();
                   reject(new Error("Missing 'code' parameter in callback"));
                   return;
                 }
                 if (!receivedState) {
+                  cleanup();
                   reject(new Error("Missing 'state' parameter in callback"));
                   return;
                 }
 
+                cleanup();
                 resolve({ code, receivedState });
               } catch (err) {
+                cleanup();
                 reject(err);
               }
             }
           };
 
-          const cleanup = () => {
-            if (tabUpdateListener) {
-              chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-              tabUpdateListener = null;
+          // Listen for tab being closed before auth completes
+          tabRemovedListener = (tabId: number) => {
+            if (tabId === authTabId) {
+              cleanup();
+              authTabId = undefined; // Prevent double-close attempt
+              reject(new Error('Authentication tab was closed before completing login'));
             }
           };
 
           chrome.tabs.onUpdated.addListener(tabUpdateListener);
+          chrome.tabs.onRemoved.addListener(tabRemovedListener);
         }
       );
 
@@ -114,9 +134,12 @@ export class ChatGPTOAuthExtensionFlow {
       // 8. Exchange code for tokens
       return await this.oauthService.exchangeCodeForTokens(code, codeVerifier);
     } finally {
-      // Cleanup
+      // Cleanup any remaining listeners
       if (tabUpdateListener) {
         chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+      }
+      if (tabRemovedListener) {
+        chrome.tabs.onRemoved.removeListener(tabRemovedListener);
       }
       this.isInProgress = false;
     }
