@@ -96,6 +96,7 @@
     align-items: flex-end;
     gap: 2px;
     padding: 0 8px;
+    margin-bottom: 6px;
     background: transparent;
     border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
     min-height: 40px;
