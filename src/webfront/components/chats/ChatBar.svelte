@@ -95,7 +95,7 @@
     display: flex;
     align-items: flex-end;
     gap: 2px;
-    padding: 4px 8px 0;
+    padding: 0 8px;
     background: transparent;
     border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
     min-height: 40px;
@@ -159,7 +159,7 @@
   .chat-bar.chatgpt {
     background: transparent;
     border-bottom: 1px solid var(--chat-border, #e5e5e5);
-    padding: 6px 12px 0;
+    padding: 0 12px;
   }
 
   .chat-bar.chatgpt::-webkit-scrollbar-thumb {

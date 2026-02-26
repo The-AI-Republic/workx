@@ -84,10 +84,10 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 8px;
+    padding: 6px 8px 6px 8px;
     min-width: 80px;
     max-width: 180px;
-    height: 32px;
+    height: 40px;
     font-size: 12px;
     font-family: 'Courier New', monospace;
     cursor: pointer;
@@ -158,7 +158,7 @@
     font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     color: var(--chat-text-secondary, #6e6e80);
     border-radius: 8px 8px 0 0;
-    padding: 8px 12px;
+    padding: 8px 12px 8px 12px;
   }
 
   .chat-tab.chatgpt:hover {
