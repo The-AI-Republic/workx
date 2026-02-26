@@ -166,12 +166,12 @@
           ? 'font-semibold text-cyan-400'
           : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
       {#if event.title !== 'user' && event.modelKey}
-        <span class="text-[0.65rem] italic
+        <span class="text-sm italic
           {currentTheme === 'chatgpt'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-gray-500'}">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
       {/if}
-      <span class="text-[0.7rem]
+      <span class="text-sm
         {currentTheme === 'chatgpt'
           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
           : 'text-gray-400'}">{formatTime(event.timestamp, 'relative')}</span>

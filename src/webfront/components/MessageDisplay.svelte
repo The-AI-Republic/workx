@@ -111,35 +111,35 @@
   $: roleBgClasses = message.role === 'user'
     ? (currentTheme === 'chatgpt'
       ? 'bg-blue-50 dark:bg-blue-900/30 ml-5'
-      : 'bg-blue-50 dark:bg-[#1e3a5f] ml-5')
+      : 'bg-term-bg ml-5')
     : message.role === 'assistant'
       ? (currentTheme === 'chatgpt'
         ? 'bg-chat-surface dark:bg-chat-surface-dark mr-5'
-        : 'bg-gray-100 dark:bg-[#2c2c2c] mr-5')
+        : 'bg-term-bg mr-5')
       : (currentTheme === 'chatgpt'
         ? 'bg-orange-50 dark:bg-orange-900/30 text-sm opacity-80'
-        : 'bg-orange-50 dark:bg-[#3e2723] text-sm opacity-80');
+        : 'bg-term-bg text-sm opacity-80');
 
   // Role label color
   $: roleLabelClasses = currentTheme === 'chatgpt'
     ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
-    : 'text-gray-500 dark:text-gray-400';
+    : 'text-term-dim-green';
 
   // Timestamp color
   $: timestampClasses = currentTheme === 'chatgpt'
     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-    : 'text-gray-400 dark:text-gray-500';
+    : 'text-term-dim-green';
 
   // Text color for content
   $: textColorClasses = currentTheme === 'chatgpt'
     ? 'text-chat-text dark:text-chat-text-dark'
-    : 'text-gray-900 dark:text-gray-200';
+    : 'text-term-green';
 
   // System message special text color
   $: systemTextClasses = message.role === 'system'
     ? (currentTheme === 'chatgpt'
       ? 'text-chat-text dark:text-chat-text-dark'
-      : 'text-gray-900 dark:text-[#ffccbc]')
+      : 'text-term-yellow')
     : '';
 </script>
 

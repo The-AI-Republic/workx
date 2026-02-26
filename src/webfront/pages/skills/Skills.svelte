@@ -258,10 +258,10 @@
         <div class="px-4 py-3 rounded-md mb-4 text-sm
           {saveMessageType === 'success'
             ? (currentTheme === 'chatgpt'
-                ? 'bg-bx-success/15 text-bx-success dark:text-bx-success-dark border border-bx-success/30'
+                ? 'bg-bx-success/15 dark:bg-bx-success-dark/15 text-bx-success dark:text-bx-success-dark border border-bx-success/30 dark:border-bx-success-dark/30'
                 : 'bg-term-green/15 text-term-green border border-term-green/30')
             : (currentTheme === 'chatgpt'
-                ? 'bg-chat-error/15 text-chat-error dark:text-chat-error-dark border border-chat-error/30'
+                ? 'bg-chat-error/15 dark:bg-chat-error-dark/15 text-chat-error dark:text-chat-error-dark border border-chat-error/30 dark:border-chat-error-dark/30'
                 : 'bg-term-red/15 text-term-red border border-term-red/30')}">{saveMessage}</div>
       {/if}
 
@@ -295,7 +295,7 @@
           {#if formError}
             <div class="px-3 py-2 rounded-md text-sm mb-4
               {currentTheme === 'chatgpt'
-                ? 'bg-chat-error/15 text-chat-error dark:text-chat-error-dark'
+                ? 'bg-chat-error/15 dark:bg-chat-error-dark/15 text-chat-error dark:text-chat-error-dark'
                 : 'bg-term-red/15 text-term-red'}">{formError}</div>
           {/if}
 
@@ -401,7 +401,7 @@
             />
           </label>
 
-          <p class="text-xs mt-2 mb-4
+          <p class="text-sm mt-2 mb-4
             {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Imported skills are untrusted by default and cannot auto-invoke.')}</p>
 
           <div class="flex gap-2 justify-end">
@@ -452,29 +452,29 @@
                 <div class="flex flex-col gap-1 min-w-0">
                   <span class="font-semibold text-sm font-mono
                     {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">/{skill.name}</span>
-                  <span class="text-xs {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{skill.description}</span>
+                  <span class="text-sm {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{skill.description}</span>
                 </div>
                 <div class="flex gap-1 shrink-0">
                   {#if !skill.trusted}
-                    <span class="px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-wide
+                    <span class="px-2 py-0.5 rounded-full text-sm font-medium uppercase tracking-wide
                       {currentTheme === 'chatgpt'
-                        ? 'bg-bx-warning/15 text-bx-warning dark:text-bx-warning-dark'
+                        ? 'bg-bx-warning/15 dark:bg-bx-warning-dark/15 text-bx-warning dark:text-bx-warning-dark'
                         : 'bg-term-yellow/15 text-term-yellow'}">{$_t('Untrusted')}</span>
                   {/if}
-                  <span class="px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-wide
+                  <span class="px-2 py-0.5 rounded-full text-sm font-medium uppercase tracking-wide
                     {currentTheme === 'chatgpt'
-                      ? 'bg-chat-primary/15 text-chat-primary dark:text-chat-primary-dark'
+                      ? 'bg-chat-primary/15 dark:bg-chat-primary-dark/15 text-chat-primary dark:text-chat-primary-dark'
                       : 'bg-term-green/15 text-term-green'}">{getModeLabel(skill.invocationMode)}</span>
-                  <span class="px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-wide
+                  <span class="px-2 py-0.5 rounded-full text-sm font-medium uppercase tracking-wide
                     {currentTheme === 'chatgpt'
-                      ? 'bg-chat-text-secondary/15 text-chat-text-secondary dark:text-chat-text-secondary-dark'
+                      ? 'bg-chat-text-secondary/15 dark:bg-chat-text-secondary-dark/15 text-chat-text-secondary dark:text-chat-text-secondary-dark'
                       : 'bg-term-dim-green/15 text-term-dim-green'}">{skill.source}</span>
                 </div>
               </div>
 
               <div class="flex items-center gap-2">
                 <select
-                  class="px-2 py-1 text-xs rounded-md border color-scheme-inherit
+                  class="px-2 py-1 text-sm rounded-md border color-scheme-inherit
                     {currentTheme === 'chatgpt'
                       ? 'border-chat-border dark:border-chat-border-dark'
                       : 'border-term-dim-green'}"
@@ -488,7 +488,7 @@
 
                 {#if !skill.trusted}
                   <button
-                    class="px-2 py-1 text-xs rounded-md border cursor-pointer transition-all duration-200
+                    class="px-2 py-1 text-sm rounded-md border cursor-pointer transition-all duration-200
                       {currentTheme === 'chatgpt'
                         ? 'bg-chat-surface dark:bg-chat-surface-dark text-bx-success dark:text-bx-success-dark border-bx-success dark:border-bx-success-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                         : 'bg-[#0a0a0a] text-term-green border-term-green hover:text-term-bright-green'}"
@@ -499,7 +499,7 @@
                 {/if}
 
                 <button
-                  class="px-2 py-1 text-xs rounded-md border cursor-pointer transition-all duration-200
+                  class="px-2 py-1 text-sm rounded-md border cursor-pointer transition-all duration-200
                     {currentTheme === 'chatgpt'
                       ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text-secondary dark:text-chat-text-secondary-dark border-chat-border dark:border-chat-border-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                       : 'bg-[#0a0a0a] text-term-dim-green border-term-dim-green hover:text-term-green'}"
@@ -509,7 +509,7 @@
                 </button>
 
                 <button
-                  class="px-2 py-1 text-xs rounded-md border cursor-pointer transition-all duration-200
+                  class="px-2 py-1 text-sm rounded-md border cursor-pointer transition-all duration-200
                     {currentTheme === 'chatgpt'
                       ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text-secondary dark:text-chat-text-secondary-dark border-chat-border dark:border-chat-border-dark hover:text-chat-error dark:hover:text-chat-error-dark hover:border-chat-error dark:hover:border-chat-error-dark'
                       : 'bg-[#0a0a0a] text-term-dim-green border-term-dim-green hover:text-term-red hover:border-term-red'}"

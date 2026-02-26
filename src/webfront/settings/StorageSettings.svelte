@@ -425,7 +425,7 @@
 
   .help-text {
     margin-top: 0.375rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
   }

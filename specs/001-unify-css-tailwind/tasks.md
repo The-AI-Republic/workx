@@ -69,9 +69,9 @@
 
 **Independent Test**: Toggle OS preference between light and dark. In chatgpt theme, all elements should adapt. In terminal theme, nothing should change.
 
-- [ ] T021 [US2] Audit all chatgpt-theme components for complete `dark:` variant coverage — search codebase for any remaining `var(--chat-*)`, `var(--browserx-*)`, or hardcoded hex colors that don't have corresponding `dark:` classes. Fix all gaps found. Run across all files in `src/webfront/`.
-- [ ] T022 [US2] Verify terminal theme isolation — ensure no component using the terminal theme applies `dark:` variants to terminal-specific elements. Terminal colors (`text-term-green`, `bg-term-bg`, etc.) must remain fixed regardless of OS preference. Test by toggling OS dark mode while terminal theme is active. Fix any elements that incorrectly respond to dark mode in terminal theme. Run across all files in `src/webfront/`.
-- [ ] T023 [US2] Verify WCAG AA contrast compliance — check all text color / background color combinations in both light and dark modes for both themes. Ensure minimum 4.5:1 contrast ratio for normal text (text-sm and above) and 3:1 for large text. Fix any failing combinations by adjusting the color tokens in `src/webfront/styles.css` `@theme` block.
+- [x] T021 [US2] Audit all chatgpt-theme components for complete `dark:` variant coverage — search codebase for any remaining `var(--chat-*)`, `var(--browserx-*)`, or hardcoded hex colors that don't have corresponding `dark:` classes. Fix all gaps found. Run across all files in `src/webfront/`.
+- [x] T022 [US2] Verify terminal theme isolation — ensure no component using the terminal theme applies `dark:` variants to terminal-specific elements. Terminal colors (`text-term-green`, `bg-term-bg`, etc.) must remain fixed regardless of OS preference. Test by toggling OS dark mode while terminal theme is active. Fix any elements that incorrectly respond to dark mode in terminal theme. Run across all files in `src/webfront/`.
+- [x] T023 [US2] Verify WCAG AA contrast compliance — check all text color / background color combinations in both light and dark modes for both themes. Ensure minimum 4.5:1 contrast ratio for normal text (text-sm and above) and 3:1 for large text. Fix any failing combinations by adjusting the color tokens in `src/webfront/styles.css` `@theme` block.
 
 **Checkpoint**: All chatgpt-theme elements respond to light/dark switching. Terminal theme is completely unaffected by OS preference. Contrast meets WCAG AA.
 
@@ -83,9 +83,9 @@
 
 **Independent Test**: Search entire codebase for any font-size declaration below 14px / 0.875rem — none should exist. Visually inspect UI to confirm no text appears too small.
 
-- [ ] T024 [US3] Replace all Tailwind `text-xs` classes with `text-sm` across all Svelte components and CSS files. Search pattern: `text-xs` in `src/webfront/`, `src/desktop/`. Verify visual hierarchy is preserved — headings remain larger than body text.
-- [ ] T025 [US3] Replace all native CSS font-size declarations below 14px — search for `font-size: 10px`, `font-size: 11px`, `font-size: 12px`, `font-size: 0.75rem`, `font-size: 0.7rem`, `font-size: 0.6rem` in any remaining `<style>` blocks or CSS files. Replace with `font-size: 0.875rem` (or convert to `text-sm` class if the property can be moved to markup). Search across `src/webfront/`, `src/desktop/`.
-- [ ] T026 [US3] Adjust layouts that overflow or clip after font-size increases — visually inspect all components that previously used 10px/11px/12px text (especially `src/webfront/components/scheduler/SchedulerPopup.svelte`, `src/webfront/components/scheduler/SchedulerTaskItem.svelte`, `src/webfront/components/chat/ModelSelection.svelte`, `src/webfront/components/common/Tooltip.svelte`). Increase container padding, width, or height where the larger text causes overflow or misalignment.
+- [x] T024 [US3] Replace all Tailwind `text-xs` classes with `text-sm` across all Svelte components and CSS files. Search pattern: `text-xs` in `src/webfront/`, `src/desktop/`. Verify visual hierarchy is preserved — headings remain larger than body text.
+- [x] T025 [US3] Replace all native CSS font-size declarations below 14px — search for `font-size: 10px`, `font-size: 11px`, `font-size: 12px`, `font-size: 0.75rem`, `font-size: 0.7rem`, `font-size: 0.6rem` in any remaining `<style>` blocks or CSS files. Replace with `font-size: 0.875rem` (or convert to `text-sm` class if the property can be moved to markup). Search across `src/webfront/`, `src/desktop/`.
+- [x] T026 [US3] Adjust layouts that overflow or clip after font-size increases — visually inspect all components that previously used 10px/11px/12px text (especially `src/webfront/components/scheduler/SchedulerPopup.svelte`, `src/webfront/components/scheduler/SchedulerTaskItem.svelte`, `src/webfront/components/chat/ModelSelection.svelte`, `src/webfront/components/common/Tooltip.svelte`). Increase container padding, width, or height where the larger text causes overflow or misalignment.
 
 **Checkpoint**: Zero instances of text below 14px. All layouts accommodate the larger minimum size. Visual hierarchy preserved.
 

@@ -961,7 +961,7 @@
             <span class="flex-1">
               {$_t("Context compacted: saved ~$1$k tokens", { substitutions: [Math.round(compactionNotification.tokensSaved / 1000)] })}
               {#if compactionNotification.isWarning}
-                <span class="opacity-80 text-[0.8rem]">
+                <span class="opacity-80 text-sm">
                   {$_t("(#$1$ - accuracy may be reduced)", { substitutions: [compactionNotification.compactionCount] })}
                 </span>
               {/if}
