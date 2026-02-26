@@ -9,12 +9,13 @@
 
 {#if visible && message}
   <div
-    class="absolute bottom-full inset-x-0 z-40 px-3 py-1.5 mb-1 rounded text-base animate-fade-in
-      border border-[var(--color-term-red,#ff0000)] bg-[rgba(40,0,0,0.95)] text-[var(--color-term-red,#ff4444)]
-      {currentTheme === 'chatgpt' ? 'chatgpt-error' : ''}"
+    class="absolute bottom-full inset-x-0 z-40 px-3 py-1.5 mb-1 text-sm animate-fade-in
+      {currentTheme === 'chatgpt'
+        ? 'bg-chat-error/10 dark:bg-[rgba(127,29,29,0.3)] border border-chat-error/30 dark:border-chat-error-dark/30 text-chat-error dark:text-chat-error-dark rounded-xl'
+        : 'border border-term-red bg-[rgba(40,0,0,0.95)] text-term-red rounded'}"
     role="alert"
   >
-    <span class="font-mono {currentTheme === 'chatgpt' ? 'chatgpt-error-text' : ''}">{message}</span>
+    <span class="{currentTheme === 'chatgpt' ? 'font-chat' : 'font-mono'}">{message}</span>
   </div>
 {/if}
 
@@ -32,25 +33,5 @@
 
   .animate-fade-in {
     animation: fadeIn 0.15s ease;
-  }
-
-  /* ChatGPT theme overrides */
-  .chatgpt-error {
-    background-color: var(--chat-error-bg, #fef2f2);
-    border: 1px solid var(--chat-error-border, #fecaca);
-    border-radius: 0.75rem;
-    color: var(--chat-error, #ef4444);
-  }
-
-  .chatgpt-error-text {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .chatgpt-error {
-      background-color: rgba(127, 29, 29, 0.3);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-    }
   }
 </style>

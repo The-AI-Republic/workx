@@ -33,20 +33,20 @@
     const parentRect = dropdownEl.parentElement.getBoundingClientRect();
     const spaceAbove = parentRect.top;
     const spaceBelow = window.innerHeight - parentRect.bottom;
-    // Prefer rendering above; only render below if insufficient space above
     renderAbove = spaceAbove >= 200 || spaceAbove > spaceBelow;
   }
 
-  // Recalculate position when dropdown becomes visible
   $: if (visible) {
-    // Use setTimeout to ensure DOM is rendered before measuring
     setTimeout(updatePosition, 0);
   }
 </script>
 
 {#if visible && commands.length > 0}
   <div
-    class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto rounded border border-[var(--color-term-dim-green,#00cc00)] bg-black/95 {currentTheme === 'chatgpt' ? 'chatgpt-dropdown' : ''}"
+    class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto
+      {currentTheme === 'chatgpt'
+        ? 'chatgpt-dropdown bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark rounded-xl shadow-lg'
+        : 'rounded border border-term-dim-green bg-black/95'}"
     class:bottom-full={renderAbove}
     class:mb-1={renderAbove}
     class:top-full={!renderAbove}
@@ -57,71 +57,57 @@
   >
     {#each commands as item, i}
       <div
-        class="flex items-baseline gap-2 px-3 py-1.5 cursor-pointer transition-colors duration-100 text-base
-          {i === selectedIndex ? 'bg-green-500/15' : ''}"
+        class="flex items-baseline gap-2 px-3 py-1.5 cursor-pointer transition-colors duration-100 text-sm
+          {currentTheme === 'chatgpt'
+            ? (i === selectedIndex ? 'bg-chat-card-hover dark:bg-chat-card-hover-dark' : '')
+            : (i === selectedIndex ? 'bg-green-500/15' : '')}"
         role="option"
         aria-selected={i === selectedIndex}
         on:mouseenter={() => dispatch('hover', i)}
         on:click={() => dispatch('select', item)}
       >
-        <span class="font-semibold font-mono text-base text-[var(--color-term-green,#00ff00)] shrink-0">/{item.command.name}</span>
+        <span class="font-semibold text-sm shrink-0
+          {currentTheme === 'chatgpt'
+            ? 'font-chat text-chat-text dark:text-chat-text-dark'
+            : 'font-mono text-term-green'}">/{item.command.name}</span>
         {#if item.command.argumentHint}
-          <span class="text-base text-[var(--color-term-dim-green,#00cc00)] opacity-70 shrink-0">{item.command.argumentHint}</span>
+          <span class="text-sm shrink-0
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+              : 'text-term-dim-green opacity-70'}">{item.command.argumentHint}</span>
         {/if}
-        <span class="text-base text-green-500/60 truncate">{item.command.description}</span>
+        <span class="text-sm truncate
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-green-500/60'}">{item.command.description}</span>
       </div>
     {/each}
   </div>
 {:else if visible && commands.length === 0}
   <div
-    class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto rounded border border-[var(--color-term-dim-green,#00cc00)] bg-black/95 {currentTheme === 'chatgpt' ? 'chatgpt-dropdown' : ''}"
+    class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto
+      {currentTheme === 'chatgpt'
+        ? 'chatgpt-dropdown bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark rounded-xl shadow-lg'
+        : 'rounded border border-term-dim-green bg-black/95'}"
     class:bottom-full={renderAbove}
     class:mb-1={renderAbove}
     class:top-full={!renderAbove}
     class:mt-1={!renderAbove}
     role="listbox"
   >
-    <div class="flex items-baseline gap-2 px-3 py-1.5 cursor-default opacity-50 italic text-base">No matching commands</div>
+    <div class="flex items-baseline gap-2 px-3 py-1.5 cursor-default opacity-50 italic text-sm">No matching commands</div>
   </div>
 {/if}
 
 <style>
-  /* ChatGPT theme overrides */
-  .chatgpt-dropdown {
-    background-color: var(--chat-dropdown-bg, #ffffff);
-    border: 1px solid var(--chat-border, #e5e5e5);
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  .chatgpt-dropdown :global(div[role="option"].bg-green-500\/15),
+  /* ChatGPT theme :global() styles for hover on child options */
   .chatgpt-dropdown :global(div[role="option"]):hover {
-    background-color: var(--chat-hover-bg, #f5f5f5);
-  }
-
-  .chatgpt-dropdown :global(span.font-mono) {
-    color: var(--chat-text, #0d0d0d);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .chatgpt-dropdown :global(span.text-green-500\/60),
-  .chatgpt-dropdown :global(span.opacity-70) {
-    color: var(--chat-text-muted, #8e8ea0);
+    background-color: var(--color-chat-card-hover);
   }
 
   @media (prefers-color-scheme: dark) {
-    .chatgpt-dropdown {
-      background-color: var(--chat-dropdown-bg-dark, #2d2d2d);
-      border-color: var(--chat-border-dark, #444444);
-    }
-
-    .chatgpt-dropdown :global(div[role="option"].bg-green-500\/15),
     .chatgpt-dropdown :global(div[role="option"]):hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .chatgpt-dropdown :global(span.font-mono) {
-      color: var(--chat-text-dark, #ececec);
+      background-color: var(--color-chat-card-hover-dark);
     }
   }
 </style>

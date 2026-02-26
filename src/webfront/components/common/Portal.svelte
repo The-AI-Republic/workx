@@ -54,8 +54,7 @@
 {#if show}
   <div
     bind:this={contentWrapper}
-    class="portal-content"
-    style="pointer-events: auto;"
+    class="portal-content pointer-events-auto"
   >
     <slot />
   </div>
