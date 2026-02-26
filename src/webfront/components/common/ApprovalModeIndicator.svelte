@@ -71,7 +71,7 @@
     <Tooltip content="{$_t('Approval Mode')}: {currentLabel}" disabled={showPopup}>
       <button
         class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'bg-transparent border-none rounded-lg hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
         on:click={togglePopup}
@@ -88,7 +88,7 @@
     {#each MODE_OPTIONS as option}
       <button
         class="flex items-center gap-2.5 w-full py-2 px-3 bg-transparent border-none rounded-md cursor-pointer text-sm text-left transition-colors duration-150
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'font-chat text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/[0.08] ' + (currentMode === option.mode ? 'bg-white/[0.12]' : '')
             : 'font-mono text-term-bright-green hover:bg-term-green/10 ' + (currentMode === option.mode ? 'bg-term-green/15' : '')}"
         on:click={() => selectMode(option.mode)}
@@ -97,7 +97,7 @@
         <div class="flex gap-1.5 items-baseline">
           <span class="font-semibold whitespace-nowrap">{option.label}</span>
           <span class="whitespace-nowrap text-sm
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-white/50'
               : 'text-term-dim-green'}">— {option.description}</span>
         </div>

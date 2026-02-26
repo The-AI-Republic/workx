@@ -227,7 +227,7 @@
         <button
           type="button"
           class="flex items-center gap-1 max-w-[150px] cursor-pointer transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark rounded-2xl text-chat-text dark:text-chat-text-dark font-chat text-sm py-1.5 px-2.5 hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green rounded text-term-green font-terminal text-sm py-1 px-2 hover:border-term-bright-green hover:bg-term-green/5'}"
           on:click={toggleDropdown}
@@ -262,43 +262,43 @@
         {@const hasMultipleProviders = group.providers.length > 1}
         {@const isLockedForFreeUser = isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
 
-        <div class="{currentTheme === 'chatgpt'
+        <div class="{currentTheme === 'modern'
           ? 'border-b border-white/10 last:border-b-0'
           : 'border-b border-term-dim-green/20 last:border-b-0'}">
           {#if hasMultipleProviders}
             <!-- Model with multiple providers -->
             <div class="{isLockedForFreeUser ? 'opacity-50' : ''}">
               <div class="flex items-center justify-between w-full text-left cursor-default font-medium
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'font-chat text-sm py-2.5 px-3.5 ' + (isLockedForFreeUser ? 'text-white/40' : 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark')
                   : 'font-terminal text-sm py-2 px-3 ' + (isLockedForFreeUser ? 'text-[#666666]' : 'text-term-dim-green')}">
                 <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
                 {#if isLockedForFreeUser}
                   <svg class="w-3.5 h-3.5 shrink-0
-                    {currentTheme === 'chatgpt' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
+                    {currentTheme === 'modern' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                   </svg>
                 {:else if isSelected}
                   <svg class="w-3.5 h-3.5 shrink-0
-                    {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-bright-green'}" viewBox="0 0 20 20" fill="currentColor">
+                    {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-bright-green'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                   </svg>
                 {/if}
               </div>
               {#if isLockedForFreeUser}
                 <div class="italic
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'font-chat text-white/50 py-1.5 px-3.5 pb-2.5 text-sm'
                     : 'font-terminal text-[#888888] py-1 px-3 pb-2 text-sm'}">{$_t("Upgrade to explore world's most powerful models")}</div>
               {:else}
                 <div class="flex flex-wrap gap-1
-                  {currentTheme === 'chatgpt' ? 'py-1.5 px-3.5 pb-2.5' : 'py-1 px-3 pb-2'}">
+                  {currentTheme === 'modern' ? 'py-1.5 px-3.5 pb-2.5' : 'py-1 px-3 pb-2'}">
                   {#each group.providers as provider (provider.modelId)}
                     {@const isProviderSelected = provider.modelId === selectedModelKey}
                     <button
                       type="button"
                       class="cursor-pointer transition-all duration-150 text-sm
-                        {currentTheme === 'chatgpt'
+                        {currentTheme === 'modern'
                           ? 'font-chat bg-white/10 border border-white/20 rounded-2xl text-white/80 py-1 px-2.5 hover:bg-white/15 hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark ' + (isProviderSelected ? 'bg-blue-400/25 border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark' : '')
                           : 'font-terminal bg-transparent border border-term-dim-green/40 rounded py-1 px-2 text-term-dim-green hover:border-term-green hover:bg-term-green/10 ' + (isProviderSelected ? 'bg-term-green/20 border-term-bright-green text-term-bright-green' : '')}"
                       on:click={() => selectModel(provider.modelId, group.modelName, provider.modelKey)}
@@ -318,7 +318,7 @@
                 <button
                   type="button"
                   class="flex items-center justify-between w-full text-left bg-transparent border-none cursor-not-allowed opacity-50 transition-colors duration-150
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'font-chat text-sm text-white/40 py-2.5 px-3.5'
                       : 'font-terminal text-sm text-[#666666] py-2 px-3'}"
                   disabled
@@ -328,7 +328,7 @@
                 >
                   <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
                   <svg class="w-3.5 h-3.5 shrink-0
-                    {currentTheme === 'chatgpt' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
+                    {currentTheme === 'modern' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                   </svg>
                 </button>
@@ -337,7 +337,7 @@
               <button
                 type="button"
                 class="flex items-center justify-between w-full text-left bg-transparent border-none cursor-pointer transition-colors duration-150
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'font-chat text-sm py-2.5 px-3.5 text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/10 ' + (isSelected ? 'bg-blue-400/20 text-chat-primary dark:text-chat-primary-dark' : '')
                     : 'font-terminal text-sm py-2 px-3 text-term-dim-green hover:bg-term-green/10 hover:text-term-green ' + (isSelected ? 'bg-term-green/15 text-term-bright-green' : '')}"
                 on:click={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey)}
@@ -347,7 +347,7 @@
                 <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
                 {#if isSelected}
                   <svg class="w-3.5 h-3.5 shrink-0
-                    {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-bright-green'}" viewBox="0 0 20 20" fill="currentColor">
+                    {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-bright-green'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                   </svg>
                 {/if}

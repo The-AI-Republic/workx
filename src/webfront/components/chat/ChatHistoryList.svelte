@@ -181,10 +181,10 @@
 </script>
 
 <div class="max-h-[400px] overflow-y-auto min-w-[250px]
-  {currentTheme === 'chatgpt' ? 'bg-chat-tooltip dark:bg-chat-tooltip-dark' : ''}">
+  {currentTheme === 'modern' ? 'bg-chat-tooltip dark:bg-chat-tooltip-dark' : ''}">
   {#if isLoading}
     <div class="flex items-center justify-center gap-2 p-6 text-sm
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
         : 'text-term-dim-green'}">
       <span class="loading-spinner"></span>
@@ -192,7 +192,7 @@
     </div>
   {:else if error}
     <div class="flex items-center justify-center gap-2 p-6 text-sm
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'text-chat-error dark:text-chat-error-dark'
         : 'text-term-red'}">
       <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-current text-sm font-bold">!</span>
@@ -200,7 +200,7 @@
     </div>
   {:else if conversations.length === 0}
     <div class="flex items-center justify-center gap-2 p-6 text-sm
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
         : 'text-term-dim-green'}">
       <span>{$_t("No chat history yet")}</span>
@@ -211,23 +211,23 @@
       {#if categorized.today.length > 0}
         <div class="flex flex-col">
           <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Today")}</div>
           {#each categorized.today as item (item.id)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
               <span class="shrink-0 text-sm opacity-70
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
@@ -239,23 +239,23 @@
       {#if categorized.yesterday.length > 0}
         <div class="flex flex-col">
           <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Yesterday")}</div>
           {#each categorized.yesterday as item (item.id)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
               <span class="shrink-0 text-sm opacity-70
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
@@ -267,23 +267,23 @@
       {#if categorized.pastWeek.length > 0}
         <div class="flex flex-col">
           <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Past Week")}</div>
           {#each categorized.pastWeek as item (item.id)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
               <span class="shrink-0 text-sm opacity-70
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
@@ -295,23 +295,23 @@
       {#if categorized.pastMonth.length > 0}
         <div class="flex flex-col">
           <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Past Month")}</div>
           {#each categorized.pastMonth as item (item.id)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
               <span class="shrink-0 text-sm opacity-70
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
@@ -323,23 +323,23 @@
       {#if categorized.older.length > 0 || hasMoreOlder}
         <div class="flex flex-col">
           <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Older")}</div>
           {#each categorized.older as item (item.id)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
               <span class="shrink-0 text-sm opacity-70
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
@@ -348,7 +348,7 @@
           {#if hasMoreOlder}
             <button
               class="flex items-center justify-center gap-2 w-full py-3 bg-transparent cursor-pointer mt-2 text-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border border-dashed border-white/20 rounded-lg text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat hover:bg-white/[0.08] hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark'
                   : 'border border-dashed border-term-dim-green rounded text-term-dim-green font-terminal hover:bg-term-green/[0.08] hover:border-term-bright-green hover:text-term-bright-green'}"
               on:click={loadMoreOlder}

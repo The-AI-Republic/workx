@@ -104,7 +104,7 @@
 {#if show && isPositioned}
   <div
     class="popup-card-fixed fixed min-w-[260px] max-w-[calc(100vw-20px)] z-[9999] animate-fadeIn
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'bg-chat-tooltip dark:bg-chat-tooltip-dark border-none rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.25)]'
         : 'bg-term-bg border border-term-dim-green rounded'}"
     style="left: {fixedLeft}px; bottom: {fixedBottom}px;"
@@ -114,18 +114,18 @@
     {#if title}
       <!-- Card Header -->
       <div class="flex justify-between items-center px-3 py-2.5
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'border-b border-white/10'
           : 'border-b border-term-dim-green'}">
         <h3 class="m-0 text-sm font-semibold
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}">
           {title}
         </h3>
         <button
           class="bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center rounded transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-white/60 hover:text-chat-tooltip-text hover:bg-white/10 dark:hover:text-chat-tooltip-text-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-term-green/10'}"
           on:click|stopPropagation={onClose}

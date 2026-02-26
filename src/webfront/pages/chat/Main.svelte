@@ -16,7 +16,7 @@
   // Platform store
   import { platform } from '../../stores/platformStore';
   // Theme store
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   // Token usage visibility store
   import { showTokenUsage } from '../../stores/tokenUsageStore';
   import { AgentConfig } from '@/config/AgentConfig';
@@ -100,7 +100,7 @@
       const config = await AgentConfig.getInstance();
       const preferences = config.getConfig().preferences;
       if (preferences?.uiTheme) {
-        uiTheme.initialize(preferences.uiTheme);
+        themePreference.initialize(preferences.uiTheme);
       }
       // Initialize token usage visibility (defaults to false/hidden)
       showTokenUsage.initialize(preferences?.showTokenUsage);
@@ -948,7 +948,7 @@
         <!-- Compaction Notification (T032, T033) -->
         {#if compactionNotification.show}
           <div class="flex items-center gap-2 rounded text-sm animate-slide-in mb-2
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? (compactionNotification.isWarning
                   ? 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(245,158,11,0.1)] text-chat-status-warning dark:text-chat-status-warning-dark'
                   : 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(16,185,129,0.1)] text-chat-status-success dark:text-chat-status-success-dark')
@@ -977,26 +977,26 @@
         <!-- No Access Warning Banner -->
         {#if !agentReady && $agentStore.authMode === 'none' && isConnected}
           <div class="animate-slide-in mb-3
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'rounded-xl bg-[rgba(245,158,11,0.1)] p-5 border-none'
               : 'rounded border border-term-yellow bg-[rgba(255,255,0,0.05)] p-4'}">
             <div class="flex items-center gap-2 mb-2">
               <span class="text-lg">⚠️</span>
-              <span class="font-semibold {currentTheme === 'chatgpt' ? 'text-chat-status-warning dark:text-chat-status-warning-dark' : 'text-term-yellow'}">{$_t("No Access Configured")}</span>
+              <span class="font-semibold {currentTheme === 'modern' ? 'text-chat-status-warning dark:text-chat-status-warning-dark' : 'text-term-yellow'}">{$_t("No Access Configured")}</span>
             </div>
-            <p class="m-0 mb-2 text-sm {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-dim-green'}">
+            <p class="m-0 mb-2 text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-dim-green'}">
               {$_t("To use the AI agent, please either:")}
             </p>
             <ul class="m-0 pl-6 list-disc">
               <li class="mb-1">
                 <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer"
-                  class="underline {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
+                  class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Log in to your account")}
                 </a>
               </li>
               <li class="mb-1">
                 <button on:click={() => push('/settings')}
-                  class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
+                  class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Configure an API key in Settings")}
                 </button>
               </li>
@@ -1008,14 +1008,14 @@
         <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
           {#if showWelcome}
             <div class="welcome-screen mb-6 max-w-full
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'flex flex-col items-center justify-center text-center border-none bg-transparent min-h-[50vh] gap-3 p-6'
                 : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
               role="presentation"
             >
               {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
                 <p class="m-0 mb-2 font-semibold text-lg
-                  {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
+                  {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
               {/if}
               <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">
                 {#each welcomeAsciiLines as line, index (index)}
@@ -1029,7 +1029,7 @@
                 {$_t("Developed and supported by AI Republic")}
               </p>
               <a
-                class="underline {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}"
+                class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}"
                 href="https://airepublic.com"
                 target="_blank"
                 rel="noreferrer noopener"
@@ -1049,7 +1049,7 @@
         </div>
 
         <!-- Fixed bottom controls container -->
-        <div class="shrink-0 border-t {currentTheme === 'chatgpt' ? 'bg-chat-bg dark:bg-chat-bg-dark border-chat-border dark:border-chat-border-dark' : 'bg-term-bg border-term-dim-green'}">
+        <div class="shrink-0 border-t {currentTheme === 'modern' ? 'bg-chat-bg dark:bg-chat-bg-dark border-chat-border dark:border-chat-border-dark' : 'bg-term-bg border-term-dim-green'}">
           <!-- Input area -->
           <div class="pr-2 py-2 pl-0">
             <MessageInput

@@ -44,8 +44,8 @@
 {#if visible && commands.length > 0}
   <div
     class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto
-      {currentTheme === 'chatgpt'
-        ? 'chatgpt-dropdown bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark rounded-xl shadow-lg'
+      {currentTheme === 'modern'
+        ? 'modern-dropdown bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark rounded-xl shadow-lg'
         : 'rounded border border-term-dim-green bg-black/95'}"
     class:bottom-full={renderAbove}
     class:mb-1={renderAbove}
@@ -58,7 +58,7 @@
     {#each commands as item, i}
       <div
         class="flex items-baseline gap-2 px-3 py-1.5 cursor-pointer transition-colors duration-100 text-sm
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? (i === selectedIndex ? 'bg-chat-card-hover dark:bg-chat-card-hover-dark' : '')
             : (i === selectedIndex ? 'bg-green-500/15' : '')}"
         role="option"
@@ -67,17 +67,17 @@
         on:click={() => dispatch('select', item)}
       >
         <span class="font-semibold text-sm shrink-0
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'font-chat text-chat-text dark:text-chat-text-dark'
             : 'font-mono text-term-green'}">/{item.command.name}</span>
         {#if item.command.argumentHint}
           <span class="text-sm shrink-0
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green opacity-70'}">{item.command.argumentHint}</span>
         {/if}
         <span class="text-sm truncate
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-green-500/60'}">{item.command.description}</span>
       </div>
@@ -86,8 +86,8 @@
 {:else if visible && commands.length === 0}
   <div
     class="absolute inset-x-0 z-50 max-h-[200px] overflow-y-auto
-      {currentTheme === 'chatgpt'
-        ? 'chatgpt-dropdown bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark rounded-xl shadow-lg'
+      {currentTheme === 'modern'
+        ? 'modern-dropdown bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark rounded-xl shadow-lg'
         : 'rounded border border-term-dim-green bg-black/95'}"
     class:bottom-full={renderAbove}
     class:mb-1={renderAbove}
@@ -100,14 +100,12 @@
 {/if}
 
 <style>
-  /* ChatGPT theme :global() styles for hover on child options */
-  .chatgpt-dropdown :global(div[role="option"]):hover {
+  /* Modern Chat theme :global() styles for hover on child options */
+  .modern-dropdown :global(div[role="option"]):hover {
     background-color: var(--color-chat-card-hover);
   }
 
-  @media (prefers-color-scheme: dark) {
-    .chatgpt-dropdown :global(div[role="option"]):hover {
-      background-color: var(--color-chat-card-hover-dark);
-    }
+  :global(.dark) .modern-dropdown :global(div[role="option"]):hover {
+    background-color: var(--color-chat-card-hover-dark);
   }
 </style>

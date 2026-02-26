@@ -29,14 +29,14 @@
 
   $: isUserMessage = event.title === 'user';
 
-  // ChatGPT theme text color depends on user vs agent message
-  $: chatgptTextClasses = isUserMessage
+  // Modern Chat theme text color depends on user vs agent message
+  $: modernTextClasses = isUserMessage
     ? 'text-white'
     : 'text-chat-text dark:text-chat-text-dark';
 
   // Content text classes based on theme
-  $: contentClasses = currentTheme === 'chatgpt'
-    ? chatgptTextClasses
+  $: contentClasses = currentTheme === 'modern'
+    ? modernTextClasses
     : event.style.textColor;
 </script>
 
@@ -47,7 +47,7 @@
 
   {#if event.streaming}
     <span class="streaming-cursor inline-block
-      {currentTheme === 'chatgpt' && isUserMessage
+      {currentTheme === 'modern' && isUserMessage
         ? 'text-white'
         : 'text-current'}">▊</span>
   {/if}
@@ -198,60 +198,58 @@
   }
 
   /* Dark mode support for markdown content */
-  @media (prefers-color-scheme: dark) {
-    .markdown-content :global(h1),
-    .markdown-content :global(h2) {
-      border-bottom-color: #444;
-    }
-
-    .markdown-content :global(code) {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .markdown-content :global(blockquote) {
-      border-left-color: #555;
-      color: #aaa;
-    }
-
-    .markdown-content :global(th) {
-      background: #333;
-    }
-
-    .markdown-content :global(th),
-    .markdown-content :global(td) {
-      border-color: #555;
-    }
-
-    .markdown-content :global(hr) {
-      border-top-color: #444;
-    }
+  :global(.dark) .markdown-content :global(h1),
+  :global(.dark) .markdown-content :global(h2) {
+    border-bottom-color: #444;
   }
 
-  /* ChatGPT theme overrides for rendered markdown — :global() selectors */
-  .message-event.chatgpt .markdown-content :global(a) {
+  :global(.dark) .markdown-content :global(code) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  :global(.dark) .markdown-content :global(blockquote) {
+    border-left-color: #555;
+    color: #aaa;
+  }
+
+  :global(.dark) .markdown-content :global(th) {
+    background: #333;
+  }
+
+  :global(.dark) .markdown-content :global(th),
+  :global(.dark) .markdown-content :global(td) {
+    border-color: #555;
+  }
+
+  :global(.dark) .markdown-content :global(hr) {
+    border-top-color: #444;
+  }
+
+  /* Modern Chat theme overrides for rendered markdown — :global() selectors */
+  .message-event.modern .markdown-content :global(a) {
     color: var(--color-chat-primary);
   }
 
-  .message-event.chatgpt .markdown-content :global(code) {
+  .message-event.modern .markdown-content :global(code) {
     background: rgba(0, 0, 0, 0.08);
   }
 
-  .message-event.chatgpt .markdown-content :global(blockquote) {
+  .message-event.modern .markdown-content :global(blockquote) {
     color: var(--color-chat-text-secondary);
   }
 
-  /* ChatGPT theme — user messages rendered markdown overrides */
-  .message-event.chatgpt.user-message .markdown-content :global(a) {
+  /* Modern Chat theme — user messages rendered markdown overrides */
+  .message-event.modern.user-message .markdown-content :global(a) {
     color: rgba(255, 255, 255, 0.9);
     text-decoration: underline;
   }
 
-  .message-event.chatgpt.user-message .markdown-content :global(code) {
+  .message-event.modern.user-message .markdown-content :global(code) {
     background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
   }
 
-  .message-event.chatgpt.user-message .markdown-content :global(blockquote) {
+  .message-event.modern.user-message .markdown-content :global(blockquote) {
     border-left-color: rgba(255, 255, 255, 0.5);
     color: rgba(255, 255, 255, 0.9);
   }

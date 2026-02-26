@@ -15,13 +15,13 @@
    * - Real-time updates when tab title changes
    * - Graceful handling of missing/empty titles
    * - Clickable dropdown for manual tab selection (US3)
-   * - Theme-aware styling (terminal vs chatgpt)
+   * - Theme-aware styling (terminal vs modern)
    */
 
   export let tabId: number = -1;
   export let clickable: boolean = true;
 
-  let currentTheme: 'terminal' | 'chatgpt' = 'terminal';
+  let currentTheme: 'terminal' | 'modern' = 'terminal';
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
@@ -172,12 +172,12 @@
       <Tooltip content={fullTitle} disabled={isDropdownOpen || !fullTitle}>
         <div
           class="inline-flex items-center gap-2 max-w-[300px] py-1 px-2 text-sm whitespace-nowrap overflow-hidden text-ellipsis
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark bg-chat-input dark:bg-chat-input-dark border border-chat-input-border dark:border-chat-input-border-dark rounded-2xl py-1.5 px-3'
               : 'font-mono text-term-dim-green bg-term-bg border border-term-dim-green rounded'}
             {clickable ? 'cursor-pointer select-none' : 'cursor-default'}
-            {clickable && currentTheme === 'chatgpt' ? 'hover:border-chat-primary dark:hover:border-chat-primary-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark' : ''}
-            {clickable && currentTheme !== 'chatgpt' ? 'hover:border-term-green hover:bg-term-green/5' : ''}"
+            {clickable && currentTheme === 'modern' ? 'hover:border-chat-primary dark:hover:border-chat-primary-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark' : ''}
+            {clickable && currentTheme !== 'modern' ? 'hover:border-term-green hover:bg-term-green/5' : ''}"
           data-testid="tab-context-display"
           aria-label="Current tab context"
           on:click={toggleDropdown}
@@ -186,15 +186,15 @@
           tabindex={clickable ? 0 : undefined}
         >
           {#if isLoading}
-            <span class="italic {currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-yellow'}">{$_t("Loading...")}</span>
+            <span class="italic {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-yellow'}">{$_t("Loading...")}</span>
           {:else if error}
-            <span class="{currentTheme === 'chatgpt' ? 'text-chat-error dark:text-chat-error-dark' : 'text-term-red'}">{error}</span>
+            <span class="{currentTheme === 'modern' ? 'text-chat-error dark:text-chat-error-dark' : 'text-term-red'}">{error}</span>
           {:else}
             <span class="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{displayTitle}</span>
           {/if}
           {#if clickable}
             <span class="text-[10px] transition-transform duration-200 shrink-0 {isDropdownOpen ? 'rotate-180' : ''}
-              {currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : ''}">▼</span>
+              {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : ''}">▼</span>
           {/if}
         </div>
       </Tooltip>
@@ -203,17 +203,17 @@
     <div slot="content" class="w-[calc(100vw-4rem)] max-w-[300px] max-h-[250px] overflow-y-auto" data-testid="tab-dropdown-menu">
       {#if loadingTabs}
         <div class="flex items-center justify-between py-2 px-3 text-sm italic cursor-default
-          {currentTheme === 'chatgpt' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("Loading tabs...")}</div>
+          {currentTheme === 'modern' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("Loading tabs...")}</div>
       {:else if availableTabs.length === 0}
         <div class="flex items-center justify-between py-2 px-3 text-sm italic cursor-default
-          {currentTheme === 'chatgpt' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("No tabs available")}</div>
+          {currentTheme === 'modern' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("No tabs available")}</div>
       {:else}
         <div
           class="flex items-center justify-between py-2 px-3 text-sm cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis font-medium
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat text-chat-primary dark:text-chat-primary-dark hover:bg-white/10'
               : 'font-mono text-term-green hover:bg-term-green/10'}
-            {tabId === -1 ? (currentTheme === 'chatgpt' ? 'bg-blue-500/20' : 'bg-term-green/15 font-bold') : ''}"
+            {tabId === -1 ? (currentTheme === 'modern' ? 'bg-blue-500/20' : 'bg-term-green/15 font-bold') : ''}"
           on:click={() => selectTab(-1)}
           on:keydown={(e) => e.key === 'Enter' && selectTab(-1)}
           role="button"
@@ -222,22 +222,22 @@
         >
           <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap mr-2">+ {$_t("Create New Tab")}</span>
           {#if tabId === -1}
-            <span class="shrink-0 font-bold {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-green'}">✓</span>
+            <span class="shrink-0 font-bold {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-green'}">✓</span>
           {/if}
         </div>
 
         <div class="h-px my-1
-          {currentTheme === 'chatgpt' ? 'bg-white/10' : 'bg-term-dim-green/30'}"></div>
+          {currentTheme === 'modern' ? 'bg-white/10' : 'bg-term-dim-green/30'}"></div>
 
         {#each availableTabs as tab (tab.id)}
           <Tooltip content={tab.title || tab.url || t('Untitled')} placement="top" fixedPosition>
             <div
               class="flex items-center justify-between py-2 px-3 text-sm cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'font-chat text-white border-b border-white/10 last:border-b-0 hover:bg-white/10'
                   : 'font-mono text-term-dim-green border-b border-term-dim-green/20 last:border-b-0 hover:bg-term-green/10 hover:text-term-green'}
                 {tab.id === tabId
-                  ? (currentTheme === 'chatgpt' ? 'bg-blue-500/20 text-chat-primary dark:text-chat-primary-dark' : 'bg-term-green/15 text-term-green font-bold')
+                  ? (currentTheme === 'modern' ? 'bg-blue-500/20 text-chat-primary dark:text-chat-primary-dark' : 'bg-term-green/15 text-term-green font-bold')
                   : ''}"
               on:click={() => tab.id && selectTab(tab.id)}
               on:keydown={(e) => e.key === 'Enter' && tab.id && selectTab(tab.id)}
@@ -249,7 +249,7 @@
                 {#if tab.id === activeTabId}<span class="text-term-blue font-bold">{$_t("(active)")}</span> {/if}{tab.title || tab.url || t('Untitled')}
               </span>
               {#if tab.id === tabId}
-                <span class="shrink-0 font-bold {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-green'}">✓</span>
+                <span class="shrink-0 font-bold {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-green'}">✓</span>
               {/if}
             </div>
           </Tooltip>

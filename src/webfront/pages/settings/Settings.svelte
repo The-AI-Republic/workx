@@ -133,7 +133,7 @@
   }
 </script>
 
-<div class="settings-page" class:chatgpt={currentTheme === 'chatgpt'}>
+<div class="settings-page" class:modern={currentTheme === 'modern'}>
   <div class="settings-container">
     <div class="settings-header">
       <h2 class="settings-title">{t("Settings")}</h2>
@@ -254,8 +254,8 @@
     color-scheme: dark;
   }
 
-  /* ChatGPT theme — light */
-  .settings-page.chatgpt {
+  /* Modern Chat theme — light */
+  .settings-page.modern {
     --browserx-primary: var(--color-chat-primary, #2563eb);
     --browserx-secondary: var(--color-chat-primary, #2563eb);
     --browserx-background: var(--color-chat-bg, #ffffff);
@@ -270,21 +270,19 @@
     color-scheme: light;
   }
 
-  /* ChatGPT theme — dark */
-  @media (prefers-color-scheme: dark) {
-    .settings-page.chatgpt {
-      --browserx-primary: var(--color-chat-primary-dark, #60a5fa);
-      --browserx-secondary: var(--color-chat-primary-dark, #60a5fa);
-      --browserx-background: var(--color-chat-bg-dark, #212121);
-      --browserx-surface: var(--color-chat-surface-dark, #2f2f2f);
-      --browserx-text: var(--color-chat-text-dark, #ececec);
-      --browserx-text-secondary: var(--color-chat-text-secondary-dark, #b4b4b4);
-      --browserx-border: var(--color-chat-border-dark, #3e3e3e);
-      --browserx-error: var(--color-chat-error-dark, #f87171);
-      --browserx-success: var(--color-chat-status-success-dark, #34d399);
-      --browserx-warning: var(--color-chat-status-warning-dark, #fbbf24);
-      color-scheme: dark;
-    }
+  /* Modern Chat theme — dark */
+  :global(.dark) .settings-page.modern {
+    --browserx-primary: var(--color-chat-primary-dark, #60a5fa);
+    --browserx-secondary: var(--color-chat-primary-dark, #60a5fa);
+    --browserx-background: var(--color-chat-bg-dark, #212121);
+    --browserx-surface: var(--color-chat-surface-dark, #2f2f2f);
+    --browserx-text: var(--color-chat-text-dark, #ececec);
+    --browserx-text-secondary: var(--color-chat-text-secondary-dark, #b4b4b4);
+    --browserx-border: var(--color-chat-border-dark, #3e3e3e);
+    --browserx-error: var(--color-chat-error-dark, #f87171);
+    --browserx-success: var(--color-chat-status-success-dark, #34d399);
+    --browserx-warning: var(--color-chat-status-warning-dark, #fbbf24);
+    color-scheme: dark;
   }
 
   .settings-container {
@@ -300,7 +298,7 @@
     color: var(--browserx-text);
   }
 
-  .settings-page.chatgpt .settings-container {
+  .settings-page.modern .settings-container {
     border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }

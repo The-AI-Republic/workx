@@ -178,19 +178,19 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="h-screen flex items-center justify-center {currentTheme === 'chatgpt' ? 'bg-black/30' : 'bg-black/50'}">
+<div class="h-screen flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
   <div class="w-[90%] max-w-[28rem] max-h-[90vh] overflow-y-auto rounded-lg flex flex-col
-    {currentTheme === 'chatgpt'
+    {currentTheme === 'modern'
       ? 'rounded-2xl border-none shadow-2xl bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark font-chat'
       : 'border border-term-dim-green bg-term-bg text-term-green font-terminal'}">
     <!-- Header -->
     <div class="flex justify-between items-center px-6 py-4 border-b
-      {currentTheme === 'chatgpt' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+      {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
       <h2 class="m-0 text-base font-semibold
-        {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green'}">{$_t('Schedule A New Task')}</h2>
+        {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green'}">{$_t('Schedule A New Task')}</h2>
       <button
         class="bg-none border-none cursor-pointer p-1 rounded-md flex items-center justify-center transition-all duration-200
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-surface dark:hover:bg-chat-surface-dark'
             : 'text-term-dim-green hover:text-term-green hover:bg-[#0a0a0a]'}"
         on:click={handleClose}
@@ -207,15 +207,15 @@
     <div class="px-6 py-4 overflow-y-auto flex-1">
       <!-- Task Input/Preview -->
       <div class="mb-4 p-3 rounded
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
           : 'bg-[rgba(0,255,0,0.05)] border border-[rgba(0,255,0,0.2)]'}">
         <span class="text-sm uppercase tracking-wide
-          {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Task')}:</span>
+          {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Task')}:</span>
         {#if isEditable}
           <textarea
             class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat placeholder:text-chat-text-secondary/60 dark:placeholder:text-chat-text-secondary-dark/60 focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
                 : 'bg-black/50 border border-term-dim-green text-term-green font-terminal placeholder:text-term-dim-green/60 focus:border-term-green'}"
             bind:value={editableInput}
@@ -224,19 +224,19 @@
           ></textarea>
         {:else}
           <p class="mt-1 mb-0 text-sm leading-relaxed break-words
-            {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{pendingInput.slice(0, 100)}{pendingInput.length > 100 ? '...' : ''}</p>
+            {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{pendingInput.slice(0, 100)}{pendingInput.length > 100 ? '...' : ''}</p>
         {/if}
       </div>
 
       <!-- Quick Schedule Buttons -->
       <div class="mb-4">
         <span class="block text-sm mb-2
-          {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Quick Schedule')}:</span>
+          {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Quick Schedule')}:</span>
         <div class="flex gap-2 flex-wrap">
           {#each [{ label: '5m', min: 5 }, { label: '15m', min: 15 }, { label: '30m', min: 30 }, { label: '1h', min: 60 }, { label: '3h', min: 180 }, { label: '24h', min: 1440 }] as item}
             <button
               class="px-3 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-secondary dark:hover:border-chat-text-secondary-dark'
                   : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-green'}"
               on:click={() => scheduleIn(item.min)}
@@ -249,12 +249,12 @@
       <div class="flex gap-3 mb-4">
         <div class="flex-1">
           <label for="schedule-date" class="block text-sm mb-1
-            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Date')}</label>
+            {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Date')}</label>
           <input
             id="schedule-date"
             type="date"
             class="w-full px-3 py-2 text-sm rounded picker-input
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
                 : 'bg-black border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green'}"
             bind:value={selectedDate}
@@ -263,12 +263,12 @@
         </div>
         <div class="flex-1">
           <label for="schedule-time" class="block text-sm mb-1
-            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Time')}</label>
+            {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Time')}</label>
           <input
             id="schedule-time"
             type="time"
             class="w-full px-3 py-2 text-sm rounded picker-input
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
                 : 'bg-black border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green'}"
             bind:value={selectedTime}
@@ -279,15 +279,15 @@
       <!-- Schedule Preview -->
       {#if selectedDate && selectedTime}
         <div class="flex items-center gap-2 p-3 rounded mb-3
-          {currentTheme === 'chatgpt' ? 'bg-[rgba(96,165,250,0.1)]' : 'bg-[rgba(0,255,0,0.1)]'}">
-          <span class="flex {currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-dim-green'}">
+          {currentTheme === 'modern' ? 'bg-[rgba(96,165,250,0.1)]' : 'bg-[rgba(0,255,0,0.1)]'}">
+          <span class="flex {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-dim-green'}">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
           </span>
-          <span class="text-sm {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{getScheduledDateDisplay()}</span>
-          <span class="text-sm {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
+          <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{getScheduledDateDisplay()}</span>
+          <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
         </div>
       {/if}
 
@@ -299,10 +299,10 @@
 
     <!-- Footer -->
     <div class="flex justify-end gap-3 px-6 py-4 border-t
-      {currentTheme === 'chatgpt' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+      {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
       <button
         class="px-5 py-2.5 text-sm rounded cursor-pointer transition-all duration-200
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
         on:click={handleClose}
@@ -311,7 +311,7 @@
       </button>
       <button
         class="px-5 py-2.5 text-sm rounded cursor-pointer font-semibold transition-all duration-200
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-chat-send-text dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
             : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-green hover:border-term-green'}"
         on:click={validateAndSchedule}
@@ -332,13 +332,11 @@
     filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
   }
 
-  :global(.chatgpt) .picker-input::-webkit-calendar-picker-indicator {
+  :global(.modern) .picker-input::-webkit-calendar-picker-indicator {
     filter: none;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :global(.chatgpt) .picker-input::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-    }
+  :global(.dark) :global(.modern) .picker-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 </style>

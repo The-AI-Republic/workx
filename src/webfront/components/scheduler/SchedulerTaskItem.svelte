@@ -104,7 +104,7 @@
 
 <div
   class="flex items-start gap-2 py-2.5 px-3 rounded cursor-pointer transition-all duration-200
-    {currentTheme === 'chatgpt'
+    {currentTheme === 'modern'
       ? 'bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
       : 'bg-[rgba(0,0,0,0.4)] border border-[rgba(0,255,0,0.2)] hover:bg-[rgba(0,255,0,0.05)] hover:border-[rgba(0,255,0,0.4)] ' + getItemBorderClass(status)}"
   on:click={handleClick}
@@ -120,7 +120,7 @@
 
     <!-- Task Input Preview -->
     <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'text-chat-text dark:text-chat-text-dark font-chat'
         : 'text-term-bright-green font-terminal'}"
     >{input}</p>
@@ -128,8 +128,8 @@
     <!-- Time Info -->
     <div class="mt-1 text-sm">
       {#if scheduledTime}
-        <span class="{currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{formatTime(scheduledTime)}</span>
-        <span class="ml-1 {currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark opacity-70' : 'text-[rgba(0,255,0,0.5)]'}">({getRelativeTime(scheduledTime)})</span>
+        <span class="{currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{formatTime(scheduledTime)}</span>
+        <span class="ml-1 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark opacity-70' : 'text-[rgba(0,255,0,0.5)]'}">({getRelativeTime(scheduledTime)})</span>
       {:else}
         <span class="italic text-[#666]">{$_t('No scheduled time')}</span>
       {/if}
@@ -142,7 +142,7 @@
       {#if status === 'draft' || status === 'scheduled' || status === 'missed'}
         <button
           class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-[rgba(16,185,129,0.1)] text-emerald-500 hover:bg-[rgba(16,185,129,0.2)]'
               : 'bg-[rgba(0,255,0,0.1)] text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
           on:click|stopPropagation={handleTrigger}

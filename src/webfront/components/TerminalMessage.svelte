@@ -17,7 +17,7 @@
     system: 'text-term-dim-green',
   };
 
-  const chatgptColors: Record<string, string> = {
+  const modernColors: Record<string, string> = {
     default: 'text-chat-text dark:text-chat-text-dark',
     warning: 'text-chat-status-warning dark:text-chat-status-warning-dark',
     error: 'text-chat-status-error dark:text-chat-status-error-dark',
@@ -25,8 +25,8 @@
     system: 'text-chat-text-muted dark:text-chat-text-muted-dark',
   };
 
-  $: colorClasses = currentTheme === 'chatgpt'
-    ? (chatgptColors[type] || chatgptColors.default)
+  $: colorClasses = currentTheme === 'modern'
+    ? (modernColors[type] || modernColors.default)
     : (terminalColors[type] || terminalColors.default);
 </script>
 

@@ -204,32 +204,32 @@
     else if (section === 'terminal-sandbox') terminalSandboxExpanded = !terminalSandboxExpanded;
   }
 
-  $: isChatgpt = currentTheme === 'chatgpt';
+  $: isModern = currentTheme === 'modern';
 
   /* Reusable class helpers */
-  $: cardClasses = isChatgpt
+  $: cardClasses = isModern
     ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
     : 'bg-term-bg border-term-dim-green';
 
-  $: textClasses = isChatgpt
+  $: textClasses = isModern
     ? 'font-chat text-chat-text dark:text-chat-text-dark'
     : 'font-terminal text-term-green';
 
-  $: textSecondaryClasses = isChatgpt
+  $: textSecondaryClasses = isModern
     ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
     : 'font-terminal text-term-dim-green';
 
-  $: selectClasses = isChatgpt
+  $: selectClasses = isModern
     ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
     : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10';
 
   $: inputClasses = selectClasses;
 
-  $: primaryClasses = isChatgpt
+  $: primaryClasses = isModern
     ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
     : 'font-terminal text-term-green';
 
-  $: checkboxAccent = isChatgpt
+  $: checkboxAccent = isModern
     ? 'accent-chat-primary dark:accent-chat-primary-dark'
     : 'accent-term-green';
 </script>
@@ -267,7 +267,7 @@
     <div class="rounded-xl border overflow-hidden {cardClasses}">
       <button
         class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
-          {isChatgpt
+          {isModern
             ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
             : 'bg-term-bg hover:bg-term-green/5'}"
         on:click={() => toggleSection('browser')}
@@ -289,7 +289,7 @@
       </button>
 
       {#if browserToolsExpanded}
-        <div class="p-4 border-t {isChatgpt ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           {#each [
             { id: 'storage-tool', bind: 'storage_tool', label: $_t("Storage Tool"), help: $_t("Access browser storage (localStorage, sessionStorage, cookies)") },
             { id: 'tab-tool', bind: 'tab_tool', label: $_t("Tab Tool"), help: $_t("Manage browser tabs (open, close, switch, query)") },
@@ -323,7 +323,7 @@
     <div class="rounded-xl border overflow-hidden {cardClasses}">
       <button
         class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
-          {isChatgpt
+          {isModern
             ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
             : 'bg-term-bg hover:bg-term-green/5'}"
         on:click={() => toggleSection('agent')}
@@ -345,7 +345,7 @@
       </button>
 
       {#if agentToolsExpanded}
-        <div class="p-4 border-t {isChatgpt ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <div class="mb-6" data-setting-id="exec-command">
             <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
               <input
@@ -406,7 +406,7 @@
     <div class="rounded-xl border overflow-hidden {cardClasses}">
       <button
         class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
-          {isChatgpt
+          {isModern
             ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
             : 'bg-term-bg hover:bg-term-green/5'}"
         on:click={() => toggleSection('advanced')}
@@ -428,7 +428,7 @@
       </button>
 
       {#if advancedExpanded}
-        <div class="p-4 border-t {isChatgpt ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <!-- Timeout Configuration -->
           <div class="mb-6">
             <label for="tool-timeout" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Tool Timeout (ms)")}</label>
@@ -470,7 +470,7 @@
       <div class="rounded-xl border overflow-hidden {cardClasses}">
         <button
           class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
-            {isChatgpt
+            {isModern
               ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
               : 'bg-term-bg hover:bg-term-green/5'}"
           on:click={() => toggleSection('terminal-sandbox')}
@@ -491,7 +491,7 @@
           <h3 class="m-0 text-base font-semibold {textClasses}">{$_t("Terminal Sandbox")}</h3>
           {#if sandboxStatus}
             <span class="ml-auto text-sm font-normal px-2 py-0.5 rounded
-              {isChatgpt
+              {isModern
                 ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-chat-text-secondary/10 dark:bg-chat-text-secondary-dark/10'
                 : 'text-term-dim-green bg-term-dim-green/10'}"
             >{sandboxStatus}</span>
@@ -499,7 +499,7 @@
         </button>
 
         {#if terminalSandboxExpanded}
-          <div class="p-4 border-t {isChatgpt ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+          <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
             <!-- Execution Mode -->
             <div class="mb-6">
               <label for="execution-mode" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Execution Mode")}</label>
@@ -564,7 +564,7 @@
                 <div class="flex flex-col gap-1.5 mb-2">
                   {#each bindMounts as mount, i}
                     <div class="flex items-center gap-2 py-1.5 px-2 rounded-md text-sm
-                      {isChatgpt
+                      {isModern
                         ? 'bg-chat-card-hover dark:bg-chat-card-hover-dark'
                         : 'bg-term-green/5'}"
                     >
@@ -572,7 +572,7 @@
                       <span class="text-sm font-medium uppercase {textSecondaryClasses}">{mount.access}</span>
                       <button
                         class="bg-transparent border-none cursor-pointer text-lg leading-none px-1
-                          {isChatgpt
+                          {isModern
                             ? 'text-chat-status-error dark:text-chat-status-error-dark'
                             : 'text-term-red'}"
                         on:click={() => removeBindMount(i)}
@@ -596,7 +596,7 @@
                 </select>
                 <button
                   class="py-1.5 px-3 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
-                    {isChatgpt
+                    {isModern
                       ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
                       : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
                   on:click={addBindMount}
@@ -613,7 +613,7 @@
       <button
         class="py-3 px-6 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
           disabled:opacity-50 disabled:cursor-not-allowed
-          {isChatgpt
+          {isModern
             ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
             : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
         on:click={handleSave}
@@ -627,10 +627,10 @@
     {#if saveMessage}
       <div class="flex items-center gap-2 p-3 rounded-lg text-sm mt-4
         {saveMessageType === 'success'
-          ? (isChatgpt
+          ? (isModern
             ? 'text-chat-status-success dark:text-chat-status-success-dark bg-chat-status-success/10 dark:bg-chat-status-success-dark/10'
             : 'text-term-green bg-term-green/10')
-          : (isChatgpt
+          : (isModern
             ? 'text-chat-status-error dark:text-chat-status-error-dark bg-chat-status-error/10 dark:bg-chat-status-error-dark/10'
             : 'text-term-red bg-term-red/10')}"
       >

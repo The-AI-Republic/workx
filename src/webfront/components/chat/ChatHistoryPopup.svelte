@@ -37,7 +37,7 @@
     <Tooltip content={$_t("Chat History")}>
       <button
         class="flex items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-95
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'bg-transparent border-none rounded-md text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
             : 'bg-transparent border border-gray-500/50 text-gray-500/80 rounded hover:border-gray-500/80 hover:text-gray-400 hover:bg-gray-500/10'}"
         on:click|stopPropagation={togglePopup}

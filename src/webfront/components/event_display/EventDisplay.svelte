@@ -83,7 +83,7 @@
         'flex-col',
         'w-full',
         'mb-3',
-        currentTheme === 'chatgpt' ? 'font-chat' : 'font-terminal',
+        currentTheme === 'modern' ? 'font-chat' : 'font-terminal',
       ];
 
       if (event.title === 'user') {
@@ -107,7 +107,7 @@
       'py-2',
       'transition-colors',
       'cursor-pointer',
-      currentTheme === 'chatgpt'
+      currentTheme === 'modern'
         ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark rounded-lg mb-2 text-chat-text dark:text-chat-text-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
         : 'font-terminal hover:bg-gray-800/50',
     ];
@@ -122,7 +122,7 @@
 
     if (event.style.borderColor) {
       classes.push(event.style.borderColor);
-    } else if (currentTheme !== 'chatgpt') {
+    } else if (currentTheme !== 'modern') {
       classes.push('border-gray-600');
     }
 
@@ -155,10 +155,10 @@
 {#if event.category === 'message'}
   <!-- Simple left/right aligned messages with sender labels -->
   <div class={getContainerClasses()}>
-    <!-- Header outside bubble for user messages in chatgpt theme -->
+    <!-- Header outside bubble for user messages in modern theme -->
     <div class="flex items-center gap-2 mb-1 text-sm
       {event.title === 'user' ? 'justify-end gap-2' : ''}">
-      <span class="{currentTheme === 'chatgpt'
+      <span class="{currentTheme === 'modern'
         ? (event.title === 'user'
           ? 'font-medium text-chat-primary dark:text-chat-primary-dark'
           : 'font-medium text-chat-text dark:text-chat-text-dark')
@@ -167,20 +167,20 @@
           : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
       {#if event.title !== 'user' && event.modelKey}
         <span class="text-sm italic
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-gray-500'}">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
       {/if}
       <span class="text-sm
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
           : 'text-gray-400'}">{formatTime(event.timestamp, 'relative')}</span>
     </div>
     <div class="{event.title === 'user' ? 'w-fit max-w-[80%]' : 'w-full'}
-      {currentTheme === 'chatgpt' && event.title === 'user'
+      {currentTheme === 'modern' && event.title === 'user'
         ? 'bg-chat-primary dark:bg-chat-primary-dark rounded-[1.25rem] px-4 py-2'
         : ''}">
-      <div class="{currentTheme === 'chatgpt'
+      <div class="{currentTheme === 'modern'
         ? (event.title === 'user' ? 'text-white' : 'text-chat-text dark:text-chat-text-dark')
         : ''}">
         <MessageEvent {event} />
@@ -210,7 +210,7 @@
         {#if event.collapsible}
           <button
             class="transition-colors
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                 : 'text-gray-400 hover:text-gray-200'}"
             on:click|stopPropagation={handleToggle}
@@ -226,7 +226,7 @@
 
         <!-- Icon -->
         {#if event.style.icon}
-          <span class="{currentTheme === 'chatgpt'
+          <span class="{currentTheme === 'modern'
             ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'text-term-green'}">
             {#if event.style.icon === 'error'}
@@ -248,7 +248,7 @@
         <!-- Timestamp -->
         <Tooltip content={formatTime(event.timestamp, 'absolute')}>
           <span class="text-sm
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-gray-500'}">
             {formatTime(event.timestamp, 'relative')}
@@ -257,7 +257,7 @@
 
         <!-- Title -->
         <span class="text-sm
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'text-term-green'}">
           {event.title}
@@ -268,14 +268,14 @@
           <span
             class="text-sm px-1.5 py-0.5 rounded
               {event.status === 'running'
-                ? (currentTheme === 'chatgpt'
+                ? (currentTheme === 'modern'
                   ? 'bg-chat-status-running/10 dark:bg-chat-status-running-dark/10 text-chat-status-running dark:text-chat-status-running-dark'
                   : 'bg-cyan-400/20 text-cyan-400')
                 : event.status === 'success'
-                  ? (currentTheme === 'chatgpt'
+                  ? (currentTheme === 'modern'
                     ? 'bg-chat-status-success/10 dark:bg-chat-status-success-dark/10 text-chat-status-success dark:text-chat-status-success-dark'
                     : 'bg-green-500/20 text-green-500')
-                  : (currentTheme === 'chatgpt'
+                  : (currentTheme === 'modern'
                     ? 'bg-chat-status-error/10 dark:bg-chat-status-error-dark/10 text-chat-status-error dark:text-chat-status-error-dark'
                     : 'bg-red-500/20 text-red-500')}"
           >
@@ -286,7 +286,7 @@
         <!-- Streaming indicator -->
         {#if event.streaming}
           <span class="text-sm animate-pulse
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-primary dark:text-chat-primary-dark'
               : 'text-cyan-400'}" role="status" aria-live="polite">
             {$_t("streaming...")}
@@ -355,7 +355,7 @@
     }
   }
 
-  /* ChatGPT user bubble paragraph spacing */
+  /* Modern Chat user bubble paragraph spacing */
   :global(.user-bubble-content p) {
     margin: 0;
     line-height: 1.4;

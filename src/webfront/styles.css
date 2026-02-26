@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Terminal Colors (Fixed — no dark variants) */
   --color-term-bg: #000000;
@@ -40,7 +42,7 @@
   --color-bx-success-dark: #34d399;
   --color-bx-warning-dark: #fbbf24;
 
-  /* ChatGPT Theme Colors — Light */
+  /* Modern Chat Theme Colors — Light */
   --color-chat-bg: #ffffff;
   --color-chat-surface: #f7f7f8;
   --color-chat-header: #ffffff;
@@ -76,7 +78,7 @@
   --color-chat-avatar-user: #5436da;
   --color-chat-avatar-agent: #2563eb;
 
-  /* ChatGPT Theme Colors — Dark */
+  /* Modern Chat Theme Colors — Dark */
   --color-chat-bg-dark: #212121;
   --color-chat-surface-dark: #2f2f2f;
   --color-chat-header-dark: #212121;

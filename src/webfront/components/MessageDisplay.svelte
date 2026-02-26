@@ -109,35 +109,35 @@
 
   // Role-specific background classes
   $: roleBgClasses = message.role === 'user'
-    ? (currentTheme === 'chatgpt'
+    ? (currentTheme === 'modern'
       ? 'bg-blue-50 dark:bg-blue-900/30 ml-5'
       : 'bg-term-bg ml-5')
     : message.role === 'assistant'
-      ? (currentTheme === 'chatgpt'
+      ? (currentTheme === 'modern'
         ? 'bg-chat-surface dark:bg-chat-surface-dark mr-5'
         : 'bg-term-bg mr-5')
-      : (currentTheme === 'chatgpt'
+      : (currentTheme === 'modern'
         ? 'bg-orange-50 dark:bg-orange-900/30 text-sm opacity-80'
         : 'bg-term-bg text-sm opacity-80');
 
   // Role label color
-  $: roleLabelClasses = currentTheme === 'chatgpt'
+  $: roleLabelClasses = currentTheme === 'modern'
     ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
     : 'text-term-dim-green';
 
   // Timestamp color
-  $: timestampClasses = currentTheme === 'chatgpt'
+  $: timestampClasses = currentTheme === 'modern'
     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
     : 'text-term-dim-green';
 
   // Text color for content
-  $: textColorClasses = currentTheme === 'chatgpt'
+  $: textColorClasses = currentTheme === 'modern'
     ? 'text-chat-text dark:text-chat-text-dark'
     : 'text-term-green';
 
   // System message special text color
   $: systemTextClasses = message.role === 'system'
-    ? (currentTheme === 'chatgpt'
+    ? (currentTheme === 'modern'
       ? 'text-chat-text dark:text-chat-text-dark'
       : 'text-term-yellow')
     : '';
@@ -167,7 +167,7 @@
       <div class="content-text break-words overflow-wrap-anywhere min-w-0">
         {@html parseContent(content)}
         <span class="cursor-blink inline-block font-normal
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-primary dark:text-chat-primary-dark'
             : 'text-term-blue'}">▊</span>
       </div>
@@ -181,15 +181,15 @@
   {#if isStreaming}
     <div class="flex gap-1 mt-2">
       <span class="dot w-2 h-2 rounded-full
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-primary dark:bg-chat-primary-dark'
           : 'bg-term-blue'}"></span>
       <span class="dot dot-2 w-2 h-2 rounded-full
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-primary dark:bg-chat-primary-dark'
           : 'bg-term-blue'}"></span>
       <span class="dot dot-3 w-2 h-2 rounded-full
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-primary dark:bg-chat-primary-dark'
           : 'bg-term-blue'}"></span>
     </div>
@@ -376,32 +376,30 @@
   }
 
   /* Dark mode support for markdown content */
-  @media (prefers-color-scheme: dark) {
-    .content-text :global(h1),
-    .content-text :global(h2) {
-      border-bottom-color: #444;
-    }
+  :global(.dark) .content-text :global(h1),
+  :global(.dark) .content-text :global(h2) {
+    border-bottom-color: #444;
+  }
 
-    .content-text :global(code) {
-      background: rgba(255, 255, 255, 0.1);
-    }
+  :global(.dark) .content-text :global(code) {
+    background: rgba(255, 255, 255, 0.1);
+  }
 
-    .content-text :global(blockquote) {
-      border-left-color: #555;
-      color: #aaa;
-    }
+  :global(.dark) .content-text :global(blockquote) {
+    border-left-color: #555;
+    color: #aaa;
+  }
 
-    .content-text :global(th) {
-      background: #333;
-    }
+  :global(.dark) .content-text :global(th) {
+    background: #333;
+  }
 
-    .content-text :global(th),
-    .content-text :global(td) {
-      border-color: #555;
-    }
+  :global(.dark) .content-text :global(th),
+  :global(.dark) .content-text :global(td) {
+    border-color: #555;
+  }
 
-    .content-text :global(hr) {
-      border-top-color: #444;
-    }
+  :global(.dark) .content-text :global(hr) {
+    border-top-color: #444;
   }
 </style>

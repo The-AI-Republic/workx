@@ -350,7 +350,7 @@
       <Tooltip content={$_t("New Conversation")} placement="left">
         <button
           class="p-1 bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200 active:scale-95
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'border-none rounded-md text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
               : 'border border-gray-500/50 rounded text-gray-500/80 hover:border-gray-500/80 hover:text-gray-400 hover:bg-gray-500/10'}"
           on:click={onNewConversation}
@@ -381,7 +381,7 @@
 
     <div
       class="input-shell flex flex-col overflow-hidden transition-all duration-200
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'border border-chat-input-border dark:border-chat-input-border-dark rounded-3xl bg-chat-input dark:bg-chat-input-dark shadow-sm focus-within:border-chat-input-focus dark:focus-within:border-chat-input-focus-dark focus-within:shadow-[0_0_0_2px_rgba(96,165,250,0.2)]'
           : 'border border-term-dim-green rounded bg-black/70 focus-within:border-term-bright-green focus-within:shadow-[0_0_0_1px_var(--color-term-bright-green)]'}"
     >
@@ -394,7 +394,7 @@
         on:focus={() => isFocused = true}
         on:blur={handleBlur}
         class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-hidden leading-relaxed h-[37px] transition-[height] duration-200 text-sm
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"
         class:expanded={isFocused}
@@ -402,7 +402,7 @@
       />
       <div
         class="flex items-center justify-start gap-2
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'border-t border-chat-border dark:border-chat-border-dark px-3 py-2 bg-transparent'
             : 'border-t border-green-500/25 px-2 py-1.5 bg-black/85'}"
       >
@@ -419,7 +419,7 @@
           <Tooltip content={buttonTooltipContent}>
             <button
               class="flex items-center justify-center cursor-pointer transition-all duration-200
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'w-9 h-9 p-1.5 border-none rounded-full'
                     + (isProcessing
                       ? ' bg-chat-stop dark:bg-chat-stop-dark text-white hover:bg-chat-stop-hover dark:hover:bg-chat-stop-hover-dark'
@@ -441,14 +441,14 @@
             >
               {#if isProcessing}
                 <!-- Stop Icon (Square) -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="{currentTheme === 'chatgpt' ? 'w-[18px] h-[18px]' : 'w-6 h-6'}" viewBox="0 0 24 24" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="{currentTheme === 'modern' ? 'w-[18px] h-[18px]' : 'w-6 h-6'}" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="6" y="6" width="12" height="12" rx="1" />
                 </svg>
               {:else}
                 <!-- Send Icon (Arrow) -->
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="{currentTheme === 'chatgpt' ? 'w-[18px] h-[18px]' : 'w-6 h-6'}"
+                  class="{currentTheme === 'modern' ? 'w-[18px] h-[18px]' : 'w-6 h-6'}"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -481,15 +481,13 @@
     opacity: 0.6;
   }
 
-  /* Placeholder styles - chatgpt theme (detected via font-family) */
-  :global(.chatgpt) .terminal-textarea::placeholder {
+  /* Placeholder styles - modern theme (detected via font-family) */
+  :global(.modern) .terminal-textarea::placeholder {
     color: var(--color-chat-text-muted);
     opacity: 1;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :global(.chatgpt) .terminal-textarea::placeholder {
-      color: var(--color-chat-text-muted-dark);
-    }
+  :global(.dark) :global(.modern) .terminal-textarea::placeholder {
+    color: var(--color-chat-text-muted-dark);
   }
 </style>

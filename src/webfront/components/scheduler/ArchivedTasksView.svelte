@@ -82,17 +82,17 @@
 
 {#if show}
   <div class="archived-view fixed bottom-[70px] left-4 right-4 max-w-[400px] max-h-[70vh] rounded-lg z-[10000] flex flex-col animate-slide-up
-    {currentTheme === 'chatgpt'
+    {currentTheme === 'modern'
       ? 'bg-chat-bg dark:bg-chat-bg-dark border-none rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.2)]'
       : 'bg-[#0a0a0a] border border-term-dim-green'}">
     <!-- Header -->
     <div class="flex items-center gap-2 py-3 px-4
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'border-b border-chat-border dark:border-chat-border-dark'
         : 'border-b border-term-dim-green'}">
       <button
         class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
         on:click={onClose}
@@ -103,7 +103,7 @@
         </svg>
       </button>
       <h3 class="m-0 text-sm font-semibold
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'text-chat-text dark:text-chat-text-dark font-chat'
           : 'text-term-bright-green font-terminal'}"
       >{$_t('Task History')}</h3>
@@ -113,13 +113,13 @@
     <div class="flex-1 overflow-y-auto p-3">
       {#if isLoading && archivedTasks.length === 0}
         <div class="text-center py-6
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}"
         >{$_t('Loading...')}</div>
       {:else if archivedTasks.length === 0}
         <div class="text-center py-6
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}">
           <p>{$_t('No completed tasks yet')}</p>
@@ -134,7 +134,7 @@
               />
               {#if task.completedAt}
                 <div class="absolute top-2 right-2 text-sm opacity-70
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                     : 'text-term-dim-green'}">
                   {formatCompletedTime(task.completedAt)}
@@ -147,7 +147,7 @@
         {#if hasMore}
           <button
             class="w-full mt-3 py-2 bg-transparent rounded cursor-pointer text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'border border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:enabled:bg-chat-button-hover dark:hover:enabled:bg-chat-button-hover-dark hover:enabled:text-chat-text dark:hover:enabled:text-chat-text-dark'
                 : 'border border-term-dim-green text-term-dim-green hover:enabled:bg-[rgba(0,255,0,0.1)] hover:enabled:text-term-bright-green'}"
             on:click={loadMore}

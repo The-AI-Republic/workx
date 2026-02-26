@@ -23,7 +23,7 @@
 </script>
 
 <div class="flex items-center p-4
-  {currentTheme === 'chatgpt'
+  {currentTheme === 'modern'
     ? 'gap-2 py-2 px-4 border-t border-chat-border dark:border-chat-border-dark'
     : 'gap-3 border-t border-term-dim-green/30'}">
   <UserLoginStatus />
@@ -33,7 +33,7 @@
   <Tooltip content={$_t("Skills")}>
     <button
       class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
           : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
       on:click={handleOpenSkills}
@@ -54,7 +54,7 @@
     <Tooltip content={$_t("Settings")}>
       <button
         class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
             : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
         on:click={handleOpenSettings}

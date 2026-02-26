@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme, themePreference, type UITheme, type ThemePreference } from '../stores/themeStore';
   import { showTokenUsage } from '../stores/tokenUsageStore';
   import Switch from '../components/common/Switch.svelte';
   import { t, _t, getCurrentLocale, setLocale } from '../lib/i18n';
@@ -45,14 +45,24 @@
   // Theme options - reactive to locale changes
   $: themeOptions = [
     {
-      value: 'terminal' as UITheme,
+      value: 'terminal' as ThemePreference,
       label: $_t('Terminal'),
-      description: $_t('Classic terminal style with green text on black background')
+      description: $_t('Green text terminal')
     },
     {
-      value: 'chatgpt' as UITheme,
-      label: $_t('Modern Chat'),
-      description: $_t('Clean, modern chat interface similar to ChatGPT')
+      value: 'modern-auto' as ThemePreference,
+      label: $_t('Modern Chat Auto'),
+      description: $_t('Follows system theme')
+    },
+    {
+      value: 'modern-light' as ThemePreference,
+      label: $_t('Modern Chat Light'),
+      description: $_t('Always light')
+    },
+    {
+      value: 'modern-dark' as ThemePreference,
+      label: $_t('Modern Chat Dark'),
+      description: $_t('Always dark')
     }
   ];
 
@@ -115,11 +125,11 @@
 
   function handleThemeChange(event: Event) {
     const target = event.target as HTMLSelectElement;
-    const newTheme = target.value as UITheme;
+    const newTheme = target.value as ThemePreference;
     currentPreferences.uiTheme = newTheme;
 
     // Apply theme immediately
-    uiTheme.setTheme(newTheme);
+    themePreference.setTheme(newTheme);
 
     autoSave();
   }
@@ -182,14 +192,14 @@
 <div class="p-6">
   <button
     class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
         : 'font-terminal text-term-green'}"
     on:click={handleBack}
   >← {$_t("Back")}</button>
 
   <h2 class="m-0 mb-6 text-2xl font-semibold
-    {currentTheme === 'chatgpt'
+    {currentTheme === 'modern'
       ? 'font-chat text-chat-text dark:text-chat-text-dark'
       : 'font-terminal text-term-green'}"
   >{$_t("General Settings")}</h2>
@@ -198,7 +208,7 @@
     <!-- UI Theme Selection -->
     <div
       class="rounded-xl px-5 py-4 border
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
           : 'bg-term-bg border-term-dim-green'}"
       data-setting-id="uiTheme"
@@ -207,19 +217,19 @@
         <label
           for="uiTheme"
           class="block mb-2 text-sm font-medium
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark'
               : 'font-terminal text-term-green'}"
         >{$_t("UI Theme")}</label>
-        <div class="flex gap-4 mb-2">
+        <div class="grid grid-cols-2 gap-3 mb-2">
           {#each themeOptions as option}
             <label
-              class="flex-1 relative cursor-pointer rounded-xl overflow-hidden transition-all duration-200
+              class="relative cursor-pointer rounded-xl overflow-hidden transition-all duration-200
                 {currentPreferences.uiTheme === option.value
-                  ? (currentTheme === 'chatgpt'
+                  ? (currentTheme === 'modern'
                     ? 'border-2 border-chat-primary dark:border-chat-primary-dark shadow-[0_0_0_3px_rgba(96,165,250,0.2)]'
                     : 'border-2 border-term-green shadow-[0_0_0_3px_rgba(0,255,0,0.2)]')
-                  : (currentTheme === 'chatgpt'
+                  : (currentTheme === 'modern'
                     ? 'border-2 border-chat-border dark:border-chat-border-dark hover:border-chat-primary dark:hover:border-chat-primary-dark'
                     : 'border-2 border-term-dim-green hover:border-term-green')}"
             >
@@ -232,35 +242,51 @@
                 class="absolute opacity-0 w-0 h-0"
               />
               <div class="flex flex-col">
+                <!-- Preview area -->
                 <div
-                  class="h-20 flex items-center justify-center p-3
-                    {option.value === 'terminal' ? 'bg-black' : 'bg-[#f7f7f8]'}"
+                  class="h-16 flex items-center justify-center p-2
+                    {option.value === 'terminal' ? 'bg-black' :
+                     option.value === 'modern-dark' ? 'bg-[#212121]' :
+                     option.value === 'modern-light' ? 'bg-[#f7f7f8]' :
+                     'bg-gradient-to-r from-[#f7f7f8] to-[#212121]'}"
                 >
                   {#if option.value === 'terminal'}
-                    <div class="font-terminal text-sm text-[#00ff00]">
+                    <div class="font-terminal text-xs text-[#00ff00]">
                       <span class="mr-1">&gt;&gt;</span>
                       <span class="animate-blink">_</span>
                     </div>
+                  {:else if option.value === 'modern-auto'}
+                    <div class="flex items-center gap-1.5">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                      <span class="text-[#9ca3af] text-xs">/</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </div>
+                  {:else if option.value === 'modern-light'}
+                    <div class="flex flex-col gap-1.5 w-full px-2">
+                      <div class="h-2.5 rounded-lg w-3/5 self-end bg-[#60a5fa]"></div>
+                      <div class="h-2.5 rounded-lg w-4/5 self-start bg-[#e5e5e5]"></div>
+                    </div>
                   {:else}
-                    <div class="flex flex-col gap-2 w-full px-2">
-                      <div class="h-3 rounded-xl w-3/5 self-end bg-[#60a5fa]"></div>
-                      <div class="h-3 rounded-xl w-4/5 self-start bg-[#e5e5e5]"></div>
+                    <div class="flex flex-col gap-1.5 w-full px-2">
+                      <div class="h-2.5 rounded-lg w-3/5 self-end bg-[#60a5fa]"></div>
+                      <div class="h-2.5 rounded-lg w-4/5 self-start bg-[#3e3e3e]"></div>
                     </div>
                   {/if}
                 </div>
+                <!-- Label area -->
                 <div
-                  class="p-3 flex flex-col gap-1
-                    {currentTheme === 'chatgpt'
+                  class="p-2.5 flex flex-col gap-0.5
+                    {currentTheme === 'modern'
                       ? 'bg-chat-surface dark:bg-chat-surface-dark'
                       : 'bg-term-bg'}"
                 >
-                  <span class="font-semibold text-[15px]
-                    {currentTheme === 'chatgpt'
+                  <span class="font-semibold text-[13px]
+                    {currentTheme === 'modern'
                       ? 'font-chat text-chat-text dark:text-chat-text-dark'
                       : 'font-terminal text-term-green'}"
                   >{option.label}</span>
-                  <span class="text-sm leading-relaxed
-                    {currentTheme === 'chatgpt'
+                  <span class="text-xs leading-relaxed
+                    {currentTheme === 'modern'
                       ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                       : 'font-terminal text-term-dim-green'}"
                   >{option.description}</span>
@@ -270,7 +296,7 @@
           {/each}
         </div>
         <div class="mt-1.5 text-sm leading-relaxed
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
         >{$_t("Choose the visual style for the side panel interface")}</div>
@@ -280,7 +306,7 @@
     <!-- Show Token Usage Toggle -->
     <div
       class="rounded-xl px-5 py-4 border
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
           : 'bg-term-bg border-term-dim-green'}"
       data-setting-id="showTokenUsage"
@@ -289,12 +315,12 @@
         <div class="flex items-center justify-between gap-4">
           <div class="flex flex-col gap-1">
             <span class="text-[15px] font-medium
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'font-chat text-chat-text dark:text-chat-text-dark'
                 : 'font-terminal text-term-green'}"
             >{$_t("Show token usage in tasks")}</span>
             <span class="text-sm leading-relaxed
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
             >{$_t("Display token consumption (input/output tokens) when tasks complete")}</span>
@@ -311,7 +337,7 @@
     {#if platform.hasAutoStart}
     <div
       class="rounded-xl px-5 py-4 border
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
           : 'bg-term-bg border-term-dim-green'}"
     >
@@ -319,12 +345,12 @@
         <div class="flex items-center justify-between gap-4">
           <div class="flex flex-col gap-1">
             <span class="text-[15px] font-medium
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'font-chat text-chat-text dark:text-chat-text-dark'
                 : 'font-terminal text-term-green'}"
             >{$_t("Start on login")}</span>
             <span class="text-sm leading-relaxed
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
             >{$_t("Automatically start the app when you log in to your computer")}</span>
@@ -341,7 +367,7 @@
     <!-- Language Selection -->
     <div
       class="rounded-xl px-5 py-4 border
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
           : 'bg-term-bg border-term-dim-green'}"
     >
@@ -349,7 +375,7 @@
         <label
           for="language"
           class="block mb-2 text-sm font-medium
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark'
               : 'font-terminal text-term-green'}"
         >{$_t("Language")}</label>
@@ -358,7 +384,7 @@
           value={selectedLanguage}
           on:change={handleLanguageChange}
           class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
               : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10'}"
         >
@@ -367,7 +393,7 @@
           {/each}
         </select>
         <div class="mt-1.5 text-sm leading-relaxed
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
         >{$_t("Select your preferred language for the interface")}</div>
@@ -377,7 +403,7 @@
     <!-- Max Concurrent Sessions (Feature 015) -->
     <div
       class="rounded-xl px-5 py-4 border
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
           : 'bg-term-bg border-term-dim-green'}"
     >
@@ -385,7 +411,7 @@
         <label
           for="maxSessions"
           class="block mb-2 text-sm font-medium
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark'
               : 'font-terminal text-term-green'}"
         >{$_t("Max Concurrent Sessions")}</label>
@@ -394,7 +420,7 @@
           value={currentPreferences.maxConcurrentSessions ?? 3}
           on:change={handleMaxSessionsChange}
           class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
               : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10'}"
         >
@@ -403,7 +429,7 @@
           {/each}
         </select>
         <div class="mt-1.5 text-sm leading-relaxed
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
         >{$_t("Maximum number of parallel agent sessions, including scheduled tasks")}</div>
@@ -414,10 +440,10 @@
     {#if saveMessage}
       <div class="flex items-center gap-2 p-3 rounded-lg text-sm mt-4
         {saveMessageType === 'success'
-          ? (currentTheme === 'chatgpt'
+          ? (currentTheme === 'modern'
             ? 'text-chat-status-success dark:text-chat-status-success-dark bg-chat-status-success/10 dark:bg-chat-status-success-dark/10'
             : 'text-term-green bg-term-green/10')
-          : (currentTheme === 'chatgpt'
+          : (currentTheme === 'modern'
             ? 'text-chat-status-error dark:text-chat-status-error-dark bg-chat-status-error/10 dark:bg-chat-status-error-dark/10'
             : 'text-term-red bg-term-red/10')}"
       >

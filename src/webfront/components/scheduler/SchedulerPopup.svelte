@@ -264,28 +264,28 @@
 
 {#if show}
   <div class="scheduler-popup fixed bottom-[70px] left-4 right-4 max-w-[400px] max-h-[60vh] rounded-lg z-[9999] flex flex-col animate-slide-up
-    {currentTheme === 'chatgpt'
+    {currentTheme === 'modern'
       ? 'bg-chat-bg dark:bg-chat-bg-dark border-none rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.2)]'
       : 'bg-[#0a0a0a] border border-term-dim-green'}">
     <!-- Header -->
     <div class="flex justify-between items-center py-3 px-4
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'border-b border-chat-border dark:border-chat-border-dark'
         : 'border-b border-term-dim-green'}">
       <div class="flex items-center gap-2.5">
         <h3 class="m-0 text-sm font-semibold
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}"
         >{$_t('Scheduled Tasks')}</h3>
         <!-- Feature 015 (T052): Session capacity badge -->
         <button
           class="flex items-center gap-1 py-0.5 px-2 rounded-xl cursor-pointer transition-all duration-200 text-sm
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
               : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.2)] hover:text-term-bright-green'}
             {sessionCount >= maxSessions
-              ? (currentTheme === 'chatgpt'
+              ? (currentTheme === 'modern'
                 ? '!bg-amber-500/10 !border-amber-500 !text-amber-500 dark:!bg-amber-400/10 dark:!border-amber-400 dark:!text-amber-400'
                 : '!bg-[rgba(255,255,0,0.1)] !border-term-yellow !text-term-yellow')
               : ''}"
@@ -304,7 +304,7 @@
       <div class="flex gap-2 items-center">
         <button
           class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
           on:click={handleAddTask}
@@ -317,11 +317,11 @@
         </button>
         <button
           class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}
-            {isPaused && currentTheme === 'chatgpt' ? '!text-amber-500' : ''}
-            {isPaused && currentTheme !== 'chatgpt' ? '!text-term-yellow' : ''}"
+            {isPaused && currentTheme === 'modern' ? '!text-amber-500' : ''}
+            {isPaused && currentTheme !== 'modern' ? '!text-term-yellow' : ''}"
           on:click={togglePause}
           title={isPaused ? $_t('Resume Queue') : $_t('Pause Queue')}
         >
@@ -338,7 +338,7 @@
         </button>
         <button
           class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
           on:click={onClose}
@@ -356,13 +356,13 @@
     <div class="flex-1 overflow-y-auto p-3">
       {#if isLoading}
         <div class="text-center py-6
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}"
         >{$_t('Loading...')}</div>
       {:else if totalTasks === 0}
         <div class="text-center py-6
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}">
           <p>{$_t('No scheduled tasks')}</p>
@@ -372,21 +372,21 @@
         <!-- Feature 015 (T052, T053): Session Details Panel -->
         {#if showSessionDetails}
           <div class="rounded overflow-hidden mb-3
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
               : 'bg-[rgba(0,0,0,0.6)] border border-term-dim-green'}">
             <div class="flex justify-between items-center py-2 px-2.5
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'bg-chat-bg dark:bg-chat-bg-dark border-b border-chat-border dark:border-chat-border-dark'
                 : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
               <span class="text-sm font-semibold uppercase tracking-wider
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text dark:text-chat-text-dark'
                   : 'text-term-bright-green'}"
               >{$_t('Active Sessions')}</span>
               <button
                 class="p-0.5 bg-transparent border-none cursor-pointer flex items-center
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                     : 'text-term-dim-green hover:text-term-bright-green'}"
                 on:click={() => showSessionDetails = false}
@@ -399,7 +399,7 @@
             </div>
             {#if sessions.length === 0}
               <div class="p-3 text-center text-sm
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
               >{$_t('No active sessions')}</div>
@@ -407,29 +407,29 @@
               <div class="p-2">
                 {#each sessions as session}
                   <div class="flex items-center gap-2 py-1.5 px-2 rounded mb-1 last:mb-0
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'bg-chat-bg dark:bg-chat-bg-dark' + (session.type === 'primary' ? ' !bg-[rgba(16,163,127,0.1)] border border-[rgba(16,163,127,0.3)]' : '')
                       : 'bg-[rgba(0,0,0,0.3)]' + (session.type === 'primary' ? ' !bg-[rgba(0,255,255,0.1)] border border-[rgba(0,255,255,0.3)]' : '')}">
                     <span class="flex items-center justify-center w-5 h-5 text-sm font-bold rounded
-                      {currentTheme === 'chatgpt'
+                      {currentTheme === 'modern'
                         ? 'bg-chat-button dark:bg-chat-button-dark text-white' + (session.type === 'primary' ? '' : '')
                         : 'bg-term-dim-green text-black' + (session.type === 'primary' ? ' !bg-[#00ffff]' : '')}"
                     >{session.sessionLetter.toUpperCase()}</span>
                     <div class="flex-1 flex flex-col gap-0.5">
                       <span class="text-sm
-                        {currentTheme === 'chatgpt'
+                        {currentTheme === 'modern'
                           ? 'text-chat-text dark:text-chat-text-dark'
                           : 'text-term-bright-green'}"
                       >{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Task')}</span>
                       <span class="text-sm capitalize
-                        {currentTheme === 'chatgpt'
+                        {currentTheme === 'modern'
                           ? (session.state === 'active' ? 'text-chat-button dark:text-chat-button-dark' : session.state === 'initializing' ? 'text-amber-500' : 'text-chat-text-muted dark:text-chat-text-muted-dark')
                           : (session.state === 'active' ? 'text-term-bright-green' : session.state === 'initializing' ? 'text-term-yellow' : 'text-term-dim-green')}"
                       >{session.state}</span>
                     </div>
                     {#if session.scheduledTaskId}
                       <span class="flex items-center
-                        {currentTheme === 'chatgpt'
+                        {currentTheme === 'modern'
                           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                           : 'text-term-dim-green'}"
                         title={$_t('Task ID')}
@@ -447,7 +447,7 @@
             <!-- T053: Capacity warning -->
             {#if sessionCount >= maxSessions}
               <div class="flex items-center gap-1.5 py-2 px-2.5 text-sm
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'bg-[rgba(245,158,11,0.1)] border-t border-amber-500 text-amber-500'
                   : 'bg-[rgba(255,255,0,0.1)] border-t border-term-yellow text-term-yellow'}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -464,7 +464,7 @@
         <!-- T057: Session Error Notification -->
         {#if lastSessionError}
           <div class="flex items-center gap-2 py-2 px-3 my-2 rounded text-sm animate-slide-in
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-[rgba(239,68,68,0.1)] border border-red-500 text-red-500'
               : 'bg-[rgba(255,100,100,0.15)] border border-term-red text-term-red'}"
             role="alert"
@@ -491,7 +491,7 @@
         <!-- Paused Warning -->
         {#if isPaused}
           <div class="flex items-center gap-2 py-2 px-3 rounded text-sm mb-3
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-[rgba(245,158,11,0.1)] border border-amber-500 text-amber-500'
               : 'bg-[rgba(255,255,0,0.1)] border border-term-yellow text-term-yellow'}">
             <span class="flex items-center">
@@ -507,7 +507,7 @@
         <!-- T042: Offline Warning -->
         {#if isOffline}
           <div class="flex items-center gap-2 py-2 px-3 rounded text-sm mb-3
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-[rgba(239,68,68,0.1)] border border-red-500 text-red-500'
               : 'bg-[rgba(255,100,100,0.1)] border border-term-red text-term-red'}">
             <span class="flex items-center">
@@ -528,21 +528,21 @@
         <!-- Task Details Panel (T019) -->
         {#if expandedTaskId && expandedTaskDetails}
           <div class="rounded overflow-hidden
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
               : 'bg-[rgba(0,0,0,0.6)] border border-term-dim-green'}">
             <div class="flex justify-between items-center py-2 px-3
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'bg-chat-bg dark:bg-chat-bg-dark border-b border-chat-border dark:border-chat-border-dark'
                 : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
               <h4 class="m-0 text-sm font-semibold
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text dark:text-chat-text-dark'
                   : 'text-term-bright-green'}"
               >{$_t('Task Details')}</h4>
               <button
                 class="p-0.5 bg-transparent border-none cursor-pointer flex items-center
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                     : 'text-term-dim-green hover:text-term-bright-green'}"
                 on:click={closeDetails}
@@ -557,12 +557,12 @@
             <div class="p-3">
               <div class="flex gap-2 mb-2 text-sm">
                 <span class="shrink-0
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                     : 'text-term-dim-green'}"
                 >{$_t('Status')}:</span>
                 <span class="break-words
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text dark:text-chat-text-dark'
                     : (expandedTaskDetails.status === 'running' ? 'text-term-bright-green'
                       : expandedTaskDetails.status === 'completed' ? 'text-[#00ffff]'
@@ -573,12 +573,12 @@
               </div>
               <div class="flex gap-2 mb-2 text-sm">
                 <span class="shrink-0
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                     : 'text-term-dim-green'}"
                 >{$_t('Created')}:</span>
                 <span class="break-words
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text dark:text-chat-text-dark'
                     : 'text-term-bright-green'}"
                 >{new Date(expandedTaskDetails.createdAt).toLocaleString()}</span>
@@ -586,12 +586,12 @@
               {#if expandedTaskDetails.scheduledTime}
                 <div class="flex gap-2 mb-2 text-sm">
                   <span class="shrink-0
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                       : 'text-term-dim-green'}"
                   >{$_t('Scheduled')}:</span>
                   <span class="break-words
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-text dark:text-chat-text-dark'
                       : 'text-term-bright-green'}"
                   >{new Date(expandedTaskDetails.scheduledTime).toLocaleString()}</span>
@@ -600,64 +600,64 @@
               {#if expandedTaskDetails.completedAt}
                 <div class="flex gap-2 mb-2 text-sm">
                   <span class="shrink-0
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                       : 'text-term-dim-green'}"
                   >{$_t('Completed')}:</span>
                   <span class="break-words
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-text dark:text-chat-text-dark'
                       : 'text-term-bright-green'}"
                   >{new Date(expandedTaskDetails.completedAt).toLocaleString()}</span>
                 </div>
               {/if}
               <div class="mt-3 pt-3 border-t border-dashed
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'border-chat-border dark:border-chat-border-dark'
                   : 'border-[rgba(0,255,0,0.2)]'}">
                 <span class="shrink-0 text-sm
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                     : 'text-term-dim-green'}"
                 >{$_t('Full Input')}:</span>
                 <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
                     : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
                 >{expandedTaskDetails.input}</pre>
               </div>
               {#if expandedTaskDetails.error}
                 <div class="mt-3 pt-3 border-t border-dashed
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'border-chat-border dark:border-chat-border-dark'
                     : 'border-[rgba(0,255,0,0.2)]'}">
                   <span class="shrink-0 text-sm
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-error dark:text-chat-error-dark'
                       : 'text-term-red'}">{$_t('Error')}:</span>
                   <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'bg-chat-error/5 dark:bg-chat-error-dark/10 text-chat-error dark:text-chat-error-dark border border-chat-error/20 dark:border-chat-error-dark/20'
                       : 'bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]'}">{expandedTaskDetails.error}</pre>
                 </div>
               {/if}
               {#if expandedTaskDetails.result}
                 <div class="mt-3 pt-3 border-t border-dashed
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'border-chat-border dark:border-chat-border-dark'
                     : 'border-[rgba(0,255,0,0.2)]'}">
                   <span class="shrink-0 text-sm
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                       : 'text-term-dim-green'}"
                   >{$_t('Result Summary')}:</span>
                   <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
                       : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
                   >{expandedTaskDetails.result.summary}</pre>
                   <div class="flex gap-4 mt-2 text-sm
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                       : 'text-term-dim-green'}">
                     <span>{$_t('Tokens')}: {expandedTaskDetails.result.tokenUsage.totalTokens}</span>
@@ -668,7 +668,7 @@
               {#if expandedTaskDetails.sessionId && (expandedTaskDetails.status === 'completed' || expandedTaskDetails.status === 'failed')}
                 <button
                   class="flex items-center justify-center gap-1.5 w-full mt-3 py-2 rounded cursor-pointer text-sm transition-all duration-200
-                    {currentTheme === 'chatgpt'
+                    {currentTheme === 'modern'
                       ? 'bg-chat-button dark:bg-chat-button-dark border-none text-white hover:opacity-90'
                       : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
                   on:click={() => navigateToSession(expandedTaskDetails.sessionId)}
@@ -683,7 +683,7 @@
           </div>
         {:else if isLoadingDetails}
           <div class="text-center py-6 text-sm
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green'}"
           >{$_t('Loading details...')}</div>
@@ -692,7 +692,7 @@
           {#if runningTask}
             <div class="mb-4">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
               >{$_t('Running')}</h4>
@@ -709,7 +709,7 @@
           {#if missedTasks.length > 0}
             <div class="mb-4">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-amber-500'
                   : 'text-term-yellow'}"
               >{$_t('Missed')} ({missedTasks.length})</h4>
@@ -728,7 +728,7 @@
           {#if queuedTasks.length > 0}
             <div class="mb-4">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
               >{$_t('Queued')} ({queuedTasks.length})</h4>
@@ -747,7 +747,7 @@
           {#if scheduledTasks.length > 0}
             <div class="mb-4 last:mb-0">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
               >{$_t('Upcoming')} ({scheduledTasks.length})</h4>
@@ -766,7 +766,7 @@
         <!-- View History Link -->
         <button
           class="flex items-center justify-center gap-1.5 w-full mt-3 py-2 bg-transparent rounded cursor-pointer text-sm transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'border border-dashed border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:border-solid'
               : 'border border-dashed border-term-dim-green text-term-dim-green hover:bg-[rgba(0,255,0,0.05)] hover:border-solid hover:text-term-bright-green'}"
           on:click={() => showArchivedView = true}

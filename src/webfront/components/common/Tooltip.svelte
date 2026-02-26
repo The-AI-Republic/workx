@@ -35,7 +35,7 @@
     currentTheme = theme;
     if (tippyInstance) {
       tippyInstance.setProps({
-        theme: theme === 'chatgpt' ? 'chatgpt' : 'terminal',
+        theme: theme === 'modern' ? 'modern' : 'terminal',
       });
     }
   });
@@ -54,7 +54,7 @@
         trigger,
         hideOnClick,
         zIndex,
-        theme: currentTheme === 'chatgpt' ? 'chatgpt' : 'terminal',
+        theme: currentTheme === 'modern' ? 'modern' : 'terminal',
         // Append to body to escape overflow constraints
         appendTo: () => document.body,
         ...(fixedPosition ? {
@@ -156,8 +156,8 @@
     border-right-color: #00cc00;
   }
 
-  /* ChatGPT theme for Tippy */
-  :global(.tippy-box[data-theme~='chatgpt']) {
+  /* Modern Chat theme for Tippy */
+  :global(.tippy-box[data-theme~='modern']) {
     background-color: #0d0d0d;
     border: none;
     border-radius: 0.375rem;
@@ -167,27 +167,27 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
-  :global(.tippy-box[data-theme~='chatgpt'] > .tippy-content) {
+  :global(.tippy-box[data-theme~='modern'] > .tippy-content) {
     padding: 6px 10px;
   }
 
-  :global(.tippy-box[data-theme~='chatgpt'] > .tippy-arrow::before) {
+  :global(.tippy-box[data-theme~='modern'] > .tippy-arrow::before) {
     color: #0d0d0d;
   }
 
-  :global(.tippy-box[data-theme~='chatgpt'][data-placement^='top'] > .tippy-arrow::before) {
+  :global(.tippy-box[data-theme~='modern'][data-placement^='top'] > .tippy-arrow::before) {
     border-top-color: #0d0d0d;
   }
 
-  :global(.tippy-box[data-theme~='chatgpt'][data-placement^='bottom'] > .tippy-arrow::before) {
+  :global(.tippy-box[data-theme~='modern'][data-placement^='bottom'] > .tippy-arrow::before) {
     border-bottom-color: #0d0d0d;
   }
 
-  :global(.tippy-box[data-theme~='chatgpt'][data-placement^='left'] > .tippy-arrow::before) {
+  :global(.tippy-box[data-theme~='modern'][data-placement^='left'] > .tippy-arrow::before) {
     border-left-color: #0d0d0d;
   }
 
-  :global(.tippy-box[data-theme~='chatgpt'][data-placement^='right'] > .tippy-arrow::before) {
+  :global(.tippy-box[data-theme~='modern'][data-placement^='right'] > .tippy-arrow::before) {
     border-right-color: #0d0d0d;
   }
 </style>

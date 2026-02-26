@@ -161,23 +161,23 @@
     aria-labelledby="schedule-modal-title"
   >
     <div class="w-[90%] max-w-[400px] max-h-[90vh] overflow-hidden flex flex-col rounded-lg animate-slide-in
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'bg-chat-bg dark:bg-chat-bg-dark border-none shadow-[0_4px_24px_rgba(0,0,0,0.2)] rounded-xl'
         : 'bg-[#0a0a0a] border border-term-dim-green'}">
       <!-- Header -->
       <div class="flex justify-between items-center p-4
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'border-b border-chat-border dark:border-chat-border-dark'
           : 'border-b border-term-dim-green'}">
         <h2 id="schedule-modal-title" class="m-0 text-base font-semibold
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}">
           {$_t('Schedule A New Task')}
         </h2>
         <button
           class="bg-transparent border-none cursor-pointer p-1 flex items-center rounded transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
           on:click={handleClose}
@@ -194,18 +194,18 @@
       <div class="p-4 overflow-y-auto flex-1">
         <!-- Task Input/Preview -->
         <div class="mb-4 p-3 rounded
-          {currentTheme === 'chatgpt'
+          {currentTheme === 'modern'
             ? 'bg-chat-code-bg dark:bg-chat-code-bg-dark border border-chat-border dark:border-chat-border-dark'
             : 'bg-[rgba(0,255,0,0.05)] border border-[rgba(0,255,0,0.2)]'}">
           <span class="text-sm uppercase tracking-wider
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green'}"
           >{$_t('Task')}:</span>
           {#if isEditable}
             <textarea
               class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:border-chat-primary dark:focus:border-chat-primary-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
                   : 'bg-[rgba(0,0,0,0.5)] border border-term-dim-green text-term-bright-green font-terminal focus:border-term-bright-green placeholder:text-term-dim-green/60'}"
               bind:value={editableInput}
@@ -214,7 +214,7 @@
             ></textarea>
           {:else}
             <p class="mt-1 mb-0 text-sm leading-relaxed break-words
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'text-chat-text dark:text-chat-text-dark font-chat'
                 : 'text-term-bright-green font-terminal'}"
             >{input.slice(0, 100)}{input.length > 100 ? '...' : ''}</p>
@@ -224,7 +224,7 @@
         <!-- Quick Schedule Buttons -->
         <div class="mb-4">
           <span class="block text-sm mb-2
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green'}"
           >{$_t('Quick Schedule')}:</span>
@@ -232,7 +232,7 @@
             {#each [{ min: 5, label: '5m' }, { min: 15, label: '15m' }, { min: 30, label: '30m' }, { min: 60, label: '1h' }, { min: 180, label: '3h' }, { min: 1440, label: '24h' }] as btn}
               <button
                 class="py-1.5 px-3 text-sm bg-transparent rounded cursor-pointer transition-all duration-200
-                  {currentTheme === 'chatgpt'
+                  {currentTheme === 'modern'
                     ? 'bg-chat-code-bg dark:bg-chat-code-bg-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
                     : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-bright-green'}"
                 on:click={() => scheduleIn(btn.min)}
@@ -245,7 +245,7 @@
         <div class="flex gap-3 mb-4">
           <div class="flex-1">
             <label for="schedule-date" class="block text-sm mb-1
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                 : 'text-term-dim-green'}"
             >{$_t('Date')}</label>
@@ -253,7 +253,7 @@
               id="schedule-date"
               type="date"
               class="w-full py-2 px-3 text-sm rounded picker-input
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark picker-light'
                   : 'bg-black border border-term-dim-green text-term-bright-green font-terminal focus:outline-none focus:border-term-bright-green picker-green'}"
               bind:value={selectedDate}
@@ -262,7 +262,7 @@
           </div>
           <div class="flex-1">
             <label for="schedule-time" class="block text-sm mb-1
-              {currentTheme === 'chatgpt'
+              {currentTheme === 'modern'
                 ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                 : 'text-term-dim-green'}"
             >{$_t('Time')}</label>
@@ -270,7 +270,7 @@
               id="schedule-time"
               type="time"
               class="w-full py-2 px-3 text-sm rounded picker-input
-                {currentTheme === 'chatgpt'
+                {currentTheme === 'modern'
                   ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark picker-light'
                   : 'bg-black border border-term-dim-green text-term-bright-green font-terminal focus:outline-none focus:border-term-bright-green picker-green'}"
               bind:value={selectedTime}
@@ -281,17 +281,17 @@
         <!-- Schedule Preview -->
         {#if selectedDate && selectedTime}
           <div class="flex items-center gap-2 p-3 rounded mb-3
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-[rgba(96,165,250,0.1)]'
               : 'bg-[rgba(0,255,0,0.1)]'}">
-            <span class="flex {currentTheme === 'chatgpt' ? 'text-blue-400' : 'text-term-dim-green'}">
+            <span class="flex {currentTheme === 'modern' ? 'text-blue-400' : 'text-term-dim-green'}">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
             </span>
-            <span class="text-sm {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-bright-green font-terminal'}">{getScheduledDateDisplay()}</span>
-            <span class="text-sm {currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
+            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-bright-green font-terminal'}">{getScheduledDateDisplay()}</span>
+            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
           </div>
         {/if}
 
@@ -303,12 +303,12 @@
 
       <!-- Footer -->
       <div class="flex justify-end gap-3 p-4
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'border-t border-chat-border dark:border-chat-border-dark'
           : 'border-t border-term-dim-green'}">
         <button
           class="py-2.5 px-5 text-sm rounded cursor-pointer transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
           on:click={handleClose}
@@ -317,7 +317,7 @@
         </button>
         <button
           class="py-2.5 px-5 text-sm rounded cursor-pointer font-semibold transition-all duration-200
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-white dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
               : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-bright-green hover:border-term-bright-green'}"
           on:click={validateAndSchedule}
@@ -354,15 +354,13 @@
     cursor: pointer;
   }
 
-  /* Normal filter for chatgpt theme */
+  /* Normal filter for modern theme */
   .picker-light::-webkit-calendar-picker-indicator {
     filter: none;
     cursor: pointer;
   }
 
-  @media (prefers-color-scheme: dark) {
-    .picker-light::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-    }
+  :global(.dark) .picker-light::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 </style>

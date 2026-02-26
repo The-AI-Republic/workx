@@ -52,11 +52,11 @@
   <Tooltip content={$_t("Scheduled Tasks")}>
     <button
       class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:!transform-none'
           : 'bg-black border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}
-        {taskCount > 0 && currentTheme !== 'chatgpt' ? 'border-term-bright-green text-term-bright-green' : ''}
-        {taskCount > 0 && currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
+        {taskCount > 0 && currentTheme !== 'modern' ? 'border-term-bright-green text-term-bright-green' : ''}
+        {taskCount > 0 && currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
         {hasRunningTask ? 'animate-pulse' : ''}"
       on:click={handleClick}
       aria-label={$_t("Scheduled Tasks")}
@@ -70,11 +70,11 @@
       {#if taskCount > 0}
         <span
           class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-sm font-semibold leading-4 text-center rounded-full
-            {currentTheme === 'chatgpt'
+            {currentTheme === 'modern'
               ? 'bg-chat-primary dark:bg-chat-primary-dark text-white'
               : 'bg-term-dim-green text-black'}
-            {hasRunningTask && currentTheme === 'chatgpt' ? '!bg-emerald-500' : ''}
-            {hasRunningTask && currentTheme !== 'chatgpt' ? '!bg-term-bright-green animate-badge-pulse' : ''}"
+            {hasRunningTask && currentTheme === 'modern' ? '!bg-emerald-500' : ''}
+            {hasRunningTask && currentTheme !== 'modern' ? '!bg-term-bright-green animate-badge-pulse' : ''}"
         >
           {taskCount > 99 ? '99+' : taskCount}
         </span>

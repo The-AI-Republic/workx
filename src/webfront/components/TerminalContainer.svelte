@@ -6,7 +6,7 @@
 
 <div
   class="terminal-container {theme} flex flex-col h-screen overflow-hidden
-    {theme === 'chatgpt'
+    {theme === 'modern'
       ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
       : 'font-terminal bg-term-bg text-term-green'}"
   role="log"

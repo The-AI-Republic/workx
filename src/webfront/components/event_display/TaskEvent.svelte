@@ -26,7 +26,7 @@
 {#if !shouldHideCard}
   <div class="task-event {currentTheme}">
     <div class="text-sm
-      {currentTheme === 'chatgpt'
+      {currentTheme === 'modern'
         ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
         : 'text-term-green'}">
       {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
@@ -34,7 +34,7 @@
 
     {#if event.metadata}
       <div class="text-sm mt-1
-        {currentTheme === 'chatgpt'
+        {currentTheme === 'modern'
           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
           : 'text-gray-500'}">
         {#if event.metadata.model}
