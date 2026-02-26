@@ -21,6 +21,10 @@
     push('/settings');
   }
 
+  function handleOpenSkills() {
+    push('/skills');
+  }
+
   // function handleSchedulerClick() {
   //   showSchedulerPopup = !showSchedulerPopup;
   // }
@@ -39,6 +43,22 @@
 
   <!-- Approval Mode Indicator -->
   <ApprovalModeIndicator />
+
+  <!-- Skills Button -->
+  <Tooltip content={$_t("Skills")}>
+    <button
+      class="function-button"
+      on:click={handleOpenSkills}
+      aria-label={$_t("Skills")}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        <line x1="9" y1="7" x2="17" y2="7"></line>
+        <line x1="9" y1="11" x2="15" y2="11"></line>
+      </svg>
+    </button>
+  </Tooltip>
 
   <!-- Spacer to push other buttons to the right -->
   <div class="flex-grow"></div>

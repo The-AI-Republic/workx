@@ -8,6 +8,7 @@ mod keychain_commands;
 mod mcp_manager;
 mod oauth_server;
 mod sandbox;
+mod skills_commands;
 mod storage_commands;
 mod terminal_commands;
 
@@ -358,6 +359,12 @@ fn main() {
             keychain_commands::keychain_list_accounts,
             // OAuth callback server
             oauth_server::start_oauth_callback_server,
+            // Skills filesystem commands
+            skills_commands::skills_ensure_dir,
+            skills_commands::skills_list_dirs,
+            skills_commands::skills_read_file,
+            skills_commands::skills_write_file,
+            skills_commands::skills_remove_dir,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

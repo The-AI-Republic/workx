@@ -36,6 +36,13 @@ import type {
   A2AManagerEvent,
 } from '../../core/a2a/types';
 
+// Skills imports
+import { SkillRegistry } from '../../core/skills';
+import { IndexedDBSkillProvider } from '../../extension/storage/IndexedDBSkillProvider';
+import { IndexedDBStorageProvider } from '../../extension/storage/IndexedDBStorageProvider';
+import type { Skill, InvocationMode } from '../../core/skills/types';
+import { registerPromptExtension } from '../../core/PromptLoader';
+
 // Task Scheduler imports
 import { Scheduler, SchedulerStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
@@ -83,6 +90,7 @@ let scheduler: Scheduler | null = null; // Task scheduler
 let schedulerStorage: SchedulerStorage | null = null;
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
+let skillRegistry: SkillRegistry | null = null; // Agent skills
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -172,6 +180,12 @@ async function doInitialize(): Promise<void> {
 
   // Setup A2A message handlers
   setupA2AMessageHandlers();
+
+  // Initialize Skills
+  await initializeSkills();
+
+  // Setup Skills message handlers
+  setupSkillsMessageHandlers();
 
   // Initialize Task Scheduler
   await initializeScheduler();
@@ -1406,6 +1420,106 @@ function setupA2AMessageHandlers(): void {
   });
 
   console.log('[ServiceWorker] A2A message handlers registered');
+}
+
+// ── Skills ────────────────────────────────────────────────────────────────
+
+/**
+ * Initialize Skills subsystem
+ */
+async function initializeSkills(): Promise<void> {
+  try {
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+
+    const skillProvider = new IndexedDBSkillProvider(storageProvider);
+    skillRegistry = new SkillRegistry(skillProvider);
+    await skillRegistry.discover();
+
+    // Register dynamic prompt extension for auto-invocable skills
+    registerPromptExtension(() => skillRegistry?.buildSkillsSystemPrompt() ?? '');
+
+    console.log('[ServiceWorker] Skills initialized');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize skills:', error);
+    // Non-fatal — skills are optional
+  }
+}
+
+/**
+ * Setup Skills message handlers
+ */
+function setupSkillsMessageHandlers(): void {
+  if (!router || !skillRegistry) return;
+
+  // List all skill metadata
+  router.on(MessageType.SKILLS_LIST, async () => {
+    return skillRegistry!.getSkillMetas();
+  });
+
+  // Load full skill content (with optional argument substitution)
+  router.on(MessageType.SKILLS_LOAD, async (message) => {
+    const { name, args } = message.payload as { name: string; args?: string };
+    return skillRegistry!.invoke(name, args ? args.split(/\s+/) : []);
+  });
+
+  // Save a skill (create or update)
+  router.on(MessageType.SKILLS_SAVE, async (message) => {
+    const skill = message.payload as Skill;
+    await skillRegistry!.save(skill);
+    return { success: true };
+  });
+
+  // Delete a skill
+  router.on(MessageType.SKILLS_DELETE, async (message) => {
+    const { name } = message.payload as { name: string };
+    await skillRegistry!.delete(name);
+    return { success: true };
+  });
+
+  // Update invocation mode
+  router.on(MessageType.SKILLS_UPDATE_MODE, async (message) => {
+    const { name, mode } = message.payload as { name: string; mode: InvocationMode };
+    await skillRegistry!.updateInvocationMode(name, mode);
+    return { success: true };
+  });
+
+  // Import skill from URL
+  router.on(MessageType.SKILLS_IMPORT, async (message) => {
+    const { url } = message.payload as { url: string };
+
+    // Validate URL scheme at the platform boundary
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Only HTTP/HTTPS URLs are supported for skill import');
+    }
+
+    // Fetch is a transport concern — handled here, not in core SkillRegistry
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch skill from ${url}: ${response.statusText}`);
+    }
+    const content = await response.text();
+
+    const skill = await skillRegistry!.importFromContent(content, url);
+    return { success: true, skill };
+  });
+
+  // Export skill as SKILL.md
+  router.on(MessageType.SKILLS_EXPORT, async (message) => {
+    const { name } = message.payload as { name: string };
+    const content = await skillRegistry!.export(name);
+    return { success: true, content };
+  });
+
+  // Trust an imported skill
+  router.on(MessageType.SKILLS_TRUST, async (message) => {
+    const { name } = message.payload as { name: string };
+    await skillRegistry!.trustSkill(name);
+    return { success: true };
+  });
+
+  console.log('[ServiceWorker] Skills message handlers registered');
 }
 
 /**
