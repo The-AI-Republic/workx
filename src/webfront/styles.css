@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Terminal Colors (Fixed — no dark variants) */
   --color-term-bg: #000000;
   --color-term-green: #00ff00;
   --color-term-yellow: #ffff00;
@@ -8,9 +9,155 @@
   --color-term-bright-green: #33ff00;
   --color-term-dim-green: #00cc00;
   --color-term-blue: #60a5fa;
+
+  /* Terminal Font */
   --font-terminal: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+
+  /* Chat Font */
+  --font-chat: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* BrowserX Semantic Colors — Light */
+  --color-bx-primary: #4f46e5;
+  --color-bx-secondary: #6366f1;
+  --color-bx-bg: #ffffff;
+  --color-bx-surface: #f9fafb;
+  --color-bx-text: #111827;
+  --color-bx-text-secondary: #6b7280;
+  --color-bx-border: #e5e7eb;
+  --color-bx-error: #ef4444;
+  --color-bx-success: #10b981;
+  --color-bx-warning: #f59e0b;
+
+  /* BrowserX Semantic Colors — Dark */
+  --color-bx-primary-dark: #6366f1;
+  --color-bx-secondary-dark: #818cf8;
+  --color-bx-bg-dark: #111827;
+  --color-bx-surface-dark: #1f2937;
+  --color-bx-text-dark: #f9fafb;
+  --color-bx-text-secondary-dark: #9ca3af;
+  --color-bx-border-dark: #374151;
+  --color-bx-error-dark: #f87171;
+  --color-bx-success-dark: #34d399;
+  --color-bx-warning-dark: #fbbf24;
+
+  /* ChatGPT Theme Colors — Light */
+  --color-chat-bg: #ffffff;
+  --color-chat-surface: #f7f7f8;
+  --color-chat-header: #ffffff;
+  --color-chat-text: #0d0d0d;
+  --color-chat-text-secondary: #6e6e80;
+  --color-chat-text-muted: #8e8ea0;
+  --color-chat-border: #e5e5e5;
+  --color-chat-input: #f4f4f4;
+  --color-chat-input-border: #e5e5e5;
+  --color-chat-input-focus: #60a5fa;
+  --color-chat-agent-bg: #f7f7f8;
+  --color-chat-code-bg: #f7f7f8;
+  --color-chat-primary: #60a5fa;
+  --color-chat-error: #ef4444;
+  --color-chat-card: #ffffff;
+  --color-chat-card-border: #e5e5e5;
+  --color-chat-card-hover: #f7f7f8;
+  --color-chat-badge: #f4f4f4;
+  --color-chat-button: #10a37f;
+  --color-chat-button-hover: #ececec;
+  --color-chat-tooltip: #0d0d0d;
+  --color-chat-tooltip-text: #ffffff;
+  --color-chat-send: #0d0d0d;
+  --color-chat-send-text: #ffffff;
+  --color-chat-send-hover: #2d2d2d;
+  --color-chat-send-disabled: #e5e5e5;
+  --color-chat-stop: #ef4444;
+  --color-chat-stop-hover: #dc2626;
+  --color-chat-status-running: #60a5fa;
+  --color-chat-status-success: #10b981;
+  --color-chat-status-error: #ef4444;
+  --color-chat-status-warning: #f59e0b;
+  --color-chat-avatar-user: #5436da;
+  --color-chat-avatar-agent: #60a5fa;
+
+  /* ChatGPT Theme Colors — Dark */
+  --color-chat-bg-dark: #212121;
+  --color-chat-surface-dark: #2f2f2f;
+  --color-chat-header-dark: #212121;
+  --color-chat-text-dark: #ececec;
+  --color-chat-text-secondary-dark: #b4b4b4;
+  --color-chat-text-muted-dark: #8e8ea0;
+  --color-chat-border-dark: #3e3e3e;
+  --color-chat-input-dark: #2f2f2f;
+  --color-chat-input-border-dark: #3e3e3e;
+  --color-chat-input-focus-dark: #60a5fa;
+  --color-chat-agent-bg-dark: #2f2f2f;
+  --color-chat-code-bg-dark: #2f2f2f;
+  --color-chat-primary-dark: #60a5fa;
+  --color-chat-error-dark: #f87171;
+  --color-chat-card-dark: #2f2f2f;
+  --color-chat-card-border-dark: #3e3e3e;
+  --color-chat-card-hover-dark: #3a3a3a;
+  --color-chat-badge-dark: #3e3e3e;
+  --color-chat-button-dark: #10a37f;
+  --color-chat-button-hover-dark: #3e3e3e;
+  --color-chat-tooltip-dark: #0d0d0d;
+  --color-chat-tooltip-text-dark: #ffffff;
+  --color-chat-send-dark: #ececec;
+  --color-chat-send-text-dark: #212121;
+  --color-chat-send-hover-dark: #d9d9d9;
+  --color-chat-send-disabled-dark: #3e3e3e;
+  --color-chat-stop-dark: #ef4444;
+  --color-chat-stop-hover-dark: #dc2626;
+  --color-chat-status-running-dark: #60a5fa;
+  --color-chat-status-success-dark: #34d399;
+  --color-chat-status-error-dark: #f87171;
+  --color-chat-status-warning-dark: #fbbf24;
+  --color-chat-avatar-user-dark: #7c3aed;
+  --color-chat-avatar-agent-dark: #60a5fa;
 }
 
+/* Global styles (merged from sidepanel.css) */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #000000;
+  color: #00ff00;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body.terminal-mode {
+  font-family: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+  background: #000000;
+  color: #00ff00;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bx-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-bx-text-secondary);
+}
+
+/* Terminal component styles */
 .terminal-container {
   background-color: var(--color-term-bg);
   color: var(--color-term-green);
@@ -45,30 +192,4 @@
 
 .terminal-input::placeholder {
   color: var(--color-term-dim-green);
-}
-
-/* Removed duplicate arrow - now handled inline in MessageInput.svelte */
-
-.text-term-green {
-  color: var(--color-term-green);
-}
-
-.text-term-yellow {
-  color: var(--color-term-yellow);
-}
-
-.text-term-red {
-  color: var(--color-term-red);
-}
-
-.text-term-bright-green {
-  color: var(--color-term-bright-green);
-}
-
-.text-term-dim-green {
-  color: var(--color-term-dim-green);
-}
-
-.text-term-blue {
-  color: var(--color-term-blue);
 }
