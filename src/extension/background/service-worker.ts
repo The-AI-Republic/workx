@@ -1740,7 +1740,24 @@ function setupPeriodicTasks(): void {
         if (session?.agent) {
           const event = await session.agent.getNextEvent();
           if (event) {
-            await router.broadcast(MessageType.EVENT, { ...event, sessionId: sessionMeta.sessionId });
+            const payload = { ...event, sessionId: sessionMeta.sessionId };
+            // Send to sidepanel via chrome.runtime.sendMessage (sidepanel listens on
+            // chrome.runtime.onMessage, NOT chrome.tabs.sendMessage which broadcast uses)
+            try {
+              const promise = chrome.runtime.sendMessage({
+                type: MessageType.EVENT,
+                payload,
+                source: 'background',
+                timestamp: Date.now(),
+              });
+              if (promise && typeof promise.catch === 'function') {
+                promise.catch(() => { /* No sidepanel listeners */ });
+              }
+            } catch {
+              // Ignore if no listeners
+            }
+            // Also broadcast to content scripts in tabs
+            await router.broadcast(MessageType.EVENT, payload);
           }
         }
       }
@@ -1748,6 +1765,19 @@ function setupPeriodicTasks(): void {
       // Legacy fallback
       const event = await agent.getNextEvent();
       if (event) {
+        try {
+          const promise = chrome.runtime.sendMessage({
+            type: MessageType.EVENT,
+            payload: event,
+            source: 'background',
+            timestamp: Date.now(),
+          });
+          if (promise && typeof promise.catch === 'function') {
+            promise.catch(() => { /* No sidepanel listeners */ });
+          }
+        } catch {
+          // Ignore if no listeners
+        }
         await router.broadcast(MessageType.EVENT, event);
       }
     }

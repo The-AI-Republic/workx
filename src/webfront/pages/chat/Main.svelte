@@ -156,12 +156,15 @@
         })
       );
 
-      // Listen for state updates
+      // Listen for state updates (only apply if for the active session)
       unsubscribers.push(
         service.on(MessageType.STATE_UPDATE, (payload) => {
-          const state = payload as { tabId?: number };
+          const state = payload as { tabId?: number; sessionId?: string };
+          // Only update if this is for the active session or has no sessionId (backward compat)
           if (state && 'tabId' in state) {
-            currentTabId = state.tabId!;
+            if (!state.sessionId || state.sessionId === activeSessionId) {
+              currentTabId = state.tabId!;
+            }
           }
         })
       );
@@ -179,12 +182,15 @@
       // Handle agent re-initialization (e.g., when model is changed)
       unsubscribers.push(
         service.on(MessageType.AGENT_REINITIALIZED, () => {
-          // Clear all messages and events for fresh start with new agent
+          // Clear active chat state
           messages = [];
           processedEvents = [];
           isProcessing = false;
           eventProcessor.reset();
-          
+
+          // Also clear all background chat states (model change affects all sessions)
+          chatStates.clear();
+
           // Re-check connection/auth status since agent was reinitialized
           checkConnection();
         })
