@@ -1,22 +1,58 @@
 /**
  * ChatGPT OAuth Extension Flow
  *
- * Coordinates the extension OAuth login flow:
+ * Coordinates the extension OAuth login flow using declarativeNetRequest
+ * to cleanly intercept the localhost callback and redirect to an
+ * extension-bundled success page:
+ *
  * 1. Generate PKCE challenge
  * 2. Build authorization URL
- * 3. Open auth URL in a new tab
- * 4. Monitor tab URL for the redirect callback
- * 5. Extract authorization code from redirect URL
- * 6. Close the tab
- * 7. Exchange code for tokens
+ * 3. Install declarativeNetRequest redirect rule
+ * 4. Open auth URL in a new tab
+ * 5. declarativeNetRequest intercepts localhost callback → redirects to oauth-success.html
+ * 6. oauth-success.html sends code/state to service worker via runtime.sendMessage
+ * 7. Close the tab, remove redirect rule
+ * 8. Exchange code for tokens
  *
  * @module extension/auth/ChatGPTOAuthExtensionFlow
  */
 
 import { ChatGPTOAuthService, type ChatGPTTokens } from '@/core/auth/ChatGPTOAuthService';
 
-const CALLBACK_URL_PREFIX = 'http://localhost:1455/callback';
+const OAUTH_REDIRECT_RULE_ID = 999990;
+const KEEPALIVE_ALARM_NAME = 'oauth-keepalive';
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+async function installOAuthRedirectRule(): Promise<void> {
+  const successPageUrl = chrome.runtime.getURL('oauth-success.html');
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [OAUTH_REDIRECT_RULE_ID],
+    addRules: [
+      {
+        id: OAUTH_REDIRECT_RULE_ID,
+        priority: 1,
+        action: {
+          type: chrome.declarativeNetRequest.RuleActionType.REDIRECT,
+          redirect: {
+            regexSubstitution: successPageUrl + '\\1',
+          },
+        },
+        condition: {
+          regexFilter: '^http://localhost:1455/callback(\\?.*)?$',
+          resourceTypes: [
+            chrome.declarativeNetRequest.ResourceType.MAIN_FRAME,
+          ],
+        },
+      },
+    ],
+  });
+}
+
+async function removeOAuthRedirectRule(): Promise<void> {
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [OAUTH_REDIRECT_RULE_ID],
+  });
+}
 
 export class ChatGPTOAuthExtensionFlow {
   private oauthService: ChatGPTOAuthService;
@@ -27,7 +63,7 @@ export class ChatGPTOAuthExtensionFlow {
   }
 
   /**
-   * Start the OAuth login flow via tab-based redirect.
+   * Start the OAuth login flow via declarativeNetRequest redirect.
    */
   async login(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<ChatGPTTokens> {
     if (this.isInProgress) {
@@ -36,7 +72,7 @@ export class ChatGPTOAuthExtensionFlow {
 
     this.isInProgress = true;
     let authTabId: number | undefined;
-    let tabUpdateListener: ((tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => void) | null = null;
+    let messageListener: ((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => void) | null = null;
     let tabRemovedListener: ((tabId: number, removeInfo: chrome.tabs.TabRemoveInfo) => void) | null = null;
 
     try {
@@ -49,11 +85,17 @@ export class ChatGPTOAuthExtensionFlow {
       // 3. Build authorization URL
       const authUrl = this.oauthService.buildAuthorizationUrl(state, codeChallenge);
 
-      // 4. Open auth URL in a new tab
+      // 4. Install declarativeNetRequest redirect rule
+      await installOAuthRedirectRule();
+
+      // 5. Keep service worker alive during OAuth flow
+      await chrome.alarms.create(KEEPALIVE_ALARM_NAME, { periodInMinutes: 0.4 });
+
+      // 6. Open auth URL in a new tab
       const tab = await chrome.tabs.create({ url: authUrl });
       authTabId = tab.id;
 
-      // 5. Wait for the redirect with timeout
+      // 7. Wait for the callback message from oauth-success.html
       const { code, receivedState } = await new Promise<{ code: string; receivedState: string }>(
         (resolve, reject) => {
           const timeout = setTimeout(() => {
@@ -63,9 +105,9 @@ export class ChatGPTOAuthExtensionFlow {
 
           const cleanup = () => {
             clearTimeout(timeout);
-            if (tabUpdateListener) {
-              chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-              tabUpdateListener = null;
+            if (messageListener) {
+              chrome.runtime.onMessage.removeListener(messageListener);
+              messageListener = null;
             }
             if (tabRemovedListener) {
               chrome.tabs.onRemoved.removeListener(tabRemovedListener);
@@ -73,34 +115,25 @@ export class ChatGPTOAuthExtensionFlow {
             }
           };
 
-          // Listen for tab URL changes (redirect to callback)
-          tabUpdateListener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
-            if (tabId !== authTabId || !changeInfo.url) return;
+          // Listen for the OAUTH_CALLBACK message from oauth-success.html
+          messageListener = (message: any) => {
+            if (message?.type !== 'OAUTH_CALLBACK') return;
 
-            if (changeInfo.url.startsWith(CALLBACK_URL_PREFIX)) {
-              try {
-                const url = new URL(changeInfo.url);
-                const code = url.searchParams.get('code');
-                const receivedState = url.searchParams.get('state');
+            const { code, state: receivedState } = message;
 
-                if (!code) {
-                  cleanup();
-                  reject(new Error("Missing 'code' parameter in callback"));
-                  return;
-                }
-                if (!receivedState) {
-                  cleanup();
-                  reject(new Error("Missing 'state' parameter in callback"));
-                  return;
-                }
-
-                cleanup();
-                resolve({ code, receivedState });
-              } catch (err) {
-                cleanup();
-                reject(err);
-              }
+            if (!code) {
+              cleanup();
+              reject(new Error("Missing 'code' parameter in callback"));
+              return;
             }
+            if (!receivedState) {
+              cleanup();
+              reject(new Error("Missing 'state' parameter in callback"));
+              return;
+            }
+
+            cleanup();
+            resolve({ code, receivedState });
           };
 
           // Listen for tab being closed before auth completes
@@ -112,12 +145,12 @@ export class ChatGPTOAuthExtensionFlow {
             }
           };
 
-          chrome.tabs.onUpdated.addListener(tabUpdateListener);
+          chrome.runtime.onMessage.addListener(messageListener);
           chrome.tabs.onRemoved.addListener(tabRemovedListener);
         }
       );
 
-      // 6. Close the auth tab
+      // 8. Close the auth tab
       if (authTabId !== undefined) {
         try {
           await chrome.tabs.remove(authTabId);
@@ -126,17 +159,19 @@ export class ChatGPTOAuthExtensionFlow {
         }
       }
 
-      // 7. Validate state parameter
+      // 9. Validate state parameter
       if (receivedState !== state) {
         throw new Error('OAuth state mismatch — possible CSRF attack');
       }
 
-      // 8. Exchange code for tokens
+      // 10. Exchange code for tokens
       return await this.oauthService.exchangeCodeForTokens(code, codeVerifier);
     } finally {
-      // Cleanup any remaining listeners
-      if (tabUpdateListener) {
-        chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+      // Cleanup: remove redirect rule, listeners, alarm
+      await removeOAuthRedirectRule().catch(() => {});
+      await chrome.alarms.clear(KEEPALIVE_ALARM_NAME).catch(() => {});
+      if (messageListener) {
+        chrome.runtime.onMessage.removeListener(messageListener);
       }
       if (tabRemovedListener) {
         chrome.tabs.onRemoved.removeListener(tabRemovedListener);

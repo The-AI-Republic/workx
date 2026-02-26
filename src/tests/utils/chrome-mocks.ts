@@ -31,6 +31,10 @@ export const chromeMock = {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+    onRemoved: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
   },
 
   storage: {
@@ -65,6 +69,17 @@ export const chromeMock = {
     setIcon: vi.fn().mockResolvedValue(undefined),
     setBadgeText: vi.fn().mockResolvedValue(undefined),
     setBadgeBackgroundColor: vi.fn().mockResolvedValue(undefined),
+  },
+
+  declarativeNetRequest: {
+    updateDynamicRules: vi.fn().mockResolvedValue(undefined),
+    RuleActionType: { REDIRECT: 'redirect' },
+    ResourceType: { MAIN_FRAME: 'main_frame' },
+  },
+
+  alarms: {
+    create: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(true),
   },
 
   webNavigation: {
