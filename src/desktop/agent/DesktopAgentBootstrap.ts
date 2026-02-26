@@ -16,6 +16,7 @@
 import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
+import { AgentRegistry } from '@/core/registry/AgentRegistry';
 import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -38,10 +39,12 @@ let _instance: DesktopAgentBootstrap | null = null;
  * Manages the lifecycle of the agent and channel system in desktop mode.
  */
 export class DesktopAgentBootstrap {
-  private agent: PiAgent | null = null;
+  private registry: AgentRegistry | null = null;
+  private primaryAgent: PiAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private initialized = false;
+  private currentAuthManager: AuthManager | null = null;
 
   /**
    * Initialize the desktop agent system
@@ -58,13 +61,27 @@ export class DesktopAgentBootstrap {
       // 1. Create the message router for PiAgent
       this.messageRouter = new DesktopMessageRouter('background');
 
-      // 2. Get agent config
+      // 2. Get agent config and set up AgentRegistry
       const config = await AgentConfig.getInstance();
+      const maxConcurrentSessions = config.getConfig().preferences?.maxConcurrentSessions ?? 3;
+      this.registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
+      this.registry.initialize(config, this.messageRouter as any);
 
-      // 3. Create PiAgent
-      // PiAgent expects a MessageRouter with updateState method
-      // DesktopMessageRouter provides this compatibility
-      this.agent = new PiAgent(config, this.messageRouter as any);
+      // 3. Create Primary Session
+      // This instantiates the singleton fallback agent for quick backward compatibility
+      const primarySession = await this.registry.createSession({ type: 'primary' });
+      this.primaryAgent = primarySession.agent;
+
+      // Listen for new sessions to automatically inject the current AuthManager
+      this.registry.on((sessionEvent: any) => {
+        if (sessionEvent.type === 'session:created' && this.currentAuthManager) {
+          const session = this.registry?.getSession(sessionEvent.sessionId);
+          if (session?.agent) {
+            const factory = session.agent.getModelClientFactory();
+            factory.setAuthManager(this.currentAuthManager);
+          }
+        }
+      });
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
       // This must happen first so PiAgent.configurePromptComposition() sees
@@ -79,16 +96,35 @@ export class DesktopAgentBootstrap {
       const channelManager = getChannelManager();
 
       // Set up the agent handler on ChannelManager
-      // This routes submissions from channels to the agent
+      // This routes submissions from channels to the correct session in the registry
       const agentHandler: AgentHandler = async (op: Op, context: SubmissionContext) => {
-        if (!this.agent) {
-          throw new Error(t('Agent not initialized'));
+        if (!this.registry) {
+          throw new Error(t('Agent registry not initialized'));
         }
 
-        console.log('[DesktopAgentBootstrap] Processing submission:', op.type);
+        console.log('[DesktopAgentBootstrap] Processing submission:', op.type, 'for session:', context.sessionId);
 
-        // Submit the operation to the agent
-        await this.agent.submitOperation(op, { tabId: context.tabId });
+        // Find or create the target session
+        let targetSession = null;
+        if (context.sessionId) {
+          targetSession = this.registry.getSession(context.sessionId);
+        }
+
+        // Fallback to primary session if no specific session is targeted or found
+        if (!targetSession && this.primaryAgent) {
+          targetSession = this.registry.getPrimarySession();
+        }
+
+        if (!targetSession) {
+          throw new Error(t('Target session not found'));
+        }
+
+        // Submit the operation to the target agent
+        if (targetSession.agent) {
+          await targetSession.agent.submitOperation(op, { tabId: context.tabId });
+        } else {
+          throw new Error(t('Target session agent is null'));
+        }
       };
 
       channelManager.setAgentHandler(agentHandler);
@@ -100,15 +136,14 @@ export class DesktopAgentBootstrap {
       // Wire up agent events to be dispatched through the channel
       this.setupEventForwarding(channelManager);
 
-      // 6. Initialize the agent (loads model client, tools, etc.)
-      // Event dispatcher is already set, so any warning events reach the channel.
-      await this.agent.initialize();
-      console.log('[DesktopAgentBootstrap] Agent initialized');
+      // 6. Set up a polling loop to dispatch events from all active sessions
+      // (This replicates the service-worker event broadcasting loop)
+      this.startEventPollingLoop();
 
       // 7. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
-      const { HOME_PAGE_BASE_URL } = await import('@/webfront/lib/constants');
+      const { HOME_PAGE_BASE_URL } = await import('../../webfront/lib/constants');
       const authService = getDesktopAuthService(HOME_PAGE_BASE_URL);
 
       // Listen for auth changes (implicit login via deep link)
@@ -130,6 +165,13 @@ export class DesktopAgentBootstrap {
 
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
+
+      // Also notify the UI that initialization has completed so it re-runs its health check
+      // This is crucial because the UI may have mounted and run checkConnection()
+      // BEFORE the async keychain access from restoreAuthFromKeychain() finished.
+      if (this.messageRouter) {
+        this.messageRouter.send(MessageType.AGENT_REINITIALIZED);
+      }
     } catch (error) {
       console.error('[DesktopAgentBootstrap] Initialization failed:', error);
       throw error;
@@ -139,25 +181,42 @@ export class DesktopAgentBootstrap {
   /**
    * Set up event forwarding from agent to channel
    *
-   * Uses PiAgent's setEventDispatcher to route events through
-   * ChannelManager instead of chrome.runtime.sendMessage.
+   * Uses AgentRegistry's event stream. Wait, actually AgentRegistry events are distinct
+   * from PiAgent's regular events. `AgentRegistry` events are system-level. Let's just
+   * keep this empty or hook into registry events if needed. In Desktop mode, we'll
+   * use the polling loop below (startEventPollingLoop) to extract and forward PiAgent events.
    */
   private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
-    if (!this.agent || !this.channel) {
-      console.warn('[DesktopAgentBootstrap] Cannot setup event forwarding: agent or channel not initialized');
+    if (!this.registry || !this.channel) {
+      console.warn('[DesktopAgentBootstrap] Cannot setup event forwarding: registry or channel not initialized');
       return;
     }
+  }
 
-    // Set the event dispatcher on PiAgent
-    // Events will be routed through ChannelManager to TauriChannel
-    this.agent.setEventDispatcher((event) => {
-      // Dispatch event to the Tauri channel
-      channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch((error) => {
-        console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
-      });
-    });
+  /**
+   * Set up a polling loop to extract events out of all active background
+   * sessions and dispatch them to the MessageRouter.
+   * This is equivalent to service-worker.ts's `setInterval()` loop.
+   */
+  private startEventPollingLoop(): void {
+    setInterval(async () => {
+      if (!this.messageRouter || !this.registry) return;
 
-    console.log('[DesktopAgentBootstrap] Event forwarding configured via ChannelManager');
+      for (const sessionMeta of this.registry.listSessions()) {
+        const session = this.registry.getSession(sessionMeta.sessionId);
+        if (session?.agent) {
+          const event = await session.agent.getNextEvent();
+          if (event) {
+            // Forward event using DesktopMessageRouter. This matches the extension's
+            // routing pattern by packing the sessionId directly into the payload.
+            await this.messageRouter.send(MessageType.EVENT, {
+              ...event,
+              sessionId: sessionMeta.sessionId
+            });
+          }
+        }
+      }
+    }, 100);
   }
 
   /**
@@ -166,20 +225,20 @@ export class DesktopAgentBootstrap {
    * auto-registered/unregistered when MCP servers connect/disconnect.
    */
   private async setupMCPToolRegistration(): Promise<void> {
-    if (!this.agent) {
+    if (!this.primaryAgent) { // Changed from this.agent
       return;
     }
 
     try {
-      const { MCPManager } = await import('@/core/mcp/MCPManager');
-      const { registerMCPTools, unregisterMCPTools } = await import('@/core/mcp/MCPToolAdapter');
+      const { MCPManager } = await import('../../core/mcp/MCPManager');
+      const { registerMCPTools, unregisterMCPTools } = await import('../../core/mcp/MCPToolAdapter');
       const mcpManager = await MCPManager.getInstance('desktop');
-      const registry = this.agent.getToolRegistry();
+      const registry = this.primaryAgent.getToolRegistry(); // Changed from this.agent
 
       // Track registered tools per server so we can unregister them on disconnect.
       // MCPManager clears connection.tools before emitting the event, so we
       // can't read them from the connection at unregister time.
-      const registeredToolsByServer = new Map<string, import('@/core/mcp/types').IMCPTool[]>();
+      const registeredToolsByServer = new Map<string, import('../../core/mcp/types').IMCPTool[]>();
 
       mcpManager.on('event', (event) => {
         if (event.type !== 'tools-updated') return;
@@ -243,7 +302,14 @@ export class DesktopAgentBootstrap {
    * Get the agent instance
    */
   getAgent(): PiAgent | null {
-    return this.agent;
+    return this.primaryAgent;
+  }
+
+  /**
+   * Get the active registry
+   */
+  getRegistry(): AgentRegistry | null {
+    return this.registry;
   }
 
   /**
@@ -251,8 +317,8 @@ export class DesktopAgentBootstrap {
    * Called when settings are changed in the UI
    */
   async handleConfigUpdate(): Promise<void> {
-    if (!this.agent) {
-      console.warn('[DesktopAgentBootstrap] Cannot handle config update: agent not initialized');
+    if (!this.primaryAgent) { // Changed from this.agent
+      console.warn('[DesktopAgentBootstrap] Cannot handle config update: primary agent not initialized');
       return;
     }
 
@@ -260,7 +326,7 @@ export class DesktopAgentBootstrap {
       console.log('[DesktopAgentBootstrap] Handling config update...');
 
       // Refresh the model client with new config
-      await this.agent.refreshModelClient();
+      await this.primaryAgent.refreshModelClient(); // Changed from this.agent
 
       console.log('[DesktopAgentBootstrap] Config update handled successfully');
     } catch (error) {
@@ -274,9 +340,16 @@ export class DesktopAgentBootstrap {
    * Otherwise → api_key mode (user must configure their own key).
    */
   private async restoreAuthFromKeychain(config: AgentConfig): Promise<void> {
+    if (!this.primaryAgent) {
+      console.warn('[DesktopAgentBootstrap] Cannot restore auth: primary agent not initialized');
+      return;
+    }
+
+    console.log('[DesktopAgentBootstrap] Restoring auth from keychain...');
     try {
+      // 1. Check if user is logged in
       const { getDesktopAuthService } = await import('../auth/DesktopAuthService');
-      const { HOME_PAGE_BASE_URL, LLM_API_URL } = await import('@/webfront/lib/constants');
+      const { HOME_PAGE_BASE_URL, LLM_API_URL } = await import('../../webfront/lib/constants');
       // Note: do NOT call authService.initialize() here — this function only reads
       // tokens from the keychain and does not need the deep-link listener.
       // initialize() is called once by App.svelte and UserLoginStatus.svelte.
@@ -288,6 +361,16 @@ export class DesktopAgentBootstrap {
         // User is logged in → backend routing (pass token getter for Bearer auth)
         const tokenGetter = () => authService.getAccessToken();
         await this.setAuthMode(false, LLM_API_URL, tokenGetter);
+
+        // Update all active sessions
+        if (this.registry) {
+          for (const sessionMeta of this.registry.listSessions()) {
+            const session = this.registry.getSession(sessionMeta.sessionId);
+            if (session?.agent) {
+              await session.agent.refreshModelClient();
+            }
+          }
+        }
 
         // Persist preference if not already set
         const agentConfig = config.getConfig();
@@ -312,20 +395,21 @@ export class DesktopAgentBootstrap {
    * @param tokenGetter - Optional async function to retrieve access token (desktop keychain)
    */
   async setAuthMode(useOwnApiKey: boolean, backendBaseUrl: string | null, tokenGetter?: () => Promise<string | null>): Promise<void> {
-    if (!this.agent) {
-      console.warn('[DesktopAgentBootstrap] Cannot set auth mode: agent not initialized');
-      return;
-    }
-
     const shouldUseBackend = !useOwnApiKey;
-    const authManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
+    this.currentAuthManager = new AuthManager(shouldUseBackend, shouldUseBackend ? backendBaseUrl : null, tokenGetter);
 
-    const factory = this.agent.getModelClientFactory();
-    factory.setAuthManager(authManager);
+    console.log('[DesktopAgentBootstrap] Auth mode set, isBackendRouting:', shouldUseBackend);
 
-    console.log('[DesktopAgentBootstrap] Auth mode set, isBackendRouting:', factory.isBackendRouting());
-
-    await this.agent.refreshModelClient();
+    if (this.registry) {
+      for (const sessionMeta of this.registry.listSessions()) {
+        const session = this.registry.getSession(sessionMeta.sessionId);
+        if (session?.agent) {
+          const factory = session.agent.getModelClientFactory();
+          factory.setAuthManager(this.currentAuthManager);
+          await session.agent.refreshModelClient();
+        }
+      }
+    }
   }
 
   /**
@@ -339,10 +423,10 @@ export class DesktopAgentBootstrap {
    * Check if the agent is ready
    */
   async isReady(): Promise<boolean> {
-    if (!this.agent) {
+    if (!this.primaryAgent) { // Changed from this.agent
       return false;
     }
-    const readyState = await this.agent.isReady();
+    const readyState = await this.primaryAgent.isReady(); // Changed from this.agent
     return readyState.ready;
   }
 
@@ -350,14 +434,14 @@ export class DesktopAgentBootstrap {
    * Get agent ready state with details
    */
   async getReadyState() {
-    if (!this.agent) {
+    if (!this.primaryAgent) { // Changed from this.agent
       return {
         ready: false,
         message: t('Agent not initialized'),
         authMode: 'none' as const,
       };
     }
-    return await this.agent.isReady();
+    return await this.primaryAgent.isReady(); // Changed from this.agent
   }
 
   /**
@@ -371,9 +455,9 @@ export class DesktopAgentBootstrap {
     await channelManager.shutdown();
 
     // Cleanup agent
-    if (this.agent) {
-      await this.agent.cleanup();
-      this.agent = null;
+    if (this.primaryAgent) { // Changed from this.agent
+      await this.primaryAgent.cleanup(); // Changed from this.agent
+      this.primaryAgent = null; // Changed from this.agent
     }
 
     // Cleanup message router

@@ -120,7 +120,7 @@ export class AgentRegistry {
     if (!this.canCreateSession()) {
       throw new Error(
         `Max concurrent sessions reached (${this._maxConcurrent}). ` +
-          `Cannot create new ${sessionConfig.type} session.`
+        `Cannot create new ${sessionConfig.type} session.`
       );
     }
 
@@ -143,19 +143,10 @@ export class AgentRegistry {
     try {
       agent = new PiAgent(this._config, this._router);
 
-      // Set up event dispatcher for chrome extension mode
-      // Events are sent via chrome.runtime to the UI
-      agent.setEventDispatcher((event) => {
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage({
-            type: 'EVENT',
-            payload: { ...event, sessionId: session.sessionId },
-          }).catch(() => {
-            // Ignore errors if no listeners
-          });
-        }
-      });
-
+      // NOTE: We do not set the event dispatcher here because both the extension's service-worker
+      // and the new desktop architecture use a periodic polling loop on `getNextEvent()` to dispatch 
+      // these events to the UI. The hardcoded chrome.runtime.sendMessage here was redundant and 
+      // broke desktop mode.
       await agent.initialize();
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event
@@ -172,7 +163,7 @@ export class AgentRegistry {
       // Re-throw with context
       throw new Error(
         `Failed to create ${sessionConfig.type} session: ` +
-          `${initError instanceof Error ? initError.message : 'Agent initialization failed'}`
+        `${initError instanceof Error ? initError.message : 'Agent initialization failed'}`
       );
     }
 
@@ -212,7 +203,7 @@ export class AgentRegistry {
 
     console.log(
       `[AgentRegistry] Created ${sessionConfig.type} session: ${session.sessionId} ` +
-        `(letter: ${session.sessionLetter}, active: ${this.getActiveCount()}/${this._maxConcurrent})`
+      `(letter: ${session.sessionLetter}, active: ${this.getActiveCount()}/${this._maxConcurrent})`
     );
 
     return session;
@@ -285,7 +276,7 @@ export class AgentRegistry {
 
     console.log(
       `[AgentRegistry] Removed session: ${sessionId} ` +
-        `(active: ${this.getActiveCount()}/${this._maxConcurrent})`
+      `(active: ${this.getActiveCount()}/${this._maxConcurrent})`
     );
   }
 

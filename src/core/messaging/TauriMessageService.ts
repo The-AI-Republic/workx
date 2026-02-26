@@ -155,6 +155,18 @@ export class TauriMessageService implements IMessageService {
       case MessageType.INTERRUPT:
         return this.handleInterrupt() as T;
 
+      case MessageType.SIDEPANEL_CREATE_SESSION:
+        return this.handleCreateSession() as T;
+
+      case MessageType.SIDEPANEL_LIST_SESSIONS:
+        return this.handleListSessions() as T;
+
+      case MessageType.SIDEPANEL_CLOSE_SESSION:
+        return this.handleCloseSession(payload) as T;
+
+      case MessageType.SESSION_GET_ACTIVE_COUNT:
+        return this.handleGetActiveCount() as T;
+
       default:
         // For other message types, emit as event and return success
         console.log('[TauriMessageService] Emitting message:', type);
@@ -171,7 +183,7 @@ export class TauriMessageService implements IMessageService {
       throw new Error('Emit not available');
     }
 
-    const submission = payload as { op: Op; context?: { tabId?: number } };
+    const submission = payload as { op: Op; context?: { tabId?: number; sessionId?: string } };
 
     console.log('[TauriMessageService] Emitting submission:', submission.op?.type);
 
@@ -250,13 +262,127 @@ export class TauriMessageService implements IMessageService {
 
       if (agent) {
         const session = agent.getSession();
-        session.clearHistory();
+        session.reset();
+        await this.emit?.('pi:reset', {});
+        return { success: true };
       }
-
-      return { success: true };
+      return { success: false };
     } catch (error) {
       console.error('[TauriMessageService] Session reset failed:', error);
       return { success: false };
+    }
+  }
+
+  /**
+   * Handle create sidepanel session request
+   */
+  private async handleCreateSession(): Promise<unknown> {
+    try {
+      const bootstrap = await getAgentBootstrap();
+      const registry = bootstrap.getRegistry();
+
+      if (!registry) {
+        return { success: false, error: 'Registry not initialized' };
+      }
+
+      if (!registry.canCreateSession()) {
+        return { success: false, error: 'Maximum concurrent sessions reached' };
+      }
+
+      const session = await registry.createSession({ type: 'primary' });
+
+      // Ensure backend routing configured properly for this new session
+      if (session?.agent) {
+        await session.agent.refreshModelClient();
+      }
+
+      console.log(`[TauriMessageService] Created new desktop sidepanel session: ${session.sessionId}`);
+
+      return {
+        success: true,
+        sessionId: session.sessionId,
+        sessionLetter: session.sessionLetter,
+      };
+    } catch (error) {
+      console.error('[TauriMessageService] Create session failed:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * Handle list sidepanel sessions request
+   */
+  private async handleListSessions(): Promise<unknown> {
+    try {
+      const bootstrap = await getAgentBootstrap();
+      const registry = bootstrap.getRegistry();
+
+      if (!registry) {
+        return { sessions: [], maxConcurrent: 5, activeCount: 0, canCreateSession: true };
+      }
+
+      const allSessions = registry.listSessions();
+      const primarySessions = allSessions.filter((s: any) => s.type === 'primary');
+
+      return {
+        sessions: primarySessions,
+        maxConcurrent: registry.getMaxConcurrent(),
+        activeCount: registry.getActiveCount(),
+        canCreateSession: registry.canCreateSession(),
+      };
+    } catch (error) {
+      console.error('[TauriMessageService] List sessions failed:', error);
+      return { sessions: [], maxConcurrent: 5, activeCount: 0, canCreateSession: true };
+    }
+  }
+
+  /**
+   * Handle close sidepanel session request
+   */
+  private async handleCloseSession(payload: unknown): Promise<unknown> {
+    try {
+      const { sessionId } = payload as { sessionId: string };
+
+      if (!sessionId) {
+        return { success: false, error: 'sessionId is required' };
+      }
+
+      const bootstrap = await getAgentBootstrap();
+      const registry = bootstrap.getRegistry();
+
+      if (!registry) {
+        return { success: false, error: 'Registry not initialized' };
+      }
+
+      await registry.removeSession(sessionId);
+      console.log(`[TauriMessageService] Closed sidepanel session: ${sessionId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('[TauriMessageService] Close session failed:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * Handle get active session count request
+   */
+  private async handleGetActiveCount(): Promise<unknown> {
+    try {
+      const bootstrap = await getAgentBootstrap();
+      const registry = bootstrap.getRegistry();
+
+      if (!registry) {
+        return { activeCount: 0, maxConcurrent: 5, canCreateSession: true };
+      }
+
+      return {
+        activeCount: registry.getActiveCount(),
+        maxConcurrent: registry.getMaxConcurrent(),
+        canCreateSession: registry.canCreateSession(),
+      };
+    } catch (error) {
+      console.error('[TauriMessageService] Get active count failed:', error);
+      return { activeCount: 0, maxConcurrent: 5, canCreateSession: true };
     }
   }
 
@@ -350,6 +476,9 @@ export class TauriMessageService implements IMessageService {
     console.log('[TauriMessageService] Received event:', eventMsg.type);
 
     // Wrap EventMsg in Event structure (id + msg) for UI compatibility
+    // Note: sessionId is intentionally omitted here. Events on the pi:event channel
+    // are channel-level (not session-specific). Session-specific events are routed
+    // through DesktopMessageRouter's event polling loop which sets sessionId correctly.
     const event = {
       id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       msg: eventMsg,

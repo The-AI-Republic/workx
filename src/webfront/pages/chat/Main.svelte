@@ -148,7 +148,7 @@
           const event: Event = { id: eventPayload.id, msg: eventPayload.msg };
           const eventSessionId = eventPayload.sessionId;
 
-          if (eventSessionId && eventSessionId !== activeSessionId) {
+          if (eventSessionId && activeSessionId && eventSessionId !== activeSessionId) {
             handleEventForSession(event, eventSessionId);
           } else {
             handleEvent(event);
@@ -746,8 +746,8 @@
     // Reset tab context
     currentTabId = -1;
 
-    // Reset event processor
-    eventProcessor.reset();
+    // Re-initialize event processor to prevent aliasing
+    eventProcessor = new EventProcessor();
 
     // Request session reset from backend
     try {
