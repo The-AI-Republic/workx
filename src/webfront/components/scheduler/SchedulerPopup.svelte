@@ -284,7 +284,11 @@
             {currentTheme === 'chatgpt'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
               : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.2)] hover:text-term-bright-green'}
-            {sessionCount >= maxSessions ? '!bg-[rgba(255,255,0,0.1)] !border-term-yellow !text-term-yellow' : ''}"
+            {sessionCount >= maxSessions
+              ? (currentTheme === 'chatgpt'
+                ? '!bg-amber-500/10 !border-amber-500 !text-amber-500 dark:!bg-amber-400/10 dark:!border-amber-400 dark:!text-amber-400'
+                : '!bg-[rgba(255,255,0,0.1)] !border-term-yellow !text-term-yellow')
+              : ''}"
           on:click={() => showSessionDetails = !showSessionDetails}
           title={$_t('Active Sessions')}
         >
@@ -607,7 +611,10 @@
                   >{new Date(expandedTaskDetails.completedAt).toLocaleString()}</span>
                 </div>
               {/if}
-              <div class="mt-3 pt-3 border-t border-dashed border-[rgba(0,255,0,0.2)]">
+              <div class="mt-3 pt-3 border-t border-dashed
+                {currentTheme === 'chatgpt'
+                  ? 'border-chat-border dark:border-chat-border-dark'
+                  : 'border-[rgba(0,255,0,0.2)]'}">
                 <span class="shrink-0 text-sm
                   {currentTheme === 'chatgpt'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
@@ -620,13 +627,25 @@
                 >{expandedTaskDetails.input}</pre>
               </div>
               {#if expandedTaskDetails.error}
-                <div class="mt-3 pt-3 border-t border-dashed border-[rgba(0,255,0,0.2)]">
-                  <span class="shrink-0 text-sm text-term-red">{$_t('Error')}:</span>
-                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]">{expandedTaskDetails.error}</pre>
+                <div class="mt-3 pt-3 border-t border-dashed
+                  {currentTheme === 'chatgpt'
+                    ? 'border-chat-border dark:border-chat-border-dark'
+                    : 'border-[rgba(0,255,0,0.2)]'}">
+                  <span class="shrink-0 text-sm
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-error dark:text-chat-error-dark'
+                      : 'text-term-red'}">{$_t('Error')}:</span>
+                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-error/5 dark:bg-chat-error-dark/10 text-chat-error dark:text-chat-error-dark border border-chat-error/20 dark:border-chat-error-dark/20'
+                      : 'bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]'}">{expandedTaskDetails.error}</pre>
                 </div>
               {/if}
               {#if expandedTaskDetails.result}
-                <div class="mt-3 pt-3 border-t border-dashed border-[rgba(0,255,0,0.2)]">
+                <div class="mt-3 pt-3 border-t border-dashed
+                  {currentTheme === 'chatgpt'
+                    ? 'border-chat-border dark:border-chat-border-dark'
+                    : 'border-[rgba(0,255,0,0.2)]'}">
                   <span class="shrink-0 text-sm
                     {currentTheme === 'chatgpt'
                       ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
@@ -637,7 +656,10 @@
                       ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
                       : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
                   >{expandedTaskDetails.result.summary}</pre>
-                  <div class="flex gap-4 mt-2 text-sm text-term-dim-green">
+                  <div class="flex gap-4 mt-2 text-sm
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                      : 'text-term-dim-green'}">
                     <span>{$_t('Tokens')}: {expandedTaskDetails.result.tokenUsage.totalTokens}</span>
                     <span>{$_t('Duration')}: {(expandedTaskDetails.result.duration / 1000).toFixed(1)}s</span>
                   </div>

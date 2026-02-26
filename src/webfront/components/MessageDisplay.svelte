@@ -169,7 +169,7 @@
         <span class="cursor-blink inline-block font-normal
           {currentTheme === 'chatgpt'
             ? 'text-chat-primary dark:text-chat-primary-dark'
-            : 'text-blue-500'}">▊</span>
+            : 'text-term-blue'}">▊</span>
       </div>
     {:else}
       <div class="content-text break-words overflow-wrap-anywhere min-w-0">
@@ -183,15 +183,15 @@
       <span class="dot w-2 h-2 rounded-full
         {currentTheme === 'chatgpt'
           ? 'bg-chat-primary dark:bg-chat-primary-dark'
-          : 'bg-blue-500'}"></span>
+          : 'bg-term-blue'}"></span>
       <span class="dot dot-2 w-2 h-2 rounded-full
         {currentTheme === 'chatgpt'
           ? 'bg-chat-primary dark:bg-chat-primary-dark'
-          : 'bg-blue-500'}"></span>
+          : 'bg-term-blue'}"></span>
       <span class="dot dot-3 w-2 h-2 rounded-full
         {currentTheme === 'chatgpt'
           ? 'bg-chat-primary dark:bg-chat-primary-dark'
-          : 'bg-blue-500'}"></span>
+          : 'bg-term-blue'}"></span>
     </div>
   {/if}
 </div>

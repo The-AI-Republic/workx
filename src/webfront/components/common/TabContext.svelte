@@ -186,9 +186,9 @@
           tabindex={clickable ? 0 : undefined}
         >
           {#if isLoading}
-            <span class="italic {currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-yellow-600'}">{$_t("Loading...")}</span>
+            <span class="italic {currentTheme === 'chatgpt' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-yellow'}">{$_t("Loading...")}</span>
           {:else if error}
-            <span class="{currentTheme === 'chatgpt' ? 'text-chat-error dark:text-chat-error-dark' : 'text-red-700'}">{error}</span>
+            <span class="{currentTheme === 'chatgpt' ? 'text-chat-error dark:text-chat-error-dark' : 'text-term-red'}">{error}</span>
           {:else}
             <span class="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{displayTitle}</span>
           {/if}
@@ -203,10 +203,10 @@
     <div slot="content" class="w-[calc(100vw-4rem)] max-w-[300px] max-h-[250px] overflow-y-auto" data-testid="tab-dropdown-menu">
       {#if loadingTabs}
         <div class="flex items-center justify-between py-2 px-3 text-sm italic cursor-default
-          {currentTheme === 'chatgpt' ? 'font-chat text-white/60' : 'font-mono text-yellow-600'}">{$_t("Loading tabs...")}</div>
+          {currentTheme === 'chatgpt' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("Loading tabs...")}</div>
       {:else if availableTabs.length === 0}
         <div class="flex items-center justify-between py-2 px-3 text-sm italic cursor-default
-          {currentTheme === 'chatgpt' ? 'font-chat text-white/60' : 'font-mono text-yellow-600'}">{$_t("No tabs available")}</div>
+          {currentTheme === 'chatgpt' ? 'font-chat text-white/60' : 'font-mono text-term-yellow'}">{$_t("No tabs available")}</div>
       {:else}
         <div
           class="flex items-center justify-between py-2 px-3 text-sm cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis font-medium
