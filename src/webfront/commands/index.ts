@@ -5,4 +5,4 @@ export type {
   FilteredCommand,
   ParsedCommandInput,
 } from './CommandRegistry';
-export { initBuiltinCommands, registerSkillCommands } from './builtinCommands';
+export { initBuiltinCommands, registerSkillCommands, refreshSkillCommands } from './builtinCommands';

@@ -230,10 +230,9 @@ export class DesktopAgentBootstrap {
 
       registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
 
-      // Register use_skill tool if there are auto-invocable skills
-      const autoSkills = this.skillRegistry.getAutoInvocableSkills();
-      if (autoSkills.length > 0 && this.agent) {
-        const autoSkillNames = new Set(autoSkills.map((s) => s.name));
+      // Register use_skill tool if there are any skills
+      const allSkills = this.skillRegistry.getSkillMetas();
+      if (allSkills.length > 0 && this.agent) {
         const registry = this.agent.getToolRegistry();
 
         await registry.register(
@@ -241,7 +240,7 @@ export class DesktopAgentBootstrap {
             type: 'function',
             function: {
               name: 'use_skill',
-              description: 'Invoke a user-defined skill by name. Returns the skill body with instructions to follow.',
+              description: 'Invoke a user-defined skill by name. When the user types /skill-name, call this tool with that name. Also use proactively when an auto-invocable skill is relevant. Returns the skill body with instructions to follow.',
               strict: false,
               parameters: {
                 type: 'object',
@@ -257,8 +256,9 @@ export class DesktopAgentBootstrap {
             const skillName = params.name as string;
             const args = params.arguments as string | undefined;
 
-            if (!autoSkillNames.has(skillName)) {
-              return { error: `Skill "${skillName}" not found or not available for auto-invocation. Available skills: ${[...autoSkillNames].join(', ')}` };
+            const knownNames = new Set(this.skillRegistry!.getSkillMetas().map((s) => s.name));
+            if (!knownNames.has(skillName)) {
+              return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
             }
 
             const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
@@ -271,7 +271,7 @@ export class DesktopAgentBootstrap {
           new StaticRiskAssessor(0)
         );
 
-        console.log('[DesktopAgentBootstrap] use_skill tool registered for', autoSkills.length, 'auto-invocable skills');
+        console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
       }
 
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');

@@ -63,15 +63,23 @@ export class SkillRegistry {
   // ── System Prompt ───────────────────────────────────────────────
 
   /**
-   * Generate system prompt block for auto-invocable skills.
-   * Only includes skills in auto/hybrid mode that are trusted.
+   * Generate system prompt block for skills.
+   * Lists auto-invocable skills and includes a generic instruction for /skill-name invocations.
    */
   buildSkillsSystemPrompt(): string {
-    const autoSkills = this.getAutoInvocableSkills();
-    if (autoSkills.length === 0) return '';
+    if (this.metas.length === 0) return '';
 
-    const lines = autoSkills.map((s) => `- ${s.name}: ${s.description}`);
-    return `You have access to user-defined skills. When a skill is relevant to the user's request, invoke it using the use_skill tool.\n\nAvailable skills:\n${lines.join('\n')}`;
+    const parts: string[] = [];
+    parts.push('You have access to user-defined skills. When a skill is relevant to the user\'s request, invoke it using the use_skill tool.');
+    parts.push('When the user types a message starting with /skill-name, invoke that skill using the use_skill tool.');
+
+    const autoSkills = this.getAutoInvocableSkills();
+    if (autoSkills.length > 0) {
+      const lines = autoSkills.map((s) => `- ${s.name}: ${s.description}`);
+      parts.push(`\nAvailable skills for proactive use:\n${lines.join('\n')}`);
+    }
+
+    return parts.join('\n');
   }
 
   // ── CRUD ────────────────────────────────────────────────────────

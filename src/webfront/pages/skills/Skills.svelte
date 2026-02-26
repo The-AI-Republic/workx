@@ -8,6 +8,7 @@
   import { push } from 'svelte-spa-router';
   import type { SkillMeta, InvocationMode } from '@/core/skills/types';
   import { sendMessage, MessageType } from '../../lib/messaging';
+  import { refreshSkillCommands } from '../../commands/builtinCommands';
   import { t, _t } from '../../lib/i18n';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
 
@@ -106,6 +107,7 @@
       });
       closeCreateForm();
       await loadSkills();
+      await refreshSkillCommands();
       showNotification('Skill created successfully', 'success');
     } catch (error) {
       formError = error instanceof Error ? error.message : 'Failed to create skill';
@@ -121,6 +123,7 @@
     try {
       await sendMessage(MessageType.SKILLS_DELETE, { name });
       await loadSkills();
+      await refreshSkillCommands();
       showNotification('Skill deleted', 'success');
     } catch (error) {
       showNotification('Failed to delete skill', 'error');
@@ -132,6 +135,7 @@
     try {
       await sendMessage(MessageType.SKILLS_UPDATE_MODE, { name, mode });
       await loadSkills();
+      await refreshSkillCommands();
     } catch (error) {
       showNotification('Failed to update mode', 'error');
     }
@@ -141,6 +145,7 @@
     try {
       await sendMessage(MessageType.SKILLS_TRUST, { name });
       await loadSkills();
+      await refreshSkillCommands();
       showNotification('Skill trusted', 'success');
     } catch (error) {
       showNotification('Failed to trust skill', 'error');
@@ -179,6 +184,7 @@
       await sendMessage(MessageType.SKILLS_IMPORT, { url: importUrl.trim() });
       closeImportForm();
       await loadSkills();
+      await refreshSkillCommands();
       showNotification('Skill imported (untrusted)', 'success');
     } catch (error) {
       showNotification(
@@ -725,6 +731,8 @@
     font-size: 0.75rem;
     border: 1px solid var(--browserx-border);
     border-radius: 0.375rem;
+    background: revert;
+    color: revert;
     color-scheme: inherit;
   }
 

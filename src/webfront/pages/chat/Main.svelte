@@ -579,8 +579,9 @@
     }
   }
 
-  async function sendMessage() {
-    if (!inputText.trim()) return;
+  async function sendMessage(overrideText?: string) {
+    const text = overrideText ?? inputText.trim();
+    if (!text) return;
 
     // Check if connected
     if (!isConnected) {
@@ -603,7 +604,6 @@
       return;
     }
 
-    const text = inputText.trim();
     inputText = '';
 
     // Add user message to processedEvents for chronological ordering

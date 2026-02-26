@@ -67,9 +67,8 @@
     });
 
     // Load skill commands asynchronously (non-blocking)
-    registerSkillCommands((name, body) => {
-      // Submit skill body as a message to the agent so it follows the instructions
-      onSubmit(body);
+    registerSkillCommands((text) => {
+      onSubmit(text);
     });
   }
 
@@ -115,7 +114,7 @@
     selectedIndex = 0;
   }
 
-  function executeCommand(commandName: string, args?: string): void {
+  async function executeCommand(commandName: string, args?: string): Promise<void> {
     const now = Date.now();
     const lastTime = lastExecuted.get(commandName);
     if (lastTime && now - lastTime < DEBOUNCE_MS) {
@@ -135,7 +134,7 @@
     value = '';
 
     try {
-      command.action(args);
+      await command.action(args);
     } catch (err) {
       showError(`Command /${commandName} failed: ${err instanceof Error ? err.message : String(err)}`);
     }
