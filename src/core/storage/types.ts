@@ -77,7 +77,8 @@ export type CollectionName =
   | 'memory'
   | 'settings'
   | 'cache'
-  | 'credentials';
+  | 'credentials'
+  | 'plans';
 
 /**
  * Storage provider factory options

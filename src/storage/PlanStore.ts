@@ -3,98 +3,36 @@
  *
  * Feature: 029-planning-tool-v2
  *
- * Stores plans in IndexedDB keyed by sessionId (one plan per session).
- * Falls back to in-memory Map if IndexedDB is unavailable.
+ * Stores plans via the platform-agnostic StorageProvider (IndexedDB in
+ * extension mode, SQLite in desktop mode), keyed by sessionId.
  */
 
+import type { StorageProvider } from '../core/storage/StorageProvider';
 import type { StoredPlan } from '../types/storage';
-import { IndexedDBAdapter, STORE_NAMES, IndexedDBError } from './IndexedDBAdapter';
 
 export class PlanStore {
-  private adapter: IndexedDBAdapter | null = null;
-  private fallbackMap: Map<string, StoredPlan> | null = null;
-  private initialized = false;
-
-  /**
-   * Initialize the plan store.
-   * Attempts to use IndexedDB; falls back to in-memory storage on failure.
-   */
-  async initialize(): Promise<void> {
-    if (this.initialized) return;
-
-    try {
-      this.adapter = new IndexedDBAdapter();
-      await this.adapter.initialize();
-      this.initialized = true;
-    } catch (error) {
-      console.warn('[PlanStore] IndexedDB unavailable, using in-memory fallback:', error);
-      this.adapter = null;
-      this.fallbackMap = new Map();
-      this.initialized = true;
-    }
-  }
+  constructor(private storage: StorageProvider) {}
 
   /**
    * Get the stored plan for a session.
    * Returns null if no plan exists.
    */
   async get(sessionId: string): Promise<StoredPlan | null> {
-    if (!this.initialized) await this.initialize();
-
-    if (this.fallbackMap) {
-      return this.fallbackMap.get(sessionId) ?? null;
-    }
-
-    try {
-      return await this.adapter!.get<StoredPlan>(STORE_NAMES.PLANS, sessionId);
-    } catch (error) {
-      console.warn('[PlanStore] Failed to get plan:', error);
-      return null;
-    }
+    return this.storage.get<StoredPlan>('plans', sessionId);
   }
 
   /**
    * Save a plan. Overwrites any existing plan for the session.
    */
   async save(plan: StoredPlan): Promise<void> {
-    if (!this.initialized) await this.initialize();
-
-    if (this.fallbackMap) {
-      this.fallbackMap.set(plan.sessionId, plan);
-      return;
-    }
-
-    try {
-      await this.adapter!.put(STORE_NAMES.PLANS, plan);
-    } catch (error) {
-      console.warn('[PlanStore] Failed to save plan, using fallback:', error);
-      // Promote to in-memory fallback on write failure
-      if (!this.fallbackMap) this.fallbackMap = new Map();
-      this.fallbackMap.set(plan.sessionId, plan);
-    }
+    await this.storage.set('plans', plan.sessionId, plan);
   }
 
   /**
    * Delete the plan for a session.
    */
   async delete(sessionId: string): Promise<void> {
-    if (!this.initialized) await this.initialize();
-
-    if (this.fallbackMap) {
-      this.fallbackMap.delete(sessionId);
-      return;
-    }
-
-    try {
-      await this.adapter!.delete(STORE_NAMES.PLANS, sessionId);
-    } catch (error) {
-      console.warn('[PlanStore] Failed to delete plan:', error);
-    }
-  }
-
-  /** Check if the store is using in-memory fallback */
-  get isUsingFallback(): boolean {
-    return this.fallbackMap !== null;
+    await this.storage.delete('plans', sessionId);
   }
 }
 
@@ -103,13 +41,12 @@ export class PlanStore {
 let planStoreInstance: PlanStore | null = null;
 
 /**
- * Get or create the shared PlanStore singleton.
- * Initializes lazily on first call.
+ * Get the shared PlanStore singleton.
+ * @throws Error if not initialized via setPlanStore()
  */
-export async function getPlanStore(): Promise<PlanStore> {
+export function getPlanStore(): PlanStore {
   if (!planStoreInstance) {
-    planStoreInstance = new PlanStore();
-    await planStoreInstance.initialize();
+    throw new Error('PlanStore not initialized. Call setPlanStore() first.');
   }
   return planStoreInstance;
 }
@@ -119,4 +56,11 @@ export async function getPlanStore(): Promise<PlanStore> {
  */
 export function setPlanStore(store: PlanStore): void {
   planStoreInstance = store;
+}
+
+/**
+ * Check if PlanStore is initialized
+ */
+export function isPlanStoreInitialized(): boolean {
+  return planStoreInstance !== null;
 }

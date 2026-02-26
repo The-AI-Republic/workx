@@ -13,12 +13,12 @@ import type { ListOptions, QueryFilter, Transaction } from '@/core/storage/types
  * Database name and version
  */
 const DB_NAME = 'browserx-storage';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 /**
  * Known collection names
  */
-const COLLECTIONS = ['conversations', 'messages', 'memory', 'settings', 'cache', 'credentials'];
+const COLLECTIONS = ['conversations', 'messages', 'memory', 'settings', 'cache', 'credentials', 'plans'];
 
 /**
  * IndexedDBStorageProvider implements StorageProvider using IndexedDB

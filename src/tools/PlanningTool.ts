@@ -211,13 +211,10 @@ export class PlanningTool extends BaseTool {
     // Persist
     let warning: string | undefined;
     try {
-      const store = await getPlanStore();
+      const store = getPlanStore();
       await store.save(stored);
-      if (store.isUsingFallback) {
-        warning = 'IndexedDB unavailable — plan will not persist across sessions';
-      }
     } catch (error) {
-      warning = 'Failed to persist plan — in-memory only';
+      warning = 'Failed to persist plan';
     }
 
     // Emit event
@@ -245,7 +242,7 @@ export class PlanningTool extends BaseTool {
     // Load existing plan
     let existing: StoredPlan | null = null;
     try {
-      const store = await getPlanStore();
+      const store = getPlanStore();
       existing = await store.get(this.sessionId);
     } catch {
       // continue without existing
@@ -289,7 +286,7 @@ export class PlanningTool extends BaseTool {
 
     // Persist
     try {
-      const store = await getPlanStore();
+      const store = getPlanStore();
       await store.save(stored);
     } catch {
       // Non-fatal
@@ -311,7 +308,7 @@ export class PlanningTool extends BaseTool {
 
   private async handleResume(): Promise<any> {
     try {
-      const store = await getPlanStore();
+      const store = getPlanStore();
       const stored = await store.get(this.sessionId);
 
       if (!stored) {

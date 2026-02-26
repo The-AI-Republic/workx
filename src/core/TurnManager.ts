@@ -742,7 +742,7 @@ export class TurnManager {
   private async buildPlanContext(): Promise<string | null> {
     try {
       const { getPlanStore } = await import('../storage/PlanStore');
-      const store = await getPlanStore();
+      const store = getPlanStore();
       const sessionId = this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? 'default';
       const plan = await store.get(sessionId);
       if (!plan || plan.steps.length === 0) return null;

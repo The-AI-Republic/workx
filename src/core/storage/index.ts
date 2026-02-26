@@ -26,6 +26,37 @@ export {
 } from './ConfigStorageProvider';
 export * from './types';
 
+// ============================================================================
+// StorageProvider Singleton
+// ============================================================================
+
+let _storageProvider: StorageProvider | null = null;
+
+/**
+ * Set the global StorageProvider instance
+ */
+export function setStorageProvider(provider: StorageProvider): void {
+  _storageProvider = provider;
+}
+
+/**
+ * Get the global StorageProvider instance
+ * @throws Error if not initialized
+ */
+export function getStorageProvider(): StorageProvider {
+  if (!_storageProvider) {
+    throw new Error('StorageProvider not initialized. Call setStorageProvider() first.');
+  }
+  return _storageProvider;
+}
+
+/**
+ * Check if StorageProvider is initialized
+ */
+export function isStorageProviderInitialized(): boolean {
+  return _storageProvider !== null;
+}
+
 /**
  * Create the appropriate StorageProvider for the current build mode.
  *
@@ -104,6 +135,19 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
     );
     return new TauriConfigStorage();
   }
+}
+
+/**
+ * Initialize the StorageProvider for the current platform.
+ * Should be called early in the app initialization.
+ */
+export async function initializeStorageProvider(
+  options?: StorageFactoryOptions
+): Promise<StorageProvider> {
+  const provider = await createStorageProvider(options);
+  await provider.initialize();
+  setStorageProvider(provider);
+  return provider;
 }
 
 /**
