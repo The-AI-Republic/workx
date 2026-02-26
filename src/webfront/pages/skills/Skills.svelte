@@ -227,12 +227,24 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="skills-page" class:chatgpt={currentTheme === 'chatgpt'}>
-  <div class="skills-container">
+<div class="h-screen flex items-center justify-center {currentTheme === 'chatgpt' ? 'bg-black/30' : 'bg-black/50'}">
+  <div class="w-full max-w-[42rem] max-h-[80vh] overflow-y-auto rounded-lg flex flex-col
+    {currentTheme === 'chatgpt'
+      ? 'rounded-2xl shadow-2xl bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-none'
+      : 'border border-term-dim-green bg-term-bg text-term-green'}">
     <!-- Header -->
-    <div class="skills-header">
-      <h2 class="skills-title">{$_t('Skills')}</h2>
-      <button class="close-button" on:click={handleClose} aria-label={t("Close skills")}>
+    <div class="flex justify-between items-center px-6 py-4 border-b
+      {currentTheme === 'chatgpt' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+      <h2 class="m-0 text-xl font-semibold
+        {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">{$_t('Skills')}</h2>
+      <button
+        class="bg-none border-none cursor-pointer p-1 rounded-md flex items-center justify-center transition-all duration-200
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-surface dark:hover:bg-chat-surface-dark'
+            : 'text-term-dim-green hover:text-term-green hover:bg-[#0a0a0a]'}"
+        on:click={handleClose}
+        aria-label={t("Close skills")}
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -240,69 +252,126 @@
       </button>
     </div>
 
-    <div class="skills-content">
+    <div class="px-6 py-4 overflow-y-auto flex-1">
       <!-- Notification -->
       {#if saveMessage}
-        <div class="notification {saveMessageType}">{saveMessage}</div>
+        <div class="px-4 py-3 rounded-md mb-4 text-sm
+          {saveMessageType === 'success'
+            ? (currentTheme === 'chatgpt'
+                ? 'bg-bx-success/15 text-bx-success dark:text-bx-success-dark border border-bx-success/30'
+                : 'bg-term-green/15 text-term-green border border-term-green/30')
+            : (currentTheme === 'chatgpt'
+                ? 'bg-chat-error/15 text-chat-error dark:text-chat-error-dark border border-chat-error/30'
+                : 'bg-term-red/15 text-term-red border border-term-red/30')}">{saveMessage}</div>
       {/if}
 
       <!-- Actions -->
-      <div class="actions-bar">
-        <button class="btn btn-primary" on:click={openCreateForm}>{$_t('Create Skill')}</button>
-        <button class="btn btn-secondary" on:click={openImportForm}>{$_t('Import from URL')}</button>
+      <div class="flex gap-2 mb-6">
+        <button
+          class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-primary dark:bg-chat-primary-dark text-white border-chat-primary dark:border-chat-primary-dark hover:opacity-90'
+              : 'bg-term-green text-white border-term-green hover:opacity-90'}"
+          on:click={openCreateForm}
+        >{$_t('Create Skill')}</button>
+        <button
+          class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark hover:opacity-80'
+              : 'bg-[#0a0a0a] text-term-green border-term-dim-green hover:opacity-80'}"
+          on:click={openImportForm}
+        >{$_t('Import from URL')}</button>
       </div>
 
       <!-- Create Form -->
       {#if showCreateForm}
-        <div class="form-card">
-          <h3>{$_t('Create New Skill')}</h3>
+        <div class="rounded-lg p-5 mb-6 border
+          {currentTheme === 'chatgpt'
+            ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+            : 'bg-[#0a0a0a] border-term-dim-green'}">
+          <h3 class="m-0 mb-4 text-base font-semibold
+            {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">{$_t('Create New Skill')}</h3>
 
           {#if formError}
-            <div class="form-error">{formError}</div>
+            <div class="px-3 py-2 rounded-md text-sm mb-4
+              {currentTheme === 'chatgpt'
+                ? 'bg-chat-error/15 text-chat-error dark:text-chat-error-dark'
+                : 'bg-term-red/15 text-term-red'}">{formError}</div>
           {/if}
 
-          <label class="form-label">
+          <label class="block text-sm font-medium mb-4
+            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
             {$_t('Name')}
             <input
               type="text"
-              class="form-input"
+              class="block w-full px-3 py-2 mt-1 text-sm rounded-md border box-border
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark'
+                  : 'bg-term-bg text-term-green border-term-dim-green focus:outline-none focus:border-term-green'}"
               bind:value={formName}
               placeholder="my-skill-name"
             />
           </label>
 
-          <label class="form-label">
+          <label class="block text-sm font-medium mb-4
+            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
             {$_t('Description')}
             <input
               type="text"
-              class="form-input"
+              class="block w-full px-3 py-2 mt-1 text-sm rounded-md border box-border
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark'
+                  : 'bg-term-bg text-term-green border-term-dim-green focus:outline-none focus:border-term-green'}"
               bind:value={formDescription}
               placeholder="What this skill does"
             />
           </label>
 
-          <label class="form-label">
+          <label class="block text-sm font-medium mb-4
+            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
             {$_t('Invocation Mode')}
-            <select class="form-input" bind:value={formMode}>
+            <select class="block w-full px-3 py-2 mt-1 text-sm rounded-md border box-border color-scheme-inherit
+              {currentTheme === 'chatgpt'
+                ? 'border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark'
+                : 'border-term-dim-green focus:outline-none focus:border-term-green'}"
+              bind:value={formMode}
+            >
               <option value="manual">Manual (/ command only)</option>
               <option value="auto">Auto (LLM only)</option>
               <option value="hybrid">Hybrid (both)</option>
             </select>
           </label>
 
-          <label class="form-label">
+          <label class="block text-sm font-medium mb-4
+            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
             {$_t('Body (Markdown)')}
             <textarea
-              class="form-textarea"
+              class="block w-full px-3 py-2 mt-1 text-sm rounded-md border box-border font-mono resize-y
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark'
+                  : 'bg-term-bg text-term-green border-term-dim-green focus:outline-none focus:border-term-green'}"
               bind:value={formBody}
               placeholder="Skill instructions in markdown..."
               rows="8"
             ></textarea>
           </label>
 
-          <div class="form-actions">
-            <button class="btn btn-secondary" on:click={closeCreateForm}>{$_t('Cancel')}</button>
-            <button class="btn btn-primary" on:click={handleCreate} disabled={isSaving}>
+          <div class="flex gap-2 justify-end">
+            <button
+              class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark hover:opacity-80'
+                  : 'bg-[#0a0a0a] text-term-green border-term-dim-green hover:opacity-80'}"
+              on:click={closeCreateForm}
+            >{$_t('Cancel')}</button>
+            <button
+              class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-primary dark:bg-chat-primary-dark text-white border-chat-primary dark:border-chat-primary-dark hover:opacity-90'
+                  : 'bg-term-green text-white border-term-green hover:opacity-90'}"
+              on:click={handleCreate}
+              disabled={isSaving}
+            >
               {isSaving ? $_t('Creating...') : $_t('Create')}
             </button>
           </div>
@@ -311,24 +380,46 @@
 
       <!-- Import Form -->
       {#if showImportForm}
-        <div class="form-card">
-          <h3>{$_t('Import Skill from URL')}</h3>
+        <div class="rounded-lg p-5 mb-6 border
+          {currentTheme === 'chatgpt'
+            ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+            : 'bg-[#0a0a0a] border-term-dim-green'}">
+          <h3 class="m-0 mb-4 text-base font-semibold
+            {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">{$_t('Import Skill from URL')}</h3>
 
-          <label class="form-label">
+          <label class="block text-sm font-medium mb-4
+            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
             {$_t('SKILL.md URL')}
             <input
               type="url"
-              class="form-input"
+              class="block w-full px-3 py-2 mt-1 text-sm rounded-md border box-border
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark'
+                  : 'bg-term-bg text-term-green border-term-dim-green focus:outline-none focus:border-term-green'}"
               bind:value={importUrl}
               placeholder="https://example.com/SKILL.md"
             />
           </label>
 
-          <p class="form-hint">{$_t('Imported skills are untrusted by default and cannot auto-invoke.')}</p>
+          <p class="text-xs mt-2 mb-4
+            {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Imported skills are untrusted by default and cannot auto-invoke.')}</p>
 
-          <div class="form-actions">
-            <button class="btn btn-secondary" on:click={closeImportForm}>{$_t('Cancel')}</button>
-            <button class="btn btn-primary" on:click={handleImport} disabled={isImporting}>
+          <div class="flex gap-2 justify-end">
+            <button
+              class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border-chat-border dark:border-chat-border-dark hover:opacity-80'
+                  : 'bg-[#0a0a0a] text-term-green border-term-dim-green hover:opacity-80'}"
+              on:click={closeImportForm}
+            >{$_t('Cancel')}</button>
+            <button
+              class="px-4 py-2 rounded-md text-sm cursor-pointer border transition-all duration-200
+                {currentTheme === 'chatgpt'
+                  ? 'bg-chat-primary dark:bg-chat-primary-dark text-white border-chat-primary dark:border-chat-primary-dark hover:opacity-90'
+                  : 'bg-term-green text-white border-term-green hover:opacity-90'}"
+              on:click={handleImport}
+              disabled={isImporting}
+            >
               {isImporting ? $_t('Importing...') : $_t('Import')}
             </button>
           </div>
@@ -337,36 +428,56 @@
 
       <!-- Skills List -->
       {#if isLoading}
-        <div class="loading">
-          <div class="loading-spinner"></div>
+        <div class="flex flex-col items-center gap-3 py-12
+          {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
+          <div class="w-6 h-6 rounded-full animate-spin border-2
+            {currentTheme === 'chatgpt'
+              ? 'border-chat-border dark:border-chat-border-dark border-t-chat-primary dark:border-t-chat-primary-dark'
+              : 'border-term-dim-green border-t-term-green'}"></div>
           <span>{$_t('Loading skills...')}</span>
         </div>
       {:else if skills.length === 0}
-        <div class="empty-state">
-          <p>{$_t('No skills configured yet.')}</p>
-          <p class="empty-hint">{$_t('Create a skill to add custom / commands or auto-invocable agent behaviors.')}</p>
+        <div class="text-center py-12 {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">
+          <p class="my-1">{$_t('No skills configured yet.')}</p>
+          <p class="my-1 text-sm">{$_t('Create a skill to add custom / commands or auto-invocable agent behaviors.')}</p>
         </div>
       {:else}
-        <div class="skills-list">
+        <div class="flex flex-col gap-3">
           {#each skills as skill (skill.name)}
-            <div class="skill-card">
-              <div class="skill-header-row">
-                <div class="skill-info">
-                  <span class="skill-name">/{skill.name}</span>
-                  <span class="skill-description">{skill.description}</span>
+            <div class="rounded-lg p-4 border
+              {currentTheme === 'chatgpt'
+                ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+                : 'bg-[#0a0a0a] border-term-dim-green'}">
+              <div class="flex justify-between items-start mb-3 gap-2">
+                <div class="flex flex-col gap-1 min-w-0">
+                  <span class="font-semibold text-sm font-mono
+                    {currentTheme === 'chatgpt' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">/{skill.name}</span>
+                  <span class="text-xs {currentTheme === 'chatgpt' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{skill.description}</span>
                 </div>
-                <div class="skill-badges">
+                <div class="flex gap-1 shrink-0">
                   {#if !skill.trusted}
-                    <span class="badge badge-warning">{$_t('Untrusted')}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-wide
+                      {currentTheme === 'chatgpt'
+                        ? 'bg-bx-warning/15 text-bx-warning dark:text-bx-warning-dark'
+                        : 'bg-term-yellow/15 text-term-yellow'}">{$_t('Untrusted')}</span>
                   {/if}
-                  <span class="badge badge-mode">{getModeLabel(skill.invocationMode)}</span>
-                  <span class="badge badge-source">{skill.source}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-wide
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-primary/15 text-chat-primary dark:text-chat-primary-dark'
+                      : 'bg-term-green/15 text-term-green'}">{getModeLabel(skill.invocationMode)}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[0.625rem] font-medium uppercase tracking-wide
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-text-secondary/15 text-chat-text-secondary dark:text-chat-text-secondary-dark'
+                      : 'bg-term-dim-green/15 text-term-dim-green'}">{skill.source}</span>
                 </div>
               </div>
 
-              <div class="skill-actions">
+              <div class="flex items-center gap-2">
                 <select
-                  class="mode-select"
+                  class="px-2 py-1 text-xs rounded-md border color-scheme-inherit
+                    {currentTheme === 'chatgpt'
+                      ? 'border-chat-border dark:border-chat-border-dark'
+                      : 'border-term-dim-green'}"
                   value={skill.invocationMode}
                   on:change={(e) => handleModeChange(skill.name, e.currentTarget.value)}
                 >
@@ -376,16 +487,34 @@
                 </select>
 
                 {#if !skill.trusted}
-                  <button class="btn btn-small btn-trust" on:click={() => handleTrust(skill.name)}>
+                  <button
+                    class="px-2 py-1 text-xs rounded-md border cursor-pointer transition-all duration-200
+                      {currentTheme === 'chatgpt'
+                        ? 'bg-chat-surface dark:bg-chat-surface-dark text-bx-success dark:text-bx-success-dark border-bx-success dark:border-bx-success-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                        : 'bg-[#0a0a0a] text-term-green border-term-green hover:text-term-bright-green'}"
+                    on:click={() => handleTrust(skill.name)}
+                  >
                     {$_t('Trust')}
                   </button>
                 {/if}
 
-                <button class="btn btn-small" on:click={() => handleExport(skill.name)}>
+                <button
+                  class="px-2 py-1 text-xs rounded-md border cursor-pointer transition-all duration-200
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text-secondary dark:text-chat-text-secondary-dark border-chat-border dark:border-chat-border-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                      : 'bg-[#0a0a0a] text-term-dim-green border-term-dim-green hover:text-term-green'}"
+                  on:click={() => handleExport(skill.name)}
+                >
                   {$_t('Export')}
                 </button>
 
-                <button class="btn btn-small btn-danger" on:click={() => handleDelete(skill.name)}>
+                <button
+                  class="px-2 py-1 text-xs rounded-md border cursor-pointer transition-all duration-200
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text-secondary dark:text-chat-text-secondary-dark border-chat-border dark:border-chat-border-dark hover:text-chat-error dark:hover:text-chat-error-dark hover:border-chat-error dark:hover:border-chat-error-dark'
+                      : 'bg-[#0a0a0a] text-term-dim-green border-term-dim-green hover:text-term-red hover:border-term-red'}"
+                  on:click={() => handleDelete(skill.name)}
+                >
                   {$_t('Delete')}
                 </button>
               </div>
@@ -398,378 +527,18 @@
 </div>
 
 <style>
-  .skills-page {
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-    /* Terminal theme (default) */
-    --browserx-primary: #00ff00;
-    --browserx-secondary: #00cc00;
-    --browserx-background: #000000;
-    --browserx-surface: #0a0a0a;
-    --browserx-text: #00ff00;
-    --browserx-text-secondary: #00cc00;
-    --browserx-border: #00cc00;
-    --browserx-error: #ff0000;
-    --browserx-success: #00ff00;
-    --browserx-warning: #ffff00;
-    color-scheme: dark;
-  }
-
-  /* ChatGPT theme */
-  .skills-page.chatgpt {
-    --browserx-primary: var(--chat-primary, #60a5fa);
-    --browserx-secondary: var(--chat-primary, #60a5fa);
-    --browserx-background: var(--chat-bg, #ffffff);
-    --browserx-surface: var(--chat-card-bg, #f7f7f8);
-    --browserx-text: var(--chat-text, #0d0d0d);
-    --browserx-text-secondary: var(--chat-text-secondary, #6e6e80);
-    --browserx-border: var(--chat-border, #e5e5e5);
-    --browserx-error: var(--chat-error, #ef4444);
-    --browserx-success: #10b981;
-    --browserx-warning: #f59e0b;
-    background: rgba(0, 0, 0, 0.3);
-    color-scheme: light;
-  }
-
-  .skills-container {
-    max-width: 42rem;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    border-radius: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    color: var(--browserx-text);
-  }
-
-  .skills-page.chatgpt .skills-container {
-    border-radius: 1rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  }
-
-  .skills-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--browserx-border);
-  }
-
-  .skills-title {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--browserx-text);
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    color: var(--browserx-text-secondary);
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 0.375rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  .close-button:hover {
-    color: var(--browserx-text);
-    background: var(--browserx-surface);
-  }
-
-  .skills-content {
-    padding: 1rem 1.5rem;
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  /* Notification */
-  .notification {
-    padding: 0.75rem 1rem;
-    border-radius: 0.375rem;
-    margin-bottom: 1rem;
-    font-size: 0.875rem;
-  }
-
-  .notification.success {
-    background: color-mix(in srgb, var(--browserx-success) 15%, transparent);
-    color: var(--browserx-success);
-    border: 1px solid color-mix(in srgb, var(--browserx-success) 30%, transparent);
-  }
-
-  .notification.error {
-    background: color-mix(in srgb, var(--browserx-error) 15%, transparent);
-    color: var(--browserx-error);
-    border: 1px solid color-mix(in srgb, var(--browserx-error) 30%, transparent);
-  }
-
-  /* Actions */
-  .actions-bar {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    cursor: pointer;
-    border: 1px solid var(--browserx-border);
-    transition: all 0.2s;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
-    border-color: var(--browserx-primary);
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
-  .btn-secondary {
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-surface) 80%, var(--browserx-text));
-  }
-
-  .btn-small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text-secondary);
-  }
-
-  .btn-small:hover {
-    color: var(--browserx-text);
-  }
-
-  .btn-danger:hover {
-    color: var(--browserx-error);
-    border-color: var(--browserx-error);
-  }
-
-  .btn-trust {
-    color: var(--browserx-success);
-    border-color: var(--browserx-success);
-  }
-
-  /* Form */
-  .form-card {
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.5rem;
-    padding: 1.25rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .form-card h3 {
-    margin: 0 0 1rem 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--browserx-text);
-  }
-
-  .form-error {
-    background: color-mix(in srgb, var(--browserx-error) 15%, transparent);
-    color: var(--browserx-error);
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-
-  .form-label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--browserx-text-secondary);
-    margin-bottom: 1rem;
-  }
-
-  .form-input,
-  .form-textarea {
-    display: block;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    margin-top: 0.25rem;
-    font-size: 0.875rem;
-    background: var(--browserx-background);
-    color: var(--browserx-text);
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.375rem;
-    box-sizing: border-box;
-  }
-
-  /* Let <select> use system rendering so dropdown options are visible in dark themes */
-  select.form-input {
-    background: revert;
-    color: revert;
-    color-scheme: inherit;
-  }
-
-  .form-input:focus,
-  .form-textarea:focus {
-    outline: none;
-    border-color: var(--browserx-primary);
-  }
-
-  .form-textarea {
-    font-family: monospace;
-    resize: vertical;
-  }
-
-  .form-hint {
-    font-size: 0.75rem;
-    color: var(--browserx-text-secondary);
-    margin: 0.5rem 0 1rem;
-  }
-
-  .form-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-  }
-
-  /* Skills List */
-  .skills-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .skill-card {
-    background: var(--browserx-surface);
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.5rem;
-    padding: 1rem;
-  }
-
-  .skill-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-    gap: 0.5rem;
-  }
-
-  .skill-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-width: 0;
-  }
-
-  .skill-name {
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: var(--browserx-text);
-    font-family: monospace;
-  }
-
-  .skill-description {
-    font-size: 0.75rem;
-    color: var(--browserx-text-secondary);
-  }
-
-  .skill-badges {
-    display: flex;
-    gap: 0.25rem;
-    flex-shrink: 0;
-  }
-
-  .badge {
-    padding: 0.125rem 0.5rem;
-    border-radius: 9999px;
-    font-size: 0.625rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-  }
-
-  .badge-warning {
-    background: color-mix(in srgb, var(--browserx-warning) 15%, transparent);
-    color: var(--browserx-warning);
-  }
-
-  .badge-mode {
-    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
-    color: var(--browserx-primary);
-  }
-
-  .badge-source {
-    background: color-mix(in srgb, var(--browserx-text-secondary) 15%, transparent);
-    color: var(--browserx-text-secondary);
-  }
-
-  .skill-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .mode-select {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.375rem;
-    background: revert;
-    color: revert;
-    color-scheme: inherit;
-  }
-
-  /* Loading & Empty */
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 3rem;
-    color: var(--browserx-text-secondary);
-  }
-
-  .loading-spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--browserx-border);
-    border-top-color: var(--browserx-primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
 
-  .empty-state {
-    text-align: center;
-    padding: 3rem;
-    color: var(--browserx-text-secondary);
+  .animate-spin {
+    animation: spin 0.8s linear infinite;
   }
 
-  .empty-state p {
-    margin: 0.25rem 0;
-  }
-
-  .empty-hint {
-    font-size: 0.875rem;
+  /* Let <select> use system rendering so dropdown options are visible in dark themes */
+  .color-scheme-inherit {
+    background: revert;
+    color: revert;
+    color-scheme: inherit;
   }
 </style>

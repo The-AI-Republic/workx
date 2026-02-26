@@ -181,11 +181,14 @@
   }
 </script>
 
-<div class="user-login-status {currentTheme}">
+<div class="relative flex items-center justify-center">
   {#if $userStore.isLoading}
     <!-- Loading state -->
-    <div class="status-loading">
-      <span class="loading-dot"></span>
+    <div class="w-8 h-8 flex items-center justify-center">
+      <span class="loading-dot w-2 h-2 rounded-full
+        {currentTheme === 'chatgpt'
+          ? 'bg-chat-text-muted dark:bg-chat-text-muted-dark'
+          : 'bg-term-dim-green'}"></span>
     </div>
   {:else if $userStore.isLoggedIn}
     <!-- Logged in state - show user avatar with initials -->
@@ -193,7 +196,10 @@
       <div slot="trigger">
         <Tooltip content={$_t("User Center")} disabled={showMenu}>
           <div
-            class="user-avatar {currentTheme}"
+            class="relative w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+              {currentTheme === 'chatgpt'
+                ? 'bg-chat-primary dark:bg-chat-primary-dark border-none hover:shadow-[0_2px_8px_rgba(96,165,250,0.3)]'
+                : 'bg-term-bg border border-term-green hover:border-term-bright-green hover:shadow-[0_0_8px_rgba(0,255,0,0.3)]'}"
             on:click={toggleMenu}
             on:keydown={handleKeydown}
             role="button"
@@ -201,38 +207,68 @@
             aria-haspopup="true"
             aria-expanded={showMenu}
           >
-            <span class="avatar-initials">{$userInitials}</span>
+            <span class="text-sm font-semibold uppercase
+              {currentTheme === 'chatgpt'
+                ? 'text-white font-chat'
+                : 'text-term-green font-terminal'}">{$userInitials}</span>
           </div>
         </Tooltip>
       </div>
 
-      <div slot="content" class="user-menu-content {currentTheme}">
+      <div slot="content" class="min-w-[180px]">
         <!-- User Info Section -->
         <a
           href="{HOME_PAGE_BASE_URL}/user-center/info"
-          class="menu-section user-info user-info-link"
+          class="flex items-center gap-3 p-3 no-underline cursor-pointer rounded transition-colors duration-150
+            {currentTheme === 'chatgpt'
+              ? 'hover:bg-white/10'
+              : 'hover:bg-term-green/10'}"
           on:click={openUserCenter}
         >
-          <div class="user-info-avatar">
-            <span class="avatar-initials-large">{$userInitials}</span>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-primary dark:bg-chat-primary-dark border-none'
+              : 'bg-term-green/10 border border-term-dim-green'}">
+            <span class="text-base font-semibold uppercase
+              {currentTheme === 'chatgpt'
+                ? 'text-white font-chat'
+                : 'text-term-green font-terminal'}">{$userInitials}</span>
           </div>
-          <div class="user-info-details">
+          <div class="flex flex-col gap-0.5 overflow-hidden">
             {#if $userStore.userName}
-              <span class="user-name">{$userStore.userName}</span>
+              <span class="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+                  : 'text-term-bright-green'}">{$userStore.userName}</span>
             {/if}
             {#if $userStore.userEmail}
-              <span class="user-email">{$userStore.userEmail}</span>
+              <span class="text-sm whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'chatgpt'
+                  ? 'text-white/70 font-chat'
+                  : 'text-term-dim-green'}">{$userStore.userEmail}</span>
             {:else if !$userStore.userName}
-              <span class="user-status">{$_t("Logged in")}</span>
+              <span class="text-sm
+                {currentTheme === 'chatgpt'
+                  ? 'text-white/70 font-chat'
+                  : 'text-term-dim-green'}">{$_t("Logged in")}</span>
             {/if}
           </div>
         </a>
 
-        <div class="menu-divider"></div>
+        <div class="{currentTheme === 'chatgpt'
+          ? 'h-px bg-white/15'
+          : 'h-px bg-term-dim-green/30'}"></div>
 
         <!-- Menu Items -->
-        <button class="menu-item" on:click={openSettings} role="menuitem">
-          <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button
+          class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
+              : 'text-term-green font-terminal hover:bg-term-green/10'}"
+          on:click={openSettings}
+          role="menuitem"
+        >
+          <svg class="w-[18px] h-[18px] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
@@ -244,8 +280,11 @@
     <!-- Not logged in state - show login link -->
     <Tooltip content={isLoggingIn ? $_t("Click to cancel login") : (showPromoTooltip ? $_t("Login to get free credits") : $_t("Sign in to your account"))}>
       <button
-        class="login-link"
-        class:logging-in={isLoggingIn}
+        class="relative cursor-pointer text-sm transition-all duration-200
+          {currentTheme === 'chatgpt'
+            ? 'bg-transparent border-none text-chat-primary dark:text-chat-primary-dark font-chat font-medium py-1.5 px-3 rounded-lg hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+            : 'bg-transparent border border-term-green text-term-green font-terminal py-1.5 px-3 rounded hover:bg-term-green/10 hover:border-term-bright-green hover:text-term-bright-green'}
+          {isLoggingIn ? 'hover:!bg-red-500/10 hover:!border-red-400 hover:!text-red-400' : ''}"
         on:click={handleLoginClick}
       >
         {#if isLoggingIn}
@@ -260,285 +299,13 @@
 </div>
 
 <style>
-  .user-login-status {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Loading state */
-  .status-loading {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .loading-dot {
-    width: 8px;
-    height: 8px;
-    background-color: var(--color-term-dim-green, #00cc00);
-    border-radius: 50%;
     animation: pulse 1s infinite;
   }
 
   @keyframes pulse {
     0%, 100% { opacity: 0.4; }
     50% { opacity: 1; }
-  }
-
-  /* User Avatar - Terminal Theme */
-  .user-avatar {
-    position: relative;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #000000;
-    border: 1px solid var(--color-term-green, #00ff00);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .user-avatar:hover {
-    border-color: var(--color-term-bright-green, #33ff00);
-    box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
-  }
-
-  .avatar-initials {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-term-green, #00ff00);
-    text-transform: uppercase;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  /* User Menu Content - Terminal Theme */
-  .user-menu-content {
-    min-width: 180px;
-  }
-
-  .menu-section {
-    padding: 12px;
-  }
-
-  .user-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .user-info-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(0, 255, 0, 0.1);
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .avatar-initials-large {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--color-term-green, #00ff00);
-    text-transform: uppercase;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .user-info-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden;
-  }
-
-  .user-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-term-bright-green, #33ff00);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .user-email {
-    font-size: 11px;
-    color: var(--color-term-dim-green, #00cc00);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .user-info-link {
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    border-radius: 4px;
-  }
-
-  .user-info-link:hover {
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .user-status {
-    font-size: 11px;
-    color: var(--color-term-dim-green, #00cc00);
-  }
-
-  .menu-divider {
-    height: 1px;
-    background: var(--color-term-dim-green, #00cc00);
-    opacity: 0.3;
-    margin: 0;
-  }
-
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    background: transparent;
-    border: none;
-    color: var(--color-term-green, #00ff00);
-    font-size: 13px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    text-align: left;
-  }
-
-  .menu-item:hover {
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .menu-icon {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-  }
-
-  /* Login Link - Terminal Theme */
-  .login-link {
-    position: relative;
-    background: transparent;
-    border: 1px solid var(--color-term-green, #00ff00);
-    color: var(--color-term-green, #00ff00);
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .login-link:hover {
-    background: rgba(0, 255, 0, 0.1);
-    border-color: var(--color-term-bright-green, #33ff00);
-    color: var(--color-term-bright-green, #33ff00);
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .user-login-status.chatgpt .loading-dot {
-    background-color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .user-avatar.chatgpt {
-    background: var(--chat-primary, #60a5fa);
-    border: none;
-  }
-
-  .user-avatar.chatgpt:hover {
-    box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
-  }
-
-  .user-avatar.chatgpt .avatar-initials {
-    color: #ffffff;
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  /* ChatGPT Theme - User Menu Content */
-  .user-menu-content.chatgpt .user-info-avatar {
-    background: var(--chat-primary, #60a5fa);
-    border: none;
-  }
-
-  .user-menu-content.chatgpt .avatar-initials-large {
-    color: #ffffff;
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .user-menu-content.chatgpt .user-name {
-    color: var(--chat-tooltip-text, #ffffff);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .user-menu-content.chatgpt .user-email,
-  .user-menu-content.chatgpt .user-status {
-    color: rgba(255, 255, 255, 0.7);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .user-menu-content.chatgpt .user-info-link:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .user-menu-content.chatgpt .menu-divider {
-    background: rgba(255, 255, 255, 0.15);
-    opacity: 1;
-  }
-
-  .user-menu-content.chatgpt .menu-item {
-    color: var(--chat-tooltip-text, #ffffff);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    border-radius: 0.375rem;
-    margin: 4px;
-    width: calc(100% - 8px);
-  }
-
-  .user-menu-content.chatgpt .menu-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .user-login-status.chatgpt .login-link {
-    background: transparent;
-    border: none;
-    color: var(--chat-primary, #60a5fa);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    font-weight: 500;
-    padding: 6px 12px;
-    border-radius: 0.5rem;
-  }
-
-  .user-login-status.chatgpt .login-link:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  /* Login loading state */
-  .login-link.logging-in {
-    cursor: pointer;
-  }
-
-  .login-link.logging-in:hover {
-    background: rgba(255, 0, 0, 0.1);
-    border-color: #ff6666;
-    color: #ff6666;
-  }
-
-  .login-link.logging-in:hover .login-spinner {
-    border-color: #ff6666;
-    border-top-color: transparent;
   }
 
   .login-spinner {

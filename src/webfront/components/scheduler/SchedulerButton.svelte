@@ -48,23 +48,34 @@
   }
 </script>
 
-<div class="scheduler-button-container {currentTheme}">
+<div class="relative">
   <Tooltip content={$_t("Scheduled Tasks")}>
     <button
-      class="scheduler-button"
-      class:has-tasks={taskCount > 0}
-      class:running={hasRunningTask}
+      class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+        {currentTheme === 'chatgpt'
+          ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:!transform-none'
+          : 'bg-black border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}
+        {taskCount > 0 && currentTheme !== 'chatgpt' ? 'border-term-bright-green text-term-bright-green' : ''}
+        {taskCount > 0 && currentTheme === 'chatgpt' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
+        {hasRunningTask ? 'animate-pulse' : ''}"
       on:click={handleClick}
       aria-label={$_t("Scheduled Tasks")}
     >
       <!-- Calendar/Clock Icon -->
-      <svg xmlns="http://www.w3.org/2000/svg" class="button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
 
       <!-- Task Count Badge -->
       {#if taskCount > 0}
-        <span class="task-badge" class:running={hasRunningTask}>
+        <span
+          class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-sm font-semibold leading-4 text-center rounded-full
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-primary dark:bg-chat-primary-dark text-white'
+              : 'bg-term-dim-green text-black'}
+            {hasRunningTask && currentTheme === 'chatgpt' ? '!bg-emerald-500' : ''}
+            {hasRunningTask && currentTheme !== 'chatgpt' ? '!bg-term-bright-green animate-badge-pulse' : ''}"
+        >
           {taskCount > 99 ? '99+' : taskCount}
         </span>
       {/if}
@@ -73,102 +84,12 @@
 </div>
 
 <style>
-  .scheduler-button-container {
-    position: relative;
-  }
-
-  .scheduler-button {
-    position: relative;
-    padding: 0.5rem;
-    border-radius: 9999px;
-    background: #000000;
-    border: 1px solid #00cc00;
-    color: #00cc00;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .scheduler-button:hover {
-    transform: scale(1.1);
-    background: rgba(0, 204, 0, 0.1);
-  }
-
-  .scheduler-button:active {
-    transform: scale(0.95);
-  }
-
-  .scheduler-button.has-tasks {
-    border-color: var(--color-term-bright-green, #00ff00);
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .scheduler-button.running {
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-
-  .button-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  .task-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 16px;
-    text-align: center;
-    background: var(--color-term-dim-green, #00cc00);
-    color: #000;
-    border-radius: 8px;
-  }
-
-  .task-badge.running {
-    background: var(--color-term-bright-green, #00ff00);
-    animation: badgePulse 1.5s infinite;
-  }
-
   @keyframes badgePulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.1); }
   }
 
-  /* ChatGPT Theme */
-  .scheduler-button-container.chatgpt .scheduler-button {
-    background: transparent;
-    border: none;
-    border-radius: 0.5rem;
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-button-container.chatgpt .scheduler-button:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-    transform: none;
-  }
-
-  .scheduler-button-container.chatgpt .scheduler-button.has-tasks {
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .scheduler-button-container.chatgpt .task-badge {
-    background: var(--chat-primary, #60a5fa);
-    color: #ffffff;
-  }
-
-  .scheduler-button-container.chatgpt .task-badge.running {
-    background: #10b981;
+  .animate-badge-pulse {
+    animation: badgePulse 1.5s infinite;
   }
 </style>

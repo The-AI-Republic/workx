@@ -77,12 +77,19 @@
   function getContainerClasses(): string {
     // For chat messages, use different layout
     if (event.category === 'message') {
-      const classes = ['event-display', 'message-bubble-container', 'mb-3', currentTheme];
+      const classes = [
+        'text-base',
+        'flex',
+        'flex-col',
+        'w-full',
+        'mb-3',
+        currentTheme === 'chatgpt' ? 'font-chat' : 'font-terminal',
+      ];
 
       if (event.title === 'user') {
-        classes.push('user-message');
+        classes.push('items-end');
       } else {
-        classes.push('agent-message');
+        classes.push('items-start');
       }
 
       if (event.streaming) {
@@ -94,14 +101,15 @@
 
     // For non-message events, keep original styling
     const classes = [
-      'event-display',
+      'text-base',
       'border-l-2',
       'px-3',
       'py-2',
-      'hover:bg-gray-800/50',
       'transition-colors',
       'cursor-pointer',
-      currentTheme,
+      currentTheme === 'chatgpt'
+        ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark rounded-lg mb-2 text-chat-text dark:text-chat-text-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+        : 'font-terminal hover:bg-gray-800/50',
     ];
 
     if (selected) {
@@ -114,7 +122,7 @@
 
     if (event.style.borderColor) {
       classes.push(event.style.borderColor);
-    } else {
+    } else if (currentTheme !== 'chatgpt') {
       classes.push('border-gray-600');
     }
 
@@ -148,18 +156,36 @@
   <!-- Simple left/right aligned messages with sender labels -->
   <div class={getContainerClasses()}>
     <!-- Header outside bubble for user messages in chatgpt theme -->
-    <div class="message-header">
-      <span class="message-sender">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
+    <div class="flex items-center gap-2 mb-1 text-sm
+      {event.title === 'user' ? 'justify-end gap-2' : ''}">
+      <span class="{currentTheme === 'chatgpt'
+        ? (event.title === 'user'
+          ? 'font-medium text-chat-primary dark:text-chat-primary-dark'
+          : 'font-medium text-chat-text dark:text-chat-text-dark')
+        : (event.title === 'user'
+          ? 'font-semibold text-cyan-400'
+          : 'font-semibold text-violet-400')}">{event.title === 'user' ? t('You') : t('BrowserX')}:</span>
       {#if event.title !== 'user' && event.modelKey}
-        <span class="model-indicator">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
+        <span class="text-[0.65rem] italic
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-gray-500'}">{event.modelKey.includes(':') ? event.modelKey.split(':').slice(1).join(':') : event.modelKey}</span>
       {/if}
-      <span class="message-time">{formatTime(event.timestamp, 'relative')}</span>
+      <span class="text-[0.7rem]
+        {currentTheme === 'chatgpt'
+          ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+          : 'text-gray-400'}">{formatTime(event.timestamp, 'relative')}</span>
     </div>
-    <div class="message-container">
-      <div class="message-content">
+    <div class="{event.title === 'user' ? 'w-fit max-w-[80%]' : 'w-full'}
+      {currentTheme === 'chatgpt' && event.title === 'user'
+        ? 'bg-chat-primary dark:bg-chat-primary-dark rounded-[1.25rem] px-4 py-2'
+        : ''}">
+      <div class="{currentTheme === 'chatgpt'
+        ? (event.title === 'user' ? 'text-white' : 'text-chat-text dark:text-chat-text-dark')
+        : ''}">
         <MessageEvent {event} />
         {#if event.streaming}
-          <span class="text-cyan-400 text-xs animate-pulse ml-2" role="status" aria-live="polite">
+          <span class="text-cyan-400 text-sm animate-pulse ml-2" role="status" aria-live="polite">
             {$_t("streaming...")}
           </span>
         {/if}
@@ -178,12 +204,15 @@
     on:keydown={handleKeyDown}
   >
     <!-- Event Header -->
-    <div class="event-header flex items-center justify-between mb-1">
+    <div class="flex items-center justify-between mb-1">
       <div class="flex items-center gap-2">
         <!-- Collapse indicator -->
         {#if event.collapsible}
           <button
-            class="collapse-button transition-colors"
+            class="transition-colors
+              {currentTheme === 'chatgpt'
+                ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                : 'text-gray-400 hover:text-gray-200'}"
             on:click|stopPropagation={handleToggle}
             aria-label={collapsed ? t('Expand') : t('Collapse')}
           >
@@ -197,7 +226,9 @@
 
         <!-- Icon -->
         {#if event.style.icon}
-          <span class="event-icon">
+          <span class="{currentTheme === 'chatgpt'
+            ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+            : 'text-term-green'}">
             {#if event.style.icon === 'error'}
               ⚠
             {:else if event.style.icon === 'success'}
@@ -216,23 +247,37 @@
 
         <!-- Timestamp -->
         <Tooltip content={formatTime(event.timestamp, 'absolute')}>
-          <span class="event-timestamp text-xs">
+          <span class="text-sm
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+              : 'text-gray-500'}">
             {formatTime(event.timestamp, 'relative')}
           </span>
         </Tooltip>
 
         <!-- Title -->
-        <span class="event-title text-sm">
+        <span class="text-sm
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+            : 'text-term-green'}">
           {event.title}
         </span>
 
         <!-- Status indicator -->
         {#if event.status}
           <span
-            class="event-status text-xs px-1.5 py-0.5 rounded"
-            class:status-running={event.status === 'running'}
-            class:status-success={event.status === 'success'}
-            class:status-error={event.status !== 'running' && event.status !== 'success'}
+            class="text-sm px-1.5 py-0.5 rounded
+              {event.status === 'running'
+                ? (currentTheme === 'chatgpt'
+                  ? 'bg-chat-status-running/10 dark:bg-chat-status-running-dark/10 text-chat-status-running dark:text-chat-status-running-dark'
+                  : 'bg-cyan-400/20 text-cyan-400')
+                : event.status === 'success'
+                  ? (currentTheme === 'chatgpt'
+                    ? 'bg-chat-status-success/10 dark:bg-chat-status-success-dark/10 text-chat-status-success dark:text-chat-status-success-dark'
+                    : 'bg-green-500/20 text-green-500')
+                  : (currentTheme === 'chatgpt'
+                    ? 'bg-chat-status-error/10 dark:bg-chat-status-error-dark/10 text-chat-status-error dark:text-chat-status-error-dark'
+                    : 'bg-red-500/20 text-red-500')}"
           >
             {event.status}
           </span>
@@ -240,7 +285,10 @@
 
         <!-- Streaming indicator -->
         {#if event.streaming}
-          <span class="streaming-indicator text-xs animate-pulse" role="status" aria-live="polite">
+          <span class="text-sm animate-pulse
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-primary dark:text-chat-primary-dark'
+              : 'text-cyan-400'}" role="status" aria-live="polite">
             {$_t("streaming...")}
           </span>
         {/if}
@@ -278,78 +326,6 @@
 {/if}
 
 <style>
-  .event-display {
-    font-size: 1rem; /* text-base: 16px */
-  }
-
-  /* Simple left/right message alignment */
-  .message-bubble-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    margin-bottom: 0.75rem;
-  }
-
-  .message-bubble-container.agent-message {
-    /* Agent messages: full width, left-aligned */
-    align-items: flex-start;
-  }
-
-  .message-bubble-container.user-message {
-    /* User messages: right-aligned */
-    align-items: flex-end;
-  }
-
-  .message-bubble-container.agent-message .message-container {
-    width: 100%;
-  }
-
-  .message-bubble-container.user-message .message-container {
-    width: fit-content;
-    max-width: 80%;
-  }
-
-  .message-bubble-container.user-message .message-header {
-    /* Right-align header for user messages */
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-
-  .message-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
-    font-size: 0.75rem;
-  }
-
-  .message-sender {
-    font-weight: 600;
-  }
-
-  .agent-message .message-sender {
-    color: #a78bfa; /* Purple for agent name */
-  }
-
-  .user-message .message-sender {
-    color: #22d3ee; /* Cyan for user name */
-  }
-
-  .message-time {
-    color: #9ca3af;
-    font-size: 0.7rem;
-  }
-
-  .model-indicator {
-    color: var(--text-muted, #6b7280);
-    font-size: 0.65rem;
-    font-style: italic;
-  }
-
-  .message-content {
-    /* No border or background - clean layout */
-  }
-
   .animate-pulse-subtle {
     animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
@@ -361,17 +337,6 @@
     }
     50% {
       opacity: 0.95;
-    }
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 
@@ -390,166 +355,13 @@
     }
   }
 
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .event-display.chatgpt {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  /* ChatGPT theme message styling */
-  .message-bubble-container.chatgpt .message-sender {
-    font-weight: 500;
-  }
-
-  /* Agent messages: dark text color */
-  .message-bubble-container.chatgpt.agent-message .message-sender {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .message-bubble-container.chatgpt.agent-message .message-content {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .message-bubble-container.chatgpt .message-time {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .message-bubble-container.chatgpt .model-indicator {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  /* User messages: header outside bubble with blue color */
-  .message-bubble-container.chatgpt.user-message .message-header {
-    margin-bottom: 0.375rem;
-  }
-
-  .message-bubble-container.chatgpt.user-message .message-sender {
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .message-bubble-container.chatgpt.user-message .message-time {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  /* User messages: blue bubble with white text */
-  .message-bubble-container.chatgpt.user-message .message-container {
-    background: var(--chat-primary, #60a5fa);
-    border-radius: 1.25rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .message-bubble-container.chatgpt.user-message .message-content {
-    color: #ffffff;
-  }
-
-  /* Remove paragraph margins inside user bubble */
-  .message-bubble-container.chatgpt.user-message .message-content :global(p) {
+  /* ChatGPT user bubble paragraph spacing */
+  :global(.user-bubble-content p) {
     margin: 0;
     line-height: 1.4;
   }
 
-  .message-bubble-container.chatgpt.user-message .message-content :global(p:not(:last-child)) {
+  :global(.user-bubble-content p:not(:last-child)) {
     margin-bottom: 0.25em;
-  }
-
-  /* ChatGPT theme for non-message events - light grey text */
-  .event-display.chatgpt:not(.message-bubble-container) {
-    background: var(--chat-card-bg, #f7f7f8);
-    border-color: var(--chat-border, #e5e5e5);
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .event-display.chatgpt:not(.message-bubble-container):hover {
-    background: var(--chat-card-hover, #ececec);
-  }
-
-  /* ============================================
-     Event Header Styles - Terminal (default)
-     ============================================ */
-
-  .collapse-button {
-    color: #9ca3af;
-  }
-
-  .collapse-button:hover {
-    color: #e5e7eb;
-  }
-
-  .event-timestamp {
-    color: #6b7280;
-  }
-
-  .event-title {
-    color: #00ff00;
-  }
-
-  .event-icon {
-    color: #00ff00;
-  }
-
-  .status-running {
-    background: rgba(34, 211, 238, 0.2);
-    color: #22d3ee;
-  }
-
-  .status-success {
-    background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
-  }
-
-  .status-error {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-  }
-
-  .streaming-indicator {
-    color: #22d3ee;
-  }
-
-  /* ============================================
-     Event Header Styles - ChatGPT Theme
-     ============================================ */
-
-  .event-display.chatgpt .collapse-button {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .event-display.chatgpt .collapse-button:hover {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .event-display.chatgpt .event-timestamp {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .event-display.chatgpt .event-title {
-    color: var(--chat-text-secondary, #6e6e80);
-  }
-
-  .event-display.chatgpt .event-icon {
-    color: var(--chat-text-secondary, #6e6e80);
-  }
-
-  .event-display.chatgpt .status-running {
-    background: var(--chat-status-running-bg, rgba(96, 165, 250, 0.1));
-    color: var(--chat-status-running, #60a5fa);
-  }
-
-  .event-display.chatgpt .status-success {
-    background: var(--chat-status-success-bg, rgba(16, 185, 129, 0.1));
-    color: var(--chat-status-success, #10b981);
-  }
-
-  .event-display.chatgpt .status-error {
-    background: var(--chat-status-error-bg, rgba(239, 68, 68, 0.1));
-    color: var(--chat-status-error, #ef4444);
-  }
-
-  .event-display.chatgpt .streaming-indicator {
-    color: var(--chat-primary, #60a5fa);
   }
 </style>

@@ -28,19 +28,33 @@
     : JSON.stringify(event.content);
 
   $: isUserMessage = event.title === 'user';
+
+  // ChatGPT theme text color depends on user vs agent message
+  $: chatgptTextClasses = isUserMessage
+    ? 'text-white'
+    : 'text-chat-text dark:text-chat-text-dark';
+
+  // Content text classes based on theme
+  $: contentClasses = currentTheme === 'chatgpt'
+    ? chatgptTextClasses
+    : event.style.textColor;
 </script>
 
 <div class="message-event {currentTheme}" class:user-message={isUserMessage}>
-  <div class={`text-base markdown-content ${event.style.textColor}`} style="min-width: 0; overflow: hidden;">
+  <div class="markdown-content text-sm min-w-0 overflow-hidden {contentClasses}">
     {@html contentHtml}
   </div>
 
   {#if event.streaming}
-    <span class="streaming-cursor">▊</span>
+    <span class="streaming-cursor inline-block
+      {currentTheme === 'chatgpt' && isUserMessage
+        ? 'text-white'
+        : 'text-current'}">▊</span>
   {/if}
 </div>
 
 <style>
+  /* Markdown styling — :global() selectors for rendered content */
   .markdown-content :global(h1),
   .markdown-content :global(h2),
   .markdown-content :global(h3),
@@ -169,9 +183,7 @@
   }
 
   .streaming-cursor {
-    display: inline-block;
     animation: blink 1s step-end infinite;
-    color: currentColor;
   }
 
   @keyframes blink {
@@ -185,7 +197,7 @@
     }
   }
 
-  /* Dark mode support */
+  /* Dark mode support for markdown content */
   @media (prefers-color-scheme: dark) {
     .markdown-content :global(h1),
     .markdown-content :global(h2) {
@@ -215,33 +227,20 @@
     }
   }
 
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  /* ChatGPT theme - agent messages use dark text */
-  .message-event.chatgpt .markdown-content {
-    color: var(--chat-text, #0d0d0d);
-  }
-
+  /* ChatGPT theme overrides for rendered markdown — :global() selectors */
   .message-event.chatgpt .markdown-content :global(a) {
-    color: var(--chat-primary, #60a5fa);
+    color: var(--color-chat-primary);
   }
 
   .message-event.chatgpt .markdown-content :global(code) {
     background: rgba(0, 0, 0, 0.08);
-    color: var(--chat-text, #0d0d0d);
   }
 
   .message-event.chatgpt .markdown-content :global(blockquote) {
-    color: var(--chat-text-secondary, #6e6e80);
+    color: var(--color-chat-text-secondary);
   }
 
-  /* ChatGPT theme - user messages use white text */
-  .message-event.chatgpt.user-message .markdown-content {
-    color: #ffffff;
-  }
-
+  /* ChatGPT theme — user messages rendered markdown overrides */
   .message-event.chatgpt.user-message .markdown-content :global(a) {
     color: rgba(255, 255, 255, 0.9);
     text-decoration: underline;
@@ -255,9 +254,5 @@
   .message-event.chatgpt.user-message .markdown-content :global(blockquote) {
     border-left-color: rgba(255, 255, 255, 0.5);
     color: rgba(255, 255, 255, 0.9);
-  }
-
-  .message-event.chatgpt.user-message .streaming-cursor {
-    color: #ffffff;
   }
 </style>

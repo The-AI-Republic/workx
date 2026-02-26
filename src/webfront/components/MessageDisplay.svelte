@@ -3,6 +3,7 @@
   import { marked } from 'marked';
   import type { UIUpdate } from '@/core/StreamProcessor';
   import { t, _t } from '../lib/i18n';
+  import { uiTheme, type UITheme } from '../stores/themeStore';
 
   export let message: {
     role: 'user' | 'assistant' | 'system';
@@ -10,6 +11,11 @@
     timestamp?: number;
     streaming?: boolean;
   };
+
+  let currentTheme: UITheme = 'terminal';
+  uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
 
   let content = message.content || '';
   let isStreaming = message.streaming || false;
@@ -100,11 +106,49 @@
       mangle: false, // Don't escape email addresses
     }) as string;
   }
+
+  // Role-specific background classes
+  $: roleBgClasses = message.role === 'user'
+    ? (currentTheme === 'chatgpt'
+      ? 'bg-blue-50 dark:bg-blue-900/30 ml-5'
+      : 'bg-blue-50 dark:bg-[#1e3a5f] ml-5')
+    : message.role === 'assistant'
+      ? (currentTheme === 'chatgpt'
+        ? 'bg-chat-surface dark:bg-chat-surface-dark mr-5'
+        : 'bg-gray-100 dark:bg-[#2c2c2c] mr-5')
+      : (currentTheme === 'chatgpt'
+        ? 'bg-orange-50 dark:bg-orange-900/30 text-sm opacity-80'
+        : 'bg-orange-50 dark:bg-[#3e2723] text-sm opacity-80');
+
+  // Role label color
+  $: roleLabelClasses = currentTheme === 'chatgpt'
+    ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+    : 'text-gray-500 dark:text-gray-400';
+
+  // Timestamp color
+  $: timestampClasses = currentTheme === 'chatgpt'
+    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+    : 'text-gray-400 dark:text-gray-500';
+
+  // Text color for content
+  $: textColorClasses = currentTheme === 'chatgpt'
+    ? 'text-chat-text dark:text-chat-text-dark'
+    : 'text-gray-900 dark:text-gray-200';
+
+  // System message special text color
+  $: systemTextClasses = message.role === 'system'
+    ? (currentTheme === 'chatgpt'
+      ? 'text-chat-text dark:text-chat-text-dark'
+      : 'text-gray-900 dark:text-[#ffccbc]')
+    : '';
 </script>
 
-<div class="message message-{message.role}" class:streaming={isStreaming}>
-  <div class="message-header">
-    <span class="role">
+<div
+  class="px-4 py-3 my-2 rounded-lg transition-all duration-200 {roleBgClasses} {systemTextClasses} {textColorClasses}"
+  class:streaming={isStreaming}
+>
+  <div class="flex justify-between mb-2 text-sm">
+    <span class="font-semibold {roleLabelClasses}">
       {#if message.role === 'user'}
         {$_t("You")}
       {:else if message.role === 'assistant'}
@@ -114,63 +158,46 @@
       {/if}
     </span>
     {#if message.timestamp}
-      <span class="timestamp">{formatTime(message.timestamp)}</span>
+      <span class="{timestampClasses}">{formatTime(message.timestamp)}</span>
     {/if}
   </div>
 
-  <div class="message-content">
+  <div class="leading-normal min-w-0 overflow-hidden">
     {#if isStreaming}
-      <div class="content-text">
+      <div class="content-text break-words overflow-wrap-anywhere min-w-0">
         {@html parseContent(content)}
-        <span class="cursor-blink">▊</span>
+        <span class="cursor-blink inline-block font-normal
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-primary dark:text-chat-primary-dark'
+            : 'text-blue-500'}">▊</span>
       </div>
     {:else}
-      <div class="content-text">
+      <div class="content-text break-words overflow-wrap-anywhere min-w-0">
         {@html parseContent(content)}
       </div>
     {/if}
   </div>
 
   {#if isStreaming}
-    <div class="streaming-indicator">
-      <span class="dot"></span>
-      <span class="dot"></span>
-      <span class="dot"></span>
+    <div class="flex gap-1 mt-2">
+      <span class="dot w-2 h-2 rounded-full
+        {currentTheme === 'chatgpt'
+          ? 'bg-chat-primary dark:bg-chat-primary-dark'
+          : 'bg-blue-500'}"></span>
+      <span class="dot dot-2 w-2 h-2 rounded-full
+        {currentTheme === 'chatgpt'
+          ? 'bg-chat-primary dark:bg-chat-primary-dark'
+          : 'bg-blue-500'}"></span>
+      <span class="dot dot-3 w-2 h-2 rounded-full
+        {currentTheme === 'chatgpt'
+          ? 'bg-chat-primary dark:bg-chat-primary-dark'
+          : 'bg-blue-500'}"></span>
     </div>
   {/if}
 </div>
 
 <style>
-  .message {
-    padding: 12px 16px;
-    margin: 8px 0;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-  }
-
-  .message-user {
-    background: #e3f2fd;
-    margin-left: 20px;
-  }
-
-  .message-assistant {
-    background: #f5f5f5;
-    margin-right: 20px;
-  }
-
-  .message-system {
-    background: #fff3e0;
-    font-size: 0.9em;
-    opacity: 0.8;
-  }
-
-  .message.streaming {
-    background: linear-gradient(
-      90deg,
-      var(--bg-color) 0%,
-      rgba(66, 165, 245, 0.1) 50%,
-      var(--bg-color) 100%
-    );
+  .streaming {
     background-size: 200% 100%;
     animation: streaming-bg 2s ease-in-out infinite;
   }
@@ -184,35 +211,43 @@
     }
   }
 
-  .message-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 0.85em;
+  .cursor-blink {
+    animation: blink 1s infinite;
   }
 
-  .role {
-    font-weight: 600;
-    color: #666;
+  @keyframes blink {
+    0%, 50% {
+      opacity: 1;
+    }
+    51%, 100% {
+      opacity: 0;
+    }
   }
 
-  .timestamp {
-    color: #999;
+  .dot {
+    animation: pulse 1.5s ease-in-out infinite;
   }
 
-  .message-content {
-    line-height: 1.5;
-    min-width: 0;
-    overflow: hidden;
+  .dot-2 {
+    animation-delay: 0.2s;
   }
 
-  .content-text {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    min-width: 0;
+  .dot-3 {
+    animation-delay: 0.4s;
   }
 
-  /* Markdown styling */
+  @keyframes pulse {
+    0%, 60%, 100% {
+      opacity: 0.3;
+      transform: scale(0.8);
+    }
+    30% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Markdown styling — :global() selectors for rendered content */
   .content-text :global(h1),
   .content-text :global(h2),
   .content-text :global(h3),
@@ -340,71 +375,8 @@
     height: auto;
   }
 
-  .cursor-blink {
-    animation: blink 1s infinite;
-    color: #2196f3;
-    font-weight: normal;
-  }
-
-  @keyframes blink {
-    0%, 50% {
-      opacity: 1;
-    }
-    51%, 100% {
-      opacity: 0;
-    }
-  }
-
-  .streaming-indicator {
-    display: flex;
-    gap: 4px;
-    margin-top: 8px;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #2196f3;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  .dot:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-
-  .dot:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-
-  @keyframes pulse {
-    0%, 60%, 100% {
-      opacity: 0.3;
-      transform: scale(0.8);
-    }
-    30% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  /* Dark mode support */
+  /* Dark mode support for markdown content */
   @media (prefers-color-scheme: dark) {
-    .message-user {
-      background: #1e3a5f;
-      color: #e0e0e0;
-    }
-
-    .message-assistant {
-      background: #2c2c2c;
-      color: #e0e0e0;
-    }
-
-    .message-system {
-      background: #3e2723;
-      color: #ffccbc;
-    }
-
     .content-text :global(h1),
     .content-text :global(h2) {
       border-bottom-color: #444;
@@ -430,14 +402,6 @@
 
     .content-text :global(hr) {
       border-top-color: #444;
-    }
-
-    .role {
-      color: #aaa;
-    }
-
-    .timestamp {
-      color: #777;
     }
   }
 </style>

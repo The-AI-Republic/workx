@@ -263,15 +263,28 @@
 <svelte:window on:click={handleClickOutside} />
 
 {#if show}
-  <div class="scheduler-popup {currentTheme}">
+  <div class="scheduler-popup fixed bottom-[70px] left-4 right-4 max-w-[400px] max-h-[60vh] rounded-lg z-[9999] flex flex-col animate-slide-up
+    {currentTheme === 'chatgpt'
+      ? 'bg-chat-bg dark:bg-chat-bg-dark border-none rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.2)]'
+      : 'bg-[#0a0a0a] border border-term-dim-green'}">
     <!-- Header -->
-    <div class="popup-header">
-      <div class="title-area">
-        <h3 class="popup-title">{$_t('Scheduled Tasks')}</h3>
+    <div class="flex justify-between items-center py-3 px-4
+      {currentTheme === 'chatgpt'
+        ? 'border-b border-chat-border dark:border-chat-border-dark'
+        : 'border-b border-term-dim-green'}">
+      <div class="flex items-center gap-2.5">
+        <h3 class="m-0 text-sm font-semibold
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text dark:text-chat-text-dark font-chat'
+            : 'text-term-bright-green font-terminal'}"
+        >{$_t('Scheduled Tasks')}</h3>
         <!-- Feature 015 (T052): Session capacity badge -->
         <button
-          class="session-badge"
-          class:at-capacity={sessionCount >= maxSessions}
+          class="flex items-center gap-1 py-0.5 px-2 rounded-xl cursor-pointer transition-all duration-200 text-sm
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+              : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.2)] hover:text-term-bright-green'}
+            {sessionCount >= maxSessions ? '!bg-[rgba(255,255,0,0.1)] !border-term-yellow !text-term-yellow' : ''}"
           on:click={() => showSessionDetails = !showSessionDetails}
           title={$_t('Active Sessions')}
         >
@@ -284,9 +297,12 @@
           <span>{sessionCount}/{maxSessions}</span>
         </button>
       </div>
-      <div class="header-actions">
+      <div class="flex gap-2 items-center">
         <button
-          class="add-btn"
+          class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+              : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
           on:click={handleAddTask}
           title={$_t('Add Task')}
         >
@@ -296,8 +312,12 @@
           </svg>
         </button>
         <button
-          class="pause-btn"
-          class:paused={isPaused}
+          class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+              : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}
+            {isPaused && currentTheme === 'chatgpt' ? '!text-amber-500' : ''}
+            {isPaused && currentTheme !== 'chatgpt' ? '!text-term-yellow' : ''}"
           on:click={togglePause}
           title={isPaused ? $_t('Resume Queue') : $_t('Pause Queue')}
         >
@@ -312,7 +332,14 @@
             </svg>
           {/if}
         </button>
-        <button class="close-btn" on:click={onClose} aria-label="Close">
+        <button
+          class="p-1 border-none rounded bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+              : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
+          on:click={onClose}
+          aria-label="Close"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -322,21 +349,44 @@
     </div>
 
     <!-- Content -->
-    <div class="popup-content">
+    <div class="flex-1 overflow-y-auto p-3">
       {#if isLoading}
-        <div class="loading-state">{$_t('Loading...')}</div>
+        <div class="text-center py-6
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-term-dim-green'}"
+        >{$_t('Loading...')}</div>
       {:else if totalTasks === 0}
-        <div class="empty-state">
+        <div class="text-center py-6
+          {currentTheme === 'chatgpt'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-term-dim-green'}">
           <p>{$_t('No scheduled tasks')}</p>
-          <p class="empty-hint">{$_t('Long-press the send button to schedule a task')}</p>
+          <p class="text-sm opacity-70 mt-2">{$_t('Long-press the send button to schedule a task')}</p>
         </div>
       {:else}
         <!-- Feature 015 (T052, T053): Session Details Panel -->
         {#if showSessionDetails}
-          <div class="session-details-panel">
-            <div class="session-details-header">
-              <span class="session-details-title">{$_t('Active Sessions')}</span>
-              <button class="close-session-details" on:click={() => showSessionDetails = false}>
+          <div class="rounded overflow-hidden mb-3
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
+              : 'bg-[rgba(0,0,0,0.6)] border border-term-dim-green'}">
+            <div class="flex justify-between items-center py-2 px-2.5
+              {currentTheme === 'chatgpt'
+                ? 'bg-chat-bg dark:bg-chat-bg-dark border-b border-chat-border dark:border-chat-border-dark'
+                : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
+              <span class="text-sm font-semibold uppercase tracking-wider
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-text dark:text-chat-text-dark'
+                  : 'text-term-bright-green'}"
+              >{$_t('Active Sessions')}</span>
+              <button
+                class="p-0.5 bg-transparent border-none cursor-pointer flex items-center
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                    : 'text-term-dim-green hover:text-term-bright-green'}"
+                on:click={() => showSessionDetails = false}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -344,18 +394,42 @@
               </button>
             </div>
             {#if sessions.length === 0}
-              <div class="no-sessions">{$_t('No active sessions')}</div>
+              <div class="p-3 text-center text-sm
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                  : 'text-term-dim-green'}"
+              >{$_t('No active sessions')}</div>
             {:else}
-              <div class="session-list">
+              <div class="p-2">
                 {#each sessions as session}
-                  <div class="session-item" class:is-primary={session.type === 'primary'}>
-                    <span class="session-letter">{session.sessionLetter.toUpperCase()}</span>
-                    <div class="session-info">
-                      <span class="session-type">{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Task')}</span>
-                      <span class="session-state state-{session.state}">{session.state}</span>
+                  <div class="flex items-center gap-2 py-1.5 px-2 rounded mb-1 last:mb-0
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-bg dark:bg-chat-bg-dark' + (session.type === 'primary' ? ' !bg-[rgba(16,163,127,0.1)] border border-[rgba(16,163,127,0.3)]' : '')
+                      : 'bg-[rgba(0,0,0,0.3)]' + (session.type === 'primary' ? ' !bg-[rgba(0,255,255,0.1)] border border-[rgba(0,255,255,0.3)]' : '')}">
+                    <span class="flex items-center justify-center w-5 h-5 text-sm font-bold rounded
+                      {currentTheme === 'chatgpt'
+                        ? 'bg-chat-button dark:bg-chat-button-dark text-white' + (session.type === 'primary' ? '' : '')
+                        : 'bg-term-dim-green text-black' + (session.type === 'primary' ? ' !bg-[#00ffff]' : '')}"
+                    >{session.sessionLetter.toUpperCase()}</span>
+                    <div class="flex-1 flex flex-col gap-0.5">
+                      <span class="text-sm
+                        {currentTheme === 'chatgpt'
+                          ? 'text-chat-text dark:text-chat-text-dark'
+                          : 'text-term-bright-green'}"
+                      >{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Task')}</span>
+                      <span class="text-sm capitalize
+                        {currentTheme === 'chatgpt'
+                          ? (session.state === 'active' ? 'text-chat-button dark:text-chat-button-dark' : session.state === 'initializing' ? 'text-amber-500' : 'text-chat-text-muted dark:text-chat-text-muted-dark')
+                          : (session.state === 'active' ? 'text-term-bright-green' : session.state === 'initializing' ? 'text-term-yellow' : 'text-term-dim-green')}"
+                      >{session.state}</span>
                     </div>
                     {#if session.scheduledTaskId}
-                      <span class="session-task-badge" title={$_t('Task ID')}>
+                      <span class="flex items-center
+                        {currentTheme === 'chatgpt'
+                          ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                          : 'text-term-dim-green'}"
+                        title={$_t('Task ID')}
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <circle cx="12" cy="12" r="10"></circle>
                           <polyline points="12 6 12 12 16 14"></polyline>
@@ -368,7 +442,10 @@
             {/if}
             <!-- T053: Capacity warning -->
             {#if sessionCount >= maxSessions}
-              <div class="capacity-warning">
+              <div class="flex items-center gap-1.5 py-2 px-2.5 text-sm
+                {currentTheme === 'chatgpt'
+                  ? 'bg-[rgba(245,158,11,0.1)] border-t border-amber-500 text-amber-500'
+                  : 'bg-[rgba(255,255,0,0.1)] border-t border-term-yellow text-term-yellow'}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                   <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -382,14 +459,23 @@
 
         <!-- T057: Session Error Notification -->
         {#if lastSessionError}
-          <div class="session-error-toast" role="alert">
+          <div class="flex items-center gap-2 py-2 px-3 my-2 rounded text-sm animate-slide-in
+            {currentTheme === 'chatgpt'
+              ? 'bg-[rgba(239,68,68,0.1)] border border-red-500 text-red-500'
+              : 'bg-[rgba(255,100,100,0.15)] border border-term-red text-term-red'}"
+            role="alert"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
             <span>{$_t('Session error')}: {lastSessionError.message}</span>
-            <button class="dismiss-error" on:click={() => lastSessionError = null} aria-label={$_t('Dismiss')}>
+            <button
+              class="ml-auto p-0.5 bg-transparent border-none text-inherit cursor-pointer opacity-70 transition-opacity duration-200 hover:opacity-100"
+              on:click={() => lastSessionError = null}
+              aria-label={$_t('Dismiss')}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -400,8 +486,11 @@
 
         <!-- Paused Warning -->
         {#if isPaused}
-          <div class="paused-warning">
-            <span class="warning-icon">
+          <div class="flex items-center gap-2 py-2 px-3 rounded text-sm mb-3
+            {currentTheme === 'chatgpt'
+              ? 'bg-[rgba(245,158,11,0.1)] border border-amber-500 text-amber-500'
+              : 'bg-[rgba(255,255,0,0.1)] border border-term-yellow text-term-yellow'}">
+            <span class="flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -413,8 +502,11 @@
 
         <!-- T042: Offline Warning -->
         {#if isOffline}
-          <div class="offline-warning">
-            <span class="warning-icon">
+          <div class="flex items-center gap-2 py-2 px-3 rounded text-sm mb-3
+            {currentTheme === 'chatgpt'
+              ? 'bg-[rgba(239,68,68,0.1)] border border-red-500 text-red-500'
+              : 'bg-[rgba(255,100,100,0.1)] border border-term-red text-term-red'}">
+            <span class="flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="1" y1="1" x2="23" y2="23"></line>
                 <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
@@ -431,59 +523,134 @@
 
         <!-- Task Details Panel (T019) -->
         {#if expandedTaskId && expandedTaskDetails}
-          <div class="task-details-panel">
-            <div class="details-header">
-              <h4 class="details-title">{$_t('Task Details')}</h4>
-              <button class="close-details-btn" on:click={closeDetails} aria-label="Close details">
+          <div class="rounded overflow-hidden
+            {currentTheme === 'chatgpt'
+              ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
+              : 'bg-[rgba(0,0,0,0.6)] border border-term-dim-green'}">
+            <div class="flex justify-between items-center py-2 px-3
+              {currentTheme === 'chatgpt'
+                ? 'bg-chat-bg dark:bg-chat-bg-dark border-b border-chat-border dark:border-chat-border-dark'
+                : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
+              <h4 class="m-0 text-sm font-semibold
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-text dark:text-chat-text-dark'
+                  : 'text-term-bright-green'}"
+              >{$_t('Task Details')}</h4>
+              <button
+                class="p-0.5 bg-transparent border-none cursor-pointer flex items-center
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                    : 'text-term-dim-green hover:text-term-bright-green'}"
+                on:click={closeDetails}
+                aria-label="Close details"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
             </div>
-            <div class="details-content">
-              <div class="detail-row">
-                <span class="detail-label">{$_t('Status')}:</span>
-                <span class="detail-value status-{expandedTaskDetails.status}">{expandedTaskDetails.status}</span>
+            <div class="p-3">
+              <div class="flex gap-2 mb-2 text-sm">
+                <span class="shrink-0
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                    : 'text-term-dim-green'}"
+                >{$_t('Status')}:</span>
+                <span class="break-words
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text dark:text-chat-text-dark'
+                    : (expandedTaskDetails.status === 'running' ? 'text-term-bright-green'
+                      : expandedTaskDetails.status === 'completed' ? 'text-[#00ffff]'
+                      : expandedTaskDetails.status === 'failed' ? 'text-term-red'
+                      : expandedTaskDetails.status === 'missed' ? 'text-term-yellow'
+                      : 'text-term-bright-green')}"
+                >{expandedTaskDetails.status}</span>
               </div>
-              <div class="detail-row">
-                <span class="detail-label">{$_t('Created')}:</span>
-                <span class="detail-value">{new Date(expandedTaskDetails.createdAt).toLocaleString()}</span>
+              <div class="flex gap-2 mb-2 text-sm">
+                <span class="shrink-0
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                    : 'text-term-dim-green'}"
+                >{$_t('Created')}:</span>
+                <span class="break-words
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text dark:text-chat-text-dark'
+                    : 'text-term-bright-green'}"
+                >{new Date(expandedTaskDetails.createdAt).toLocaleString()}</span>
               </div>
               {#if expandedTaskDetails.scheduledTime}
-                <div class="detail-row">
-                  <span class="detail-label">{$_t('Scheduled')}:</span>
-                  <span class="detail-value">{new Date(expandedTaskDetails.scheduledTime).toLocaleString()}</span>
+                <div class="flex gap-2 mb-2 text-sm">
+                  <span class="shrink-0
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                      : 'text-term-dim-green'}"
+                  >{$_t('Scheduled')}:</span>
+                  <span class="break-words
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-text dark:text-chat-text-dark'
+                      : 'text-term-bright-green'}"
+                  >{new Date(expandedTaskDetails.scheduledTime).toLocaleString()}</span>
                 </div>
               {/if}
               {#if expandedTaskDetails.completedAt}
-                <div class="detail-row">
-                  <span class="detail-label">{$_t('Completed')}:</span>
-                  <span class="detail-value">{new Date(expandedTaskDetails.completedAt).toLocaleString()}</span>
+                <div class="flex gap-2 mb-2 text-sm">
+                  <span class="shrink-0
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                      : 'text-term-dim-green'}"
+                  >{$_t('Completed')}:</span>
+                  <span class="break-words
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-text dark:text-chat-text-dark'
+                      : 'text-term-bright-green'}"
+                  >{new Date(expandedTaskDetails.completedAt).toLocaleString()}</span>
                 </div>
               {/if}
-              <div class="detail-section">
-                <span class="detail-label">{$_t('Full Input')}:</span>
-                <pre class="detail-input">{expandedTaskDetails.input}</pre>
+              <div class="mt-3 pt-3 border-t border-dashed border-[rgba(0,255,0,0.2)]">
+                <span class="shrink-0 text-sm
+                  {currentTheme === 'chatgpt'
+                    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                    : 'text-term-dim-green'}"
+                >{$_t('Full Input')}:</span>
+                <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
+                  {currentTheme === 'chatgpt'
+                    ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+                    : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
+                >{expandedTaskDetails.input}</pre>
               </div>
               {#if expandedTaskDetails.error}
-                <div class="detail-section">
-                  <span class="detail-label error">{$_t('Error')}:</span>
-                  <pre class="detail-error">{expandedTaskDetails.error}</pre>
+                <div class="mt-3 pt-3 border-t border-dashed border-[rgba(0,255,0,0.2)]">
+                  <span class="shrink-0 text-sm text-term-red">{$_t('Error')}:</span>
+                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]">{expandedTaskDetails.error}</pre>
                 </div>
               {/if}
               {#if expandedTaskDetails.result}
-                <div class="detail-section">
-                  <span class="detail-label">{$_t('Result Summary')}:</span>
-                  <pre class="detail-result">{expandedTaskDetails.result.summary}</pre>
-                  <div class="detail-stats">
+                <div class="mt-3 pt-3 border-t border-dashed border-[rgba(0,255,0,0.2)]">
+                  <span class="shrink-0 text-sm
+                    {currentTheme === 'chatgpt'
+                      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                      : 'text-term-dim-green'}"
+                  >{$_t('Result Summary')}:</span>
+                  <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+                      : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
+                  >{expandedTaskDetails.result.summary}</pre>
+                  <div class="flex gap-4 mt-2 text-sm text-term-dim-green">
                     <span>{$_t('Tokens')}: {expandedTaskDetails.result.tokenUsage.totalTokens}</span>
                     <span>{$_t('Duration')}: {(expandedTaskDetails.result.duration / 1000).toFixed(1)}s</span>
                   </div>
                 </div>
               {/if}
               {#if expandedTaskDetails.sessionId && (expandedTaskDetails.status === 'completed' || expandedTaskDetails.status === 'failed')}
-                <button class="view-session-btn" on:click={() => navigateToSession(expandedTaskDetails.sessionId)}>
+                <button
+                  class="flex items-center justify-center gap-1.5 w-full mt-3 py-2 rounded cursor-pointer text-sm transition-all duration-200
+                    {currentTheme === 'chatgpt'
+                      ? 'bg-chat-button dark:bg-chat-button-dark border-none text-white hover:opacity-90'
+                      : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
+                  on:click={() => navigateToSession(expandedTaskDetails.sessionId)}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                   </svg>
@@ -493,12 +660,20 @@
             </div>
           </div>
         {:else if isLoadingDetails}
-          <div class="loading-details">{$_t('Loading details...')}</div>
+          <div class="text-center py-6 text-sm
+            {currentTheme === 'chatgpt'
+              ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+              : 'text-term-dim-green'}"
+          >{$_t('Loading details...')}</div>
         {:else}
           <!-- Running Task -->
           {#if runningTask}
-            <div class="section">
-              <h4 class="section-title">{$_t('Running')}</h4>
+            <div class="mb-4">
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                  : 'text-term-dim-green'}"
+              >{$_t('Running')}</h4>
               <SchedulerTaskItem
                 {...runningTask}
                 showActions={true}
@@ -510,8 +685,12 @@
 
           <!-- Missed Tasks -->
           {#if missedTasks.length > 0}
-            <div class="section">
-              <h4 class="section-title missed">{$_t('Missed')} ({missedTasks.length})</h4>
+            <div class="mb-4">
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
+                {currentTheme === 'chatgpt'
+                  ? 'text-amber-500'
+                  : 'text-term-yellow'}"
+              >{$_t('Missed')} ({missedTasks.length})</h4>
               {#each missedTasks as task (task.id)}
                 <SchedulerTaskItem
                   {...task}
@@ -525,8 +704,12 @@
 
           <!-- Queued Tasks -->
           {#if queuedTasks.length > 0}
-            <div class="section">
-              <h4 class="section-title">{$_t('Queued')} ({queuedTasks.length})</h4>
+            <div class="mb-4">
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                  : 'text-term-dim-green'}"
+              >{$_t('Queued')} ({queuedTasks.length})</h4>
               {#each queuedTasks as task (task.id)}
                 <SchedulerTaskItem
                   {...task}
@@ -540,8 +723,12 @@
 
           <!-- Scheduled Tasks -->
           {#if scheduledTasks.length > 0}
-            <div class="section">
-              <h4 class="section-title">{$_t('Upcoming')} ({scheduledTasks.length})</h4>
+            <div class="mb-4 last:mb-0">
+              <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
+                {currentTheme === 'chatgpt'
+                  ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+                  : 'text-term-dim-green'}"
+              >{$_t('Upcoming')} ({scheduledTasks.length})</h4>
               {#each scheduledTasks as task (task.id)}
                 <SchedulerTaskItem
                   {...task}
@@ -555,7 +742,13 @@
         {/if}
 
         <!-- View History Link -->
-        <button class="view-history-btn" on:click={() => showArchivedView = true}>
+        <button
+          class="flex items-center justify-center gap-1.5 w-full mt-3 py-2 bg-transparent rounded cursor-pointer text-sm transition-all duration-200
+            {currentTheme === 'chatgpt'
+              ? 'border border-dashed border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:border-solid'
+              : 'border border-dashed border-term-dim-green text-term-dim-green hover:bg-[rgba(0,255,0,0.05)] hover:border-solid hover:text-term-bright-green'}"
+          on:click={() => showArchivedView = true}
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
@@ -582,719 +775,21 @@
 />
 
 <style>
-  .scheduler-popup {
-    position: fixed;
-    bottom: 70px;
-    left: 16px;
-    right: 16px;
-    max-width: 400px;
-    max-height: 60vh;
-    background: #0a0a0a;
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 8px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    animation: slideUp 0.2s ease-out;
-  }
-
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .popup-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
-  }
-
-  .title-area {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .popup-title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-term-bright-green, #00ff00);
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  /* Feature 015: Session badge */
-  .session-badge {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    background: rgba(0, 255, 0, 0.1);
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 12px;
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 11px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .session-badge:hover {
-    background: rgba(0, 255, 0, 0.2);
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .session-badge.at-capacity {
-    background: rgba(255, 255, 0, 0.1);
-    border-color: var(--color-term-yellow, #ffff00);
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  /* Session details panel */
-  .session-details-panel {
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    margin-bottom: 12px;
-    overflow: hidden;
-  }
-
-  .session-details-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 10px;
-    background: rgba(0, 255, 0, 0.05);
-    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
-  }
-
-  .session-details-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-term-bright-green, #00ff00);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .close-session-details {
-    padding: 2px;
-    background: transparent;
-    border: none;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-  }
-
-  .close-session-details:hover {
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .no-sessions {
-    padding: 12px;
-    text-align: center;
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 11px;
-  }
-
-  .session-list {
-    padding: 8px;
-  }
-
-  .session-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    margin-bottom: 4px;
-  }
-
-  .session-item:last-child {
-    margin-bottom: 0;
-  }
-
-  .session-item.is-primary {
-    background: rgba(0, 255, 255, 0.1);
-    border: 1px solid rgba(0, 255, 255, 0.3);
-  }
-
-  .session-letter {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    background: var(--color-term-dim-green, #00cc00);
-    color: #000;
-    font-size: 11px;
-    font-weight: bold;
-    border-radius: 4px;
-  }
-
-  .session-item.is-primary .session-letter {
-    background: var(--color-term-cyan, #00ffff);
-  }
-
-  .session-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .session-type {
-    font-size: 11px;
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .session-state {
-    font-size: 10px;
-    color: var(--color-term-dim-green, #00cc00);
-    text-transform: capitalize;
-  }
-
-  .session-state.state-active {
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .session-state.state-idle {
-    color: var(--color-term-dim-green, #00cc00);
-  }
-
-  .session-state.state-initializing {
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .session-task-badge {
-    display: flex;
-    align-items: center;
-    color: var(--color-term-dim-green, #00cc00);
-  }
-
-  .capacity-warning {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 10px;
-    background: rgba(255, 255, 0, 0.1);
-    border-top: 1px solid var(--color-term-yellow, #ffff00);
-    color: var(--color-term-yellow, #ffff00);
-    font-size: 10px;
-  }
-
-  /* T057: Session error toast styles */
-  .session-error-toast {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    margin: 8px 0;
-    background: rgba(255, 100, 100, 0.15);
-    border: 1px solid var(--color-term-red, #ff6666);
-    border-radius: 4px;
-    color: var(--color-term-red, #ff6666);
-    font-size: 11px;
-    animation: slideIn 0.2s ease-out;
-  }
-
-  .session-error-toast .dismiss-error {
-    margin-left: auto;
-    padding: 2px;
-    background: transparent;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-  }
-
-  .session-error-toast .dismiss-error:hover {
-    opacity: 1;
-  }
-
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  .header-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+  .animate-slide-up {
+    animation: slideUp 0.2s ease-out;
   }
 
-  .add-btn, .pause-btn, .close-btn {
-    padding: 4px;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .add-btn:hover, .pause-btn:hover, .close-btn:hover {
-    color: var(--color-term-bright-green, #00ff00);
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .pause-btn.paused {
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .popup-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-  }
-
-  .loading-state, .empty-state {
-    text-align: center;
-    padding: 24px;
-    color: var(--color-term-dim-green, #00cc00);
-  }
-
-  .empty-hint {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-top: 8px;
-  }
-
-  .paused-warning {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(255, 255, 0, 0.1);
-    border: 1px solid var(--color-term-yellow, #ffff00);
-    border-radius: 4px;
-    color: var(--color-term-yellow, #ffff00);
-    font-size: 12px;
-    margin-bottom: 12px;
-  }
-
-  .warning-icon {
-    display: flex;
-    align-items: center;
-  }
-
-  /* T042: Offline warning */
-  .offline-warning {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(255, 100, 100, 0.1);
-    border: 1px solid var(--color-term-red, #ff6666);
-    border-radius: 4px;
-    color: var(--color-term-red, #ff6666);
-    font-size: 12px;
-    margin-bottom: 12px;
-  }
-
-  .section {
-    margin-bottom: 16px;
-  }
-
-  .section:last-child {
-    margin-bottom: 0;
-  }
-
-  .section-title {
-    margin: 0 0 8px;
-    font-size: 11px;
-    text-transform: uppercase;
-    color: var(--color-term-dim-green, #00cc00);
-    letter-spacing: 0.5px;
-  }
-
-  .section-title.missed {
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .view-history-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    margin-top: 12px;
-    padding: 8px;
-    background: transparent;
-    border: 1px dashed var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
-  }
-
-  .view-history-btn:hover {
-    background: rgba(0, 255, 0, 0.05);
-    border-style: solid;
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  /* ChatGPT Theme */
-  .scheduler-popup.chatgpt {
-    background: var(--chat-bg, #ffffff);
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-  }
-
-  .scheduler-popup.chatgpt .popup-header {
-    border-bottom: 1px solid var(--chat-border, #e5e5e5);
-  }
-
-  .scheduler-popup.chatgpt .popup-title {
-    color: var(--chat-text, #0d0d0d);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .scheduler-popup.chatgpt .add-btn,
-  .scheduler-popup.chatgpt .pause-btn,
-  .scheduler-popup.chatgpt .close-btn {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .add-btn:hover,
-  .scheduler-popup.chatgpt .pause-btn:hover,
-  .scheduler-popup.chatgpt .close-btn:hover {
-    color: var(--chat-text, #0d0d0d);
-    background: var(--chat-button-hover, #ececec);
-  }
-
-  .scheduler-popup.chatgpt .pause-btn.paused {
-    color: #f59e0b;
-  }
-
-  .scheduler-popup.chatgpt .loading-state,
-  .scheduler-popup.chatgpt .empty-state {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .paused-warning {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
-    color: #f59e0b;
-  }
-
-  .scheduler-popup.chatgpt .offline-warning {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
-    color: #ef4444;
-  }
-
-  .scheduler-popup.chatgpt .section-title {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .section-title.missed {
-    color: #f59e0b;
-  }
-
-  .scheduler-popup.chatgpt .view-history-btn {
-    border-color: var(--chat-border, #e5e5e5);
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .view-history-btn:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  /* Task Details Panel (T019) */
-  .task-details-panel {
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .details-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(0, 255, 0, 0.05);
-    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
-  }
-
-  .details-title {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .close-details-btn {
-    padding: 2px;
-    background: transparent;
-    border: none;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-  }
-
-  .close-details-btn:hover {
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .details-content {
-    padding: 12px;
-  }
-
-  .detail-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-size: 12px;
-  }
-
-  .detail-label {
-    color: var(--color-term-dim-green, #00cc00);
-    flex-shrink: 0;
-  }
-
-  .detail-label.error {
-    color: var(--color-term-red, #ff0000);
-  }
-
-  .detail-value {
-    color: var(--color-term-bright-green, #00ff00);
-    word-break: break-word;
-  }
-
-  .detail-value.status-running {
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .detail-value.status-completed {
-    color: var(--color-term-cyan, #00ffff);
-  }
-
-  .detail-value.status-failed {
-    color: var(--color-term-red, #ff0000);
-  }
-
-  .detail-value.status-missed {
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .detail-section {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px dashed rgba(0, 255, 0, 0.2);
-  }
-
-  .detail-input,
-  .detail-error,
-  .detail-result {
-    margin: 8px 0 0;
-    padding: 8px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 4px;
-    font-size: 11px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 150px;
-    overflow-y: auto;
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .detail-error {
-    color: var(--color-term-red, #ff0000);
-    border: 1px solid rgba(255, 0, 0, 0.3);
-  }
-
-  .detail-stats {
-    display: flex;
-    gap: 16px;
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--color-term-dim-green, #00cc00);
-  }
-
-  .view-session-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    margin-top: 12px;
-    padding: 8px;
-    background: rgba(0, 255, 0, 0.1);
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    color: var(--color-term-bright-green, #00ff00);
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
-  }
-
-  .view-session-btn:hover {
-    background: rgba(0, 255, 0, 0.2);
-  }
-
-  .loading-details {
-    text-align: center;
-    padding: 24px;
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 12px;
-  }
-
-  /* ChatGPT theme for task details */
-  .scheduler-popup.chatgpt .task-details-panel {
-    background: var(--chat-bg-secondary, #f7f7f8);
-    border-color: var(--chat-border, #e5e5e5);
-  }
-
-  .scheduler-popup.chatgpt .details-header {
-    background: var(--chat-bg, #ffffff);
-    border-color: var(--chat-border, #e5e5e5);
-  }
-
-  .scheduler-popup.chatgpt .details-title {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .close-details-btn {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .close-details-btn:hover {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .detail-label {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .detail-value {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .detail-input,
-  .scheduler-popup.chatgpt .detail-result {
-    background: var(--chat-bg, #ffffff);
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .view-session-btn {
-    background: var(--chat-button-bg, #10a37f);
-    border: none;
-    color: white;
-  }
-
-  .scheduler-popup.chatgpt .view-session-btn:hover {
-    background: var(--chat-button-hover, #0e8c6d);
-  }
-
-  /* ChatGPT theme for session status (Feature 015) */
-  .scheduler-popup.chatgpt .session-badge {
-    background: var(--chat-bg-secondary, #f7f7f8);
-    border-color: var(--chat-border, #e5e5e5);
-    color: var(--chat-text-muted, #8e8ea0);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .scheduler-popup.chatgpt .session-badge:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .session-badge.at-capacity {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
-    color: #f59e0b;
-  }
-
-  .scheduler-popup.chatgpt .session-details-panel {
-    background: var(--chat-bg-secondary, #f7f7f8);
-    border-color: var(--chat-border, #e5e5e5);
-  }
-
-  .scheduler-popup.chatgpt .session-details-header {
-    background: var(--chat-bg, #ffffff);
-    border-color: var(--chat-border, #e5e5e5);
-  }
-
-  .scheduler-popup.chatgpt .session-details-title {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .close-session-details {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .close-session-details:hover {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .no-sessions {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .session-item {
-    background: var(--chat-bg, #ffffff);
-  }
-
-  .scheduler-popup.chatgpt .session-item.is-primary {
-    background: rgba(16, 163, 127, 0.1);
-    border-color: rgba(16, 163, 127, 0.3);
-  }
-
-  .scheduler-popup.chatgpt .session-letter {
-    background: var(--chat-button-bg, #10a37f);
-    color: white;
-  }
-
-  .scheduler-popup.chatgpt .session-type {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .scheduler-popup.chatgpt .session-state {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .session-state.state-active {
-    color: var(--chat-button-bg, #10a37f);
-  }
-
-  .scheduler-popup.chatgpt .session-state.state-initializing {
-    color: #f59e0b;
-  }
-
-  .scheduler-popup.chatgpt .session-task-badge {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .scheduler-popup.chatgpt .capacity-warning {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
-    color: #f59e0b;
-  }
-
-  /* T057: ChatGPT theme session error toast */
-  .scheduler-popup.chatgpt .session-error-toast {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
-    color: #ef4444;
+  .animate-slide-in {
+    animation: slideIn 0.2s ease-out;
   }
 </style>

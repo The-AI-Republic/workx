@@ -113,7 +113,7 @@
 </script>
 
 <span
-  class="tooltip-wrapper {className}"
+  class="inline-flex {className}"
   style="{fill ? 'width: 100%; height: 100%; ' : ''}{style}"
   bind:this={containerRef}
 >
@@ -121,10 +121,6 @@
 </span>
 
 <style>
-  .tooltip-wrapper {
-    display: inline-flex;
-  }
-
   /* Terminal theme for Tippy */
   :global(.tippy-box[data-theme~='terminal']) {
     background-color: #000000;
@@ -132,7 +128,7 @@
     border-radius: 4px;
     color: #00ff00;
     font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 11px;
+    font-size: 14px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   }
 
@@ -167,7 +163,7 @@
     border-radius: 0.375rem;
     color: #ffffff;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
