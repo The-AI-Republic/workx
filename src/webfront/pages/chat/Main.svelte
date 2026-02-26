@@ -1049,7 +1049,7 @@
         </div>
 
         <!-- Fixed bottom controls container -->
-        <div class="shrink-0 border-t {currentTheme === 'modern' ? 'bg-chat-bg dark:bg-chat-bg-dark border-chat-border dark:border-chat-border-dark' : 'bg-term-bg border-term-dim-green'}">
+        <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <!-- Input area -->
           <div class="pr-2 py-2 pl-0">
             <MessageInput
