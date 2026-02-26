@@ -105,7 +105,19 @@ const runtimePolyfill = {
   sendMessage(
     message: unknown,
     responseCallback?: (response: unknown) => void
-  ): void {
+  ): Promise<any> | void {
+    if (responseCallback === undefined) {
+      return new Promise((resolve, reject) => {
+        runtimePolyfill.sendMessage(message, (response: any) => {
+          if (response && response.error) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response);
+          }
+        });
+      });
+    }
+
     const messageId = `msg_${++messageIdCounter}_${Date.now()}`;
     const msgType = (message as { type?: string })?.type;
 
@@ -140,15 +152,84 @@ const runtimePolyfill = {
           });
           return;
 
-        case 'GET_STATE':
-          // Return empty state for desktop mode compatibility
-          responseCallback?.({ tabId: -1, history: [] });
-          return;
+        case 'GET_STATE': {
+          // Route to correct session via registry if sessionId provided
+          const getStatePayload = (message as { payload?: { sessionId?: string } })?.payload;
+          import('../agent/DesktopAgentBootstrap').then(({ getDesktopAgentBootstrap }) => {
+            try {
+              const bootstrap = getDesktopAgentBootstrap();
+              const registry = bootstrap.getRegistry();
+              const sessionId = getStatePayload?.sessionId;
 
-        case 'SESSION_RESET':
-          console.log('[chromePolyfill] SESSION_RESET received (desktop mode)');
-          responseCallback?.({ success: true });
+              if (sessionId && registry) {
+                const agentSession = registry.getSession(sessionId);
+                if (agentSession?.agent) {
+                  const session = agentSession.agent.getSession();
+                  responseCallback?.({
+                    tabId: session.getTabId(),
+                    history: session.getConversationHistory().items,
+                  });
+                  return;
+                }
+              }
+
+              // Fallback to primary agent
+              const agent = bootstrap.getAgent();
+              if (agent) {
+                const session = agent.getSession();
+                responseCallback?.({
+                  tabId: session.getTabId(),
+                  history: session.getConversationHistory().items,
+                });
+              } else {
+                responseCallback?.({ tabId: -1, history: [] });
+              }
+            } catch (error) {
+              console.error('[chromePolyfill] GET_STATE routing failed:', error);
+              responseCallback?.({ tabId: -1, history: [] });
+            }
+          }).catch(() => {
+            responseCallback?.({ tabId: -1, history: [] });
+          });
           return;
+        }
+
+        case 'SESSION_RESET': {
+          // Route to correct session via registry if sessionId provided
+          const resetPayload = (message as { payload?: { sessionId?: string } })?.payload;
+          console.log('[chromePolyfill] SESSION_RESET received (desktop mode)');
+          import('../agent/DesktopAgentBootstrap').then(({ getDesktopAgentBootstrap }) => {
+            try {
+              const bootstrap = getDesktopAgentBootstrap();
+              const registry = bootstrap.getRegistry();
+              const sessionId = resetPayload?.sessionId;
+
+              if (sessionId && registry) {
+                const agentSession = registry.getSession(sessionId);
+                if (agentSession?.agent) {
+                  const session = agentSession.agent.getSession();
+                  session.reset();
+                  responseCallback?.({ success: true });
+                  return;
+                }
+              }
+
+              // Fallback to primary agent
+              const agent = bootstrap.getAgent();
+              if (agent) {
+                const session = agent.getSession();
+                session.reset();
+              }
+              responseCallback?.({ success: true });
+            } catch (error) {
+              console.error('[chromePolyfill] SESSION_RESET routing failed:', error);
+              responseCallback?.({ success: false });
+            }
+          }).catch(() => {
+            responseCallback?.({ success: true });
+          });
+          return;
+        }
 
         case 'UPDATE_APPROVAL_CONFIG': {
           const config = (message as any).config;
@@ -412,9 +493,9 @@ const tabsPolyfill = {
     _tabId: number,
     message: unknown,
     responseCallback?: (response: unknown) => void
-  ): void {
+  ): Promise<any> | void {
     // Forward to runtime.sendMessage for desktop
-    runtimePolyfill.sendMessage(message, responseCallback);
+    return runtimePolyfill.sendMessage(message, responseCallback);
   },
 
   // Event listeners

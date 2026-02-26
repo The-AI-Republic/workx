@@ -364,12 +364,19 @@ export class AgentRegistry {
 
     // Broadcast to extension (for UI updates)
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({
-        type: 'SESSION_EVENT',
-        payload: event,
-      }).catch(() => {
-        // Ignore errors if no listeners
-      });
+      try {
+        const promise = chrome.runtime.sendMessage({
+          type: 'SESSION_EVENT',
+          payload: event,
+        });
+        if (promise && typeof promise.catch === 'function') {
+          promise.catch(() => {
+            // Ignore errors if no listeners
+          });
+        }
+      } catch (err) {
+        // Ignore synchronous errors
+      }
     }
   }
 

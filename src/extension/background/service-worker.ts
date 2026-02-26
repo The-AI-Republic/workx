@@ -443,13 +443,8 @@ function setupMessageHandlers(): void {
       rolloutItems: initialHistory.payload.history,
     });
 
-    // Set up event dispatcher for chrome extension mode
-    agent.setEventDispatcher((event) => {
-      chrome.runtime.sendMessage({
-        type: 'EVENT',
-        payload: event,
-      }).catch(() => {});
-    });
+    // Event dispatcher removed - Feature 015 relies on periodic polling
+    // of getNextEvent() loop to broadcast events with session IDs
 
     // Restore auth manager before initialization
     if (currentAuthManager) {
@@ -640,13 +635,7 @@ function setupMessageHandlers(): void {
 
         agent = new PiAgent(agentConfig, router!);
 
-        // Set up event dispatcher for chrome extension mode
-        agent.setEventDispatcher((event) => {
-          chrome.runtime.sendMessage({
-            type: 'EVENT',
-            payload: event,
-          }).catch(() => {});
-        });
+        // Event dispatcher removed - see above
 
         if (currentAuthManager) {
           const factory = agent.getModelClientFactory();

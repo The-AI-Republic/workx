@@ -280,9 +280,11 @@
       };
       processedEvents = [...processedEvents, cancelNotice];
 
-      // Request agent to abort via message service
+      // Request agent to abort via message service (pass sessionId to target correct session)
       if (service) {
-        service.send(MessageType.INTERRUPT).catch((err) => {
+        service.send(MessageType.INTERRUPT, {
+          sessionId: activeSessionId ?? scheduledSessionId ?? undefined,
+        }).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -307,8 +309,10 @@
     }
 
     try {
-      // Request current session state from backend
-      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
+      // Request current session state from backend (pass sessionId to route to correct agent)
+      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE, {
+        sessionId: activeSessionId ?? undefined,
+      });
       console.log('[App] Fetched session state:', response);
 
       const stateData = response || {};
@@ -749,10 +753,12 @@
     // Re-initialize event processor to prevent aliasing
     eventProcessor = new EventProcessor();
 
-    // Request session reset from backend
+    // Request session reset from backend (pass sessionId to reset the correct session)
     try {
       if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SESSION_RESET);
+      await service.send(MessageType.SESSION_RESET, {
+        sessionId: activeSessionId ?? undefined,
+      });
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -779,8 +785,10 @@
 
     try {
       if (!service) throw new Error('Message service not available');
-      // Send stop message to backend
-      await service.send(MessageType.INTERRUPT);
+      // Send stop message to backend (pass sessionId to stop the correct session)
+      await service.send(MessageType.INTERRUPT, {
+        sessionId: activeSessionId ?? undefined,
+      });
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -1098,14 +1106,15 @@
     // Set new active chat
     chatStore.setActiveChat(chatId);
 
-    // Load state for new chat
-    loadChatState(chatId);
-
-    // Update active session ID
+    // Update active session ID BEFORE loading state so that events arriving
+    // during the transition are routed to the correct chat
     const newChat = chatStore.getActiveChat();
     if (newChat) {
       activeSessionId = newChat.sessionId;
     }
+
+    // Load state for new chat
+    loadChatState(chatId);
   }
 
   /**

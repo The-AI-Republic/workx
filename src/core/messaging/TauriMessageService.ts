@@ -144,16 +144,16 @@ export class TauriMessageService implements IMessageService {
         return this.handleHealthCheck() as T;
 
       case MessageType.GET_STATE:
-        return this.handleGetState() as T;
+        return this.handleGetState(payload) as T;
 
       case MessageType.SESSION_RESET:
-        return this.handleSessionReset() as T;
+        return this.handleSessionReset(payload) as T;
 
       case MessageType.RESUME_SESSION:
         return { history: [] } as T;
 
       case MessageType.INTERRUPT:
-        return this.handleInterrupt() as T;
+        return this.handleInterrupt(payload) as T;
 
       case MessageType.SIDEPANEL_CREATE_SESSION:
         return this.handleCreateSession() as T;
@@ -225,12 +225,28 @@ export class TauriMessageService implements IMessageService {
 
   /**
    * Handle get state request
+   * Routes to the correct agent session based on sessionId
    */
-  private async handleGetState(): Promise<unknown> {
+  private async handleGetState(payload?: unknown): Promise<unknown> {
     try {
       const bootstrap = await getAgentBootstrap();
-      const agent = bootstrap.getAgent();
+      const sessionId = (payload as { sessionId?: string })?.sessionId;
 
+      // Route to specific session if sessionId provided
+      const registry = bootstrap.getRegistry();
+      if (sessionId && registry) {
+        const agentSession = registry.getSession(sessionId);
+        if (agentSession?.agent) {
+          const session = agentSession.agent.getSession();
+          return {
+            tabId: session.getTabId(),
+            history: session.getConversationHistory().items,
+          };
+        }
+      }
+
+      // Fallback to primary agent
+      const agent = bootstrap.getAgent();
       if (agent) {
         const session = agent.getSession();
         return {
@@ -254,12 +270,27 @@ export class TauriMessageService implements IMessageService {
 
   /**
    * Handle session reset
+   * Routes to the correct agent session based on sessionId
    */
-  private async handleSessionReset(): Promise<{ success: boolean }> {
+  private async handleSessionReset(payload?: unknown): Promise<{ success: boolean }> {
     try {
       const bootstrap = await getAgentBootstrap();
-      const agent = bootstrap.getAgent();
+      const sessionId = (payload as { sessionId?: string })?.sessionId;
 
+      // Route to specific session if sessionId provided
+      const registry = bootstrap.getRegistry();
+      if (sessionId && registry) {
+        const agentSession = registry.getSession(sessionId);
+        if (agentSession?.agent) {
+          const session = agentSession.agent.getSession();
+          session.reset();
+          await this.emit?.('pi:reset', { sessionId });
+          return { success: true };
+        }
+      }
+
+      // Fallback to primary agent
+      const agent = bootstrap.getAgent();
       if (agent) {
         const session = agent.getSession();
         session.reset();
@@ -388,14 +419,29 @@ export class TauriMessageService implements IMessageService {
 
   /**
    * Handle interrupt request
+   * Routes to the correct agent session based on sessionId
    */
-  private async handleInterrupt(): Promise<{ success: boolean }> {
+  private async handleInterrupt(payload?: unknown): Promise<{ success: boolean }> {
     try {
       const bootstrap = await getAgentBootstrap();
-      const agent = bootstrap.getAgent();
+      const sessionId = (payload as { sessionId?: string })?.sessionId;
 
+      // Route to specific session if sessionId provided
+      const registry = bootstrap.getRegistry();
+      if (sessionId && registry) {
+        const agentSession = registry.getSession(sessionId);
+        if (agentSession?.agent) {
+          const session = agentSession.agent.getSession();
+          await session.abortAllTasks('UserInterrupt');
+          return { success: true };
+        }
+      }
+
+      // Fallback to primary agent
+      const agent = bootstrap.getAgent();
       if (agent) {
-        await agent.interrupt();
+        const session = agent.getSession();
+        await session.abortAllTasks('UserInterrupt');
       }
 
       return { success: true };
