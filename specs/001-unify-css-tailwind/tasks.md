@@ -97,16 +97,16 @@
 
 ### Test Updates
 
-- [ ] T027 [P] Update terminal component tests to match new Tailwind class names — files: `src/tests/theme-integration.test.ts`, `src/tests/terminal-container.test.ts`, `src/tests/terminal-message.test.ts`, `src/tests/terminal-input.test.ts`
-- [ ] T028 [P] Update styles and visual tests to match @theme changes — files: `src/webfront/__tests__/styles.test.ts`, `src/webfront/__tests__/userMessages.visual.test.ts`, `src/webfront/__tests__/inputOutline.visual.test.ts`
-- [ ] T029 [P] Update component-level tests to match new selectors — files: `src/webfront/components/__tests__/TerminalMessage.test.ts`, `src/webfront/components/__tests__/TerminalInput.test.ts`, `src/webfront/components/__tests__/MessageInput.test.ts`
-- [ ] T030 [P] Update accessibility test to verify contrast ratios still pass with new color tokens — file: `src/tests/accessibility.test.ts`
+- [x] T027 [P] Update terminal component tests to match new Tailwind class names — files: `src/tests/theme-integration.test.ts`, `src/tests/terminal-container.test.ts`, `src/tests/terminal-message.test.ts`, `src/tests/terminal-input.test.ts`
+- [x] T028 [P] Update styles and visual tests to match @theme changes — files: `src/webfront/__tests__/styles.test.ts`, `src/webfront/__tests__/userMessages.visual.test.ts`, `src/webfront/__tests__/inputOutline.visual.test.ts`
+- [x] T029 [P] Update component-level tests to match new selectors — files: `src/webfront/components/__tests__/TerminalMessage.test.ts`, `src/webfront/components/__tests__/TerminalInput.test.ts`, `src/webfront/components/__tests__/MessageInput.test.ts`
+- [x] T030 [P] Update accessibility test to verify contrast ratios still pass with new color tokens — file: `src/tests/accessibility.test.ts`
 
 ### Final Verification
 
-- [ ] T031 Run full test suite (`npm test`) and fix any remaining failures
-- [ ] T032 Final codebase audit — verify: (1) no `<style>` blocks remain except for animations/`:global()`/pseudo-elements, (2) no `var(--chat-*)` or `var(--browserx-*)` references remain in component files, (3) no font-size below `text-sm` exists, (4) no hardcoded hex colors in chatgpt theme without `dark:` variant
-- [ ] T033 Remove any dead CSS — clean up utility classes in `src/webfront/styles.css` that are no longer needed (e.g., `.text-term-green` manual classes if now handled by @theme), remove `src/webfront/settings/utils/highlight-pulse.css` if absorbed into Tailwind
+- [x] T031 Run full test suite (`npm test`) and fix any remaining failures
+- [x] T032 Final codebase audit — verify: (1) no `<style>` blocks remain except for animations/`:global()`/pseudo-elements, (2) no `var(--chat-*)` or `var(--browserx-*)` references remain in component files, (3) no font-size below `text-sm` exists, (4) no hardcoded hex colors in chatgpt theme without `dark:` variant
+- [x] T033 Remove any dead CSS — clean up utility classes in `src/webfront/styles.css` that are no longer needed (e.g., `.text-term-green` manual classes if now handled by @theme), remove `src/webfront/settings/utils/highlight-pulse.css` if absorbed into Tailwind
 
 ---
 

@@ -267,7 +267,7 @@ describe('MessageInput Component', () => {
       expect(terminalPrompt).toBeDefined();
 
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-      expect(textarea.className).toContain('terminal-input');
+      expect(textarea.className).toContain('terminal-textarea');
     });
 
     it('should use textarea element instead of input', () => {
