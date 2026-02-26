@@ -13,7 +13,7 @@
   import { t, _t } from '../lib/i18n';
   import { commandRegistry, parseCommandInput } from '../commands';
   import type { FilteredCommand } from '../commands';
-  import { initBuiltinCommands } from '../commands/builtinCommands';
+  import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
 
   export let value: string = '';
   export let placeholder: string = t('>> Enter command...');
@@ -65,6 +65,11 @@
         push('/settings');
       },
     });
+
+    // Load skill commands asynchronously (non-blocking)
+    registerSkillCommands((text) => {
+      onSubmit(text);
+    });
   }
 
   // Reactive tooltip content based on state
@@ -109,7 +114,7 @@
     selectedIndex = 0;
   }
 
-  function executeCommand(commandName: string, args?: string): void {
+  async function executeCommand(commandName: string, args?: string): Promise<void> {
     const now = Date.now();
     const lastTime = lastExecuted.get(commandName);
     if (lastTime && now - lastTime < DEBOUNCE_MS) {
@@ -129,7 +134,7 @@
     value = '';
 
     try {
-      command.action(args);
+      await command.action(args);
     } catch (err) {
       showError(`Command /${commandName} failed: ${err instanceof Error ? err.message : String(err)}`);
     }
