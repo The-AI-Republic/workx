@@ -256,16 +256,16 @@
 
   /* ChatGPT theme — light */
   .settings-page.chatgpt {
-    --browserx-primary: var(--color-chat-primary, #60a5fa);
-    --browserx-secondary: var(--color-chat-primary, #60a5fa);
+    --browserx-primary: var(--color-chat-primary, #2563eb);
+    --browserx-secondary: var(--color-chat-primary, #2563eb);
     --browserx-background: var(--color-chat-bg, #ffffff);
     --browserx-surface: var(--color-chat-surface, #f7f7f8);
     --browserx-text: var(--color-chat-text, #0d0d0d);
     --browserx-text-secondary: var(--color-chat-text-secondary, #6e6e80);
     --browserx-border: var(--color-chat-border, #e5e5e5);
-    --browserx-error: var(--color-chat-error, #ef4444);
-    --browserx-success: #10b981;
-    --browserx-warning: #f59e0b;
+    --browserx-error: var(--color-chat-error, #dc2626);
+    --browserx-success: var(--color-chat-status-success, #047857);
+    --browserx-warning: var(--color-chat-status-warning, #b45309);
     background: rgba(0, 0, 0, 0.3);
     color-scheme: light;
   }
@@ -281,8 +281,8 @@
       --browserx-text-secondary: var(--color-chat-text-secondary-dark, #b4b4b4);
       --browserx-border: var(--color-chat-border-dark, #3e3e3e);
       --browserx-error: var(--color-chat-error-dark, #f87171);
-      --browserx-success: #34d399;
-      --browserx-warning: #fbbf24;
+      --browserx-success: var(--color-chat-status-success-dark, #34d399);
+      --browserx-warning: var(--color-chat-status-warning-dark, #fbbf24);
       color-scheme: dark;
     }
   }
