@@ -38,7 +38,7 @@ async function installOAuthRedirectRule(): Promise<void> {
           },
         },
         condition: {
-          regexFilter: '^http://localhost:1455/callback(\\?.*)?$',
+          regexFilter: '^http://localhost:1455/auth/callback(\\?.*)?$',
           resourceTypes: [
             chrome.declarativeNetRequest.ResourceType.MAIN_FRAME,
           ],

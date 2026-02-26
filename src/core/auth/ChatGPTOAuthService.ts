@@ -31,8 +31,8 @@ export interface ChatGPTOAuthStorage {
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
 const AUTH_ENDPOINT = 'https://auth.openai.com/oauth/authorize';
 const TOKEN_ENDPOINT = 'https://auth.openai.com/oauth/token';
-const REDIRECT_URI = 'http://localhost:1455/callback';
-const SCOPES = 'openid profile email';
+const REDIRECT_URI = 'http://localhost:1455/auth/callback';
+const SCOPES = 'openid profile email offline_access';
 
 /** Buffer time before expiry to trigger refresh (5 minutes in ms) */
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
@@ -73,13 +73,16 @@ export class ChatGPTOAuthService {
    */
   buildAuthorizationUrl(state: string, codeChallenge: string): string {
     const params = new URLSearchParams({
+      response_type: 'code',
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
-      response_type: 'code',
       scope: SCOPES,
-      state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
+      id_token_add_organizations: 'true',
+      codex_cli_simplified_flow: 'true',
+      state,
+      originator: 'browserx',
     });
     return `${AUTH_ENDPOINT}?${params.toString()}`;
   }

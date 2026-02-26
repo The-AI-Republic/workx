@@ -87,7 +87,7 @@ describe('ChatGPTOAuthService', () => {
 
     it('should include the redirect_uri', async () => {
       const url = service.buildAuthorizationUrl('test-state', 'test-challenge');
-      expect(url).toContain('redirect_uri=' + encodeURIComponent('http://localhost:1455/callback'));
+      expect(url).toContain('redirect_uri=' + encodeURIComponent('http://localhost:1455/auth/callback'));
     });
 
     it('should include response_type=code', () => {
@@ -97,7 +97,7 @@ describe('ChatGPTOAuthService', () => {
 
     it('should include the required scopes', () => {
       const url = service.buildAuthorizationUrl('test-state', 'test-challenge');
-      expect(url).toContain('scope=openid+profile+email');
+      expect(url).toContain('scope=openid+profile+email+offline_access');
     });
 
     it('should include the state parameter', () => {
@@ -143,7 +143,7 @@ describe('ChatGPTOAuthService', () => {
       expect(body.get('grant_type')).toBe('authorization_code');
       expect(body.get('client_id')).toBe('app_EMoamEEZ73f0CkXaXp7hrann');
       expect(body.get('code')).toBe('auth-code-abc');
-      expect(body.get('redirect_uri')).toBe('http://localhost:1455/callback');
+      expect(body.get('redirect_uri')).toBe('http://localhost:1455/auth/callback');
       expect(body.get('code_verifier')).toBe('verifier-xyz');
     });
 
