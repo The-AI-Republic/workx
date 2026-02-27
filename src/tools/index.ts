@@ -14,6 +14,7 @@ import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
 import { PlanningTool } from './PlanningTool';
 import { WebSearchTool } from './WebSearchTool';
+import { getTaskStore } from '../core/taskmanager';
 import { DomToolRiskAssessor } from '../core/approval/assessors/DomToolRiskAssessor';
 import { StaticRiskAssessor } from '../core/approval/assessors/StaticRiskAssessor';
 import type { IRiskAssessor } from '../core/approval/types';
@@ -180,7 +181,7 @@ export async function registerTools(
     // Use DOMTool with action parameter instead
 
     // Planning Tool - Always enabled for task planning and progress tracking
-    const planningTool = new PlanningTool();
+    const planningTool = new PlanningTool(getTaskStore());
     await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
     console.log('PlanningTool registered (always enabled)');
 

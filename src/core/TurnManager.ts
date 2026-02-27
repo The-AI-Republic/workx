@@ -828,11 +828,11 @@ export class TurnManager {
         },
       });
 
-      // Emit PlanUpdate through platform-agnostic event path
-      if (toolName === 'planning_tool' && response.data?._planArgs) {
+      // Emit TaskUpdate through platform-agnostic event path
+      if (toolName === 'planning_tool' && response.data?._taskEvent) {
         await this.emitEvent({
-          type: 'PlanUpdate',
-          data: response.data._planArgs,
+          type: 'TaskUpdate',
+          data: response.data._taskEvent,
         });
       }
 

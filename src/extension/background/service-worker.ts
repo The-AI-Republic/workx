@@ -53,6 +53,7 @@ import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 // is banned in Chrome extension service workers by the HTML specification.
 import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
+import { setStorageProvider } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import type {
@@ -1722,6 +1723,16 @@ async function initializeStorage(): Promise<void> {
     console.log('[ServiceWorker] Credential store initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
+  }
+
+  // Initialize StorageProvider (IndexedDB — for task management and other collections)
+  try {
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    setStorageProvider(storageProvider);
+    console.log('[ServiceWorker] StorageProvider initialized');
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize StorageProvider:', error);
   }
 
   // Initialize cache manager

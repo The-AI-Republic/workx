@@ -10,6 +10,7 @@ import type {
   ReasoningEffortConfig,
   ReasoningSummaryConfig,
 } from './types';
+import type { TaskSummary } from '../taskmanager/types';
 
 /**
  * Event Queue Entry - responses from agent
@@ -56,6 +57,7 @@ export type EventMsg =
   | { type: 'McpListToolsResponse'; data: McpListToolsResponseEvent }
   | { type: 'ListCustomPromptsResponse'; data: ListCustomPromptsResponseEvent }
   | { type: 'PlanUpdate'; data: PlanToolArgs }
+  | { type: 'TaskUpdate'; data: TaskUpdateEvent }
   | { type: 'TurnAborted'; data: TurnAbortedEvent }
   | { type: 'ShutdownComplete' }
   | { type: 'ConversationPath'; data: ConversationPathResponseEvent }
@@ -359,12 +361,29 @@ export interface PlanStepArg {
 
 /**
  * Input arguments for the PlanningTool — full-state overwrite every call
+ * @deprecated Use TaskUpdateEvent instead. Kept for backward compatibility.
  */
 export interface PlanToolArgs {
   /** What changed in this update */
   explanation?: string;
   /** Full ordered list of plan steps (required) */
   plan: PlanStepArg[];
+}
+
+/**
+ * Event payload for persistent task management updates
+ */
+export interface TaskUpdateEvent {
+  eventType: 'plan_created' | 'updated' | 'completed' | 'deleted';
+  task?: {
+    id: string;
+    subject: string;
+    activeForm?: string;
+    status: string;
+    blocks: string[];
+    blockedBy: string[];
+  };
+  allTasks: TaskSummary[];
 }
 
 export interface TurnAbortedEvent {

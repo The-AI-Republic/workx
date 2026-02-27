@@ -18,9 +18,13 @@
 - After each action, re-snapshot to verify the page reflects your change before reporting back.
 
 ### PlanningTool
-- Use `planning_tool` for multi-step tasks that span terminal and browser operations.
-- **Research first**: observe the system state, available tools, and MCP capabilities before composing a plan.
-- Every call sends the full plan with all steps and statuses. Break work into short, ordered items that can be checked off as you go.
+- Use `planning_tool` for multi-step tasks spanning terminal and browser operations.
+- `command: "plan"`: create a plan with `plan_summary` (one-line headline), `plan_detail` (free-form strategy/reasoning), and `tasks` array (structured steps).
+- `command: "update"`: change task status (`in_progress` → `completed`) or fields.
+- `command: "list"`: see all tasks and their current status.
+- `command: "get"`: read full task details before starting work on a task.
+- `command: "get_plan"`: recover full plan context (summary, detail, tasks) when you've lost track of the plan strategy after many tool calls.
+- Research first: observe system state, available tools, and MCP capabilities before composing a plan.
 
 ### WebSearchTool
 - Use for information retrieval when you need current data from the web.

@@ -14,6 +14,7 @@ import { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
 import type { ToolDefinition, Platform } from '../../tools/BaseTool';
 import { PlanningTool } from '../../tools/PlanningTool';
+import { getTaskStore } from '../../core/taskmanager';
 import { WebSearchTool } from '../../tools/WebSearchTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
@@ -152,7 +153,7 @@ export async function registerDesktopToolsImpl(
   // ──────────────────────────────────────────────────────────────────────
 
   // Planning tool - always enabled (zero risk)
-  const planningTool = new PlanningTool();
+  const planningTool = new PlanningTool(getTaskStore());
   await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
 
   // Web search tool (zero risk)

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Refactor the existing `PlanningTool` from a stateless validator into a persistent task management system. **Single tool, four commands:**
+Refactor the existing `PlanningTool` from a stateless validator into a persistent task management system. **Single tool, five commands:**
 
 | Command | Purpose |
 |---|---|
@@ -10,6 +10,7 @@ Refactor the existing `PlanningTool` from a stateless validator into a persisten
 | `update` | Update status, fields, or dependencies on a single task |
 | `list` | List all session tasks (summary view) |
 | `get` | Get full task details by ID |
+| `get_plan` | Retrieve plan context (summary, detail, and all tasks) |
 
 **Why hybrid instead of 4 separate tools:**
 - **Bulk creation**: Creating a 5-step plan is 1 tool call, not 5. Matches the natural "think then plan" LLM flow.
@@ -34,7 +35,8 @@ Refactor the existing `PlanningTool` from a stateless validator into a persisten
 export interface SessionPlanData {
   sessionId: string;                   // Storage key
   nextTaskId: number;                  // Auto-increment counter (never resets)
-  plan_summary?: string;                // What this plan is for
+  plan_summary?: string;                // One-line summary ("Reply to professor about research")
+  plan_detail?: string;                // Free-form strategy: approach, reasoning, constraints (markdown)
   tasks: Task[];                       // Current plan's tasks
   createdAt: string;                   // When current plan was created (ISO 8601)
   updatedAt: string;                   // Last modification (ISO 8601)
@@ -66,7 +68,7 @@ export interface TaskSummary {
   blockedBy: string[];                 // Only open (non-completed) blocker IDs
 }
 
-export type PlanningCommand = 'plan' | 'update' | 'list' | 'get';
+export type PlanningCommand = 'plan' | 'update' | 'list' | 'get' | 'get_plan';
 ```
 
 ### Storage strategy
@@ -117,6 +119,7 @@ export class TaskStore {
   /** Replace current plan with new tasks. Returns created tasks. */
   async createPlan(sessionId: string, params: {
     plan_summary?: string;
+    plan_detail?: string;
     tasks: Array<{
       subject: string;
       task_description: string;
@@ -139,8 +142,15 @@ export class TaskStore {
     addBlockedBy?: string[];
   }): Promise<{ task: Task; allTasks: TaskSummary[] }>;
 
-  /** List all tasks in current plan. */
+  /** List all tasks in current plan (summary view). */
   async list(sessionId: string): Promise<TaskSummary[]>;
+
+  /** Get full plan context: summary, detail, and all tasks. */
+  async getPlan(sessionId: string): Promise<{
+    plan_summary?: string;
+    plan_detail?: string;
+    tasks: TaskSummary[];
+  }>;
 }
 ```
 
@@ -169,7 +179,7 @@ export class TaskStore {
 
 **File: `src/tools/PlanningTool.ts`** (refactored in-place)
 
-Single tool with `command` discriminator. All fields present in one schema; validation is command-aware.
+Single tool with `command` discriminator. All fields present in one schema; validation is command-aware. Five commands: two write (`plan`, `update`) and three read (`list`, `get`, `get_plan`).
 
 ```typescript
 name: 'planning_tool'
@@ -178,14 +188,18 @@ inputSchema: {
   properties: {
     command: {
       type: 'string',
-      enum: ['plan', 'update', 'list', 'get'],
+      enum: ['plan', 'update', 'list', 'get', 'get_plan'],
       description: 'Operation to perform'
     },
 
     // --- "plan" command fields ---
     plan_summary: {
       type: 'string',
-      description: '[plan] What this plan is for / what changed'
+      description: '[plan] One-line summary of the plan goal'
+    },
+    plan_detail: {
+      type: 'string',
+      description: '[plan] Free-form strategy: approach, reasoning, assumptions, constraints. Markdown supported.'
     },
     tasks: {
       type: 'array',
@@ -226,17 +240,21 @@ inputSchema: {
 ### 4.1 Command: `plan` (bulk create)
 
 **Required fields**: `command`, `tasks`
-**Optional fields**: `plan_summary`
+**Optional fields**: `plan_summary`, `plan_detail`
 
 ```typescript
 // LLM sends:
 planning_tool({
   command: "plan",
-  plan_summary: "Implementation plan for auth feature",
+  plan_summary: "Add auth feature to dashboard",
+  plan_detail: "After inspecting the codebase, auth logic lives in src/auth/ with "
+    + "JWT tokens stored in localStorage. I'll add the types first since both store "
+    + "and tests depend on them. The store needs cycle detection for token refresh "
+    + "— will use BFS. Risk: token expiry during long sessions needs a refresh hook.",
   tasks: [
     { subject: "Add types", task_description: "Create Task interfaces in types.ts", activeForm: "Adding types" },
-    { subject: "Implement store", task_description: "Build TaskStore with CRUD", activeForm: "Implementing store" },
-    { subject: "Write tests", task_description: "Unit tests for TaskStore", activeForm: "Writing tests" }
+    { subject: "Implement store", task_description: "Build TaskStore with CRUD + cycle detection", activeForm: "Implementing store" },
+    { subject: "Write tests", task_description: "Unit tests for TaskStore and cycle detection", activeForm: "Writing tests" }
   ]
 })
 ```
@@ -349,7 +367,37 @@ planning_tool({ command: "get", taskId: "2" })
 
 **No `_taskEvent`** — read-only, no event emission.
 
-### 4.5 Validation Rules
+### 4.5 Command: `get_plan` (read-only)
+
+**Required fields**: `command`
+
+Retrieves the full plan context: `plan_summary`, `plan_detail`, and all tasks. Use this for context recovery when the plan strategy has been lost from the conversation window.
+
+```typescript
+planning_tool({ command: "get_plan" })
+```
+
+**Returns to LLM:**
+```json
+{
+  "success": true,
+  "plan_summary": "Reply to professor about research updates",
+  "plan_detail": "Found Dr. Smith's email from yesterday about the ML fairness paper deadline. I'll compose a reply referencing the original subject line...",
+  "tasks": [
+    { "id": "4", "subject": "Find professor's thread", "status": "completed", "blockedBy": [] },
+    { "id": "5", "subject": "Compose reply", "status": "in_progress", "blockedBy": [] },
+    { "id": "6", "subject": "Review and send", "status": "pending", "blockedBy": ["5"] }
+  ]
+}
+```
+
+**No `_taskEvent`** — read-only, no event emission.
+
+**When to use vs `list`:**
+- `list` returns task summaries only (lightweight, for checking what's next)
+- `get_plan` returns the full plan context including `plan_detail` (heavier, for recovering strategy/reasoning when the LLM has lost context about *why* the plan was created and *how* it should approach the remaining tasks)
+
+### 4.6 Validation Rules
 
 | Command | Required | Error if missing |
 |---|---|---|
@@ -357,10 +405,11 @@ planning_tool({ command: "get", taskId: "2" })
 | `update` | `taskId` | `"update command requires taskId"` |
 | `list` | *(none)* | — |
 | `get` | `taskId` | `"get command requires taskId"` |
+| `get_plan` | *(none)* | — |
 
 Invalid `command` value returns:
 ```json
-{ "success": false, "error": "Invalid command 'foo'. Must be: plan, update, list, get" }
+{ "success": false, "error": "Invalid command 'foo'. Must be: plan, update, list, get, get_plan" }
 ```
 
 ## 5. Session ID Injection
@@ -535,7 +584,7 @@ if (toolName === 'planning_tool' && response.data?._taskEvent) {
 }
 ```
 
-Same tool name check (`planning_tool`), different internal field (`_taskEvent` instead of `_planArgs`). Only `plan` and `update` commands attach `_taskEvent`; `list` and `get` don't, so no event is emitted for reads.
+Same tool name check (`planning_tool`), different internal field (`_taskEvent` instead of `_planArgs`). Only `plan` and `update` commands attach `_taskEvent`; `list`, `get`, and `get_plan` don't, so no event is emitted for reads.
 
 ### 7.3 UI Changes
 
@@ -592,14 +641,15 @@ export class PlanningTool extends BaseTool {
     const command: PlanningCommand = request.command;
 
     switch (command) {
-      case 'plan':   return this.executePlan(sessionId, request);
-      case 'update': return this.executeUpdate(sessionId, request);
-      case 'list':   return this.executeList(sessionId);
-      case 'get':    return this.executeGet(sessionId, request);
+      case 'plan':     return this.executePlan(sessionId, request);
+      case 'update':   return this.executeUpdate(sessionId, request);
+      case 'list':     return this.executeList(sessionId);
+      case 'get':      return this.executeGet(sessionId, request);
+      case 'get_plan': return this.executeGetPlan(sessionId);
       default:
         return {
           success: false,
-          error: `Invalid command '${command}'. Must be: plan, update, list, get`,
+          error: `Invalid command '${command}'. Must be: plan, update, list, get, get_plan`,
         };
     }
   }
@@ -627,59 +677,165 @@ export class PlanningTool extends BaseTool {
     // taskStore.get()
     // Return full task details (no _taskEvent — read-only)
   }
+
+  private async executeGetPlan(sessionId: string): Promise<any> {
+    // taskStore.getPlan() — returns plan_summary, plan_detail, tasks
+    // Return full plan context (no _taskEvent — read-only)
+  }
 }
 ```
 
 ## 10. Agent Prompt Updates
 
-Changes are minimal since the tool name stays `planning_tool`.
+The tool name stays `planning_tool`. The key conceptual shift: **the plan is free-form thinking, the tasks are structured execution**.
 
-**`src/prompts/fragments/pi_tools.md`**:
+### 10.1 Shared fragment: `src/prompts/fragments/task_execution_policies.md`
+
+This is the source of truth. Both agent prompts include this fragment.
+
 ```markdown
-### Task Planning
-- Use `planning_tool` with `command: "plan"` for multi-step tasks (3+ steps).
-  Provide tasks array with subject (imperative) and task_description.
-  Include activeForm (present continuous) for progress display.
-- Use `planning_tool` with `command: "update"` to change status:
-  set `in_progress` before starting, `completed` when done.
-- Use `planning_tool` with `command: "list"` to see all tasks and their status.
-- Use `planning_tool` with `command: "get"` to read full task details before starting.
-- A new `plan` command replaces the previous plan. Use `update` for mid-plan changes.
+## Planning Tool
+
+### When to Plan
+Use `planning_tool` when the task is non-trivial: multiple actions, logical phases,
+ambiguity that benefits from outlining goals first, checkpoints for feedback, or when
+the user asked for several things at once. If the task is a single obvious action —
+skip the tool and just execute.
+
+### Research Before Planning
+**Never call `planning_tool` as your first action on a non-trivial task.** First,
+observe the resources available to you so the plan reflects reality rather than
+guesswork. Only after you have enough context should you compose the plan.
+
+### Creating a Plan
+Call `planning_tool` with `command: "plan"`. The plan has three parts:
+
+**`plan_summary` (one-line headline)** — A short summary of the goal. This is
+displayed as the plan title in the UI and used for quick reference.
+
+**`plan_detail` (free-form thinking)** — Explain your overall approach in natural
+language. This is where you reason about strategy, not just list steps. Include:
+- What approach you chose and why
+- Key assumptions or constraints you've identified
+- Risks, fallback strategies, or things you're unsure about
+- Context from your research that informed the plan
+
+**`tasks` (structured execution)** — Break the work into concrete, trackable tasks:
+- `subject`: imperative title, 5-10 words ("Add types to taskmanager")
+- `task_description`: detailed requirements for this specific task
+- `activeForm`: present continuous for UI spinner ("Adding types")
+
+The plan_summary is the headline. The plan_detail is your thinking. The tasks are
+your doing. Keep them separate — do not duplicate plan_detail content inside each
+task_description.
+
+Example:
+```
+planning_tool({
+  command: "plan",
+  plan_summary: "Reply to professor about research updates",
+  plan_detail: "Found Dr. Smith's email from yesterday about the ML fairness paper
+    deadline. I'll compose a reply referencing the original subject line. The user's
+    research area is ML fairness based on their recent emails. Will let the user
+    review the draft before sending.",
+  tasks: [
+    { subject: "Open professor's email",
+      task_description: "Navigate to Gmail inbox, find email from Dr. Smith",
+      activeForm: "Opening professor's email" },
+    { subject: "Compose reply",
+      task_description: "Click reply, draft response about ML fairness research progress",
+      activeForm: "Composing reply" },
+    { subject: "Review and send",
+      task_description: "Review draft with user before sending",
+      activeForm: "Reviewing draft" }
+  ]
+})
 ```
 
-**`src/prompts/fragments/task_execution_policies.md`**:
-```markdown
-### Planning Workflow
-
-RESEARCH FIRST:
-- Never call `planning_tool` as your first action on a non-trivial task.
-- First observe available resources (pages, tools, MCP servers, files).
-- Only compose the plan after you have enough context.
-
-PLAN ONCE, UPDATE INCREMENTALLY:
-- Call `command: "plan"` once to create all tasks for the current request.
-- Mark `in_progress` BEFORE starting a task. Mark `completed` immediately after.
+### Executing Tasks
+- Call `command: "update"` with `status: "in_progress"` BEFORE starting a task.
+- Call `command: "update"` with `status: "completed"` immediately after finishing.
 - Only one task should be `in_progress` at a time.
-- Use `command: "list"` after completing a task to find the next one.
-- A new `plan` call replaces the entire plan — use `update` for mid-plan adjustments.
+- Call `command: "list"` after completing a task to see what's next.
+- Call `command: "get"` with a taskId to read the full task_description before
+  starting work — especially if many tool calls have passed since the plan was created.
 
-CONTEXT RECOVERY:
-- If you are unsure about the current plan state (e.g., after a long sequence of
-  tool calls or when context feels stale), call `planning_tool({ command: "list" })`
-  to refresh your understanding before continuing.
-- Use `command: "get"` with a specific taskId to retrieve full task_description
-  and requirements before starting work on it.
-- The plan is persisted in storage — `list` and `get` always return the current
-  truth, even if earlier conversation messages have been summarized.
+### Mid-Plan Adjustments
+- For small changes (rewording, reordering), use `command: "update"` on individual tasks.
+- For fundamental strategy changes, create a new plan with `command: "plan"`.
+  This replaces the old plan entirely — do not manually delete old tasks.
+- If you discover the plan needs additional tasks, create a new plan that includes
+  both remaining work and new tasks.
 
-NEW USER REQUEST IN SAME SESSION:
-- When the user gives a new request that requires a different plan, create a
-  new plan with `command: "plan"`. This replaces the old plan entirely.
-- Do not manually delete old tasks — the new `plan` command handles cleanup.
+### Context Recovery
+If you are unsure about the current plan state — for example, after a long sequence
+of tool calls or when earlier conversation messages feel distant:
+- Call `command: "list"` to see current task statuses and find what's next.
+- Call `command: "get"` to retrieve full task_description for a specific task.
+- Call `command: "get_plan"` to recover the full plan context — including the
+  plan_summary, plan_detail (your original strategy/reasoning), and all tasks.
+  Use this when you've lost track of *why* the plan was created or *how* you
+  intended to approach the remaining work.
+- The plan is persisted in storage. These read commands always return the current
+  truth, even if earlier conversation messages have been compressed or summarized.
+- **Only use `get_plan` when necessary** — it returns more data than `list`. If
+  you just need to check which tasks remain, use `list`. If you need to recall
+  the overall strategy and reasoning behind the plan, use `get_plan`.
+
+### After Planning Tool Calls
+- Do NOT restate the plan in your message to the user.
+- Summarize what changed in one sentence and mention the next step.
 ```
 
-**`src/prompts/default_pi_agent_prompt.md`** and **`src/prompts/default_browserx_agent_prompt.md`**:
-- Same content as task_execution_policies.md above
+### 10.2 Tool reference: `src/prompts/fragments/pi_tools.md`
+
+Brief reference in the tools section (not the full workflow — that's in task_execution_policies.md).
+
+```markdown
+### PlanningTool
+- Use `planning_tool` for multi-step tasks spanning terminal and browser operations.
+- `command: "plan"`: create a plan with `plan_summary` (one-line headline),
+  `plan_detail` (free-form strategy/reasoning), and `tasks` array (structured steps).
+- `command: "update"`: change task status (`in_progress` → `completed`) or fields.
+- `command: "list"`: see all tasks and their current status.
+- `command: "get"`: read full task details before starting work on a task.
+- `command: "get_plan"`: recover full plan context (summary, detail, tasks) when
+  you've lost track of the plan strategy after many tool calls.
+- Research first: observe system state, available tools, and MCP capabilities
+  before composing a plan.
+```
+
+### 10.3 Agent-specific overrides
+
+**`src/prompts/default_browserx_agent_prompt.md`** — Override "Research Before Planning":
+```markdown
+### Research Before Planning
+**Never call `planning_tool` as your first action on a non-trivial task.** First,
+observe the current state so the plan reflects reality rather than guesswork:
+
+- **Current page**: take a DOM snapshot to understand visible content and interactions.
+- **Target pages**: navigate to relevant URLs to assess structure before committing.
+- **Available tools**: check which browser tools are registered and what they can do.
+- **User context**: ask clarifying questions when goals are ambiguous.
+
+Only after you have enough context should you compose the plan.
+```
+
+**`src/prompts/default_pi_agent_prompt.md`** — Override "Research Before Planning":
+```markdown
+### Research Before Planning
+**Never call `planning_tool` as your first action on a non-trivial task.** First,
+observe the resources available to you so the plan reflects reality rather than
+guesswork:
+
+- **Web pages**: take a snapshot or navigate to relevant pages to understand current state.
+- **Available tools**: check which tools are registered and what they can do.
+- **MCP servers**: discover connected servers and their capabilities.
+- **Local context**: inspect files, directories, cached data, or terminal output as needed.
+- **User context**: ask clarifying questions when goals are ambiguous.
+
+Only after you have enough context should you compose the plan.
+```
 
 ## 11. Typical Agent Flow
 
@@ -688,17 +844,22 @@ NEW USER REQUEST IN SAME SESSION:
 ```
 1. User: "Implement feature X"
 
-2. Agent researches (reads pages, tools, files)
+2. Agent researches (reads pages, tools, files, MCP servers)
 
-3. Agent creates plan (1 tool call, N tasks):
+3. Agent creates plan (1 tool call — free-form thinking + structured tasks):
    planning_tool({
      command: "plan",
-     plan_summary: "Implementation plan for feature X",
+     plan_summary: "Add feature X to dashboard",
+     plan_detail: "After inspecting the codebase, the dashboard uses React components
+       in src/components/ with a shared state store in src/store/. The feature needs
+       a new API endpoint (backend) and a UI component (frontend). I'll start with
+       types since both layers depend on them. Tests should cover the store logic
+       since that's where the complexity lives.",
      tasks: [
-       { subject: "Add types",        task_description: "...", activeForm: "Adding types" },
-       { subject: "Implement service", task_description: "...", activeForm: "Implementing service" },
-       { subject: "Write tests",       task_description: "...", activeForm: "Writing tests" },
-       { subject: "Update prompts",    task_description: "...", activeForm: "Updating prompts" }
+       { subject: "Add types",        task_description: "Create FeatureX interfaces in src/types/featureX.ts", activeForm: "Adding types" },
+       { subject: "Implement service", task_description: "Build FeatureXService with CRUD operations in src/services/", activeForm: "Implementing service" },
+       { subject: "Write tests",       task_description: "Unit tests for FeatureXService store logic", activeForm: "Writing tests" },
+       { subject: "Update UI",         task_description: "Add FeatureX panel to dashboard component", activeForm: "Updating UI" }
      ]
    })
    → Creates tasks #1-#4, UI shows full plan
@@ -727,11 +888,18 @@ NEW USER REQUEST IN SAME SESSION:
 1. User: "Help me read my email content for today"
 
 2. Agent creates plan:
-   planning_tool({ command: "plan", plan_summary: "Read today's emails", tasks: [
-     { subject: "Open Gmail",          task_description: "..." },
-     { subject: "Read today's emails", task_description: "..." },
-     { subject: "Summarize content",   task_description: "..." }
-   ]})
+   planning_tool({
+     command: "plan",
+     plan_summary: "Read and summarize today's emails",
+     plan_detail: "Gmail is already open in the current tab. I can see the inbox
+       with 12 unread messages. I'll filter to today's emails, read each one, and
+       provide a summary grouped by sender with key action items.",
+     tasks: [
+       { subject: "Filter to today's emails", task_description: "Use Gmail search to filter emails from today" },
+       { subject: "Read email content",       task_description: "Open and read each email, capture key points" },
+       { subject: "Summarize for user",       task_description: "Present grouped summary by sender with key action items" }
+     ]
+   })
    → Creates tasks #1-#3, nextTaskId: 4
 
 3. Agent executes all tasks → #1 ✓, #2 ✓, #3 ✓
@@ -739,11 +907,18 @@ NEW USER REQUEST IN SAME SESSION:
 4. User: "Now reply to my professor about my research update"
 
 5. Agent creates new plan (replaces old one):
-   planning_tool({ command: "plan", plan_summary: "Reply to professor", tasks: [
-     { subject: "Find professor's email", task_description: "..." },
-     { subject: "Compose reply",          task_description: "..." },
-     { subject: "Send email",             task_description: "..." }
-   ]})
+   planning_tool({
+     command: "plan",
+     plan_summary: "Reply to professor about research updates",
+     plan_detail: "From the email summary I just provided, Dr. Smith's email was
+       about the upcoming ML fairness paper deadline. I'll find that thread, compose
+       a reply with research progress, and let the user review before sending.",
+     tasks: [
+       { subject: "Find professor's thread", task_description: "Locate Dr. Smith's email thread in inbox" },
+       { subject: "Compose reply",           task_description: "Draft reply about ML fairness research progress" },
+       { subject: "Review and send",         task_description: "Show draft to user for approval before sending" }
+     ]
+   })
    → Old tasks #1-#3 discarded
    → Creates tasks #4-#6, nextTaskId: 7
    → UI shows only the new plan
@@ -769,7 +944,7 @@ NEW USER REQUEST IN SAME SESSION:
 | File | Change |
 |---|---|
 | `src/tools/PlanningTool.ts` | **Refactor**: stateless validator → command-dispatching persistent tool |
-| `src/tools/__tests__/PlanningTool.test.ts` | **Rewrite**: test all 4 commands + validation |
+| `src/tools/__tests__/PlanningTool.test.ts` | **Rewrite**: test all 5 commands + validation |
 | `src/tools/index.ts` | Pass `getTaskStore()` to PlanningTool constructor |
 | `src/core/storage/types.ts` | Add `'tasks'` to CollectionName |
 | `src/core/storage/index.ts` | Add `getStorageProvider()`, `isStorageProviderInitialized()`, `initializeStorageProvider()` |
@@ -811,7 +986,7 @@ None. PlanningTool is refactored in-place, not replaced.
 | Schema complexity | Medium (1 polymorphic schema) | **Low** (4 trivial schemas) |
 | Files to create | **5** | 10 |
 | Files to delete | **0** | 2 |
-| Single responsibility | Moderate (1 tool, 4 commands) | **Strong** (1 tool, 1 job) |
+| Single responsibility | Moderate (1 tool, 5 commands) | **Strong** (1 tool, 1 job) |
 | LLM schema comprehension | Good (command discriminator is common) | **Better** (trivial per-tool) |
 
 ## 16. Verification
@@ -825,4 +1000,5 @@ None. PlanningTool is refactored in-place, not replaced.
    - Only imports from `src/core/` (StorageProvider interface, types)
 5. **Both platforms**: `initializeStorageProvider()` called before any TaskStore access
 6. Manual: `plan` → `update` status → verify UI renders task list with dependencies
-7. Manual: `list` and `get` return correct data, do not emit events
+7. Manual: `list`, `get`, and `get_plan` return correct data, do not emit events
+8. Manual: `get_plan` returns `plan_summary`, `plan_detail`, and full task list
