@@ -22,8 +22,8 @@ export interface AllowlistEntry {
   allowedValues: (string | boolean | number)[] | null;
   /** Dot-notation path to read/write from stored config */
   configPath: string;
-  /** Storage key: 'agent_config' or 'approval_config' */
-  storageKey: 'agent_config' | 'approval_config';
+  /** Storage key: always 'agent_config' (approval config is nested under agent_config.approval) */
+  storageKey: 'agent_config';
 }
 
 /**
@@ -32,7 +32,7 @@ export interface AllowlistEntry {
  * New settings are blocked by default until explicitly added here.
  */
 export const SETTINGS_ALLOWLIST: AllowlistEntry[] = [
-  // ── Approval Category (approval_config storage key) ──────────────────
+  // ── Approval Category (nested under agent_config.approval) ───────────
   {
     key: 'approval.mode',
     category: 'approval',
@@ -40,8 +40,8 @@ export const SETTINGS_ALLOWLIST: AllowlistEntry[] = [
     description: 'Controls how tool calls are approved: balanced (ask for medium+ risk), high_speed (ask for high+ risk), or yolo (auto-approve all)',
     type: 'string',
     allowedValues: ['balanced', 'high_speed', 'yolo'],
-    configPath: 'mode',
-    storageKey: 'approval_config',
+    configPath: 'approval.mode',
+    storageKey: 'agent_config',
   },
   {
     key: 'approval.trustedDomains',
@@ -50,8 +50,8 @@ export const SETTINGS_ALLOWLIST: AllowlistEntry[] = [
     description: 'Domains that are trusted for automatic approval of tool calls',
     type: 'string[]',
     allowedValues: null,
-    configPath: 'trustedDomains',
-    storageKey: 'approval_config',
+    configPath: 'approval.trustedDomains',
+    storageKey: 'agent_config',
   },
   {
     key: 'approval.blockedDomains',
@@ -60,8 +60,8 @@ export const SETTINGS_ALLOWLIST: AllowlistEntry[] = [
     description: 'Domains that are blocked from tool call execution',
     type: 'string[]',
     allowedValues: null,
-    configPath: 'blockedDomains',
-    storageKey: 'approval_config',
+    configPath: 'approval.blockedDomains',
+    storageKey: 'agent_config',
   },
 
   // ── Tools Category (agent_config storage key) ────────────────────────

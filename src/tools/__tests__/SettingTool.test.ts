@@ -33,7 +33,6 @@ const mockStorage: Record<string, any> = {};
 vi.mock('../../config/defaults', () => ({
   STORAGE_KEYS: {
     CONFIG: 'agent_config',
-    APPROVAL_CONFIG: 'approval_config',
   },
 }));
 
@@ -69,11 +68,11 @@ describe('SettingTool', () => {
         language: 'en',
       },
       selectedModelKey: 'openai:gpt-4o',
-    };
-    mockStorage['approval_config'] = {
-      mode: 'balanced',
-      trustedDomains: ['example.com'],
-      blockedDomains: [],
+      approval: {
+        mode: 'balanced',
+        trustedDomains: ['example.com'],
+        blockedDomains: [],
+      },
     };
 
     tool = new SettingTool();
@@ -203,10 +202,13 @@ describe('SettingTool', () => {
 
   describe('YOLO mode blocking', () => {
     beforeEach(() => {
-      mockStorage['approval_config'] = {
-        mode: 'yolo',
-        trustedDomains: [],
-        blockedDomains: [],
+      mockStorage['agent_config'] = {
+        ...mockStorage['agent_config'],
+        approval: {
+          mode: 'yolo',
+          trustedDomains: [],
+          blockedDomains: [],
+        },
       };
     });
 

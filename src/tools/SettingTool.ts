@@ -74,12 +74,11 @@ async function writeStorageValue(
 }
 
 /**
- * Map the allowlist storageKey to the actual chrome.storage key
+ * Map the allowlist storageKey to the actual chrome.storage key.
+ * All settings now live under agent_config.
  */
-function resolveStorageKey(storageKey: 'agent_config' | 'approval_config'): string {
-  return storageKey === 'agent_config'
-    ? STORAGE_KEYS.CONFIG
-    : STORAGE_KEYS.APPROVAL_CONFIG;
+function resolveStorageKey(storageKey: 'agent_config'): string {
+  return STORAGE_KEYS.CONFIG;
 }
 
 // ── Response types ─────────────────────────────────────────────────────
@@ -303,9 +302,9 @@ export class SettingTool extends BaseTool {
    * Check if the current approval mode is YOLO
    */
   private async checkYoloMode(): Promise<boolean> {
-    const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
-    const config = result[STORAGE_KEYS.APPROVAL_CONFIG];
-    return config?.mode === 'yolo';
+    const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
+    const config = result[STORAGE_KEYS.CONFIG];
+    return config?.approval?.mode === 'yolo';
   }
 
   /**

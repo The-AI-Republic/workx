@@ -45,7 +45,7 @@ describe('settingsAllowlist', () => {
         expect(entry.description).toBeTruthy();
         expect(entry.type).toBeTruthy();
         expect(entry.configPath).toBeTruthy();
-        expect(['agent_config', 'approval_config']).toContain(entry.storageKey);
+        expect(entry.storageKey).toBe('agent_config');
       }
     });
   });
@@ -104,8 +104,8 @@ describe('settingsAllowlist', () => {
       description: 'test',
       type: 'string',
       allowedValues: ['balanced', 'high_speed', 'yolo'],
-      configPath: 'mode',
-      storageKey: 'approval_config',
+      configPath: 'approval.mode',
+      storageKey: 'agent_config',
     };
 
     const stringArrayEntry: AllowlistEntry = {
@@ -115,8 +115,8 @@ describe('settingsAllowlist', () => {
       description: 'test',
       type: 'string[]',
       allowedValues: null,
-      configPath: 'trustedDomains',
-      storageKey: 'approval_config',
+      configPath: 'approval.trustedDomains',
+      storageKey: 'agent_config',
     };
 
     it('validates correct boolean values', () => {

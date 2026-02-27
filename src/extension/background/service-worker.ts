@@ -538,11 +538,13 @@ function setupMessageHandlers(): void {
       (async () => {
         try {
           const config = message.config;
-          // 1. Save to storage
-          const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
-          const existing = result[STORAGE_KEYS.APPROVAL_CONFIG] || { ...DEFAULT_APPROVAL_CONFIG };
+          // 1. Save to storage (nested under agent_config.approval)
+          const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
+          const agentConfig = result[STORAGE_KEYS.CONFIG] || {};
+          const existing = agentConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
           const merged = { ...existing, ...config };
-          await chrome.storage.local.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: merged });
+          agentConfig.approval = merged;
+          await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: agentConfig });
           // 2. Update ApprovalGate directly
           const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
           if (primaryAgent) {

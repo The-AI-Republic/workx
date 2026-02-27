@@ -3,6 +3,8 @@
  * Type definitions for the centralized config system
  */
 
+import type { IApprovalConfig } from '../core/approval/types';
+
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
  *
@@ -46,6 +48,7 @@ export interface IAgentConfig {
   extension: IExtensionSettings;
   tools?: IToolsConfig;
   storage?: IStorageConfig;
+  approval?: IApprovalConfig;
 }
 
 // Model pricing information
@@ -445,6 +448,8 @@ export interface IStoredConfig {
   tools?: IToolsConfig;
   /** Storage configuration */
   storage?: IStorageConfig;
+  /** Approval system configuration */
+  approval?: IApprovalConfig;
 }
 
 // Storage interfaces
@@ -502,7 +507,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval';
   oldValue?: any;
   newValue: any;
   timestamp: number;
