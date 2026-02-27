@@ -363,6 +363,23 @@ export class PiAgent {
   }
 
   /**
+   * Hot-swap the model client in-place on the existing TurnContext.
+   * Preserves conversation history and agent run state.
+   * Used by desktop CONFIG_UPDATE to apply settings without reinitializing.
+   */
+  async hotSwapModelClient(): Promise<void> {
+    // Clear cached clients so the factory creates fresh ones with updated config
+    this.modelClientFactory.clearCache();
+
+    const modelClient = await this.modelClientFactory.createClientForCurrentModel();
+    const turnCtx = this.session.getTurnContext();
+    const newModelKey = this.config.getConfig().selectedModelKey;
+
+    turnCtx.setModelClient(modelClient);
+    turnCtx.setSelectedModelKey(newModelKey);
+  }
+
+  /**
    * Submit an operation to the agent
    * Returns the submission ID
    */
