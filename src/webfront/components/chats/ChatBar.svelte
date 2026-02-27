@@ -61,6 +61,7 @@
       <ChatTab
         {chat}
         isActive={chat.id === activeChatId}
+        showClose={chats.length > 1}
         on:select={handleChatSelect}
         on:close={handleChatClose}
       />
