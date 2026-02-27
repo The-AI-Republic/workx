@@ -55,7 +55,7 @@ export type EventMsg =
   | { type: 'GetHistoryEntryResponse'; data: GetHistoryEntryResponseEvent }
   | { type: 'McpListToolsResponse'; data: McpListToolsResponseEvent }
   | { type: 'ListCustomPromptsResponse'; data: ListCustomPromptsResponseEvent }
-  | { type: 'PlanUpdate'; data: UpdatePlanArgs }
+  | { type: 'PlanUpdate'; data: PlanToolArgs }
   | { type: 'TurnAborted'; data: TurnAbortedEvent }
   | { type: 'ShutdownComplete' }
   | { type: 'ConversationPath'; data: ConversationPathResponseEvent }
@@ -345,58 +345,26 @@ export enum StepStatus {
   Pending = "Pending",
   InProgress = "InProgress",
   Completed = "Completed",
-  Blocked = "Blocked",
-}
-
-/**
- * Plan-level status
- */
-export enum PlanStatus {
-  Active = "active",
-  Completed = "completed",
-}
-
-/**
- * Action to perform on a plan
- */
-export enum PlanAction {
-  Create = "create",
-  Update = "update",
-  Resume = "resume",
 }
 
 /**
  * A single step in the task plan
  */
-export interface PlanItemArg {
-  /** Stable identifier for dependency references (UUID) */
-  id?: string;
-  /** Human-readable step description (recommended 5-7 words) */
+export interface PlanStepArg {
+  /** Step description (5-10 words) */
   step: string;
   /** Current execution state */
   status: StepStatus;
-  /** Critical file paths relevant to this step */
-  files?: string[];
-  /** Existing code/functions to leverage */
-  reuse?: string[];
-  /** How to verify this step succeeded */
-  verification?: string;
-  /** Present-tense description shown during InProgress (e.g., "Analyzing auth module") */
-  activeDescription?: string;
-  /** IDs of steps that must complete before this step can start */
-  dependsOn?: string[];
 }
 
 /**
- * Input arguments for the PlanningTool
+ * Input arguments for the PlanningTool — full-state overwrite every call
  */
-export interface UpdatePlanArgs {
-  /** Action to perform: create, update, or resume */
-  action: PlanAction;
-  /** Optional explanation for plan creation/update */
+export interface PlanToolArgs {
+  /** What changed in this update */
   explanation?: string;
-  /** Ordered list of plan steps (required for create/update, ignored for resume) */
-  plan?: PlanItemArg[];
+  /** Full ordered list of plan steps (required) */
+  plan: PlanStepArg[];
 }
 
 export interface TurnAbortedEvent {

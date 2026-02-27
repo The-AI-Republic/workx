@@ -355,9 +355,6 @@ export class TurnManager {
       });
     }
 
-    // Note: planning_tool is registered via ToolRegistry in src/tools/index.ts
-    // It will be picked up automatically from registeredTools above
-
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
     const mcpSession = this.session as unknown as Partial<MCPCapableSession>;
@@ -473,12 +470,6 @@ export class TurnManager {
     // Load and add the agent prompt as system message
     const systemPrompt = await loadPrompt();
     messages.push({ role: 'system', content: systemPrompt });
-
-    // Inject current plan context if one exists (Feature 029)
-    const planContext = await this.buildPlanContext();
-    if (planContext) {
-      messages.push({ role: 'system', content: planContext });
-    }
 
     // Add user instructions (development guidelines from user_instruction.md)
     const userInstructions = this.turnContext.getUserInstructions();
@@ -627,11 +618,6 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
-        case 'planning_tool':
-          // Planning tool V2 — action-based dispatch with persistence
-          result = await this.executePlanningTool(parsedParams);
-          break;
-
         default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
@@ -733,92 +719,6 @@ export class TurnManager {
       });
       throw error;
     }
-  }
-
-  /**
-   * Build plan context for system prompt injection (Feature 029).
-   * Returns null if no plan exists for the current session.
-   */
-  private async buildPlanContext(): Promise<string | null> {
-    try {
-      const { getPlanStore } = await import('../storage/PlanStore');
-      const store = getPlanStore();
-      const sessionId = this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? 'default';
-      const plan = await store.get(sessionId);
-      if (!plan || plan.steps.length === 0) return null;
-
-      const { StepStatus } = await import('./protocol/events');
-
-      const lines: string[] = ['## Current Plan'];
-      if (plan.explanation) {
-        lines.push('', `Explanation: ${plan.explanation}`);
-      }
-      lines.push('');
-
-      const stepById = new Map(plan.steps.map((s) => [s.id, s]));
-
-      for (let i = 0; i < plan.steps.length; i++) {
-        const s = plan.steps[i];
-        let marker: string;
-        let suffix = '';
-
-        switch (s.status) {
-          case StepStatus.Completed:
-            marker = '[✓]';
-            break;
-          case StepStatus.InProgress:
-            marker = '[→]';
-            if (s.activeDescription) suffix = `  (${s.activeDescription})`;
-            break;
-          case StepStatus.Blocked: {
-            marker = '[✗]';
-            const blockers = (s.dependsOn ?? [])
-              .filter((depId: string) => {
-                const dep = stepById.get(depId);
-                return dep && dep.status !== StepStatus.Completed;
-              })
-              .map((depId: string) => {
-                const idx = plan.steps.findIndex((st) => st.id === depId);
-                return `step ${idx + 1}`;
-              });
-            if (blockers.length) suffix = `  (blocked by: ${blockers.join(', ')})`;
-            break;
-          }
-          default:
-            marker = '[•]';
-        }
-
-        lines.push(`${i + 1}. ${marker} ${s.step}${suffix}`);
-
-        // Indented metadata
-        if (s.files?.length) lines.push(`   files: ${s.files.join(', ')}`);
-        if (s.reuse?.length) lines.push(`   reuse: ${s.reuse.join(', ')}`);
-        if (s.dependsOn?.length) {
-          const depLabels = s.dependsOn.map((depId: string) => {
-            const idx = plan.steps.findIndex((st) => st.id === depId);
-            return `step ${idx + 1}`;
-          });
-          lines.push(`   depends on: ${depLabels.join(', ')}`);
-        }
-        if (s.verification) lines.push(`   verification: ${s.verification}`);
-      }
-
-      return lines.join('\n');
-    } catch (error) {
-      console.debug('[TurnManager] Failed to build plan context:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Execute PlanningTool V2 with session-aware persistence
-   */
-  private async executePlanningTool(params: any): Promise<any> {
-    const { PlanningTool } = await import('../tools/PlanningTool');
-    const tool = new PlanningTool();
-    const sessionId = this.turnContext.getSessionId?.() ?? this.session.getSessionId?.() ?? 'default';
-    tool.setSessionId(sessionId);
-    return tool.execute(params);
   }
 
   /**

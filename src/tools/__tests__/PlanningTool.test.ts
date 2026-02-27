@@ -1,19 +1,13 @@
 /**
- * Unit tests for PlanningTool
+ * Unit tests for PlanningTool (simplified V2)
  *
- * Tests the PlanningTool which extends BaseTool to provide task planning
- * and progress tracking capabilities. Exercises validation, success responses,
- * step counting, and Chrome runtime messaging.
+ * Tests validation, success responses, step counting, and Chrome runtime messaging.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PlanningTool, PLANNING_TOOL_DEFINITION } from '../PlanningTool';
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-// Mock the StepStatus enum and related types from the events module
+// Mock the StepStatus enum from the events module
 vi.mock('../../core/protocol/events', () => ({
   StepStatus: {
     Pending: 'Pending',
@@ -29,10 +23,6 @@ vi.mock('../../core/protocol/events', () => ({
   },
 };
 
-// ---------------------------------------------------------------------------
-// Test Suite
-// ---------------------------------------------------------------------------
-
 describe('PlanningTool', () => {
   let tool: PlanningTool;
 
@@ -41,9 +31,7 @@ describe('PlanningTool', () => {
     tool = new PlanningTool();
   });
 
-  // -------------------------------------------------------------------------
-  // 1. Tool definition
-  // -------------------------------------------------------------------------
+  // ── Tool definition ─────────────────────────────────────────────────
 
   describe('PLANNING_TOOL_DEFINITION', () => {
     it('has the correct name', () => {
@@ -90,9 +78,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 2. getDefinition()
-  // -------------------------------------------------------------------------
+  // ── getDefinition() ─────────────────────────────────────────────────
 
   describe('getDefinition()', () => {
     it('returns a tool definition with type function', () => {
@@ -123,9 +109,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 3. execute() with valid plan - all Pending steps
-  // -------------------------------------------------------------------------
+  // ── execute() with valid plan (all Pending) ─────────────────────────
 
   describe('execute() with valid plan (all Pending)', () => {
     it('returns success with correct step count', async () => {
@@ -165,9 +149,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 4. execute() with mixed statuses
-  // -------------------------------------------------------------------------
+  // ── execute() with mixed statuses ───────────────────────────────────
 
   describe('execute() with mixed statuses', () => {
     it('correctly counts completed, pending, and in-progress steps', async () => {
@@ -206,14 +188,11 @@ describe('PlanningTool', () => {
         ],
       });
 
-      // Array.find returns the first match
       expect(result.data.inProgressStep).toBe('First active');
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 5. execute() with explanation
-  // -------------------------------------------------------------------------
+  // ── execute() with explanation ──────────────────────────────────────
 
   describe('execute() with explanation', () => {
     it('includes explanation text in the message', async () => {
@@ -240,9 +219,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 6. execute() with invalid plan (not array)
-  // -------------------------------------------------------------------------
+  // ── execute() with invalid plan ─────────────────────────────────────
 
   describe('execute() with invalid plan (not an array)', () => {
     it('returns validation error when plan is a string', async () => {
@@ -250,8 +227,6 @@ describe('PlanningTool', () => {
         plan: 'not an array',
       });
 
-      // BaseTool's validateParameters catches the type mismatch for the plan
-      // field since the schema says it must be an array
       expect(result.success).toBe(false);
     });
 
@@ -279,9 +254,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 7. execute() with empty step string
-  // -------------------------------------------------------------------------
+  // ── execute() with empty step string ────────────────────────────────
 
   describe('execute() with empty step string', () => {
     it('returns VALIDATION_ERROR for an empty step string', async () => {
@@ -289,7 +262,6 @@ describe('PlanningTool', () => {
         plan: [{ step: '', status: 'Pending' }],
       });
 
-      // executeImpl catches the empty step string
       expect(result.success).toBe(true); // BaseTool wraps the result
       expect(result.data.success).toBe(false);
       expect(result.data.errorType).toBe('VALIDATION_ERROR');
@@ -310,9 +282,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 8. execute() with invalid status
-  // -------------------------------------------------------------------------
+  // ── execute() with invalid status ───────────────────────────────────
 
   describe('execute() with invalid status', () => {
     it('returns VALIDATION_ERROR for an unknown status string', async () => {
@@ -346,9 +316,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 9. execute() counts verification
-  // -------------------------------------------------------------------------
+  // ── execute() counts verification ───────────────────────────────────
 
   describe('execute() counts', () => {
     it('correctly counts with all Completed steps', async () => {
@@ -396,9 +364,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // 10. Chrome messaging
-  // -------------------------------------------------------------------------
+  // ── Chrome messaging ────────────────────────────────────────────────
 
   describe('Chrome runtime messaging', () => {
     it('sends a PlanUpdate event via chrome.runtime.sendMessage', async () => {
@@ -432,7 +398,6 @@ describe('PlanningTool', () => {
         plan: [{ step: '', status: 'Pending' }],
       });
 
-      // Validation fails before sendMessage is reached
       expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
 
@@ -455,7 +420,6 @@ describe('PlanningTool', () => {
         plan: [{ step: 'Step', status: 'Pending' }],
       });
 
-      // The error from sendMessage is caught silently
       expect(result.success).toBe(true);
       expect(result.data.success).toBe(true);
       expect(result.data.stepCount).toBe(1);
@@ -474,9 +438,7 @@ describe('PlanningTool', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // Edge cases
-  // -------------------------------------------------------------------------
+  // ── Edge cases ──────────────────────────────────────────────────────
 
   describe('edge cases', () => {
     it('handles a single-step plan', async () => {
@@ -515,7 +477,6 @@ describe('PlanningTool', () => {
       expect(result.data.stepCount).toBe(50);
       expect(result.data.completedCount).toBe(20);
       expect(result.data.pendingCount).toBe(25);
-      // First InProgress step is at index 20
       expect(result.data.inProgressStep).toBe('Step 21');
     });
   });
