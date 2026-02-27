@@ -20,13 +20,16 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
-import { configurePromptComposer } from '@/core/PromptLoader';
+import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
+import { SkillRegistry } from '@/core/skills/SkillRegistry';
+import { FilesystemSkillProvider } from '../storage/FilesystemSkillProvider';
 import { AuthManager } from '@/core/models/types/Auth';
 import type { Op } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
+import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
 
 /**
  * Singleton instance
@@ -43,6 +46,7 @@ export class DesktopAgentBootstrap {
   private primaryAgent: PiAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
+  private skillRegistry: SkillRegistry | null = null;
   private initialized = false;
   private currentAuthManager: AuthManager | null = null;
 
@@ -139,6 +143,9 @@ export class DesktopAgentBootstrap {
       // 6. Set up a polling loop to dispatch events from all active sessions
       // (This replicates the service-worker event broadcasting loop)
       this.startEventPollingLoop();
+
+      // 6b. Initialize skills (filesystem-backed, prompt extension)
+      await this.initializeSkills();
 
       // 7. Restore auth mode from keychain and listen for changes
       // Same business logic as extension: logged in → backend routing, not logged in → api_key
@@ -266,6 +273,77 @@ export class DesktopAgentBootstrap {
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not set up MCP tool registration:', error);
     }
+  }
+
+  /**
+   * Initialize the skill registry with filesystem-backed provider.
+   * Discovers existing skills and registers a prompt extension for auto-invocable skills.
+   */
+  private async initializeSkills(): Promise<void> {
+    try {
+      const provider = new FilesystemSkillProvider();
+      await provider.initialize();
+
+      this.skillRegistry = new SkillRegistry(provider);
+      await this.skillRegistry.discover();
+
+      registerPromptExtension(() => this.skillRegistry!.buildSkillsSystemPrompt());
+
+      // Register use_skill tool if there are any skills
+      const allSkills = this.skillRegistry.getSkillMetas();
+      if (allSkills.length > 0 && this.agent) {
+        const registry = this.agent.getToolRegistry();
+
+        await registry.register(
+          {
+            type: 'function',
+            function: {
+              name: 'use_skill',
+              description: 'Invoke a user-defined skill by name. When the user types /skill-name, call this tool with that name. Also use proactively when an auto-invocable skill is relevant. Returns the skill body with instructions to follow.',
+              strict: false,
+              parameters: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'The skill name to invoke' },
+                  arguments: { type: 'string', description: 'Optional space-separated arguments for the skill' },
+                },
+                required: ['name'],
+              },
+            },
+          },
+          async (params) => {
+            const skillName = params.name as string;
+            const args = params.arguments as string | undefined;
+
+            const knownNames = new Set(this.skillRegistry!.getSkillMetas().map((s) => s.name));
+            if (!knownNames.has(skillName)) {
+              return { error: `Skill "${skillName}" not found. Available skills: ${[...knownNames].join(', ')}` };
+            }
+
+            const body = await this.skillRegistry!.invoke(skillName, args ? args.split(/\s+/) : []);
+            if (!body) {
+              return { error: `Failed to load skill "${skillName}"` };
+            }
+
+            return body;
+          },
+          new StaticRiskAssessor(0)
+        );
+
+        console.log('[DesktopAgentBootstrap] use_skill tool registered for', allSkills.length, 'skills');
+      }
+
+      console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
+    }
+  }
+
+  /**
+   * Get the skill registry instance (null if not yet initialized)
+   */
+  getSkillRegistry(): SkillRegistry | null {
+    return this.skillRegistry;
   }
 
   /**

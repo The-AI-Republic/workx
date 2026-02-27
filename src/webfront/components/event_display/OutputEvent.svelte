@@ -25,18 +25,18 @@
 </script>
 
 <div class="output-event bg-black/30 rounded p-2 font-mono">
-  <pre class="text-gray-300 text-xs whitespace-pre-wrap overflow-x-auto">{displayContent}</pre>
+  <pre class="text-gray-300 text-sm whitespace-pre-wrap overflow-x-auto">{displayContent}</pre>
 
   {#if isTruncated}
     <button
-      class="text-cyan-400 text-xs mt-2 hover:underline"
+      class="text-cyan-400 text-sm mt-2 hover:underline"
       on:click={() => (showAll = true)}
     >
       {$_t("Show all")}
     </button>
   {:else if showAll}
     <button
-      class="text-cyan-400 text-xs mt-2 hover:underline"
+      class="text-cyan-400 text-sm mt-2 hover:underline"
       on:click={() => (showAll = false)}
     >
       {$_t("Show less")}
