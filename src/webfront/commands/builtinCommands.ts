@@ -1,4 +1,6 @@
 import { commandRegistry } from './CommandRegistry';
+import type { SkillMeta } from '@/core/skills/types';
+import { sendMessage as sendIpcMessage, MessageType } from '../lib/messaging';
 
 export interface BuiltinCommandCallbacks {
   onNewConversation: () => void;
@@ -37,4 +39,75 @@ export function initBuiltinCommands(callbacks: BuiltinCommandCallbacks): void {
       callbacks.onOpenSettings();
     },
   });
+}
+
+/** Track which command names were registered by the skill system */
+const registeredSkillNames = new Set<string>();
+
+/** Stored callback from first registerSkillCommands() call */
+let storedOnSubmitText: ((text: string) => void) | null = null;
+
+/**
+ * Load skills from the backend and register manual/hybrid ones as commands.
+ * Called after builtins are initialized. Stores the callback for refreshSkillCommands().
+ */
+export async function registerSkillCommands(
+  onSubmitText: (text: string) => void
+): Promise<void> {
+  storedOnSubmitText = onSubmitText;
+  await syncSkillCommands(onSubmitText);
+}
+
+/**
+ * Re-sync skill commands with the backend.
+ * Unregisters stale commands and registers new ones.
+ * Call this after creating, deleting, or changing skill invocation modes.
+ */
+export async function refreshSkillCommands(): Promise<void> {
+  if (!storedOnSubmitText) return;
+  await syncSkillCommands(storedOnSubmitText);
+}
+
+async function syncSkillCommands(
+  onSubmitText: (text: string) => void
+): Promise<void> {
+  try {
+    const skills = await sendIpcMessage<SkillMeta[]>(MessageType.SKILLS_LIST);
+    const currentSkillNames = new Set<string>();
+
+    if (skills?.length) {
+      for (const skill of skills) {
+        // Only register manual/hybrid skills as / commands
+        if (skill.invocationMode === 'auto') continue;
+        currentSkillNames.add(skill.name);
+      }
+    }
+
+    // Unregister skills that were removed or switched to auto mode
+    for (const name of registeredSkillNames) {
+      if (!currentSkillNames.has(name)) {
+        commandRegistry.unregister(name);
+        registeredSkillNames.delete(name);
+      }
+    }
+
+    // Register new skills
+    for (const skill of skills ?? []) {
+      if (skill.invocationMode === 'auto') continue;
+      if (commandRegistry.has(skill.name)) continue;
+
+      const name = skill.name;
+      commandRegistry.register({
+        name,
+        description: skill.description,
+        argumentHint: '$ARGUMENTS',
+        action: (args?: string) => {
+          onSubmitText(`/${name}${args ? ' ' + args : ''}`);
+        },
+      });
+      registeredSkillNames.add(name);
+    }
+  } catch (error) {
+    console.warn('[builtinCommands] Failed to register skill commands:', error);
+  }
 }

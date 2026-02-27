@@ -23,6 +23,7 @@ import type {
 } from './types';
 import type { EventMsg } from '../protocol/events';
 import type { Op } from '../protocol/types';
+import type { Skill, InvocationMode } from '../skills/types';
 
 import { isPayloadRef, retrievePayload } from '@/desktop/channels/LargePayloadStore';
 
@@ -155,6 +156,16 @@ export class TauriMessageService implements IMessageService {
       case MessageType.INTERRUPT:
         return this.handleInterrupt() as T;
 
+      case MessageType.SKILLS_LIST:
+      case MessageType.SKILLS_LOAD:
+      case MessageType.SKILLS_SAVE:
+      case MessageType.SKILLS_DELETE:
+      case MessageType.SKILLS_UPDATE_MODE:
+      case MessageType.SKILLS_IMPORT:
+      case MessageType.SKILLS_EXPORT:
+      case MessageType.SKILLS_TRUST:
+        return this.handleSkillsMessage(type, payload) as T;
+
       default:
         // For other message types, emit as event and return success
         console.log('[TauriMessageService] Emitting message:', type);
@@ -276,6 +287,75 @@ export class TauriMessageService implements IMessageService {
     } catch (error) {
       console.error('[TauriMessageService] Interrupt failed:', error);
       return { success: false };
+    }
+  }
+
+  /**
+   * Handle SKILLS_* messages by delegating to the SkillRegistry
+   */
+  private async handleSkillsMessage(type: MessageType, payload: unknown): Promise<unknown> {
+    const bootstrap = await getAgentBootstrap();
+    const registry = bootstrap.getSkillRegistry();
+    if (!registry) {
+      throw new Error('SkillRegistry not initialized');
+    }
+
+    switch (type) {
+      case MessageType.SKILLS_LIST:
+        return registry.getSkillMetas();
+
+      case MessageType.SKILLS_LOAD: {
+        const { name, args } = payload as { name: string; args?: string };
+        return registry.invoke(name, args ? args.split(/\s+/) : []);
+      }
+
+      case MessageType.SKILLS_SAVE: {
+        const skill = payload as Skill;
+        await registry.save(skill);
+        return { success: true };
+      }
+
+      case MessageType.SKILLS_DELETE: {
+        const { name } = payload as { name: string };
+        await registry.delete(name);
+        return { success: true };
+      }
+
+      case MessageType.SKILLS_UPDATE_MODE: {
+        const { name, mode } = payload as { name: string; mode: InvocationMode };
+        await registry.updateInvocationMode(name, mode);
+        return { success: true };
+      }
+
+      case MessageType.SKILLS_IMPORT: {
+        const { url } = payload as { url: string };
+        const parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          throw new Error('Only HTTP/HTTPS URLs are supported for skill import');
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch skill from ${url}: ${response.statusText}`);
+        }
+        const content = await response.text();
+        const skill = await registry.importFromContent(content, url);
+        return { success: true, skill };
+      }
+
+      case MessageType.SKILLS_EXPORT: {
+        const { name } = payload as { name: string };
+        const content = await registry.export(name);
+        return { success: true, content };
+      }
+
+      case MessageType.SKILLS_TRUST: {
+        const { name } = payload as { name: string };
+        await registry.trustSkill(name);
+        return { success: true };
+      }
+
+      default:
+        return { success: false, error: `Unknown skills message type: ${type}` };
     }
   }
 

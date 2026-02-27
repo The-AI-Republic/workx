@@ -258,9 +258,11 @@ export interface IUserPreferences {
   /**
    * UI theme for the side panel
    * - 'terminal': Retro terminal-style UI with green text on black background
-   * - 'chatgpt': Modern ChatGPT-style UI with clean bubbles and light/dark mode
+   * - 'modern-auto': Modern Chat UI, follows system light/dark preference
+   * - 'modern-light': Modern Chat UI, always light
+   * - 'modern-dark': Modern Chat UI, always dark
    */
-  uiTheme?: 'terminal' | 'chatgpt';
+  uiTheme?: 'terminal' | 'modern-auto' | 'modern-light' | 'modern-dark';
   /**
    * Whether to use own API key directly instead of backend routing
    * - When true: LLM requests go directly to provider APIs using user's API key

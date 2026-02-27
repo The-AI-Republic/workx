@@ -8,6 +8,7 @@ mod keychain_commands;
 mod mcp_manager;
 mod sandbox;
 mod rollout_db;
+mod skills_commands;
 mod storage_commands;
 mod terminal_commands;
 
@@ -370,6 +371,12 @@ fn main() {
             rollout_db::rollout_db_get_stats,
             rollout_db::rollout_db_list_conversations,
             rollout_db::rollout_db_close,
+            // Skills filesystem commands
+            skills_commands::skills_ensure_dir,
+            skills_commands::skills_list_dirs,
+            skills_commands::skills_read_file,
+            skills_commands::skills_write_file,
+            skills_commands::skills_remove_dir,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -954,13 +954,13 @@
   }
 
   .agent-url {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     word-break: break-all;
   }
 
   .trusted-badge {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
     font-weight: 500;
     padding: 0.125rem 0.5rem;
     border-radius: 1rem;
@@ -971,7 +971,7 @@
   }
 
   .status-badge {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
     font-weight: 500;
     padding: 0.125rem 0.5rem;
     border-radius: 1rem;
@@ -1007,7 +1007,7 @@
     padding: 0.5rem;
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
     border-radius: 0.375rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-error);
   }
 
@@ -1025,7 +1025,7 @@
   }
 
   .card-field {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     margin-bottom: 0.25rem;
   }
@@ -1094,7 +1094,7 @@
   }
 
   .skill-agent {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     padding: 0.125rem 0.375rem;
     background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
     color: var(--browserx-primary);
@@ -1103,7 +1103,7 @@
 
   .skill-description {
     margin: 0;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
   }
@@ -1116,7 +1116,7 @@
   }
 
   .skill-tag {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
     padding: 0.125rem 0.375rem;
     background: color-mix(in srgb, var(--browserx-text-secondary) 10%, transparent);
     color: var(--browserx-text-secondary);
@@ -1162,7 +1162,7 @@
 
   .btn-small {
     padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
 
   .btn-icon {
@@ -1239,7 +1239,7 @@
 
   .help-text {
     margin-top: 0.375rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
   }

@@ -4,6 +4,7 @@
   import type { IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
+  import { uiTheme, type UITheme } from '../stores/themeStore';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   export let settingsConfig: AgentConfig;
@@ -13,6 +14,12 @@
     back: void;
     saved: { success: boolean; error?: string };
   }>();
+
+  // Theme
+  let currentTheme: UITheme = 'terminal';
+  uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
 
   // Form state
   let originalTools: IToolsConfig = {};
@@ -196,40 +203,80 @@
     else if (section === 'advanced') advancedExpanded = !advancedExpanded;
     else if (section === 'terminal-sandbox') terminalSandboxExpanded = !terminalSandboxExpanded;
   }
+
+  $: isModern = currentTheme === 'modern';
+
+  /* Reusable class helpers */
+  $: cardClasses = isModern
+    ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+    : 'bg-term-bg border-term-dim-green';
+
+  $: textClasses = isModern
+    ? 'font-chat text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal text-term-green';
+
+  $: textSecondaryClasses = isModern
+    ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
+    : 'font-terminal text-term-dim-green';
+
+  $: selectClasses = isModern
+    ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
+    : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10';
+
+  $: inputClasses = selectClasses;
+
+  $: primaryClasses = isModern
+    ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
+    : 'font-terminal text-term-green';
+
+  $: checkboxAccent = isModern
+    ? 'accent-chat-primary dark:accent-chat-primary-dark'
+    : 'accent-term-green';
 </script>
 
-<div class="tools-settings">
-  <button class="back-button" on:click={handleBack}>← {$_t("Back")}</button>
+<div class="p-6">
+  <button
+    class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
+      {primaryClasses}"
+    on:click={handleBack}
+  >← {$_t("Back")}</button>
 
-  <h2 class="settings-title">{$_t("Tools Settings")}</h2>
+  <h2 class="m-0 mb-6 text-2xl font-semibold {textClasses}">{$_t("Tools Settings")}</h2>
 
-  <div class="settings-form">
+  <div class="max-w-[600px] flex flex-col gap-3">
     <!-- Master Toggle -->
-    <div class="settings-card" data-setting-id="enable-all-tools">
-      <div class="form-group">
-        <label class="checkbox-label master-toggle">
+    <div
+      class="rounded-xl px-5 py-4 border {cardClasses}"
+      data-setting-id="enable-all-tools"
+    >
+      <div>
+        <label class="flex items-center gap-2 cursor-pointer text-base font-semibold {textClasses}">
           <input
             type="checkbox"
             bind:checked={currentTools.enable_all_tools}
             on:input={handleInput}
-            class="form-checkbox"
+            class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
           />
           <span>{$_t("Enable All Tools")}</span>
         </label>
-        <div class="help-text">{$_t("Master toggle to enable or disable all browser and agent tools")}</div>
+        <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Master toggle to enable or disable all browser and agent tools")}</div>
       </div>
     </div>
 
     <!-- Browser Tools Section -->
-    <div class="collapsible-section settings-card">
+    <div class="rounded-xl border overflow-hidden {cardClasses}">
       <button
-        class="section-header"
+        class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
+          {isModern
+            ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+            : 'bg-term-bg hover:bg-term-green/5'}"
         on:click={() => toggleSection('browser')}
         aria-expanded={browserToolsExpanded}
       >
         <svg
-          class="expand-icon"
-          class:expanded={browserToolsExpanded}
+          class="shrink-0 transition-transform duration-200 stroke-2
+            {browserToolsExpanded ? 'rotate-0' : '-rotate-90'}
+            {textClasses}"
           width="16"
           height="16"
           viewBox="0 0 24 24"
@@ -238,154 +285,54 @@
         >
           <polyline points="6,9 12,15 18,9"></polyline>
         </svg>
-        <h3 class="section-title">{$_t("Browser Tools")}</h3>
+        <h3 class="m-0 text-base font-semibold {textClasses}">{$_t("Browser Tools")}</h3>
       </button>
 
       {#if browserToolsExpanded}
-        <div class="section-content">
-          <div class="form-group" data-setting-id="storage-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.storage_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Storage Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Access browser storage (localStorage, sessionStorage, cookies)")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="tab-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.tab_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Tab Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Manage browser tabs (open, close, switch, query)")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="web-scraping-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.web_scraping_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Web Scraping Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Extract structured data from web pages")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="dom-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.dom_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("DOM Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Query and manipulate the DOM (Document Object Model)")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="form-automation-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.form_automation_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Form Automation Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Fill forms, submit data, interact with form elements")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="navigation-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.navigation_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Navigation Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Navigate pages, click links, handle browser navigation")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="network-intercept-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.network_intercept_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Network Intercept Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Intercept and modify network requests/responses")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="data-extraction-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.data_extraction_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Data Extraction Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Extract specific data patterns from pages")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="page-action-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.page_action_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Page Action Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Perform page actions (scroll, screenshot, wait)")}</div>
-          </div>
-
-          <div class="form-group" data-setting-id="page-vision-tool">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={currentTools.page_vision_tool}
-                on:input={handleInput}
-                class="form-checkbox"
-              />
-              <span>{$_t("Page Vision Tool")}</span>
-            </label>
-            <div class="help-text">{$_t("Visual analysis of page content and layout")}</div>
-          </div>
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+          {#each [
+            { id: 'storage-tool', bind: 'storage_tool', label: $_t("Storage Tool"), help: $_t("Access browser storage (localStorage, sessionStorage, cookies)") },
+            { id: 'tab-tool', bind: 'tab_tool', label: $_t("Tab Tool"), help: $_t("Manage browser tabs (open, close, switch, query)") },
+            { id: 'web-scraping-tool', bind: 'web_scraping_tool', label: $_t("Web Scraping Tool"), help: $_t("Extract structured data from web pages") },
+            { id: 'dom-tool', bind: 'dom_tool', label: $_t("DOM Tool"), help: $_t("Query and manipulate the DOM (Document Object Model)") },
+            { id: 'form-automation-tool', bind: 'form_automation_tool', label: $_t("Form Automation Tool"), help: $_t("Fill forms, submit data, interact with form elements") },
+            { id: 'navigation-tool', bind: 'navigation_tool', label: $_t("Navigation Tool"), help: $_t("Navigate pages, click links, handle browser navigation") },
+            { id: 'network-intercept-tool', bind: 'network_intercept_tool', label: $_t("Network Intercept Tool"), help: $_t("Intercept and modify network requests/responses") },
+            { id: 'data-extraction-tool', bind: 'data_extraction_tool', label: $_t("Data Extraction Tool"), help: $_t("Extract specific data patterns from pages") },
+            { id: 'page-action-tool', bind: 'page_action_tool', label: $_t("Page Action Tool"), help: $_t("Perform page actions (scroll, screenshot, wait)") },
+            { id: 'page-vision-tool', bind: 'page_vision_tool', label: $_t("Page Vision Tool"), help: $_t("Visual analysis of page content and layout") }
+          ] as tool}
+            <div class="{tool !== undefined ? 'mb-6 last:mb-0' : ''}" data-setting-id={tool.id}>
+              <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
+                <input
+                  type="checkbox"
+                  bind:checked={currentTools[tool.bind]}
+                  on:input={handleInput}
+                  class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
+                />
+                <span>{tool.label}</span>
+              </label>
+              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{tool.help}</div>
+            </div>
+          {/each}
         </div>
       {/if}
     </div>
 
     <!-- Agent Execution Tools Section -->
-    <div class="collapsible-section settings-card">
+    <div class="rounded-xl border overflow-hidden {cardClasses}">
       <button
-        class="section-header"
+        class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
+          {isModern
+            ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+            : 'bg-term-bg hover:bg-term-green/5'}"
         on:click={() => toggleSection('agent')}
         aria-expanded={agentToolsExpanded}
       >
         <svg
-          class="expand-icon"
-          class:expanded={agentToolsExpanded}
+          class="shrink-0 transition-transform duration-200 stroke-2
+            {agentToolsExpanded ? 'rotate-0' : '-rotate-90'}
+            {textClasses}"
           width="16"
           height="16"
           viewBox="0 0 24 24"
@@ -394,77 +341,81 @@
         >
           <polyline points="6,9 12,15 18,9"></polyline>
         </svg>
-        <h3 class="section-title">{$_t("Agent Execution Tools")}</h3>
+        <h3 class="m-0 text-base font-semibold {textClasses}">{$_t("Agent Execution Tools")}</h3>
       </button>
 
       {#if agentToolsExpanded}
-        <div class="section-content">
-          <div class="form-group" data-setting-id="exec-command">
-            <label class="checkbox-label">
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+          <div class="mb-6" data-setting-id="exec-command">
+            <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.execCommand}
                 on:input={handleInput}
-                class="form-checkbox"
+                class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
               />
               <span>{$_t("Execute Commands")}</span>
             </label>
-            <div class="help-text">{$_t("Allow agent to execute system commands (use with caution)")}</div>
+            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Allow agent to execute system commands (use with caution)")}</div>
           </div>
 
-          <div class="form-group" data-setting-id="web-search">
-            <label class="checkbox-label">
+          <div class="mb-6" data-setting-id="web-search">
+            <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.webSearch}
                 on:input={handleInput}
-                class="form-checkbox"
+                class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
               />
               <span>{$_t("Web Search")}</span>
             </label>
-            <div class="help-text">{$_t("Enable web search capabilities for the agent")}</div>
+            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Enable web search capabilities for the agent")}</div>
           </div>
 
-          <div class="form-group" data-setting-id="file-operations">
-            <label class="checkbox-label disabled-option">
+          <div class="mb-6" data-setting-id="file-operations">
+            <label class="flex items-center gap-2 cursor-pointer text-[15px] opacity-50 cursor-not-allowed {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.fileOperations}
                 on:input={handleInput}
                 disabled
-                class="form-checkbox"
+                class="w-[18px] h-[18px] cursor-not-allowed {checkboxAccent}"
               />
-              <span>{$_t("File Operations (Not Available)")}</span>
+              <span class="italic {textSecondaryClasses}">{$_t("File Operations (Not Available)")}</span>
             </label>
-            <div class="help-text">{$_t("Allow agent to read, write, and manage files (Coming in future update)")}</div>
+            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Allow agent to read, write, and manage files (Coming in future update)")}</div>
           </div>
 
-          <div class="form-group" data-setting-id="mcp-tools">
-            <label class="checkbox-label">
+          <div data-setting-id="mcp-tools">
+            <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.mcpTools}
                 on:input={handleInput}
-                class="form-checkbox"
+                class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
               />
               <span>{$_t("MCP Tools")}</span>
             </label>
-            <div class="help-text">{$_t("Enable Model Context Protocol tools from connected MCP servers")}</div>
+            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Enable Model Context Protocol tools from connected MCP servers")}</div>
           </div>
         </div>
       {/if}
     </div>
 
     <!-- Advanced Configuration Section -->
-    <div class="collapsible-section settings-card">
+    <div class="rounded-xl border overflow-hidden {cardClasses}">
       <button
-        class="section-header"
+        class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
+          {isModern
+            ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+            : 'bg-term-bg hover:bg-term-green/5'}"
         on:click={() => toggleSection('advanced')}
         aria-expanded={advancedExpanded}
       >
         <svg
-          class="expand-icon"
-          class:expanded={advancedExpanded}
+          class="shrink-0 transition-transform duration-200 stroke-2
+            {advancedExpanded ? 'rotate-0' : '-rotate-90'}
+            {textClasses}"
           width="16"
           height="16"
           viewBox="0 0 24 24"
@@ -473,41 +424,41 @@
         >
           <polyline points="6,9 12,15 18,9"></polyline>
         </svg>
-        <h3 class="section-title">{$_t("Advanced Configuration")}</h3>
+        <h3 class="m-0 text-base font-semibold {textClasses}">{$_t("Advanced Configuration")}</h3>
       </button>
 
       {#if advancedExpanded}
-        <div class="section-content">
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <!-- Timeout Configuration -->
-          <div class="form-group">
-            <label for="tool-timeout" class="form-label">{$_t("Tool Timeout (ms)")}</label>
+          <div class="mb-6">
+            <label for="tool-timeout" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Tool Timeout (ms)")}</label>
             <input
               id="tool-timeout"
               type="number"
               min="100"
               bind:value={currentTools.timeout}
               on:input={handleInput}
-              class="form-input"
+              class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {inputClasses}"
               placeholder="30000"
             />
-            <div class="help-text">{$_t("Maximum time (in milliseconds) a tool can run before timeout (default: 30000)")}</div>
+            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Maximum time (in milliseconds) a tool can run before timeout (default: 30000)")}</div>
           </div>
 
           <!-- Legacy Sandbox Policy (non-desktop) -->
           {#if !isDesktop}
-            <div class="form-group">
-              <label for="sandbox-mode" class="form-label">{$_t("Sandbox Policy")}</label>
+            <div>
+              <label for="sandbox-mode" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Sandbox Policy")}</label>
               <select
                 id="sandbox-mode"
                 bind:value={currentTools.sandboxPolicy.mode}
                 on:input={handleInput}
-                class="form-select"
+                class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="read-only">{$_t("Read-only")}</option>
                 <option value="workspace-write">{$_t("Workspace Write")}</option>
                 <option value="danger-full-access">{$_t("Full Access (Dangerous)")}</option>
               </select>
-              <div class="help-text">{$_t("Security level for tool execution environment")}</div>
+              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Security level for tool execution environment")}</div>
             </div>
           {/if}
         </div>
@@ -516,15 +467,19 @@
 
     <!-- Terminal Sandbox Settings (Desktop only) -->
     {#if isDesktop}
-      <div class="collapsible-section settings-card">
+      <div class="rounded-xl border overflow-hidden {cardClasses}">
         <button
-          class="section-header"
+          class="w-full flex items-center gap-3 p-4 border-none cursor-pointer transition-colors duration-200
+            {isModern
+              ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+              : 'bg-term-bg hover:bg-term-green/5'}"
           on:click={() => toggleSection('terminal-sandbox')}
           aria-expanded={terminalSandboxExpanded}
         >
           <svg
-            class="expand-icon"
-            class:expanded={terminalSandboxExpanded}
+            class="shrink-0 transition-transform duration-200 stroke-2
+              {terminalSandboxExpanded ? 'rotate-0' : '-rotate-90'}
+              {textClasses}"
             width="16"
             height="16"
             viewBox="0 0 24 24"
@@ -533,28 +488,32 @@
           >
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
-          <h3 class="section-title">{$_t("Terminal Sandbox")}</h3>
+          <h3 class="m-0 text-base font-semibold {textClasses}">{$_t("Terminal Sandbox")}</h3>
           {#if sandboxStatus}
-            <span class="status-badge">{sandboxStatus}</span>
+            <span class="ml-auto text-sm font-normal px-2 py-0.5 rounded
+              {isModern
+                ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-chat-text-secondary/10 dark:bg-chat-text-secondary-dark/10'
+                : 'text-term-dim-green bg-term-dim-green/10'}"
+            >{sandboxStatus}</span>
           {/if}
         </button>
 
         {#if terminalSandboxExpanded}
-          <div class="section-content">
+          <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
             <!-- Execution Mode -->
-            <div class="form-group">
-              <label for="execution-mode" class="form-label">{$_t("Execution Mode")}</label>
+            <div class="mb-6">
+              <label for="execution-mode" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Execution Mode")}</label>
               <select
                 id="execution-mode"
                 bind:value={executionMode}
                 on:change={handleExecutionModeChange}
-                class="form-select"
+                class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="auto">{$_t("Auto (default)")}</option>
                 <option value="safe">{$_t("Safe")}</option>
                 <option value="power">{$_t("Power")}</option>
               </select>
-              <div class="help-text">
+              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">
                 {#if executionMode === 'safe'}
                   {$_t("All commands run inside an OS-native sandbox. Writes restricted to workspace directory.")}
                 {:else if executionMode === 'power'}
@@ -566,65 +525,82 @@
             </div>
 
             <!-- Workspace Access -->
-            <div class="form-group">
-              <label for="workspace-access" class="form-label">{$_t("Workspace Access")}</label>
+            <div class="mb-6">
+              <label for="workspace-access" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Workspace Access")}</label>
               <select
                 id="workspace-access"
                 bind:value={workspaceAccess}
                 on:change={handleWorkspaceAccessChange}
-                class="form-select"
+                class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="rw">{$_t("Read-Write")}</option>
                 <option value="ro">{$_t("Read-Only")}</option>
                 <option value="none">{$_t("No Access")}</option>
               </select>
-              <div class="help-text">{$_t("How the workspace directory is mounted in the sandbox")}</div>
+              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("How the workspace directory is mounted in the sandbox")}</div>
             </div>
 
             <!-- Network Mode -->
-            <div class="form-group">
-              <label for="network-mode" class="form-label">{$_t("Network Access")}</label>
+            <div class="mb-6">
+              <label for="network-mode" class="block mb-2 text-sm font-medium {textClasses}">{$_t("Network Access")}</label>
               <select
                 id="network-mode"
                 bind:value={networkMode}
                 on:change={handleNetworkModeChange}
-                class="form-select"
+                class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="host">{$_t("Allowed")}</option>
                 <option value="sandbox">{$_t("Restricted")}</option>
               </select>
-              <div class="help-text">{$_t("Whether sandboxed commands can access the network")}</div>
+              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Whether sandboxed commands can access the network")}</div>
             </div>
 
             <!-- Bind Mounts -->
-            <div class="form-group" data-setting-id="bind-mounts">
-              <label class="form-label">{$_t("Additional Bind Mounts")}</label>
-              <div class="help-text" style="margin-bottom: 0.5rem;">{$_t("Extra directories accessible inside the sandbox")}</div>
+            <div data-setting-id="bind-mounts">
+              <label class="block mb-2 text-sm font-medium {textClasses}">{$_t("Additional Bind Mounts")}</label>
+              <div class="mb-2 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Extra directories accessible inside the sandbox")}</div>
 
               {#if bindMounts.length > 0}
-                <div class="bind-mount-list">
+                <div class="flex flex-col gap-1.5 mb-2">
                   {#each bindMounts as mount, i}
-                    <div class="bind-mount-item">
-                      <span class="bind-mount-path">{mount.hostPath}</span>
-                      <span class="bind-mount-access">{mount.access}</span>
-                      <button class="bind-mount-remove" on:click={() => removeBindMount(i)} title="Remove">×</button>
+                    <div class="flex items-center gap-2 py-1.5 px-2 rounded-md text-sm
+                      {isModern
+                        ? 'bg-chat-card-hover dark:bg-chat-card-hover-dark'
+                        : 'bg-term-green/5'}"
+                    >
+                      <span class="flex-1 font-mono overflow-hidden text-ellipsis whitespace-nowrap {textClasses}">{mount.hostPath}</span>
+                      <span class="text-sm font-medium uppercase {textSecondaryClasses}">{mount.access}</span>
+                      <button
+                        class="bg-transparent border-none cursor-pointer text-lg leading-none px-1
+                          {isModern
+                            ? 'text-chat-status-error dark:text-chat-status-error-dark'
+                            : 'text-term-red'}"
+                        on:click={() => removeBindMount(i)}
+                        title="Remove"
+                      >&times;</button>
                     </div>
                   {/each}
                 </div>
               {/if}
 
-              <div class="bind-mount-add">
+              <div class="flex gap-1.5 items-center">
                 <input
                   type="text"
                   bind:value={newBindMountPath}
                   placeholder="/path/to/directory"
-                  class="form-input bind-mount-input"
+                  class="flex-1 w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {inputClasses}"
                 />
-                <select bind:value={newBindMountAccess} class="form-select bind-mount-access-select">
+                <select bind:value={newBindMountAccess} class="w-[4.5rem] shrink-0 py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}">
                   <option value="ro">ro</option>
                   <option value="rw">rw</option>
                 </select>
-                <button class="btn btn-small" on:click={addBindMount}>{$_t("Add")}</button>
+                <button
+                  class="py-1.5 px-3 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
+                    {isModern
+                      ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
+                      : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
+                  on:click={addBindMount}
+                >{$_t("Add")}</button>
               </div>
             </div>
           </div>
@@ -633,9 +609,13 @@
     {/if}
 
     <!-- Save Button -->
-    <div class="button-group">
+    <div class="mt-8">
       <button
-        class="btn btn-primary"
+        class="py-3 px-6 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
+          disabled:opacity-50 disabled:cursor-not-allowed
+          {isModern
+            ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
+            : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
         on:click={handleSave}
         disabled={!isDirty || isSaving}
       >
@@ -645,7 +625,15 @@
 
     <!-- Save Message -->
     {#if saveMessage}
-      <div class="message {saveMessageType}">
+      <div class="flex items-center gap-2 p-3 rounded-lg text-sm mt-4
+        {saveMessageType === 'success'
+          ? (isModern
+            ? 'text-chat-status-success dark:text-chat-status-success-dark bg-chat-status-success/10 dark:bg-chat-status-success-dark/10'
+            : 'text-term-green bg-term-green/10')
+          : (isModern
+            ? 'text-chat-status-error dark:text-chat-status-error-dark bg-chat-status-error/10 dark:bg-chat-status-error-dark/10'
+            : 'text-term-red bg-term-red/10')}"
+      >
         {#if saveMessageType === 'success'}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <polyline points="20,6 9,17 4,12"></polyline>
@@ -662,319 +650,3 @@
     {/if}
   </div>
 </div>
-
-<style>
-  .tools-settings {
-    padding: 1.5rem;
-  }
-
-  .back-button {
-    background: none;
-    border: none;
-    color: var(--browserx-primary);
-    cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    padding: 0.5rem 0;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    transition: opacity 0.2s;
-  }
-
-  .back-button:hover {
-    opacity: 0.8;
-  }
-
-  .settings-title {
-    margin: 0 0 1.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--browserx-text);
-  }
-
-  .settings-form {
-    max-width: 600px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .settings-card {
-    background: var(--browserx-surface);
-    border-radius: 0.75rem;
-    border: 1px solid var(--browserx-border);
-  }
-
-  .settings-card:not(.collapsible-section) {
-    padding: 1rem 1.25rem;
-  }
-
-  .form-group {
-    margin-bottom: 0;
-  }
-
-  .form-group:not(:last-child) {
-    margin-bottom: 1.5rem;
-  }
-
-  .form-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--browserx-text);
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 0.625rem;
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.375rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
-    font-size: 0.875rem;
-    transition: all 0.2s;
-  }
-
-  .form-input:focus {
-    outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
-  }
-
-  .form-select {
-    width: 100%;
-    padding: 0.625rem;
-    border: 1px solid var(--browserx-border);
-    border-radius: 0.375rem;
-    background: var(--browserx-surface);
-    color: var(--browserx-text);
-    font-size: 0.875rem;
-    transition: all 0.2s;
-  }
-
-  .form-select:focus {
-    outline: none;
-    border-color: var(--browserx-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--browserx-primary) 10%, transparent);
-  }
-
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    font-size: 0.9375rem;
-    color: var(--browserx-text);
-  }
-
-  .checkbox-label.master-toggle {
-    font-weight: 600;
-    font-size: 1rem;
-  }
-
-  .checkbox-label.disabled-option {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .checkbox-label.disabled-option span {
-    color: var(--browserx-text-secondary);
-    font-style: italic;
-  }
-
-  .form-checkbox {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: var(--browserx-primary);
-  }
-
-  .help-text {
-    margin-top: 0.375rem;
-    font-size: 0.8125rem;
-    color: var(--browserx-text-secondary);
-    line-height: 1.4;
-  }
-
-  .collapsible-section {
-    margin-bottom: 0;
-    overflow: hidden;
-  }
-
-  .collapsible-section.settings-card {
-    border-radius: 0.75rem;
-  }
-
-  .section-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: var(--browserx-surface);
-    border: none;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .section-header:hover {
-    background: color-mix(in srgb, var(--browserx-surface) 90%, var(--browserx-text));
-  }
-
-  .section-title {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--browserx-text);
-  }
-
-  .expand-icon {
-    flex-shrink: 0;
-    transition: transform 0.2s;
-    stroke-width: 2;
-  }
-
-  .expand-icon.expanded {
-    transform: rotate(0deg);
-  }
-
-  .expand-icon:not(.expanded) {
-    transform: rotate(-90deg);
-  }
-
-  .section-content {
-    padding: 1rem;
-    border-top: 1px solid var(--browserx-border);
-  }
-
-  .button-group {
-    margin-top: 2rem;
-  }
-
-  .btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid var(--browserx-primary);
-    background: transparent;
-    color: var(--browserx-primary);
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
-  }
-
-  /* ChatGPT theme - filled buttons */
-  :global(.settings-modal-container.chatgpt) .btn-primary {
-    background: var(--browserx-primary);
-    color: white;
-    border: none;
-  }
-
-  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--browserx-primary) 85%, black);
-  }
-
-  .message {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    margin-top: 1rem;
-  }
-
-  .message.success {
-    color: var(--browserx-success);
-    background: color-mix(in srgb, var(--browserx-success) 10%, transparent);
-  }
-
-  .message.error {
-    color: var(--browserx-error);
-    background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
-  }
-
-  .status-badge {
-    margin-left: auto;
-    font-size: 0.75rem;
-    font-weight: 400;
-    color: var(--browserx-text-secondary);
-    background: color-mix(in srgb, var(--browserx-text-secondary) 10%, transparent);
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.25rem;
-  }
-
-  .bind-mount-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .bind-mount-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.375rem 0.5rem;
-    background: color-mix(in srgb, var(--browserx-surface) 90%, var(--browserx-text));
-    border-radius: 0.375rem;
-    font-size: 0.8125rem;
-  }
-
-  .bind-mount-path {
-    flex: 1;
-    font-family: monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .bind-mount-access {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--browserx-text-secondary);
-    text-transform: uppercase;
-  }
-
-  .bind-mount-remove {
-    background: none;
-    border: none;
-    color: var(--browserx-error);
-    cursor: pointer;
-    font-size: 1.125rem;
-    line-height: 1;
-    padding: 0 0.25rem;
-  }
-
-  .bind-mount-add {
-    display: flex;
-    gap: 0.375rem;
-    align-items: center;
-  }
-
-  .bind-mount-input {
-    flex: 1;
-  }
-
-  .bind-mount-access-select {
-    width: 4.5rem;
-    flex-shrink: 0;
-  }
-
-  .btn-small {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
-  }
-</style>

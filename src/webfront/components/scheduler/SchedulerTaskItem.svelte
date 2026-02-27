@@ -23,18 +23,24 @@
     currentTheme = theme;
   });
 
-  function getStatusColor(status: SchedulerTaskStatus): string {
-    switch (status) {
-      case 'running': return 'status-running';
-      case 'scheduled': return 'status-scheduled';
-      case 'waiting': return 'status-waiting';
-      case 'missed': return 'status-missed';
-      case 'draft': return 'status-draft';
-      case 'completed': return 'status-completed';
-      case 'failed': return 'status-failed';
-      case 'cancelled': return 'status-cancelled';
+  function getStatusBadgeClasses(s: SchedulerTaskStatus): string {
+    switch (s) {
+      case 'running': return 'bg-term-bright-green text-black';
+      case 'scheduled': return 'bg-[rgba(0,255,0,0.2)] text-term-bright-green';
+      case 'waiting': return 'bg-[rgba(96,165,250,0.2)] text-blue-400';
+      case 'missed': return 'bg-[rgba(255,255,0,0.2)] text-term-yellow';
+      case 'draft': return 'bg-[rgba(128,128,128,0.2)] text-gray-500';
+      case 'completed': return 'bg-[rgba(16,185,129,0.2)] text-emerald-500';
+      case 'failed': return 'bg-[rgba(239,68,68,0.2)] text-red-500';
+      case 'cancelled': return 'bg-[rgba(128,128,128,0.2)] text-[#666]';
       default: return '';
     }
+  }
+
+  function getItemBorderClass(s: SchedulerTaskStatus): string {
+    if (s === 'running') return 'border-term-bright-green animate-running-pulse';
+    if (s === 'missed') return 'border-term-yellow';
+    return '';
   }
 
   function getStatusLabel(status: SchedulerTaskStatus): string {
@@ -97,38 +103,48 @@
 </script>
 
 <div
-  class="task-item {currentTheme} {getStatusColor(status)}"
+  class="flex items-start gap-2 py-2.5 px-3 rounded cursor-pointer transition-all duration-200
+    {currentTheme === 'modern'
+      ? 'bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
+      : 'bg-[rgba(0,0,0,0.4)] border border-[rgba(0,255,0,0.2)] hover:bg-[rgba(0,255,0,0.05)] hover:border-[rgba(0,255,0,0.4)] ' + getItemBorderClass(status)}"
   on:click={handleClick}
   on:keydown={(e) => e.key === 'Enter' && handleClick()}
   role="button"
   tabindex="0"
 >
-  <div class="task-content">
+  <div class="flex-1 min-w-0">
     <!-- Status Badge -->
-    <span class="status-badge {getStatusColor(status)}">
+    <span class="inline-block px-1.5 py-0.5 text-sm font-semibold uppercase rounded mb-1 {getStatusBadgeClasses(status)}">
       {getStatusLabel(status)}
     </span>
 
     <!-- Task Input Preview -->
-    <p class="task-input">{input}</p>
+    <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
+      {currentTheme === 'modern'
+        ? 'text-chat-text dark:text-chat-text-dark font-chat'
+        : 'text-term-bright-green font-terminal'}"
+    >{input}</p>
 
     <!-- Time Info -->
-    <div class="task-time">
+    <div class="mt-1 text-sm">
       {#if scheduledTime}
-        <span class="time-absolute">{formatTime(scheduledTime)}</span>
-        <span class="time-relative">({getRelativeTime(scheduledTime)})</span>
+        <span class="{currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{formatTime(scheduledTime)}</span>
+        <span class="ml-1 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark opacity-70' : 'text-[rgba(0,255,0,0.5)]'}">({getRelativeTime(scheduledTime)})</span>
       {:else}
-        <span class="time-draft">{$_t('No scheduled time')}</span>
+        <span class="italic text-[#666]">{$_t('No scheduled time')}</span>
       {/if}
     </div>
   </div>
 
   <!-- Actions -->
   {#if showActions}
-    <div class="task-actions">
+    <div class="flex gap-1 shrink-0">
       {#if status === 'draft' || status === 'scheduled' || status === 'missed'}
         <button
-          class="action-btn run-btn"
+          class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
+            {currentTheme === 'modern'
+              ? 'bg-[rgba(16,185,129,0.1)] text-emerald-500 hover:bg-[rgba(16,185,129,0.2)]'
+              : 'bg-[rgba(0,255,0,0.1)] text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
           on:click|stopPropagation={handleTrigger}
           title={$_t("Run Now")}
         >
@@ -140,7 +156,8 @@
 
       {#if status !== 'completed' && status !== 'failed' && status !== 'cancelled'}
         <button
-          class="action-btn cancel-btn"
+          class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
+            bg-[rgba(239,68,68,0.1)] text-[#ff6b6b] hover:bg-[rgba(239,68,68,0.2)]"
           on:click|stopPropagation={handleCancel}
           title={$_t("Cancel")}
         >
@@ -155,189 +172,12 @@
 </div>
 
 <style>
-  .task-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(0, 255, 0, 0.2);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .task-item:hover {
-    background: rgba(0, 255, 0, 0.05);
-    border-color: rgba(0, 255, 0, 0.4);
-  }
-
-  .task-item.status-running {
-    border-color: var(--color-term-bright-green, #00ff00);
-    animation: runningPulse 2s infinite;
-  }
-
   @keyframes runningPulse {
-    0%, 100% { border-color: var(--color-term-bright-green, #00ff00); }
-    50% { border-color: var(--color-term-dim-green, #00cc00); }
+    0%, 100% { border-color: var(--color-term-bright-green); }
+    50% { border-color: var(--color-term-dim-green); }
   }
 
-  .task-item.status-missed {
-    border-color: var(--color-term-yellow, #ffff00);
-  }
-
-  .task-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .status-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    border-radius: 3px;
-    margin-bottom: 4px;
-  }
-
-  .status-badge.status-running {
-    background: var(--color-term-bright-green, #00ff00);
-    color: #000;
-  }
-
-  .status-badge.status-scheduled {
-    background: rgba(0, 255, 0, 0.2);
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .status-badge.status-waiting {
-    background: rgba(96, 165, 250, 0.2);
-    color: #60a5fa;
-  }
-
-  .status-badge.status-missed {
-    background: rgba(255, 255, 0, 0.2);
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .status-badge.status-draft {
-    background: rgba(128, 128, 128, 0.2);
-    color: #888;
-  }
-
-  .status-badge.status-completed {
-    background: rgba(16, 185, 129, 0.2);
-    color: #10b981;
-  }
-
-  .status-badge.status-failed {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-  }
-
-  .status-badge.status-cancelled {
-    background: rgba(128, 128, 128, 0.2);
-    color: #666;
-  }
-
-  .task-input {
-    margin: 0;
-    font-size: 13px;
-    color: var(--color-term-bright-green, #00ff00);
-    font-family: 'Monaco', 'Courier New', monospace;
-    line-height: 1.4;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .task-time {
-    margin-top: 4px;
-    font-size: 11px;
-  }
-
-  .time-absolute {
-    color: var(--color-term-dim-green, #00cc00);
-  }
-
-  .time-relative {
-    color: rgba(0, 255, 0, 0.5);
-    margin-left: 4px;
-  }
-
-  .time-draft {
-    color: #666;
-    font-style: italic;
-  }
-
-  .task-actions {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  .action-btn {
-    padding: 6px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .run-btn {
-    background: rgba(0, 255, 0, 0.1);
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .run-btn:hover {
-    background: rgba(0, 255, 0, 0.2);
-  }
-
-  .cancel-btn {
-    background: rgba(255, 0, 0, 0.1);
-    color: #ff6b6b;
-  }
-
-  .cancel-btn:hover {
-    background: rgba(255, 0, 0, 0.2);
-  }
-
-  /* ChatGPT Theme */
-  .task-item.chatgpt {
-    background: var(--chat-card-bg, #f7f7f8);
-    border-color: var(--chat-border, #e5e5e5);
-  }
-
-  .task-item.chatgpt:hover {
-    background: var(--chat-button-hover, #ececec);
-    border-color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .task-item.chatgpt .task-input {
-    color: var(--chat-text, #0d0d0d);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .task-item.chatgpt .time-absolute {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .task-item.chatgpt .time-relative {
-    color: var(--chat-text-muted, #8e8ea0);
-    opacity: 0.7;
-  }
-
-  .task-item.chatgpt .run-btn {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-  }
-
-  .task-item.chatgpt .cancel-btn {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+  .animate-running-pulse {
+    animation: runningPulse 2s infinite;
   }
 </style>

@@ -58,6 +58,7 @@ tmp/
 
 # Claude Code
 .claude/
+.codex/
 .specify/
 
 # Chrome extension specific
