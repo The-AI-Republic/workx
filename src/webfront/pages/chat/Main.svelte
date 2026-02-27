@@ -229,6 +229,12 @@
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
 
+    // Save active chat state after history restoration so it persists across tab switches
+    const activeChatAfterInit = chatStore.getActiveChat();
+    if (activeChatAfterInit) {
+      saveChatState(activeChatAfterInit.id);
+    }
+
     // ========================================================================
     // KEEP-ALIVE: Send periodic pings to prevent service worker termination
     // ========================================================================
@@ -1161,6 +1167,20 @@
       currentTabId = -1;
       eventProcessor = new EventProcessor();
     }
+
+    // Reset scroll position after loading new chat state
+    // Use setTimeout to ensure DOM has updated with new content
+    if (scrollContainer) {
+      setTimeout(() => {
+        if (messages.length === 0 && processedEvents.length === 0) {
+          // New/empty chat: scroll to top to reveal welcome screen
+          scrollContainer.scrollTop = 0;
+        } else {
+          // Chat with history: scroll to bottom to show latest messages
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }, 0);
+    }
   }
 
   /**
@@ -1224,6 +1244,11 @@
    * Handle new chat button click from ChatBar
    */
   async function handleNewChat() {
+    // Save current chat state before creating a new one
+    const currentChat = chatStore.getActiveChat();
+    if (currentChat) {
+      saveChatState(currentChat.id);
+    }
     await createNewChat();
   }
 
