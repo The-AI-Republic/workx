@@ -1425,7 +1425,8 @@
           </div>
         {/if}
 
-        <!-- Messages - scrollable area -->
+        <!-- Messages - scrollable area (keyed on active chat to force full DOM recreation) -->
+        {#key $chatStore.activeChatId}
         <div class="messages-container" bind:this={scrollContainer}>
           {#if showWelcome}
             <div class="welcome-screen" role="presentation">
@@ -1462,6 +1463,7 @@
             <EventDisplay {event} />
           {/each}
         </div>
+        {/key}
 
         <!-- Fixed bottom controls container -->
         <div class="bottom-controls">
