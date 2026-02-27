@@ -828,6 +828,14 @@ export class TurnManager {
         },
       });
 
+      // Emit PlanUpdate through platform-agnostic event path
+      if (toolName === 'planning_tool' && response.data?._planArgs) {
+        await this.emitEvent({
+          type: 'PlanUpdate',
+          data: response.data._planArgs,
+        });
+      }
+
       return response.data;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);

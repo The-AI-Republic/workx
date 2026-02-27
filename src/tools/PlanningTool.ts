@@ -10,7 +10,6 @@ import { BaseTool, type BaseToolOptions, type ToolDefinition } from './BaseTool'
 import {
   StepStatus,
   type PlanToolArgs,
-  type PlanStepArg,
 } from '../core/protocol/events';
 
 const TOOL_DESCRIPTION = `Create and update task plans for tracking progress on complex tasks.
@@ -117,10 +116,8 @@ export class PlanningTool extends BaseTool {
       }
     }
 
-    // Emit PlanUpdate event for UI
-    await this.emitPlanEvent(request);
-
-    // Build summary
+    // Build summary — include _planArgs so TurnManager can emit PlanUpdate
+    // through the platform-agnostic emitEvent() path
     const inProgressStep = plan.find((s) => s.status === StepStatus.InProgress);
     return {
       success: true,
@@ -131,25 +128,7 @@ export class PlanningTool extends BaseTool {
       completedCount: plan.filter((s) => s.status === StepStatus.Completed).length,
       pendingCount: plan.filter((s) => s.status === StepStatus.Pending).length,
       inProgressStep: inProgressStep?.step ?? null,
+      _planArgs: request,
     };
-  }
-
-  private async emitPlanEvent(args: PlanToolArgs): Promise<void> {
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      try {
-        await chrome.runtime.sendMessage({
-          type: 'EVENT',
-          payload: {
-            id: `evt_plan_${Date.now()}`,
-            msg: {
-              type: 'PlanUpdate',
-              data: args,
-            },
-          },
-        });
-      } catch (error) {
-        console.debug('[PlanningTool] Event emission failed (no listeners):', error);
-      }
-    }
   }
 }

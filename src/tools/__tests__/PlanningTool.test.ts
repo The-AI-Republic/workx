@@ -366,75 +366,50 @@ describe('PlanningTool', () => {
 
   // ── Chrome messaging ────────────────────────────────────────────────
 
-  describe('Chrome runtime messaging', () => {
-    it('sends a PlanUpdate event via chrome.runtime.sendMessage', async () => {
+  describe('_planArgs in result (for TurnManager event emission)', () => {
+    it('returns _planArgs in result data for valid plans', async () => {
       const planRequest = {
         plan: [{ step: 'Test step', status: 'Pending' }],
       };
 
-      await tool.execute(planRequest);
+      const result = await tool.execute(planRequest);
 
-      expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
-      const sentMessage = (chrome.runtime.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sentMessage.type).toBe('EVENT');
-      expect(sentMessage.payload).toBeDefined();
-      expect(sentMessage.payload.msg.type).toBe('PlanUpdate');
-      expect(sentMessage.payload.msg.data).toEqual(planRequest);
+      expect(result.data._planArgs).toEqual(planRequest);
     });
 
-    it('includes an event id starting with evt_plan_', async () => {
-      await tool.execute({
-        plan: [{ step: 'Test', status: 'Pending' }],
-      });
-
-      const sentMessage = (chrome.runtime.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sentMessage.payload.id).toMatch(/^evt_plan_\d+$/);
-    });
-
-    it('does not send a message when plan validation fails (empty step)', async () => {
-      vi.mocked(chrome.runtime.sendMessage).mockClear();
-
-      await tool.execute({
+    it('does not return _planArgs when plan validation fails (empty step)', async () => {
+      const result = await tool.execute({
         plan: [{ step: '', status: 'Pending' }],
       });
 
-      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      expect(result.data._planArgs).toBeUndefined();
     });
 
-    it('does not send a message when plan validation fails (invalid status)', async () => {
-      vi.mocked(chrome.runtime.sendMessage).mockClear();
-
-      await tool.execute({
+    it('does not return _planArgs when plan validation fails (invalid status)', async () => {
+      const result = await tool.execute({
         plan: [{ step: 'A step', status: 'BadStatus' }],
       });
 
-      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      expect(result.data._planArgs).toBeUndefined();
     });
 
-    it('still returns success even if sendMessage rejects', async () => {
-      vi.mocked(chrome.runtime.sendMessage).mockRejectedValueOnce(
-        new Error('No listeners')
-      );
-
-      const result = await tool.execute({
+    it('does not call chrome.runtime.sendMessage (event emission moved to TurnManager)', async () => {
+      await tool.execute({
         plan: [{ step: 'Step', status: 'Pending' }],
       });
 
-      expect(result.success).toBe(true);
-      expect(result.data.success).toBe(true);
-      expect(result.data.stepCount).toBe(1);
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
 
-    it('includes explanation in the PlanUpdate data when provided', async () => {
+    it('includes explanation in _planArgs when provided', async () => {
       const planRequest = {
         explanation: 'Initial plan',
         plan: [{ step: 'First step', status: 'Pending' }],
       };
 
-      await tool.execute(planRequest);
+      const result = await tool.execute(planRequest);
 
-      const sentMessage = (chrome.runtime.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(sentMessage.payload.msg.data.explanation).toBe('Initial plan');
+      expect(result.data._planArgs.explanation).toBe('Initial plan');
     });
   });
 
