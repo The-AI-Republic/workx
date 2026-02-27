@@ -8,7 +8,7 @@
 </script>
 
 <div class="system-event">
-  <div class="text-xs text-gray-500 whitespace-pre-wrap font-mono">
+  <div class="text-sm text-gray-500 whitespace-pre-wrap font-mono">
     {typeof event.content === 'string' ? event.content : JSON.stringify(event.content, null, 2)}
   </div>
 </div>

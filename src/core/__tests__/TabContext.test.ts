@@ -79,8 +79,9 @@ describe('TabContext Component', () => {
       });
 
       await waitFor(() => {
-        const titleSpan = screen.getByTestId('tab-context-display').querySelector('.tab-context-title');
-        const displayedText = titleSpan?.textContent || '';
+        const display = screen.getByTestId('tab-context-display');
+        const titleSpan = display.querySelector('.overflow-hidden.text-ellipsis');
+        const displayedText = titleSpan?.textContent || display.textContent || '';
         // Should be truncated to 25 chars + "..."
         expect(displayedText.trim().length).toBeLessThanOrEqual(28);
         expect(displayedText).toMatch(/This is a very long tab t/);
@@ -102,15 +103,13 @@ describe('TabContext Component', () => {
       });
 
       await waitFor(() => {
-        // The Tooltip component wraps the display in a tooltip-wrapper span
-        // The full title is passed as content prop to the Tooltip component
         const display = screen.getByTestId('tab-context-display');
-        const titleSpan = display.querySelector('.tab-context-title');
+        const titleSpan = display.querySelector('.overflow-hidden.text-ellipsis');
+        const displayedText = titleSpan?.textContent?.trim() || '';
         // The truncated title text should differ from the full title
-        expect(titleSpan?.textContent?.trim()).not.toBe(longTitle);
-        // The full title is accessible via the Tooltip component (not a native title attribute)
+        expect(displayedText).not.toBe(longTitle);
         // Verify the truncated display is shown
-        expect(titleSpan?.textContent?.trim()).toContain('...');
+        expect(displayedText).toContain('...');
       });
     });
   });
@@ -382,10 +381,9 @@ describe('TabContext Component', () => {
 
       await waitFor(() => {
         const display = screen.getByTestId('tab-context-display');
-        const styles = window.getComputedStyle(display);
-
-        // Note: JSDOM might not fully compute CSS, so we check the class
-        expect(display.className).toMatch(/tab-context|truncate/);
+        // Check that the display container or its children use Tailwind truncation classes
+        const titleSpan = display.querySelector('.overflow-hidden.text-ellipsis');
+        expect(titleSpan || display.className.includes('overflow-hidden')).toBeTruthy();
       });
     });
   });

@@ -407,7 +407,7 @@
   }
 
   .info-label {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--browserx-text-secondary);
     text-transform: uppercase;
@@ -459,7 +459,7 @@
     gap: 0.25rem;
     padding: 0.375rem 0.75rem;
     border-radius: 9999px;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-weight: 500;
   }
 

@@ -18,7 +18,7 @@ const DB_VERSION = 2;
 /**
  * Known collection names
  */
-const COLLECTIONS = ['conversations', 'messages', 'memory', 'settings', 'cache', 'credentials', 'plans'];
+const COLLECTIONS = ['conversations', 'messages', 'memory', 'settings', 'cache', 'credentials', 'plans', 'skills'];
 
 /**
  * IndexedDBStorageProvider implements StorageProvider using IndexedDB

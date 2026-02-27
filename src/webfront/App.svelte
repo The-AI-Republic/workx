@@ -4,6 +4,7 @@
   import Chat from './pages/chat/Main.svelte';
   import Settings from './pages/settings/Settings.svelte';
   import Scheduler from './pages/scheduler/Scheduler.svelte';
+  import Skills from './pages/skills/Skills.svelte';
   import { userStore } from './stores/userStore';
   import { isAuthenticated } from './lib/utils/cookie';
   import { fetchUserProfile } from './lib/apis';
@@ -23,6 +24,9 @@
 
     // Scheduler page
     '/scheduler': Scheduler,
+
+    // Skills page
+    '/skills': Skills,
 
     // Catch-all route - redirect to chat
     '*': Chat,
