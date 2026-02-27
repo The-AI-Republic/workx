@@ -17,6 +17,7 @@ import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { DEFAULT_MAX_CONCURRENT } from '@/core/registry/types';
 import { PiAgent } from '@/core/PiAgent';
 import { MessageType } from '@/core/MessageRouter';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -67,7 +68,7 @@ export class DesktopAgentBootstrap {
 
       // 2. Get agent config and set up AgentRegistry
       const config = await AgentConfig.getInstance();
-      const maxConcurrentSessions = config.getConfig().preferences?.maxConcurrentSessions ?? 3;
+      const maxConcurrentSessions = config.getConfig().preferences?.maxConcurrentSessions ?? DEFAULT_MAX_CONCURRENT;
       this.registry = AgentRegistry.getInstance({ maxConcurrent: maxConcurrentSessions });
       this.registry.initialize(config, this.messageRouter as any);
 
