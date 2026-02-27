@@ -95,7 +95,7 @@
 
 <svelte:window on:click={handleClickOutside} />
 
-<div class="popup-card-container {currentTheme}" bind:this={containerElement}>
+<div class="popup-card-container relative" bind:this={containerElement}>
   <!-- Trigger slot -->
   <slot name="trigger" />
 </div>
@@ -103,17 +103,31 @@
 <!-- Popup rendered with fixed positioning -->
 {#if show && isPositioned}
   <div
-    class="popup-card-fixed {currentTheme}"
+    class="popup-card-fixed fixed min-w-[260px] max-w-[calc(100vw-20px)] z-[9999] animate-fadeIn
+      {currentTheme === 'modern'
+        ? 'bg-chat-tooltip dark:bg-chat-tooltip-dark border-none rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.25)]'
+        : 'bg-term-bg border border-term-dim-green rounded'}"
     style="left: {fixedLeft}px; bottom: {fixedBottom}px;"
     role="dialog"
     aria-label={title}
   >
     {#if title}
       <!-- Card Header -->
-      <div class="popup-header">
-        <h3 class="popup-title">{title}</h3>
+      <div class="flex justify-between items-center px-3 py-2.5
+        {currentTheme === 'modern'
+          ? 'border-b border-white/10'
+          : 'border-b border-term-dim-green'}">
+        <h3 class="m-0 text-sm font-semibold
+          {currentTheme === 'modern'
+            ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+            : 'text-term-bright-green font-terminal'}">
+          {title}
+        </h3>
         <button
-          class="popup-close"
+          class="bg-transparent border-none cursor-pointer p-0.5 flex items-center justify-center rounded transition-all duration-200
+            {currentTheme === 'modern'
+              ? 'text-white/60 hover:text-chat-tooltip-text hover:bg-white/10 dark:hover:text-chat-tooltip-text-dark'
+              : 'text-term-dim-green hover:text-term-bright-green hover:bg-term-green/10'}"
           on:click|stopPropagation={onClose}
           aria-label={t("Close")}
         >
@@ -126,108 +140,19 @@
     {/if}
 
     <!-- Content slot -->
-    <div class="popup-content">
+    <div class="p-3">
       <slot name="content" />
     </div>
   </div>
 {/if}
 
 <style>
-  .popup-card-container {
-    position: relative;
-  }
-
-  .popup-card-fixed {
-    position: fixed;
-    min-width: 260px;
-    max-width: calc(100vw - 20px);
-    z-index: 9999;
-    animation: fadeIn 0.15s ease-out;
-  }
-
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Terminal Theme (default) */
-  .popup-card-fixed {
-    background: #000000;
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-  }
-
-  .popup-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--color-term-dim-green, #00cc00);
-  }
-
-  .popup-title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-term-bright-green, #00ff00);
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .popup-close {
-    background: transparent;
-    border: none;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    padding: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-  }
-
-  .popup-close:hover {
-    color: var(--color-term-bright-green, #00ff00);
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .popup-content {
-    padding: 12px;
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .popup-card-fixed.chatgpt {
-    background: var(--chat-tooltip-bg, #0d0d0d);
-    border: none;
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  }
-
-  .popup-card-fixed.chatgpt .popup-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .popup-card-fixed.chatgpt .popup-title {
-    color: var(--chat-tooltip-text, #ffffff);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .popup-card-fixed.chatgpt .popup-close {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .popup-card-fixed.chatgpt .popup-close:hover {
-    color: var(--chat-tooltip-text, #ffffff);
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  /* Ensure card content is responsive */
-  @media (max-width: 380px) {
-    .popup-card-fixed {
-      font-size: 0.875rem;
-    }
+  .animate-fadeIn {
+    animation: fadeIn 0.15s ease-out;
   }
 </style>

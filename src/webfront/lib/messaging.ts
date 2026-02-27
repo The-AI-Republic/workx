@@ -53,7 +53,17 @@ export async function sendMessage<T = unknown>(
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
           } else {
-            resolve(response as T);
+            // Unwrap ResponseEnvelope (matching ChromeMessageService behavior)
+            const envelope = response as Record<string, unknown> | null | undefined;
+            if (envelope && typeof envelope === 'object' && 'success' in envelope) {
+              if (envelope.success === false) {
+                reject(new Error((envelope.error as string) || 'Request failed'));
+              } else {
+                resolve(envelope.data as T);
+              }
+            } else {
+              resolve(response as T);
+            }
           }
         }
       );

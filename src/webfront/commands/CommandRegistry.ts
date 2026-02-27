@@ -111,6 +111,11 @@ class CommandRegistryImpl {
     return this.commands.has(name.toLowerCase().trim());
   }
 
+  /** Unregister a command by name. Returns true if removed, false if not found. */
+  unregister(name: string): boolean {
+    return this.commands.delete(name.toLowerCase().trim());
+  }
+
   /** Reset registry - for testing purposes */
   reset(): void {
     this.commands.clear();

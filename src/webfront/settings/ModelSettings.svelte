@@ -530,19 +530,6 @@
       const selectedItem = modelSelectionItems.find((item) => item.modelId === modelId);
       if (!selectedItem) throw new Error('Model not found');
 
-      const previousModelKey = selectedModelKey;
-
-      if (
-        !confirm(t('The model switch will clear the current conversation. Do you want to continue?'))
-      ) {
-        modelSelectionItems = modelSelectionItems.map((item) => ({
-          ...item,
-          selected: item.modelId === previousModelKey,
-        }));
-        isModelSwitching = false;
-        return;
-      }
-
       if (selectedItem.supportsImage === false) {
         alert(
           t('Model "$1$" does not support image input. Some tools will be disabled.', { substitutions: [selectedItem.modelName] })
@@ -564,7 +551,7 @@
       notifyConfigUpdate();
 
       const message = apiKey
-        ? t('Model changed to $1$. Session will be reinitialized.', { substitutions: [selectedItem.modelName] })
+        ? t('Model changed to $1$. Conversation preserved.', { substitutions: [selectedItem.modelName] })
         : t('Model changed to $1$. Please configure your API key.', { substitutions: [selectedItem.modelName] });
       showMessage(message, apiKey ? 'success' : 'info');
     } catch (error) {
@@ -1146,7 +1133,7 @@
 
   .help-text {
     margin-top: 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
@@ -1180,14 +1167,14 @@
     background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  /* ChatGPT theme - filled buttons */
-  :global(.settings-modal-container.chatgpt) .btn-primary {
+  /* Modern Chat theme - filled buttons */
+  :global(.settings-modal-container.modern) .btn-primary {
     background: var(--browserx-primary);
     color: white;
     border: none;
   }
 
-  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+  :global(.settings-modal-container.modern) .btn-primary:hover:not(:disabled) {
     background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
@@ -1368,7 +1355,7 @@
   }
 
   .toggle-description {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
