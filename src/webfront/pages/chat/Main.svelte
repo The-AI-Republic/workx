@@ -16,7 +16,7 @@
   // Platform store
   import { platform } from '../../stores/platformStore';
   // Theme store
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   // Token usage visibility store
   import { showTokenUsage } from '../../stores/tokenUsageStore';
   import { AgentConfig } from '@/config/AgentConfig';
@@ -100,7 +100,7 @@
       const config = await AgentConfig.getInstance();
       const preferences = config.getConfig().preferences;
       if (preferences?.uiTheme) {
-        uiTheme.initialize(preferences.uiTheme);
+        themePreference.initialize(preferences.uiTheme);
       }
       // Initialize token usage visibility (defaults to false/hidden)
       showTokenUsage.initialize(preferences?.showTokenUsage);
@@ -145,7 +145,7 @@
           processedEvents = [];
           isProcessing = false;
           eventProcessor.reset();
-          
+
           // Re-check connection/auth status since agent was reinitialized
           checkConnection();
         })
@@ -367,7 +367,7 @@
 
         if (text.trim()) {
           // Create ProcessedEvent with proper styling
-          restoredEvents.push({
+          const processedEvent: ProcessedEvent = {
             id: `restored_${i}_${Date.now()}`,
             category: 'message',
             timestamp: new Date(),
@@ -376,7 +376,14 @@
             style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
             streaming: false,
             collapsible: false,
-          });
+          };
+
+          // Carry modelKey from assistant messages for model indicator display
+          if (!isUser && item.modelKey) {
+            processedEvent.modelKey = item.modelKey;
+          }
+
+          restoredEvents.push(processedEvent);
         }
       }
     }
@@ -572,8 +579,9 @@
     }
   }
 
-  async function sendMessage() {
-    if (!inputText.trim()) return;
+  async function sendMessage(overrideText?: string) {
+    const text = overrideText ?? inputText.trim();
+    if (!text) return;
 
     // Check if connected
     if (!isConnected) {
@@ -596,7 +604,6 @@
       return;
     }
 
-    const text = inputText.trim();
     inputText = '';
 
     // Add user message to processedEvents for chronological ordering
@@ -918,11 +925,11 @@
 </script>
 
 <!-- Single UI with theme-aware styling -->
-<div class="main-layout {currentTheme}">
+<div class="h-screen overflow-hidden {currentTheme}">
   <TerminalContainer theme={currentTheme}>
-    <div class="content-container">
+    <div class="flex flex-col h-full min-h-0 max-w-[1200px] mx-auto w-full">
         <!-- Status Line -->
-        <div class="status-line flex justify-between mb-2">
+        <div class="shrink-0 flex justify-between mb-2">
           <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
           <div class="flex items-center space-x-2">
             {#if isProcessing}
@@ -940,20 +947,27 @@
 
         <!-- Compaction Notification (T032, T033) -->
         {#if compactionNotification.show}
-          <div class="compaction-notification {compactionNotification.isWarning ? 'warning' : 'success'}">
-            <span class="notification-icon">
+          <div class="flex items-center gap-2 rounded text-sm animate-slide-in mb-2
+            {currentTheme === 'modern'
+              ? (compactionNotification.isWarning
+                  ? 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(245,158,11,0.1)] text-chat-status-warning dark:text-chat-status-warning-dark'
+                  : 'mx-4 rounded-lg text-sm px-4 py-3 bg-[rgba(16,185,129,0.1)] text-chat-status-success dark:text-chat-status-success-dark')
+              : (compactionNotification.isWarning
+                  ? 'px-3 py-2 bg-[rgba(234,179,8,0.15)] border border-term-yellow text-term-yellow'
+                  : 'px-3 py-2 bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')}">
+            <span class="shrink-0">
               {#if compactionNotification.isWarning}⚠️{:else}✓{/if}
             </span>
-            <span class="notification-text">
+            <span class="flex-1">
               {$_t("Context compacted: saved ~$1$k tokens", { substitutions: [Math.round(compactionNotification.tokensSaved / 1000)] })}
               {#if compactionNotification.isWarning}
-                <span class="warning-text">
+                <span class="opacity-80 text-sm">
                   {$_t("(#$1$ - accuracy may be reduced)", { substitutions: [compactionNotification.compactionCount] })}
                 </span>
               {/if}
             </span>
             <button
-              class="notification-close"
+              class="shrink-0 bg-transparent border-none text-inherit cursor-pointer px-1 text-lg opacity-70 hover:opacity-100"
               on:click={() => compactionNotification = { ...compactionNotification, show: false }}
               aria-label={t("Dismiss notification")}
             >×</button>
@@ -962,22 +976,27 @@
 
         <!-- No Access Warning Banner -->
         {#if !agentReady && $agentStore.authMode === 'none' && isConnected}
-          <div class="no-access-warning">
-            <div class="warning-header">
-              <span class="warning-icon">⚠️</span>
-              <span class="warning-title">{$_t("No Access Configured")}</span>
+          <div class="animate-slide-in mb-3
+            {currentTheme === 'modern'
+              ? 'rounded-xl bg-[rgba(245,158,11,0.1)] p-5 border-none'
+              : 'rounded border border-term-yellow bg-[rgba(255,255,0,0.05)] p-4'}">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-lg">⚠️</span>
+              <span class="font-semibold {currentTheme === 'modern' ? 'text-chat-status-warning dark:text-chat-status-warning-dark' : 'text-term-yellow'}">{$_t("No Access Configured")}</span>
             </div>
-            <p class="warning-message">
+            <p class="m-0 mb-2 text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-dim-green'}">
               {$_t("To use the AI agent, please either:")}
             </p>
-            <ul class="warning-options">
-              <li>
-                <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer" class="warning-link">
+            <ul class="m-0 pl-6 list-disc">
+              <li class="mb-1">
+                <a href={getLoginPageUrl()} target="_blank" rel="noopener noreferrer"
+                  class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Log in to your account")}
                 </a>
               </li>
-              <li>
-                <button on:click={() => push('/settings')} class="warning-link-button">
+              <li class="mb-1">
+                <button on:click={() => push('/settings')}
+                  class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
                   {$_t("Configure an API key in Settings")}
                 </button>
               </li>
@@ -986,25 +1005,31 @@
         {/if}
 
         <!-- Messages - scrollable area -->
-        <div class="messages-container" bind:this={scrollContainer}>
+        <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
           {#if showWelcome}
-            <div class="welcome-screen" role="presentation">
+            <div class="welcome-screen mb-6 max-w-full
+              {currentTheme === 'modern'
+                ? 'flex flex-col items-center justify-center text-center border-none bg-transparent min-h-[50vh] gap-3 p-6'
+                : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
+              role="presentation"
+            >
               {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
-                <p class="welcome-greeting text-term-bright-green">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
+                <p class="m-0 mb-2 font-semibold text-lg
+                  {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
               {/if}
-              <pre class="welcome-ascii">
+              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">
                 {#each welcomeAsciiLines as line, index (index)}
                   <span class={line.color}>{line.text}</span>
                 {/each}
               </pre>
-              <p class="welcome-subtitle text-term-blue">
+              <p class="m-0 text-[0.95rem] text-term-blue">
                 {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
               </p>
-              <p class="welcome-subtitle text-term-dim-green">
+              <p class="m-0 text-[0.95rem] text-term-dim-green">
                 {$_t("Developed and supported by AI Republic")}
               </p>
               <a
-                class="welcome-link"
+                class="underline {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}"
                 href="https://airepublic.com"
                 target="_blank"
                 rel="noreferrer noopener"
@@ -1024,9 +1049,9 @@
         </div>
 
         <!-- Fixed bottom controls container -->
-        <div class="bottom-controls">
+        <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <!-- Input area -->
-          <div class="input-area">
+          <div class="pr-2 py-2 pl-0">
             <MessageInput
               bind:value={inputText}
               onSubmit={sendMessage}
@@ -1049,316 +1074,7 @@
   </div>
 
 <style>
-  /* ============================================
-     Main Layout - Theme-aware styles
-     ============================================ */
-
-  .main-layout {
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  .content-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0; /* Important for nested flex overflow */
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-  }
-
-  .status-line {
-    flex-shrink: 0;
-  }
-
-  .messages-container {
-    flex: 1;
-    min-height: 0; /* Important for flex overflow to work properly */
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-bottom: 1rem;
-  }
-
-  /* Parent container for input area and function menu */
-  .bottom-controls {
-    flex-shrink: 0;
-    background: var(--color-term-bg);
-    border-top: 1px solid var(--color-term-border);
-    /* Note: position: relative and z-index removed to avoid creating a stacking context
-       that would trap fixed-positioned popups (PopupCard, SchedulerPopup, etc.)
-       The flex layout handles stacking order naturally. */
-  }
-
-  .input-area {
-    padding: 0.5rem 0.5rem 0.5rem 0;
-  }
-
-  /* ============================================
-     Welcome Screen - Base styles (Terminal theme)
-     ============================================ */
-
-  .welcome-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    border: 1px solid var(--color-term-dim-green);
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.6);
-    margin-bottom: 1.5rem;
-    max-width: 100%;
-  }
-
-  .welcome-ascii {
-    margin: 0;
-    font-family: var(--font-terminal);
-    font-size: 0.4rem;
-    line-height: 1.0;
-    white-space: pre;
-  }
-
-  .welcome-ascii span {
-    display: block;
-  }
-
-  .welcome-greeting {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  .welcome-subtitle {
-    margin: 0;
-    font-size: 0.95rem;
-  }
-
-  .welcome-link {
-    color: var(--color-term-bright-green);
-    text-decoration: underline;
-  }
-
-  .welcome-link:hover,
-  .welcome-link:focus {
-    color: var(--color-term-yellow);
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides for Welcome Screen
-     ============================================ */
-
-  .main-layout.chatgpt .welcome-screen {
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    border: none;
-    background: transparent;
-    min-height: 50vh;
-  }
-
-  .main-layout.chatgpt .welcome-greeting {
-    color: var(--chat-text, #0d0d0d);
-    font-size: 1.25rem;
-  }
-
-  .main-layout.chatgpt .welcome-link {
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .main-layout.chatgpt .welcome-link:hover,
-  .main-layout.chatgpt .welcome-link:focus {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides for Bottom Controls
-     ============================================ */
-
-  .main-layout.chatgpt .bottom-controls {
-    background: var(--chat-bg, #ffffff);
-    border-top: 1px solid var(--chat-border, #e5e5e5);
-  }
-
-  /* ============================================
-     Compaction Notification - Base styles
-     ============================================ */
-
-  .compaction-notification {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    animation: slideIn 0.3s ease;
-    font-size: 0.85rem;
-  }
-
-  .compaction-notification.success {
-    background: rgba(34, 197, 94, 0.15);
-    border: 1px solid var(--color-term-dim-green);
-    color: var(--color-term-bright-green);
-  }
-
-  .compaction-notification.warning {
-    background: rgba(234, 179, 8, 0.15);
-    border: 1px solid var(--color-term-yellow);
-    color: var(--color-term-yellow);
-  }
-
-  .notification-icon {
-    flex-shrink: 0;
-  }
-
-  .notification-text {
-    flex: 1;
-  }
-
-  .warning-text {
-    opacity: 0.8;
-    font-size: 0.8rem;
-  }
-
-  .notification-close {
-    flex-shrink: 0;
-    background: transparent;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    padding: 0 0.25rem;
-    font-size: 1.1rem;
-    opacity: 0.7;
-  }
-
-  .notification-close:hover {
-    opacity: 1;
-  }
-
-  /* ChatGPT Theme Overrides for Compaction Notification */
-  .main-layout.chatgpt .compaction-notification {
-    margin: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    padding: 0.75rem 1rem;
-  }
-
-  .main-layout.chatgpt .compaction-notification.success {
-    background: var(--chat-status-success-bg, rgba(16, 185, 129, 0.1));
-    border: none;
-    color: var(--chat-status-success, #10b981);
-  }
-
-  .main-layout.chatgpt .compaction-notification.warning {
-    background: var(--chat-status-warning-bg, rgba(245, 158, 11, 0.1));
-    border: none;
-    color: var(--chat-status-warning, #f59e0b);
-  }
-
-  /* ============================================
-     No Access Warning Banner - Terminal theme
-     ============================================ */
-
-  .no-access-warning {
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    border: 1px solid var(--color-term-yellow, #ffff00);
-    border-radius: 4px;
-    background: rgba(255, 255, 0, 0.05);
-    animation: slideIn 0.3s ease;
-  }
-
-  .warning-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .warning-icon {
-    font-size: 1.1rem;
-  }
-
-  .warning-title {
-    font-weight: 600;
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .warning-message {
-    margin: 0 0 0.5rem 0;
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 0.9rem;
-  }
-
-  .warning-options {
-    margin: 0;
-    padding-left: 1.5rem;
-    list-style: disc;
-  }
-
-  .warning-options li {
-    margin-bottom: 0.25rem;
-  }
-
-  .warning-link {
-    color: var(--color-term-bright-green, #00ff00);
-    text-decoration: underline;
-  }
-
-  .warning-link:hover {
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  .warning-link-button {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--color-term-bright-green, #00ff00);
-    text-decoration: underline;
-    cursor: pointer;
-    font-size: inherit;
-  }
-
-  .warning-link-button:hover {
-    color: var(--color-term-yellow, #ffff00);
-  }
-
-  /* ChatGPT Theme Overrides for No Access Warning */
-  .main-layout.chatgpt .no-access-warning {
-    border: none;
-    border-radius: 0.75rem;
-    background: var(--chat-status-warning-bg, rgba(245, 158, 11, 0.1));
-    padding: 1.25rem;
-  }
-
-  .main-layout.chatgpt .warning-title {
-    color: var(--chat-status-warning, #f59e0b);
-  }
-
-  .main-layout.chatgpt .warning-message {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .main-layout.chatgpt .warning-link {
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .main-layout.chatgpt .warning-link:hover {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  .main-layout.chatgpt .warning-link-button {
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .main-layout.chatgpt .warning-link-button:hover {
-    color: var(--chat-text, #0d0d0d);
-  }
-
-  /* ============================================
-     Animations
-     ============================================ */
-
+  /* Animations - kept as they use @keyframes */
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -1381,16 +1097,12 @@
     }
   }
 
-  /* ============================================
-     Disabled button state
-     ============================================ */
-
-  .function-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .animate-slide-in {
+    animation: slideIn 0.3s ease;
   }
 
-  .function-button:disabled:hover {
-    transform: none;
+  /* Welcome ASCII art - needs block display for spans */
+  .welcome-ascii :global(span) {
+    display: block;
   }
 </style>

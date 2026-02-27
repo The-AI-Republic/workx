@@ -178,12 +178,24 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="scheduler-page" class:chatgpt={currentTheme === 'chatgpt'}>
-  <div class="scheduler-container">
+<div class="h-screen flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
+  <div class="w-[90%] max-w-[28rem] max-h-[90vh] overflow-y-auto rounded-lg flex flex-col
+    {currentTheme === 'modern'
+      ? 'rounded-2xl border-none shadow-2xl bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark font-chat'
+      : 'border border-term-dim-green bg-term-bg text-term-green font-terminal'}">
     <!-- Header -->
-    <div class="scheduler-header">
-      <h2 class="scheduler-title">{$_t('Schedule A New Task')}</h2>
-      <button class="close-button" on:click={handleClose} aria-label={t("Close scheduler")}>
+    <div class="flex justify-between items-center px-6 py-4 border-b
+      {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+      <h2 class="m-0 text-base font-semibold
+        {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green'}">{$_t('Schedule A New Task')}</h2>
+      <button
+        class="bg-none border-none cursor-pointer p-1 rounded-md flex items-center justify-center transition-all duration-200
+          {currentTheme === 'modern'
+            ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-surface dark:hover:bg-chat-surface-dark'
+            : 'text-term-dim-green hover:text-term-green hover:bg-[#0a0a0a]'}"
+        on:click={handleClose}
+        aria-label={t("Close scheduler")}
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -192,53 +204,73 @@
     </div>
 
     <!-- Content -->
-    <div class="scheduler-content">
+    <div class="px-6 py-4 overflow-y-auto flex-1">
       <!-- Task Input/Preview -->
-      <div class="task-preview">
-        <span class="preview-label">{$_t('Task')}:</span>
+      <div class="mb-4 p-3 rounded
+        {currentTheme === 'modern'
+          ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
+          : 'bg-[rgba(0,255,0,0.05)] border border-[rgba(0,255,0,0.2)]'}">
+        <span class="text-sm uppercase tracking-wide
+          {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Task')}:</span>
         {#if isEditable}
           <textarea
-            class="task-input"
+            class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
+              {currentTheme === 'modern'
+                ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat placeholder:text-chat-text-secondary/60 dark:placeholder:text-chat-text-secondary-dark/60 focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
+                : 'bg-black/50 border border-term-dim-green text-term-green font-terminal placeholder:text-term-dim-green/60 focus:border-term-green'}"
             bind:value={editableInput}
             placeholder={$_t('Enter your task...')}
             rows="3"
           ></textarea>
         {:else}
-          <p class="preview-text">{pendingInput.slice(0, 100)}{pendingInput.length > 100 ? '...' : ''}</p>
+          <p class="mt-1 mb-0 text-sm leading-relaxed break-words
+            {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{pendingInput.slice(0, 100)}{pendingInput.length > 100 ? '...' : ''}</p>
         {/if}
       </div>
 
       <!-- Quick Schedule Buttons -->
-      <div class="quick-schedule">
-        <span class="section-label">{$_t('Quick Schedule')}:</span>
-        <div class="quick-buttons">
-          <button class="quick-btn" on:click={() => scheduleIn(5)}>5m</button>
-          <button class="quick-btn" on:click={() => scheduleIn(15)}>15m</button>
-          <button class="quick-btn" on:click={() => scheduleIn(30)}>30m</button>
-          <button class="quick-btn" on:click={() => scheduleIn(60)}>1h</button>
-          <button class="quick-btn" on:click={() => scheduleIn(180)}>3h</button>
-          <button class="quick-btn" on:click={() => scheduleIn(1440)}>24h</button>
+      <div class="mb-4">
+        <span class="block text-sm mb-2
+          {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Quick Schedule')}:</span>
+        <div class="flex gap-2 flex-wrap">
+          {#each [{ label: '5m', min: 5 }, { label: '15m', min: 15 }, { label: '30m', min: 30 }, { label: '1h', min: 60 }, { label: '3h', min: 180 }, { label: '24h', min: 1440 }] as item}
+            <button
+              class="px-3 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
+                {currentTheme === 'modern'
+                  ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-secondary dark:hover:border-chat-text-secondary-dark'
+                  : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-green'}"
+              on:click={() => scheduleIn(item.min)}
+            >{item.label}</button>
+          {/each}
         </div>
       </div>
 
       <!-- Date/Time Picker -->
-      <div class="datetime-picker">
-        <div class="picker-group">
-          <label for="schedule-date" class="picker-label">{$_t('Date')}</label>
+      <div class="flex gap-3 mb-4">
+        <div class="flex-1">
+          <label for="schedule-date" class="block text-sm mb-1
+            {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Date')}</label>
           <input
             id="schedule-date"
             type="date"
-            class="picker-input"
+            class="w-full px-3 py-2 text-sm rounded picker-input
+              {currentTheme === 'modern'
+                ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
+                : 'bg-black border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green'}"
             bind:value={selectedDate}
             min={formatDateForInput(new Date())}
           />
         </div>
-        <div class="picker-group">
-          <label for="schedule-time" class="picker-label">{$_t('Time')}</label>
+        <div class="flex-1">
+          <label for="schedule-time" class="block text-sm mb-1
+            {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Time')}</label>
           <input
             id="schedule-time"
             type="time"
-            class="picker-input"
+            class="w-full px-3 py-2 text-sm rounded picker-input
+              {currentTheme === 'modern'
+                ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
+                : 'bg-black border border-term-dim-green text-term-green font-terminal focus:outline-none focus:border-term-green'}"
             bind:value={selectedTime}
           />
         </div>
@@ -246,30 +278,44 @@
 
       <!-- Schedule Preview -->
       {#if selectedDate && selectedTime}
-        <div class="schedule-preview">
-          <span class="preview-icon">
+        <div class="flex items-center gap-2 p-3 rounded mb-3
+          {currentTheme === 'modern' ? 'bg-[rgba(96,165,250,0.1)]' : 'bg-[rgba(0,255,0,0.1)]'}">
+          <span class="flex {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-dim-green'}">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
           </span>
-          <span class="preview-time">{getScheduledDateDisplay()}</span>
-          <span class="preview-relative">({getRelativeTime()})</span>
+          <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">{getScheduledDateDisplay()}</span>
+          <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
         </div>
       {/if}
 
       <!-- Error Message -->
       {#if errorMessage}
-        <div class="error-message">{errorMessage}</div>
+        <div class="px-3 py-2 mt-2 rounded text-sm bg-[rgba(255,0,0,0.1)] border border-[rgba(255,0,0,0.3)] text-red-400">{errorMessage}</div>
       {/if}
     </div>
 
     <!-- Footer -->
-    <div class="scheduler-footer">
-      <button class="btn-cancel" on:click={handleClose}>
+    <div class="flex justify-end gap-3 px-6 py-4 border-t
+      {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+      <button
+        class="px-5 py-2.5 text-sm rounded cursor-pointer transition-all duration-200
+          {currentTheme === 'modern'
+            ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+            : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+        on:click={handleClose}
+      >
         {$_t('Cancel')}
       </button>
-      <button class="btn-schedule" on:click={validateAndSchedule}>
+      <button
+        class="px-5 py-2.5 text-sm rounded cursor-pointer font-semibold transition-all duration-200
+          {currentTheme === 'modern'
+            ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-chat-send-text dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
+            : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-green hover:border-term-green'}"
+        on:click={validateAndSchedule}
+      >
         {$_t('Schedule')}
       </button>
     </div>
@@ -277,369 +323,20 @@
 </div>
 
 <style>
-  .scheduler-page {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-    /* Terminal theme (default) */
-    --browserx-primary: #00ff00;
-    --browserx-secondary: #00cc00;
-    --browserx-background: #000000;
-    --browserx-surface: #0a0a0a;
-    --browserx-text: #00ff00;
-    --browserx-text-secondary: #00cc00;
-    --browserx-border: #00cc00;
-    color-scheme: dark;
-  }
-
-  /* ChatGPT theme */
-  .scheduler-page.chatgpt {
-    --browserx-primary: var(--chat-primary, #60a5fa);
-    --browserx-secondary: var(--chat-primary, #60a5fa);
-    --browserx-background: var(--chat-bg, #ffffff);
-    --browserx-surface: var(--chat-card-bg, #f7f7f8);
-    --browserx-text: var(--chat-text, #0d0d0d);
-    --browserx-text-secondary: var(--chat-text-secondary, #6e6e80);
-    --browserx-border: var(--chat-border, #e5e5e5);
-    background: rgba(0, 0, 0, 0.3);
-    color-scheme: light;
-  }
-
-  .scheduler-container {
-    max-width: 28rem;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    background: var(--browserx-background);
-    border: 1px solid var(--browserx-border);
-    color: var(--browserx-text);
-  }
-
-  .scheduler-page.chatgpt .scheduler-container {
-    border-radius: 1rem;
-    border: none;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  }
-
-  .scheduler-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--browserx-border);
-  }
-
-  .scheduler-title {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--browserx-text);
-  }
-
-  .scheduler-page.chatgpt .scheduler-title {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    color: var(--browserx-text-secondary);
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 0.375rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  .close-button:hover {
-    color: var(--browserx-text);
-    background: var(--browserx-surface);
-  }
-
-  .scheduler-content {
-    padding: 1rem 1.5rem;
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  /* Task preview */
-  .task-preview {
-    margin-bottom: 16px;
-    padding: 12px;
-    background: rgba(0, 255, 0, 0.05);
-    border-radius: 4px;
-    border: 1px solid rgba(0, 255, 0, 0.2);
-  }
-
-  .scheduler-page.chatgpt .task-preview {
-    background: var(--browserx-surface);
-    border-color: var(--browserx-border);
-  }
-
-  .preview-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    color: var(--browserx-text-secondary);
-    letter-spacing: 0.5px;
-  }
-
-  .preview-text {
-    margin: 4px 0 0;
-    font-size: 13px;
-    color: var(--browserx-text);
-    font-family: 'Monaco', 'Courier New', monospace;
-    line-height: 1.4;
-    word-break: break-word;
-  }
-
-  .scheduler-page.chatgpt .preview-text {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .task-input {
-    width: 100%;
-    margin-top: 8px;
-    padding: 8px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid var(--browserx-border);
-    border-radius: 4px;
-    color: var(--browserx-text);
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 13px;
-    line-height: 1.4;
-    resize: vertical;
-    outline: none;
-  }
-
-  .task-input:focus {
-    border-color: var(--browserx-primary);
-  }
-
-  .task-input::placeholder {
-    color: var(--browserx-text-secondary);
-    opacity: 0.6;
-  }
-
-  .scheduler-page.chatgpt .task-input {
-    background: var(--chat-input-bg, #ffffff);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  /* Quick schedule */
-  .quick-schedule {
-    margin-bottom: 16px;
-  }
-
-  .section-label {
-    display: block;
-    font-size: 12px;
-    color: var(--browserx-text-secondary);
-    margin-bottom: 8px;
-  }
-
-  .quick-buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .quick-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-    background: transparent;
-    border: 1px solid var(--browserx-border);
-    border-radius: 4px;
-    color: var(--browserx-text);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .quick-btn:hover {
-    background: rgba(0, 255, 0, 0.1);
-    border-color: var(--browserx-primary);
-  }
-
-  .scheduler-page.chatgpt .quick-btn {
-    background: var(--browserx-surface);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .scheduler-page.chatgpt .quick-btn:hover {
-    background: var(--chat-button-hover, #ececec);
-    border-color: var(--browserx-text-secondary);
-  }
-
-  /* Date/time picker */
-  .datetime-picker {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .picker-group {
-    flex: 1;
-  }
-
-  .picker-label {
-    display: block;
-    font-size: 12px;
-    color: var(--browserx-text-secondary);
-    margin-bottom: 4px;
-  }
-
-  .picker-input {
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 14px;
-    background: #000;
-    border: 1px solid var(--browserx-border);
-    border-radius: 4px;
-    color: var(--browserx-text);
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .picker-input:focus {
-    outline: none;
-    border-color: var(--browserx-primary);
-  }
-
+  /* Calendar picker indicator styling - requires pseudo-element selectors */
   .picker-input::-webkit-calendar-picker-indicator {
-    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
     cursor: pointer;
   }
 
-  .scheduler-page.chatgpt .picker-input {
-    background: var(--chat-input-bg, #f4f4f4);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  :global(.terminal) .picker-input::-webkit-calendar-picker-indicator {
+    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
   }
 
-  .scheduler-page.chatgpt .picker-input::-webkit-calendar-picker-indicator {
+  :global(.modern) .picker-input::-webkit-calendar-picker-indicator {
     filter: none;
   }
 
-  @media (prefers-color-scheme: dark) {
-    .scheduler-page.chatgpt .picker-input::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-    }
-  }
-
-  /* Schedule preview */
-  .schedule-preview {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: rgba(0, 255, 0, 0.1);
-    border-radius: 4px;
-    margin-bottom: 12px;
-  }
-
-  .scheduler-page.chatgpt .schedule-preview {
-    background: rgba(96, 165, 250, 0.1);
-  }
-
-  .preview-icon {
-    color: var(--browserx-text-secondary);
-    display: flex;
-  }
-
-  .scheduler-page.chatgpt .preview-icon {
-    color: #60a5fa;
-  }
-
-  .preview-time {
-    font-size: 14px;
-    color: var(--browserx-text);
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .scheduler-page.chatgpt .preview-time {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .preview-relative {
-    font-size: 12px;
-    color: var(--browserx-text-secondary);
-  }
-
-  /* Error message */
-  .error-message {
-    padding: 8px 12px;
-    background: rgba(255, 0, 0, 0.1);
-    border: 1px solid rgba(255, 0, 0, 0.3);
-    border-radius: 4px;
-    color: #ff6b6b;
-    font-size: 12px;
-    margin-top: 8px;
-  }
-
-  /* Footer */
-  .scheduler-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--browserx-border);
-  }
-
-  .btn-cancel, .btn-schedule {
-    padding: 10px 20px;
-    font-size: 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Monaco', 'Courier New', monospace;
-    transition: all 0.2s ease;
-  }
-
-  .btn-cancel {
-    background: transparent;
-    border: 1px solid var(--browserx-border);
-    color: var(--browserx-text-secondary);
-  }
-
-  .btn-cancel:hover {
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .btn-schedule {
-    background: var(--browserx-border);
-    border: 1px solid var(--browserx-border);
-    color: #000;
-    font-weight: 600;
-  }
-
-  .btn-schedule:hover {
-    background: var(--browserx-primary);
-    border-color: var(--browserx-primary);
-  }
-
-  .scheduler-page.chatgpt .btn-cancel {
-    border-color: var(--browserx-border);
-    color: var(--browserx-text);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .scheduler-page.chatgpt .btn-cancel:hover {
-    background: var(--chat-button-hover, #ececec);
-  }
-
-  .scheduler-page.chatgpt .btn-schedule {
-    background: var(--chat-send-button-bg, #0d0d0d);
-    border-color: var(--chat-send-button-bg, #0d0d0d);
-    color: #ffffff;
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .scheduler-page.chatgpt .btn-schedule:hover {
-    background: var(--chat-send-button-hover, #2d2d2d);
-    border-color: var(--chat-send-button-hover, #2d2d2d);
+  :global(.dark) :global(.modern) .picker-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
   }
 </style>

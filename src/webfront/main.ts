@@ -5,7 +5,6 @@
  * It initializes platform-specific services and mounts the app.
  */
 
-import './sidepanel.css';
 import './styles.css';
 import App from './App.svelte';
 import { initLocale } from './lib/i18n';

@@ -180,34 +180,56 @@
   }
 </script>
 
-<div class="chat-history-list {currentTheme}">
+<div class="max-h-[400px] overflow-y-auto min-w-[250px]
+  {currentTheme === 'modern' ? 'bg-chat-tooltip dark:bg-chat-tooltip-dark' : ''}">
   {#if isLoading}
-    <div class="loading-state">
+    <div class="flex items-center justify-center gap-2 p-6 text-sm
+      {currentTheme === 'modern'
+        ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+        : 'text-term-dim-green'}">
       <span class="loading-spinner"></span>
       <span>{$_t("Loading history...")}</span>
     </div>
   {:else if error}
-    <div class="error-state">
-      <span class="error-icon">!</span>
+    <div class="flex items-center justify-center gap-2 p-6 text-sm
+      {currentTheme === 'modern'
+        ? 'text-chat-error dark:text-chat-error-dark'
+        : 'text-term-red'}">
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-current text-sm font-bold">!</span>
       <span>{error}</span>
     </div>
   {:else if conversations.length === 0}
-    <div class="empty-state">
+    <div class="flex items-center justify-center gap-2 p-6 text-sm
+      {currentTheme === 'modern'
+        ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+        : 'text-term-dim-green'}">
       <span>{$_t("No chat history yet")}</span>
     </div>
   {:else}
-    <div class="categories-container">
+    <div class="flex flex-col">
       <!-- Today -->
       {#if categorized.today.length > 0}
-        <div class="category">
-          <div class="category-header">{$_t("Today")}</div>
+        <div class="flex flex-col">
+          <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
+            {currentTheme === 'modern'
+              ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
+              : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Today")}</div>
           {#each categorized.today as item (item.id)}
             <button
-              class="history-item"
+              class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
+                {currentTheme === 'modern'
+                  ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
-              <span class="item-title">{getDisplayTitle(item)}</span>
-              <span class="item-time">{formatTimeAgo(item.updated)}</span>
+              <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'modern'
+                  ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+                  : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
+              <span class="shrink-0 text-sm opacity-70
+                {currentTheme === 'modern'
+                  ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
           {/each}
         </div>
@@ -215,15 +237,27 @@
 
       <!-- Yesterday -->
       {#if categorized.yesterday.length > 0}
-        <div class="category">
-          <div class="category-header">{$_t("Yesterday")}</div>
+        <div class="flex flex-col">
+          <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
+            {currentTheme === 'modern'
+              ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
+              : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Yesterday")}</div>
           {#each categorized.yesterday as item (item.id)}
             <button
-              class="history-item"
+              class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
+                {currentTheme === 'modern'
+                  ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
-              <span class="item-title">{getDisplayTitle(item)}</span>
-              <span class="item-time">{formatTimeAgo(item.updated)}</span>
+              <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'modern'
+                  ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+                  : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
+              <span class="shrink-0 text-sm opacity-70
+                {currentTheme === 'modern'
+                  ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
           {/each}
         </div>
@@ -231,15 +265,27 @@
 
       <!-- Past Week -->
       {#if categorized.pastWeek.length > 0}
-        <div class="category">
-          <div class="category-header">{$_t("Past Week")}</div>
+        <div class="flex flex-col">
+          <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
+            {currentTheme === 'modern'
+              ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
+              : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Past Week")}</div>
           {#each categorized.pastWeek as item (item.id)}
             <button
-              class="history-item"
+              class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
+                {currentTheme === 'modern'
+                  ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
-              <span class="item-title">{getDisplayTitle(item)}</span>
-              <span class="item-time">{formatTimeAgo(item.updated)}</span>
+              <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'modern'
+                  ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+                  : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
+              <span class="shrink-0 text-sm opacity-70
+                {currentTheme === 'modern'
+                  ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
           {/each}
         </div>
@@ -247,15 +293,27 @@
 
       <!-- Past Month -->
       {#if categorized.pastMonth.length > 0}
-        <div class="category">
-          <div class="category-header">{$_t("Past Month")}</div>
+        <div class="flex flex-col">
+          <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
+            {currentTheme === 'modern'
+              ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
+              : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Past Month")}</div>
           {#each categorized.pastMonth as item (item.id)}
             <button
-              class="history-item"
+              class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
+                {currentTheme === 'modern'
+                  ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
-              <span class="item-title">{getDisplayTitle(item)}</span>
-              <span class="item-time">{formatTimeAgo(item.updated)}</span>
+              <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'modern'
+                  ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+                  : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
+              <span class="shrink-0 text-sm opacity-70
+                {currentTheme === 'modern'
+                  ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
           {/each}
         </div>
@@ -263,21 +321,36 @@
 
       <!-- Older -->
       {#if categorized.older.length > 0 || hasMoreOlder}
-        <div class="category">
-          <div class="category-header">{$_t("Older")}</div>
+        <div class="flex flex-col">
+          <div class="py-2 px-3 text-sm font-semibold uppercase tracking-wide opacity-70
+            {currentTheme === 'modern'
+              ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
+              : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Older")}</div>
           {#each categorized.older as item (item.id)}
             <button
-              class="history-item"
+              class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
+                {currentTheme === 'modern'
+                  ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
+                  : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
               on:click={() => handleSelectConversation(item.id)}
             >
-              <span class="item-title">{getDisplayTitle(item)}</span>
-              <span class="item-time">{formatTimeAgo(item.updated)}</span>
+              <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
+                {currentTheme === 'modern'
+                  ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
+                  : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
+              <span class="shrink-0 text-sm opacity-70
+                {currentTheme === 'modern'
+                  ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
             </button>
           {/each}
 
           {#if hasMoreOlder}
             <button
-              class="load-more-button"
+              class="flex items-center justify-center gap-2 w-full py-3 bg-transparent cursor-pointer mt-2 text-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed
+                {currentTheme === 'modern'
+                  ? 'border border-dashed border-white/20 rounded-lg text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat hover:bg-white/[0.08] hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark'
+                  : 'border border-dashed border-term-dim-green rounded text-term-dim-green font-terminal hover:bg-term-green/[0.08] hover:border-term-bright-green hover:text-term-bright-green'}"
               on:click={loadMoreOlder}
               disabled={isLoadingMore}
             >
@@ -296,41 +369,6 @@
 </div>
 
 <style>
-  .chat-history-list {
-    max-height: 400px;
-    overflow-y: auto;
-    min-width: 250px;
-  }
-
-  /* Loading state */
-  .loading-state,
-  .error-state,
-  .empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1.5rem;
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 0.875rem;
-  }
-
-  .error-state {
-    color: var(--color-term-red, #ff0000);
-  }
-
-  .error-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 1px solid currentColor;
-    font-size: 0.75rem;
-    font-weight: bold;
-  }
-
   .loading-spinner {
     width: 16px;
     height: 16px;
@@ -348,158 +386,5 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-
-  /* Categories */
-  .categories-container {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .category {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .category-header {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-term-dim-green, #00cc00);
-    opacity: 0.7;
-    background: rgba(0, 204, 0, 0.05);
-    border-bottom: 1px solid rgba(0, 204, 0, 0.2);
-  }
-
-  /* History items */
-  .history-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.625rem 0.75rem;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid rgba(0, 204, 0, 0.1);
-    cursor: pointer;
-    text-align: left;
-    width: 100%;
-    transition: background 0.15s ease;
-  }
-
-  .history-item:hover {
-    background: rgba(0, 255, 0, 0.08);
-  }
-
-  .history-item:active {
-    background: rgba(0, 255, 0, 0.12);
-  }
-
-  .item-title {
-    flex: 1;
-    font-size: 0.85rem;
-    color: var(--color-term-bright-green, #00ff00);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .item-time {
-    flex-shrink: 0;
-    font-size: 0.75rem;
-    color: var(--color-term-dim-green, #00cc00);
-    opacity: 0.7;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  /* Load more button */
-  .load-more-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem;
-    background: transparent;
-    border: 1px dashed var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 0.85rem;
-    cursor: pointer;
-    margin-top: 0.5rem;
-    transition: all 0.15s ease;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .load-more-button:hover:not(:disabled) {
-    background: rgba(0, 255, 0, 0.08);
-    border-color: var(--color-term-bright-green, #00ff00);
-    color: var(--color-term-bright-green, #00ff00);
-  }
-
-  .load-more-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .chat-history-list.chatgpt {
-    background: var(--chat-tooltip-bg, #0d0d0d);
-  }
-
-  .chat-history-list.chatgpt .loading-state,
-  .chat-history-list.chatgpt .empty-state {
-    color: var(--chat-text-secondary, #8e8ea0);
-  }
-
-  .chat-history-list.chatgpt .error-state {
-    color: var(--chat-error, #ef4444);
-  }
-
-  .chat-history-list.chatgpt .category-header {
-    color: var(--chat-text-secondary, #8e8ea0);
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .chat-history-list.chatgpt .history-item {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .chat-history-list.chatgpt .history-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .chat-history-list.chatgpt .history-item:active {
-    background: rgba(255, 255, 255, 0.12);
-  }
-
-  .chat-history-list.chatgpt .item-title {
-    color: var(--chat-tooltip-text, #ffffff);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .chat-history-list.chatgpt .item-time {
-    color: var(--chat-text-secondary, #8e8ea0);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .chat-history-list.chatgpt .load-more-button {
-    border: 1px dashed rgba(255, 255, 255, 0.2);
-    color: var(--chat-text-secondary, #8e8ea0);
-    border-radius: 0.5rem;
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .chat-history-list.chatgpt .load-more-button:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: var(--chat-tooltip-text, #ffffff);
   }
 </style>

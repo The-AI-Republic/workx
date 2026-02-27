@@ -7,6 +7,7 @@ mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
 mod sandbox;
+mod skills_commands;
 mod storage_commands;
 mod terminal_commands;
 
@@ -355,6 +356,12 @@ fn main() {
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
+            // Skills filesystem commands
+            skills_commands::skills_ensure_dir,
+            skills_commands::skills_list_dirs,
+            skills_commands::skills_read_file,
+            skills_commands::skills_write_file,
+            skills_commands::skills_remove_dir,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

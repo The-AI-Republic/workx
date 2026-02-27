@@ -194,12 +194,6 @@
       return;
     }
 
-    // Confirm model switch
-    if (!confirm(t('The model switch will clear the current conversation. Do you want to continue?'))) {
-      isOpen = false;
-      return;
-    }
-
     try {
       const config = await AgentConfig.getInstance();
       await config.setSelectedModel(modelId);
@@ -226,20 +220,23 @@
 
 <svelte:window on:keydown={handleKeyDown} />
 
-<div class="model-selection {currentTheme}">
+<div class="relative inline-flex">
   <PopupCard title="" show={isOpen} onClose={closeDropdown}>
     <div slot="trigger">
       <Tooltip content={$_t("Click to select a model")} disabled={isOpen}>
         <button
           type="button"
-          class="model-trigger {currentTheme}"
+          class="flex items-center gap-1 max-w-[150px] cursor-pointer transition-all duration-200
+            {currentTheme === 'modern'
+              ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark rounded-2xl text-chat-text dark:text-chat-text-dark font-chat text-sm py-1.5 px-2.5 hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+              : 'bg-transparent border border-term-dim-green rounded text-term-green font-terminal text-sm py-1 px-2 hover:border-term-bright-green hover:bg-term-green/5'}"
           on:click={toggleDropdown}
           disabled={isLoading}
           aria-label={$_t('Select model: $1$', { substitutions: [selectedModelName] })}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
         >
-          <span class="model-name">
+          <span class="overflow-hidden text-ellipsis whitespace-nowrap">
             {#if isLoading}
               ...
             {:else}
@@ -247,8 +244,7 @@
             {/if}
           </span>
           <svg
-            class="chevron-icon"
-            class:rotate={isOpen}
+            class="w-3.5 h-3.5 shrink-0 transition-transform duration-200 {isOpen ? 'rotate-180' : ''}"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -260,38 +256,51 @@
       </Tooltip>
     </div>
 
-    <div slot="content" class="model-dropdown-content {currentTheme}" role="listbox" aria-label="Available models">
+    <div slot="content" class="min-w-[180px] max-w-[250px] max-h-[300px] overflow-y-auto" role="listbox" aria-label="Available models">
       {#each groupedModels as group (group.modelName)}
         {@const isSelected = selectedGroup?.modelName === group.modelName}
         {@const hasMultipleProviders = group.providers.length > 1}
         {@const isLockedForFreeUser = isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey)}
 
-        <div class="model-item">
+        <div class="{currentTheme === 'modern'
+          ? 'border-b border-white/10 last:border-b-0'
+          : 'border-b border-term-dim-green/20 last:border-b-0'}">
           {#if hasMultipleProviders}
             <!-- Model with multiple providers -->
-            <div class="model-group" class:locked={isLockedForFreeUser}>
-              <div class="model-group-header">
-                <span class="group-name">{group.modelName}</span>
+            <div class="{isLockedForFreeUser ? 'opacity-50' : ''}">
+              <div class="flex items-center justify-between w-full text-left cursor-default font-medium
+                {currentTheme === 'modern'
+                  ? 'font-chat text-sm py-2.5 px-3.5 ' + (isLockedForFreeUser ? 'text-white/40' : 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark')
+                  : 'font-terminal text-sm py-2 px-3 ' + (isLockedForFreeUser ? 'text-[#666666]' : 'text-term-dim-green')}">
+                <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
                 {#if isLockedForFreeUser}
-                  <svg class="lock-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <svg class="w-3.5 h-3.5 shrink-0
+                    {currentTheme === 'modern' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                   </svg>
                 {:else if isSelected}
-                  <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <svg class="w-3.5 h-3.5 shrink-0
+                    {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-bright-green'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                   </svg>
                 {/if}
               </div>
               {#if isLockedForFreeUser}
-                <div class="locked-message">{$_t("Upgrade to explore world's most powerful models")}</div>
+                <div class="italic
+                  {currentTheme === 'modern'
+                    ? 'font-chat text-white/50 py-1.5 px-3.5 pb-2.5 text-sm'
+                    : 'font-terminal text-[#888888] py-1 px-3 pb-2 text-sm'}">{$_t("Upgrade to explore world's most powerful models")}</div>
               {:else}
-                <div class="provider-options">
+                <div class="flex flex-wrap gap-1
+                  {currentTheme === 'modern' ? 'py-1.5 px-3.5 pb-2.5' : 'py-1 px-3 pb-2'}">
                   {#each group.providers as provider (provider.modelId)}
                     {@const isProviderSelected = provider.modelId === selectedModelKey}
                     <button
                       type="button"
-                      class="provider-option"
-                      class:selected={isProviderSelected}
+                      class="cursor-pointer transition-all duration-150 text-sm
+                        {currentTheme === 'modern'
+                          ? 'font-chat bg-white/10 border border-white/20 rounded-2xl text-white/80 py-1 px-2.5 hover:bg-white/15 hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark ' + (isProviderSelected ? 'bg-blue-400/25 border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark' : '')
+                          : 'font-terminal bg-transparent border border-term-dim-green/40 rounded py-1 px-2 text-term-dim-green hover:border-term-green hover:bg-term-green/10 ' + (isProviderSelected ? 'bg-term-green/20 border-term-bright-green text-term-bright-green' : '')}"
                       on:click={() => selectModel(provider.modelId, group.modelName, provider.modelKey)}
                       role="option"
                       aria-selected={isProviderSelected}
@@ -308,14 +317,18 @@
               <Tooltip content={$_t("Upgrade your subscription to explore world's most powerful models")}>
                 <button
                   type="button"
-                  class="model-option locked"
+                  class="flex items-center justify-between w-full text-left bg-transparent border-none cursor-not-allowed opacity-50 transition-colors duration-150
+                    {currentTheme === 'modern'
+                      ? 'font-chat text-sm text-white/40 py-2.5 px-3.5'
+                      : 'font-terminal text-sm text-[#666666] py-2 px-3'}"
                   disabled
                   role="option"
                   aria-selected={false}
                   aria-disabled="true"
                 >
-                  <span class="option-name">{group.modelName}</span>
-                  <svg class="lock-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
+                  <svg class="w-3.5 h-3.5 shrink-0
+                    {currentTheme === 'modern' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                   </svg>
                 </button>
@@ -323,15 +336,18 @@
             {:else}
               <button
                 type="button"
-                class="model-option"
-                class:selected={isSelected}
+                class="flex items-center justify-between w-full text-left bg-transparent border-none cursor-pointer transition-colors duration-150
+                  {currentTheme === 'modern'
+                    ? 'font-chat text-sm py-2.5 px-3.5 text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/10 ' + (isSelected ? 'bg-blue-400/20 text-chat-primary dark:text-chat-primary-dark' : '')
+                    : 'font-terminal text-sm py-2 px-3 text-term-dim-green hover:bg-term-green/10 hover:text-term-green ' + (isSelected ? 'bg-term-green/15 text-term-bright-green' : '')}"
                 on:click={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey)}
                 role="option"
                 aria-selected={isSelected}
               >
-                <span class="option-name">{group.modelName}</span>
+                <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
                 {#if isSelected}
-                  <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                  <svg class="w-3.5 h-3.5 shrink-0
+                    {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-bright-green'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                   </svg>
                 {/if}
@@ -343,292 +359,3 @@
     </div>
   </PopupCard>
 </div>
-
-<style>
-  .model-selection {
-    position: relative;
-    display: inline-flex;
-  }
-
-  /* ============================================
-     Terminal Theme (default)
-     ============================================ */
-
-  .model-trigger {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: transparent;
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    color: var(--color-term-green, #00ff00);
-    font-size: 12px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    max-width: 150px;
-  }
-
-  .model-trigger:hover:not(:disabled) {
-    border-color: var(--color-term-bright-green, #33ff00);
-    background: rgba(0, 255, 0, 0.05);
-  }
-
-  .model-trigger:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .model-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .chevron-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    transition: transform 0.2s ease;
-  }
-
-  .chevron-icon.rotate {
-    transform: rotate(180deg);
-  }
-
-  /* Dropdown Content */
-  .model-dropdown-content {
-    min-width: 180px;
-    max-width: 250px;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
-  .model-item {
-    border-bottom: 1px solid rgba(0, 204, 0, 0.2);
-  }
-
-  .model-item:last-child {
-    border-bottom: none;
-  }
-
-  .model-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 8px 12px;
-    text-align: left;
-    font-size: 12px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    color: var(--color-term-dim-green, #00cc00);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  .model-option:hover {
-    background: rgba(0, 255, 0, 0.1);
-    color: var(--color-term-green, #00ff00);
-  }
-
-  .model-option.selected {
-    background: rgba(0, 255, 0, 0.15);
-    color: var(--color-term-bright-green, #33ff00);
-  }
-
-  .model-group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 8px 12px 4px 12px;
-    text-align: left;
-    font-size: 12px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    color: var(--color-term-dim-green, #00cc00);
-    background: transparent;
-    border: none;
-    cursor: default;
-    font-weight: 500;
-  }
-
-  .group-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .provider-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px 12px 8px 12px;
-  }
-
-  .provider-option {
-    padding: 4px 8px;
-    font-size: 11px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    background: transparent;
-    border: 1px solid rgba(0, 204, 0, 0.4);
-    border-radius: 3px;
-    color: var(--color-term-dim-green, #00cc00);
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .provider-option:hover {
-    border-color: var(--color-term-green, #00ff00);
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .provider-option.selected {
-    background: rgba(0, 255, 0, 0.2);
-    border-color: var(--color-term-bright-green, #33ff00);
-    color: var(--color-term-bright-green, #33ff00);
-  }
-
-  .option-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .check-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    color: var(--color-term-bright-green, #33ff00);
-  }
-
-  .lock-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    color: var(--color-term-dim-green, #666666);
-  }
-
-  /* Locked/greyed out styles for free users */
-  .model-option.locked {
-    opacity: 0.5;
-    cursor: not-allowed;
-    color: #666666;
-  }
-
-  .model-option.locked:hover {
-    background: transparent;
-  }
-
-  .model-group.locked {
-    opacity: 0.5;
-  }
-
-  .model-group.locked .model-group-header {
-    color: #666666;
-  }
-
-  .locked-message {
-    padding: 4px 12px 8px 12px;
-    font-size: 10px;
-    font-family: 'Monaco', 'Courier New', monospace;
-    color: #888888;
-    font-style: italic;
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .model-trigger.chatgpt {
-    background: var(--chat-input-bg, #f4f4f4);
-    border: 1px solid var(--chat-border, #e5e5e5);
-    border-radius: 1rem;
-    color: var(--chat-text, #0d0d0d);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    font-size: 13px;
-    padding: 6px 10px;
-  }
-
-  .model-trigger.chatgpt:hover:not(:disabled) {
-    background: var(--chat-button-hover, #ececec);
-    border-color: var(--chat-border, #e5e5e5);
-  }
-
-  .model-dropdown-content.chatgpt .model-item {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .model-dropdown-content.chatgpt .model-option {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    font-size: 13px;
-    color: var(--chat-tooltip-text, #ffffff);
-    padding: 10px 14px;
-  }
-
-  .model-dropdown-content.chatgpt .model-group-header {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    font-size: 13px;
-    color: var(--chat-tooltip-text, #ffffff);
-    padding: 10px 14px 4px 14px;
-  }
-
-  .model-dropdown-content.chatgpt .model-option:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .model-dropdown-content.chatgpt .model-option.selected {
-    background: rgba(96, 165, 250, 0.2);
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .model-dropdown-content.chatgpt .provider-options {
-    padding: 6px 14px 10px 14px;
-  }
-
-  .model-dropdown-content.chatgpt .provider-option {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    font-size: 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 1rem;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 4px 10px;
-  }
-
-  .model-dropdown-content.chatgpt .provider-option:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: var(--chat-tooltip-text, #ffffff);
-  }
-
-  .model-dropdown-content.chatgpt .provider-option.selected {
-    background: rgba(96, 165, 250, 0.25);
-    border-color: var(--chat-primary, #60a5fa);
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .model-dropdown-content.chatgpt .check-icon {
-    color: var(--chat-primary, #60a5fa);
-  }
-
-  .model-dropdown-content.chatgpt .lock-icon {
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  .model-dropdown-content.chatgpt .model-option.locked {
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  .model-dropdown-content.chatgpt .model-group.locked .model-group-header {
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  .model-dropdown-content.chatgpt .locked-message {
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    color: rgba(255, 255, 255, 0.5);
-    padding: 6px 14px 10px 14px;
-  }
-</style>
