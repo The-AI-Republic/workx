@@ -1016,8 +1016,9 @@
         }
       }
 
-      // If no valid chats, create a default one
+      // If no valid chats, clear stale persisted state and create a default one
       if (validChats.length === 0) {
+        chatStore.clear();
         await createNewChat();
       } else {
         // Update store with valid chats only
@@ -1039,7 +1040,8 @@
       console.log(`[App] Initialized ${validChats.length} chats, can create: ${canCreateChat}`);
     } catch (error) {
       console.error('[App] Failed to initialize chats:', error);
-      // Fallback: create a default chat
+      // Fallback: clear any stale state and create a default chat
+      chatStore.clear();
       await createNewChat();
     }
   }
