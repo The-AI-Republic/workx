@@ -69,4 +69,28 @@ export const NAV_ITEMS: NavItem[] = [
     route: '/scheduler',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>',
   },
+  {
+    id: 'skills',
+    label: 'Skills',
+    route: '/skills',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><line x1="9" y1="7" x2="17" y2="7"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>',
+  },
 ];
+
+// ---------------------------------------------------------------------------
+// Active route detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Determines if a navigation route is active given the current location.
+ * The root route ('/') is treated as a catch-all: it's active when the
+ * location doesn't match any other known nav route.
+ */
+export function isNavActive(route: string, currentLocation: string): boolean {
+  if (route === '/') {
+    return !NAV_ITEMS.some(
+      (item) => item.route !== '/' && currentLocation.startsWith(item.route),
+    );
+  }
+  return currentLocation === route;
+}

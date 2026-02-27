@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import type { NavItem } from '../../stores/layoutStore';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
@@ -10,9 +10,11 @@
 
   let currentTheme: UITheme = 'terminal';
 
-  uiTheme.subscribe((theme) => {
+  const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
+
+  onDestroy(unsubTheme);
 
   const dispatch = createEventDispatcher();
 
@@ -26,6 +28,7 @@
   class:active
   class:compact
   on:click={handleClick}
+  aria-current={active ? 'page' : undefined}
 >
   <span class="icon">{@html item.icon}</span>
   {#if !compact}
@@ -60,11 +63,11 @@
 
   /* Terminal theme (default) */
   .nav-tab {
-    color: #00cc00;
+    color: var(--color-term-dim-green, #00cc00);
   }
 
   .nav-tab.active {
-    color: #00ff00;
+    color: var(--color-term-green, #00ff00);
     background: rgba(0, 255, 0, 0.05);
   }
 

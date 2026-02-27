@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { push, location } from 'svelte-spa-router';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import { userStore } from '../../stores/userStore';
@@ -6,21 +7,16 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import ApprovalModeIndicator from '../common/ApprovalModeIndicator.svelte';
-  import { isWideMode, NAV_ITEMS } from '../../stores/layoutStore';
+  import { isWideMode, NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import NavTab from './NavTab.svelte';
 
   let currentTheme: UITheme = 'terminal';
 
-  uiTheme.subscribe((theme) => {
+  const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
 
-  function isActive(route: string, currentLocation: string): boolean {
-    if (route === '/') {
-      return currentLocation === '/' || (!currentLocation.startsWith('/settings') && !currentLocation.startsWith('/scheduler') && !currentLocation.startsWith('/skills'));
-    }
-    return currentLocation === route;
-  }
+  onDestroy(unsubTheme);
 
   function handleNavigate(event: CustomEvent<{ route: string }>) {
     push(event.detail.route);
@@ -28,10 +24,6 @@
 
   function handleOpenSettings() {
     push('/settings');
-  }
-
-  function handleOpenSkills() {
-    push('/skills');
   }
 </script>
 
@@ -56,7 +48,7 @@
       {#each NAV_ITEMS as item (item.id)}
         <NavTab
           {item}
-          active={isActive(item.route, $location)}
+          active={isNavActive(item.route, $location)}
           compact={true}
           on:navigate={handleNavigate}
         />
@@ -64,24 +56,6 @@
     </div>
 
     <ApprovalModeIndicator />
-
-    <Tooltip content={$_t("Skills")}>
-      <button
-        class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-          {currentTheme === 'modern'
-            ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
-            : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
-        on:click={handleOpenSkills}
-        aria-label={$_t("Skills")}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-          <line x1="9" y1="7" x2="17" y2="7"></line>
-          <line x1="9" y1="11" x2="15" y2="11"></line>
-        </svg>
-      </button>
-    </Tooltip>
 
     <div class="grow"></div>
 

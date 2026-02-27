@@ -1,13 +1,16 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { isWideMode } from '../../stores/layoutStore';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import LeftPanel from './LeftPanel.svelte';
 
   let currentTheme: UITheme = 'terminal';
 
-  uiTheme.subscribe((theme) => {
+  const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
+
+  onDestroy(unsubTheme);
 </script>
 
 <div class="app-shell {currentTheme}">
@@ -33,7 +36,7 @@
     width: var(--left-panel-width, 220px);
     flex-shrink: 0;
     overflow: visible;
-    border-right: 1px solid #00cc00;
+    border-right: 1px solid var(--color-term-dim-green, #00cc00);
     position: relative;
     z-index: 1;
   }

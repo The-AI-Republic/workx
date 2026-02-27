@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { NAV_ITEMS } from '../../stores/layoutStore';
+  import { onDestroy } from 'svelte';
+  import { NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import { location, push } from 'svelte-spa-router';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
@@ -7,16 +8,11 @@
 
   let currentTheme: UITheme = 'terminal';
 
-  uiTheme.subscribe((theme) => {
+  const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
 
-  function isActive(route: string, currentLocation: string): boolean {
-    if (route === '/') {
-      return currentLocation === '/' || (!currentLocation.startsWith('/settings') && !currentLocation.startsWith('/scheduler'));
-    }
-    return currentLocation === route;
-  }
+  onDestroy(unsubTheme);
 
   function handleNavigate(event: CustomEvent<{ route: string }>) {
     push(event.detail.route);
@@ -28,7 +24,7 @@
     {#each NAV_ITEMS as item (item.id)}
       <NavTab
         {item}
-        active={isActive(item.route, $location)}
+        active={isNavActive(item.route, $location)}
         on:navigate={handleNavigate}
       />
     {/each}
@@ -46,7 +42,7 @@
     height: 100%;
     width: 100%;
     padding: 12px;
-    background: #000000;
+    background: var(--color-term-bg, #000000);
   }
 
   .nav-section {
