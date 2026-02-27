@@ -19,7 +19,8 @@
 
 ### PlanningTool
 - Use `planning_tool` for multi-step tasks that span terminal and browser operations.
-- Break work into short, ordered items that can be checked off as you go.
+- **Research first**: observe the system state, available tools, and MCP capabilities before composing a plan.
+- Every call sends the full plan with all steps and statuses. Break work into short, ordered items that can be checked off as you go.
 
 ### WebSearchTool
 - Use for information retrieval when you need current data from the web.

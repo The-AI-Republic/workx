@@ -16,8 +16,13 @@ import {
 const TOOL_DESCRIPTION = `Create and update task plans for tracking progress on complex tasks.
 
 WHEN TO PLAN:
-- Create a plan before starting tasks with 3 or more steps.
-- Skip planning for simple 1-2 step tasks — execute directly.
+- Use for tasks with 3 or more steps.
+- Skip for simple 1-2 step tasks — execute directly.
+
+RESEARCH FIRST:
+- Never call this tool as your first action on a non-trivial task.
+- First observe available resources (pages, tools, MCP servers, files) so the plan reflects reality.
+- Only compose the plan after you have enough context.
 
 HOW TO USE:
 - Every call sends the FULL plan (all steps, all statuses).
