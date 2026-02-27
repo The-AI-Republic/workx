@@ -47,10 +47,10 @@
   }
 
   /* ============================================
-     ChatGPT Theme Overrides
+     Modern Theme Overrides
      ============================================ */
 
-  .app-shell.chatgpt .left-panel-container {
+  .app-shell.modern .left-panel-container {
     border-right: 1px solid var(--chat-border, #e5e5e5);
   }
 </style>

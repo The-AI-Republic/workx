@@ -11,7 +11,7 @@ import { readable, type Readable } from 'svelte/store';
 // Wide-mode media query store
 // ---------------------------------------------------------------------------
 
-const WIDE_BREAKPOINT = '(min-width: 769px)';
+const WIDE_BREAKPOINT = '(min-width: 1500px)';
 
 /**
  * Readable store that tracks whether the viewport is in "wide" mode

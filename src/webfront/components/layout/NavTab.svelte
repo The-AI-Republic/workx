@@ -90,19 +90,19 @@
   }
 
   /* ============================================
-     ChatGPT Theme Overrides
+     Modern Theme Overrides
      ============================================ */
 
-  .nav-tab.chatgpt {
+  .nav-tab.modern {
     color: var(--chat-text-secondary, #6e6e80);
   }
 
-  .nav-tab.chatgpt.active {
+  .nav-tab.modern.active {
     color: var(--chat-text, #0d0d0d);
     background: rgba(96, 165, 250, 0.1);
   }
 
-  .nav-tab.chatgpt:hover {
+  .nav-tab.modern:hover {
     background: var(--chat-button-hover, #ececec);
   }
 </style>

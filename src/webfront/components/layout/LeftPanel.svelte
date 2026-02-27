@@ -61,14 +61,14 @@
   }
 
   /* ============================================
-     ChatGPT Theme Overrides
+     Modern Theme Overrides
      ============================================ */
 
-  .left-panel.chatgpt {
+  .left-panel.modern {
     background: var(--chat-card-bg, #f7f7f8);
   }
 
-  .left-panel.chatgpt .user-section {
+  .left-panel.modern .user-section {
     border-top: 1px solid var(--chat-border, #e5e5e5);
   }
 </style>
