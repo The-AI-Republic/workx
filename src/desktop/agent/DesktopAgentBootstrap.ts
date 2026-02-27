@@ -73,8 +73,9 @@ export class DesktopAgentBootstrap {
       this.registry.initialize(config, this.messageRouter as any);
 
       // 3. Create Primary Session
-      // This instantiates the singleton fallback agent for quick backward compatibility
-      const primarySession = await this.registry.createSession({ type: 'primary' });
+      // This instantiates the singleton fallback agent for quick backward compatibility.
+      // Marked internal so it doesn't count toward the user-facing concurrent limit.
+      const primarySession = await this.registry.createSession({ type: 'primary', internal: true });
       this.primaryAgent = primarySession.agent;
 
       // Listen for new sessions to automatically inject the current AuthManager

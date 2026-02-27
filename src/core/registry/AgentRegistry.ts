@@ -116,8 +116,8 @@ export class AgentRegistry {
    * with additional context.
    */
   async createSession(sessionConfig: SessionConfig): Promise<AgentSession> {
-    // Check if we can create a new session
-    if (!this.canCreateSession()) {
+    // Internal sessions (e.g. bootstrap fallback) bypass the concurrent limit
+    if (!sessionConfig.internal && !this.canCreateSession()) {
       throw new Error(
         `Max concurrent sessions reached (${this._maxConcurrent}). ` +
         `Cannot create new ${sessionConfig.type} session.`
@@ -290,12 +290,12 @@ export class AgentRegistry {
 
   /**
    * Get count of active (non-terminated) sessions
-   * @returns Number of active sessions
+   * @returns Number of active sessions (excludes internal sessions)
    */
   getActiveCount(): number {
     let count = 0;
     for (const session of this._sessions.values()) {
-      if (session.state !== 'terminated') {
+      if (session.state !== 'terminated' && !session.internal) {
         count++;
       }
     }

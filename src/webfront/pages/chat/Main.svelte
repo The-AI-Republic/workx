@@ -1005,11 +1005,8 @@
       // Get list of active primary sessions from backend
       const response = await service!.send(MessageType.SIDEPANEL_LIST_SESSIONS);
       const activeSessions = response?.sessions || [];
-      const maxConcurrent = response?.maxConcurrent || 5;
-      const activeCount = response?.activeCount || 0;
-
       canCreateChat = response?.canCreateSession ?? true;
-      maxSessionsReached = activeCount >= maxConcurrent;
+      maxSessionsReached = !canCreateChat;
 
       // Match chats to sessions, remove orphaned chats
       const validChats: SidePanelChat[] = [];

@@ -34,6 +34,12 @@ export interface SessionConfig {
 
   /** Conversation ID to resume from (optional) */
   resumeFrom?: string | null;
+
+  /**
+   * Mark as an internal infrastructure session (e.g. bootstrap fallback agent).
+   * Internal sessions bypass the concurrent limit and are excluded from user-facing counts.
+   */
+  internal?: boolean;
 }
 
 /**

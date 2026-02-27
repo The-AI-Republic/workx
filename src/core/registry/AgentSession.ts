@@ -34,6 +34,7 @@ export class AgentSession {
   private _eventListeners: Set<SessionEventListener> = new Set();
   private _tabClosureUnsubscribe: (() => void) | null = null;
   private _storage: SessionStorage | null = null;
+  private _internal: boolean;
 
   /**
    * Create a new AgentSession
@@ -41,6 +42,7 @@ export class AgentSession {
    * @param letterIndex Index for session letter assignment (0-25)
    */
   constructor(config: SessionConfig, letterIndex: number = 0) {
+    this._internal = config.internal ?? false;
     this._sessionId = `session_${uuidv4()}`;
     this._sessionLetter = SESSION_LETTERS[letterIndex % SESSION_LETTERS.length];
 
@@ -82,6 +84,11 @@ export class AgentSession {
   /** Session metadata (read-only copy) */
   get metadata(): Readonly<SessionMetadata> {
     return { ...this._metadata };
+  }
+
+  /** Whether this is an internal infrastructure session */
+  get internal(): boolean {
+    return this._internal;
   }
 
   /** Underlying PiAgent instance */

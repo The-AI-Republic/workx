@@ -144,8 +144,9 @@ async function doInitialize(): Promise<void> {
   await initializeSessionPersistence();
 
   // Create primary session (replaces singleton agent creation)
-  // This maintains backward compatibility - agent variable points to primary session's agent
-  const primarySession = await registry.createSession({ type: 'primary' });
+  // This maintains backward compatibility - agent variable points to primary session's agent.
+  // Marked internal so it doesn't count toward the user-facing concurrent limit.
+  const primarySession = await registry.createSession({ type: 'primary', internal: true });
   agent = primarySession.agent;
 
   console.log(`[ServiceWorker] Primary session created: ${primarySession.sessionId}`);
