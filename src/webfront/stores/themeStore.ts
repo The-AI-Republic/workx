@@ -1,45 +1,116 @@
 /**
  * Theme Store for Side Panel UI
  *
- * Manages UI theme state (terminal vs chatgpt) using Svelte store.
- * Persists theme preference to AgentConfig.
+ * Manages UI theme state using Svelte stores.
+ * Supports 4 theme preferences:
+ *   - terminal: Fixed green-on-black terminal look
+ *   - modern-auto: Modern Chat, follows OS light/dark preference
+ *   - modern-light: Modern Chat, always light
+ *   - modern-dark: Modern Chat, always dark
+ *
+ * Controls the `.dark` class on <html> for Tailwind dark: variant.
  */
 
-import { writable, type Writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 
-export type UITheme = 'terminal' | 'chatgpt';
+export type ThemePreference = 'terminal' | 'modern-auto' | 'modern-light' | 'modern-dark';
+export type UITheme = 'terminal' | 'modern';
 
-// Default to chatgpt theme (Modern Chat style)
-const DEFAULT_THEME: UITheme = 'chatgpt';
+const DEFAULT_PREFERENCE: ThemePreference = 'modern-auto';
 
-// Create the theme store
-function createThemeStore() {
-  const { subscribe, set, update }: Writable<UITheme> = writable(DEFAULT_THEME);
+// Internal writable store for the user's 4-way selection
+const _preference = writable<ThemePreference>(DEFAULT_PREFERENCE);
 
-  return {
-    subscribe,
+// Derived store: collapses all modern-* variants into 'modern'
+export const uiTheme = derived(_preference, ($pref) =>
+  ($pref === 'terminal' ? 'terminal' : 'modern') as UITheme
+);
 
-    /**
-     * Set the UI theme
-     */
-    setTheme: (theme: UITheme) => {
-      set(theme);
-    },
+// Media query for system dark preference
+let mediaQuery: MediaQueryList | null = null;
+let mediaListener: ((e: MediaQueryListEvent) => void) | null = null;
 
-    /**
-     * Initialize theme from config
-     */
-    initialize: (theme: UITheme | undefined) => {
-      set(theme || DEFAULT_THEME);
-    },
+/**
+ * Apply the `.dark` class on <html> based on the current preference.
+ */
+function applyDarkClass(pref: ThemePreference) {
+  if (typeof document === 'undefined') return;
 
-    /**
-     * Toggle between terminal and chatgpt themes
-     */
-    toggle: () => {
-      update((current) => (current === 'terminal' ? 'chatgpt' : 'terminal'));
-    },
-  };
+  const html = document.documentElement;
+
+  switch (pref) {
+    case 'terminal':
+    case 'modern-light':
+      html.classList.remove('dark');
+      break;
+    case 'modern-dark':
+      html.classList.add('dark');
+      break;
+    case 'modern-auto':
+      if (mediaQuery?.matches) {
+        html.classList.add('dark');
+      } else {
+        html.classList.remove('dark');
+      }
+      break;
+  }
 }
 
-export const uiTheme = createThemeStore();
+/**
+ * Set up or tear down the matchMedia listener for modern-auto mode.
+ */
+function updateMediaListener(pref: ThemePreference) {
+  if (typeof window === 'undefined') return;
+
+  // Clean up existing listener
+  if (mediaListener && mediaQuery) {
+    mediaQuery.removeEventListener('change', mediaListener);
+    mediaListener = null;
+  }
+
+  if (pref === 'modern-auto' && typeof window.matchMedia === 'function') {
+    mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaListener = () => applyDarkClass(pref);
+    mediaQuery.addEventListener('change', mediaListener);
+  }
+}
+
+// Subscribe to preference changes to apply side effects
+_preference.subscribe((pref) => {
+  updateMediaListener(pref);
+  applyDarkClass(pref);
+});
+
+/**
+ * Normalize legacy stored values.
+ * 'chatgpt' and 'modern' (without suffix) both map to 'modern-auto'.
+ */
+function normalizePreference(value: string | undefined): ThemePreference {
+  if (!value) return DEFAULT_PREFERENCE;
+  if (value === 'chatgpt' || value === 'modern') return 'modern-auto';
+  if (value === 'terminal' || value === 'modern-auto' || value === 'modern-light' || value === 'modern-dark') {
+    return value as ThemePreference;
+  }
+  return DEFAULT_PREFERENCE;
+}
+
+/**
+ * Public API — mirrors the previous store interface for compatibility.
+ */
+export const themePreference = {
+  subscribe: _preference.subscribe,
+
+  /**
+   * Set the theme preference (accepts the new 4-way value).
+   */
+  setTheme: (pref: ThemePreference) => {
+    _preference.set(pref);
+  },
+
+  /**
+   * Initialize from stored config value (handles legacy 'chatgpt' values).
+   */
+  initialize: (stored: string | undefined) => {
+    _preference.set(normalizePreference(stored));
+  },
+};

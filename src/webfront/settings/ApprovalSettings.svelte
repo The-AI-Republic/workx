@@ -306,7 +306,7 @@
 
   .subsection-description {
     margin: 0 0 0.75rem 0;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
@@ -353,7 +353,7 @@
   }
 
   .mode-desc {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
@@ -403,7 +403,7 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     border-radius: 0.25rem;
   }
 
@@ -422,7 +422,7 @@
     border: none;
     color: inherit;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     padding: 0;
     opacity: 0.6;
     transition: opacity 0.2s;
@@ -456,7 +456,7 @@
   }
 
   .save-message {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
 
   .save-message.success {

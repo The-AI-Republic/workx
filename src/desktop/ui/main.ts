@@ -22,7 +22,6 @@ installChromePolyfill();
 installFetchProxy();
 
 import './desktop.css';
-import '../../webfront/sidepanel.css';
 import '../../webfront/styles.css';
 import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';

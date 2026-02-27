@@ -22,6 +22,9 @@ let composer: PromptComposer | null = null;
 let configuredAgentType: AgentType = 'browserx';
 let staticContext: Partial<RuntimeContext> = {};
 
+/** Dynamic prompt extensions appended after the main system prompt */
+let promptExtensions: Array<() => string> = [];
+
 /**
  * Configure the PromptLoader to use dynamic composition.
  * Called once during agent initialization.
@@ -46,6 +49,15 @@ export function isComposerConfigured(): boolean {
 }
 
 /**
+ * Register a dynamic prompt extension.
+ * The callback is invoked on every loadPrompt() call and its non-empty
+ * return value is appended to the system prompt.
+ */
+export function registerPromptExtension(fn: () => string): void {
+  promptExtensions.push(fn);
+}
+
+/**
  * Load the system prompt for the agent.
  *
  * If PromptComposer is configured: composes a fresh prompt with current
@@ -63,7 +75,7 @@ export async function loadPrompt(): Promise<string> {
         currentDateTime: new Date().toISOString(),
       };
       const prompt = composer.composeMainInstruction(configuredAgentType, context);
-      return prompt;
+      return appendExtensions(prompt);
     } catch (error) {
       console.error('[PromptLoader] composeMainInstruction failed, falling back to default prompt:', error);
     }
@@ -75,7 +87,21 @@ export async function loadPrompt(): Promise<string> {
   } else {
     fallback = defaultPiExtensionPrompt;
   }
-  return fallback;
+  return appendExtensions(fallback);
+}
+
+/**
+ * Append registered prompt extensions to the base prompt.
+ */
+function appendExtensions(base: string): string {
+  if (promptExtensions.length === 0) return base;
+
+  const extras = promptExtensions
+    .map((fn) => fn())
+    .filter(Boolean);
+
+  if (extras.length === 0) return base;
+  return base + '\n\n' + extras.join('\n\n');
 }
 
 /**

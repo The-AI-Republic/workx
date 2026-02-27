@@ -20,18 +20,23 @@
     shouldShowTokenUsage = show;
   });
 
-  // Hide all task cards (started, complete, etc.) when setting is disabled
   $: shouldHideCard = !shouldShowTokenUsage;
 </script>
 
 {#if !shouldHideCard}
   <div class="task-event {currentTheme}">
-    <div class="task-content text-sm">
+    <div class="text-sm
+      {currentTheme === 'modern'
+        ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+        : 'text-term-green'}">
       {typeof event.content === 'string' ? event.content : JSON.stringify(event.content)}
     </div>
 
     {#if event.metadata}
-      <div class="task-metadata text-xs mt-1">
+      <div class="text-sm mt-1
+        {currentTheme === 'modern'
+          ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+          : 'text-gray-500'}">
         {#if event.metadata.model}
           <div>{$_t("Model:")} {event.metadata.model}</div>
         {/if}
@@ -48,23 +53,3 @@
     {/if}
   </div>
 {/if}
-
-<style>
-  /* Terminal theme (default) */
-  .task-event.terminal .task-content {
-    color: #00ff00;
-  }
-
-  .task-event.terminal .task-metadata {
-    color: #6b7280;
-  }
-
-  /* ChatGPT theme */
-  .task-event.chatgpt .task-content {
-    color: var(--chat-text-secondary, #6e6e80);
-  }
-
-  .task-event.chatgpt .task-metadata {
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-</style>
