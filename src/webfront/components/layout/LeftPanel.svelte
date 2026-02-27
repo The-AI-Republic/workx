@@ -19,8 +19,11 @@
   }
 </script>
 
-<div class="left-panel {currentTheme}">
-  <div class="nav-section">
+<div class="flex flex-col h-full w-full p-3
+  {currentTheme === 'modern'
+    ? 'bg-chat-surface dark:bg-chat-surface-dark'
+    : 'bg-term-bg'}">
+  <div class="flex flex-col gap-1">
     {#each NAV_ITEMS as item (item.id)}
       <NavTab
         {item}
@@ -29,46 +32,11 @@
       />
     {/each}
   </div>
-  <div class="spacer"></div>
-  <div class="user-section">
+  <div class="grow"></div>
+  <div class="pt-3
+    {currentTheme === 'modern'
+      ? 'border-t border-chat-border dark:border-chat-border-dark'
+      : 'border-t border-term-dim-green/30'}">
     <UserLoginStatus />
   </div>
 </div>
-
-<style>
-  .left-panel {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    padding: 12px;
-    background: var(--color-term-bg, #000000);
-  }
-
-  .nav-section {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .spacer {
-    flex-grow: 1;
-  }
-
-  .user-section {
-    border-top: 1px solid rgba(0, 204, 0, 0.3);
-    padding-top: 12px;
-  }
-
-  /* ============================================
-     Modern Theme Overrides
-     ============================================ */
-
-  .left-panel.modern {
-    background: var(--chat-card-bg, #f7f7f8);
-  }
-
-  .left-panel.modern .user-section {
-    border-top: 1px solid var(--chat-border, #e5e5e5);
-  }
-</style>

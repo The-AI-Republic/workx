@@ -46,7 +46,7 @@
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="w-[17px] h-[17px]"
+          class="w-[26px] h-[26px]"
           fill="none"
           viewBox="0 0 24 24"
         >

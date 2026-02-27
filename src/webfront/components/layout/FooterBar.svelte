@@ -6,7 +6,6 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import ApprovalModeIndicator from '../common/ApprovalModeIndicator.svelte';
   import { isWideMode, NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import NavTab from './NavTab.svelte';
 
@@ -28,12 +27,11 @@
 </script>
 
 {#if $isWideMode}
-  <!-- Wide mode: minimal footer with just ApprovalModeIndicator -->
+  <!-- Wide mode: minimal footer -->
   <div class="flex items-center p-4
     {currentTheme === 'modern'
       ? 'gap-2 py-2 px-4 border-t border-chat-border dark:border-chat-border-dark'
       : 'gap-3 border-t border-term-dim-green/30'}">
-    <ApprovalModeIndicator />
     <div class="grow"></div>
   </div>
 {:else}
@@ -54,8 +52,6 @@
         />
       {/each}
     </div>
-
-    <ApprovalModeIndicator />
 
     <div class="grow"></div>
 

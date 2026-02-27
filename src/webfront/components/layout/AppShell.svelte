@@ -13,44 +13,18 @@
   onDestroy(unsubTheme);
 </script>
 
-<div class="app-shell {currentTheme}">
+<div class="flex flex-row h-screen overflow-hidden">
   {#if $isWideMode}
-    <div class="left-panel-container">
+    <div class="shrink-0 overflow-visible relative z-1
+      {currentTheme === 'modern'
+        ? 'border-r border-chat-border dark:border-chat-border-dark'
+        : 'border-r border-term-dim-green'}"
+      style="width: var(--left-panel-width, 220px)"
+    >
       <LeftPanel />
     </div>
   {/if}
-  <div class="main-content">
+  <div class="flex-1 overflow-hidden">
     <slot />
   </div>
 </div>
-
-<style>
-  .app-shell {
-    display: flex;
-    flex-direction: row;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  .left-panel-container {
-    width: var(--left-panel-width, 220px);
-    flex-shrink: 0;
-    overflow: visible;
-    border-right: 1px solid var(--color-term-dim-green, #00cc00);
-    position: relative;
-    z-index: 1;
-  }
-
-  .main-content {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  /* ============================================
-     Modern Theme Overrides
-     ============================================ */
-
-  .app-shell.modern .left-panel-container {
-    border-right: 1px solid var(--chat-border, #e5e5e5);
-  }
-</style>
