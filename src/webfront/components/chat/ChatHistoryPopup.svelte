@@ -5,14 +5,11 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
-  // Props
   export let onSelectConversation: (conversationId: string) => void = () => {};
 
-  // State
   let showPopup = false;
   let currentTheme: UITheme = 'terminal';
 
-  // Subscribe to theme store
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
@@ -39,14 +36,17 @@
   <div slot="trigger">
     <Tooltip content={$_t("Chat History")}>
       <button
-        class="history-button {currentTheme}"
+        class="flex items-center justify-center p-1 cursor-pointer transition-all duration-200 active:scale-95
+          {currentTheme === 'modern'
+            ? 'bg-transparent border-none rounded-md text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+            : 'bg-transparent border border-gray-500/50 text-gray-500/80 rounded hover:border-gray-500/80 hover:text-gray-400 hover:bg-gray-500/10'}"
         on:click|stopPropagation={togglePopup}
         aria-label={$_t("View Chat History")}
         aria-expanded={showPopup}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="history-icon"
+          class="w-[17px] h-[17px]"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -65,46 +65,3 @@
     />
   </div>
 </PopupCard>
-
-<style>
-  /* History button - base (Terminal theme) */
-  .history-button {
-    padding: 0.25rem;
-    border-radius: 4px;
-    background: transparent;
-    border: 1px solid rgba(128, 128, 128, 0.5);
-    color: rgba(128, 128, 128, 0.8);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .history-button:hover {
-    border-color: rgba(128, 128, 128, 0.8);
-    color: rgba(160, 160, 160, 1);
-    background: rgba(128, 128, 128, 0.1);
-  }
-
-  .history-button:active {
-    transform: scale(0.95);
-  }
-
-  .history-icon {
-    width: 17px;
-    height: 17px;
-  }
-
-  /* ChatGPT Theme */
-  .history-button.chatgpt {
-    border: none;
-    border-radius: 0.375rem;
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .history-button.chatgpt:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-  }
-</style>

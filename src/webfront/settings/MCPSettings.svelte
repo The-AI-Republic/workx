@@ -923,13 +923,13 @@
   }
 
   .server-url {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     word-break: break-all;
   }
 
   .status-badge {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
     font-weight: 500;
     padding: 0.125rem 0.5rem;
     border-radius: 1rem;
@@ -965,7 +965,7 @@
     padding: 0.5rem;
     background: color-mix(in srgb, var(--browserx-error) 10%, transparent);
     border-radius: 0.375rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-error);
   }
 
@@ -1024,7 +1024,7 @@
   }
 
   .tool-server {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     padding: 0.125rem 0.375rem;
     background: color-mix(in srgb, var(--browserx-primary) 10%, transparent);
     color: var(--browserx-primary);
@@ -1033,7 +1033,7 @@
 
   .tool-description {
     margin: 0;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
   }
@@ -1076,7 +1076,7 @@
 
   .btn-small {
     padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
 
   .btn-icon {
@@ -1148,7 +1148,7 @@
 
   .help-text {
     margin-top: 0.375rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
   }

@@ -5,14 +5,10 @@
   import Tooltip from '../common/Tooltip.svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  // import SchedulerButton from '../scheduler/SchedulerButton.svelte';
-  // import SchedulerPopup from '../scheduler/SchedulerPopup.svelte';
   import ApprovalModeIndicator from '../common/ApprovalModeIndicator.svelte';
 
   let currentTheme: UITheme = 'terminal';
-  // let showSchedulerPopup = false;
 
-  // Subscribe to theme store
   uiTheme.subscribe((theme) => {
     currentTheme = theme;
   });
@@ -24,34 +20,26 @@
   function handleOpenSkills() {
     push('/skills');
   }
-
-  // function handleSchedulerClick() {
-  //   showSchedulerPopup = !showSchedulerPopup;
-  // }
-
-  // function handleCloseSchedulerPopup() {
-  //   showSchedulerPopup = false;
-  // }
 </script>
 
-<div class="footer-bar {currentTheme}">
-  <!-- User Login Status (includes Settings in menu when logged in) -->
+<div class="flex items-center p-4
+  {currentTheme === 'modern'
+    ? 'gap-2 py-2 px-4 border-t border-chat-border dark:border-chat-border-dark'
+    : 'gap-3 border-t border-term-dim-green/30'}">
   <UserLoginStatus />
 
-  <!-- Scheduler Button (hidden while feature is being improved) -->
-  <!-- <SchedulerButton on:click={handleSchedulerClick} /> -->
-
-  <!-- Approval Mode Indicator -->
   <ApprovalModeIndicator />
 
-  <!-- Skills Button -->
   <Tooltip content={$_t("Skills")}>
     <button
-      class="function-button"
+      class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+        {currentTheme === 'modern'
+          ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+          : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
       on:click={handleOpenSkills}
       aria-label={$_t("Skills")}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
         <line x1="9" y1="7" x2="17" y2="7"></line>
@@ -60,19 +48,19 @@
     </button>
   </Tooltip>
 
-  <!-- Spacer to push other buttons to the right -->
-  <div class="flex-grow"></div>
+  <div class="grow"></div>
 
-  <!-- Settings Button (shown when not logged in) -->
   {#if !$userStore.isLoggedIn}
     <Tooltip content={$_t("Settings")}>
       <button
-        class="function-button"
+        class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+          {currentTheme === 'modern'
+            ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+            : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
         on:click={handleOpenSettings}
         aria-label={$_t("Settings")}
       >
-        <!-- Gear Icon SVG -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -80,72 +68,3 @@
     </Tooltip>
   {/if}
 </div>
-
-<!-- Scheduler Popup (hidden while feature is being improved) -->
-<!-- <SchedulerPopup show={showSchedulerPopup} onClose={handleCloseSchedulerPopup} /> -->
-
-<style>
-  .footer-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    border-top: 1px solid var(--color-term-border);
-  }
-
-  .flex-grow {
-    flex-grow: 1;
-  }
-
-  /* Function button - Terminal theme (default) */
-  .function-button {
-    position: relative;
-    padding: 0.5rem;
-    border-radius: 9999px;
-    background: #000000;
-    border: 1px solid #00cc00;
-    color: #00cc00;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .function-button:hover {
-    transform: scale(1.1);
-    background: rgba(0, 204, 0, 0.1);
-  }
-
-  .function-button:active {
-    transform: scale(0.95);
-  }
-
-  .button-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .footer-bar.chatgpt {
-    border-top: 1px solid var(--chat-border, #e5e5e5);
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .footer-bar.chatgpt .function-button {
-    background: transparent;
-    border: none;
-    border-radius: 0.5rem;
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .footer-bar.chatgpt .function-button:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-    transform: none;
-  }
-</style>

@@ -335,7 +335,7 @@
 
     /* Typography */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     line-height: 1.2;
     white-space: nowrap;

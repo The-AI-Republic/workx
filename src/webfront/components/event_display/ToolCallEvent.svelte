@@ -23,7 +23,7 @@
   </div>
 
   {#if event.metadata}
-    <div class="text-xs text-gray-500 mt-1">
+    <div class="text-sm text-gray-500 mt-1">
       {#if event.metadata.command}
         <div>{$_t("Command:")} {event.metadata.command}</div>
       {/if}

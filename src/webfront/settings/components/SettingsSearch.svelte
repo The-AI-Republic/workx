@@ -405,7 +405,7 @@
   }
 
   .result-section-badge {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
     font-weight: 500;
     padding: 0.0625rem 0.375rem;
     background: color-mix(in srgb, var(--browserx-primary) 12%, transparent);
@@ -415,7 +415,7 @@
   }
 
   .result-description {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     line-height: 1.4;
   }
@@ -430,7 +430,7 @@
   .more-results {
     padding: 0.5rem 0.75rem;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
     border-top: 1px solid var(--browserx-border);
   }
