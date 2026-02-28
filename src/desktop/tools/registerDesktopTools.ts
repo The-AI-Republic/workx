@@ -153,8 +153,12 @@ export async function registerDesktopToolsImpl(
   // ──────────────────────────────────────────────────────────────────────
 
   // Planning tool - always enabled (zero risk)
-  const planningTool = new PlanningTool(getTaskStore());
-  await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+  try {
+    const planningTool = new PlanningTool(getTaskStore());
+    await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+  } catch (error) {
+    console.error('[registerDesktopTools] Failed to register PlanningTool (StorageProvider unavailable):', error);
+  }
 
   // Web search tool (zero risk)
   const webSearchTool = new WebSearchTool();

@@ -181,9 +181,13 @@ export async function registerTools(
     // Use DOMTool with action parameter instead
 
     // Planning Tool - Always enabled for task planning and progress tracking
-    const planningTool = new PlanningTool(getTaskStore());
-    await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
-    console.log('PlanningTool registered (always enabled)');
+    try {
+      const planningTool = new PlanningTool(getTaskStore());
+      await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+      console.log('PlanningTool registered (always enabled)');
+    } catch (planError) {
+      console.error('[registerTools] Failed to register PlanningTool (StorageProvider unavailable):', planError);
+    }
 
     console.log('Advanced browser tools registration completed');
   } catch (error) {

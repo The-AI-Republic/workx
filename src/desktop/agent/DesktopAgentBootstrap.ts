@@ -104,6 +104,19 @@ export class DesktopAgentBootstrap {
       // Wire up agent events to be dispatched through the channel
       this.setupEventForwarding(channelManager);
 
+      // 5b. Initialize StorageProvider before agent — PlanningTool requires it
+      // via getTaskStore() during tool registration in agent.initialize().
+      const { initializeStorageProvider, isStorageProviderInitialized } = await import('@/core/storage');
+      if (!isStorageProviderInitialized()) {
+        try {
+          await initializeStorageProvider();
+          console.log('[DesktopAgentBootstrap] StorageProvider initialized');
+        } catch (error) {
+          console.error('[DesktopAgentBootstrap] Failed to initialize StorageProvider:', error);
+          console.error('[DesktopAgentBootstrap] PlanningTool will be unavailable this session');
+        }
+      }
+
       // 6. Initialize the agent (loads model client, tools, etc.)
       // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
