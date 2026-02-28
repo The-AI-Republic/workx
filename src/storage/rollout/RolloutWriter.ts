@@ -36,13 +36,7 @@ export class RolloutWriter {
    * @param provider - Storage provider to use
    * @returns Promise resolving to RolloutWriter instance
    */
-  static async create(rolloutId: ConversationId, startSequence = 0, provider?: RolloutStorageProvider): Promise<RolloutWriter> {
-    if (!provider) {
-      // Fallback: get provider from RolloutRecorder singleton
-      // This avoids a circular import by lazy-importing
-      const { RolloutRecorder } = await import('./RolloutRecorder');
-      provider = await RolloutRecorder.getProvider();
-    }
+  static async create(rolloutId: ConversationId, startSequence = 0, provider: RolloutStorageProvider): Promise<RolloutWriter> {
     return new RolloutWriter(provider, rolloutId, startSequence);
   }
 

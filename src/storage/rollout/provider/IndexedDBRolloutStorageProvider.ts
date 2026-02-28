@@ -21,7 +21,7 @@ import {
   STORE_ROLLOUTS,
   STORE_ROLLOUT_ITEMS,
 } from '../types';
-import { isValidUUID, createDatabaseError } from '../helpers';
+import { createDatabaseError } from '../helpers';
 
 export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
   private db: IDBDatabase | null = null;
@@ -97,7 +97,7 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
 
   async addItems(
     rolloutId: ConversationId,
-    items: Array<{ timestamp: string; sequence: number; type: string; payload: any }>
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>
   ): Promise<void> {
     if (items.length === 0) return;
     const db = this.getDb();
@@ -218,18 +218,6 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
       return { items: [], nextCursor: undefined, numScanned: 0, reachedCap: false };
     }
 
-    // Validate page size
-    if (pageSize < 1 || pageSize > 100) {
-      throw new Error('Invalid page size: must be between 1 and 100');
-    }
-
-    // Validate cursor if provided
-    if (cursor) {
-      if (isNaN(cursor.timestamp) || !isValidUUID(cursor.id)) {
-        throw new Error('Invalid cursor: timestamp or ID is malformed');
-      }
-    }
-
     try {
       const db = this.getDb();
 
@@ -287,56 +275,31 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
 
   async getStorageStats(): Promise<StorageStats> {
     const db = this.getDb();
-    const stats: StorageStats = {
-      rolloutCount: 0,
-      itemCount: 0,
-      rolloutBytes: 0,
-      itemBytes: 0,
-    };
 
-    // Count rollouts
-    const rolloutsStore = db.transaction(STORE_ROLLOUTS, 'readonly').objectStore(STORE_ROLLOUTS);
-    const rolloutsCountRequest = rolloutsStore.count();
-    stats.rolloutCount = await new Promise<number>((resolve, reject) => {
-      rolloutsCountRequest.onsuccess = () => resolve(rolloutsCountRequest.result);
-      rolloutsCountRequest.onerror = () =>
-        reject(createDatabaseError('countRollouts', rolloutsCountRequest.error?.message || 'unknown error'));
+    // Use a single transaction for all reads to avoid auto-commit between awaits
+    return new Promise<StorageStats>((resolve, reject) => {
+      const tx = db.transaction([STORE_ROLLOUTS, STORE_ROLLOUT_ITEMS], 'readonly');
+      const rolloutsStore = tx.objectStore(STORE_ROLLOUTS);
+      const itemsStore = tx.objectStore(STORE_ROLLOUT_ITEMS);
+
+      const rolloutsGetAllRequest = rolloutsStore.getAll();
+      const itemsGetAllRequest = itemsStore.getAll();
+
+      tx.oncomplete = () => {
+        const rollouts = (rolloutsGetAllRequest.result || []) as RolloutMetadataRecord[];
+        const items = (itemsGetAllRequest.result || []) as RolloutItemRecord[];
+
+        resolve({
+          rolloutCount: rollouts.length,
+          itemCount: items.length,
+          rolloutBytes: rollouts.reduce((total, r) => total + JSON.stringify(r).length, 0),
+          itemBytes: items.reduce((total, i) => total + JSON.stringify(i).length, 0),
+        });
+      };
+
+      tx.onerror = () =>
+        reject(createDatabaseError('getStorageStats', tx.error?.message || 'unknown error'));
     });
-
-    // Get all rollouts to calculate size
-    const rolloutsGetAllRequest = rolloutsStore.getAll();
-    const rollouts = await new Promise<RolloutMetadataRecord[]>((resolve, reject) => {
-      rolloutsGetAllRequest.onsuccess = () =>
-        resolve(rolloutsGetAllRequest.result as RolloutMetadataRecord[]);
-      rolloutsGetAllRequest.onerror = () =>
-        reject(createDatabaseError('getRollouts', rolloutsGetAllRequest.error?.message || 'unknown error'));
-    });
-    stats.rolloutBytes = rollouts.reduce((total, rollout) => {
-      return total + JSON.stringify(rollout).length;
-    }, 0);
-
-    // Count items
-    const itemsStore = db.transaction(STORE_ROLLOUT_ITEMS, 'readonly').objectStore(STORE_ROLLOUT_ITEMS);
-    const itemsCountRequest = itemsStore.count();
-    stats.itemCount = await new Promise<number>((resolve, reject) => {
-      itemsCountRequest.onsuccess = () => resolve(itemsCountRequest.result);
-      itemsCountRequest.onerror = () =>
-        reject(createDatabaseError('countItems', itemsCountRequest.error?.message || 'unknown error'));
-    });
-
-    // Get all items to calculate size
-    const itemsGetAllRequest = itemsStore.getAll();
-    const items = await new Promise<RolloutItemRecord[]>((resolve, reject) => {
-      itemsGetAllRequest.onsuccess = () =>
-        resolve(itemsGetAllRequest.result as RolloutItemRecord[]);
-      itemsGetAllRequest.onerror = () =>
-        reject(createDatabaseError('getItems', itemsGetAllRequest.error?.message || 'unknown error'));
-    });
-    stats.itemBytes = items.reduce((total, item) => {
-      return total + JSON.stringify(item).length;
-    }, 0);
-
-    return stats;
   }
 
   // ==========================================================================

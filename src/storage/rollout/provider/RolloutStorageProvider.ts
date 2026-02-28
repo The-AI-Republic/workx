@@ -11,7 +11,6 @@ import type {
   ConversationId,
   RolloutMetadataRecord,
   RolloutItemRecord,
-  RolloutItem,
   ConversationsPage,
   Cursor,
 } from '../types';
@@ -37,7 +36,7 @@ export interface RolloutStorageProvider {
   // Items (append-only log)
   addItems(
     rolloutId: ConversationId,
-    items: Array<{ timestamp: string; sequence: number; type: string; payload: any }>
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>
   ): Promise<void>;
   getItemsByRolloutId(rolloutId: ConversationId): Promise<RolloutItemRecord[]>;
   getLastSequenceNumber(rolloutId: ConversationId): Promise<number>;

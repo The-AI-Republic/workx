@@ -43,6 +43,10 @@ pub fn rollout_db_init() -> Result<(), String> {
     conn.execute_batch("PRAGMA journal_mode=WAL;")
         .map_err(|e| format!("Failed to set WAL mode: {}", e))?;
 
+    // Enable foreign key enforcement (off by default in SQLite)
+    conn.execute_batch("PRAGMA foreign_keys = ON;")
+        .map_err(|e| format!("Failed to enable foreign keys: {}", e))?;
+
     // Create tables and indexes
     conn.execute_batch(
         "
@@ -60,7 +64,7 @@ pub fn rollout_db_init() -> Result<(), String> {
 
         CREATE TABLE IF NOT EXISTS rollout_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id),
+            rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE CASCADE,
             timestamp TEXT NOT NULL,
             sequence INTEGER NOT NULL,
             type TEXT NOT NULL,
@@ -209,6 +213,8 @@ pub fn rollout_db_add_items(rollout_id: String, items: String) -> Result<(), Str
         return Ok(());
     }
 
+    // SAFETY: unchecked_transaction is safe here because the Mutex<Option<Connection>>
+    // guarantees exclusive access to the connection within this scope.
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {}", e))?;
@@ -232,7 +238,7 @@ pub fn rollout_db_add_items(rollout_id: String, items: String) -> Result<(), Str
     let count = item_list.len() as i64;
     tx.execute(
         "UPDATE rollout_metadata SET item_count = item_count + ?1, updated = ?2 WHERE id = ?3",
-        params![count, chrono_now_ms(), rollout_id],
+        params![count, epoch_ms(), rollout_id],
     )
     .map_err(|e| format!("Failed to update metadata: {}", e))?;
 
@@ -335,7 +341,7 @@ pub fn rollout_db_cleanup_expired() -> Result<i64, String> {
     let db = DB.lock().map_err(|e| e.to_string())?;
     let conn = db.as_ref().ok_or("Database not initialized")?;
 
-    let now = chrono_now_ms();
+    let now = epoch_ms();
 
     // Find expired IDs
     let mut stmt = conn
@@ -354,6 +360,8 @@ pub fn rollout_db_cleanup_expired() -> Result<i64, String> {
 
     let count = expired_ids.len() as i64;
 
+    // SAFETY: unchecked_transaction is safe here because the Mutex<Option<Connection>>
+    // guarantees exclusive access to the connection within this scope.
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {}", e))?;
@@ -443,8 +451,12 @@ pub fn rollout_db_list_conversations(
     let conn = db.as_ref().ok_or("Database not initialized")?;
 
     // Parse cursor if provided
-    let cursor_data: Option<CursorData> =
-        cursor.as_deref().and_then(|c| serde_json::from_str(c).ok());
+    let cursor_data: Option<CursorData> = match cursor.as_deref() {
+        Some(c) => Some(
+            serde_json::from_str(c).map_err(|e| format!("Invalid cursor JSON: {}", e))?
+        ),
+        None => None,
+    };
 
     let (sql, params_vec): (String, Vec<Box<dyn rusqlite::types::ToSql>>) =
         if let Some(ref cd) = cursor_data {
@@ -529,7 +541,7 @@ pub fn rollout_db_list_conversations(
     let result = serde_json::json!({
         "items": items,
         "nextCursor": next_cursor,
-        "numScanned": rows.len(),
+        "numScanned": page_rows.len(),
         "reachedCap": false,
     });
 
@@ -548,7 +560,7 @@ pub fn rollout_db_close() -> Result<(), String> {
 // Helper Types
 // ============================================================================
 
-fn chrono_now_ms() -> i64 {
+fn epoch_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
@@ -619,6 +631,7 @@ mod tests {
     /// Create an in-memory connection and initialize schema.
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
         conn.execute_batch(
             "
             CREATE TABLE rollout_metadata (
@@ -635,7 +648,7 @@ mod tests {
 
             CREATE TABLE rollout_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id),
+                rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE CASCADE,
                 timestamp TEXT NOT NULL,
                 sequence INTEGER NOT NULL,
                 type TEXT NOT NULL,
@@ -798,7 +811,7 @@ mod tests {
     #[test]
     fn test_cleanup_expired() {
         let conn = setup_test_db();
-        let now = chrono_now_ms();
+        let now = epoch_ms();
 
         // Expired
         insert_metadata(&conn, "expired1", 1000, 2000, Some(now - 1000), 2);
@@ -902,9 +915,7 @@ mod tests {
         insert_item(&conn, "r1", 1, "{}");
         insert_item(&conn, "r1", 2, "{}");
 
-        // Delete items first (simulating cascade), then metadata
-        conn.execute("DELETE FROM rollout_items WHERE rollout_id = 'r1'", [])
-            .unwrap();
+        // Deleting metadata should cascade-delete items automatically
         conn.execute("DELETE FROM rollout_metadata WHERE id = 'r1'", [])
             .unwrap();
 

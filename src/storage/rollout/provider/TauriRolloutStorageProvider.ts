@@ -52,7 +52,7 @@ export class TauriRolloutStorageProvider implements RolloutStorageProvider {
   async getAllMetadata(): Promise<RolloutMetadataRecord[]> {
     const json = await this.cmd<string>('rollout_db_get_all_metadata');
     const rows = JSON.parse(json) as SerializedMetadata[];
-    return rows.map((r) => this.deserializeMetadata(JSON.stringify(r)));
+    return rows.map((r) => this.deserializeMetadataFromObject(r));
   }
 
   // ==========================================================================
@@ -61,7 +61,7 @@ export class TauriRolloutStorageProvider implements RolloutStorageProvider {
 
   async addItems(
     rolloutId: ConversationId,
-    items: Array<{ timestamp: string; sequence: number; type: string; payload: any }>
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>
   ): Promise<void> {
     if (items.length === 0) return;
     // Serialize payloads to JSON strings for Rust
@@ -153,6 +153,13 @@ export class TauriRolloutStorageProvider implements RolloutStorageProvider {
    */
   private deserializeMetadata(json: string): RolloutMetadataRecord {
     const raw = JSON.parse(json) as SerializedMetadata;
+    return this.deserializeMetadataFromObject(raw);
+  }
+
+  /**
+   * Deserialize metadata from an already-parsed object (avoids re-stringifying).
+   */
+  private deserializeMetadataFromObject(raw: SerializedMetadata): RolloutMetadataRecord {
     return {
       id: raw.id,
       created: raw.created,

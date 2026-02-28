@@ -66,6 +66,9 @@ export class RolloutRecorder {
         RolloutRecorder._provider = p;
         RolloutRecorder._providerPromise = null;
         return p;
+      }).catch((err) => {
+        RolloutRecorder._providerPromise = null;
+        throw err;
       });
     }
     return RolloutRecorder._providerPromise;
