@@ -53,7 +53,7 @@ import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 // is banned in Chrome extension service workers by the HTML specification.
 import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
-import { setStorageProvider } from '../../core/storage';
+import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import type {
@@ -134,9 +134,19 @@ async function doInitialize(): Promise<void> {
   // Create message router (must be created before agent)
   router = new MessageRouter('background');
 
-  // Initialize storage layer BEFORE agent creation
-  // PlanningTool requires StorageProvider via getTaskStore() during tool registration
-  await initializeStorage();
+  // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
+  // during tool registration in registry.createSession().
+  // The rest of storage init (ConfigStorage, CredentialStore, CacheManager, etc.)
+  // stays at the end of doInitialize() to preserve the original initialization order.
+  try {
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    setStorageProvider(storageProvider);
+    console.log('[ServiceWorker] StorageProvider initialized (early — for PlanningTool)');
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to initialize StorageProvider:', error);
+    console.error('[ServiceWorker] PlanningTool will be unavailable this session');
+  }
 
   // Feature 015: Initialize AgentRegistry instead of singleton agent
   // Load max concurrent sessions from user preferences
@@ -203,6 +213,10 @@ async function doInitialize(): Promise<void> {
 
   // Setup periodic tasks
   setupPeriodicTasks();
+
+  // Initialize storage layer (ConfigStorage, CredentialStore, CacheManager, etc.)
+  // StorageProvider is already initialized above (early init for PlanningTool).
+  await initializeStorage();
 }
 
 /**
@@ -1726,15 +1740,19 @@ async function initializeStorage(): Promise<void> {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
   }
 
-  // Initialize StorageProvider (IndexedDB — for task management and other collections)
-  try {
-    const storageProvider = new IndexedDBStorageProvider();
-    await storageProvider.initialize();
-    setStorageProvider(storageProvider);
-    console.log('[ServiceWorker] StorageProvider initialized');
-  } catch (error) {
-    console.error('[ServiceWorker] Failed to initialize StorageProvider:', error);
-    console.error('[ServiceWorker] PlanningTool will be unavailable this session');
+  // StorageProvider is initialized early in doInitialize() (before agent creation)
+  // so that PlanningTool can access it during tool registration.
+  // Skip here if already initialized.
+  if (!isStorageProviderInitialized()) {
+    try {
+      const storageProvider = new IndexedDBStorageProvider();
+      await storageProvider.initialize();
+      setStorageProvider(storageProvider);
+      console.log('[ServiceWorker] StorageProvider initialized');
+    } catch (error) {
+      console.error('[ServiceWorker] Failed to initialize StorageProvider:', error);
+      console.error('[ServiceWorker] PlanningTool will be unavailable this session');
+    }
   }
 
   // Initialize cache manager
