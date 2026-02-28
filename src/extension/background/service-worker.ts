@@ -134,6 +134,10 @@ async function doInitialize(): Promise<void> {
   // Create message router (must be created before agent)
   router = new MessageRouter('background');
 
+  // Initialize storage layer BEFORE agent creation
+  // PlanningTool requires StorageProvider via getTaskStore() during tool registration
+  await initializeStorage();
+
   // Feature 015: Initialize AgentRegistry instead of singleton agent
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
@@ -199,9 +203,6 @@ async function doInitialize(): Promise<void> {
 
   // Setup periodic tasks
   setupPeriodicTasks();
-
-  // Initialize storage layer
-  await initializeStorage();
 }
 
 /**
@@ -1732,7 +1733,8 @@ async function initializeStorage(): Promise<void> {
     setStorageProvider(storageProvider);
     console.log('[ServiceWorker] StorageProvider initialized');
   } catch (error) {
-    console.warn('[ServiceWorker] Failed to initialize StorageProvider:', error);
+    console.error('[ServiceWorker] Failed to initialize StorageProvider:', error);
+    console.error('[ServiceWorker] PlanningTool will be unavailable this session');
   }
 
   // Initialize cache manager
