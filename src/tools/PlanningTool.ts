@@ -189,22 +189,29 @@ export class PlanningTool extends BaseTool {
       }
     }
 
-    const result = await this.taskStore.createPlan(sessionId, {
-      plan_summary: request.plan_summary,
-      plan_detail: request.plan_detail,
-      tasks: request.tasks,
-    });
+    try {
+      const result = await this.taskStore.createPlan(sessionId, {
+        plan_summary: request.plan_summary,
+        plan_detail: request.plan_detail,
+        tasks: request.tasks,
+      });
 
-    return {
-      success: true,
-      message: `Plan created: ${result.tasks.length} tasks`,
-      taskIds: result.tasks.map((t) => t.id),
-      tasks: result.allTasks,
-      _taskEvent: {
-        eventType: 'plan_created',
-        allTasks: result.allTasks,
-      },
-    };
+      return {
+        success: true,
+        message: `Plan created: ${result.tasks.length} tasks`,
+        taskIds: result.tasks.map((t) => t.id),
+        tasks: result.allTasks,
+        _taskEvent: {
+          eventType: 'plan_created',
+          allTasks: result.allTasks,
+        },
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || String(error),
+      };
+    }
   }
 
   private async executeUpdate(sessionId: string, request: any): Promise<any> {
@@ -212,6 +219,15 @@ export class PlanningTool extends BaseTool {
       return {
         success: false,
         error: 'update command requires taskId',
+      };
+    }
+
+    // Validate status value if provided
+    const VALID_STATUSES = ['pending', 'in_progress', 'completed', 'deleted'];
+    if (request.status !== undefined && !VALID_STATUSES.includes(request.status)) {
+      return {
+        success: false,
+        error: `Invalid status '${request.status}'. Must be: ${VALID_STATUSES.join(', ')}`,
       };
     }
 
@@ -260,11 +276,18 @@ export class PlanningTool extends BaseTool {
   }
 
   private async executeList(sessionId: string): Promise<any> {
-    const tasks = await this.taskStore.list(sessionId);
-    return {
-      success: true,
-      tasks,
-    };
+    try {
+      const tasks = await this.taskStore.list(sessionId);
+      return {
+        success: true,
+        tasks,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || String(error),
+      };
+    }
   }
 
   private async executeGet(sessionId: string, request: any): Promise<any> {
@@ -275,25 +298,39 @@ export class PlanningTool extends BaseTool {
       };
     }
 
-    const task = await this.taskStore.get(sessionId, request.taskId);
-    if (!task) {
+    try {
+      const task = await this.taskStore.get(sessionId, request.taskId);
+      if (!task) {
+        return {
+          success: false,
+          error: `Task not found: ${request.taskId}`,
+        };
+      }
+
+      return {
+        success: true,
+        ...task,
+      };
+    } catch (error: any) {
       return {
         success: false,
-        error: `Task not found: ${request.taskId}`,
+        error: error.message || String(error),
       };
     }
-
-    return {
-      success: true,
-      ...task,
-    };
   }
 
   private async executeGetPlan(sessionId: string): Promise<any> {
-    const plan = await this.taskStore.getPlan(sessionId);
-    return {
-      success: true,
-      ...plan,
-    };
+    try {
+      const plan = await this.taskStore.getPlan(sessionId);
+      return {
+        success: true,
+        ...plan,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || String(error),
+      };
+    }
   }
 }

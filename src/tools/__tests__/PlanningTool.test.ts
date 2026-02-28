@@ -360,6 +360,83 @@ describe('PlanningTool', () => {
     });
   });
 
+  // ── update command (validation) ─────────────────────────────────────
+
+  describe('update command (validation)', () => {
+    beforeEach(async () => {
+      await tool.execute(
+        {
+          command: 'plan',
+          tasks: [{ subject: 'Task A', task_description: 'Do A' }],
+        },
+        withSession,
+      );
+    });
+
+    it('rejects invalid status value', async () => {
+      const result = await tool.execute(
+        { command: 'update', taskId: '1', status: 'bogus' },
+        withSession,
+      );
+
+      expect(result.data.success).toBe(false);
+      expect(result.data.error).toContain("Invalid status 'bogus'");
+    });
+
+    it('rejects task with empty-string subject in plan', async () => {
+      const result = await tool.execute(
+        {
+          command: 'plan',
+          tasks: [{ subject: '', task_description: 'Desc' }],
+        },
+        withSession,
+      );
+
+      expect(result.data.success).toBe(false);
+      expect(result.data.error).toContain('subject');
+    });
+
+    it('rejects task with empty-string task_description in plan', async () => {
+      const result = await tool.execute(
+        {
+          command: 'plan',
+          tasks: [{ subject: 'Task', task_description: '' }],
+        },
+        withSession,
+      );
+
+      expect(result.data.success).toBe(false);
+      expect(result.data.error).toContain('task_description');
+    });
+  });
+
+  // ── get command (deleted task) ────────────────────────────────────
+
+  describe('get command (deleted task)', () => {
+    it('returns not found for deleted task', async () => {
+      await tool.execute(
+        {
+          command: 'plan',
+          tasks: [{ subject: 'Task', task_description: 'Desc' }],
+        },
+        withSession,
+      );
+
+      await tool.execute(
+        { command: 'update', taskId: '1', status: 'deleted' },
+        withSession,
+      );
+
+      const result = await tool.execute(
+        { command: 'get', taskId: '1' },
+        withSession,
+      );
+
+      expect(result.data.success).toBe(false);
+      expect(result.data.error).toContain('Task not found');
+    });
+  });
+
   // ── get_plan command ────────────────────────────────────────────────
 
   describe('get_plan command', () => {

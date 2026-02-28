@@ -102,10 +102,13 @@ export class TaskStore {
 
   /**
    * Get a single task by ID from current plan.
+   * Returns null for deleted tasks.
    */
   async get(sessionId: string, taskId: string): Promise<Task | null> {
     const blob = await this.load(sessionId);
-    return blob.tasks.find((t) => t.id === taskId) ?? null;
+    const task = blob.tasks.find((t) => t.id === taskId);
+    if (!task || task.status === 'deleted') return null;
+    return task;
   }
 
   /**
@@ -205,6 +208,8 @@ export class TaskStore {
             );
           }
         }
+        // Clear stale blocks references on the completed/deleted task itself
+        task.blocks = [];
       }
     }
 
@@ -271,17 +276,17 @@ export class TaskStore {
 
   /**
    * BFS cycle detection.
-   * Returns true if adding an edge from `sourceId` blocks `targetId`
-   * would create a cycle (i.e., targetId can already reach sourceId
-   * through existing `blocks` edges).
+   * Returns true if adding an edge where `sourceId` blocks `targetId`
+   * would create a cycle. Checks whether sourceId can already reach
+   * targetId through existing `blocks` edges — if so, adding the
+   * reverse direction would close a loop.
    */
   private wouldCreateCycle(
     tasks: Task[],
     sourceId: string,
     targetId: string,
   ): boolean {
-    // We're checking: does targetId → ... → sourceId already exist?
-    // If sourceId == targetId, self-loop
+    // Self-loop check
     if (sourceId === targetId) return true;
 
     const taskMap = new Map(tasks.map((t) => [t.id, t]));

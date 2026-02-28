@@ -434,6 +434,101 @@ describe('TaskStore', () => {
     });
   });
 
+  // ── get (deleted tasks) ─────────────────────────────────────────────
+
+  describe('get (deleted tasks)', () => {
+    it('returns null for deleted task', async () => {
+      await taskStore.createPlan(SESSION_ID, {
+        tasks: [
+          { subject: 'A', task_description: 'Do A' },
+          { subject: 'B', task_description: 'Do B' },
+        ],
+      });
+
+      await taskStore.update(SESSION_ID, '1', { status: 'deleted' });
+
+      const task = await taskStore.get(SESSION_ID, '1');
+      expect(task).toBeNull();
+    });
+  });
+
+  // ── update (no-op and edge cases) ─────────────────────────────────
+
+  describe('update (edge cases)', () => {
+    beforeEach(async () => {
+      await taskStore.createPlan(SESSION_ID, {
+        tasks: [
+          { subject: 'A', task_description: 'Do A' },
+          { subject: 'B', task_description: 'Do B' },
+        ],
+      });
+    });
+
+    it('succeeds with empty updates (no-op)', async () => {
+      const result = await taskStore.update(SESSION_ID, '1', {});
+
+      expect(result.task.id).toBe('1');
+      expect(result.task.subject).toBe('A');
+      expect(result.task.status).toBe('pending');
+    });
+
+    it('clears completed task blocks array after auto-unblock', async () => {
+      // A blocks B
+      await taskStore.update(SESSION_ID, '1', { addBlocks: ['2'] });
+
+      const beforeComplete = await taskStore.get(SESSION_ID, '1');
+      expect(beforeComplete!.blocks).toContain('2');
+
+      // Complete A — should auto-unblock B and clear A's blocks
+      await taskStore.update(SESSION_ID, '1', { status: 'completed' });
+
+      const afterComplete = await taskStore.get(SESSION_ID, '1');
+      expect(afterComplete!.blocks).toEqual([]);
+
+      const taskB = await taskStore.get(SESSION_ID, '2');
+      expect(taskB!.blockedBy).toEqual([]);
+    });
+  });
+
+  // ── Multi-session isolation ───────────────────────────────────────
+
+  describe('multi-session isolation', () => {
+    it('keeps sessions independent', async () => {
+      const SESSION_A = 'session-a';
+      const SESSION_B = 'session-b';
+
+      await taskStore.createPlan(SESSION_A, {
+        tasks: [{ subject: 'A task', task_description: 'For A' }],
+      });
+
+      await taskStore.createPlan(SESSION_B, {
+        tasks: [
+          { subject: 'B task 1', task_description: 'For B' },
+          { subject: 'B task 2', task_description: 'For B' },
+        ],
+      });
+
+      const listA = await taskStore.list(SESSION_A);
+      const listB = await taskStore.list(SESSION_B);
+
+      expect(listA).toHaveLength(1);
+      expect(listA[0].subject).toBe('A task');
+
+      expect(listB).toHaveLength(2);
+      expect(listB[0].subject).toBe('B task 1');
+    });
+
+    it('does not return tasks from other sessions via get()', async () => {
+      await taskStore.createPlan('session-x', {
+        tasks: [{ subject: 'X task', task_description: 'For X' }],
+      });
+
+      // Task ID '1' exists in session-x but not session-y
+      const task = await taskStore.get('session-y', '1');
+      expect(task).toBeNull();
+    });
+  });
+
   // ── Empty session defaults ──────────────────────────────────────────
 
   describe('empty session', () => {
