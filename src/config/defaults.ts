@@ -9,7 +9,7 @@ export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
   telemetryEnabled: false,
   theme: 'system',
-  uiTheme: 'chatgpt',
+  uiTheme: 'modern-auto',
   autoStartEnabled: false,
   shortcuts: {},
   experimental: {}

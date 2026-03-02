@@ -98,7 +98,7 @@
       <h4 class="text-base font-semibold text-gray-100 mb-1">
         {model.displayName}
       </h4>
-      <p class="text-xs text-gray-400">
+      <p class="text-sm text-gray-400">
         {$_t('Provider:')} {model.provider.toUpperCase()}
       </p>
     </div>
@@ -141,22 +141,22 @@
       </div>
       <div class="flex flex-wrap gap-2 ml-6">
         {#if model.supportsReasoning}
-          <span class="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">
+          <span class="px-2 py-1 text-sm bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">
             {$_t('Reasoning')}
           </span>
         {/if}
         {#if model.supportsVerbosity}
-          <span class="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded border border-purple-500/30">
+          <span class="px-2 py-1 text-sm bg-purple-500/20 text-purple-400 rounded border border-purple-500/30">
             {$_t('Verbosity Control')}
           </span>
         {/if}
         {#if model.supportsReasoningSummaries}
-          <span class="px-2 py-1 text-xs bg-indigo-500/20 text-indigo-400 rounded border border-indigo-500/30">
+          <span class="px-2 py-1 text-sm bg-indigo-500/20 text-indigo-400 rounded border border-indigo-500/30">
             {$_t('Reasoning Summaries')}
           </span>
         {/if}
         {#if !model.supportsReasoning && !model.supportsVerbosity && !model.supportsReasoningSummaries}
-          <span class="text-xs text-gray-500">{$_t('Standard capabilities')}</span>
+          <span class="text-sm text-gray-500">{$_t('Standard capabilities')}</span>
         {/if}
       </div>
     </div>
@@ -164,7 +164,7 @@
     <!-- Reasoning Effort Levels -->
     {#if model.supportsReasoning && model.reasoningEfforts && model.reasoningEfforts.length > 0}
       <div class="mb-3">
-        <p class="text-xs text-gray-400 mb-1 ml-6">
+        <p class="text-sm text-gray-400 mb-1 ml-6">
           {$_t('Reasoning levels:')} {model.reasoningEfforts.join(', ')}
         </p>
       </div>
@@ -173,7 +173,7 @@
     <!-- Verbosity Levels -->
     {#if model.supportsVerbosity && model.verbosityLevels && model.verbosityLevels.length > 0}
       <div class="mb-3">
-        <p class="text-xs text-gray-400 mb-1 ml-6">
+        <p class="text-sm text-gray-400 mb-1 ml-6">
           {$_t('Verbosity levels:')} {model.verbosityLevels.join(', ')}
         </p>
       </div>
@@ -182,7 +182,7 @@
     <!-- Release Date -->
     {#if model.releaseDate}
       <div class="pt-3 border-t border-gray-700">
-        <p class="text-xs text-gray-400">
+        <p class="text-sm text-gray-400">
           {$_t('Released:')} {formatReleaseDate(model.releaseDate)}
         </p>
       </div>
@@ -196,8 +196,8 @@
             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
           </svg>
           <div class="flex-1">
-            <p class="text-xs font-medium text-yellow-400 mb-1">{$_t('Deprecated')}</p>
-            <p class="text-xs text-yellow-400/80">
+            <p class="text-sm font-medium text-yellow-400 mb-1">{$_t('Deprecated')}</p>
+            <p class="text-sm text-yellow-400/80">
               {model.deprecationMessage}
             </p>
           </div>

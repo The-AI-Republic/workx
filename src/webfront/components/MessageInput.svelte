@@ -7,6 +7,7 @@
   import ChatHistoryPopup from './chat/ChatHistoryPopup.svelte';
   import CommandDropdown from './CommandDropdown.svelte';
   import CommandError from './CommandError.svelte';
+  import ApprovalModeIndicator from './common/ApprovalModeIndicator.svelte';
   import { uiTheme } from '../stores/themeStore';
   import { platform } from '../stores/platformStore';
   import { schedulerStore } from '../stores/schedulerStore';
@@ -334,26 +335,30 @@
   });
 </script>
 
-<div class="message-input-container {currentTheme}">
+<div class="w-full">
   <!-- Tab Context Display -->
-  <div class="tab-context-wrapper mb-2">
+  <div class="mb-2 flex items-center gap-2">
     {#if platform.hasTabSelection}
       <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
-      <div class="tab-context-area" on:mousedown|preventDefault>
+      <div class="contents" on:mousedown|preventDefault>
         <TabContext {tabId} on:tabSelected={handleTabSelected} />
       </div>
     {/if}
-    <div class="tab-context-spacer"></div>
+    <ApprovalModeIndicator />
+    <div class="flex-1"></div>
     <!-- Top Right Button Group - NOT inside mousedown preventDefault area -->
-    <div class="top-right-buttons">
+    <div class="flex items-center gap-2">
       <ChatHistoryPopup onSelectConversation={onSelectConversation} />
       <Tooltip content={$_t("New Conversation")} placement="left">
         <button
-          class="new-conv-button"
+          class="p-1 bg-transparent cursor-pointer flex items-center justify-center transition-all duration-200 active:scale-95
+            {currentTheme === 'modern'
+              ? 'border-none rounded-md text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+              : 'border border-gray-500/50 rounded text-gray-500/80 hover:border-gray-500/80 hover:text-gray-400 hover:bg-gray-500/10'}"
           on:click={onNewConversation}
           aria-label={$_t("Start New Conversation")}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="new-conv-icon" viewBox="0 0 24 24" fill="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 5C5.34315 5 4 6.34315 4 8V16C4 17.6569 5.34315 19 7 19H17C18.6569 19 20 17.6569 20 16V12.5C20 11.9477 20.4477 11.5 21 11.5C21.5523 11.5 22 11.9477 22 12.5V16C22 18.7614 19.7614 21 17 21H7C4.23858 21 2 18.7614 2 16V8C2 5.23858 4.23858 3 7 3H10.5C11.0523 3 11.5 3.44772 11.5 4C11.5 4.55228 11.0523 5 10.5 5H7Z"/>
             <path fill-rule="evenodd" clip-rule="evenodd" d="M18.8431 3.58579C18.0621 2.80474 16.7957 2.80474 16.0147 3.58579L11.6806 7.91992L11.0148 11.9455C10.8917 12.6897 11.537 13.3342 12.281 13.21L16.3011 12.5394L20.6347 8.20582C21.4158 7.42477 21.4158 6.15844 20.6347 5.37739L18.8431 3.58579ZM13.1933 11.0302L13.5489 8.87995L17.4289 5L19.2205 6.7916L15.34 10.6721L13.1933 11.0302Z"/>
           </svg>
@@ -363,7 +368,7 @@
   </div>
 
   <!-- Message Input -->
-  <div class="terminal-input-wrapper">
+  <div class="w-full relative">
     <!-- Command Error (above input) -->
     <CommandError message={errorMessage} visible={errorMessage !== null} />
 
@@ -376,7 +381,12 @@
       on:select={(e) => handleDropdownSelect(e.detail)}
     />
 
-    <div class="terminal-input-shell">
+    <div
+      class="input-shell flex flex-col overflow-hidden transition-all duration-200
+        {currentTheme === 'modern'
+          ? 'border border-chat-input-border dark:border-chat-input-border-dark rounded-3xl bg-chat-input dark:bg-chat-input-dark shadow-sm focus-within:border-chat-input-focus dark:focus-within:border-chat-input-focus-dark focus-within:shadow-[0_0_0_2px_rgba(96,165,250,0.2)]'
+          : 'border border-term-dim-green rounded bg-black/70 focus-within:border-term-bright-green focus-within:shadow-[0_0_0_1px_var(--color-term-bright-green)]'}"
+    >
       <textarea
         bind:value
         {placeholder}
@@ -385,26 +395,45 @@
         on:paste={handlePaste}
         on:focus={() => isFocused = true}
         on:blur={handleBlur}
-        class="terminal-input"
+        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-hidden leading-relaxed h-[37px] transition-[height] duration-200 text-sm
+          {currentTheme === 'modern'
+            ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
+            : 'text-term-green font-terminal px-3 py-2'}"
         class:expanded={isFocused}
         aria-label="Message input"
       />
-      <div class="input-action-bar">
+      <div
+        class="flex items-center justify-start gap-2
+          {currentTheme === 'modern'
+            ? 'border-t border-chat-border dark:border-chat-border-dark px-3 py-2 bg-transparent'
+            : 'border-t border-green-500/25 px-2 py-1.5 bg-black/85'}"
+      >
         <!-- Model Selection - Left aligned -->
-        <div class="model-selection-wrapper">
+        <div class="shrink-0">
           <ModelSelection on:modelChanged={handleModelChanged} />
         </div>
 
         <!-- Spacer to push button to the right -->
-        <div class="action-bar-spacer"></div>
+        <div class="flex-1"></div>
 
         <!-- Send/Stop Button -->
-        <div class="action-button-wrapper">
+        <div class="relative inline-flex">
           <Tooltip content={buttonTooltipContent}>
             <button
-              class="action-button"
-              class:stop={isProcessing}
-              class:disabled={!isProcessing && !value.trim()}
+              class="flex items-center justify-center cursor-pointer transition-all duration-200
+                {currentTheme === 'modern'
+                  ? 'w-9 h-9 p-1.5 border-none rounded-full'
+                    + (isProcessing
+                      ? ' bg-chat-stop dark:bg-chat-stop-dark text-white hover:bg-chat-stop-hover dark:hover:bg-chat-stop-hover-dark'
+                      : (!value.trim()
+                        ? ' bg-chat-send-disabled dark:bg-chat-send-disabled-dark text-chat-text-muted dark:text-chat-text-muted-dark cursor-not-allowed'
+                        : ' bg-chat-send dark:bg-chat-send-dark text-chat-send-text dark:text-chat-send-text-dark hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark'))
+                  : 'w-11 h-11 p-2 border rounded'
+                    + (isProcessing
+                      ? ' border-term-red text-term-red hover:scale-110 active:scale-95'
+                      : (!value.trim()
+                        ? ' cursor-not-allowed text-term-bright-green/40 border-term-bright-green/25'
+                        : ' border-term-green bg-term-bg text-term-green hover:scale-110 active:scale-95'))}"
               on:click={handleButtonClick}
               on:pointerdown={handlePointerDown}
               on:pointerup={handlePointerUp}
@@ -414,14 +443,14 @@
             >
               {#if isProcessing}
                 <!-- Stop Icon (Square) -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="action-icon" viewBox="0 0 24 24" fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="{currentTheme === 'modern' ? 'w-[18px] h-[18px]' : 'w-6 h-6'}" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="6" y="6" width="12" height="12" rx="1" />
                 </svg>
               {:else}
                 <!-- Send Icon (Arrow) -->
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  class="action-icon"
+                  class="{currentTheme === 'modern' ? 'w-[18px] h-[18px]' : 'w-6 h-6'}"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -442,267 +471,25 @@
 </div>
 
 <style>
-  .message-input-container {
-    width: 100%;
+  /* Textarea expanded state */
+  .expanded {
+    height: 142px !important;
+    overflow-y: auto !important;
   }
 
-  .tab-context-wrapper {
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  /* Wrapper for TabContext with mousedown prevention for drag behavior */
-  .tab-context-area {
-    display: contents;
-  }
-
-  .tab-context-spacer {
-    flex: 1;
-  }
-
-  .terminal-input-wrapper {
-    width: 100%;
-    position: relative;
-  }
-
-  /* Top Right Button Group - flexbox container for new conv and chat history */
-  .top-right-buttons {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  /* New Conversation Button - Top Right of input box */
-  .new-conv-button {
-    padding: 0.25rem;
-    border-radius: 4px;
-    background: transparent;
-    border: 1px solid rgba(128, 128, 128, 0.5);
-    color: rgba(128, 128, 128, 0.8);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .new-conv-button:hover {
-    border-color: rgba(128, 128, 128, 0.8);
-    color: rgba(160, 160, 160, 1);
-    background: rgba(128, 128, 128, 0.1);
-  }
-
-  .new-conv-button:active {
-    transform: scale(0.95);
-  }
-
-  .new-conv-icon {
-    width: 17px;
-    height: 17px;
-  }
-
-  .terminal-input-shell {
-    border: 1px solid var(--color-term-dim-green, #00cc00);
-    border-radius: 4px;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .terminal-input-shell:focus-within {
-    border-color: var(--color-term-bright-green, #33ff00);
-    box-shadow: 0 0 0 1px var(--color-term-bright-green, #33ff00);
-  }
-
-  .terminal-input {
-    width: 100%;
-    background-color: transparent;
-    border: none;
-    color: var(--term-green, #00ff00);
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 14px;
-    outline: none;
-    resize: none;
-    overflow-y: hidden;
-    padding: 8px 12px;
-    line-height: 1.5;
-    height: 37px;
-    transition: height 0.2s ease;
-  }
-
-  .terminal-input.expanded {
-    height: 142px;
-    overflow-y: auto;
-  }
-
-  .terminal-input::placeholder {
-    color: var(--term-dim-green, #00aa00);
+  /* Placeholder styles - terminal theme */
+  .terminal-textarea::placeholder {
+    color: var(--color-term-dim-green);
     opacity: 0.6;
   }
 
-  .input-action-bar {
-    border-top: 1px solid rgba(0, 255, 0, 0.25);
-    padding: 6px 8px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    background-color: rgba(0, 0, 0, 0.85);
-  }
-
-  .model-selection-wrapper {
-    flex-shrink: 0;
-  }
-
-  .action-bar-spacer {
-    flex: 1;
-  }
-
-
-  .action-button-wrapper {
-    position: relative;
-    display: inline-flex;
-  }
-
-  /* Send/Stop Button */
-  .action-button {
-    width: 44px;
-    height: 44px;
-    padding: 8px;
-    border: 1px solid var(--color-term-green, #00ff00);
-    border-radius: 4px;
-    background-color: var(--color-term-bg, #000000); /* solid black */
-    color: var(--color-term-green, #00ff00);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .action-button:hover:not(:disabled) {
-    transform: scale(1.1);
-  }
-
-  .action-button:active:not(:disabled) {
-    transform: scale(0.95);
-  }
-
-  .action-button:disabled {
-    cursor: not-allowed;
-    color: rgba(51, 255, 0, 0.4);
-    border-color: rgba(51, 255, 0, 0.25);
-  }
-
-  .action-button:disabled:hover {
-    transform: none;
-  }
-
-  .action-button.stop {
-    border-color: var(--color-term-red, #ff0000);
-    color: var(--color-term-red, #ff0000);
-  }
-
-
-  .action-icon {
-    width: 24px;
-    height: 24px;
-  }
-
-
-  /* ============================================
-     ChatGPT Theme Overrides
-     ============================================ */
-
-  .message-input-container.chatgpt .terminal-input-shell {
-    border: 1px solid var(--chat-input-border, #e5e5e5);
-    border-radius: 1.5rem;
-    background-color: var(--chat-input-bg, #f4f4f4);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-
-  .message-input-container.chatgpt .terminal-input-shell:focus-within {
-    border-color: var(--chat-input-focus-border, #60a5fa);
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-  }
-
-  .message-input-container.chatgpt .terminal-input {
-    color: var(--chat-text, #0d0d0d);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-    padding: 12px 16px;
-    caret-color: var(--chat-text, #0d0d0d);
-  }
-
-  /* Dark mode cursor should be light */
-  @media (prefers-color-scheme: dark) {
-    .message-input-container.chatgpt .terminal-input {
-      caret-color: #ffffff;
-    }
-  }
-
-  .message-input-container.chatgpt .terminal-input::placeholder {
-    color: var(--chat-text-muted, #8e8ea0);
+  /* Placeholder styles - modern theme (detected via font-family) */
+  :global(.modern) .terminal-textarea::placeholder {
+    color: var(--color-chat-text-muted);
     opacity: 1;
   }
 
-  .message-input-container.chatgpt .input-action-bar {
-    border-top: 1px solid var(--chat-border, #e5e5e5);
-    padding: 8px 12px;
-    background-color: transparent;
+  :global(.dark) :global(.modern) .terminal-textarea::placeholder {
+    color: var(--color-chat-text-muted-dark);
   }
-
-  .message-input-container.chatgpt .action-button {
-    width: 36px;
-    height: 36px;
-    padding: 6px;
-    border: none;
-    border-radius: 50%;
-    background-color: var(--chat-send-button-bg, #0d0d0d);
-    color: var(--chat-send-button-text, #ffffff);
-    transition: background-color 0.15s, transform 0.15s;
-  }
-
-  .message-input-container.chatgpt .action-button:hover:not(:disabled) {
-    background-color: var(--chat-send-button-hover, #2d2d2d);
-    transform: none;
-  }
-
-  .message-input-container.chatgpt .action-button:disabled {
-    background-color: var(--chat-send-button-disabled, #e5e5e5);
-    color: var(--chat-text-muted, #8e8ea0);
-    border: none;
-  }
-
-  .message-input-container.chatgpt .action-button.stop {
-    background-color: var(--chat-stop-button-bg, #ef4444);
-    color: #ffffff;
-    border: none;
-  }
-
-  .message-input-container.chatgpt .action-button.stop:hover:not(:disabled) {
-    background-color: var(--chat-stop-button-hover, #dc2626);
-  }
-
-
-  .message-input-container.chatgpt .action-icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  /* ChatGPT Theme - New Conversation Button */
-  .message-input-container.chatgpt .new-conv-button {
-    border: none;
-    border-radius: 0.375rem;
-    color: var(--chat-text-muted, #8e8ea0);
-  }
-
-  .message-input-container.chatgpt .new-conv-button:hover {
-    background: var(--chat-button-hover, #ececec);
-    color: var(--chat-text, #0d0d0d);
-  }
-
 </style>

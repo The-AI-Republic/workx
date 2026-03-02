@@ -1301,7 +1301,7 @@
 
   .help-text {
     margin-top: 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
@@ -1335,14 +1335,14 @@
     background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  /* ChatGPT theme - filled buttons */
-  :global(.settings-modal-container.chatgpt) .btn-primary {
+  /* Modern Chat theme - filled buttons */
+  :global(.settings-modal-container.modern) .btn-primary {
     background: var(--browserx-primary);
     color: white;
     border: none;
   }
 
-  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+  :global(.settings-modal-container.modern) .btn-primary:hover:not(:disabled) {
     background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
@@ -1523,7 +1523,7 @@
   }
 
   .toggle-description {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 

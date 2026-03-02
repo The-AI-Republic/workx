@@ -42,5 +42,30 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Install Linux system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev
       - run: npm ci
-      - run: npm run test:all
+      - name: Run TypeScript tests
+        run: npx vitest run
+      - name: Ensure frontend dist and sidecar stubs exist for Tauri compilation
+        run: |
+          mkdir -p dist/desktop
+          mkdir -p tauri/binaries
+          touch tauri/binaries/windows-sandbox-x86_64-unknown-linux-gnu
+          touch tauri/binaries/chrome-devtools-mcp-x86_64-unknown-linux-gnu
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@cargo-tarpaulin
+      - name: Run Rust tests with coverage
+        run: cargo tarpaulin --manifest-path tauri/Cargo.toml --out stdout

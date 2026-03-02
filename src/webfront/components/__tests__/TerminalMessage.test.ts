@@ -70,8 +70,8 @@ describe('TerminalMessage - Color Mapping', () => {
     const componentPath = path.resolve(__dirname, '..', 'TerminalMessage.svelte');
     const componentContent = fs.readFileSync(componentPath, 'utf-8');
 
-    // Check that input type gets blue color (#60a5fa) in the scoped CSS
+    // Check that input type gets blue color via Tailwind token class
     expect(componentContent).toContain('input');
-    expect(componentContent).toContain('#60a5fa');
+    expect(componentContent).toContain('text-term-blue');
   });
 });

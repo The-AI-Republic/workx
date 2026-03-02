@@ -18,14 +18,13 @@ describe('User Messages - Visual Regression', () => {
     // The scoped CSS then maps input to blue (#60a5fa)
     expect(messageElement?.className).toContain('input');
 
-    // Verify CSS defines the blue color
+    // Verify CSS defines the blue color token (Tailwind v4 auto-generates utility classes from @theme)
     const fs = require('fs');
     const path = require('path');
     const stylesPath = path.resolve(__dirname, '..', 'styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     expect(stylesContent).toContain('--color-term-blue: #60a5fa');
-    expect(stylesContent).toContain('.text-term-blue');
   });
 
   it('should render agent message with default class (green styling)', () => {
@@ -42,14 +41,13 @@ describe('User Messages - Visual Regression', () => {
     // Should have default class (green color in CSS)
     expect(messageElement?.className).toContain('default');
 
-    // Verify green color is still defined
+    // Verify green color token is still defined (Tailwind v4 auto-generates utility classes from @theme)
     const fs = require('fs');
     const path = require('path');
     const stylesPath = path.resolve(__dirname, '..', 'styles.css');
     const stylesContent = fs.readFileSync(stylesPath, 'utf-8');
 
     expect(stylesContent).toContain('--color-term-green');
-    expect(stylesContent).toContain('.text-term-green');
   });
 
   it('should create visual snapshot of color mappings', () => {
