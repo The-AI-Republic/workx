@@ -47,6 +47,27 @@ const ALLOWED_COMMANDS: &[&str] = &[
     "chrome-devtools-mcp", // bundled sidecar binary
 ];
 
+/// Extract the base command name from a potentially full path and validate
+/// it against the allowlist. Returns the base name on success.
+/// Strips `.exe` suffix (Windows) before checking so the sidecar binary matches.
+fn validate_command_allowlist(command: &str) -> Result<&str, String> {
+    let base_command = std::path::Path::new(command)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(command);
+    // Strip .exe suffix so Windows sidecar paths pass validation
+    let base_command_stripped = base_command.strip_suffix(".exe").unwrap_or(base_command);
+    if ALLOWED_COMMANDS.contains(&base_command_stripped) {
+        Ok(base_command)
+    } else {
+        Err(format!(
+            "Command '{}' is not allowed. Permitted: {}",
+            command,
+            ALLOWED_COMMANDS.join(", ")
+        ))
+    }
+}
+
 // =============================================================================
 // Result Types (serialized to JS)
 // =============================================================================
@@ -127,25 +148,15 @@ pub async fn mcp_connect(
     env: Option<HashMap<String, String>>,
     cwd: Option<String>,
 ) -> Result<McpConnectResult, String> {
-    // Validate command against allowlist to prevent arbitrary command execution.
-    // Strip .exe suffix (Windows) before checking so the sidecar binary matches.
-    let base_command = std::path::Path::new(&command)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(|n| n.strip_suffix(".exe").unwrap_or(n))
-        .unwrap_or(&command);
-    if !ALLOWED_COMMANDS.contains(&base_command) {
+    // Validate command against allowlist to prevent arbitrary command execution
+    if let Err(err_msg) = validate_command_allowlist(&command) {
         return Ok(McpConnectResult {
             success: false,
             server_name: None,
             server_version: None,
             protocol_version: None,
             capabilities: None,
-            error: Some(format!(
-                "Command '{}' is not allowed. Permitted: {}",
-                command,
-                ALLOWED_COMMANDS.join(", ")
-            )),
+            error: Some(err_msg),
         });
     }
 
@@ -507,5 +518,93 @@ pub fn get_browser_mcp_sidecar_path() -> Result<String, String> {
         Ok(sidecar_path.to_string_lossy().to_string())
     } else {
         Err(format!("Browser MCP sidecar not found at {:?}", sidecar_path))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_command_allowlist_npx() {
+        assert!(validate_command_allowlist("npx").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_node() {
+        assert!(validate_command_allowlist("node").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_deno() {
+        assert!(validate_command_allowlist("deno").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_python3() {
+        assert!(validate_command_allowlist("python3").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_full_path() {
+        assert!(validate_command_allowlist("/usr/bin/npx").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_invalid() {
+        let result = validate_command_allowlist("rm");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not allowed"));
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_empty() {
+        assert!(validate_command_allowlist("").is_err());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_bun() {
+        assert!(validate_command_allowlist("bun").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_uvx() {
+        assert!(validate_command_allowlist("uvx").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_python() {
+        assert!(validate_command_allowlist("python").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_bun_full_path() {
+        let result = validate_command_allowlist("/usr/local/bin/bun");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "bun");
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_uvx_full_path() {
+        let result = validate_command_allowlist("/home/user/.local/bin/uvx");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "uvx");
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_python_full_path() {
+        let result = validate_command_allowlist("/usr/bin/python");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "python");
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_exe_suffix() {
+        assert!(validate_command_allowlist("chrome-devtools-mcp.exe").is_ok());
+    }
+
+    #[test]
+    fn test_validate_command_allowlist_exe_full_path() {
+        assert!(validate_command_allowlist("/usr/local/bin/chrome-devtools-mcp.exe").is_ok());
     }
 }

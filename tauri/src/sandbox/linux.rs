@@ -161,3 +161,132 @@ impl SandboxExecutor for LinuxSandbox {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn make_profile(
+        workspace_access: WorkspaceAccess,
+        network_mode: NetworkMode,
+    ) -> SandboxProfile {
+        SandboxProfile {
+            workspace_dir: PathBuf::from("/tmp/test-workspace"),
+            workspace_access,
+            standard_writable: vec![PathBuf::from("/tmp")],
+            bind_mounts: vec![],
+            network_mode,
+            timeout_ms: 30000,
+        }
+    }
+
+    #[test]
+    fn test_build_command_program_is_bwrap() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        assert_eq!(cmd.program, "bwrap");
+    }
+
+    #[test]
+    fn test_build_command_ends_with_shell_and_command() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        let len = cmd.args.len();
+        assert!(len >= 4);
+        assert_eq!(cmd.args[len - 4], "--");
+        assert_eq!(cmd.args[len - 3], "bash");
+        assert_eq!(cmd.args[len - 2], "-c");
+        assert_eq!(cmd.args[len - 1], "echo hi");
+    }
+
+    #[test]
+    fn test_build_command_rw_workspace_uses_bind() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        // Should contain --bind /tmp/test-workspace /tmp/test-workspace
+        let args_str = cmd.args.join(" ");
+        assert!(args_str.contains("--bind /tmp/test-workspace /tmp/test-workspace"));
+    }
+
+    #[test]
+    fn test_build_command_ro_workspace_uses_ro_bind() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Ro, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        let args_str = cmd.args.join(" ");
+        assert!(args_str.contains("--ro-bind /tmp/test-workspace /tmp/test-workspace"));
+    }
+
+    #[test]
+    fn test_build_command_none_workspace_no_mount() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::None, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        let args_str = cmd.args.join(" ");
+        // Should not contain workspace mount (neither --bind nor --ro-bind for workspace)
+        assert!(!args_str.contains("/tmp/test-workspace /tmp/test-workspace"));
+    }
+
+    #[test]
+    fn test_build_command_sandbox_network_unshares_net() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Sandbox);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        assert!(cmd.args.contains(&"--unshare-net".to_string()));
+    }
+
+    #[test]
+    fn test_build_command_host_network_no_unshare_net() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        assert!(!cmd.args.contains(&"--unshare-net".to_string()));
+    }
+
+    #[test]
+    fn test_build_command_has_process_isolation() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        assert!(cmd.args.contains(&"--unshare-pid".to_string()));
+        assert!(cmd.args.contains(&"--unshare-ipc".to_string()));
+        assert!(cmd.args.contains(&"--new-session".to_string()));
+    }
+
+    #[test]
+    fn test_build_command_has_proc_and_dev() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        assert!(cmd.args.contains(&"--proc".to_string()));
+        assert!(cmd.args.contains(&"--dev".to_string()));
+    }
+
+    #[test]
+    fn test_build_command_has_tmpfs_for_tmp() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        // Should have --tmpfs /tmp (not --bind for /tmp since it's handled specially)
+        let mut found_tmpfs_tmp = false;
+        for (i, arg) in cmd.args.iter().enumerate() {
+            if arg == "--tmpfs" && i + 1 < cmd.args.len() && cmd.args[i + 1] == "/tmp" {
+                found_tmpfs_tmp = true;
+                break;
+            }
+        }
+        assert!(found_tmpfs_tmp, "Expected --tmpfs /tmp");
+    }
+
+    #[test]
+    fn test_build_command_held_resources_empty() {
+        let sandbox = LinuxSandbox;
+        let profile = make_profile(WorkspaceAccess::Rw, NetworkMode::Host);
+        let cmd = sandbox.build_command("echo hi", "bash", "-c", &profile, None).unwrap();
+        assert!(cmd.held_resources.is_empty());
+    }
+}
