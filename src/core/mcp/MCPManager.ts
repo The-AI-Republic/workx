@@ -530,7 +530,7 @@ export class MCPManager implements IMCPManager {
     };
 
     if (config.transport === 'stdio') {
-      if (this.platform === 'server') {
+      if (__BUILD_MODE__ === 'server') {
         // Server mode: use Node.js child_process via MCP SDK's StdioClientTransport
         const { NodeMCPBridge } = await import('@/server/mcp/NodeMCPBridge');
         return new NodeMCPBridge({ config, ...callbacks });

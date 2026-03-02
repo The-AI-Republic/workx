@@ -44,7 +44,8 @@ export async function registerServerTools(
     const { PlanningTool } = await import('@/tools/PlanningTool');
     const { StaticRiskAssessor } = await import('@/core/approval/assessors/StaticRiskAssessor');
 
-    const planningTool = new PlanningTool();
+    const { getTaskStore } = await import('@/core/taskmanager');
+    const planningTool = new PlanningTool(getTaskStore());
     const definition = planningTool.getDefinition();
 
     if (!registry.getTool('planning_tool')) {

@@ -282,7 +282,7 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     };
   }
 
-  private parseJson(value: string | unknown): unknown {
+  private parseJson(value: string | unknown): any {
     if (typeof value === 'string') {
       try { return JSON.parse(value); } catch { return value; }
     }
