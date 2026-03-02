@@ -8,6 +8,8 @@
  */
 
 import type { CredentialStore } from '@/core/storage/CredentialStore';
+import * as VaultManager from '@/core/crypto/VaultManager';
+import type { EncryptedCredential } from '@/core/crypto/types';
 
 /**
  * Storage key prefix for credentials
@@ -64,17 +66,54 @@ export class ChromeCredentialStore implements CredentialStore {
    * @returns The credential value or null if not found
    */
   async get(service: string, account: string): Promise<string | null> {
-    const key = makeKey(service, account);
+    const storageKey = makeKey(service, account);
 
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.get(key, (result) => {
+    const rawValue = await new Promise<unknown>((resolve, reject) => {
+      chrome.storage.local.get(storageKey, (result) => {
         if (chrome.runtime.lastError) {
           reject(new Error(`Failed to get credential: ${chrome.runtime.lastError.message}`));
           return;
         }
-        resolve(result[key] ?? null);
+        resolve(result[storageKey] ?? null);
       });
     });
+
+    if (rawValue === null || rawValue === undefined) return null;
+
+    // Check if it's an encrypted credential (JSON object with version+ciphertext)
+    if (typeof rawValue === 'object' && rawValue !== null && 'version' in rawValue && 'ciphertext' in rawValue) {
+      try {
+        return await VaultManager.decryptCredential(rawValue as EncryptedCredential);
+      } catch (err) {
+        console.error(`[ChromeCredentialStore] Failed to decrypt credential ${storageKey}:`, err);
+        return null;
+      }
+    }
+
+    // Check if it's a JSON string of an encrypted credential
+    if (typeof rawValue === 'string') {
+      try {
+        const parsed = JSON.parse(rawValue);
+        if (parsed && typeof parsed === 'object' && 'version' in parsed && 'ciphertext' in parsed) {
+          return await VaultManager.decryptCredential(parsed as EncryptedCredential);
+        }
+      } catch {
+        // Not JSON — fall through to migration
+      }
+    }
+
+    // Legacy format — migrate
+    try {
+      const migrated = await VaultManager.migrateIfNeeded(storageKey, rawValue);
+      if (migrated) {
+        return await VaultManager.decryptCredential(migrated);
+      }
+    } catch (err) {
+      console.error(`[ChromeCredentialStore] Migration failed for ${storageKey}:`, err);
+    }
+
+    // Fallback: return as-is (plain string)
+    return typeof rawValue === 'string' ? rawValue : null;
   }
 
   /**
@@ -85,10 +124,13 @@ export class ChromeCredentialStore implements CredentialStore {
    * @param password - Credential value to store
    */
   async set(service: string, account: string, password: string): Promise<void> {
-    const key = makeKey(service, account);
+    const storageKey = makeKey(service, account);
+
+    // Encrypt the credential before storing — fail loudly if encryption fails
+    const valueToStore = await VaultManager.encryptCredential(password);
 
     return new Promise((resolve, reject) => {
-      chrome.storage.local.set({ [key]: password }, () => {
+      chrome.storage.local.set({ [storageKey]: valueToStore }, () => {
         if (chrome.runtime.lastError) {
           reject(new Error(`Failed to set credential: ${chrome.runtime.lastError.message}`));
           return;
