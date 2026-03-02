@@ -59,8 +59,12 @@ jobs:
       - run: npm ci
       - name: Run TypeScript tests
         run: npx vitest run
-      - name: Ensure frontend dist exists for Tauri compilation
-        run: mkdir -p dist/desktop
+      - name: Ensure frontend dist and sidecar stubs exist for Tauri compilation
+        run: |
+          mkdir -p dist/desktop
+          mkdir -p tauri/binaries
+          touch tauri/binaries/windows-sandbox-x86_64-unknown-linux-gnu
+          touch tauri/binaries/chrome-devtools-mcp-x86_64-unknown-linux-gnu
       - name: Install cargo-tarpaulin
         uses: taiki-e/install-action@cargo-tarpaulin
       - name: Run Rust tests with coverage
