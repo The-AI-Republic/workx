@@ -3,6 +3,7 @@
 
 mod browser_commands;
 mod commands;
+mod db_storage;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
@@ -362,6 +363,23 @@ fn main() {
             skills_commands::skills_read_file,
             skills_commands::skills_write_file,
             skills_commands::skills_remove_dir,
+            // SQLite storage commands
+            db_storage::storage_init,
+            db_storage::storage_close,
+            db_storage::storage_get,
+            db_storage::storage_set,
+            db_storage::storage_delete,
+            db_storage::storage_get_many,
+            db_storage::storage_set_many,
+            db_storage::storage_delete_many,
+            db_storage::storage_list,
+            db_storage::storage_query,
+            db_storage::storage_count,
+            db_storage::storage_clear,
+            db_storage::storage_vacuum,
+            db_storage::storage_begin_transaction,
+            db_storage::storage_commit_transaction,
+            db_storage::storage_rollback_transaction,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
