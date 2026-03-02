@@ -6,6 +6,29 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 /**
+ * Enforce that VITE_VAULT_SECRET is set in the extension .env file.
+ * Without it, credential encryption cannot function and the extension
+ * would fail at runtime. Catches misconfigured builds early.
+ */
+function enforceVaultSecret() {
+  return {
+    name: 'enforce-vault-secret',
+    configResolved(config) {
+      const secret = config.env?.VITE_VAULT_SECRET;
+      if (!secret || secret.length < 32) {
+        const msg = !secret
+          ? 'VITE_VAULT_SECRET is missing from src/extension/.env'
+          : `VITE_VAULT_SECRET must be at least 32 characters (got ${secret.length})`;
+        throw new Error(
+          `\n[enforce-vault-secret] ${msg}\n` +
+          `Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"\n`
+        );
+      }
+    }
+  };
+}
+
+/**
  * Custom plugin to strip Vite's modulepreload polyfill from service worker builds.
  * The polyfill uses `document` which doesn't exist in service workers.
  * See: https://github.com/vitejs/vite/issues/15305
@@ -74,7 +97,7 @@ function stripModulePreloadPolyfill() {
 
 // Main build config - excludes content script (built separately with vite.config.content.mjs)
 export default defineConfig({
-  plugins: [svelte(), stripModulePreloadPolyfill()],
+  plugins: [enforceVaultSecret(), svelte(), stripModulePreloadPolyfill()],
   envDir: resolve(__dirname, 'src/extension'), // Load .env from src/extension
   define: {
     __BUILD_MODE__: JSON.stringify('extension'),
