@@ -6,6 +6,7 @@
 
 import { writable } from 'svelte/store';
 import type { VaultState } from '@/core/crypto/types';
+import { sendMessage, MessageType } from '../lib/messaging';
 
 const defaultState: VaultState = {
   isInitialized: false,
@@ -23,9 +24,9 @@ export const vaultStore = writable<VaultState>(defaultState);
  */
 export async function refreshVaultStatus(): Promise<void> {
   try {
-    const response = await chrome.runtime.sendMessage({ type: 'vault:status' });
-    if (response?.success && response.data) {
-      vaultStore.set(response.data);
+    const status = await sendMessage<VaultState>(MessageType.VAULT_STATUS);
+    if (status) {
+      vaultStore.set(status);
     }
   } catch (err) {
     console.warn('[vaultStore] Failed to refresh vault status:', err);

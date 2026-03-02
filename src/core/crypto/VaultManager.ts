@@ -26,6 +26,7 @@ import {
   LOCKOUT_DURATION_MS,
 } from './types';
 import * as VaultCrypto from './VaultCrypto';
+import { bufferToBase64, base64ToBuffer } from './encoding';
 
 // Module-level state (service worker memory)
 let encryptionKey: CryptoKey | null = null;
@@ -544,24 +545,3 @@ async function chromeSessionSet(items: Record<string, unknown>): Promise<void> {
   });
 }
 
-// ============================================================================
-// Base64 Helpers
-// ============================================================================
-
-function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function base64ToBuffer(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}

@@ -11,6 +11,7 @@
 
 import type { EncryptedCredential } from './types';
 import { PBKDF2_ITERATIONS, CREDENTIAL_VERSION } from './types';
+import { bufferToBase64, base64ToBuffer } from './encoding';
 
 const crypto = globalThis.crypto;
 
@@ -97,7 +98,6 @@ export async function encrypt(
 ): Promise<EncryptedCredential> {
   const encoder = new TextEncoder();
   const iv = generateIV();
-  const salt = generateSalt();
 
   const ciphertextBuffer = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
@@ -109,7 +109,6 @@ export async function encrypt(
     version: CREDENTIAL_VERSION,
     ciphertext: bufferToBase64(ciphertextBuffer),
     iv: bufferToBase64(iv),
-    salt: bufferToBase64(salt),
   };
 }
 
@@ -200,24 +199,5 @@ export async function importKey(raw: ArrayBuffer): Promise<CryptoKey> {
   );
 }
 
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function base64ToBuffer(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
+// Re-export encoding utilities for external consumers
+export { bufferToBase64, base64ToBuffer } from './encoding';

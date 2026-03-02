@@ -7,7 +7,9 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { t } from '../../lib/i18n';
+  import { sendMessage, MessageType } from '../../lib/messaging';
   import { vaultStore, refreshVaultStatus } from '../../stores/vaultStore';
+  import type { VaultUnlockResult } from '@/core/crypto/types';
 
   const dispatch = createEventDispatcher<{ unlocked: void }>();
 
@@ -57,26 +59,23 @@
 
     isSubmitting = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'vault:unlock',
-        payload: { pin },
-      });
+      const result = await sendMessage<VaultUnlockResult>(MessageType.VAULT_UNLOCK, { pin });
 
-      if (response?.success) {
+      if (result?.success) {
         pin = '';
         await refreshVaultStatus();
         dispatch('unlocked');
-      } else if (response?.data?.isLockedOut) {
+      } else if (result?.isLockedOut) {
         error = 'Too many attempts';
         vaultStore.update((s) => ({
           ...s,
           isLockedOut: true,
-          lockoutSecondsRemaining: response.data.lockoutSecondsRemaining || 30,
+          lockoutSecondsRemaining: result.lockoutSecondsRemaining || 30,
         }));
         startCountdown();
         pin = '';
       } else {
-        error = response?.message || 'Incorrect PIN';
+        error = 'Incorrect PIN';
         pin = '';
       }
     } catch {
@@ -89,20 +88,12 @@
   async function handleForgotPinConfirm() {
     forgotSubmitting = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'vault:pin:forgot',
-        payload: { confirmReset: true },
-      });
-
-      if (response?.success) {
-        showForgotConfirm = false;
-        await refreshVaultStatus();
-        dispatch('unlocked');
-      } else {
-        error = response?.message || 'Failed to reset vault';
-      }
-    } catch {
-      error = 'Failed to communicate with extension';
+      await sendMessage(MessageType.PIN_FORGOT, { confirmReset: true });
+      showForgotConfirm = false;
+      await refreshVaultStatus();
+      dispatch('unlocked');
+    } catch (err) {
+      error = (err as Error).message || 'Failed to reset vault';
     } finally {
       forgotSubmitting = false;
     }

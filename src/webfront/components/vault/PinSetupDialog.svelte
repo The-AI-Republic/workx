@@ -6,6 +6,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { t } from '../../lib/i18n';
+  import { sendMessage, MessageType } from '../../lib/messaging';
 
   const dispatch = createEventDispatcher<{ success: void; cancel: void }>();
 
@@ -36,18 +37,10 @@
 
     isSubmitting = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'vault:pin:set',
-        payload: { pin, pinConfirm },
-      });
-
-      if (response?.success) {
-        dispatch('success');
-      } else {
-        error = response?.message || 'Failed to set PIN';
-      }
+      await sendMessage(MessageType.PIN_SET, { pin, pinConfirm });
+      dispatch('success');
     } catch (err) {
-      error = 'Failed to communicate with extension';
+      error = (err as Error).message || 'Failed to set PIN';
     } finally {
       isSubmitting = false;
     }

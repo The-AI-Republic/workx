@@ -1022,94 +1022,94 @@ function setupSchedulerMessageHandlers(): void {
 
 /**
  * Feature 034: Setup vault message handlers for credential security
+ *
+ * Handlers return raw data (MessageRouter adds the { success, data } envelope).
+ * For errors, handlers throw (MessageRouter returns { success: false, error }).
+ * Exception: VAULT_UNLOCK returns VaultUnlockResult directly (has its own success field
+ * with structured error info like attemptsRemaining).
  */
 function setupVaultMessageHandlers(): void {
   if (!router) return;
 
   // VAULT_STATUS: Get current vault state
   router.on(MessageType.VAULT_STATUS, async () => {
-    return { success: true, data: VaultManager.getStatus() };
+    return VaultManager.getStatus();
   });
 
   // VAULT_UNLOCK: Unlock vault with PIN
+  // Returns VaultUnlockResult (always resolves — error info in the result object)
   router.on(MessageType.VAULT_UNLOCK, async (message) => {
     const { pin } = message.payload || {};
     if (!pin || typeof pin !== 'string') {
-      return { success: false, error: 'validation_error', message: 'PIN is required' };
+      throw new Error('PIN is required');
     }
-    const result = await VaultManager.unlock(pin);
-    if (result.success) {
-      return { success: true, data: { isLocked: false } };
-    }
-    return { success: false, ...result };
+    return await VaultManager.unlock(pin);
   });
 
   // VAULT_LOCK: Lock vault (clear session)
   router.on(MessageType.VAULT_LOCK, async () => {
     await VaultManager.lock();
-    return { success: true };
   });
 
   // PIN_SET: Enable PIN protection
   router.on(MessageType.PIN_SET, async (message) => {
     const { pin, pinConfirm } = message.payload || {};
     if (!pin || typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
-      return { success: false, error: 'validation_error', message: 'PIN must be exactly 6 digits' };
+      throw new Error('PIN must be exactly 6 digits');
     }
     if (pin !== pinConfirm) {
-      return { success: false, error: 'validation_error', message: 'PINs do not match' };
+      throw new Error('PINs do not match');
     }
-    try {
-      await VaultManager.enablePin(pin);
-      return { success: true, data: { isPinEnabled: true, isLocked: false } };
-    } catch (err) {
-      return { success: false, error: 'operation_failed', message: (err as Error).message };
-    }
+    await VaultManager.enablePin(pin);
   });
 
-  // PIN_CHANGE: Change existing PIN
+  // PIN_CHANGE: Change existing PIN (with lockout protection)
   router.on(MessageType.PIN_CHANGE, async (message) => {
     const { currentPin, newPin, newPinConfirm } = message.payload || {};
+    if (!currentPin || typeof currentPin !== 'string') {
+      throw new Error('Current PIN is required');
+    }
     if (!newPin || !/^\d{6}$/.test(newPin)) {
-      return { success: false, error: 'validation_error', message: 'New PIN must be exactly 6 digits' };
+      throw new Error('New PIN must be exactly 6 digits');
     }
     if (newPin !== newPinConfirm) {
-      return { success: false, error: 'validation_error', message: 'New PINs do not match' };
+      throw new Error('New PINs do not match');
     }
-    try {
-      await VaultManager.changePin(currentPin, newPin);
-      return { success: true, data: { isPinEnabled: true, isLocked: false } };
-    } catch (err) {
-      return { success: false, error: 'incorrect_pin', message: (err as Error).message };
+    // Use unlock() to verify current PIN with lockout protection,
+    // then change the PIN. This prevents brute-force via PIN_CHANGE.
+    const unlockResult = await VaultManager.unlock(currentPin);
+    if (!unlockResult.success) {
+      throw new Error(unlockResult.error === 'locked_out'
+        ? `Too many attempts. Try again in ${unlockResult.lockoutSecondsRemaining}s`
+        : 'Current PIN is incorrect');
     }
+    await VaultManager.changePin(currentPin, newPin);
   });
 
-  // PIN_REMOVE: Remove PIN protection
+  // PIN_REMOVE: Remove PIN protection (with lockout protection)
   router.on(MessageType.PIN_REMOVE, async (message) => {
     const { pin } = message.payload || {};
-    if (!pin) {
-      return { success: false, error: 'validation_error', message: 'PIN is required' };
+    if (!pin || typeof pin !== 'string') {
+      throw new Error('PIN is required');
     }
-    try {
-      await VaultManager.removePin(pin);
-      return { success: true, data: { isPinEnabled: false, isLocked: false } };
-    } catch (err) {
-      return { success: false, error: 'incorrect_pin', message: (err as Error).message };
+    // Use unlock() to verify PIN with lockout protection,
+    // then remove the PIN. This prevents brute-force via PIN_REMOVE.
+    const unlockResult = await VaultManager.unlock(pin);
+    if (!unlockResult.success) {
+      throw new Error(unlockResult.error === 'locked_out'
+        ? `Too many attempts. Try again in ${unlockResult.lockoutSecondsRemaining}s`
+        : 'PIN is incorrect');
     }
+    await VaultManager.removePin(pin);
   });
 
   // PIN_FORGOT: Reset vault (clear all credentials)
   router.on(MessageType.PIN_FORGOT, async (message) => {
     const { confirmReset } = message.payload || {};
     if (!confirmReset) {
-      return { success: false, error: 'validation_error', message: 'Confirmation required' };
+      throw new Error('Confirmation required');
     }
-    try {
-      await VaultManager.reset();
-      return { success: true, data: { isPinEnabled: false, isLocked: false, credentialsCleared: true } };
-    } catch (err) {
-      return { success: false, error: 'operation_failed', message: (err as Error).message };
-    }
+    await VaultManager.reset();
   });
 
   console.log('[ServiceWorker] Vault message handlers registered');

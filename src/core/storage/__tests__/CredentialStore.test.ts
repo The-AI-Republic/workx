@@ -108,6 +108,17 @@ describe('CredentialStore Singleton', () => {
   });
 });
 
+// Mock VaultManager so ChromeCredentialStore encrypt/decrypt pass through as-is
+vi.mock('@/core/crypto/VaultManager', () => ({
+  encryptCredential: vi.fn(async (plaintext: string) => ({
+    version: 1,
+    ciphertext: plaintext, // Store plaintext as "ciphertext" for test simplicity
+    iv: 'test-iv',
+  })),
+  decryptCredential: vi.fn(async (credential: any) => credential.ciphertext),
+  migrateIfNeeded: vi.fn(async () => null),
+}));
+
 describe('ChromeCredentialStore', () => {
   let ChromeCredentialStore: any;
   let store: any;
@@ -155,7 +166,9 @@ describe('ChromeCredentialStore', () => {
     it('should store a credential', async () => {
       await store.set('openai', 'default', 'sk-mykey');
       const data = await chrome.storage.local.get('browserx-credential:openai:default');
-      expect(data['browserx-credential:openai:default']).toBe('sk-mykey');
+      const stored = data['browserx-credential:openai:default'];
+      // Stored value is an EncryptedCredential object (via VaultManager mock)
+      expect(stored).toEqual({ version: 1, ciphertext: 'sk-mykey', iv: 'test-iv' });
     });
 
     it('should overwrite an existing credential', async () => {

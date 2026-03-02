@@ -126,15 +126,8 @@ export class ChromeCredentialStore implements CredentialStore {
   async set(service: string, account: string, password: string): Promise<void> {
     const storageKey = makeKey(service, account);
 
-    // Encrypt the credential before storing
-    let valueToStore: unknown;
-    try {
-      const encrypted = await VaultManager.encryptCredential(password);
-      valueToStore = encrypted;
-    } catch (err) {
-      console.error(`[ChromeCredentialStore] Encryption failed, storing as-is:`, err);
-      valueToStore = password;
-    }
+    // Encrypt the credential before storing — fail loudly if encryption fails
+    const valueToStore = await VaultManager.encryptCredential(password);
 
     return new Promise((resolve, reject) => {
       chrome.storage.local.set({ [storageKey]: valueToStore }, () => {

@@ -224,8 +224,6 @@
         />
       {:else if currentView === 'security'}
         <SecuritySettings
-          {settingsConfig}
-          {highlightSettingId}
           on:back={handleBack}
           on:saved={() => {}}
           bind:isDirty={hasUnsavedChanges}

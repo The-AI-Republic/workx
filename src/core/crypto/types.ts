@@ -32,8 +32,6 @@ export interface EncryptedCredential {
   ciphertext: string;
   /** Initialization vector used for this encryption (base64, 12 bytes) */
   iv: string;
-  /** Salt used for this encryption operation (base64, 16 bytes) */
-  salt: string;
 }
 
 /** Volatile session state held in chrome.storage.session */

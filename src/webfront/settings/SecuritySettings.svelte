@@ -6,12 +6,10 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../lib/i18n';
+  import { sendMessage, MessageType } from '../lib/messaging';
   import PinSetupDialog from '../components/vault/PinSetupDialog.svelte';
   import { vaultStore, refreshVaultStatus } from '../stores/vaultStore';
-  import type { AgentConfig } from '@/config/AgentConfig';
 
-  export let settingsConfig: AgentConfig;
-  export let highlightSettingId: string | undefined = undefined;
   export let isDirty = false;
 
   const dispatch = createEventDispatcher<{ back: void; saved: void }>();
@@ -66,23 +64,19 @@
 
     changePinSubmitting = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'vault:pin:change',
-        payload: { currentPin: currentPinInput, newPin: newPinInput, newPinConfirm: newPinConfirmInput },
+      await sendMessage(MessageType.PIN_CHANGE, {
+        currentPin: currentPinInput,
+        newPin: newPinInput,
+        newPinConfirm: newPinConfirmInput,
       });
-
-      if (response?.success) {
-        showChangePinForm = false;
-        currentPinInput = '';
-        newPinInput = '';
-        newPinConfirmInput = '';
-        statusMessage = 'PIN changed successfully';
-        setTimeout(() => (statusMessage = ''), 3000);
-      } else {
-        changePinError = response?.message || 'Failed to change PIN';
-      }
-    } catch {
-      changePinError = 'Failed to communicate with extension';
+      showChangePinForm = false;
+      currentPinInput = '';
+      newPinInput = '';
+      newPinConfirmInput = '';
+      statusMessage = 'PIN changed successfully';
+      setTimeout(() => (statusMessage = ''), 3000);
+    } catch (err) {
+      changePinError = (err as Error).message || 'Failed to change PIN';
     } finally {
       changePinSubmitting = false;
     }
@@ -97,22 +91,14 @@
 
     removePinSubmitting = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'vault:pin:remove',
-        payload: { pin: removePinInput },
-      });
-
-      if (response?.success) {
-        showRemovePinForm = false;
-        removePinInput = '';
-        statusMessage = 'PIN protection removed';
-        await refreshVaultStatus();
-        setTimeout(() => (statusMessage = ''), 3000);
-      } else {
-        removePinError = response?.message || 'Failed to remove PIN';
-      }
-    } catch {
-      removePinError = 'Failed to communicate with extension';
+      await sendMessage(MessageType.PIN_REMOVE, { pin: removePinInput });
+      showRemovePinForm = false;
+      removePinInput = '';
+      statusMessage = 'PIN protection removed';
+      await refreshVaultStatus();
+      setTimeout(() => (statusMessage = ''), 3000);
+    } catch (err) {
+      removePinError = (err as Error).message || 'Failed to remove PIN';
     } finally {
       removePinSubmitting = false;
     }
