@@ -73,7 +73,7 @@ export class ChatGPTOAuthExtensionFlow {
     this.isInProgress = true;
     let authTabId: number | undefined;
     let messageListener: ((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => void) | null = null;
-    let tabRemovedListener: ((tabId: number, removeInfo: chrome.tabs.TabRemoveInfo) => void) | null = null;
+    let tabRemovedListener: ((tabId: number, removeInfo: chrome.tabs.OnRemovedInfo) => void) | null = null;
 
     try {
       // 1. Generate PKCE challenge
