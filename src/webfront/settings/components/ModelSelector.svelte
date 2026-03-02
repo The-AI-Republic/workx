@@ -416,7 +416,7 @@
                         >
                           <span class="provider-name">{provider.providerName}</span>
                           {#if provider.apiKey && !isLockedForFreeUser}
-                            <span class="ml-1 text-xs opacity-70">✓</span>
+                            <span class="ml-1 text-sm opacity-70">✓</span>
                           {/if}
                         </button>
                         {#if !isLockedForFreeUser}
@@ -435,7 +435,7 @@
                     {/each}
                     {#if isSelectedModelName && !isLockedForFreeUser}
                       <span
-                        class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
+                        class="selected-tag px-2 py-0.5 text-sm bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                       >
                         {$_t('Selected')}
                       </span>
@@ -456,13 +456,13 @@
                     {firstProvider.providerName}
                   </span>
                   {#if firstProvider.apiKey && !isLockedForFreeUser}
-                    <span class="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
+                    <span class="px-2 py-0.5 text-sm bg-green-500/20 text-green-400 rounded">
                       {$_t('Configured')}
                     </span>
                   {/if}
                   {#if isSelectedModelName && !isLockedForFreeUser}
                     <span
-                      class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
+                      class="selected-tag px-2 py-0.5 text-sm bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                     >
                       {$_t('Selected')}
                     </span>
@@ -472,7 +472,7 @@
 
               <!-- Error message when no provider selected (for multi-provider models) -->
               {#if hasMultipleProviders && hasError && !isLockedForFreeUser}
-                <div class="provider-error mt-2 text-xs text-red-400 flex items-center gap-1">
+                <div class="provider-error mt-2 text-sm text-red-400 flex items-center gap-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -489,7 +489,7 @@
                     group.providers.find((p) => p.modelId === selectedModel) || firstProvider}
                   {#if displayProvider.pricing}
                     <div class="mt-2 flex items-center justify-between gap-2">
-                      <div class="text-xs text-gray-400">
+                      <div class="text-sm text-gray-400">
                         <div>{$_t('Input:')} {displayProvider.pricing.inputToken}</div>
                         <div>{$_t('Output:')} {displayProvider.pricing.outputToken}</div>
                       </div>
@@ -512,13 +512,13 @@
                       </a>
                     </div>
                   {:else}
-                    <div class="mt-1 text-xs text-gray-400">
+                    <div class="mt-1 text-sm text-gray-400">
                       {displayProvider.contextWindow.toLocaleString()} {$_t('tokens')}
                     </div>
                   {/if}
                 {:else if firstProvider.pricing}
                   <div class="mt-2 flex items-center justify-between gap-2">
-                    <div class="text-xs text-gray-400">
+                    <div class="text-sm text-gray-400">
                       <div>{$_t('Input:')} {firstProvider.pricing.inputToken}</div>
                       <div>{$_t('Output:')} {firstProvider.pricing.outputToken}</div>
                     </div>
@@ -541,7 +541,7 @@
                     </a>
                   </div>
                 {:else}
-                  <div class="mt-1 text-xs text-gray-400">
+                  <div class="mt-1 text-sm text-gray-400">
                     {firstProvider.contextWindow.toLocaleString()} {$_t('tokens')}
                   </div>
                 {/if}
@@ -645,7 +645,7 @@
     box-shadow:
       0 4px 6px -1px rgba(0, 0, 0, 0.3),
       0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    max-width: 200px;
+    max-width: 240px;
     width: max-content;
   }
 
@@ -678,7 +678,7 @@
 
   /* Tooltip line styling */
   .tooltip-line {
-    font-size: 0.7rem;
+    font-size: 0.875rem;
     color: rgb(209, 213, 219);
     line-height: 1.3;
     word-wrap: break-word;

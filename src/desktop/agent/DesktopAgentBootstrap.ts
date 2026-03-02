@@ -104,6 +104,25 @@ export class DesktopAgentBootstrap {
       // Wire up agent events to be dispatched through the channel
       this.setupEventForwarding(channelManager);
 
+      // 5b. Initialize StorageProvider before agent — PlanningTool requires it
+      // via getTaskStore() during tool registration in agent.initialize().
+      // Uses IndexedDB directly — SQLiteStorageProvider depends on Tauri Rust commands
+      // (storage_init, etc.) that are not implemented. IndexedDB is a standard Web API
+      // available in Tauri WebView.
+      const { setStorageProvider, isStorageProviderInitialized } = await import('@/core/storage');
+      if (!isStorageProviderInitialized()) {
+        try {
+          const { IndexedDBStorageProvider } = await import('@/extension/storage/IndexedDBStorageProvider');
+          const provider = new IndexedDBStorageProvider();
+          await provider.initialize();
+          setStorageProvider(provider);
+          console.log('[DesktopAgentBootstrap] StorageProvider initialized (IndexedDB)');
+        } catch (error) {
+          console.error('[DesktopAgentBootstrap] Failed to initialize StorageProvider:', error);
+          console.error('[DesktopAgentBootstrap] PlanningTool will be unavailable this session');
+        }
+      }
+
       // 6. Initialize the agent (loads model client, tools, etc.)
       // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
@@ -318,6 +337,67 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Resume a previous conversation by its ID.
+   *
+   * Mirrors the service-worker's RESUME_SESSION logic:
+   * aborts current tasks, tears down the old session, loads rollout history,
+   * creates a fresh PiAgent with the resumed history, and returns the
+   * reconstructed conversation items.
+   */
+  async resumeSession(conversationId: string): Promise<unknown[]> {
+    if (!this.agent) {
+      throw new Error('Agent not initialized');
+    }
+
+    console.log('[DesktopAgentBootstrap] Resuming session:', conversationId);
+
+    // 1. Preserve auth manager from the current agent
+    const authManager = this.agent.getModelClientFactory().getAuthManager();
+
+    // 2. Abort any running tasks on the current session
+    const currentSession = this.agent.getSession();
+    await currentSession.abortAllTasks('UserInterrupt');
+
+    // 3. Close the current session
+    await currentSession.close();
+
+    // 4. Load rollout history from storage
+    const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
+    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+
+    if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
+      throw new Error('Conversation not found or has no history');
+    }
+
+    // 5. Create a new PiAgent with the resumed initial history
+    const config = await AgentConfig.getInstance();
+    this.agent = new PiAgent(config, this.messageRouter as any, {
+      mode: 'resumed' as const,
+      conversationId,
+      rolloutItems: initialHistory.payload.history,
+    });
+
+    // 6. Re-wire event forwarding via ChannelManager
+    const channelManager = getChannelManager();
+    this.setupEventForwarding(channelManager);
+
+    // 7. Restore auth manager on the new agent's ModelClientFactory
+    if (authManager) {
+      this.agent.getModelClientFactory().setAuthManager(authManager);
+    }
+
+    // 8. Initialize agent and session
+    await this.agent.initialize();
+    const session = this.agent.getSession();
+    await session.initialize();
+
+    // 9. Return the reconstructed conversation history
+    const history = session.getConversationHistory();
+    console.log('[DesktopAgentBootstrap] Session resumed with', history.items.length, 'items');
+    return history.items;
+  }
+
+  /**
    * Get the agent instance
    */
   getAgent(): PiAgent | null {
@@ -392,9 +472,46 @@ export class DesktopAgentBootstrap {
         console.log('[DesktopAgentBootstrap] Auth restored from keychain → backend routing');
       } else {
         console.log('[DesktopAgentBootstrap] No valid token in keychain → api_key mode');
+
+        // Check for ChatGPT OAuth tokens
+        await this.restoreChatGPTOAuth();
       }
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not restore auth from keychain:', error);
+    }
+  }
+
+  /**
+   * Restore ChatGPT OAuth session from keychain.
+   * If valid ChatGPT OAuth tokens exist, configure the auth manager
+   * with a token getter that auto-refreshes.
+   */
+  private async restoreChatGPTOAuth(): Promise<void> {
+    try {
+      const { ChatGPTOAuthDesktopStorage } = await import('../auth/ChatGPTOAuthDesktopStorage');
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      const storage = new ChatGPTOAuthDesktopStorage();
+      const oauthService = new ChatGPTOAuthService(storage);
+
+      if (await oauthService.isAuthenticated()) {
+        // Create an AuthManager with ChatGPT OAuth token getter
+        const factory = this.agent?.getModelClientFactory();
+        if (factory) {
+          const currentAuthManager = factory.getAuthManager?.() ?? null;
+          const shouldUseBackend = currentAuthManager?.shouldUseBackend() ?? false;
+          const backendBaseUrl = currentAuthManager?.getBackendBaseUrl() ?? null;
+          const tokenGetter = currentAuthManager ? (() => currentAuthManager.getAccessToken()) : undefined;
+
+          const authManager = new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+          authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+
+          factory.setAuthManager(authManager);
+          console.log('[DesktopAgentBootstrap] ChatGPT OAuth restored from keychain');
+        }
+      }
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not restore ChatGPT OAuth:', error);
     }
   }
 

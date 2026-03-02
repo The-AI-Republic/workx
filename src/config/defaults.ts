@@ -3,13 +3,14 @@
  */
 
 import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig } from './types';
+import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import defaultProviders from '../core/models/providers/default.json';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
   telemetryEnabled: false,
   theme: 'system',
-  uiTheme: 'chatgpt',
+  uiTheme: 'modern-auto',
   autoStartEnabled: false,
   shortcuts: {},
   experimental: {}
@@ -154,7 +155,8 @@ export function getDefaultAgentConfig(): IAgentConfig {
     cache: { ...DEFAULT_CACHE_SETTINGS },
     extension: { ...DEFAULT_EXTENSION_SETTINGS },
     tools: { ...DEFAULT_TOOLS_CONFIG },
-    storage: { ...DEFAULT_STORAGE_CONFIG }
+    storage: { ...DEFAULT_STORAGE_CONFIG },
+    approval: { ...DEFAULT_APPROVAL_CONFIG }
   };
 }
 
@@ -163,7 +165,6 @@ export function getDefaultAgentConfig(): IAgentConfig {
 export const STORAGE_KEYS = {
   CONFIG: 'agent_config',
   CONFIG_VERSION: 'config_version',
-  APPROVAL_CONFIG: 'approval_config',
   APPROVAL_HISTORY: 'approval_history',
 } as const;
 
@@ -295,6 +296,14 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
     storage: {
       ...DEFAULT_STORAGE_CONFIG,
       ...(partial.storage || {})
+    },
+    approval: {
+      ...DEFAULT_APPROVAL_CONFIG,
+      ...(partial.approval || {}),
+      timeouts: {
+        ...DEFAULT_APPROVAL_CONFIG.timeouts,
+        ...(partial.approval?.timeouts || {})
+      }
     }
   };
 }
@@ -323,7 +332,8 @@ export function getDefaultStoredConfig(): IStoredConfig {
     profiles: {},
     activeProfile: null,
     tools: { ...DEFAULT_TOOLS_CONFIG },
-    storage: { ...DEFAULT_STORAGE_CONFIG }
+    storage: { ...DEFAULT_STORAGE_CONFIG },
+    approval: { ...DEFAULT_APPROVAL_CONFIG }
   };
 }
 
@@ -342,12 +352,15 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
   // Get fresh providers from default.json
   const providers = getDefaultProviders();
 
-  // Apply stored API keys to providers
+  // Apply stored API keys and auth method to providers
   for (const [providerId, storedProvider] of Object.entries(stored.providerKeys)) {
     if (providers[providerId]) {
       providers[providerId].apiKey = storedProvider.apiKey;
       if (storedProvider.organization !== undefined) {
         providers[providerId].organization = storedProvider.organization;
+      }
+      if (storedProvider.authMethod) {
+        providers[providerId].authMethod = storedProvider.authMethod;
       }
     }
   }
@@ -410,6 +423,14 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     storage: {
       ...DEFAULT_STORAGE_CONFIG,
       ...(stored.storage || {})
+    },
+    approval: {
+      ...DEFAULT_APPROVAL_CONFIG,
+      ...(stored.approval || {}),
+      timeouts: {
+        ...DEFAULT_APPROVAL_CONFIG.timeouts,
+        ...(stored.approval?.timeouts || {})
+      }
     }
   };
 }
@@ -424,12 +445,13 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
   const providerKeys: Record<string, { id: string; apiKey: string; organization?: string | null }> = {};
 
   for (const [providerId, provider] of Object.entries(config.providers)) {
-    // Only store if there's an API key configured
-    if (provider.apiKey) {
+    // Only store if there's an API key configured or an auth method set
+    if (provider.apiKey || provider.authMethod) {
       providerKeys[providerId] = {
         id: providerId,
         apiKey: provider.apiKey,
-        organization: provider.organization
+        organization: provider.organization,
+        ...(provider.authMethod ? { authMethod: provider.authMethod } : {}),
       };
     }
   }
@@ -444,6 +466,7 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
     profiles: config.profiles,
     activeProfile: config.activeProfile,
     tools: config.tools,
-    storage: config.storage
+    storage: config.storage,
+    approval: config.approval
   };
 }

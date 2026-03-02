@@ -14,7 +14,9 @@ import { ToolRegistry } from '../../tools/ToolRegistry';
 import type { IToolsConfig } from '../../config/types';
 import type { ToolDefinition, Platform } from '../../tools/BaseTool';
 import { PlanningTool } from '../../tools/PlanningTool';
+import { getTaskStore } from '../../core/taskmanager';
 import { WebSearchTool } from '../../tools/WebSearchTool';
+import { SettingTool } from '../../tools/SettingTool';
 import { MCPManager } from '../../core/mcp/MCPManager';
 import { registerMCPTools } from '../../core/mcp/MCPToolAdapter';
 import { TerminalTool } from './terminal/TerminalTool';
@@ -22,6 +24,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { TerminalRiskAssessor } from '../../core/approval/assessors/TerminalRiskAssessor';
 import { McpBrowserRiskAssessor } from '../../core/approval/assessors/McpBrowserRiskAssessor';
 import { StaticRiskAssessor } from '../../core/approval/assessors/StaticRiskAssessor';
+import { SettingToolRiskAssessor } from '../../core/approval/assessors/SettingToolRiskAssessor';
 import type { IRiskAssessor } from '../../core/approval/types';
 
 /**
@@ -152,12 +155,20 @@ export async function registerDesktopToolsImpl(
   // ──────────────────────────────────────────────────────────────────────
 
   // Planning tool - always enabled (zero risk)
-  const planningTool = new PlanningTool();
-  await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+  try {
+    const planningTool = new PlanningTool(getTaskStore());
+    await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+  } catch (error) {
+    console.error('[registerDesktopTools] Failed to register PlanningTool (StorageProvider unavailable):', error);
+  }
 
   // Web search tool (zero risk)
   const webSearchTool = new WebSearchTool();
   await registerTool('web_search', webSearchTool, new StaticRiskAssessor(0));
+
+  // Setting tool - always enabled for reading/writing allowlisted settings via chat
+  const settingTool = new SettingTool();
+  await registerTool('setting_tool', settingTool, new SettingToolRiskAssessor());
 
   // ──────────────────────────────────────────────────────────────────────
   // Register terminal tool (desktop only)

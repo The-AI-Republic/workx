@@ -33,12 +33,14 @@ export class ApprovalConfigStorage {
 
   /**
    * Load approval config from storage, merged with defaults.
+   * Reads from the nested `approval` property of agent_config.
    */
   async loadConfig(): Promise<IApprovalConfig> {
     try {
       const storage = this.getStorage();
-      const result = await storage.get([STORAGE_KEYS.APPROVAL_CONFIG]);
-      const stored = result[STORAGE_KEYS.APPROVAL_CONFIG];
+      const result = await storage.get([STORAGE_KEYS.CONFIG]);
+      const agentConfig = result[STORAGE_KEYS.CONFIG];
+      const stored = agentConfig?.approval;
 
       if (!stored) return { ...DEFAULT_APPROVAL_CONFIG };
 
@@ -59,11 +61,15 @@ export class ApprovalConfigStorage {
 
   /**
    * Save approval config to storage.
+   * Reads the full agent_config, merges the approval property, writes back.
    */
   async saveConfig(config: IApprovalConfig): Promise<void> {
     try {
       const storage = this.getStorage();
-      await storage.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: config });
+      const result = await storage.get([STORAGE_KEYS.CONFIG]);
+      const agentConfig = result[STORAGE_KEYS.CONFIG] ?? {};
+      agentConfig.approval = config;
+      await storage.set({ [STORAGE_KEYS.CONFIG]: agentConfig });
     } catch (error) {
       console.error('[ApprovalConfigStorage] Failed to save config:', error);
       throw error;

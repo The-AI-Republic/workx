@@ -3,6 +3,8 @@
  * Type definitions for the centralized config system
  */
 
+import type { IApprovalConfig } from '../core/approval/types';
+
 /**
  * Main centralized configuration interface for the agent (RUNTIME)
  *
@@ -46,6 +48,7 @@ export interface IAgentConfig {
   extension: IExtensionSettings;
   tools?: IToolsConfig;
   storage?: IStorageConfig;
+  approval?: IApprovalConfig;
 }
 
 // Model pricing information
@@ -232,6 +235,12 @@ export interface IProviderConfig {
   retryConfig?: IRetryConfig;
 
   /**
+   * Active authentication method for this provider (optional)
+   * When set, determines whether API key or ChatGPT OAuth is used
+   */
+  authMethod?: 'api_key' | 'chatgpt_oauth';
+
+  /**
    * Models hosted by this provider
    * Array of models available through this provider's API
    * MUST contain at least one model
@@ -258,9 +267,11 @@ export interface IUserPreferences {
   /**
    * UI theme for the side panel
    * - 'terminal': Retro terminal-style UI with green text on black background
-   * - 'chatgpt': Modern ChatGPT-style UI with clean bubbles and light/dark mode
+   * - 'modern-auto': Modern Chat UI, follows system light/dark preference
+   * - 'modern-light': Modern Chat UI, always light
+   * - 'modern-dark': Modern Chat UI, always dark
    */
-  uiTheme?: 'terminal' | 'chatgpt';
+  uiTheme?: 'terminal' | 'modern-auto' | 'modern-light' | 'modern-dark';
   /**
    * Whether to use own API key directly instead of backend routing
    * - When true: LLM requests go directly to provider APIs using user's API key
@@ -368,6 +379,9 @@ export interface IToolsConfig {
   page_action_tool?: boolean;
   page_vision_tool?: boolean;
 
+  // Setting tool toggle (LLM settings access)
+  setting_tool?: boolean;
+
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
@@ -394,6 +408,8 @@ export interface IStoredProviderConfig {
   apiKey: string;
   /** Provider-specific organization ID (optional) */
   organization?: string | null;
+  /** Active authentication method for this provider (optional) */
+  authMethod?: 'api_key' | 'chatgpt_oauth';
 }
 
 /**
@@ -440,6 +456,8 @@ export interface IStoredConfig {
   tools?: IToolsConfig;
   /** Storage configuration */
   storage?: IStorageConfig;
+  /** Approval system configuration */
+  approval?: IApprovalConfig;
 }
 
 // Storage interfaces
@@ -497,7 +515,7 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security';
+  section: 'model' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval';
   oldValue?: any;
   newValue: any;
   timestamp: number;

@@ -93,7 +93,7 @@
         </span>
 
         {#if model.deprecated}
-          <span class="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">
+          <span class="px-1.5 py-0.5 text-sm bg-yellow-500/20 text-yellow-400 rounded">
             {$_t('Deprecated')}
           </span>
         {/if}
@@ -115,13 +115,13 @@
         </span>
 
         {#if model.supportsReasoning}
-          <span class="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
+          <span class="px-1.5 py-0.5 text-sm bg-blue-500/20 text-blue-400 rounded">
             {$_t('Reasoning')}
           </span>
         {/if}
 
         {#if model.supportsVerbosity}
-          <span class="px-1.5 py-0.5 text-xs bg-purple-500/20 text-purple-400 rounded">
+          <span class="px-1.5 py-0.5 text-sm bg-purple-500/20 text-purple-400 rounded">
             {$_t('Verbosity')}
           </span>
         {/if}
@@ -129,14 +129,14 @@
 
       <!-- Deprecation message -->
       {#if model.deprecated && model.deprecationMessage}
-        <p class="mt-1 text-xs text-yellow-400/70">
+        <p class="mt-1 text-sm text-yellow-400/70">
           {model.deprecationMessage}
         </p>
       {/if}
 
       <!-- Validation errors -->
       {#if hasErrors}
-        <div class="mt-2 text-xs text-red-400">
+        <div class="mt-2 text-sm text-red-400">
           {#each validation.errors as error}
             <p>⚠️ {error}</p>
           {/each}
@@ -150,7 +150,7 @@
 
       <!-- Validation warnings (non-blocking) -->
       {#if !hasErrors && validation.warnings && validation.warnings.length > 0}
-        <div class="mt-2 text-xs text-yellow-400/70">
+        <div class="mt-2 text-sm text-yellow-400/70">
           {#each validation.warnings as warning}
             <p>ℹ️ {warning}</p>
           {/each}

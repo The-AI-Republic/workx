@@ -106,3 +106,10 @@ export {
   shouldPersistEventMsg,
   filterPersistedItems,
 } from './policy';
+
+// ============================================================================
+// Provider (Storage Abstraction)
+// ============================================================================
+
+export type { RolloutStorageProvider, StorageStats } from './provider';
+export { createRolloutStorageProvider } from './provider';

@@ -47,8 +47,11 @@ describe('MessageInput Component', () => {
         },
       });
 
-      const tabContextWrapper = container.querySelector('.tab-context-wrapper');
-      expect(tabContextWrapper).toBeDefined();
+      // TabContext is rendered inside a div.contents wrapper when platform.hasTabSelection is true
+      // In test environment, platform detection may not enable tab selection, so we verify
+      // the overall input structure renders correctly
+      const inputShell = container.querySelector('.input-shell');
+      expect(inputShell).toBeTruthy();
     });
 
     it('should pass tabId=-1 when not specified', () => {
@@ -59,8 +62,8 @@ describe('MessageInput Component', () => {
         },
       });
 
-      const tabContextWrapper = container.querySelector('.tab-context-wrapper');
-      expect(tabContextWrapper).toBeDefined();
+      const inputShell = container.querySelector('.input-shell');
+      expect(inputShell).toBeTruthy();
     });
   });
 
@@ -260,14 +263,16 @@ describe('MessageInput Component', () => {
         },
       });
 
-      const messageContainer = container.querySelector('.message-input-container');
-      expect(messageContainer).toBeDefined();
+      // Outer wrapper is a simple w-full div
+      const outerWrapper = container.querySelector('.w-full');
+      expect(outerWrapper).toBeTruthy();
 
-      const terminalPrompt = container.querySelector('.terminal-prompt');
-      expect(terminalPrompt).toBeDefined();
+      // Input shell contains the textarea and action bar
+      const inputShell = container.querySelector('.input-shell');
+      expect(inputShell).toBeTruthy();
 
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-      expect(textarea.className).toContain('terminal-input');
+      expect(textarea.className).toContain('terminal-textarea');
     });
 
     it('should use textarea element instead of input', () => {

@@ -14,6 +14,7 @@
   import { sendMessage, notifyConfigUpdate, MessageType } from '../lib/messaging';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
+  import { platform } from '../stores/platformStore';
 
   // Default compound key for free users (Fireworks Kimi K2 Thinking)
   // Format: providerId:modelKey (compound key, not a raw model key)
@@ -64,6 +65,120 @@
   // API key validation warning (only show after save attempt)
   let showApiKeyWarning = false;
 
+  // ChatGPT OAuth state
+  let chatgptOAuthConnected = false;
+  let chatgptOAuthSigningIn = false;
+  let chatgptOAuthError = '';
+
+  async function handleChatGPTSignIn() {
+    chatgptOAuthSigningIn = true;
+    chatgptOAuthError = '';
+    try {
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      if (platform.platformName === 'desktop') {
+        const { ChatGPTOAuthDesktopFlow } = await import('@/desktop/auth/ChatGPTOAuthDesktopFlow');
+        const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
+        const storage = new ChatGPTOAuthDesktopStorage();
+        const oauthService = new ChatGPTOAuthService(storage);
+        const flow = new ChatGPTOAuthDesktopFlow(oauthService);
+        await flow.login();
+      } else {
+        const { ChatGPTOAuthExtensionFlow } = await import('@/extension/auth/ChatGPTOAuthExtensionFlow');
+        const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
+        const storage = new ChatGPTOAuthExtensionStorage();
+        const oauthService = new ChatGPTOAuthService(storage);
+        const flow = new ChatGPTOAuthExtensionFlow(oauthService);
+        await flow.login();
+      }
+      chatgptOAuthConnected = true;
+
+      // Update the stored provider config authMethod
+      if (settingsConfig) {
+        const config = settingsConfig.getConfig();
+        const providerConfig = config.providers?.openai;
+        if (providerConfig) {
+          await settingsConfig.updateConfig({
+            providers: {
+              ...config.providers,
+              openai: { ...providerConfig, authMethod: 'chatgpt_oauth' },
+            },
+          });
+        }
+      }
+      notifyConfigUpdate();
+    } catch (err: any) {
+      if (err?.message?.includes('Failed to bind port 1455')) {
+        chatgptOAuthError = t('Port 1455 is in use. Please close any application using this port and try again.');
+      } else if (err?.message?.includes('timed out')) {
+        // Timeout: silently reset to disconnected
+        chatgptOAuthError = '';
+      } else {
+        chatgptOAuthError = err?.message || t('Sign in failed');
+      }
+    } finally {
+      chatgptOAuthSigningIn = false;
+    }
+  }
+
+  async function getChatGPTOAuthService() {
+    const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+    if (platform.platformName === 'desktop') {
+      const { ChatGPTOAuthDesktopStorage } = await import('@/desktop/auth/ChatGPTOAuthDesktopStorage');
+      return new ChatGPTOAuthService(new ChatGPTOAuthDesktopStorage());
+    } else {
+      const { ChatGPTOAuthExtensionStorage } = await import('@/extension/auth/ChatGPTOAuthExtensionStorage');
+      return new ChatGPTOAuthService(new ChatGPTOAuthExtensionStorage());
+    }
+  }
+
+  async function handleChatGPTDisconnect() {
+    try {
+      const oauthService = await getChatGPTOAuthService();
+      await oauthService.logout();
+      chatgptOAuthConnected = false;
+
+      // Revert authMethod to api_key
+      if (settingsConfig) {
+        const config = settingsConfig.getConfig();
+        const providerConfig = config.providers?.openai;
+        if (providerConfig) {
+          await settingsConfig.updateConfig({
+            providers: {
+              ...config.providers,
+              openai: { ...providerConfig, authMethod: 'api_key' },
+            },
+          });
+        }
+      }
+      notifyConfigUpdate();
+    } catch (err: any) {
+      console.error('[ModelSettings] ChatGPT disconnect failed:', err);
+    }
+  }
+
+  async function checkChatGPTOAuthStatus() {
+    try {
+      const oauthService = await getChatGPTOAuthService();
+      const isAuth = await oauthService.isAuthenticated();
+      chatgptOAuthConnected = isAuth;
+
+      // If connected, verify the token is still valid
+      if (isAuth) {
+        try {
+          await oauthService.getValidAccessToken();
+        } catch {
+          // Token refresh failed — session expired
+          chatgptOAuthConnected = false;
+          chatgptOAuthError = t('ChatGPT session expired. Please sign in again.');
+        }
+      }
+    } catch (err) {
+      console.warn('[ModelSettings] ChatGPT OAuth status check failed:', err);
+      chatgptOAuthConnected = false;
+    }
+  }
+
   $: if (highlightSettingId) {
     highlightSetting(highlightSettingId);
     highlightSettingId = undefined;
@@ -108,6 +223,7 @@
   // Load settings on mount
   onMount(() => {
     loadSettings();
+    checkChatGPTOAuthStatus();
   });
 
   /**
@@ -274,6 +390,11 @@
     try {
       isSaving = true;
       await settingsConfig.setProviderApiKey(currentProvider, apiKey);
+
+      // If ChatGPT OAuth was connected, disconnect it (mutual exclusivity)
+      if (currentProvider === 'openai' && chatgptOAuthConnected) {
+        await handleChatGPTDisconnect();
+      }
 
       isAuthenticated = true;
       maskedApiKey = maskApiKey(apiKey);
@@ -707,6 +828,53 @@
       {/if}
     </div>
 
+    <!-- ChatGPT OAuth Section (OpenAI only, direct API mode) -->
+    {#if currentProvider === 'openai' && useOwnApiKey}
+      <div class="form-group chatgpt-oauth-section">
+        <label class="form-label">{t("ChatGPT Subscription")}</label>
+        {#if chatgptOAuthConnected}
+          <div class="chatgpt-oauth-status connected">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success-color, #4ade80)" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>{t("Connected via ChatGPT")}</span>
+            <button class="btn btn-secondary btn-sm" on:click={handleChatGPTDisconnect}>
+              {t("Disconnect")}
+            </button>
+          </div>
+        {:else if chatgptOAuthSigningIn}
+          <div class="chatgpt-oauth-status signing-in">
+            <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="10" />
+            </svg>
+            <span>{t("Signing in...")}</span>
+          </div>
+        {:else}
+          <div class="chatgpt-oauth-status disconnected">
+            <button class="btn btn-primary" on:click={handleChatGPTSignIn} disabled={isInitializing}>
+              {t("Sign in with ChatGPT")}
+            </button>
+            <div class="help-text">{t("Use your ChatGPT Plus/Pro subscription instead of an API key")}</div>
+          </div>
+        {/if}
+        {#if chatgptOAuthError}
+          <div class="message error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {chatgptOAuthError}
+          </div>
+        {/if}
+      </div>
+
+      <div class="form-divider">
+        <span class="divider-text">{t("or")}</span>
+      </div>
+    {/if}
+
     <div class="form-group">
       <label for="api-key" class="form-label">
         {$_t("$1$ API Key", { substitutions: [currentProviderName] })}
@@ -1133,7 +1301,7 @@
 
   .help-text {
     margin-top: 0.5rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
@@ -1167,14 +1335,14 @@
     background: color-mix(in srgb, var(--browserx-primary) 15%, transparent);
   }
 
-  /* ChatGPT theme - filled buttons */
-  :global(.settings-modal-container.chatgpt) .btn-primary {
+  /* Modern Chat theme - filled buttons */
+  :global(.settings-modal-container.modern) .btn-primary {
     background: var(--browserx-primary);
     color: white;
     border: none;
   }
 
-  :global(.settings-modal-container.chatgpt) .btn-primary:hover:not(:disabled) {
+  :global(.settings-modal-container.modern) .btn-primary:hover:not(:disabled) {
     background: color-mix(in srgb, var(--browserx-primary) 85%, black);
   }
 
@@ -1355,7 +1523,7 @@
   }
 
   .toggle-description {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--browserx-text-secondary);
   }
 
@@ -1424,5 +1592,52 @@
 
   .security-notice.backend-notice svg {
     color: var(--browserx-primary);
+  }
+
+  /* ChatGPT OAuth styles */
+  .chatgpt-oauth-section {
+    margin-bottom: 0.5rem;
+  }
+
+  .chatgpt-oauth-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+
+  .chatgpt-oauth-status.connected {
+    color: var(--success-color, #4ade80);
+  }
+
+  .chatgpt-oauth-status.signing-in {
+    color: var(--browserx-text-secondary);
+  }
+
+  .chatgpt-oauth-status .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    margin-left: auto;
+  }
+
+  .form-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+    color: var(--browserx-text-secondary);
+  }
+
+  .form-divider::before,
+  .form-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--browserx-border);
+  }
+
+  .divider-text {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 </style>

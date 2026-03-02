@@ -98,11 +98,11 @@ describe('ApprovalConfigStorage', () => {
 
     it('should read the correct storage key', async () => {
       await storage.loadConfig();
-      expect(mockStorage.get).toHaveBeenCalledWith([STORAGE_KEYS.APPROVAL_CONFIG]);
+      expect(mockStorage.get).toHaveBeenCalledWith([STORAGE_KEYS.CONFIG]);
     });
 
     it('should merge stored mode with defaults', async () => {
-      mockStorage._store[STORAGE_KEYS.APPROVAL_CONFIG] = { mode: 'yolo' };
+      mockStorage._store[STORAGE_KEYS.CONFIG] = { approval: { mode: 'yolo' } };
       const config = await storage.loadConfig();
       expect(config.mode).toBe('yolo');
       expect(config.version).toBe(DEFAULT_APPROVAL_CONFIG.version);
@@ -112,8 +112,8 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should deep-merge timeouts: stored overrides + default fallbacks', async () => {
-      mockStorage._store[STORAGE_KEYS.APPROVAL_CONFIG] = {
-        timeouts: { low: 999, high: 888 },
+      mockStorage._store[STORAGE_KEYS.CONFIG] = {
+        approval: { timeouts: { low: 999, high: 888 } },
       };
       const config = await storage.loadConfig();
       expect(config.timeouts.low).toBe(999);
@@ -123,7 +123,7 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should use default timeouts when stored config has no timeouts key', async () => {
-      mockStorage._store[STORAGE_KEYS.APPROVAL_CONFIG] = { mode: 'balanced' };
+      mockStorage._store[STORAGE_KEYS.CONFIG] = { approval: { mode: 'balanced' } };
       const config = await storage.loadConfig();
       expect(config.timeouts).toEqual(DEFAULT_APPROVAL_CONFIG.timeouts);
     });
@@ -134,16 +134,18 @@ describe('ApprovalConfigStorage', () => {
         match: { tool: 'dangerous_tool' },
         description: 'block it',
       };
-      mockStorage._store[STORAGE_KEYS.APPROVAL_CONFIG] = { userRules: [customRule] };
+      mockStorage._store[STORAGE_KEYS.CONFIG] = { approval: { userRules: [customRule] } };
       const config = await storage.loadConfig();
       expect(config.userRules).toHaveLength(1);
       expect(config.userRules[0].match.tool).toBe('dangerous_tool');
     });
 
     it('should preserve stored trustedDomains and blockedDomains', async () => {
-      mockStorage._store[STORAGE_KEYS.APPROVAL_CONFIG] = {
-        trustedDomains: ['safe.com'],
-        blockedDomains: ['evil.com'],
+      mockStorage._store[STORAGE_KEYS.CONFIG] = {
+        approval: {
+          trustedDomains: ['safe.com'],
+          blockedDomains: ['evil.com'],
+        },
       };
       const config = await storage.loadConfig();
       expect(config.trustedDomains).toEqual(['safe.com']);
@@ -169,20 +171,20 @@ describe('ApprovalConfigStorage', () => {
   // -----------------------------------------------------------------------
 
   describe('saveConfig', () => {
-    it('should save the provided config to the correct storage key', async () => {
+    it('should save the provided config nested under agent_config.approval', async () => {
       const config: IApprovalConfig = {
         ...DEFAULT_APPROVAL_CONFIG,
         mode: 'high_speed',
       };
       await storage.saveConfig(config);
       expect(mockStorage.set).toHaveBeenCalledWith({
-        [STORAGE_KEYS.APPROVAL_CONFIG]: config,
+        [STORAGE_KEYS.CONFIG]: { approval: config },
       });
     });
 
     it('should propagate errors from storage.set', async () => {
       const errStorage = {
-        get: vi.fn(),
+        get: vi.fn(async () => ({})),
         set: vi.fn(async () => { throw new Error('write failure'); }),
       };
       const errInstance = new ApprovalConfigStorage(() => errStorage);
@@ -201,7 +203,24 @@ describe('ApprovalConfigStorage', () => {
         timeouts: { low: 1, medium: 2, high: 3, critical: 4 },
       };
       await storage.saveConfig(fullConfig);
-      expect(mockStorage._store[STORAGE_KEYS.APPROVAL_CONFIG]).toEqual(fullConfig);
+      expect(mockStorage._store[STORAGE_KEYS.CONFIG].approval).toEqual(fullConfig);
+    });
+
+    it('should preserve existing agent_config fields when saving approval', async () => {
+      mockStorage._store[STORAGE_KEYS.CONFIG] = {
+        selectedModelKey: 'openai:gpt-4o',
+        tools: { dom_tool: true },
+      };
+      const config: IApprovalConfig = {
+        ...DEFAULT_APPROVAL_CONFIG,
+        mode: 'high_speed',
+      };
+      await storage.saveConfig(config);
+      // Approval should be set
+      expect(mockStorage._store[STORAGE_KEYS.CONFIG].approval).toEqual(config);
+      // Existing fields should be preserved
+      expect(mockStorage._store[STORAGE_KEYS.CONFIG].selectedModelKey).toBe('openai:gpt-4o');
+      expect(mockStorage._store[STORAGE_KEYS.CONFIG].tools).toEqual({ dom_tool: true });
     });
   });
 
