@@ -10,6 +10,7 @@ import type {
   ReasoningEffortConfig,
   ReasoningSummaryConfig,
 } from './types';
+import type { TaskSummary } from '../taskmanager/types';
 
 /**
  * Event Queue Entry - responses from agent
@@ -55,7 +56,8 @@ export type EventMsg =
   | { type: 'GetHistoryEntryResponse'; data: GetHistoryEntryResponseEvent }
   | { type: 'McpListToolsResponse'; data: McpListToolsResponseEvent }
   | { type: 'ListCustomPromptsResponse'; data: ListCustomPromptsResponseEvent }
-  | { type: 'PlanUpdate'; data: UpdatePlanArgs }
+  | { type: 'PlanUpdate'; data: PlanToolArgs }
+  | { type: 'TaskUpdate'; data: TaskUpdateEvent }
   | { type: 'TurnAborted'; data: TurnAbortedEvent }
   | { type: 'ShutdownComplete' }
   | { type: 'ConversationPath'; data: ConversationPathResponseEvent }
@@ -350,21 +352,38 @@ export enum StepStatus {
 /**
  * A single step in the task plan
  */
-export interface PlanItemArg {
-  /** Human-readable step description (recommended 5-7 words) */
+export interface PlanStepArg {
+  /** Step description (5-10 words) */
   step: string;
   /** Current execution state */
   status: StepStatus;
 }
 
 /**
- * Input arguments for the PlanningTool
+ * Input arguments for the PlanningTool — full-state overwrite every call
+ * @deprecated Use TaskUpdateEvent instead. Kept for backward compatibility.
  */
-export interface UpdatePlanArgs {
-  /** Optional explanation for plan creation/update */
+export interface PlanToolArgs {
+  /** What changed in this update */
   explanation?: string;
-  /** Ordered list of plan steps */
-  plan: PlanItemArg[];
+  /** Full ordered list of plan steps (required) */
+  plan: PlanStepArg[];
+}
+
+/**
+ * Event payload for persistent task management updates
+ */
+export interface TaskUpdateEvent {
+  eventType: 'plan_created' | 'updated' | 'completed' | 'deleted';
+  task?: {
+    id: string;
+    subject: string;
+    activeForm?: string;
+    status: string;
+    blocks: string[];
+    blockedBy: string[];
+  };
+  allTasks: TaskSummary[];
 }
 
 export interface TurnAbortedEvent {

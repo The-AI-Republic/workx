@@ -104,6 +104,25 @@ export class DesktopAgentBootstrap {
       // Wire up agent events to be dispatched through the channel
       this.setupEventForwarding(channelManager);
 
+      // 5b. Initialize StorageProvider before agent — PlanningTool requires it
+      // via getTaskStore() during tool registration in agent.initialize().
+      // Uses IndexedDB directly — SQLiteStorageProvider depends on Tauri Rust commands
+      // (storage_init, etc.) that are not implemented. IndexedDB is a standard Web API
+      // available in Tauri WebView.
+      const { setStorageProvider, isStorageProviderInitialized } = await import('@/core/storage');
+      if (!isStorageProviderInitialized()) {
+        try {
+          const { IndexedDBStorageProvider } = await import('@/extension/storage/IndexedDBStorageProvider');
+          const provider = new IndexedDBStorageProvider();
+          await provider.initialize();
+          setStorageProvider(provider);
+          console.log('[DesktopAgentBootstrap] StorageProvider initialized (IndexedDB)');
+        } catch (error) {
+          console.error('[DesktopAgentBootstrap] Failed to initialize StorageProvider:', error);
+          console.error('[DesktopAgentBootstrap] PlanningTool will be unavailable this session');
+        }
+      }
+
       // 6. Initialize the agent (loads model client, tools, etc.)
       // Event dispatcher is already set, so any warning events reach the channel.
       await this.agent.initialize();
@@ -439,9 +458,46 @@ export class DesktopAgentBootstrap {
         console.log('[DesktopAgentBootstrap] Auth restored from keychain → backend routing');
       } else {
         console.log('[DesktopAgentBootstrap] No valid token in keychain → api_key mode');
+
+        // Check for ChatGPT OAuth tokens
+        await this.restoreChatGPTOAuth();
       }
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not restore auth from keychain:', error);
+    }
+  }
+
+  /**
+   * Restore ChatGPT OAuth session from keychain.
+   * If valid ChatGPT OAuth tokens exist, configure the auth manager
+   * with a token getter that auto-refreshes.
+   */
+  private async restoreChatGPTOAuth(): Promise<void> {
+    try {
+      const { ChatGPTOAuthDesktopStorage } = await import('../auth/ChatGPTOAuthDesktopStorage');
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      const storage = new ChatGPTOAuthDesktopStorage();
+      const oauthService = new ChatGPTOAuthService(storage);
+
+      if (await oauthService.isAuthenticated()) {
+        // Create an AuthManager with ChatGPT OAuth token getter
+        const factory = this.agent?.getModelClientFactory();
+        if (factory) {
+          const currentAuthManager = factory.getAuthManager?.() ?? null;
+          const shouldUseBackend = currentAuthManager?.shouldUseBackend() ?? false;
+          const backendBaseUrl = currentAuthManager?.getBackendBaseUrl() ?? null;
+          const tokenGetter = currentAuthManager ? (() => currentAuthManager.getAccessToken()) : undefined;
+
+          const authManager = new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter);
+          authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+
+          factory.setAuthManager(authManager);
+          console.log('[DesktopAgentBootstrap] ChatGPT OAuth restored from keychain');
+        }
+      }
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not restore ChatGPT OAuth:', error);
     }
   }
 

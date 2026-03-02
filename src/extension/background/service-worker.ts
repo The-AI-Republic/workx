@@ -53,6 +53,7 @@ import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 // is banned in Chrome extension service workers by the HTML specification.
 import { setConfigStorage } from '../../core/storage/ConfigStorageProvider';
 import { setCredentialStore } from '../../core/storage/CredentialStore';
+import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import type {
@@ -133,6 +134,20 @@ async function doInitialize(): Promise<void> {
   // Create message router (must be created before agent)
   router = new MessageRouter('background');
 
+  // Initialize ONLY StorageProvider early — PlanningTool requires it via getTaskStore()
+  // during tool registration in registry.createSession().
+  // The rest of storage init (ConfigStorage, CredentialStore, CacheManager, etc.)
+  // stays at the end of doInitialize() to preserve the original initialization order.
+  try {
+    const storageProvider = new IndexedDBStorageProvider();
+    await storageProvider.initialize();
+    setStorageProvider(storageProvider);
+    console.log('[ServiceWorker] StorageProvider initialized (early — for PlanningTool)');
+  } catch (error) {
+    console.error('[ServiceWorker] Failed to initialize StorageProvider:', error);
+    console.error('[ServiceWorker] PlanningTool will be unavailable this session');
+  }
+
   // Feature 015: Initialize AgentRegistry instead of singleton agent
   // Load max concurrent sessions from user preferences
   const config = agentConfig!.getConfig();
@@ -199,7 +214,8 @@ async function doInitialize(): Promise<void> {
   // Setup periodic tasks
   setupPeriodicTasks();
 
-  // Initialize storage layer
+  // Initialize storage layer (ConfigStorage, CredentialStore, CacheManager, etc.)
+  // StorageProvider is already initialized above (early init for PlanningTool).
   await initializeStorage();
 }
 
@@ -233,6 +249,23 @@ async function initializeAuthFromConfig(): Promise<void> {
     factory.setAuthManager(authManager);
 
     console.log('[ServiceWorker] Auth initialized, isBackendRouting:', factory.isBackendRouting());
+
+    // Check for ChatGPT OAuth tokens and configure token getter
+    try {
+      const { ChatGPTOAuthExtensionStorage } = await import('../auth/ChatGPTOAuthExtensionStorage');
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      const oauthStorage = new ChatGPTOAuthExtensionStorage();
+      const oauthService = new ChatGPTOAuthService(oauthStorage);
+
+      if (await oauthService.isAuthenticated()) {
+        authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+        factory.setAuthManager(authManager);
+        console.log('[ServiceWorker] ChatGPT OAuth restored from storage');
+      }
+    } catch (oauthError) {
+      console.warn('[ServiceWorker] ChatGPT OAuth check failed:', oauthError);
+    }
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize auth from config:', error);
     // Continue without backend routing - will use direct API key mode
@@ -1722,6 +1755,21 @@ async function initializeStorage(): Promise<void> {
     console.log('[ServiceWorker] Credential store initialized');
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
+  }
+
+  // StorageProvider is initialized early in doInitialize() (before agent creation)
+  // so that PlanningTool can access it during tool registration.
+  // Skip here if already initialized.
+  if (!isStorageProviderInitialized()) {
+    try {
+      const storageProvider = new IndexedDBStorageProvider();
+      await storageProvider.initialize();
+      setStorageProvider(storageProvider);
+      console.log('[ServiceWorker] StorageProvider initialized');
+    } catch (error) {
+      console.error('[ServiceWorker] Failed to initialize StorageProvider:', error);
+      console.error('[ServiceWorker] PlanningTool will be unavailable this session');
+    }
   }
 
   // Initialize cache manager

@@ -26,6 +26,38 @@ export {
 } from './ConfigStorageProvider';
 export * from './types';
 
+// ============================================================================
+// StorageProvider Singleton
+// ============================================================================
+
+let _storageProvider: StorageProvider | null = null;
+
+/**
+ * Set the global StorageProvider instance
+ */
+export function setStorageProvider(provider: StorageProvider): void {
+  _storageProvider = provider;
+}
+
+/**
+ * Get the global StorageProvider instance
+ * @throws if not initialized
+ */
+export function getStorageProvider(): StorageProvider {
+  if (!_storageProvider) {
+    throw new Error('StorageProvider not initialized. Call initializeStorageProvider() first.');
+  }
+  return _storageProvider;
+}
+
+/**
+ * Check if the StorageProvider has been initialized
+ */
+export function isStorageProviderInitialized(): boolean {
+  return _storageProvider !== null;
+}
+
+
 /**
  * Create the appropriate StorageProvider for the current build mode.
  *
@@ -106,6 +138,7 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
   }
 }
 
+
 /**
  * Initialize config storage for the current platform.
  * Should be called early in the app initialization.
@@ -124,4 +157,14 @@ export async function initializeCredentialStore(): Promise<void> {
   const { setCredentialStore } = await import('./CredentialStore');
   const store = await createCredentialStore();
   setCredentialStore(store);
+}
+
+/**
+ * Initialize the StorageProvider for the current platform.
+ * Should be called early in the app initialization.
+ */
+export async function initializeStorageProvider(): Promise<void> {
+  const provider = await createStorageProvider();
+  await provider.initialize();
+  setStorageProvider(provider);
 }

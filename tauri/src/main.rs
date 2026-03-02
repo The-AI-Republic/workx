@@ -6,6 +6,7 @@ mod commands;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
+mod oauth_server;
 mod sandbox;
 mod rollout_db;
 mod skills_commands;
@@ -111,6 +112,23 @@ fn get_theme_icon(is_dark: bool) -> Option<Image<'static>> {
         }
     } else {
         load_png_image(ICON_LIGHT)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_png_image_invalid_data() {
+        let result = load_png_image(b"not a png file");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_load_png_image_empty() {
+        let result = load_png_image(b"");
+        assert!(result.is_none());
     }
 }
 
@@ -371,6 +389,8 @@ fn main() {
             rollout_db::rollout_db_get_stats,
             rollout_db::rollout_db_list_conversations,
             rollout_db::rollout_db_close,
+            // OAuth callback server
+            oauth_server::start_oauth_callback_server,
             // Skills filesystem commands
             skills_commands::skills_ensure_dir,
             skills_commands::skills_list_dirs,

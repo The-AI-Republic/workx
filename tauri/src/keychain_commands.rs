@@ -50,3 +50,15 @@ pub fn keychain_list_accounts(_service: String) -> Result<Vec<String>, String> {
     // The TypeScript side will fall back to metadata storage.
     Err("Native account listing not supported".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_keychain_list_accounts_returns_error() {
+        let result = keychain_list_accounts("test-service".to_string());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not supported"));
+    }
+}

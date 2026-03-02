@@ -3,6 +3,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* Left Panel */
+  --left-panel-width: 220px;
+
   /* Terminal Colors (Fixed — no dark variants) */
   --color-term-bg: #000000;
   --color-term-green: #00ff00;

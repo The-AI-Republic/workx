@@ -14,6 +14,7 @@ import { StorageTool } from './StorageTool';
 import { PageVisionTool } from './PageVisionTool';
 import { PlanningTool } from './PlanningTool';
 import { WebSearchTool } from './WebSearchTool';
+import { getTaskStore } from '../core/taskmanager';
 import { SettingTool } from './SettingTool';
 import { DomToolRiskAssessor } from '../core/approval/assessors/DomToolRiskAssessor';
 import { StaticRiskAssessor } from '../core/approval/assessors/StaticRiskAssessor';
@@ -183,9 +184,13 @@ export async function registerTools(
     // Use DOMTool with action parameter instead
 
     // Planning Tool - Always enabled for task planning and progress tracking
-    const planningTool = new PlanningTool();
-    await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
-    console.log('PlanningTool registered (always enabled)');
+    try {
+      const planningTool = new PlanningTool(getTaskStore());
+      await registerTool('planning_tool', planningTool, new StaticRiskAssessor(0));
+      console.log('PlanningTool registered (always enabled)');
+    } catch (planError) {
+      console.error('[registerTools] Failed to register PlanningTool (StorageProvider unavailable):', planError);
+    }
 
     // Setting Tool - Always enabled for reading/writing allowlisted settings via chat
     const settingTool = new SettingTool();
