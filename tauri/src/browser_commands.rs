@@ -171,6 +171,37 @@ async fn get_ws_endpoint_from_port(
         .ok_or_else(|| "No webSocketDebuggerUrl in /json/version response".to_string())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_exists_existing_file() {
+        // /tmp always exists on Unix
+        assert!(file_exists("/tmp".to_string()));
+    }
+
+    #[test]
+    fn test_file_exists_nonexistent() {
+        assert!(!file_exists("/nonexistent/path/that/doesnt/exist".to_string()));
+    }
+
+    #[test]
+    fn test_file_exists_empty_path() {
+        assert!(!file_exists("".to_string()));
+    }
+
+    #[test]
+    fn test_file_exists_with_temp_file() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_string_lossy().to_string();
+        assert!(file_exists(path.clone()));
+        // Drop the temp file and confirm it no longer exists
+        drop(tmp);
+        assert!(!file_exists(path));
+    }
+}
+
 /// Kill a process by PID
 #[tauri::command]
 pub fn kill_process(pid: u32) -> Result<(), String> {

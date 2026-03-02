@@ -251,6 +251,7 @@ export class IndexedDBAdapter {
             );
           }
         }
+
       };
     });
   }

@@ -86,9 +86,7 @@ pub async fn http_fetch(
     };
 
     // Build request
-    let http_method: reqwest::Method = method
-        .parse()
-        .map_err(|_| format!("Invalid HTTP method: {}", method))?;
+    let http_method = parse_http_method(&method)?;
 
     let mut req = client.request(http_method, &url);
 
@@ -160,4 +158,52 @@ pub async fn http_fetch(
 
     let _ = on_event.send(HttpEvent::End);
     Ok(())
+}
+
+/// Parse an HTTP method string into a reqwest::Method.
+/// Extracted for testability.
+fn parse_http_method(method: &str) -> Result<reqwest::Method, String> {
+    method
+        .parse()
+        .map_err(|_| format!("Invalid HTTP method: {}", method))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_http_method_get() {
+        assert_eq!(parse_http_method("GET").unwrap(), reqwest::Method::GET);
+    }
+
+    #[test]
+    fn test_parse_http_method_post() {
+        assert_eq!(parse_http_method("POST").unwrap(), reqwest::Method::POST);
+    }
+
+    #[test]
+    fn test_parse_http_method_put() {
+        assert_eq!(parse_http_method("PUT").unwrap(), reqwest::Method::PUT);
+    }
+
+    #[test]
+    fn test_parse_http_method_delete() {
+        assert_eq!(parse_http_method("DELETE").unwrap(), reqwest::Method::DELETE);
+    }
+
+    #[test]
+    fn test_parse_http_method_invalid() {
+        assert!(parse_http_method("INVALID METHOD").is_err());
+    }
+
+    #[test]
+    fn test_parse_http_method_patch() {
+        assert_eq!(parse_http_method("PATCH").unwrap(), reqwest::Method::PATCH);
+    }
+
+    #[test]
+    fn test_parse_http_method_head() {
+        assert_eq!(parse_http_method("HEAD").unwrap(), reqwest::Method::HEAD);
+    }
 }

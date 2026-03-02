@@ -67,156 +67,41 @@
   show={showPopup}
   onClose={() => showPopup = false}
 >
-  <div slot="trigger" class="indicator-trigger {currentTheme}">
+  <div slot="trigger" class="flex items-center">
     <Tooltip content="{$_t('Approval Mode')}: {currentLabel}" disabled={showPopup}>
       <button
-        class="indicator-button"
+        class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+          {currentTheme === 'modern'
+            ? 'bg-transparent border-none rounded-lg hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+            : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
         on:click={togglePopup}
         aria-label="{$_t('Approval Mode')}: {currentLabel}"
         aria-haspopup="true"
         aria-expanded={showPopup}
       >
-        <span class="indicator-dot" style="background-color: {currentColor};"></span>
+        <span class="w-4 h-4 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
       </button>
     </Tooltip>
   </div>
 
-  <div slot="content" class="mode-content {currentTheme}">
+  <div slot="content" class="min-w-[240px]">
     {#each MODE_OPTIONS as option}
       <button
-        class="mode-option"
-        class:selected={currentMode === option.mode}
+        class="flex items-center gap-2.5 w-full py-2 px-3 bg-transparent border-none rounded-md cursor-pointer text-sm text-left transition-colors duration-150
+          {currentTheme === 'modern'
+            ? 'font-chat text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/[0.08] ' + (currentMode === option.mode ? 'bg-white/[0.12]' : '')
+            : 'font-mono text-term-bright-green hover:bg-term-green/10 ' + (currentMode === option.mode ? 'bg-term-green/15' : '')}"
         on:click={() => selectMode(option.mode)}
       >
-        <span class="option-dot" style="background-color: {option.color};"></span>
-        <div class="option-text">
-          <span class="option-label">{option.label}</span>
-          <span class="option-desc">— {option.description}</span>
+        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {option.color};"></span>
+        <div class="flex gap-1.5 items-baseline">
+          <span class="font-semibold whitespace-nowrap">{option.label}</span>
+          <span class="whitespace-nowrap text-sm
+            {currentTheme === 'modern'
+              ? 'text-white/50'
+              : 'text-term-dim-green'}">— {option.description}</span>
         </div>
       </button>
     {/each}
   </div>
 </PopupCard>
-
-<style>
-  /* Trigger — Terminal Theme (default) */
-  .indicator-trigger {
-    display: flex;
-    align-items: center;
-  }
-
-  .indicator-button {
-    position: relative;
-    padding: 0.5rem;
-    border-radius: 9999px;
-    background: #000000;
-    border: 1px solid #00cc00;
-    color: #00cc00;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-  }
-
-  .indicator-button:hover {
-    transform: scale(1.1);
-    background: rgba(0, 204, 0, 0.1);
-  }
-
-  .indicator-button:active {
-    transform: scale(0.95);
-  }
-
-  .indicator-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: block;
-    transition: background-color 0.2s ease;
-  }
-
-  /* Content — Terminal Theme (default) */
-  .mode-content {
-    min-width: 240px;
-  }
-
-  .mode-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 8px 12px;
-    background: none;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--color-term-bright-green, #00ff00);
-    font-size: 0.8125rem;
-    text-align: left;
-    transition: background 0.15s ease;
-    font-family: 'Monaco', 'Courier New', monospace;
-  }
-
-  .mode-option:hover {
-    background: rgba(0, 255, 0, 0.1);
-  }
-
-  .mode-option.selected {
-    background: rgba(0, 255, 0, 0.15);
-  }
-
-  .option-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .option-text {
-    display: flex;
-    gap: 6px;
-    align-items: baseline;
-  }
-
-  .option-label {
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .option-desc {
-    color: var(--color-term-dim-green, #00cc00);
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-
-  /* Trigger — ChatGPT Theme */
-  .indicator-trigger.chatgpt .indicator-button {
-    background: transparent;
-    border: none;
-    border-radius: 0.5rem;
-  }
-
-  .indicator-trigger.chatgpt .indicator-button:hover {
-    background: var(--chat-button-hover, #ececec);
-    transform: none;
-  }
-
-  /* Content — ChatGPT Theme */
-  .mode-content.chatgpt .mode-option {
-    color: var(--chat-tooltip-text, #ffffff);
-    font-family: var(--font-chat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  }
-
-  .mode-content.chatgpt .mode-option:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .mode-content.chatgpt .mode-option.selected {
-    background: rgba(255, 255, 255, 0.12);
-  }
-
-  .mode-content.chatgpt .option-desc {
-    color: rgba(255, 255, 255, 0.5);
-  }
-</style>

@@ -9,7 +9,7 @@ export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
   telemetryEnabled: false,
   theme: 'system',
-  uiTheme: 'chatgpt',
+  uiTheme: 'modern-auto',
   autoStartEnabled: false,
   shortcuts: {},
   experimental: {}
@@ -342,12 +342,15 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
   // Get fresh providers from default.json
   const providers = getDefaultProviders();
 
-  // Apply stored API keys to providers
+  // Apply stored API keys and auth method to providers
   for (const [providerId, storedProvider] of Object.entries(stored.providerKeys)) {
     if (providers[providerId]) {
       providers[providerId].apiKey = storedProvider.apiKey;
       if (storedProvider.organization !== undefined) {
         providers[providerId].organization = storedProvider.organization;
+      }
+      if (storedProvider.authMethod) {
+        providers[providerId].authMethod = storedProvider.authMethod;
       }
     }
   }
@@ -424,12 +427,13 @@ export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
   const providerKeys: Record<string, { id: string; apiKey: string; organization?: string | null }> = {};
 
   for (const [providerId, provider] of Object.entries(config.providers)) {
-    // Only store if there's an API key configured
-    if (provider.apiKey) {
+    // Only store if there's an API key configured or an auth method set
+    if (provider.apiKey || provider.authMethod) {
       providerKeys[providerId] = {
         id: providerId,
         apiKey: provider.apiKey,
-        organization: provider.organization
+        organization: provider.organization,
+        ...(provider.authMethod ? { authMethod: provider.authMethod } : {}),
       };
     }
   }

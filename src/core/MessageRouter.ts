@@ -139,6 +139,16 @@ export enum MessageType {
   PIN_CHANGE = 'vault:pin:change',
   PIN_REMOVE = 'vault:pin:remove',
   PIN_FORGOT = 'vault:pin:forgot',
+
+  // Agent Skills messages (Feature 028)
+  SKILLS_LIST = 'SKILLS_LIST',
+  SKILLS_LOAD = 'SKILLS_LOAD',
+  SKILLS_SAVE = 'SKILLS_SAVE',
+  SKILLS_DELETE = 'SKILLS_DELETE',
+  SKILLS_UPDATE_MODE = 'SKILLS_UPDATE_MODE',
+  SKILLS_IMPORT = 'SKILLS_IMPORT',
+  SKILLS_EXPORT = 'SKILLS_EXPORT',
+  SKILLS_TRUST = 'SKILLS_TRUST',
 }
 
 /**

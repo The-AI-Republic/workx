@@ -39,9 +39,7 @@ export interface ModelClientConfig {
  * Storage keys for Chrome storage
  */
 const STORAGE_KEYS = {
-  OPENAI_API_KEY: 'openai_api_key',
   DEFAULT_PROVIDER: 'default_provider',
-  OPENAI_ORGANIZATION: 'openai_organization',
 } as const;
 
 const DEFAULT_MODEL = 'gpt-5';
@@ -75,6 +73,34 @@ export class ModelClientFactory {
    */
   getAuthManager(): IAuthManager | null {
     return this.authManager;
+  }
+
+  private _chatGPTOAuth401Retries = 0;
+  private static readonly MAX_OAUTH_401_RETRIES = 1;
+
+  /**
+   * Handle a 401 error when ChatGPT OAuth is active.
+   * Clears the client cache so the next request triggers a fresh token fetch.
+   * Returns true if ChatGPT OAuth is active and retry is allowed (max 1 retry).
+   */
+  handleChatGPTOAuth401(): boolean {
+    if (this.authManager?.isChatGPTOAuthActive?.()) {
+      if (this._chatGPTOAuth401Retries >= ModelClientFactory.MAX_OAUTH_401_RETRIES) {
+        this._chatGPTOAuth401Retries = 0;
+        return false;
+      }
+      this._chatGPTOAuth401Retries++;
+      this.clientCache.clear();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Reset the OAuth 401 retry counter. Call after a successful request.
+   */
+  resetOAuth401Retries(): void {
+    this._chatGPTOAuth401Retries = 0;
   }
 
   /**
@@ -131,8 +157,9 @@ export class ModelClientFactory {
     // (e.g., switching from Qwen with reasoning to Kimi K2 without reasoning)
     const selectedModelKey = this.config?.getConfig().selectedModelKey || 'unknown';
 
-    // Add routing type to cache key to separate backend vs direct clients
-    const routingType = this.isBackendRouting() ? 'backend' : 'direct';
+    // Add routing type and OAuth status to cache key to separate clients
+    const oauthActive = this.authManager?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
+    const routingType = this.isBackendRouting() ? 'backend' : oauthActive;
     const cacheKey = `${provider}-${selectedModelKey}-${routingType}`;
 
     // Check cache first
@@ -338,15 +365,11 @@ export class ModelClientFactory {
    * @param provider The provider to set as default
    */
   async setDefaultProvider(provider: ModelProvider): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      chrome.storage.sync.set({ [STORAGE_KEYS.DEFAULT_PROVIDER]: provider }, () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve();
-        }
-      });
-    });
+    try {
+      await chrome.storage.sync.set({ [STORAGE_KEYS.DEFAULT_PROVIDER]: provider });
+    } catch (error) {
+      console.warn(`[ModelClientFactory] Failed to set default provider:`, error);
+    }
   }
 
   /**
@@ -354,15 +377,13 @@ export class ModelClientFactory {
    * @returns Promise resolving to the default provider
    */
   async getDefaultProvider(): Promise<ModelProvider> {
-    return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([STORAGE_KEYS.DEFAULT_PROVIDER], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(result[STORAGE_KEYS.DEFAULT_PROVIDER] || 'openai');
-        }
-      });
-    });
+    try {
+      const result = await chrome.storage.sync.get([STORAGE_KEYS.DEFAULT_PROVIDER]);
+      return (result[STORAGE_KEYS.DEFAULT_PROVIDER] as ModelProvider) || 'openai';
+    } catch (error) {
+      console.warn(`[ModelClientFactory] Failed to get default provider:`, error);
+      return 'openai';
+    }
   }
 
   /**
@@ -482,6 +503,18 @@ export class ModelClientFactory {
       }
     }
 
+    // ChatGPT OAuth: if OpenAI provider and OAuth is active, use the OAuth token
+    if (provider === 'openai' && this.authManager?.isChatGPTOAuthActive?.()) {
+      try {
+        const oauthToken = await this.authManager.getChatGPTAccessToken?.();
+        if (oauthToken) {
+          apiKey = oauthToken;
+        }
+      } catch (error) {
+        console.warn(`[ModelClientFactory] ChatGPT OAuth token retrieval failed: ${error}`);
+      }
+    }
+
     // Don't throw error if API key is missing - allow model client to be created
     // The error will be thrown when actually trying to make an API request
 
@@ -502,32 +535,7 @@ export class ModelClientFactory {
       }
     }
 
-    // Load provider-specific options
-    if (provider === 'openai') {
-      const organization = await this.loadFromStorage(STORAGE_KEYS.OPENAI_ORGANIZATION);
-      if (organization) {
-        config.options!.organization = organization;
-      }
-    }
-
     return config;
-  }
-
-  /**
-   * Load a value from Chrome storage
-   * @param key The storage key
-   * @returns Promise resolving to the value or null
-   */
-  private async loadFromStorage(key: string): Promise<string | null> {
-    return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([key], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(result[key] || null);
-        }
-      });
-    });
   }
 
   /**

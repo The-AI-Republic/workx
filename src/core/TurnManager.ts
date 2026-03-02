@@ -208,6 +208,11 @@ export class TurnManager {
             break;
 
           case 'OutputItemDone': {
+            // Annotate assistant messages with the composite model key (providerId:modelId)
+            if (event.item?.type === 'message' && event.item?.role === 'assistant') {
+              event.item.modelKey = this.turnContext.getSelectedModelKey();
+            }
+
             // Item (message or tool call) is complete
             const response = await this.handleResponseItem(event.item);
             processedItems.push({
@@ -349,9 +354,6 @@ export class TurnManager {
         },
       });
     }
-
-    // Note: planning_tool is registered via ToolRegistry in src/tools/index.ts
-    // It will be picked up automatically from registeredTools above
 
     // Add MCP tools if enabled and available
     // Guard MCP calls with capability check to prevent "is not a function" errors
@@ -616,11 +618,6 @@ export class TurnManager {
           result = await this.executeWebSearch(parsedParams.query);
           break;
 
-        case 'planning_tool':
-          // Planning tool - emit PlanUpdate event and return success
-          result = await this.updatePlan(parsedParams.plan, parsedParams.explanation);
-          break;
-
         default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
           const browserTool = this.toolRegistry.getTool(toolName);
@@ -722,18 +719,6 @@ export class TurnManager {
       });
       throw error;
     }
-  }
-
-  /**
-   * Update task plan
-   */
-  private async updatePlan(plan: any[], explanation?: string): Promise<any> {
-    await this.emitEvent({
-      type: 'PlanUpdate',
-      data: { plan, explanation },
-    });
-
-    return { success: true, plan };
   }
 
   /**
@@ -842,6 +827,14 @@ export class TurnManager {
           success: true,
         },
       });
+
+      // Emit TaskUpdate through platform-agnostic event path
+      if (toolName === 'planning_tool' && response.data?._taskEvent) {
+        await this.emitEvent({
+          type: 'TaskUpdate',
+          data: response.data._taskEvent,
+        });
+      }
 
       return response.data;
     } catch (error) {
