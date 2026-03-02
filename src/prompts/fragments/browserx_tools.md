@@ -24,6 +24,14 @@
 - Cache intermediate data or page snapshots before leaving a view so you can reuse them without re-scraping.
 - When referencing cached entries, mention the key or summary so the user can follow the lineage.
 
+### SettingTool
+- Use `setting_tool` to read or modify user settings via chat.
+- Actions: `get` (read a single setting by key), `set` (update a setting), `list` (show all available settings with current values).
+- Keys use dot-notation: `approval.mode`, `tools.dom_tool`, `preferences.uiTheme`, `preferences.theme`, `preferences.language`, `selectedModelKey`.
+- Legacy aliases also work: `general.uiTheme`, `general.theme`, `general.language`, `model.selection`.
+- Boolean settings accept string `"true"`/`"false"` (auto-coerced).
+- Write operations are blocked in YOLO approval mode.
+
 ### Tool Chaining
 - Typical loop: observe with DOMTool/PageVision → plan → act → re-observe → document outcomes.
 - Combine NavigationTool for positioning, DOMTool for inspection, and StorageTool for memory to minimize redundant work.

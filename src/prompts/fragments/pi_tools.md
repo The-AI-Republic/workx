@@ -30,6 +30,14 @@
 - Use for information retrieval when you need current data from the web.
 - Prefer direct terminal commands (e.g., `curl`, API calls) when they can retrieve the same data faster.
 
+### SettingTool
+- Use `setting_tool` to read or modify user settings via chat.
+- Actions: `get` (read a single setting by key), `set` (update a setting), `list` (show all available settings with current values).
+- Keys use dot-notation: `approval.mode`, `tools.dom_tool`, `preferences.uiTheme`, `preferences.theme`, `preferences.language`, `selectedModelKey`.
+- Legacy aliases also work: `general.uiTheme`, `general.theme`, `general.language`, `model.selection`.
+- Boolean settings accept string `"true"`/`"false"` (auto-coerced).
+- Write operations are blocked in YOLO approval mode.
+
 ### Tool Chaining
 - Typical loop: observe (snapshot/ls/cat) → plan → act (terminal/browser) → re-observe → document outcomes.
 - Combine terminal for local operations and browser tools for web tasks to minimize redundant work.

@@ -68,8 +68,8 @@
 
   async function loadFromStorage(): Promise<IApprovalConfig | null> {
     try {
-      const result = await chrome.storage.local.get('approval_config');
-      return result['approval_config'] || null;
+      const result = await chrome.storage.local.get('agent_config');
+      return result['agent_config']?.approval || null;
     } catch {
       return null;
     }

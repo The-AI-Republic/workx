@@ -154,11 +154,13 @@ const runtimePolyfill = {
           const config = (message as any).config;
           (async () => {
             try {
-              // 1. Save to storage
-              const result = await storagePolyfill.local.get('approval_config');
-              const existing = (result as any)['approval_config'] || {};
+              // 1. Save to storage (nested under agent_config.approval)
+              const result = await storagePolyfill.local.get('agent_config');
+              const agentConfig = (result as any)['agent_config'] || {};
+              const existing = agentConfig.approval || {};
               const merged = { ...existing, ...config };
-              await storagePolyfill.local.set({ approval_config: merged });
+              agentConfig.approval = merged;
+              await storagePolyfill.local.set({ agent_config: agentConfig });
               // 2. Update ApprovalGate directly
               const { getDesktopAgentBootstrap } = await import('../agent/DesktopAgentBootstrap');
               const agent = getDesktopAgentBootstrap().getAgent();
