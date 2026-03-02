@@ -555,6 +555,17 @@ pub fn storage_batch(ops: Vec<BatchOp>) -> Result<Vec<BatchOpResult>, String> {
         return Ok(Vec::new());
     }
 
+    // Validate all collections upfront so we never start a SAVEPOINT that
+    // must be rolled back due to a validation error.
+    for op in &ops {
+        let coll = match op {
+            BatchOp::Get { collection, .. }
+            | BatchOp::Set { collection, .. }
+            | BatchOp::Delete { collection, .. } => collection,
+        };
+        validate_collection(coll)?;
+    }
+
     with_db(|s| {
         s.conn
             .execute_batch("SAVEPOINT batch_op")
@@ -565,7 +576,6 @@ pub fn storage_batch(ops: Vec<BatchOp>) -> Result<Vec<BatchOpResult>, String> {
         for op in &ops {
             match op {
                 BatchOp::Get { collection, key } => {
-                    validate_collection(collection)?;
                     let value = match s.conn.query_row(
                         &format!("SELECT value FROM {} WHERE key = ?1", collection),
                         params![key],
@@ -585,7 +595,6 @@ pub fn storage_batch(ops: Vec<BatchOp>) -> Result<Vec<BatchOpResult>, String> {
                     key,
                     value,
                 } => {
-                    validate_collection(collection)?;
                     let now = now_millis();
                     if let Err(e) = s.conn.execute(
                         &format!(
@@ -601,7 +610,6 @@ pub fn storage_batch(ops: Vec<BatchOp>) -> Result<Vec<BatchOpResult>, String> {
                     results.push(BatchOpResult { value: None });
                 }
                 BatchOp::Delete { collection, key } => {
-                    validate_collection(collection)?;
                     if let Err(e) = s.conn.execute(
                         &format!("DELETE FROM {} WHERE key = ?1", collection),
                         params![key],
@@ -624,9 +632,12 @@ pub fn storage_batch(ops: Vec<BatchOp>) -> Result<Vec<BatchOpResult>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex as TestMutex;
 
-    /// Tests share the global DB, so they must run serially.
-    /// Each test calls `init_in_memory()` which replaces the connection.
+    /// Integration tests share the global DB singleton, so they must not
+    /// run concurrently. Each DB test acquires this lock before calling
+    /// `init_in_memory()`.
+    static DB_TEST_LOCK: TestMutex<()> = TestMutex::new(());
 
     // ── Validation helpers ──────────────────────────────────────────────
 
@@ -711,6 +722,7 @@ mod tests {
 
     #[test]
     fn crud_set_get_delete() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         // Set
@@ -732,6 +744,7 @@ mod tests {
 
     #[test]
     fn crud_set_many_get_many() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         let items = vec![
@@ -746,6 +759,7 @@ mod tests {
 
     #[test]
     fn list_with_prefix() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         storage_set("cache".into(), "usr_1".into(), r#""one""#.into()).unwrap();
@@ -762,6 +776,7 @@ mod tests {
 
     #[test]
     fn list_prefix_escapes_wildcards() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         storage_set("cache".into(), "a%b_key".into(), r#""val""#.into()).unwrap();
@@ -779,6 +794,7 @@ mod tests {
 
     #[test]
     fn query_with_where_filter() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         storage_set("messages".into(), "m1".into(), r#"{"conversationId":"c1","text":"hi"}"#.into()).unwrap();
@@ -795,6 +811,7 @@ mod tests {
 
     #[test]
     fn count_with_filter() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         storage_set("messages".into(), "m1".into(), r#"{"type":"user"}"#.into()).unwrap();
@@ -810,6 +827,7 @@ mod tests {
 
     #[test]
     fn clear_removes_all_rows() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         storage_set("settings".into(), "a".into(), r#""1""#.into()).unwrap();
@@ -822,6 +840,7 @@ mod tests {
 
     #[test]
     fn rejects_invalid_collection() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
         assert!(storage_get("evil".into(), "k".into()).is_err());
         assert!(storage_set("evil".into(), "k".into(), "v".into()).is_err());
@@ -831,6 +850,7 @@ mod tests {
 
     #[test]
     fn batch_atomic_set_and_get() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         let ops = vec![
@@ -861,6 +881,7 @@ mod tests {
 
     #[test]
     fn batch_rolls_back_on_invalid_collection() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
 
         let ops = vec![
@@ -884,6 +905,7 @@ mod tests {
 
     #[test]
     fn batch_empty_is_noop() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         init_in_memory();
         let results = storage_batch(vec![]).unwrap();
         assert!(results.is_empty());
