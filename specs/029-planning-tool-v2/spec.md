@@ -2,14 +2,8 @@
 
 **Feature Branch**: `029-planning-tool-v2`
 **Created**: 2026-02-20
-**Status**: Done
+**Status**: Draft
 **Input**: User description: "Improve PlanningTool with persistent plan storage, richer plan schema, task dependencies, plan re-entry/continuity, system prompt injection, and activeForm UX pattern"
-
-> **Implementation Note**: The final implementation was simplified to a stateless
-> validate-and-emit pattern. Persistence, DAG dependencies, and action dispatch
-> were removed in favor of having the agent send the full plan state on every call.
-> The storage infrastructure (IndexedDB `plans` collection, SQLite migration) was
-> subsequently cleaned up as orphaned code.
 
 ## Clarifications
 
