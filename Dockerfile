@@ -1,16 +1,33 @@
 # Pi Server Mode — Production Image
+#
+# Two deployment modes for browser automation:
+#
+# 1. Bundled Chrome (default): Chrome installed in image, works standalone
+#    docker build -t pi-server .
+#
+# 2. Slim (remote browser): No Chrome, connects to external browser pool
+#    docker build --build-arg INSTALL_CHROME=false -t pi-server-slim .
+#    Then set CHROME_REMOTE_URL=http://chrome-pool:9222 at runtime
+
 FROM node:22-slim
 
-# Install Chromium for browser-based tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    ca-certificates \
-    fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+ARG INSTALL_CHROME=true
 
-# Set Chromium env vars
+# Install Chromium if requested (adds ~300MB to image)
+RUN if [ "$INSTALL_CHROME" = "true" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends \
+        chromium \
+        ca-certificates \
+        fonts-liberation \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Skip Puppeteer's bundled Chromium download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV CHROMIUM_PATH=/usr/bin/chromium
+
+# Set CHROME_BIN only when Chrome is bundled
+# For remote browser, set CHROME_REMOTE_URL at runtime instead
+ENV CHROME_BIN=${INSTALL_CHROME:+/usr/bin/chromium}
 
 WORKDIR /app
 

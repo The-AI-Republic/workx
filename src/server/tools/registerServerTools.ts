@@ -125,14 +125,44 @@ async function registerBrowserTools(registry: ToolRegistry): Promise<void> {
     let browserServer = mcpManager.getServerByName('browser');
 
     if (!browserServer) {
-      // Seed the browser server for server mode
-      const chromeBin = process.env.CHROME_BIN ?? findChromeBinary();
-      if (!chromeBin) {
-        console.warn(
-          '[registerServerTools] Chrome/Chromium not found — browser automation disabled. ' +
-          'Install Chrome or set CHROME_BIN env var to enable.'
+      // Build chrome-devtools-mcp args based on deployment mode:
+      // - CHROME_REMOTE_URL: connect to external browser (K8s browser pool, sidecar)
+      // - CHROME_WS_ENDPOINT: connect via WebSocket to external browser
+      // - CHROME_BIN or local detection: launch Chrome as child process
+      const remoteUrl = process.env.CHROME_REMOTE_URL;
+      const wsEndpoint = process.env.CHROME_WS_ENDPOINT;
+
+      const mcpArgs = ['chrome-devtools-mcp', '--no-usage-statistics'];
+
+      if (remoteUrl) {
+        // Remote browser via HTTP (e.g. browserless, Chrome sidecar)
+        mcpArgs.push('--browserUrl', remoteUrl);
+        console.log(`[registerServerTools] Connecting to remote browser: ${remoteUrl}`);
+      } else if (wsEndpoint) {
+        // Remote browser via WebSocket
+        mcpArgs.push('--wsEndpoint', wsEndpoint);
+        const wsHeaders = process.env.CHROME_WS_HEADERS;
+        if (wsHeaders) {
+          mcpArgs.push('--wsHeaders', wsHeaders);
+        }
+        console.log(`[registerServerTools] Connecting to browser via WebSocket: ${wsEndpoint}`);
+      } else {
+        // Local Chrome — check if available
+        const chromeBin = process.env.CHROME_BIN ?? findChromeBinary();
+        if (!chromeBin) {
+          console.warn(
+            '[registerServerTools] Chrome/Chromium not found — browser automation disabled. ' +
+            'Install Chrome, set CHROME_BIN, or set CHROME_REMOTE_URL for remote browser.'
+          );
+          return;
+        }
+        mcpArgs.push(
+          '--isolated',
+          '--chromeArg=--headless',
+          '--chromeArg=--no-sandbox',
+          '--chromeArg=--disable-setuid-sandbox',
         );
-        return;
+        console.log(`[registerServerTools] Using local Chrome: ${chromeBin}`);
       }
 
       try {
@@ -140,14 +170,7 @@ async function registerBrowserTools(registry: ToolRegistry): Promise<void> {
           name: 'browser',
           transport: 'stdio',
           command: 'npx',
-          args: [
-            'chrome-devtools-mcp',
-            '--no-usage-statistics',
-            '--isolated',
-            '--chromeArg=--headless',
-            '--chromeArg=--no-sandbox',
-            '--chromeArg=--disable-setuid-sandbox',
-          ],
+          args: mcpArgs,
           enabled: true,
           timeout: 180_000,
         });
