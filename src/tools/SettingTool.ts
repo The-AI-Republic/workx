@@ -2,8 +2,8 @@
  * Setting Tool
  *
  * Exposes allowlisted user settings to the LLM conversation for reading
- * and writing. Access is gated by a hardcoded allowlist and write operations
- * are blocked in YOLO mode.
+ * and writing. Access is gated by the Zod-based config schema and write
+ * operations are blocked in YOLO mode.
  *
  * Actions:
  * - get: Read a single setting value by key
@@ -19,13 +19,13 @@ import {
   type BaseToolOptions,
 } from './BaseTool';
 import {
-  SETTINGS_ALLOWLIST,
-  getEntry,
-  isAllowlisted,
-  validateValue,
-  type AllowlistEntry,
-} from './settingsAllowlist';
+  resolve,
+  listAccessibleFields,
+  listByCategory,
+  type ResolvedField,
+} from '../config/configSchema';
 import { STORAGE_KEYS } from '../config/defaults';
+import { z } from 'zod';
 
 // ── Storage helpers ────────────────────────────────────────────────────
 
@@ -73,14 +73,6 @@ async function writeStorageValue(
   await chrome.storage.local.set({ [storageKey]: config });
 }
 
-/**
- * Map the allowlist storageKey to the actual chrome.storage key.
- * All settings now live under agent_config.
- */
-function resolveStorageKey(storageKey: 'agent_config'): string {
-  return STORAGE_KEYS.CONFIG;
-}
-
 // ── Response types ─────────────────────────────────────────────────────
 
 interface SettingToolResponse {
@@ -120,7 +112,7 @@ export class SettingTool extends BaseTool {
       },
       key: {
         type: 'string',
-        description: 'Setting key from the allowlist (required for get/set). Example: "approval.mode", "tools.dom_tool", "general.uiTheme"',
+        description: 'Setting key (required for get/set). Example: "approval.mode", "tools.dom_tool", "preferences.uiTheme"',
       },
       value: {
         type: 'string',
@@ -169,7 +161,8 @@ export class SettingTool extends BaseTool {
       };
     }
 
-    if (!isAllowlisted(key)) {
+    const resolved = resolve(key, 'read');
+    if ('denied' in resolved) {
       return {
         success: false,
         action: 'get',
@@ -178,17 +171,15 @@ export class SettingTool extends BaseTool {
       };
     }
 
-    const entry = getEntry(key)!;
-    const storageKey = resolveStorageKey(entry.storageKey);
-    const value = await readStorageValue(storageKey, entry.configPath);
+    const value = await readStorageValue(STORAGE_KEYS.CONFIG, resolved.path);
 
     return {
       success: true,
       action: 'get',
       key,
       value,
-      label: entry.label,
-      description: entry.description,
+      label: resolved.llm_access.label,
+      description: resolved.llm_access.description,
     };
   }
 
@@ -204,7 +195,8 @@ export class SettingTool extends BaseTool {
       };
     }
 
-    if (!isAllowlisted(key)) {
+    const resolved = resolve(key, 'write');
+    if ('denied' in resolved) {
       return {
         success: false,
         action: 'set',
@@ -224,41 +216,39 @@ export class SettingTool extends BaseTool {
       };
     }
 
-    const entry = getEntry(key)!;
-
     // Coerce string values for boolean settings
-    const value = this.coerceValue(entry, rawValue);
+    const value = this.coerceValue(resolved.schema, rawValue);
 
-    // Validate value
-    const validation = validateValue(entry, value);
-    if (!validation.valid) {
+    // Validate value using Zod schema
+    const parseResult = resolved.schema.safeParse(value);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.issues.map((i) => i.message).join(', ');
       return {
         success: false,
         action: 'set',
         key,
-        error: `Invalid value for "${key}": ${validation.error}`,
+        error: `Invalid value for "${key}": ${errorMsg}`,
       };
     }
 
     // Read previous value
-    const storageKey = resolveStorageKey(entry.storageKey);
-    const previousValue = await readStorageValue(storageKey, entry.configPath);
+    const previousValue = await readStorageValue(STORAGE_KEYS.CONFIG, resolved.path);
 
     // Write new value
-    await writeStorageValue(storageKey, entry.configPath, value);
+    await writeStorageValue(STORAGE_KEYS.CONFIG, resolved.path, parseResult.data);
 
     // Build response
     const response: SettingToolResponse = {
       success: true,
       action: 'set',
       key,
-      value,
+      value: parseResult.data,
       previousValue,
-      label: entry.label,
+      label: resolved.llm_access.label,
     };
 
     // FR-009: YOLO transition warning
-    if (key === 'approval.mode' && value === 'yolo') {
+    if (resolved.path === 'approval.mode' && parseResult.data === 'yolo') {
       response.warning =
         'Warning: YOLO mode is now active. Setting tool write access will be disabled. ' +
         'You will still be able to read settings, but changes must be made through the ' +
@@ -272,19 +262,19 @@ export class SettingTool extends BaseTool {
 
   private async handleList(): Promise<SettingToolResponse> {
     const settings: SettingListItem[] = [];
+    const fields = listAccessibleFields();
 
-    for (const entry of SETTINGS_ALLOWLIST) {
-      const storageKey = resolveStorageKey(entry.storageKey);
-      const currentValue = await readStorageValue(storageKey, entry.configPath);
+    for (const field of fields) {
+      const currentValue = await readStorageValue(STORAGE_KEYS.CONFIG, field.path);
 
       settings.push({
-        key: entry.key,
-        category: entry.category,
-        label: entry.label,
-        description: entry.description,
+        key: field.path,
+        category: field.llm_access.category || '',
+        label: field.llm_access.label || field.path,
+        description: field.llm_access.description || '',
         currentValue,
-        type: entry.type,
-        allowedValues: entry.allowedValues,
+        type: this.schemaToType(field.schema),
+        allowedValues: this.schemaToAllowedValues(field.schema),
       });
     }
 
@@ -312,11 +302,60 @@ export class SettingTool extends BaseTool {
    * The LLM may pass "true"/"false" as strings since the parameter schema
    * uses string type for the value field.
    */
-  private coerceValue(entry: AllowlistEntry, value: unknown): unknown {
-    if (entry.type === 'boolean' && typeof value === 'string') {
+  private coerceValue(schema: z.ZodTypeAny, value: unknown): unknown {
+    if (this.isZodBoolean(schema) && typeof value === 'string') {
       if (value.toLowerCase() === 'true') return true;
       if (value.toLowerCase() === 'false') return false;
     }
     return value;
+  }
+
+  /**
+   * Check if a Zod schema is a boolean type (handles ZodDefault wrapping)
+   */
+  private isZodBoolean(schema: z.ZodTypeAny): boolean {
+    if (schema._def.typeName === 'ZodBoolean') return true;
+    if (schema._def.typeName === 'ZodDefault') {
+      return this.isZodBoolean((schema as z.ZodDefault<any>)._def.innerType);
+    }
+    return false;
+  }
+
+  /**
+   * Derive a simple type string from a Zod schema
+   */
+  private schemaToType(schema: z.ZodTypeAny): string {
+    const inner = this.unwrapDefault(schema);
+    const typeName = inner._def.typeName;
+    if (typeName === 'ZodBoolean') return 'boolean';
+    if (typeName === 'ZodString') return 'string';
+    if (typeName === 'ZodNumber') return 'number';
+    if (typeName === 'ZodEnum') return 'string';
+    if (typeName === 'ZodArray') return 'string[]';
+    return 'string';
+  }
+
+  /**
+   * Extract allowed values from a Zod schema (enum values)
+   */
+  private schemaToAllowedValues(schema: z.ZodTypeAny): (string | boolean | number)[] | null {
+    const inner = this.unwrapDefault(schema);
+    if (inner._def.typeName === 'ZodEnum') {
+      return (inner as z.ZodEnum<any>)._def.values;
+    }
+    if (inner._def.typeName === 'ZodBoolean') {
+      return [true, false];
+    }
+    return null;
+  }
+
+  /**
+   * Unwrap ZodDefault to get the inner schema
+   */
+  private unwrapDefault(schema: z.ZodTypeAny): z.ZodTypeAny {
+    if (schema._def.typeName === 'ZodDefault') {
+      return (schema as z.ZodDefault<any>)._def.innerType;
+    }
+    return schema;
   }
 }
