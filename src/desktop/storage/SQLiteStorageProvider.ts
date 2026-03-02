@@ -242,28 +242,57 @@ export class SQLiteStorageProvider implements StorageProvider {
   async transaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
     this.ensureInitialized();
 
-    // Begin transaction
-    await invoke('storage_begin_transaction');
+    // Buffer write operations and execute them atomically via storage_batch.
+    // Reads are served from the buffer (for pending writes) or the database.
+    // This avoids the broken BEGIN/COMMIT pattern where the Rust Mutex is
+    // released between commands, allowing other threads to interleave.
+    interface BatchOp {
+      op: 'get' | 'set' | 'delete';
+      collection: string;
+      key: string;
+      value?: string;
+    }
+
+    const pendingOps: BatchOp[] = [];
+    const writeCache = new Map<string, string | null>(); // tracks pending writes/deletes
 
     const tx: Transaction = {
-      get: async <U>(collection: string, key: string) => this.get<U>(collection, key),
-      set: async <U>(collection: string, key: string, value: U) =>
-        this.set(collection, key, value),
-      delete: async (collection: string, key: string) => this.delete(collection, key),
+      get: async <U>(collection: string, key: string): Promise<U | null> => {
+        const cacheKey = `${collection}\0${key}`;
+        if (writeCache.has(cacheKey)) {
+          const cached = writeCache.get(cacheKey);
+          return cached != null ? JSON.parse(cached) : null;
+        }
+        // Read directly from DB for keys not touched in this transaction
+        return this.get<U>(collection, key);
+      },
+      set: async <U>(collection: string, key: string, value: U): Promise<void> => {
+        const serialized = JSON.stringify(value);
+        pendingOps.push({ op: 'set', collection, key, value: serialized });
+        writeCache.set(`${collection}\0${key}`, serialized);
+      },
+      delete: async (collection: string, key: string): Promise<void> => {
+        pendingOps.push({ op: 'delete', collection, key });
+        writeCache.set(`${collection}\0${key}`, null);
+      },
       commit: async () => {
-        await invoke('storage_commit_transaction');
+        // Flushed below after fn() returns
       },
       abort: async () => {
-        await invoke('storage_rollback_transaction');
+        pendingOps.length = 0;
+        writeCache.clear();
       },
     };
 
     try {
       const result = await fn(tx);
-      await tx.commit();
+      // Flush all buffered writes as a single atomic batch
+      if (pendingOps.length > 0) {
+        await invoke('storage_batch', { ops: pendingOps });
+      }
       return result;
     } catch (error) {
-      await tx.abort();
+      // Nothing to rollback — writes were never sent to the database
       throw error;
     }
   }

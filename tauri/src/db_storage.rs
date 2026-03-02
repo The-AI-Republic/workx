@@ -196,6 +196,36 @@ fn append_order_limit(
     Ok(())
 }
 
+/// Create collection tables on the given connection.
+fn create_tables(conn: &Connection) -> Result<(), String> {
+    for coll in ALLOWED_COLLECTIONS {
+        // SAFETY: collection names come from the ALLOWED_COLLECTIONS constant
+        conn.execute_batch(&format!(
+            "CREATE TABLE IF NOT EXISTS {} (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )",
+            coll
+        ))
+        .map_err(|e| format!("Cannot create table {}: {}", coll, e))?;
+    }
+    Ok(())
+}
+
+/// Replace the global DB with the given connection (used by tests).
+#[cfg(test)]
+fn init_in_memory() {
+    let conn = Connection::open_in_memory().unwrap();
+    create_tables(&conn).unwrap();
+    let mut db = DB.lock().unwrap();
+    *db = Some(DbStorage {
+        conn,
+        db_path: ":memory:".to_string(),
+    });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Tauri Commands
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -226,18 +256,7 @@ pub fn storage_init() -> Result<InitResult, String> {
     conn.execute_batch("PRAGMA journal_mode=WAL;")
         .map_err(|e| format!("Cannot set WAL: {}", e))?;
 
-    for coll in ALLOWED_COLLECTIONS {
-        conn.execute_batch(&format!(
-            "CREATE TABLE IF NOT EXISTS {} (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL,
-                created_at INTEGER NOT NULL,
-                updated_at INTEGER NOT NULL
-            )",
-            coll
-        ))
-        .map_err(|e| format!("Cannot create table {}: {}", coll, e))?;
-    }
+    create_tables(&conn)?;
 
     *db = Some(DbStorage {
         conn,
@@ -417,8 +436,9 @@ pub fn storage_list(
         let mut bind_values: Vec<SqlValue> = Vec::new();
 
         if let Some(ref p) = prefix {
-            sql.push_str(" WHERE key LIKE ?");
-            bind_values.push(SqlValue::Text(format!("{}%", p)));
+            sql.push_str(" WHERE key LIKE ? ESCAPE '\\'");
+            let escaped = p.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+            bind_values.push(SqlValue::Text(format!("{}%", escaped)));
         }
 
         append_order_limit(&mut sql, &mut bind_values, &orderBy, &order, limit, offset)?;
@@ -510,35 +530,362 @@ pub fn storage_vacuum() -> Result<(), String> {
     })
 }
 
-/// Begin an explicit transaction.
+/// A single operation in an atomic batch.
+#[derive(serde::Deserialize)]
+#[serde(tag = "op", rename_all = "camelCase")]
+pub enum BatchOp {
+    Get { collection: String, key: String },
+    Set { collection: String, key: String, value: String },
+    Delete { collection: String, key: String },
+}
+
+/// Result of a single batch operation.
+#[derive(serde::Serialize)]
+pub struct BatchOpResult {
+    /// For get operations, the value (null if not found). None for set/delete.
+    value: Option<String>,
+}
+
+/// Execute multiple operations atomically within a SAVEPOINT.
+/// Returns one result per operation (in order). The Mutex is held for the
+/// entire batch, so no other command can interleave.
 #[tauri::command]
-pub fn storage_begin_transaction() -> Result<(), String> {
+pub fn storage_batch(ops: Vec<BatchOp>) -> Result<Vec<BatchOpResult>, String> {
+    if ops.is_empty() {
+        return Ok(Vec::new());
+    }
+
     with_db(|s| {
         s.conn
-            .execute_batch("BEGIN TRANSACTION")
-            .map_err(|e| format!("Begin transaction failed: {}", e))?;
-        Ok(())
+            .execute_batch("SAVEPOINT batch_op")
+            .map_err(|e| format!("Savepoint failed: {}", e))?;
+
+        let mut results = Vec::with_capacity(ops.len());
+
+        for op in &ops {
+            match op {
+                BatchOp::Get { collection, key } => {
+                    validate_collection(collection)?;
+                    let value = match s.conn.query_row(
+                        &format!("SELECT value FROM {} WHERE key = ?1", collection),
+                        params![key],
+                        |row| row.get::<_, String>(0),
+                    ) {
+                        Ok(v) => Some(v),
+                        Err(rusqlite::Error::QueryReturnedNoRows) => None,
+                        Err(e) => {
+                            let _ = s.conn.execute_batch("ROLLBACK TO batch_op");
+                            return Err(format!("Batch get failed: {}", e));
+                        }
+                    };
+                    results.push(BatchOpResult { value });
+                }
+                BatchOp::Set {
+                    collection,
+                    key,
+                    value,
+                } => {
+                    validate_collection(collection)?;
+                    let now = now_millis();
+                    if let Err(e) = s.conn.execute(
+                        &format!(
+                            "INSERT INTO {} (key, value, created_at, updated_at) VALUES (?1, ?2, ?3, ?4) \
+                             ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?4",
+                            collection
+                        ),
+                        params![key, value, now, now],
+                    ) {
+                        let _ = s.conn.execute_batch("ROLLBACK TO batch_op");
+                        return Err(format!("Batch set failed for key {}: {}", key, e));
+                    }
+                    results.push(BatchOpResult { value: None });
+                }
+                BatchOp::Delete { collection, key } => {
+                    validate_collection(collection)?;
+                    if let Err(e) = s.conn.execute(
+                        &format!("DELETE FROM {} WHERE key = ?1", collection),
+                        params![key],
+                    ) {
+                        let _ = s.conn.execute_batch("ROLLBACK TO batch_op");
+                        return Err(format!("Batch delete failed for key {}: {}", key, e));
+                    }
+                    results.push(BatchOpResult { value: None });
+                }
+            }
+        }
+
+        s.conn
+            .execute_batch("RELEASE batch_op")
+            .map_err(|e| format!("Release failed: {}", e))?;
+        Ok(results)
     })
 }
 
-/// Commit the current transaction.
-#[tauri::command]
-pub fn storage_commit_transaction() -> Result<(), String> {
-    with_db(|s| {
-        s.conn
-            .execute_batch("COMMIT")
-            .map_err(|e| format!("Commit failed: {}", e))?;
-        Ok(())
-    })
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-/// Rollback the current transaction.
-#[tauri::command]
-pub fn storage_rollback_transaction() -> Result<(), String> {
-    with_db(|s| {
-        s.conn
-            .execute_batch("ROLLBACK")
-            .map_err(|e| format!("Rollback failed: {}", e))?;
-        Ok(())
-    })
+    /// Tests share the global DB, so they must run serially.
+    /// Each test calls `init_in_memory()` which replaces the connection.
+
+    // ── Validation helpers ──────────────────────────────────────────────
+
+    #[test]
+    fn validate_collection_accepts_allowed() {
+        for c in ALLOWED_COLLECTIONS {
+            assert!(validate_collection(c).is_ok(), "should accept {}", c);
+        }
+    }
+
+    #[test]
+    fn validate_collection_rejects_unknown() {
+        assert!(validate_collection("evil_table").is_err());
+        assert!(validate_collection("").is_err());
+    }
+
+    #[test]
+    fn validate_field_name_accepts_valid() {
+        assert!(validate_field_name("foo").is_ok());
+        assert!(validate_field_name("nested.path").is_ok());
+        assert!(validate_field_name("with_underscore").is_ok());
+    }
+
+    #[test]
+    fn validate_field_name_rejects_invalid() {
+        assert!(validate_field_name("").is_err());
+        assert!(validate_field_name("has space").is_err());
+        assert!(validate_field_name("semi;colon").is_err());
+        assert!(validate_field_name("quote'").is_err());
+    }
+
+    #[test]
+    fn validate_order_accepts_asc_desc() {
+        assert_eq!(validate_order("asc").unwrap(), "ASC");
+        assert_eq!(validate_order("DESC").unwrap(), "DESC");
+        assert!(validate_order("random").is_err());
+    }
+
+    #[test]
+    fn order_by_expr_uses_column_for_known_fields() {
+        assert_eq!(order_by_expr("key").unwrap(), "key");
+        assert_eq!(order_by_expr("created_at").unwrap(), "created_at");
+    }
+
+    #[test]
+    fn order_by_expr_uses_json_extract_for_custom_fields() {
+        assert_eq!(
+            order_by_expr("title").unwrap(),
+            "json_extract(value, '$.title')"
+        );
+    }
+
+    // ── parse_where ─────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_where_simple_equality() {
+        let (conds, vals) = parse_where(r#"{"name":"alice"}"#).unwrap();
+        assert_eq!(conds.len(), 1);
+        assert_eq!(conds[0], "json_extract(value, '$.name') = ?");
+        assert_eq!(vals[0], SqlValue::Text("alice".into()));
+    }
+
+    #[test]
+    fn parse_where_multiple_fields() {
+        let (conds, vals) = parse_where(r#"{"a":1,"b":true}"#).unwrap();
+        assert_eq!(conds.len(), 2);
+        assert_eq!(vals.len(), 2);
+    }
+
+    #[test]
+    fn parse_where_rejects_non_object() {
+        assert!(parse_where(r#"[1,2,3]"#).is_err());
+        assert!(parse_where(r#""string""#).is_err());
+    }
+
+    #[test]
+    fn parse_where_rejects_invalid_field() {
+        assert!(parse_where(r#"{"bad;field":1}"#).is_err());
+    }
+
+    // ── CRUD integration (using in-memory DB) ───────────────────────────
+
+    #[test]
+    fn crud_set_get_delete() {
+        init_in_memory();
+
+        // Set
+        storage_set("settings".into(), "k1".into(), r#"{"a":1}"#.into()).unwrap();
+
+        // Get
+        let val = storage_get("settings".into(), "k1".into()).unwrap();
+        assert_eq!(val, Some(r#"{"a":1}"#.into()));
+
+        // Get missing
+        let missing = storage_get("settings".into(), "nope".into()).unwrap();
+        assert_eq!(missing, None);
+
+        // Delete
+        storage_delete("settings".into(), "k1".into()).unwrap();
+        let after = storage_get("settings".into(), "k1".into()).unwrap();
+        assert_eq!(after, None);
+    }
+
+    #[test]
+    fn crud_set_many_get_many() {
+        init_in_memory();
+
+        let items = vec![
+            StorageItem { key: "a".into(), value: r#""alpha""#.into() },
+            StorageItem { key: "b".into(), value: r#""beta""#.into() },
+        ];
+        storage_set_many("tasks".into(), items).unwrap();
+
+        let rows = storage_get_many("tasks".into(), vec!["a".into(), "b".into(), "c".into()]).unwrap();
+        assert_eq!(rows.len(), 2);
+    }
+
+    #[test]
+    fn list_with_prefix() {
+        init_in_memory();
+
+        storage_set("cache".into(), "usr_1".into(), r#""one""#.into()).unwrap();
+        storage_set("cache".into(), "usr_2".into(), r#""two""#.into()).unwrap();
+        storage_set("cache".into(), "other".into(), r#""nope""#.into()).unwrap();
+
+        let rows = storage_list(
+            "cache".into(),
+            Some("usr_".into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 2);
+    }
+
+    #[test]
+    fn list_prefix_escapes_wildcards() {
+        init_in_memory();
+
+        storage_set("cache".into(), "a%b_key".into(), r#""val""#.into()).unwrap();
+        storage_set("cache".into(), "axby".into(), r#""no""#.into()).unwrap();
+
+        // Prefix "a%b_" should only match the literal key, not wildcard-expanded
+        let rows = storage_list(
+            "cache".into(),
+            Some("a%b_".into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].key, "a%b_key");
+    }
+
+    #[test]
+    fn query_with_where_filter() {
+        init_in_memory();
+
+        storage_set("messages".into(), "m1".into(), r#"{"conversationId":"c1","text":"hi"}"#.into()).unwrap();
+        storage_set("messages".into(), "m2".into(), r#"{"conversationId":"c2","text":"bye"}"#.into()).unwrap();
+
+        let rows = storage_query(
+            "messages".into(),
+            Some(r#"{"conversationId":"c1"}"#.into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].key, "m1");
+    }
+
+    #[test]
+    fn count_with_filter() {
+        init_in_memory();
+
+        storage_set("messages".into(), "m1".into(), r#"{"type":"user"}"#.into()).unwrap();
+        storage_set("messages".into(), "m2".into(), r#"{"type":"user"}"#.into()).unwrap();
+        storage_set("messages".into(), "m3".into(), r#"{"type":"bot"}"#.into()).unwrap();
+
+        let total = storage_count("messages".into(), None).unwrap();
+        assert_eq!(total, 3);
+
+        let users = storage_count("messages".into(), Some(r#"{"type":"user"}"#.into())).unwrap();
+        assert_eq!(users, 2);
+    }
+
+    #[test]
+    fn clear_removes_all_rows() {
+        init_in_memory();
+
+        storage_set("settings".into(), "a".into(), r#""1""#.into()).unwrap();
+        storage_set("settings".into(), "b".into(), r#""2""#.into()).unwrap();
+        storage_clear("settings".into()).unwrap();
+
+        let count = storage_count("settings".into(), None).unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn rejects_invalid_collection() {
+        init_in_memory();
+        assert!(storage_get("evil".into(), "k".into()).is_err());
+        assert!(storage_set("evil".into(), "k".into(), "v".into()).is_err());
+    }
+
+    // ── Batch (replaces broken transaction commands) ────────────────────
+
+    #[test]
+    fn batch_atomic_set_and_get() {
+        init_in_memory();
+
+        let ops = vec![
+            BatchOp::Set {
+                collection: "settings".into(),
+                key: "x".into(),
+                value: r#""hello""#.into(),
+            },
+            BatchOp::Set {
+                collection: "settings".into(),
+                key: "y".into(),
+                value: r#""world""#.into(),
+            },
+            BatchOp::Get {
+                collection: "settings".into(),
+                key: "x".into(),
+            },
+        ];
+
+        let results = storage_batch(ops).unwrap();
+        assert_eq!(results.len(), 3);
+        // First two are sets — value is None
+        assert!(results[0].value.is_none());
+        assert!(results[1].value.is_none());
+        // Third is a get — should see the value written earlier in the batch
+        assert_eq!(results[2].value, Some(r#""hello""#.into()));
+    }
+
+    #[test]
+    fn batch_rolls_back_on_invalid_collection() {
+        init_in_memory();
+
+        let ops = vec![
+            BatchOp::Set {
+                collection: "settings".into(),
+                key: "good".into(),
+                value: r#""val""#.into(),
+            },
+            BatchOp::Set {
+                collection: "evil".into(), // invalid
+                key: "bad".into(),
+                value: r#""val""#.into(),
+            },
+        ];
+
+        assert!(storage_batch(ops).is_err());
+        // The first set should have been rolled back
+        let val = storage_get("settings".into(), "good".into()).unwrap();
+        assert_eq!(val, None);
+    }
+
+    #[test]
+    fn batch_empty_is_noop() {
+        init_in_memory();
+        let results = storage_batch(vec![]).unwrap();
+        assert!(results.is_empty());
+    }
 }

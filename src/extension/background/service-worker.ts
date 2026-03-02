@@ -1866,7 +1866,6 @@ async function initializeStorage(): Promise<void> {
     console.warn('[ServiceWorker] Failed to initialize vault:', error);
   }
 
-
   // StorageProvider is initialized early in doInitialize() (before agent creation)
   // so that PlanningTool can access it during tool registration.
   // Skip here if already initialized.

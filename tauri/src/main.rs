@@ -412,9 +412,7 @@ fn main() {
             db_storage::storage_count,
             db_storage::storage_clear,
             db_storage::storage_vacuum,
-            db_storage::storage_begin_transaction,
-            db_storage::storage_commit_transaction,
-            db_storage::storage_rollback_transaction,
+            db_storage::storage_batch,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
