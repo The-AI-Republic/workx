@@ -79,7 +79,7 @@
         aria-haspopup="true"
         aria-expanded={showPopup}
       >
-        <span class="w-3 h-3 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
+        <span class="w-4 h-4 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
       </button>
     </Tooltip>
   </div>
