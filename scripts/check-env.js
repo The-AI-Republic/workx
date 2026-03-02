@@ -10,7 +10,7 @@
  *   node scripts/check-env.js all        # Check both
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,6 +23,35 @@ const ENV_PATHS = {
 };
 
 const ENV_EXAMPLE_PATH = resolve(projectRoot, '.env.example');
+
+/**
+ * Validate that VITE_VAULT_SECRET exists and meets minimum length.
+ * Only applies to extension builds.
+ */
+function checkVaultSecret(target) {
+  if (target !== 'extension') return true;
+
+  const envPath = ENV_PATHS[target];
+  if (!existsSync(envPath)) return true; // File check handled by checkEnvFile
+
+  const content = readFileSync(envPath, 'utf-8');
+  const match = content.match(/^VITE_VAULT_SECRET=(.+)$/m);
+
+  if (!match || !match[1]) {
+    console.error(`\x1b[31mError: VITE_VAULT_SECRET is missing in src/extension/.env\x1b[0m`);
+    console.error(`\nThe vault secret is required for credential encryption.`);
+    console.error(`Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"\n`);
+    return false;
+  }
+
+  const secret = match[1].trim();
+  if (secret.length < 32) {
+    console.error(`\x1b[31mError: VITE_VAULT_SECRET must be at least 32 characters (got ${secret.length})\x1b[0m`);
+    return false;
+  }
+
+  return true;
+}
 
 function checkEnvFile(target) {
   const envPath = ENV_PATHS[target];
@@ -69,6 +98,13 @@ function main() {
     }
   } else {
     success = checkEnvFile(target);
+  }
+
+  // Validate VITE_VAULT_SECRET for extension builds
+  if (target === 'all' || target === 'extension') {
+    if (!checkVaultSecret('extension')) {
+      success = false;
+    }
   }
 
   if (!success) {

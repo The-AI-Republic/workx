@@ -206,8 +206,7 @@ fn execute_via_pty(
     drop(held_resources);
 
     // Strip ANSI escape codes
-    let stripped = strip_ansi_escapes::strip(&raw_output);
-    let stdout = String::from_utf8_lossy(&stripped).to_string();
+    let stdout = strip_ansi_and_decode(&raw_output);
 
     Ok(DirectResult {
         exit_code,
@@ -384,6 +383,13 @@ pub async fn terminal_execute(
     })
 }
 
+/// Strip ANSI escape codes and decode bytes as UTF-8 (lossy).
+/// Extracted for testability — used by `execute_via_pty`.
+fn strip_ansi_and_decode(raw: &[u8]) -> String {
+    let stripped = strip_ansi_escapes::strip(raw);
+    String::from_utf8_lossy(&stripped).to_string()
+}
+
 /// Write bytes to an active PTY command execution's stdin.
 /// Used for interactive input (future: sudo prompts, SSH, etc.)
 #[tauri::command]
@@ -405,4 +411,32 @@ pub async fn terminal_write_stdin(
     } else {
         Err(format!("No active PTY execution with id: {}", cmdExecutionId))
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_ansi_and_decode_clean_input() {
+        let input = b"Hello, world!";
+        assert_eq!(strip_ansi_and_decode(input), "Hello, world!");
+    }
+
+    #[test]
+    fn test_strip_ansi_and_decode_with_ansi_codes() {
+        // ESC[31m = red, ESC[0m = reset
+        let input = b"\x1b[31mERROR\x1b[0m: something failed";
+        let result = strip_ansi_and_decode(input);
+        assert_eq!(result, "ERROR: something failed");
+    }
+
+    #[test]
+    fn test_strip_ansi_and_decode_invalid_utf8() {
+        let input = vec![0xFF, 0xFE, 0x48, 0x65, 0x6C, 0x6C, 0x6F]; // invalid UTF-8 prefix + Hello
+        let result = strip_ansi_and_decode(&input);
+        assert!(result.contains("Hello"));
+    }
+
+
 }

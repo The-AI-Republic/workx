@@ -56,6 +56,7 @@ import { setCredentialStore } from '../../core/storage/CredentialStore';
 import { setStorageProvider, isStorageProviderInitialized } from '../../core/storage';
 import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage';
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
+import * as VaultManager from '../../core/crypto/VaultManager';
 import type {
   CreateDraftTaskRequest,
   ScheduleTaskRequest,
@@ -181,6 +182,9 @@ async function doInitialize(): Promise<void> {
   // Setup message handlers
   setupMessageHandlers();
 
+  // Setup Vault message handlers (Feature 034: Credential Security)
+  setupVaultMessageHandlers();
+
   // Setup MCP message handlers
   setupMCPMessageHandlers();
 
@@ -249,6 +253,23 @@ async function initializeAuthFromConfig(): Promise<void> {
     factory.setAuthManager(authManager);
 
     console.log('[ServiceWorker] Auth initialized, isBackendRouting:', factory.isBackendRouting());
+
+    // Check for ChatGPT OAuth tokens and configure token getter
+    try {
+      const { ChatGPTOAuthExtensionStorage } = await import('../auth/ChatGPTOAuthExtensionStorage');
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      const oauthStorage = new ChatGPTOAuthExtensionStorage();
+      const oauthService = new ChatGPTOAuthService(oauthStorage);
+
+      if (await oauthService.isAuthenticated()) {
+        authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+        factory.setAuthManager(authManager);
+        console.log('[ServiceWorker] ChatGPT OAuth restored from storage');
+      }
+    } catch (oauthError) {
+      console.warn('[ServiceWorker] ChatGPT OAuth check failed:', oauthError);
+    }
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize auth from config:', error);
     // Continue without backend routing - will use direct API key mode
@@ -554,11 +575,13 @@ function setupMessageHandlers(): void {
       (async () => {
         try {
           const config = message.config;
-          // 1. Save to storage
-          const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
-          const existing = result[STORAGE_KEYS.APPROVAL_CONFIG] || { ...DEFAULT_APPROVAL_CONFIG };
+          // 1. Save to storage (nested under agent_config.approval)
+          const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
+          const agentConfig = result[STORAGE_KEYS.CONFIG] || {};
+          const existing = agentConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
           const merged = { ...existing, ...config };
-          await chrome.storage.local.set({ [STORAGE_KEYS.APPROVAL_CONFIG]: merged });
+          agentConfig.approval = merged;
+          await chrome.storage.local.set({ [STORAGE_KEYS.CONFIG]: agentConfig });
           // 2. Update ApprovalGate directly
           const primaryAgent = registry?.getPrimarySession()?.agent ?? agent;
           if (primaryAgent) {
@@ -997,6 +1020,101 @@ function setupSchedulerMessageHandlers(): void {
 
   // Feature 015: Session management message handlers (T048, T049)
   setupSessionMessageHandlers();
+}
+
+/**
+ * Feature 034: Setup vault message handlers for credential security
+ *
+ * Handlers return raw data (MessageRouter adds the { success, data } envelope).
+ * For errors, handlers throw (MessageRouter returns { success: false, error }).
+ * Exception: VAULT_UNLOCK returns VaultUnlockResult directly (has its own success field
+ * with structured error info like attemptsRemaining).
+ */
+function setupVaultMessageHandlers(): void {
+  if (!router) return;
+
+  // VAULT_STATUS: Get current vault state
+  router.on(MessageType.VAULT_STATUS, async () => {
+    return VaultManager.getStatus();
+  });
+
+  // VAULT_UNLOCK: Unlock vault with PIN
+  // Returns VaultUnlockResult (always resolves — error info in the result object)
+  router.on(MessageType.VAULT_UNLOCK, async (message) => {
+    const { pin } = message.payload || {};
+    if (!pin || typeof pin !== 'string') {
+      throw new Error('PIN is required');
+    }
+    return await VaultManager.unlock(pin);
+  });
+
+  // VAULT_LOCK: Lock vault (clear session)
+  router.on(MessageType.VAULT_LOCK, async () => {
+    await VaultManager.lock();
+  });
+
+  // PIN_SET: Enable PIN protection
+  router.on(MessageType.PIN_SET, async (message) => {
+    const { pin, pinConfirm } = message.payload || {};
+    if (!pin || typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
+      throw new Error('PIN must be exactly 6 digits');
+    }
+    if (pin !== pinConfirm) {
+      throw new Error('PINs do not match');
+    }
+    await VaultManager.enablePin(pin);
+  });
+
+  // PIN_CHANGE: Change existing PIN (with lockout protection)
+  router.on(MessageType.PIN_CHANGE, async (message) => {
+    const { currentPin, newPin, newPinConfirm } = message.payload || {};
+    if (!currentPin || typeof currentPin !== 'string') {
+      throw new Error('Current PIN is required');
+    }
+    if (!newPin || !/^\d{6}$/.test(newPin)) {
+      throw new Error('New PIN must be exactly 6 digits');
+    }
+    if (newPin !== newPinConfirm) {
+      throw new Error('New PINs do not match');
+    }
+    // Use unlock() to verify current PIN with lockout protection,
+    // then change the PIN. This prevents brute-force via PIN_CHANGE.
+    const unlockResult = await VaultManager.unlock(currentPin);
+    if (!unlockResult.success) {
+      throw new Error(unlockResult.error === 'locked_out'
+        ? `Too many attempts. Try again in ${unlockResult.lockoutSecondsRemaining}s`
+        : 'Current PIN is incorrect');
+    }
+    await VaultManager.changePin(currentPin, newPin);
+  });
+
+  // PIN_REMOVE: Remove PIN protection (with lockout protection)
+  router.on(MessageType.PIN_REMOVE, async (message) => {
+    const { pin } = message.payload || {};
+    if (!pin || typeof pin !== 'string') {
+      throw new Error('PIN is required');
+    }
+    // Use unlock() to verify PIN with lockout protection,
+    // then remove the PIN. This prevents brute-force via PIN_REMOVE.
+    const unlockResult = await VaultManager.unlock(pin);
+    if (!unlockResult.success) {
+      throw new Error(unlockResult.error === 'locked_out'
+        ? `Too many attempts. Try again in ${unlockResult.lockoutSecondsRemaining}s`
+        : 'PIN is incorrect');
+    }
+    await VaultManager.removePin(pin);
+  });
+
+  // PIN_FORGOT: Reset vault (clear all credentials)
+  router.on(MessageType.PIN_FORGOT, async (message) => {
+    const { confirmReset } = message.payload || {};
+    if (!confirmReset) {
+      throw new Error('Confirmation required');
+    }
+    await VaultManager.reset();
+  });
+
+  console.log('[ServiceWorker] Vault message handlers registered');
 }
 
 /**
@@ -1739,6 +1857,15 @@ async function initializeStorage(): Promise<void> {
   } catch (error) {
     console.warn('[ServiceWorker] Failed to initialize credential store:', error);
   }
+
+  // Initialize vault encryption (Feature 034: Credential Security)
+  try {
+    const vaultStatus = await VaultManager.initialize();
+    console.log('[ServiceWorker] Vault initialized:', vaultStatus);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to initialize vault:', error);
+  }
+
 
   // StorageProvider is initialized early in doInitialize() (before agent creation)
   // so that PlanningTool can access it during tool registration.

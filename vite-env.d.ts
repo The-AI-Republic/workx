@@ -25,6 +25,8 @@ interface ImportMetaEnv {
   readonly VITE_HOME_PAGE_BASE_URL: string;
   /** API base URL for fetching user profile */
   readonly VITE_API_BASE_URL: string;
+  /** Vault secret for wrapping the encryption key (32+ characters, from .env) */
+  readonly VITE_VAULT_SECRET: string;
 }
 
 /**

@@ -73,6 +73,13 @@ function build() {
       }
     });
     
+    // Copy oauth-success.html (used by declarativeNetRequest OAuth redirect)
+    const oauthSuccessSrc = path.join(__dirname, '..', 'src', 'extension', 'pages', 'oauth-success.html');
+    if (fs.existsSync(oauthSuccessSrc)) {
+      fs.copyFileSync(oauthSuccessSrc, path.join(distPath, 'oauth-success.html'));
+      log('  ✓ Copied oauth-success.html', colors.green);
+    }
+
     // Copy static assets directory
     const staticPath = path.join(__dirname, '..', 'src', 'static');
     if (fs.existsSync(staticPath)) {

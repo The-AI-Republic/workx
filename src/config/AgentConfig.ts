@@ -69,6 +69,9 @@ export class AgentConfig implements IConfigService {
       return;
     }
 
+    // One-time migration: move legacy `approval_config` into `agent_config.approval`
+    await this.migrateApprovalConfig();
+
     try {
       const storedConfig = await this.storage.get();
       console.log('[AgentConfig] initialize - storedConfig from storage:', storedConfig?.selectedModelKey);
@@ -166,6 +169,28 @@ export class AgentConfig implements IConfigService {
     });
 
     return { ...this.currentConfig };
+  }
+
+  /**
+   * One-time migration: move legacy `approval_config` storage key
+   * into `agent_config.approval`. Deletes the old key after merging.
+   */
+  private async migrateApprovalConfig(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['approval_config', 'agent_config']);
+      const legacyApproval = result['approval_config'];
+      if (!legacyApproval) return; // Nothing to migrate
+
+      const agentConfig = result['agent_config'] || {};
+      // Merge: legacy values fill in, but don't overwrite if already migrated
+      agentConfig.approval = { ...legacyApproval, ...(agentConfig.approval || {}) };
+
+      await chrome.storage.local.set({ agent_config: agentConfig });
+      await chrome.storage.local.remove('approval_config');
+      console.log('[AgentConfig] Migrated legacy approval_config into agent_config.approval');
+    } catch (error) {
+      console.warn('[AgentConfig] approval_config migration failed (non-fatal):', error);
+    }
   }
 
   private ensureInitialized(): void {
