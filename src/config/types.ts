@@ -370,6 +370,9 @@ export interface IToolsConfig {
   page_action_tool?: boolean;
   page_vision_tool?: boolean;
 
+  // Setting tool toggle (LLM settings access)
+  setting_tool?: boolean;
+
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
