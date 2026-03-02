@@ -10,13 +10,24 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { PROTOCOL_VERSION, ConnectRequestSchema, makeResponse, makeErrorResponse, makeEvent } from '../protocol/frames';
-import type { ChallengePayload, HelloOkPayload, ConnectRequest } from '../protocol/frames';
+import {
+  PROTOCOL_VERSION,
+  ConnectRequestSchema,
+  makeResponse,
+  makeErrorResponse,
+  makeEvent,
+  resolveClientInfo,
+  negotiateProtocolVersion,
+} from '../protocol/frames';
+import type { ChallengePayload, HelloOkPayload, ConnectRequest, ResolvedClientInfo } from '../protocol/frames';
 import { WS_CLOSE, unauthorized, invalidRequest } from '../protocol/errors';
 import { verifyAuth } from './auth';
 import { resolveScopes, isValidRole, type Role } from '../auth/roles';
 import { setConnectionAuth } from '../auth/authorize';
 import { getServerConfig } from '../config/server-config';
+import { getRegisteredMethods } from '../protocol/methods';
+import { EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '../protocol/methods';
+import { getHealthStatus } from '../handlers/health';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,6 +39,7 @@ export interface HandshakeResult {
   scopes: string[];
   userId?: string;
   clientId: string;
+  clientInfo: ResolvedClientInfo;
   sessionKey?: string;
 }
 
@@ -37,6 +49,27 @@ export interface WsHandle {
   isLoopback: boolean;
   headers: Record<string, string>;
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Snapshot providers (injected by bootstrap)
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface HandshakeSnapshotProviders {
+  getSessionSummaries: () => Promise<unknown[]>;
+}
+
+let _snapshotProviders: HandshakeSnapshotProviders | null = null;
+
+export function setHandshakeSnapshotProviders(providers: HandshakeSnapshotProviders): void {
+  _snapshotProviders = providers;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────
+
+const SERVER_VERSION = '1.0.0';
+const TICK_INTERVAL_MS = 30_000;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Pending handshake tracking
@@ -56,7 +89,6 @@ const _pending = new Map<WsHandle, PendingHandshake>();
 
 /**
  * Start the handshake by sending a challenge to the client.
- * Returns a promise that resolves when the handshake completes (or rejects on timeout).
  */
 export function sendChallenge(ws: WsHandle): void {
   const config = getServerConfig();
@@ -65,7 +97,7 @@ export function sendChallenge(ws: WsHandle): void {
   const challenge: ChallengePayload = {
     nonce,
     protocolVersion: PROTOCOL_VERSION,
-    serverVersion: '1.0.0',
+    serverVersion: SERVER_VERSION,
     authModes: [config.server.auth.mode],
   };
 
@@ -90,10 +122,10 @@ export function sendChallenge(ws: WsHandle): void {
  *
  * @returns HandshakeResult on success, null on failure (ws already closed or error sent)
  */
-export function handleConnectRequest(
+export async function handleConnectRequest(
   ws: WsHandle,
   rawFrame: unknown
-): HandshakeResult | null {
+): Promise<HandshakeResult | null> {
   const pending = _pending.get(ws);
   if (!pending) {
     // No pending handshake — unexpected connect
@@ -120,22 +152,36 @@ export function handleConnectRequest(
 
   const req: ConnectRequest = parseResult.data;
 
-  // Validate protocol version
-  if (req.params.protocolVersion !== PROTOCOL_VERSION) {
+  // Negotiate protocol version (supports range or single)
+  const negotiatedVersion = negotiateProtocolVersion(req.params);
+  if (negotiatedVersion === null) {
     ws.send(
       JSON.stringify(
-        makeErrorResponse(req.id, invalidRequest(`Protocol version mismatch. Expected ${PROTOCOL_VERSION}`))
+        makeErrorResponse(req.id, invalidRequest(
+          `Protocol version mismatch. Server supports ${PROTOCOL_VERSION}`
+        ))
       )
     );
     ws.close(WS_CLOSE.PROTOCOL_MISMATCH, 'Protocol version mismatch');
     return null;
   }
 
-  // Validate role
-  if (!isValidRole(req.params.clientMode)) {
+  // Resolve client info (structured or flat)
+  const clientInfo = resolveClientInfo(req.params);
+  if (!clientInfo) {
     ws.send(
       JSON.stringify(
-        makeErrorResponse(req.id, invalidRequest(`Invalid client mode: ${req.params.clientMode}`))
+        makeErrorResponse(req.id, invalidRequest('Client identification required (provide client {} or clientId + clientMode)'))
+      )
+    );
+    return null;
+  }
+
+  // Validate role
+  if (!isValidRole(clientInfo.mode)) {
+    ws.send(
+      JSON.stringify(
+        makeErrorResponse(req.id, invalidRequest(`Invalid client mode: ${clientInfo.mode}`))
       )
     );
     return null;
@@ -149,7 +195,7 @@ export function handleConnectRequest(
   }
 
   // Resolve scopes
-  const role = req.params.clientMode as Role;
+  const role = clientInfo.mode as Role;
   const scopes = resolveScopes(role, req.params.scopes);
 
   // Generate connection ID
@@ -168,11 +214,54 @@ export function handleConnectRequest(
   const sessionKey = req.params.resume?.sessionKey ??
     `ws:main:${connectionId}`;
 
-  // Send hello-ok response
+  // Gather snapshot data
+  const config = getServerConfig();
+  const healthSnapshot = getHealthStatus();
+
+  let sessionSummaries: unknown[] = [];
+  if (_snapshotProviders) {
+    try {
+      sessionSummaries = await _snapshotProviders.getSessionSummaries();
+    } catch {
+      // Non-fatal — send empty snapshot
+    }
+  }
+
+  // Build available events for this connection's scopes
+  const availableEvents = buildAvailableEvents(scopes);
+
+  // Build HelloOk response
   const helloOk: HelloOkPayload = {
-    connectionId,
-    role,
-    scopes,
+    type: 'hello-ok',
+    protocol: negotiatedVersion,
+
+    server: {
+      version: SERVER_VERSION,
+      connId: connectionId,
+    },
+
+    features: {
+      methods: getRegisteredMethods(),
+      events: availableEvents,
+    },
+
+    snapshot: {
+      sessions: sessionSummaries,
+      health: healthSnapshot,
+    },
+
+    auth: {
+      role,
+      scopes,
+      issuedAtMs: Date.now(),
+    },
+
+    policy: {
+      maxPayload: config.server.limits.maxPayloadBytes,
+      maxBufferedBytes: config.server.limits.maxBufferedBytes,
+      tickIntervalMs: TICK_INTERVAL_MS,
+    },
+
     sessionKey,
   };
 
@@ -183,9 +272,31 @@ export function handleConnectRequest(
     role,
     scopes,
     userId: authResult.userId,
-    clientId: req.params.clientId,
+    clientId: clientInfo.id,
+    clientInfo,
     sessionKey,
   };
+}
+
+/**
+ * Build the list of events this connection will receive based on scopes.
+ */
+function buildAvailableEvents(scopes: string[]): string[] {
+  const events = new Set<string>();
+
+  // Broadcast events are always included
+  for (const evt of BROADCAST_EVENTS) {
+    events.add(evt);
+  }
+
+  // Add scoped events
+  for (const [eventName, requiredScope] of Object.entries(EVENT_SCOPE_MAP)) {
+    if (scopes.includes(requiredScope)) {
+      events.add(eventName);
+    }
+  }
+
+  return Array.from(events);
 }
 
 /**

@@ -8,7 +8,7 @@
 
 import { registerMethodHandler, type MethodContext } from '../protocol/methods';
 import { invalidRequest } from '../protocol/errors';
-import type { Op, InputItem } from '@/core/protocol/types';
+import type { Op, InputItem, SandboxPolicy } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ async function handleChatSend(
     items: inputItems,
     tabId: (params?.tabId as number) ?? 0,
     approval_policy: ((params?.approval_policy as string) ?? 'untrusted') as 'untrusted' | 'on-failure' | 'on-request' | 'never',
-    sandbox_policy: (params?.sandbox_policy as { mode: string }) ?? { mode: 'danger-full-access' },
+    sandbox_policy: (params?.sandbox_policy ?? { mode: 'danger-full-access' }) as SandboxPolicy,
     model: model ?? 'default',
     summary: { enabled: true },
   };

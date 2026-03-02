@@ -54,14 +54,13 @@ export class HealthMonitor {
    */
   private refresh(): void {
     try {
-      // Update channel health info
+      // Update channel health info as Record<string, state>
       const channelManager = getChannelManager();
-      const channels = channelManager.getChannelInfo().map((ch) => ({
-        id: ch.channelId,
-        type: ch.channelType,
-        state: 'connected',
-      }));
-      setHealthChannels(channels);
+      const channelEntries: Record<string, 'connected' | 'disconnected' | 'reconnecting'> = {};
+      for (const ch of channelManager.getChannelInfo()) {
+        channelEntries[ch.channelId] = 'connected';
+      }
+      setHealthChannels(channelEntries);
 
       // Broadcast health event to admin connections
       const status = getHealthStatus();

@@ -30,7 +30,15 @@ import { PiPluginApi } from '../plugins/pi-plugin-api';
 import { discoverPlugins } from '../plugins/plugin-loader';
 import { ChannelPluginBridge } from '../plugins/channel-bridge';
 import { HealthMonitor } from '../health/health-monitor';
-import { setHealthAgentStatus, setHealthChannels, resetHealthStartTime } from '../handlers/health';
+import {
+  setHealthAgentStatus,
+  setHealthAgentTools,
+  setHealthChannels,
+  setHealthSessionCounts,
+  resetHealthStartTime,
+} from '../handlers/health';
+import { setHandshakeSnapshotProviders } from '../connection/handshake';
+import { registerServerTools } from '../tools/registerServerTools';
 
 // Handler registrations
 import { registerChatHandlers } from '../handlers/chat';
@@ -112,6 +120,15 @@ export class ServerAgentBootstrap {
       await this.agent.initialize();
       console.log('[ServerAgentBootstrap] Agent initialized');
 
+      // 6b. Register server-mode tools (browser MCP, planning, web search)
+      try {
+        const toolRegistry = this.agent.getToolRegistry();
+        await registerServerTools(toolRegistry as any);
+        console.log('[ServerAgentBootstrap] Server tools registered');
+      } catch (err) {
+        console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+      }
+
       // 7. Initialize persistence
       this.sessionIndex = new SessionIndex(dataDir);
       await this.sessionIndex.initialize();
@@ -128,7 +145,15 @@ export class ServerAgentBootstrap {
       // 9. Initialize approval manager
       this.approvalManager = new ApprovalManager();
 
-      // 10. Register method handlers
+      // 10. Wire handshake snapshot providers
+      setHandshakeSnapshotProviders({
+        getSessionSummaries: async () => {
+          if (!this.sessionIndex) return [];
+          return this.sessionIndex.list({});
+        },
+      });
+
+      // 11. Register method handlers
       this.registerHandlers();
 
       // 11. Initialize plugins
@@ -142,6 +167,25 @@ export class ServerAgentBootstrap {
       // Update health status
       const readyState = await this.agent.isReady();
       setHealthAgentStatus(readyState.ready);
+
+      // Populate tool names for health endpoint
+      try {
+        const registry = this.agent.getToolRegistry();
+        const tools = registry.listTools().map((t: any) => t.function?.name ?? t.name ?? 'unknown');
+        setHealthAgentTools(tools);
+      } catch {
+        // Non-fatal
+      }
+
+      // Populate session counts
+      if (this.sessionIndex) {
+        try {
+          const count = this.sessionIndex.count();
+          setHealthSessionCounts(count, count);
+        } catch {
+          // Non-fatal
+        }
+      }
 
       // 13. Start config file watcher
       watchConfig();
@@ -239,9 +283,9 @@ export class ServerAgentBootstrap {
       getToolCatalog: async () => {
         if (!this.agent) return [];
         const registry = this.agent.getToolRegistry();
-        return registry.getRegisteredTools().map((t) => ({
-          name: t.function.name,
-          description: t.function.description,
+        return registry.listTools().map((t: any) => ({
+          name: t.function?.name ?? t.name ?? 'unknown',
+          description: t.function?.description ?? t.description ?? '',
         }));
       },
     });

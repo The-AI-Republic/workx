@@ -7,7 +7,9 @@
  * @module server/index
  */
 
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer as createHttpServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
 // Load env vars from .env file
@@ -56,10 +58,35 @@ const BIND = resolveBind(config.server.bind);
 installStructuredLogging();
 
 // ─────────────────────────────────────────────────────────────────────────
-// Create HTTP server
+// Create HTTP/HTTPS server
 // ─────────────────────────────────────────────────────────────────────────
 
-const httpServer = createServer(handleHttpRequest);
+const tlsEnabled = config.server.tls.enabled;
+let httpServer: Server;
+
+if (tlsEnabled) {
+  const certFile = config.server.tls.certFile;
+  const keyFile = config.server.tls.keyFile;
+
+  if (!certFile || !keyFile) {
+    console.error('[Server] TLS enabled but certFile or keyFile not configured');
+    process.exit(1);
+  }
+
+  try {
+    const tlsOptions = {
+      cert: readFileSync(certFile),
+      key: readFileSync(keyFile),
+    };
+    httpServer = createHttpsServer(tlsOptions, handleHttpRequest) as unknown as Server;
+    console.log('[Server] TLS enabled');
+  } catch (err) {
+    console.error('[Server] Failed to load TLS certificates:', err);
+    process.exit(1);
+  }
+} else {
+  httpServer = createHttpServer(handleHttpRequest);
+}
 
 function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
   // Health endpoint
@@ -100,6 +127,16 @@ async function startWebSocketServer(): Promise<void> {
     }
 
     const isBrowserOrigin = !!headers.origin;
+
+    // CORS / Origin validation
+    const allowedOrigins = config.server.allowedOrigins;
+    if (isBrowserOrigin && allowedOrigins.length > 0) {
+      if (!allowedOrigins.includes(headers.origin)) {
+        console.warn(`[Server] Rejected connection from disallowed origin: ${headers.origin}`);
+        ws.close(WS_CLOSE.POLICY_VIOLATION, 'Origin not allowed');
+        return;
+      }
+    }
     const tempId = `pending_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
 
     // Track connection
@@ -156,7 +193,7 @@ async function startWebSocketServer(): Promise<void> {
 
       // Pre-handshake: only accept connect requests
       if (!connectionId) {
-        const result = handleConnectRequest(wsHandle, frame);
+        const result = await handleConnectRequest(wsHandle, frame);
         if (!result) return; // Failed handshake
 
         connectionId = result.connectionId;
@@ -319,9 +356,12 @@ function isErrorShape(err: unknown): err is ErrorShape {
 // ─────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  const proto = tlsEnabled ? 'https' : 'http';
+  const wsProto = tlsEnabled ? 'wss' : 'ws';
+
   console.log('═══════════════════════════════════════════════════════');
   console.log('  Pi Server Mode');
-  console.log(`  Port: ${PORT}  Bind: ${BIND}  Auth: ${config.server.auth.mode}`);
+  console.log(`  Port: ${PORT}  Bind: ${BIND}  Auth: ${config.server.auth.mode}  TLS: ${tlsEnabled ? 'on' : 'off'}`);
   console.log('═══════════════════════════════════════════════════════');
 
   // Register shutdown handlers
@@ -342,9 +382,10 @@ async function main(): Promise<void> {
 
   // Start listening
   httpServer.listen(PORT, BIND, () => {
+    const host = BIND === '0.0.0.0' ? 'localhost' : BIND;
     console.log(`[Server] Listening on ${BIND}:${PORT}`);
-    console.log(`[Server] Health: http://${BIND === '0.0.0.0' ? 'localhost' : BIND}:${PORT}/health`);
-    console.log(`[Server] WebSocket: ws://${BIND === '0.0.0.0' ? 'localhost' : BIND}:${PORT}`);
+    console.log(`[Server] Health: ${proto}://${host}:${PORT}/health`);
+    console.log(`[Server] WebSocket: ${wsProto}://${host}:${PORT}`);
   });
 }
 
