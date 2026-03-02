@@ -151,7 +151,7 @@ export class TauriMessageService implements IMessageService {
         return this.handleSessionReset() as T;
 
       case MessageType.RESUME_SESSION:
-        return { history: [] } as T;
+        return this.handleResumeSession(payload) as T;
 
       case MessageType.INTERRUPT:
         return this.handleInterrupt() as T;
@@ -261,13 +261,29 @@ export class TauriMessageService implements IMessageService {
 
       if (agent) {
         const session = agent.getSession();
-        session.clearHistory();
+        await session.reset();
       }
 
       return { success: true };
     } catch (error) {
       console.error('[TauriMessageService] Session reset failed:', error);
       return { success: false };
+    }
+  }
+
+  /**
+   * Handle session resume — loads conversation history from rollout storage
+   * and recreates the agent with the resumed session.
+   */
+  private async handleResumeSession(payload: unknown): Promise<unknown> {
+    try {
+      const { conversationId } = payload as { conversationId: string };
+      const bootstrap = await getAgentBootstrap();
+      const items = await bootstrap.resumeSession(conversationId);
+      return { history: items };
+    } catch (error) {
+      console.error('[TauriMessageService] Resume session failed:', error);
+      return { history: [] };
     }
   }
 
