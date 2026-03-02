@@ -17,7 +17,7 @@ export async function listConversations(
   pageSize: number,
   cursor?: Cursor
 ): Promise<ConversationsPage> {
-  // Validate page size (throws before try-catch so tests can catch it)
+  // Validate page size
   if (pageSize < 1 || pageSize > 100) {
     throw new Error('Invalid page size: must be between 1 and 100');
   }
@@ -29,11 +29,6 @@ export async function listConversations(
     }
   }
 
-  try {
-    const provider = await RolloutRecorder.getProvider();
-    return await provider.listConversations(pageSize, cursor);
-  } catch (err) {
-    console.error('[listConversations] Error:', err);
-    return { items: [], nextCursor: undefined, numScanned: 0, reachedCap: false };
-  }
+  const provider = await RolloutRecorder.getProvider();
+  return await provider.listConversations(pageSize, cursor);
 }

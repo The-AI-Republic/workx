@@ -318,6 +318,67 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Resume a previous conversation by its ID.
+   *
+   * Mirrors the service-worker's RESUME_SESSION logic:
+   * aborts current tasks, tears down the old session, loads rollout history,
+   * creates a fresh PiAgent with the resumed history, and returns the
+   * reconstructed conversation items.
+   */
+  async resumeSession(conversationId: string): Promise<unknown[]> {
+    if (!this.agent) {
+      throw new Error('Agent not initialized');
+    }
+
+    console.log('[DesktopAgentBootstrap] Resuming session:', conversationId);
+
+    // 1. Preserve auth manager from the current agent
+    const authManager = this.agent.getModelClientFactory().getAuthManager();
+
+    // 2. Abort any running tasks on the current session
+    const currentSession = this.agent.getSession();
+    await currentSession.abortAllTasks('UserInterrupt');
+
+    // 3. Close the current session
+    await currentSession.close();
+
+    // 4. Load rollout history from storage
+    const { RolloutRecorder } = await import('@/storage/rollout/RolloutRecorder');
+    const initialHistory = await RolloutRecorder.getRolloutHistory(conversationId);
+
+    if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) {
+      throw new Error('Conversation not found or has no history');
+    }
+
+    // 5. Create a new PiAgent with the resumed initial history
+    const config = await AgentConfig.getInstance();
+    this.agent = new PiAgent(config, this.messageRouter as any, {
+      mode: 'resumed' as const,
+      conversationId,
+      rolloutItems: initialHistory.payload.history,
+    });
+
+    // 6. Re-wire event forwarding via ChannelManager
+    const channelManager = getChannelManager();
+    this.setupEventForwarding(channelManager);
+
+    // 7. Restore auth manager on the new agent's ModelClientFactory
+    if (authManager) {
+      this.agent.getModelClientFactory().setAuthManager(authManager);
+    }
+
+    // 8. Initialize agent and session
+    await this.agent.initialize();
+    const session = this.agent.getSession();
+    await session.initialize();
+
+    // 9. Return the reconstructed conversation history
+    const history = session.getConversationHistory();
+    console.log('[DesktopAgentBootstrap] Session resumed with', history.items.length, 'items');
+    return history.items;
+  }
+
+  /**
    * Get the agent instance
    */
   getAgent(): PiAgent | null {
