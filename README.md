@@ -1,27 +1,55 @@
 # Pi (Personal AI)
 
-**AI-Powered Personal Assistant - Chrome Extension & Desktop App**
+**AI-Powered Personal Assistant — Chrome Extension, Desktop App & Headless Server**
 
-Pi is a privacy-preserving, general-purpose AI personal assistant available as both a **Chrome extension (BrowserX)** and a **desktop application (Apple Pi)**. The agent operates entirely within the user's local environment, interpreting natural language commands and autonomously performing tasks across web browsing, file management, and more. All interactions occur client-side, ensuring that sensitive data never leaves your machine.
+Pi is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (Apple Pi)**, and a **headless server (Pi Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
 
 ## Naming Convention
 
 | Name | Usage | Context |
 |------|-------|---------|
 | **Pi** | Project/repo name | Git repository, package name, internal references |
-| **BrowserX** | Chrome extension name | Extension store listing, extension UI, browser branding |
-| **Apple Pi** | Desktop app name | Desktop application UI, window title, installer |
+| **BrowserX** | Chrome extension | Extension store listing, extension UI, browser branding |
+| **Apple Pi** | Desktop app | Desktop application UI, window title, installer |
+| **Pi Server** | Headless server | Server deployment, Docker, API access |
 
 ![Pi UI Screenshot](/src/static/pi_UI.png)
 
 ---
 
-## Dual-Mode Architecture
+## Tri-Platform Architecture
+
+Pi runs on three platforms from a shared core:
 
 | App | Platform | Description | Best For |
 |-----|----------|-------------|----------|
 | **BrowserX** | Chrome Extension | Browser-based agent with web automation | Quick web tasks, browsing assistance |
-| **Apple Pi** | Desktop (Win/Mac/Linux) | Native application with full system access | Terminal commands, file operations, advanced automation |
+| **Apple Pi** | Desktop (Win/Mac/Linux) | Native app with full system access | Terminal commands, file operations, advanced automation |
+| **Pi Server** | Headless (Docker/K8s) | WebSocket/HTTP server, no UI | API integration, batch automation, CI/CD pipelines |
+
+### How It Works
+
+All three platforms share a **common core** (`src/core/`) containing the agent runtime, tool system, MCP protocol, and model client. Each platform provides its own implementations for channels, storage, and MCP transport:
+
+```
+                     ┌─────────────────────────────┐
+                     │         src/core/            │
+                     │   PiAgent · ToolRegistry     │
+                     │   MCPManager · ApprovalGate  │
+                     │   ChannelManager · Models    │
+                     └──────┬──────┬──────┬─────────┘
+                            │      │      │
+              ┌─────────────┘      │      └──────────────┐
+              │                    │                      │
+     ┌────────▼────────┐ ┌────────▼────────┐  ┌──────────▼──────────┐
+     │   Extension      │ │    Desktop      │  │      Server         │
+     │   chrome.runtime │ │    Tauri IPC    │  │      WebSocket      │
+     │   IndexedDB      │ │    OS Keychain  │  │      SQLite         │
+     │   SSE MCP        │ │    Rust MCP     │  │      Node MCP       │
+     └─────────────────┘ └─────────────────┘  └─────────────────────┘
+```
+
+Platform-specific code is isolated via the `__BUILD_MODE__` compile-time constant (`'extension'` | `'desktop'` | `'server'`). Vite eliminates dead branches at build time, so each output contains only its platform's code.
 
 ---
 
@@ -38,10 +66,10 @@ Pi is a privacy-preserving, general-purpose AI personal assistant available as b
 Pi is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use. The source code is publicly available for transparency and educational purposes, but this project is **not open source** at this time.
 
 **Usage Restrictions:**
-- Personal evaluation and learning: ✅ Allowed
-- Internal organizational use: ✅ Allowed
-- Creating derivative works for public distribution: ❌ Not permitted without written authorization
-- Commercial use: ❌ Not permitted without written authorization
+- Personal evaluation and learning: Allowed
+- Internal organizational use: Allowed
+- Creating derivative works for public distribution: Not permitted without written authorization
+- Commercial use: Not permitted without written authorization
 
 **Important Notice:** This software is provided "as is" without warranty of any kind. Use at your own risk. AI Republic and contributors are not liable for any damages, data loss, or security issues arising from the use of this software.
 
@@ -63,16 +91,18 @@ We support state-of-the-art LLMs from leading providers.
 
 ## Environment Configuration
 
-Both the Chrome extension and desktop app require environment configuration files. The `.env.example` file in the project root serves as a template with all required keys.
+Each platform requires its own environment configuration. The `.env.example` file in the project root serves as a template.
 
 ### Setup
 
 ```bash
-# For Chrome extension development
+# Chrome extension
 cp .env.example src/extension/.env
 
-# For Pi desktop app development
+# Desktop app
 cp .env.example src/desktop/.env
+
+# Server mode — uses env vars or config.json (no .env file needed)
 ```
 
 ### Configuration Files
@@ -82,6 +112,7 @@ cp .env.example src/desktop/.env
 | `.env.example` | Template with all required keys (committed to repo) |
 | `src/extension/.env` | Extension-specific configuration (not committed) |
 | `src/desktop/.env` | Desktop app-specific configuration (not committed) |
+| `config.json` | Server mode configuration (optional, see Server section) |
 
 ### Required Environment Variables
 
@@ -91,7 +122,7 @@ cp .env.example src/desktop/.env
 | `VITE_BACKEND_API_BASE_URL` | Backend API endpoint | `https://api.airepublic.com` |
 | `VITE_COOKIE_DOMAIN` | Cookie domain for auth | `.airepublic.com` |
 
-**Note:** Build and dev commands will abort if the required `.env` file is missing. This ensures consistent configuration across environments.
+**Note:** Build and dev commands will abort if the required `.env` file is missing for extension and desktop builds.
 
 ---
 
@@ -129,13 +160,13 @@ cp .env.example src/desktop/.env
    npm run build
    ```
 
-4. **Load in Chrome:**
+5. **Load in Chrome:**
    - Navigate to `chrome://extensions/`
    - Enable **Developer Mode** (toggle in the top-right corner)
    - Click **Load unpacked**
    - Select the `dist/extension/` directory
 
-5. **Configure API credentials:**
+6. **Configure API credentials:**
    - Open the extension side panel
    - Navigate to Settings
    - Enter your API key (supports OpenAI, xAI, or Groq)
@@ -218,7 +249,6 @@ cd tauri && WEBKIT_DISABLE_COMPOSITING_MODE=1 cargo tauri dev
 ```bash
 export WEBKIT_DISABLE_COMPOSITING_MODE=1
 cd tauri && cargo tauri dev
-# The variable persists for all commands in this terminal session
 ```
 
 **Method 3: Add to shell profile (permanent)**
@@ -233,18 +263,6 @@ For zsh users, add to `~/.zshrc`:
 ```bash
 echo 'export WEBKIT_DISABLE_COMPOSITING_MODE=1' >> ~/.zshrc
 source ~/.zshrc
-```
-
-**Method 4: Create a .env file (project-specific)**
-
-Create a file at the project root named `.env.local`:
-```bash
-WEBKIT_DISABLE_COMPOSITING_MODE=1
-```
-
-Then source it before running:
-```bash
-source .env.local && cd tauri && cargo tauri dev
 ```
 
 #### Common Environment Variables
@@ -304,6 +322,228 @@ cd tauri && cargo tauri build
 ```bash
 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./pi
 ```
+
+---
+
+### Pi Server (Headless Mode)
+
+Pi Server runs the agent as a headless WebSocket/HTTP service — no browser or desktop UI required. It's designed for server deployments, Docker containers, and Kubernetes clusters.
+
+#### Prerequisites
+- Node.js 22+
+- npm package manager
+- Chrome/Chromium (optional, for browser automation)
+
+#### Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Build the server
+npm run build:server
+
+# Start the server (default port 18100)
+npm run start:server
+```
+
+The server starts on port `18100` by default. Verify with:
+```bash
+curl http://localhost:18100/health
+```
+
+#### Development
+
+```bash
+# Dev mode with hot reload
+npm run dev:server
+
+# Type-check server code only
+npm run type-check:server
+```
+
+#### Configuration
+
+Server configuration is loaded from three sources (highest priority first):
+
+1. **Environment variables** — override any setting
+2. **Config file** (`~/.pi-server/config.json` or `PI_CONFIG_PATH`)
+3. **Defaults** — sensible production defaults
+
+##### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PI_SERVER_PORT` | Server port | `18100` |
+| `PI_SERVER_BIND` | Bind mode: `loopback`, `lan`, `tailnet`, `auto` | `auto` |
+| `PI_SERVER_AUTH_MODE` | Auth mode: `none`, `token`, `password`, `trusted-proxy` | `none` |
+| `PI_SERVER_TOKEN` | Auth token (when mode is `token`) | — |
+| `PI_SERVER_PASSWORD` | Auth password (when mode is `password`) | — |
+| `PI_DATA_DIR` | Data directory for sessions, transcripts, SQLite DBs | `~/.pi-server/data` |
+| `PI_CONFIG_PATH` | Path to config.json | `~/.pi-server/config.json` |
+| `CHROME_BIN` | Path to Chrome/Chromium binary | Auto-detected |
+| `CHROME_REMOTE_URL` | Remote browser URL (e.g., `http://browserless:3000`) | — |
+| `CHROME_WS_ENDPOINT` | Remote browser WebSocket URL | — |
+
+##### Config File Example
+
+```json
+{
+  "server": {
+    "port": 18100,
+    "bind": "auto",
+    "auth": {
+      "mode": "token",
+      "token": "your-secret-token"
+    },
+    "tls": {
+      "enabled": false,
+      "certFile": "/path/to/cert.pem",
+      "keyFile": "/path/to/key.pem"
+    },
+    "limits": {
+      "maxConcurrentRuns": 4,
+      "maxConnections": 50,
+      "maxPayloadBytes": 26214400,
+      "maxSessions": 1000,
+      "sessionRetentionDays": 30
+    },
+    "exec": {
+      "approvalPolicy": "dangerous",
+      "approvalTimeoutMs": 300000
+    },
+    "backup": {
+      "schedule": "0 3 * * *",
+      "retention": 7
+    }
+  }
+}
+```
+
+The config file supports hot-reload — changes are picked up without restarting the server.
+
+#### Docker
+
+Build and run with Docker:
+
+```bash
+# Build with bundled Chrome (default, adds ~300MB)
+docker build -t pi-server .
+
+# Build slim image (no Chrome — use with remote browser)
+docker build --build-arg INSTALL_CHROME=false -t pi-server-slim .
+```
+
+Run the container:
+
+```bash
+# Standalone with bundled Chrome
+docker run -d \
+  -p 18100:18100 \
+  -v pi-data:/data \
+  -e PI_SERVER_AUTH_MODE=token \
+  -e PI_SERVER_TOKEN=your-secret \
+  pi-server
+
+# Slim image with remote browser
+docker run -d \
+  -p 18100:18100 \
+  -v pi-data:/data \
+  -e CHROME_REMOTE_URL=http://browserless:3000 \
+  pi-server-slim
+```
+
+Or use Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+#### Browser Automation in Server Mode
+
+Pi Server supports three Chrome deployment patterns:
+
+| Pattern | Env Var | Use Case |
+|---------|---------|----------|
+| **Bundled** | `CHROME_BIN` (auto-detected) | Single container, simplest setup |
+| **Remote HTTP** | `CHROME_REMOTE_URL=http://host:port` | Browserless, Chrome sidecar, shared pool |
+| **Remote WebSocket** | `CHROME_WS_ENDPOINT=ws://host:port` | Direct CDP WebSocket connection |
+
+If no Chrome is available, the server gracefully degrades — planning and web search tools remain functional, only browser automation is disabled.
+
+#### WebSocket Protocol
+
+Clients connect via WebSocket and communicate using JSON frames:
+
+```
+ws://localhost:18100
+```
+
+**Connection flow:**
+1. Client connects via WebSocket
+2. Server sends HMAC-SHA256 challenge (if auth enabled)
+3. Client responds with signed challenge
+4. Bidirectional JSON messaging begins
+
+**Available methods:** `chat.send`, `session.list`, `session.get`, `session.delete`, `tools.list`, `config.get`, `config.set`, `health.get`, `exec.approve`, `logs.subscribe`
+
+#### Server Architecture
+
+```
+src/server/
+├── index.ts                 # HTTP/WS server entry point
+├── agent/                   # Agent lifecycle (bootstrap, shutdown)
+├── auth/                    # Authorization & roles
+├── channels/                # ServerChannel (WebSocket adapter)
+├── config/                  # Zod-validated config with hot-reload
+├── connection/              # Handshake, watchdog, rate limiting
+├── exec/                    # Tool approval queue
+├── handlers/                # Method handlers (chat, sessions, tools, ...)
+├── health/                  # CPU/memory/event-loop monitoring
+├── limits/                  # Connection & payload enforcement
+├── mcp/                     # NodeMCPBridge (stdio MCP transport)
+├── persistence/             # SessionIndex, TranscriptStore (SQLite)
+├── plugins/                 # Plugin discovery & registration
+├── protocol/                # Frame schemas, method dispatch, errors
+├── storage/                 # FileConfigStorageProvider
+├── streaming/               # Chat streaming, agent event conversion
+└── tools/                   # Server tool registration
+```
+
+---
+
+## NPM Scripts Reference
+
+### Extension
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server for extension |
+| `npm run build` | Build extension for production |
+| `npm run build:watch` | Build extension in watch mode |
+
+### Desktop
+| Command | Description |
+|---------|-------------|
+| `npm run dev:desktop` | Start Vite dev server for desktop |
+| `npm run tauri:dev` | Full Tauri dev mode (Rust + TS, hot-reload) |
+| `npm run tauri:build` | Production build (includes sidecar) |
+| `npm run build:desktop` | Build desktop frontend only |
+
+### Server
+| Command | Description |
+|---------|-------------|
+| `npm run dev:server` | Dev mode with ts-node ESM loader |
+| `npm run build:server` | Build server bundle via Vite |
+| `npm run start:server` | Run built server (`dist/server/index.mjs`) |
+| `npm run type-check:server` | Type-check server code only |
+
+### Shared
+| Command | Description |
+|---------|-------------|
+| `npm test` | Run all tests (Rust + Vitest) |
+| `npm run type-check` | Type-check entire project |
+| `npm run lint` | Run ESLint on src/ |
+| `npm run format` | Format code with Prettier |
 
 ---
 
@@ -407,6 +647,61 @@ For developers working on browser tool integrations, we provide a standalone tes
 3. **Execute tool tests:**
    - Use the testing interface to simulate function calls
    - Validate tool behavior without full LLM integration
+
+---
+
+## Project Structure
+
+```
+src/
+├── core/                    # Shared agent runtime (all platforms)
+│   ├── PiAgent.ts           # Main agent class
+│   ├── Session.ts           # Conversation session
+│   ├── TurnManager.ts       # Multi-turn reasoning
+│   ├── approval/            # Approval gate & policy engine
+│   ├── channels/            # Channel abstraction
+│   ├── mcp/                 # MCP manager, adapters, config
+│   ├── models/              # Model client factory & implementations
+│   ├── storage/             # Storage interfaces
+│   └── tools/               # Tool registry & runner
+│
+├── extension/               # Chrome extension
+│   ├── background/          # Service worker
+│   ├── content/             # Content scripts
+│   ├── storage/             # ChromeConfigStorage, ChromeCredentialStore
+│   └── _locales/            # Internationalization
+│
+├── desktop/                 # Desktop app (Tauri)
+│   ├── agent/               # DesktopAgentBootstrap
+│   ├── storage/             # TauriConfigStorage, KeytarCredentialStore
+│   └── tools/               # Desktop-specific tools
+│
+├── server/                  # Headless server
+│   ├── agent/               # ServerAgentBootstrap
+│   ├── channels/            # ServerChannel (WebSocket)
+│   ├── config/              # Zod-validated server config
+│   ├── connection/          # Handshake, watchdog, rate limiting
+│   ├── handlers/            # Method handlers
+│   ├── health/              # Health monitoring
+│   ├── mcp/                 # NodeMCPBridge
+│   ├── persistence/         # SQLite session/transcript storage
+│   ├── plugins/             # Plugin system
+│   ├── protocol/            # Frame schemas, method dispatch
+│   ├── storage/             # FileConfigStorageProvider
+│   └── tools/               # Server tool registration
+│
+├── storage/                 # Shared storage (rollout recording)
+├── tools/                   # Shared tool implementations
+├── prompts/                 # LLM system prompts
+├── webfront/                # Web UI (Svelte components)
+├── config/                  # AgentConfig, constants
+├── types/                   # Global type declarations
+└── utils/                   # Utilities
+
+tauri/                       # Tauri Rust backend
+scripts/                     # Build & i18n scripts
+tests/                       # E2E tests
+```
 
 ---
 
