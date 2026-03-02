@@ -6,7 +6,7 @@
  * @module server/auth/roles
  */
 
-import type { Scope } from '../protocol/methods';
+import type { Scope } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Roles

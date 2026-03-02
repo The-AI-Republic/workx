@@ -6,7 +6,7 @@
  * @module server/handlers/health
  */
 
-import { registerMethodHandler, type MethodContext } from '../protocol/methods';
+import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
 import { getConnectionCount } from '../connection/watchdog';
 
 // ─────────────────────────────────────────────────────────────────────────

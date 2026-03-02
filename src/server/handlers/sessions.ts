@@ -7,8 +7,8 @@
  * @module server/handlers/sessions
  */
 
-import { registerMethodHandler, type MethodContext } from '../protocol/methods';
-import { invalidRequest, notFound } from '../protocol/errors';
+import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
+import { invalidRequest, notFound } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Dependencies

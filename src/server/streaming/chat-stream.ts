@@ -8,7 +8,7 @@
  */
 
 import type { EventMsg } from '@/core/protocol/events';
-import { makeEvent, type EventFrame } from '../protocol/frames';
+import { makeEvent, type EventFrame } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants

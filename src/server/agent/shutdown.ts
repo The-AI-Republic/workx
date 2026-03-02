@@ -15,8 +15,8 @@ import { getServerConfig } from '../config/server-config';
 import { getServerAgentBootstrap } from './ServerAgentBootstrap';
 import { getTrackedConnections, shutdownWatchdog } from '../connection/watchdog';
 import { resetAllRateLimits } from '../connection/rate-limiter';
-import { makeEvent } from '../protocol/frames';
-import { WS_CLOSE } from '../protocol/errors';
+import { makeEvent } from '@pi/ws-server';
+import { WS_CLOSE } from '@pi/ws-server';
 
 let _shutdownInProgress = false;
 

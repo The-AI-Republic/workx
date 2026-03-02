@@ -6,7 +6,7 @@
  * @module server/connection/rate-limiter
  */
 
-import { rateLimited, type ErrorShape } from '../protocol/errors';
+import { rateLimited, type ErrorShape } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Configuration

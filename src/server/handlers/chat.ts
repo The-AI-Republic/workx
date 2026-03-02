@@ -6,8 +6,8 @@
  * @module server/handlers/chat
  */
 
-import { registerMethodHandler, type MethodContext } from '../protocol/methods';
-import { invalidRequest } from '../protocol/errors';
+import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
+import { invalidRequest } from '@pi/ws-server';
 import type { Op, InputItem, SandboxPolicy } from '@/core/protocol/types';
 import type { SubmissionContext } from '@/core/channels/types';
 

@@ -2,6 +2,9 @@
   "name": "pi",
   "version": "1.0.0",
   "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "node scripts/check-env.js extension && vite",
     "dev:desktop": "node scripts/check-env.js desktop && vite --config vite.config.desktop.mts --port 5174",

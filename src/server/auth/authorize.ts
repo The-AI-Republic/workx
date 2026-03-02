@@ -6,9 +6,9 @@
  * @module server/auth/authorize
  */
 
-import { METHOD_REGISTRY, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '../protocol/methods';
-import type { ErrorShape } from '../protocol/errors';
-import { unauthorized } from '../protocol/errors';
+import { METHOD_REGISTRY, EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@pi/ws-server';
+import type { ErrorShape } from '@pi/ws-server';
+import { unauthorized } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Connection scope store

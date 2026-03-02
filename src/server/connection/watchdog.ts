@@ -7,8 +7,8 @@
  * @module server/connection/watchdog
  */
 
-import { makeEvent } from '../protocol/frames';
-import { WS_CLOSE } from '../protocol/errors';
+import { makeEvent } from '@pi/ws-server';
+import { WS_CLOSE } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants

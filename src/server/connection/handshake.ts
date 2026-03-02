@@ -18,15 +18,15 @@ import {
   makeEvent,
   resolveClientInfo,
   negotiateProtocolVersion,
-} from '../protocol/frames';
-import type { ChallengePayload, HelloOkPayload, ConnectRequest, ResolvedClientInfo } from '../protocol/frames';
-import { WS_CLOSE, unauthorized, invalidRequest } from '../protocol/errors';
+} from '@pi/ws-server';
+import type { ChallengePayload, HelloOkPayload, ConnectRequest, ResolvedClientInfo } from '@pi/ws-server';
+import { WS_CLOSE, unauthorized, invalidRequest } from '@pi/ws-server';
 import { verifyAuth } from './auth';
 import { resolveScopes, isValidRole, type Role } from '../auth/roles';
 import { setConnectionAuth } from '../auth/authorize';
 import { getServerConfig } from '../config/server-config';
-import { getRegisteredMethods } from '../protocol/methods';
-import { EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '../protocol/methods';
+import { getRegisteredMethods } from '@pi/ws-server';
+import { EVENT_SCOPE_MAP, BROADCAST_EVENTS } from '@pi/ws-server';
 import { getHealthStatus } from '../handlers/health';
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ import type {
 import type { EventMsg } from '@/core/protocol/events';
 import type { Op } from '@/core/protocol/types';
 import { shouldReceiveEvent } from '../auth/authorize';
-import { makeEvent } from '../protocol/frames';
+import { makeEvent } from '@pi/ws-server';
 import { getTrackedConnections, touchConnection } from '../connection/watchdog';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';

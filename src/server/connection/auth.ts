@@ -7,7 +7,7 @@
  */
 
 import { getServerConfig, type ServerConfig } from '../config/server-config';
-import { unauthorized, type ErrorShape } from '../protocol/errors';
+import { unauthorized, type ErrorShape } from '@pi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Auth modes
