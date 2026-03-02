@@ -22,7 +22,8 @@
     "lint": "eslint src",
     "format": "prettier --write 'src/**/*.{ts,svelte,html,css}'",
     "dev:server": "node --experimental-vm-modules --loader ts-node/esm src/server/index.ts",
-    "build:server": "tsc -p tsconfig.server.json",
+    "build:server": "vite build --config vite.config.server.mts",
+    "start:server": "node dist/server/index.mjs",
     "type-check:server": "tsc --noEmit -p tsconfig.server.json"
   },
   "keywords": [],

@@ -56,9 +56,6 @@ vi.mock('@/core/PiAgent', () => {
       getApprovalManager() {
         return {};
       }
-      getDiffTracker() {
-        return {};
-      }
       getModelClientFactory() {
         return { setAuthManager: vi.fn() };
       }

@@ -14,6 +14,8 @@ import { ServerMessageRouter } from '../channels/ServerMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { PiAgent } from '@/core/PiAgent';
 import { AgentConfig } from '@/config/AgentConfig';
+import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
+import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { configurePromptComposer } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
 import type { Op } from '@/core/protocol/types';
@@ -86,10 +88,13 @@ export class ServerAgentBootstrap {
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.pi-server/data`;
 
     try {
-      // 1. Create message router
+      // 1. Initialize config storage (must happen before AgentConfig)
+      setConfigStorage(new FileConfigStorageProvider(dataDir));
+
+      // 2. Create message router
       this.messageRouter = new ServerMessageRouter('background');
 
-      // 2. Get agent config
+      // 3. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
       // 3. Create PiAgent

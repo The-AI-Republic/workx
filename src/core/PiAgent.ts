@@ -12,24 +12,15 @@ import { AgentConfig } from '../config/AgentConfig';
 import { Session } from './Session';
 import { TurnContext } from './TurnContext';
 import { ApprovalManager } from './ApprovalManager';
-import { DiffTracker } from './DiffTracker';
 import { ToolRegistry } from '../tools/ToolRegistry';
 import { ModelClientFactory } from './models/ModelClientFactory';
-import { UserNotifier } from './UserNotifier';
+import { type IUserNotifier, NoOpNotifier } from './IUserNotifier';
 import { MessageRouter } from './MessageRouter';
 import { v4 as uuidv4 } from 'uuid';
 import { loadPrompt, loadUserInstructions, configurePromptComposer, isComposerConfigured } from './PromptLoader';
 import { RegularTask } from './tasks/RegularTask';
 import { registerPlatformTools } from '../tools/registerPlatformTools';
 import { TabManager } from './TabManager';
-import { ApprovalGate } from './approval/ApprovalGate';
-import { PolicyRulesEngine } from './approval/PolicyRulesEngine';
-import { getDefaultRules } from './approval/defaultRules';
-import { DomainSensitivityEnhancer } from './approval/enhancers/DomainSensitivityEnhancer';
-import { SemanticElementEnhancer } from './approval/enhancers/SemanticElementEnhancer';
-import { SensitivePathEnhancer } from './approval/enhancers/SensitivePathEnhancer';
-import { ApprovalConfigStorage } from './approval/ApprovalConfigStorage';
-import { t } from '@/webfront/lib/i18n';
 
 /**
  * Main agent class managing the submission and event queues
@@ -51,10 +42,9 @@ export class PiAgent {
   private isProcessing: boolean = false;
   private config: AgentConfig;
   private approvalManager: ApprovalManager;
-  private diffTracker: DiffTracker;
   private toolRegistry: ToolRegistry;
   private modelClientFactory: ModelClientFactory;
-  private userNotifier: UserNotifier;
+  private userNotifier: IUserNotifier;
   private messageRouter: MessageRouter;
   private eventDispatcher: EventDispatcher | null = null;
   // Non-null signals a deferred model switch. The actual model is resolved from
@@ -62,7 +52,7 @@ export class PiAgent {
   // fires), so the stored value is only used as a "switch pending" flag.
   private pendingModelKey: string | null = null;
 
-  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string) {
+  constructor(config: AgentConfig, router: MessageRouter, initialHistory?: InitialHistory, agentId?: string, userNotifier?: IUserNotifier) {
     // Generate or use provided agentId for multi-instance tracking (Feature 015)
     this._agentId = agentId ?? `agent_${uuidv4()}`;
 
@@ -74,8 +64,7 @@ export class PiAgent {
     this.modelClientFactory = new ModelClientFactory();
     this.toolRegistry = new ToolRegistry();
     this.approvalManager = new ApprovalManager(this.config, (event) => this.emitEvent(event.msg));
-    this.diffTracker = new DiffTracker();
-    this.userNotifier = new UserNotifier();
+    this.userNotifier = userNotifier ?? new NoOpNotifier();
 
     // Initialize session with config and toolRegistry
     this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
@@ -136,63 +125,11 @@ export class PiAgent {
       }
     }
 
-    // Register browser automation tools (pass model data for feature filtering)
-    // Uses registerPlatformTools to filter tools based on current platform (extension vs desktop)
+    // Register platform tools (pass model data for feature filtering)
     await registerPlatformTools(this.toolRegistry, this.config.getToolsConfig(), {
       name: modelData.model.name,
       supportsImage: modelData.model.supportsImage
     });
-
-    // Initialize approval gate for risk-based tool call interception
-    const platform = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
-      ? 'desktop' as const
-      : 'extension' as const;
-    const policyEngine = new PolicyRulesEngine(getDefaultRules(platform));
-    const approvalGate = new ApprovalGate(this.approvalManager, policyEngine);
-    approvalGate.addEnhancer(new DomainSensitivityEnhancer());
-    if (platform === 'extension') {
-      approvalGate.addEnhancer(new SemanticElementEnhancer());
-    } else {
-      approvalGate.addEnhancer(new SensitivePathEnhancer());
-    }
-
-    // Connect config storage for history tracking (I2)
-    // Desktop mode uses TauriConfigStorage; extension mode uses chrome.storage.local
-    let configStorage: ApprovalConfigStorage;
-    if (platform === 'desktop') {
-      const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
-      const tauriStorage = new TauriConfigStorage();
-      configStorage = new ApprovalConfigStorage(() => ({
-        get: (keys: string[]) => tauriStorage.getMany(keys),
-        set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
-      }));
-    } else {
-      configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
-    }
-    approvalGate.setConfigStorage(configStorage);
-
-    // Load stored approval config and apply to gate (I1)
-    try {
-      const storedConfig = await configStorage.loadConfig();
-      approvalGate.setMode(storedConfig.mode);
-      approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
-      approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
-    } catch (error) {
-      console.warn('[PiAgent] Failed to load approval config, using defaults:', error);
-    }
-
-    // Note: Approval config sync is handled via UPDATE_APPROVAL_CONFIG message pattern
-    // (service-worker.ts and chromePolyfill.ts), not chrome.storage.onChanged,
-    // to support desktop mode where storage.onChanged is not available.
-
-    this.toolRegistry.setApprovalGate(approvalGate);
-
-    // In desktop mode, browser tools come from MCP (chrome-devtools-mcp).
-    // Enable mcpTools so TurnManager includes them in the tool list and
-    // allows the MCP fallback execution path.
-    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
-      this.config.updateToolsConfig({ mcpTools: true });
-    }
 
     // Create model client and turn context during initialization
     // API key can be null - validation happens when making API requests
@@ -216,37 +153,7 @@ export class PiAgent {
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
 
-    // Setup tab closure detection via TabManager callback
-    this.setupTabClosureHandler();
     console.log('[PiAgent] DEBUG: initialize() complete');
-  }
-
-  /**
-   * Setup tab closure event handler
-   * Registers callback with TabManager to handle tab closure/crash events
-   */
-  private setupTabClosureHandler(): void {
-    const tabManager = TabManager.getInstance();
-
-    // Register callback for tab closure events
-    tabManager.onTabClosure(async (closedTabId: number) => {
-      // Check if the closed tab is the one bound to this session
-      const sessionTabId = this.session.getTabId();
-
-      if (sessionTabId === closedTabId) {
-        // Clear session's tabId
-        this.session.setTabId(-1);
-
-        // Abort all running tasks
-        await this.session.abortAllTasks('TabClosed');
-
-        // Show notification to user
-        await this.userNotifier.notifyWarning(
-          'Tab Closed',
-          'The tab was closed or crashed. All tasks have been stopped.'
-        );
-      }
-    });
   }
 
   /**
@@ -402,7 +309,7 @@ export class PiAgent {
         this.emitEvent({
           type: 'Error',
           data: {
-            message: error instanceof Error ? error.message : t('Unknown error occurred'),
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
           },
         });
       }
@@ -622,7 +529,7 @@ export class PiAgent {
             this.emitEvent({
               type: 'Error',
               data: {
-                message: t('Failed to create a new tab. Please try again.'),
+                message: 'Failed to create a new tab. Please try again.',
               },
             });
 
@@ -636,7 +543,7 @@ export class PiAgent {
         this.emitEvent({
           type: 'Error',
           data: {
-            message: t(`Failed to create browser tab: ${errorMsg}`),
+            message: `Failed to create browser tab: ${errorMsg}`,
           },
         });
 
@@ -717,7 +624,7 @@ export class PiAgent {
           this.emitEvent({
             type: 'Error',
             data: {
-              message: t(`Failed to switch to tab ${newTabId}: ${errorMsg}`),
+              message: `Failed to switch to tab ${newTabId}: ${errorMsg}`,
             },
           });
 
@@ -817,7 +724,7 @@ export class PiAgent {
       console.error('Error processing user input:', error);
 
       // Check if this is an API key error and emit appropriate event
-      const errorMessage = error instanceof Error ? error.message : t('Unknown error occurred during task execution');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during task execution';
       const isApiKeyError = errorMessage.includes('No API key configured');
 
       // Get provider name for better error message
@@ -833,7 +740,7 @@ export class PiAgent {
       }
 
       const userFriendlyMessage = isApiKeyError
-        ? t(`Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`)
+        ? `Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key.`
         : errorMessage;
 
       this.emitEvent({
@@ -1212,12 +1119,6 @@ export class PiAgent {
     return this.approvalManager;
   }
 
-  /**
-   * Get the diff tracker
-   */
-  getDiffTracker(): DiffTracker {
-    return this.diffTracker;
-  }
 
   /**
    * Cleanup resources
@@ -1286,7 +1187,7 @@ export class PiAgent {
   /**
    * Get user notifier
    */
-  getUserNotifier(): UserNotifier {
+  getUserNotifier(): IUserNotifier {
     return this.userNotifier;
   }
 
@@ -1342,7 +1243,7 @@ export class PiAgent {
     } catch (error) {
       return {
         ready: false,
-        message: error instanceof Error ? error.message : t('Unknown error checking agent status'),
+        message: error instanceof Error ? error.message : 'Unknown error checking agent status',
         authMode: 'none',
       };
     }

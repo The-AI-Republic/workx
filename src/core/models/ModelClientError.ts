@@ -3,7 +3,6 @@
  */
 
 import { ModelClientError } from './ModelClient';
-import { t } from '@/webfront/lib/i18n';
 
 /**
  * Plan type metadata for usage tracking
@@ -205,9 +204,9 @@ export class AuthenticationError extends ModelClientError {
    */
   getActionMessage(): string {
     if (this.authSource === 'backend') {
-      return t('Please log in again to continue using the AI agent.');
+      return 'Please log in again to continue using the AI agent.';
     }
-    return t('Please check your API key in settings.');
+    return 'Please check your API key in settings.';
   }
 }
 
@@ -245,11 +244,11 @@ export class BackendRoutingError extends ModelClientError {
   getActionMessage(): string {
     switch (this.errorType) {
       case 'session_expired':
-        return t('Your session has expired. Please log in again.');
+        return 'Your session has expired. Please log in again.';
       case 'backend_unreachable':
-        return t('Unable to reach the server. Please check your connection and try again.');
+        return 'Unable to reach the server. Please check your connection and try again.';
       case 'backend_error':
-        return t('The server encountered an error. Please try again later.');
+        return 'The server encountered an error. Please try again later.';
     }
   }
 }
@@ -383,17 +382,17 @@ export class ErrorFactory {
       timeout: error.timeout,
     };
 
-    let message = t('Network error occurred');
+    let message = 'Network error occurred';
     if (error.code === 'ETIMEDOUT') {
-      message = t('Request timed out');
+      message = 'Request timed out';
     } else if (error.code === 'ENOTFOUND') {
-      message = t('DNS lookup failed');
+      message = 'DNS lookup failed';
     } else if (error.code === 'ECONNRESET') {
-      message = t('Connection was reset');
+      message = 'Connection was reset';
     } else if (error.code === 'ECONNREFUSED') {
-      message = t('Connection was refused');
+      message = 'Connection was refused';
     } else if (networkMetadata.aborted) {
-      message = t('Request was aborted');
+      message = 'Request was aborted';
     }
 
     return new NetworkError(message, networkMetadata, undefined, provider);
@@ -408,10 +407,10 @@ export class ErrorFactory {
     authSource: 'backend' | 'provider' = 'provider'
   ): AuthenticationError {
     const messages = {
-      invalid_key: t('Invalid API key provided'),
-      expired_key: t('API key has expired'),
-      insufficient_permissions: t('API key has insufficient permissions'),
-      unknown: t('Authentication failed'),
+      invalid_key: 'Invalid API key provided',
+      expired_key: 'API key has expired',
+      insufficient_permissions: 'API key has insufficient permissions',
+      unknown: 'Authentication failed',
     };
 
     return new AuthenticationError(messages[reason], 401, provider, authSource);
@@ -425,9 +424,9 @@ export class ErrorFactory {
     statusCode?: number
   ): BackendRoutingError {
     const messages = {
-      session_expired: t('Session expired - please log in again to continue using the AI agent'),
-      backend_unreachable: t('Unable to reach the backend server - please check your connection'),
-      backend_error: t('Backend server error - please try again later'),
+      session_expired: 'Session expired - please log in again to continue using the AI agent',
+      backend_unreachable: 'Unable to reach the backend server - please check your connection',
+      backend_error: 'Backend server error - please try again later',
     };
 
     return new BackendRoutingError(messages[errorType], errorType, statusCode);
@@ -469,7 +468,7 @@ export class ErrorFactory {
     contentType: string,
     provider?: string
   ): ContentPolicyError {
-    const message = t(`Content violates policy: ${contentType} content is not allowed`);
+    const message = `Content violates policy: ${contentType} content is not allowed`;
     return new ContentPolicyError(message, contentType, 400, provider);
   }
 }

@@ -17,7 +17,14 @@ import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { PiAgent } from '@/core/PiAgent';
+import { UserNotifier } from '@/core/UserNotifier';
 import { MessageType } from '@/core/MessageRouter';
+import { ApprovalGate } from '@/core/approval/ApprovalGate';
+import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
+import { getDefaultRules } from '@/core/approval/defaultRules';
+import { DomainSensitivityEnhancer } from '@/core/approval/enhancers/DomainSensitivityEnhancer';
+import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEnhancer';
+import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -68,7 +75,7 @@ export class DesktopAgentBootstrap {
       // 3. Create PiAgent
       // PiAgent expects a MessageRouter with updateState method
       // DesktopMessageRouter provides this compatibility
-      this.agent = new PiAgent(config, this.messageRouter as any);
+      this.agent = new PiAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
       // This must happen first so PiAgent.configurePromptComposition() sees
@@ -109,6 +116,9 @@ export class DesktopAgentBootstrap {
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
+      // 6a. Configure desktop-specific approval gate
+      await this.configureDesktopPlatform();
+
       // 6b. Initialize skills (filesystem-backed, prompt extension)
       await this.initializeSkills();
 
@@ -141,6 +151,46 @@ export class DesktopAgentBootstrap {
       console.error('[DesktopAgentBootstrap] Initialization failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Configure desktop-specific approval gate, MCP tools, and tab closure handler.
+   */
+  private async configureDesktopPlatform(): Promise<void> {
+    if (!this.agent) throw new Error('Agent not initialized');
+
+    const approvalManager = this.agent.getApprovalManager();
+    const toolRegistry = this.agent.getToolRegistry();
+
+    // Approval gate with desktop-specific enhancers
+    const policyEngine = new PolicyRulesEngine(getDefaultRules('desktop'));
+    const approvalGate = new ApprovalGate(approvalManager, policyEngine);
+    approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+    approvalGate.addEnhancer(new SensitivePathEnhancer());
+
+    // Desktop mode uses TauriConfigStorage for approval config
+    const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
+    const tauriStorage = new TauriConfigStorage();
+    const configStorage = new ApprovalConfigStorage(() => ({
+      get: (keys: string[]) => tauriStorage.getMany(keys),
+      set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
+    }));
+    approvalGate.setConfigStorage(configStorage);
+
+    try {
+      const storedConfig = await configStorage.loadConfig();
+      approvalGate.setMode(storedConfig.mode);
+      approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+      approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Failed to load approval config, using defaults:', error);
+    }
+
+    toolRegistry.setApprovalGate(approvalGate);
+
+    // Desktop mode: browser tools come from MCP — enable mcpTools
+    const agentConfig = await AgentConfig.getInstance();
+    agentConfig.updateToolsConfig({ mcpTools: true });
   }
 
   /**

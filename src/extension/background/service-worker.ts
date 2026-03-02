@@ -9,7 +9,14 @@
  */
 
 import { PiAgent } from '../../core/PiAgent';
+import { UserNotifier } from '../../core/UserNotifier';
 import { MessageRouter, MessageType } from '../../core/MessageRouter';
+import { ApprovalGate } from '../../core/approval/ApprovalGate';
+import { PolicyRulesEngine } from '../../core/approval/PolicyRulesEngine';
+import { getDefaultRules } from '../../core/approval/defaultRules';
+import { DomainSensitivityEnhancer } from '../../core/approval/enhancers/DomainSensitivityEnhancer';
+import { SemanticElementEnhancer } from '../../core/approval/enhancers/SemanticElementEnhancer';
+import { ApprovalConfigStorage } from '../../core/approval/ApprovalConfigStorage';
 import { AuthManager } from '../../core/models/types/Auth';
 import type { Submission } from '../../core/protocol/types';
 import { validateSubmission } from '../../core/protocol/schemas';
@@ -93,6 +100,52 @@ let sessionStorage: SessionStorage | null = null; // Feature 015: Session persis
 let skillRegistry: SkillRegistry | null = null; // Agent skills
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
+
+/**
+ * Configure platform-specific approval gate and tab closure handler for extension mode.
+ * Called after agent.initialize() to set up approval policies, enhancers, and config storage.
+ */
+async function configureExtensionPlatform(targetAgent: PiAgent): Promise<void> {
+  const approvalManager = targetAgent.getApprovalManager();
+  const toolRegistry = targetAgent.getToolRegistry();
+
+  // Approval gate with extension-specific enhancers
+  const policyEngine = new PolicyRulesEngine(getDefaultRules('extension'));
+  const approvalGate = new ApprovalGate(approvalManager, policyEngine);
+  approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+  approvalGate.addEnhancer(new SemanticElementEnhancer());
+
+  // Extension mode uses chrome.storage.local for approval config
+  const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+  approvalGate.setConfigStorage(configStorage);
+
+  try {
+    const storedConfig = await configStorage.loadConfig();
+    approvalGate.setMode(storedConfig.mode);
+    approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+    approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+  } catch (error) {
+    console.warn('[ServiceWorker] Failed to load approval config, using defaults:', error);
+  }
+
+  toolRegistry.setApprovalGate(approvalGate);
+
+  // Tab closure handler
+  const tabManager = TabManager.getInstance();
+  const session = targetAgent.getSession();
+  const notifier = targetAgent.getUserNotifier();
+
+  tabManager.onTabClosure(async (closedTabId: number) => {
+    if (session.getTabId() === closedTabId) {
+      session.setTabId(-1);
+      await session.abortAllTasks('TabClosed');
+      await notifier.notifyWarning(
+        'Tab Closed',
+        'The tab was closed or crashed. All tasks have been stopped.'
+      );
+    }
+  });
+}
 
 /**
  * Initialize the service worker
@@ -455,7 +508,7 @@ function setupMessageHandlers(): void {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
-    });
+    }, undefined, new UserNotifier());
 
     // Set up event dispatcher for chrome extension mode
     agent.setEventDispatcher((event) => {
@@ -472,6 +525,7 @@ function setupMessageHandlers(): void {
     }
 
     await agent.initialize();
+    await configureExtensionPlatform(agent);
 
     // Get the reconstructed history from the new session
     const session = agent.getSession();
@@ -652,7 +706,7 @@ function setupMessageHandlers(): void {
           await agent.cleanup();
         }
 
-        agent = new PiAgent(agentConfig, router!);
+        agent = new PiAgent(agentConfig, router!, undefined, undefined, new UserNotifier());
 
         // Set up event dispatcher for chrome extension mode
         agent.setEventDispatcher((event) => {
@@ -667,6 +721,7 @@ function setupMessageHandlers(): void {
           factory.setAuthManager(currentAuthManager);
         }
         await agent.initialize();
+        await configureExtensionPlatform(agent);
         if (!currentAuthManager) {
           await initializeAuthFromConfig();
         } else {
@@ -730,9 +785,6 @@ function setupMessageHandlers(): void {
   router.on(MessageType.DIFF_GENERATED, async (message) => {
     const targetAgent = getAgentForMessage(message);
     if (!targetAgent) throw new Error('Agent not initialized');
-
-    const { diffId, path, content } = message.payload;
-    const diffTracker = targetAgent.getDiffTracker();
 
     // Broadcast diff to UI
     if (router) {

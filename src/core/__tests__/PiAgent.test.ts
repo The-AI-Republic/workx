@@ -276,11 +276,6 @@ describe('PiAgent', () => {
       expect(approvalMgr.getApproval).toBeDefined();
     });
 
-    it('should expose the diff tracker via getDiffTracker()', () => {
-      const dt = agent.getDiffTracker();
-      expect(dt).toBeDefined();
-    });
-
     it('should expose the model client factory via getModelClientFactory()', () => {
       const factory = agent.getModelClientFactory();
       expect(factory).toBeDefined();
@@ -301,11 +296,6 @@ describe('PiAgent', () => {
 
     it('should subscribe to config-changed events during construction', () => {
       expect(config.on as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
-    });
-
-    it('should set up notification handlers during construction', () => {
-      const notifier = agent.getUserNotifier();
-      expect(notifier.onNotification).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 

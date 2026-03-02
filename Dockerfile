@@ -18,11 +18,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
-# Copy built server
+# Copy bundled server (single file from Vite SSR build)
 COPY dist/server ./dist/server
-COPY src/core ./src/core
-COPY src/config ./src/config
-COPY src/prompts ./src/prompts
 
 # Default configuration
 ENV PI_SERVER_PORT=18100
@@ -39,4 +36,4 @@ EXPOSE 18100
 HEALTHCHECK --interval=60s --timeout=5s --retries=3 \
   CMD node -e "fetch('http://localhost:18100/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
 
-CMD ["node", "--experimental-vm-modules", "dist/server/server/index.js"]
+CMD ["node", "dist/server/index.mjs"]
