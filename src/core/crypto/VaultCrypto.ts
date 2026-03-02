@@ -34,7 +34,7 @@ export async function generateEncryptionKey(): Promise<CryptoKey> {
  */
 export async function deriveWrappingKey(
   secret: string,
-  salt: Uint8Array
+  salt: Uint8Array<ArrayBuffer>
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -73,12 +73,13 @@ export async function wrapKey(
 
 /** Unwrap (decrypt) an encryption key with a wrapping key */
 export async function unwrapKey(
-  wrappedKey: ArrayBuffer,
+  wrappedKey: ArrayBuffer | Uint8Array<ArrayBuffer>,
   wrappingKey: CryptoKey
 ): Promise<CryptoKey> {
+  const keyBuffer = wrappedKey instanceof Uint8Array ? wrappedKey.buffer : wrappedKey;
   return crypto.subtle.unwrapKey(
     'raw',
-    wrappedKey,
+    keyBuffer,
     wrappingKey,
     'AES-KW',
     { name: 'AES-GCM', length: 256 },
@@ -140,7 +141,7 @@ export async function decrypt(
  */
 export async function deriveVerificationHash(
   pin: string,
-  salt: Uint8Array
+  salt: Uint8Array<ArrayBuffer>
 ): Promise<string> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -170,13 +171,13 @@ export async function deriveVerificationHash(
 // ============================================================================
 
 /** Generate cryptographically random bytes (default 16 bytes for salt) */
-export function generateSalt(length = 16): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(length));
+export function generateSalt(length = 16): Uint8Array<ArrayBuffer> {
+  return crypto.getRandomValues(new Uint8Array(new ArrayBuffer(length)));
 }
 
 /** Generate random IV for AES-GCM (12 bytes) */
-export function generateIV(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(12));
+export function generateIV(): Uint8Array<ArrayBuffer> {
+  return crypto.getRandomValues(new Uint8Array(new ArrayBuffer(12)));
 }
 
 // ============================================================================
@@ -189,10 +190,11 @@ export async function exportKey(key: CryptoKey): Promise<ArrayBuffer> {
 }
 
 /** Import raw bytes back to CryptoKey */
-export async function importKey(raw: ArrayBuffer): Promise<CryptoKey> {
+export async function importKey(raw: ArrayBuffer | Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+  const keyBuffer = raw instanceof Uint8Array ? raw.buffer : raw;
   return crypto.subtle.importKey(
     'raw',
-    raw,
+    keyBuffer,
     { name: 'AES-GCM', length: 256 },
     true,
     ['encrypt', 'decrypt']
