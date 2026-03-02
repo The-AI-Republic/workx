@@ -164,6 +164,7 @@ export class EventProcessor {
 
       // Plan events
       case 'PlanUpdate':
+      case 'TaskUpdate':
         return 'plan';
 
       // System events
@@ -796,24 +797,34 @@ export class EventProcessor {
   }
 
   /**
-   * Process plan events (PlanUpdate)
+   * Process plan events (PlanUpdate and TaskUpdate)
    */
   private processPlanEvent(event: Event): ProcessedEvent | null {
     const msg = event.msg;
 
     if (msg.type === 'PlanUpdate') {
       const planData = msg.data;
-      const stepCount = planData.plan?.length || 0;
-      const summary = planData.explanation
-        ? planData.explanation
-        : t('Plan: $1$ step(s)', { substitutions: [stepCount.toString()] });
 
       return {
         id: event.id,
         category: 'plan',
         timestamp: new Date(),
         title: t('Task Plan'),
-        content: planData as unknown as string, // Pass the full plan data to PlanEvent component
+        content: planData as unknown as string,
+        style: { textColor: 'text-cyan-400' },
+        collapsible: false,
+      };
+    }
+
+    if (msg.type === 'TaskUpdate') {
+      const taskData = msg.data;
+
+      return {
+        id: event.id,
+        category: 'plan',
+        timestamp: new Date(),
+        title: t('Task Plan'),
+        content: taskData as unknown as string,
         style: { textColor: 'text-cyan-400' },
         collapsible: false,
       };
