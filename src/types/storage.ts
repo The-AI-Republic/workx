@@ -115,3 +115,4 @@ export interface LLMCacheConfig {
   /** Session quota eviction percentage (0-1, default 0.5 = 50%) */
   sessionEvictionPercentage: number;
 }
+
