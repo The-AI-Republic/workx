@@ -249,6 +249,23 @@ async function initializeAuthFromConfig(): Promise<void> {
     factory.setAuthManager(authManager);
 
     console.log('[ServiceWorker] Auth initialized, isBackendRouting:', factory.isBackendRouting());
+
+    // Check for ChatGPT OAuth tokens and configure token getter
+    try {
+      const { ChatGPTOAuthExtensionStorage } = await import('../auth/ChatGPTOAuthExtensionStorage');
+      const { ChatGPTOAuthService } = await import('@/core/auth/ChatGPTOAuthService');
+
+      const oauthStorage = new ChatGPTOAuthExtensionStorage();
+      const oauthService = new ChatGPTOAuthService(oauthStorage);
+
+      if (await oauthService.isAuthenticated()) {
+        authManager.setChatGPTOAuth(() => oauthService.getValidAccessToken());
+        factory.setAuthManager(authManager);
+        console.log('[ServiceWorker] ChatGPT OAuth restored from storage');
+      }
+    } catch (oauthError) {
+      console.warn('[ServiceWorker] ChatGPT OAuth check failed:', oauthError);
+    }
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize auth from config:', error);
     // Continue without backend routing - will use direct API key mode

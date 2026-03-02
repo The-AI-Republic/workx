@@ -6,6 +6,7 @@ mod commands;
 mod http_commands;
 mod keychain_commands;
 mod mcp_manager;
+mod oauth_server;
 mod sandbox;
 mod skills_commands;
 mod storage_commands;
@@ -373,6 +374,8 @@ fn main() {
             keychain_commands::keychain_set,
             keychain_commands::keychain_delete,
             keychain_commands::keychain_list_accounts,
+            // OAuth callback server
+            oauth_server::start_oauth_callback_server,
             // Skills filesystem commands
             skills_commands::skills_ensure_dir,
             skills_commands::skills_list_dirs,
