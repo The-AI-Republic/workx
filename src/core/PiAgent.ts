@@ -441,10 +441,18 @@ export class PiAgent {
     // ================================================================
     if (newTabId === -1) {
       try {
+        // Server mode: no real tabs — use sentinel tabId
+        if (__BUILD_MODE__ === 'server') {
+          this.session.setTabId(1);
+          await this.messageRouter.updateState({
+            sessionId: this.session.getId(),
+            tabId: 1,
+          });
+        }
         // Desktop mode: ensure chrome-devtools-mcp is connected.
         // chrome-devtools-mcp launches Chrome with a default page — no need to
         // call new_page. The agent will use navigate_page to go where it needs.
-        if (__BUILD_MODE__ === 'desktop') {
+        else if (__BUILD_MODE__ === 'desktop') {
           try {
             const { MCPManager } = await import('./mcp/MCPManager');
             const { registerMCPTools } = await import('./mcp/MCPToolAdapter');
@@ -555,8 +563,8 @@ export class PiAgent {
     // ================================================================
     else if (newTabId === currentTabId) {
 
-      // Desktop mode: tab health is managed by DesktopTabManager
-      if (__BUILD_MODE__ !== 'desktop') {
+      // Desktop/server mode: tab health is not managed by Chrome extension TabManager
+      if (__BUILD_MODE__ !== 'desktop' && __BUILD_MODE__ !== 'server') {
         const validation = await tabManager.validateTab(currentTabId);
 
         if (validation.status === 'invalid') {
@@ -580,8 +588,8 @@ export class PiAgent {
     // ================================================================
     else {
 
-      if (__BUILD_MODE__ === 'desktop') {
-        // Desktop mode: just update session tabId (no tab groups, no extension validation)
+      if (__BUILD_MODE__ === 'desktop' || __BUILD_MODE__ === 'server') {
+        // Desktop/server mode: just update session tabId (no tab groups, no extension validation)
         this.session.setTabId(newTabId);
       } else {
         // Extension mode: validate tab and manage tab groups

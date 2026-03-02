@@ -425,7 +425,7 @@ export class DesktopAgentBootstrap {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
-    });
+    }, undefined, new UserNotifier());
 
     // 6. Re-wire event forwarding via ChannelManager
     const channelManager = getChannelManager();
@@ -438,6 +438,7 @@ export class DesktopAgentBootstrap {
 
     // 8. Initialize agent and session
     await this.agent.initialize();
+    await this.configureDesktopPlatform();
     const session = this.agent.getSession();
     await session.initialize();
 

@@ -10,6 +10,7 @@
  * @module server/tools/registerServerTools
  */
 
+import { execSync } from 'node:child_process';
 import type { ToolRegistry } from '@/tools/ToolRegistry';
 import type { IRiskAssessor } from '@/core/approval/types';
 
@@ -117,8 +118,8 @@ async function registerBrowserTools(registry: ToolRegistry): Promise<void> {
     const { MCPManager } = await import('@/core/mcp/MCPManager');
     const { registerMCPTools } = await import('@/core/mcp/MCPToolAdapter');
 
-    // Use 'desktop' platform scope — server mode supports stdio transport
-    const mcpManager = await MCPManager.getInstance('desktop');
+    // Use 'server' scope — avoids Tauri-specific builtin seeding in MCPManager
+    const mcpManager = await MCPManager.getInstance('server');
 
     // Check if browser server is already seeded (from desktop builtin)
     let browserServer = mcpManager.getServerByName('browser');
@@ -245,7 +246,6 @@ async function setupDynamicMCPRegistration(registry: ToolRegistry): Promise<void
  * Try to find Chrome/Chromium binary on the system.
  */
 function findChromeBinary(): string | null {
-  const { execSync } = require('node:child_process');
 
   const candidates = [
     'chromium',

@@ -12,6 +12,16 @@ import { createServer as createHttpsServer } from 'node:https';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
+// Polyfill EventSource for Node.js (required by SSE MCP transport)
+if (typeof globalThis.EventSource === 'undefined') {
+  try {
+    const { default: EventSource } = await import('eventsource') as any;
+    (globalThis as any).EventSource = EventSource;
+  } catch {
+    console.warn('[Server] EventSource polyfill not available — SSE MCP transport will not work');
+  }
+}
+
 // Load env vars from .env file
 try {
   const dotenv = await import('dotenv');
