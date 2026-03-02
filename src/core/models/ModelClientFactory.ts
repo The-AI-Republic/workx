@@ -75,6 +75,34 @@ export class ModelClientFactory {
     return this.authManager;
   }
 
+  private _chatGPTOAuth401Retries = 0;
+  private static readonly MAX_OAUTH_401_RETRIES = 1;
+
+  /**
+   * Handle a 401 error when ChatGPT OAuth is active.
+   * Clears the client cache so the next request triggers a fresh token fetch.
+   * Returns true if ChatGPT OAuth is active and retry is allowed (max 1 retry).
+   */
+  handleChatGPTOAuth401(): boolean {
+    if (this.authManager?.isChatGPTOAuthActive?.()) {
+      if (this._chatGPTOAuth401Retries >= ModelClientFactory.MAX_OAUTH_401_RETRIES) {
+        this._chatGPTOAuth401Retries = 0;
+        return false;
+      }
+      this._chatGPTOAuth401Retries++;
+      this.clientCache.clear();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Reset the OAuth 401 retry counter. Call after a successful request.
+   */
+  resetOAuth401Retries(): void {
+    this._chatGPTOAuth401Retries = 0;
+  }
+
   /**
    * Check if using backend routing (useOwnApiKey=false)
    * @returns true if requests should route through backend
@@ -129,8 +157,9 @@ export class ModelClientFactory {
     // (e.g., switching from Qwen with reasoning to Kimi K2 without reasoning)
     const selectedModelKey = this.config?.getConfig().selectedModelKey || 'unknown';
 
-    // Add routing type to cache key to separate backend vs direct clients
-    const routingType = this.isBackendRouting() ? 'backend' : 'direct';
+    // Add routing type and OAuth status to cache key to separate clients
+    const oauthActive = this.authManager?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
+    const routingType = this.isBackendRouting() ? 'backend' : oauthActive;
     const cacheKey = `${provider}-${selectedModelKey}-${routingType}`;
 
     // Check cache first
@@ -471,6 +500,18 @@ export class ModelClientFactory {
         }
       } catch (error) {
         console.warn(`[ModelClientFactory] Failed to load config for provider ${provider}: ${error}`);
+      }
+    }
+
+    // ChatGPT OAuth: if OpenAI provider and OAuth is active, use the OAuth token
+    if (provider === 'openai' && this.authManager?.isChatGPTOAuthActive?.()) {
+      try {
+        const oauthToken = await this.authManager.getChatGPTAccessToken?.();
+        if (oauthToken) {
+          apiKey = oauthToken;
+        }
+      } catch (error) {
+        console.warn(`[ModelClientFactory] ChatGPT OAuth token retrieval failed: ${error}`);
       }
     }
 

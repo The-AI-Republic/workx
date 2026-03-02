@@ -77,7 +77,7 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should merge stored config with defaults', async () => {
-      mockStorage._store['approval_config'] = { mode: 'high_speed' };
+      mockStorage._store['agent_config'] = { approval: { mode: 'high_speed' } };
       const config = await configStorage.loadConfig();
       expect(config.mode).toBe('high_speed');
       expect(config.version).toBe('1.0.0'); // from defaults
@@ -85,9 +85,11 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should preserve stored timeout overrides', async () => {
-      mockStorage._store['approval_config'] = {
-        mode: 'balanced',
-        timeouts: { low: 10000, medium: 20000 },
+      mockStorage._store['agent_config'] = {
+        approval: {
+          mode: 'balanced',
+          timeouts: { low: 10000, medium: 20000 },
+        },
       };
       const config = await configStorage.loadConfig();
       expect(config.timeouts.low).toBe(10000);
@@ -104,7 +106,7 @@ describe('ApprovalConfigStorage', () => {
       };
       await configStorage.saveConfig(config);
       expect(mockStorage.set).toHaveBeenCalledWith({
-        approval_config: config,
+        agent_config: { approval: config },
       });
     });
   });

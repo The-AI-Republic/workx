@@ -32,8 +32,9 @@
 
   async function loadMode() {
     try {
-      const result = await chrome.storage.local.get(STORAGE_KEYS.APPROVAL_CONFIG);
-      const config = result[STORAGE_KEYS.APPROVAL_CONFIG] as IApprovalConfig | undefined;
+      const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
+      const agentConfig = result[STORAGE_KEYS.CONFIG] as Record<string, any> | undefined;
+      const config = agentConfig?.approval as IApprovalConfig | undefined;
       if (config?.mode) {
         currentMode = config.mode;
       }
@@ -79,7 +80,7 @@
         aria-haspopup="true"
         aria-expanded={showPopup}
       >
-        <span class="w-3 h-3 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
+        <span class="w-4 h-4 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
       </button>
     </Tooltip>
   </div>

@@ -18,12 +18,25 @@
 - After each action, re-snapshot to verify the page reflects your change before reporting back.
 
 ### PlanningTool
-- Use `planning_tool` for multi-step tasks that span terminal and browser operations.
-- Break work into short, ordered items that can be checked off as you go.
+- Use `planning_tool` for multi-step tasks spanning terminal and browser operations.
+- `command: "plan"`: create a plan with `plan_summary` (one-line headline), `plan_detail` (free-form strategy/reasoning), and `tasks` array (structured steps).
+- `command: "update"`: change task status (`in_progress` → `completed`) or fields.
+- `command: "list"`: see all tasks and their current status.
+- `command: "get"`: read full task details before starting work on a task.
+- `command: "get_plan"`: recover full plan context (summary, detail, tasks) when you've lost track of the plan strategy after many tool calls.
+- Research first: observe system state, available tools, and MCP capabilities before composing a plan.
 
 ### WebSearchTool
 - Use for information retrieval when you need current data from the web.
 - Prefer direct terminal commands (e.g., `curl`, API calls) when they can retrieve the same data faster.
+
+### SettingTool
+- Use `setting_tool` to read or modify user settings via chat.
+- Actions: `get` (read a single setting by key), `set` (update a setting), `list` (show all available settings with current values).
+- Keys use dot-notation: `approval.mode`, `tools.dom_tool`, `preferences.uiTheme`, `preferences.theme`, `preferences.language`, `selectedModelKey`.
+- Legacy aliases also work: `general.uiTheme`, `general.theme`, `general.language`, `model.selection`.
+- Boolean settings accept string `"true"`/`"false"` (auto-coerced).
+- Write operations are blocked in YOLO approval mode.
 
 ### Tool Chaining
 - Typical loop: observe (snapshot/ls/cat) → plan → act (terminal/browser) → re-observe → document outcomes.
