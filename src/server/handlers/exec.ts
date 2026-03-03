@@ -6,8 +6,8 @@
  * @module server/handlers/exec
  */
 
-import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
-import { invalidRequest, notFound } from '@pi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { invalidRequest, notFound } from '@applepi/ws-server';
 
 export interface ExecHandlerDeps {
   resolveApproval: (id: string, decision: 'approve' | 'reject', reason?: string) => Promise<boolean>;

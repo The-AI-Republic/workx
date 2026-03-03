@@ -16,9 +16,9 @@ import { invoke } from '@tauri-apps/api/core';
 import type { CredentialStore } from '@/core/storage/CredentialStore';
 
 /**
- * Service name prefix for Pi credentials
+ * Service name prefix for ApplePi credentials
  */
-const SERVICE_PREFIX = 'pi';
+const SERVICE_PREFIX = 'applepi';
 
 /**
  * Format the full service name

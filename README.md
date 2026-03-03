@@ -1,18 +1,25 @@
-# Pi (Personal AI)
+# BrowserX
 
 **AI-Powered Personal Assistant — Chrome Extension, Desktop App & Headless Server**
 
-Pi is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (Apple Pi)**, and a **headless server (Pi Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
+BrowserX is a privacy-preserving, general-purpose AI personal assistant available as a **Chrome extension (BrowserX)**, a **desktop application (Apple Pi)**, and a **headless server (Apple Pi Server)**. The agent interprets natural language commands and autonomously performs tasks across web browsing, planning, and more.
 
-| Name | Platform | Best For |
-|------|----------|----------|
-| **BrowserX** | Chrome Extension | Quick web tasks, browsing assistance |
-| **Apple Pi** | Desktop (Win/Mac/Linux) | Terminal commands, file operations, advanced automation |
-| **Pi Server** | Headless (Docker/K8s) | API integration, batch automation, CI/CD pipelines |
+### Naming Convention
+
+| Product | Platform | Identifier |
+|---------|----------|------------|
+| **BrowserX** | Chrome Extension | `browserx` |
+| **Apple Pi** | Desktop (Win/Mac/Linux) | `applepi` |
+| **Apple Pi Server** | Headless (Docker/K8s) | `applepi-server` |
+
+- **Core agent class**: `RepublicAgent` (developed by AI Republic)
+- **Internal npm scope**: `@applepi`
+- **Extension-layer identifiers**: `browserx` (events, credentials, tab groups)
+- **Shared/core identifiers**: `applepi` (DB names, config keys, event prefixes)
 
 All three platforms share a common core (`src/core/`) — see [Architecture](docs/ARCHITECTURE.md) for details.
 
-![Pi UI Screenshot](/src/static/pi_UI.png)
+![UI Screenshot](/src/static/applepi_UI.png)
 
 ---
 
@@ -26,7 +33,7 @@ All three platforms share a common core (`src/core/`) — see [Architecture](doc
 
 **Current Status:** Alpha Testing
 
-Pi is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use.
+BrowserX is currently in active alpha development and is intended **exclusively** for personal evaluation or internal organizational use.
 
 **Usage Restrictions:**
 - Personal evaluation and learning: Allowed
@@ -128,9 +135,9 @@ Output: `tauri/target/release/bundle/{deb,appimage,nsis,dmg}/`
 
 ---
 
-### Pi Server (Headless Mode)
+### Apple Pi Server (Headless Mode)
 
-Pi Server runs the agent as a headless WebSocket/HTTP service for server deployments, Docker containers, and Kubernetes.
+Apple Pi Server runs the agent as a headless WebSocket/HTTP service for server deployments, Docker containers, and Kubernetes.
 
 ```bash
 npm install
@@ -145,12 +152,12 @@ Configuration priority: **env vars** > **config.json** > **defaults**
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PI_SERVER_PORT` | Server port | `18100` |
-| `PI_SERVER_BIND` | Bind mode (`loopback`, `lan`, `tailnet`, `auto`) | `auto` |
-| `PI_SERVER_AUTH_MODE` | Auth (`none`, `token`, `password`, `trusted-proxy`) | `none` |
-| `PI_SERVER_TOKEN` | Auth token | — |
-| `PI_DATA_DIR` | Data directory | `~/.pi-server/data` |
-| `PI_CONFIG_PATH` | Config file path | `~/.pi-server/config.json` |
+| `APPLEPI_SERVER_PORT` | Server port | `18100` |
+| `APPLEPI_SERVER_BIND` | Bind mode (`loopback`, `lan`, `tailnet`, `auto`) | `auto` |
+| `APPLEPI_SERVER_AUTH_MODE` | Auth (`none`, `token`, `password`, `trusted-proxy`) | `none` |
+| `APPLEPI_SERVER_TOKEN` | Auth token | — |
+| `APPLEPI_DATA_DIR` | Data directory | `~/.applepi-server/data` |
+| `APPLEPI_CONFIG_PATH` | Config file path | `~/.applepi-server/config.json` |
 | `CHROME_BIN` | Chrome binary path | Auto-detected |
 | `CHROME_REMOTE_URL` | Remote browser URL | — |
 
@@ -160,14 +167,14 @@ See `src/server/config/server-config.ts` for the full Zod-validated config schem
 
 ```bash
 # With bundled Chrome (default)
-docker build -t pi-server .
+docker build -t applepi-server .
 
 # Slim image (remote browser only)
-docker build --build-arg INSTALL_CHROME=false -t pi-server-slim .
+docker build --build-arg INSTALL_CHROME=false -t applepi-server-slim .
 
 # Run
-docker run -d -p 18100:18100 -v pi-data:/data \
-  -e PI_SERVER_AUTH_MODE=token -e PI_SERVER_TOKEN=secret pi-server
+docker run -d -p 18100:18100 -v applepi-data:/data \
+  -e APPLEPI_SERVER_AUTH_MODE=token -e APPLEPI_SERVER_TOKEN=secret applepi-server
 
 # Or use Docker Compose
 docker compose up -d
@@ -204,7 +211,7 @@ If no Chrome is available, the server degrades gracefully — planning and web s
 
 ## Internationalization (i18n)
 
-Pi supports 50+ languages via Chrome's `_locales` system, auto-translated using Fireworks AI.
+BrowserX supports 50+ languages via Chrome's `_locales` system, auto-translated using Fireworks AI.
 
 | Function | Usage | Context |
 |----------|-------|---------|

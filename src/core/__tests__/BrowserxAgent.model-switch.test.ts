@@ -95,7 +95,7 @@ declare const __BUILD_MODE__: string;
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { PiAgent as BrowserxAgent } from '@/core/PiAgent';
+import { RepublicAgent as BrowserxAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
 import { MessageRouter } from '@/core/MessageRouter';
 import type { IConfigChangeEvent } from '@/config/types';

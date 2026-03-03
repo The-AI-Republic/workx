@@ -1,7 +1,7 @@
 /**
- * Unit Tests: PiAgent
+ * Unit Tests: RepublicAgent
  *
- * Covers the public API of PiAgent with fully mocked dependencies.
+ * Covers the public API of RepublicAgent with fully mocked dependencies.
  * All external modules (AgentConfig, Session, ModelClientFactory, ToolRegistry,
  * MessageRouter, UserNotifier, ApprovalManager, DiffTracker, TurnContext,
  * RegularTask, PromptLoader, registerPlatformTools, TabManager) are mocked
@@ -94,7 +94,7 @@ declare const __BUILD_MODE__: string;
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { PiAgent } from '../PiAgent';
+import { RepublicAgent } from '../RepublicAgent';
 import { AgentConfig } from '../../config/AgentConfig';
 import { MessageRouter } from '../MessageRouter';
 import type { Op } from '../protocol/types';
@@ -145,10 +145,10 @@ function createMockRouter(): MessageRouter {
 // Test Suite
 // ---------------------------------------------------------------------------
 
-describe('PiAgent', () => {
+describe('RepublicAgent', () => {
   let config: AgentConfig;
   let router: MessageRouter;
-  let agent: PiAgent;
+  let agent: RepublicAgent;
 
   beforeEach(() => {
     uuidCounter = 0;
@@ -244,7 +244,7 @@ describe('PiAgent', () => {
 
     config = createMockConfig();
     router = createMockRouter();
-    agent = new PiAgent(config, router, undefined, undefined, mockUserNotifierInstance as any);
+    agent = new RepublicAgent(config, router, undefined, undefined, mockUserNotifierInstance as any);
   });
 
   // =========================================================================
@@ -257,7 +257,7 @@ describe('PiAgent', () => {
     });
 
     it('should use the provided agentId when one is supplied', () => {
-      const custom = new PiAgent(config, router, undefined, 'my-agent');
+      const custom = new RepublicAgent(config, router, undefined, 'my-agent');
       expect(custom.agentId).toBe('my-agent');
     });
 

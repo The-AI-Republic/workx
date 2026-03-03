@@ -6,8 +6,8 @@
  * @module server/handlers/config
  */
 
-import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
-import { invalidRequest } from '@pi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { invalidRequest } from '@applepi/ws-server';
 import { getServerConfig, redactConfig, loadServerConfig } from '../config/server-config';
 
 export function registerConfigHandlers(): void {
@@ -95,9 +95,9 @@ async function updateConfigKey(key: string, value: unknown): Promise<void> {
   const fs = await import('node:fs');
   const path = await import('node:path');
 
-  const configPath = process.env.PI_CONFIG_PATH ?? path.join(
+  const configPath = process.env.APPLEPI_CONFIG_PATH ?? path.join(
     process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-    '.pi-server',
+    '.applepi-server',
     'config.json'
   );
 

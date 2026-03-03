@@ -1,7 +1,7 @@
 /**
  * Server Agent Bootstrap
  *
- * Main orchestrator for server mode. Creates PiAgent, ServerMessageRouter,
+ * Main orchestrator for server mode. Creates RepublicAgent, ServerMessageRouter,
  * ServerChannel, ChannelManager, plugin loader, and maintenance timers.
  *
  * Pattern follows DesktopAgentBootstrap.
@@ -12,7 +12,7 @@
 import { ServerChannel } from '../channels/ServerChannel';
 import { ServerMessageRouter } from '../channels/ServerMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
-import { PiAgent } from '@/core/PiAgent';
+import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
 import { setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
@@ -28,7 +28,7 @@ import { TranscriptStore } from '../persistence/TranscriptStore';
 import { BackupManager } from '../persistence/backup';
 import { ApprovalManager } from '../exec/approval-manager';
 import { PluginRegistry } from '../plugins/plugin-registry';
-import { PiPluginApi } from '../plugins/pi-plugin-api';
+import { ApplePiPluginApi } from '../plugins/applepi-plugin-api';
 import { discoverPlugins } from '../plugins/plugin-loader';
 import { ChannelPluginBridge } from '../plugins/channel-bridge';
 import { HealthMonitor } from '../health/health-monitor';
@@ -62,7 +62,7 @@ let _instance: ServerAgentBootstrap | null = null;
 // ─────────────────────────────────────────────────────────────────────────
 
 export class ServerAgentBootstrap {
-  private agent: PiAgent | null = null;
+  private agent: RepublicAgent | null = null;
   private channel: ServerChannel | null = null;
   private messageRouter: ServerMessageRouter | null = null;
   private sessionIndex: SessionIndex | null = null;
@@ -84,8 +84,8 @@ export class ServerAgentBootstrap {
 
     console.log('[ServerAgentBootstrap] Initializing...');
     const config = getServerConfig();
-    const dataDir = process.env.PI_DATA_DIR ??
-      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.pi-server/data`;
+    const dataDir = process.env.APPLEPI_DATA_DIR ??
+      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
     try {
       // 0. Initialize StorageProvider (used by subsystems)
@@ -104,8 +104,8 @@ export class ServerAgentBootstrap {
       // 3. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
-      // 3. Create PiAgent
-      this.agent = new PiAgent(agentConfig, this.messageRouter as any);
+      // 3. Create RepublicAgent
+      this.agent = new RepublicAgent(agentConfig, this.messageRouter as any);
 
       // 4. Configure PromptComposer with server platform context
       await this.configurePrompt();
@@ -322,7 +322,7 @@ export class ServerAgentBootstrap {
       const definitions = await discoverPlugins();
 
       for (const definition of definitions) {
-        const api = new PiPluginApi();
+        const api = new ApplePiPluginApi();
         await definition.register(api);
 
         const registrations = api.getRegistrations();
@@ -360,7 +360,7 @@ export class ServerAgentBootstrap {
       homeDir: os.homedir(),
     };
 
-    configurePromptComposer('pi', staticContext);
+    configurePromptComposer('applepi', staticContext);
     console.log('[ServerAgentBootstrap] PromptComposer configured for server mode');
   }
 
@@ -368,7 +368,7 @@ export class ServerAgentBootstrap {
   // Accessors
   // ─────────────────────────────────────────────────────────────────────
 
-  getAgent(): PiAgent | null {
+  getAgent(): RepublicAgent | null {
     return this.agent;
   }
 

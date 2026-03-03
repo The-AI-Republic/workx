@@ -1,10 +1,10 @@
 #!/bin/bash
-# Install headless Chromium for Pi Server Mode
+# Install headless Chromium for Apple Pi Server Mode
 # Supports Debian/Ubuntu-based systems
 
 set -e
 
-echo "Installing Chromium for Pi Server Mode..."
+echo "Installing Chromium for Apple Pi Server Mode..."
 
 if command -v apt-get &> /dev/null; then
     sudo apt-get update

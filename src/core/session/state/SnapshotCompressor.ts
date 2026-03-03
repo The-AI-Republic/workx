@@ -8,7 +8,7 @@
  *
  * @module SnapshotCompressor
  * @since 1.0.0
- * @author Pi Team
+ * @author ApplePi Team
  *
  * @example
  * ```typescript

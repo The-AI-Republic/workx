@@ -271,7 +271,7 @@ export class GoogleDocPlugin extends DomPlugin {
         nodeType: 1, // ELEMENT_NODE
         nodeName: 'DIV',
         localName: 'div',
-        attributes: ['class', wrapperClass, 'data-pi-injected', 'true'],
+        attributes: ['class', wrapperClass, 'data-applepi-injected', 'true'],
         tier: 'semantic',
         children: [textNode]
       };

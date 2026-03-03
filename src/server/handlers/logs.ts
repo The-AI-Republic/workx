@@ -6,7 +6,7 @@
  * @module server/handlers/logs
  */
 
-import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Log level

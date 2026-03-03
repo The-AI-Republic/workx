@@ -2,7 +2,7 @@
  * Channel Plugin Bridge
  *
  * Translates between OpenClaw plugin inbound/outbound messages
- * and Pi's ChannelManager submission/event system.
+ * and ApplePi's ChannelManager submission/event system.
  *
  * One bridge per plugin account.
  *

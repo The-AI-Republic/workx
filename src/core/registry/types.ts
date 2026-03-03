@@ -67,7 +67,7 @@ export interface SessionMetadata {
   /** Chrome tab group ID for this session */
   tabGroupId: number | null;
 
-  /** Tab group name: pi_s_<letter> */
+  /** Tab group name: browserx_s_<letter> */
   tabGroupName: string;
 
   /** Associated scheduled task ID (if any) */

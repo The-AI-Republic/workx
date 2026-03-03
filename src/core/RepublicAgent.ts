@@ -1,5 +1,5 @@
 /**
- * Main Pi agent class
+ * Main RepublicAgent class
  * Implements the SQ/EQ (Submission Queue/Event Queue) architecture
  */
 
@@ -33,7 +33,7 @@ import { TabManager } from './TabManager';
  */
 export type EventDispatcher = (event: Event) => void | Promise<void>;
 
-export class PiAgent {
+export class RepublicAgent {
   private _agentId: string;
   private nextId: number = 1;
   private submissionQueue: Submission[] = [];
@@ -68,7 +68,7 @@ export class PiAgent {
 
     // Initialize session with config and toolRegistry
     this.session = new Session(this.config, true, undefined, this.toolRegistry, initialHistory);
-    // Wire up session event emitter to PiAgent's event queue
+    // Wire up session event emitter to RepublicAgent's event queue
     this.session.setEventEmitter(async (event: Event) => this.emitEvent(event.msg));
 
     // Setup event processing for notifications
@@ -101,7 +101,7 @@ export class PiAgent {
 
     if (!modelData) {
       const errorMsg = `Selected model ${selectedModelKey} not found`;
-      console.error('[PiAgent]', errorMsg);
+      console.error('[RepublicAgent]', errorMsg);
       throw new Error(errorMsg);
     }
 
@@ -112,7 +112,7 @@ export class PiAgent {
 
       if (!apiKey || !apiKey.trim()) {
         const warningMsg = `No API key configured for provider: ${modelData.provider.name}. Please configure API key in Settings.`;
-        console.warn('[PiAgent]', warningMsg);
+        console.warn('[RepublicAgent]', warningMsg);
 
         // Emit warning event for UI
         this.emitEvent({
@@ -153,7 +153,7 @@ export class PiAgent {
     // Set the turn context on the session
     this.session.setTurnContext(taskContext);
 
-    console.log('[PiAgent] DEBUG: initialize() complete');
+    console.log('[RepublicAgent] DEBUG: initialize() complete');
   }
 
   /**
@@ -169,18 +169,18 @@ export class PiAgent {
   private async configurePromptComposition(): Promise<void> {
     // Skip if already configured (desktop bootstrap provides platform context)
     if (isComposerConfigured()) {
-      console.log('[PiAgent] PromptComposer already configured (by bootstrap)');
+      console.log('[RepublicAgent] PromptComposer already configured (by bootstrap)');
       return;
     }
 
     const agentType = (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop')
-      ? 'pi' as const
+      ? 'applepi' as const
       : 'browserx' as const;
 
     configurePromptComposer(agentType, {
       browserConnection: agentType === 'browserx' ? 'extension' : 'mcp',
     });
-    console.log(`[PiAgent] PromptComposer configured for agent type: ${agentType}`);
+    console.log(`[RepublicAgent] PromptComposer configured for agent type: ${agentType}`);
   }
 
   /**
@@ -265,7 +265,7 @@ export class PiAgent {
       // Update session with new turn context
       this.session.setTurnContext(taskContext);
     } catch (error) {
-      console.error('[PiAgent] Failed to refresh model client:', error);
+      console.error('[RepublicAgent] Failed to refresh model client:', error);
     }
   }
 
@@ -494,7 +494,7 @@ export class PiAgent {
                 }
               } else {
                 const warnMsg = 'Browser MCP server connected but no tools were discovered. Browser automation will not work.';
-                console.warn(`[PiAgent] ${warnMsg}`);
+                console.warn(`[RepublicAgent] ${warnMsg}`);
                 this.emitEvent({
                   type: 'BackgroundEvent',
                   data: { message: warnMsg, level: 'warning' },
@@ -502,7 +502,7 @@ export class PiAgent {
               }
             } else {
               const warnMsg = 'Builtin browser server not found in MCPManager. Browser tools will be unavailable.';
-              console.warn(`[PiAgent] ${warnMsg}`);
+              console.warn(`[RepublicAgent] ${warnMsg}`);
               this.emitEvent({
                 type: 'BackgroundEvent',
                 data: { message: warnMsg, level: 'warning' },
@@ -510,7 +510,7 @@ export class PiAgent {
             }
           } catch (mcpError) {
             const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
-            console.error(`[PiAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
+            console.error(`[RepublicAgent] Desktop mode: browser MCP server connection failed: ${errorMsg}`);
             this.emitEvent({
               type: 'BackgroundEvent',
               data: {
@@ -545,7 +545,7 @@ export class PiAgent {
             // Update session's tabId (SessionState is the source of truth)
             this.session.setTabId(createdTabId);
 
-            // Add tab to Pi group
+            // Add tab to ApplePi group
             await tabManager.addTabToGroup(createdTabId);
 
             // Notify UI of tab binding update
@@ -646,7 +646,7 @@ export class PiAgent {
           // Update session's tabId (SessionState is the source of truth)
           this.session.setTabId(newTabId);
 
-          // Add new tab to Pi group
+          // Add new tab to ApplePi group
           await tabManager.addTabToGroup(newTabId);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error during tab switching';
@@ -868,7 +868,7 @@ export class PiAgent {
         domain = pending.request?.metadata?.domain;
         riskScore = pending.request?.metadata?.riskScore;
       } else {
-        console.warn(`[PiAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
+        console.warn(`[RepublicAgent] Cannot remember decision - no pending approval for id: ${op.id}`);
       }
     }
 
@@ -886,7 +886,7 @@ export class PiAgent {
       });
       riskBasedResolved = true;
     } catch (error) {
-      console.warn(`[PiAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
+      console.warn(`[RepublicAgent] ApprovalManager.handleDecision failed for ${op.id}:`, error);
     }
 
     let protocolResolved = false;
@@ -894,11 +894,11 @@ export class PiAgent {
       await this.session.notifyApproval(op.id, op.decision);
       protocolResolved = true;
     } catch (error) {
-      console.warn(`[PiAgent] Session.notifyApproval failed for ${op.id}:`, error);
+      console.warn(`[RepublicAgent] Session.notifyApproval failed for ${op.id}:`, error);
     }
 
     if (!riskBasedResolved && !protocolResolved) {
-      console.error(`[PiAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
+      console.error(`[RepublicAgent] Approval decision could not be routed for id: ${op.id} — no pending request found in either subsystem`);
     }
 
     // Remember decision for this session if requested
@@ -1084,7 +1084,7 @@ export class PiAgent {
    * Set the event dispatcher
    *
    * This MUST be called before using the agent. The dispatcher routes events
-   * to UI channels via ChannelManager. This makes PiAgent platform-agnostic.
+   * to UI channels via ChannelManager. This makes RepublicAgent platform-agnostic.
    *
    * @param dispatcher - Function to dispatch events to UI channels
    */
@@ -1114,10 +1114,10 @@ export class PiAgent {
       try {
         this.eventDispatcher(event);
       } catch (error) {
-        console.error('[PiAgent] Event dispatcher error:', error);
+        console.error('[RepublicAgent] Event dispatcher error:', error);
       }
     } else {
-      console.warn('[PiAgent] No event dispatcher set - event not delivered to UI');
+      console.warn('[RepublicAgent] No event dispatcher set - event not delivered to UI');
     }
   }
 

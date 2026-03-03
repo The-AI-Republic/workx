@@ -49,7 +49,7 @@ export default defineConfig({
       '@tools': resolve(__dirname, 'src/tools'),
       '@protocol': resolve(__dirname, 'src/protocol'),
       '@types': resolve(__dirname, 'src/types'),
-      '@pi/ws-server': resolve(__dirname, 'packages/ws-server/src')
+      '@applepi/ws-server': resolve(__dirname, 'packages/ws-server/src')
     }
   }
 });

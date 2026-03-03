@@ -99,13 +99,13 @@ export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
 const DEFAULT_DATA_DIR = path.join(
   process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-  '.pi-server',
+  '.applepi-server',
   'data'
 );
 
 const DEFAULT_CONFIG_PATH = path.join(
   process.env.HOME ?? process.env.USERPROFILE ?? '/tmp',
-  '.pi-server',
+  '.applepi-server',
   'config.json'
 );
 
@@ -124,8 +124,8 @@ let _onReloadCallbacks: Array<(cfg: ServerConfig) => void> = [];
  * Priority: env vars > config.json > defaults.
  */
 export function loadServerConfig(): ServerConfig {
-  const configPath = process.env.PI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
-  _dataDir = process.env.PI_DATA_DIR ?? DEFAULT_DATA_DIR;
+  const configPath = process.env.APPLEPI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
+  _dataDir = process.env.APPLEPI_DATA_DIR ?? DEFAULT_DATA_DIR;
 
   let fileConfig: Record<string, unknown> = {};
   if (fs.existsSync(configPath)) {
@@ -176,7 +176,7 @@ export function onConfigReload(cb: (cfg: ServerConfig) => void): () => void {
  * Start watching config file for changes.
  */
 export function watchConfig(): void {
-  const configPath = process.env.PI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
+  const configPath = process.env.APPLEPI_CONFIG_PATH ?? DEFAULT_CONFIG_PATH;
   if (!fs.existsSync(configPath)) return;
 
   _watcher = fs.watch(configPath, { persistent: false }, () => {
@@ -211,20 +211,20 @@ function applyEnvOverrides(base: Record<string, unknown>): Record<string, unknow
   const server = (base.server ?? {}) as Record<string, unknown>;
   const auth = (server.auth ?? {}) as Record<string, unknown>;
 
-  if (process.env.PI_SERVER_PORT) {
-    server.port = parseInt(process.env.PI_SERVER_PORT, 10);
+  if (process.env.APPLEPI_SERVER_PORT) {
+    server.port = parseInt(process.env.APPLEPI_SERVER_PORT, 10);
   }
-  if (process.env.PI_SERVER_BIND) {
-    server.bind = process.env.PI_SERVER_BIND;
+  if (process.env.APPLEPI_SERVER_BIND) {
+    server.bind = process.env.APPLEPI_SERVER_BIND;
   }
-  if (process.env.PI_SERVER_AUTH_MODE) {
-    auth.mode = process.env.PI_SERVER_AUTH_MODE;
+  if (process.env.APPLEPI_SERVER_AUTH_MODE) {
+    auth.mode = process.env.APPLEPI_SERVER_AUTH_MODE;
   }
-  if (process.env.PI_SERVER_TOKEN) {
-    auth.token = process.env.PI_SERVER_TOKEN;
+  if (process.env.APPLEPI_SERVER_TOKEN) {
+    auth.token = process.env.APPLEPI_SERVER_TOKEN;
   }
-  if (process.env.PI_SERVER_PASSWORD) {
-    auth.password = process.env.PI_SERVER_PASSWORD;
+  if (process.env.APPLEPI_SERVER_PASSWORD) {
+    auth.password = process.env.APPLEPI_SERVER_PASSWORD;
   }
 
   server.auth = auth;

@@ -1,5 +1,5 @@
 /**
- * Logging utilities for Pi
+ * Logging utilities for ApplePi
  * Provides trace-level logging for Gemini streaming debugging
  */
 

@@ -70,7 +70,7 @@ export class NodeMCPBridge implements IMCPClientAdapter {
 
       // Create MCP SDK client
       this.client = new Client(
-        { name: 'pi-server', version: '1.0.0' },
+        { name: 'applepi-server', version: '1.0.0' },
         { capabilities: {} },
       );
 

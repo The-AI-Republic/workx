@@ -1,7 +1,7 @@
 /**
  * Server Mode Entry Point
  *
- * Starts the Pi server: loads env, creates ServerAgentBootstrap,
+ * Starts the Apple Pi Server: loads env, creates ServerAgentBootstrap,
  * starts HTTP+WS server on configured port.
  *
  * @module server/index
@@ -43,9 +43,9 @@ import {
 } from './connection/watchdog';
 import { checkRateLimit, clearRateLimits } from './connection/rate-limiter';
 import { authorizeMethod, removeConnectionAuth, getConnectionAuth } from './auth/authorize';
-import { RequestFrameSchema, makeResponse, makeErrorResponse, makeEvent } from '@pi/ws-server';
-import { getMethodHandler, type MethodContext } from '@pi/ws-server';
-import { invalidRequest, WS_CLOSE, type ErrorShape } from '@pi/ws-server';
+import { RequestFrameSchema, makeResponse, makeErrorResponse, makeEvent } from '@applepi/ws-server';
+import { getMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { invalidRequest, WS_CLOSE, type ErrorShape } from '@applepi/ws-server';
 import { canAcceptConnection, isPayloadTooLarge, isDuplicate } from './limits/resource-limits';
 import { removeLogSubscriber } from './handlers/logs';
 import { getHealthStatus } from './handlers/health';
@@ -370,7 +370,7 @@ async function main(): Promise<void> {
   const wsProto = tlsEnabled ? 'wss' : 'ws';
 
   console.log('═══════════════════════════════════════════════════════');
-  console.log('  Pi Server Mode');
+  console.log('  Apple Pi Server Mode');
   console.log(`  Port: ${PORT}  Bind: ${BIND}  Auth: ${config.server.auth.mode}  TLS: ${tlsEnabled ? 'on' : 'off'}`);
   console.log('═══════════════════════════════════════════════════════');
 
