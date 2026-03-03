@@ -30,6 +30,7 @@ export default defineConfig({
     },
     include: [
       'src/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'packages/**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
       'tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
     ],
     mockReset: true,
@@ -44,7 +45,8 @@ export default defineConfig({
       '@core': resolve(__dirname, 'src/core'),
       '@tools': resolve(__dirname, 'src/tools'),
       '@protocol': resolve(__dirname, 'src/protocol'),
-      '@types': resolve(__dirname, 'src/types')
+      '@types': resolve(__dirname, 'src/types'),
+      '@pi/ws-server': resolve(__dirname, 'packages/ws-server/src')
     }
   }
 });
