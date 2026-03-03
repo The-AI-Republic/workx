@@ -22,7 +22,8 @@
       "@/desktop/*": ["src/desktop/*"],
       "@/webfront/*": ["src/webfront/*"],
       "@/storage/rollout": ["src/storage/rollout/index.ts"],
-      "@/storage/rollout/*": ["src/storage/rollout/*"]
+      "@/storage/rollout/*": ["src/storage/rollout/*"],
+      "@pi/ws-server": ["packages/ws-server/src/index.ts"]
     }
   },
   "include": ["src/**/*", "svelte.d.ts"],
