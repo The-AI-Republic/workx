@@ -30,7 +30,7 @@ const { mockPlanningTool, mockWebSearchTool, mockMCPManagerInstance } = vi.hoist
 
 // Use vi.hoisted to create the mock fn so it's available in the factory
 const { mockExecSyncFn } = vi.hoisted(() => ({
-  mockExecSyncFn: vi.fn(() => { throw new Error('not found'); }),
+  mockExecSyncFn: vi.fn<(...args: any[]) => any>(() => { throw new Error('not found'); }),
 }));
 
 // Mock child_process — for CJS modules, named imports resolve from

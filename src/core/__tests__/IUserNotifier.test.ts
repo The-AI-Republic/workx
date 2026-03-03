@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { NoOpNotifier } from '../IUserNotifier';
+import type { IUserNotifier } from '../IUserNotifier';
 
 describe('NoOpNotifier', () => {
-  const notifier = new NoOpNotifier();
+  // Type as the interface to verify it satisfies the contract
+  const notifier: IUserNotifier = new NoOpNotifier();
 
   it('notifyInfo resolves with empty string', async () => {
     const result = await notifier.notifyInfo('title', 'msg');
