@@ -47,7 +47,7 @@ export interface FreeformTool {
 /**
  * Platform type for tool registration
  */
-export type Platform = 'extension' | 'desktop';
+export type Platform = 'extension' | 'desktop' | 'server';
 
 /**
  * Tool metadata for capabilities, permissions, and platform support

@@ -31,6 +31,8 @@ vi.mock('@/core/PiAgent', () => ({
       return 'sub_' + Math.random().toString(36).slice(2);
     };
     cleanup = () => {};
+    getApprovalManager = () => ({});
+    getToolRegistry = () => ({ setApprovalGate: () => {} });
     agentId = 'agent_mock';
   },
 }));

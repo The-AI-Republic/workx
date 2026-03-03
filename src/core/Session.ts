@@ -81,7 +81,7 @@ export class Session {
     } else {
       this.conversationId = uuidv4();
       if (!this.conversationId) {
-        this.conversationId = `session-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+        this.conversationId = crypto.randomUUID();
       }
     }
 

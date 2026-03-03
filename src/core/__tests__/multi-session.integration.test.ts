@@ -20,6 +20,8 @@ vi.mock('@/core/PiAgent', () => ({
     });
     submitOperation = async () => 'sub_123';
     cleanup = () => {};
+    getApprovalManager = () => ({});
+    getToolRegistry = () => ({ setApprovalGate: () => {} });
     agentId = 'agent_mock';
   },
 }));

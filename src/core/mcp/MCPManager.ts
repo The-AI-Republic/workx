@@ -530,7 +530,12 @@ export class MCPManager implements IMCPManager {
     };
 
     if (config.transport === 'stdio') {
-      // Dynamic import to avoid pulling Tauri deps into extension build
+      if (__BUILD_MODE__ === 'server') {
+        // Server mode: use Node.js child_process via MCP SDK's StdioClientTransport
+        const { NodeMCPBridge } = await import('@/server/mcp/NodeMCPBridge');
+        return new NodeMCPBridge({ config, ...callbacks });
+      }
+      // Desktop mode: use Tauri IPC to Rust for stdio
       const { RustMCPBridge } = await import('./RustMCPBridge');
       return new RustMCPBridge({
         config,

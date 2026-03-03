@@ -51,12 +51,9 @@ vi.mock('@/core/PiAgent', () => {
         return 'op_123';
       }
       getToolRegistry() {
-        return { getTool: vi.fn() };
+        return { getTool: vi.fn(), setApprovalGate: vi.fn() };
       }
       getApprovalManager() {
-        return {};
-      }
-      getDiffTracker() {
         return {};
       }
       getModelClientFactory() {

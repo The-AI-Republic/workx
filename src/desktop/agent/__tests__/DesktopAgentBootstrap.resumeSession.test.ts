@@ -53,7 +53,8 @@ const mockOldAgent = {
   getModelClientFactory: vi.fn().mockReturnValue(mockModelClientFactory),
   setEventDispatcher: vi.fn(),
   initialize: vi.fn().mockResolvedValue(undefined),
-  getToolRegistry: vi.fn().mockReturnValue({}),
+  getToolRegistry: vi.fn().mockReturnValue({ setApprovalGate: vi.fn() }),
+  getApprovalManager: vi.fn().mockReturnValue({}),
 };
 
 const mockNewAgent = {
@@ -61,7 +62,8 @@ const mockNewAgent = {
   getModelClientFactory: vi.fn().mockReturnValue(mockNewModelClientFactory),
   setEventDispatcher: vi.fn(),
   initialize: vi.fn().mockResolvedValue(undefined),
-  getToolRegistry: vi.fn().mockReturnValue({}),
+  getToolRegistry: vi.fn().mockReturnValue({ setApprovalGate: vi.fn() }),
+  getApprovalManager: vi.fn().mockReturnValue({}),
 };
 
 vi.mock('@/core/PiAgent', () => ({
@@ -75,8 +77,45 @@ vi.mock('@/core/PiAgent', () => ({
 // Mock AgentConfig
 vi.mock('@/config/AgentConfig', () => ({
   AgentConfig: {
-    getInstance: vi.fn().mockResolvedValue({ getConfig: () => ({}) }),
+    getInstance: vi.fn().mockResolvedValue({ getConfig: () => ({}), updateToolsConfig: vi.fn() }),
   },
+}));
+
+// Mock approval modules used by configureDesktopPlatform
+vi.mock('@/core/approval/ApprovalGate', () => ({
+  ApprovalGate: vi.fn().mockImplementation(() => ({
+    addEnhancer: vi.fn(),
+    setConfigStorage: vi.fn(),
+    setMode: vi.fn(),
+    setTrustedDomains: vi.fn(),
+    setBlockedDomains: vi.fn(),
+  })),
+}));
+
+vi.mock('@/core/approval/PolicyRulesEngine', () => ({
+  PolicyRulesEngine: vi.fn().mockImplementation(() => ({})),
+}));
+
+vi.mock('@/core/approval/defaultRules', () => ({
+  getDefaultRules: vi.fn().mockReturnValue([]),
+}));
+
+vi.mock('@/core/approval/enhancers/DomainSensitivityEnhancer', () => ({
+  DomainSensitivityEnhancer: vi.fn(),
+}));
+
+vi.mock('@/core/approval/enhancers/SensitivePathEnhancer', () => ({
+  SensitivePathEnhancer: vi.fn(),
+}));
+
+vi.mock('@/core/approval/ApprovalConfigStorage', () => ({
+  ApprovalConfigStorage: vi.fn().mockImplementation(() => ({
+    loadConfig: vi.fn().mockResolvedValue({ mode: 'auto', trustedDomains: [], blockedDomains: [] }),
+  })),
+}));
+
+vi.mock('@/desktop/storage/TauriConfigStorage', () => ({
+  TauriConfigStorage: vi.fn().mockImplementation(() => ({})),
 }));
 
 // Mock ChannelManager
@@ -200,6 +239,10 @@ vi.mock('@/core/mcp/MCPToolAdapter', () => ({
 // Now import the SUT
 import { DesktopAgentBootstrap } from '../DesktopAgentBootstrap';
 import { PiAgent } from '@/core/PiAgent';
+import { ApprovalGate } from '@/core/approval/ApprovalGate';
+import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
+import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
+import { AgentConfig } from '@/config/AgentConfig';
 
 // ---------------------------------------------------------------------------
 // Helper: create an initialized bootstrap with the old agent injected
@@ -243,6 +286,8 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
     mockOldAgent.getModelClientFactory.mockReturnValue(mockModelClientFactory);
     mockOldAgent.setEventDispatcher.mockImplementation(() => {});
     mockOldAgent.initialize.mockResolvedValue(undefined);
+    mockOldAgent.getApprovalManager.mockReturnValue({});
+    mockOldAgent.getToolRegistry.mockReturnValue({ setApprovalGate: vi.fn() });
 
     mockModelClientFactory.getAuthManager.mockReturnValue(mockAuthManager);
     mockModelClientFactory.setAuthManager.mockImplementation(() => {});
@@ -259,9 +304,25 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
     mockNewAgent.getModelClientFactory.mockReturnValue(mockNewModelClientFactory);
     mockNewAgent.setEventDispatcher.mockImplementation(() => {});
     mockNewAgent.initialize.mockResolvedValue(undefined);
+    mockNewAgent.getApprovalManager.mockReturnValue({});
+    mockNewAgent.getToolRegistry.mockReturnValue({ setApprovalGate: vi.fn() });
 
     mockNewModelClientFactory.getAuthManager.mockReturnValue(null);
     mockNewModelClientFactory.setAuthManager.mockImplementation(() => {});
+
+    // Re-establish approval module mocks after clearAllMocks
+    (ApprovalGate as any).mockImplementation(() => ({
+      addEnhancer: vi.fn(),
+      setConfigStorage: vi.fn(),
+      setMode: vi.fn(),
+      setTrustedDomains: vi.fn(),
+      setBlockedDomains: vi.fn(),
+    }));
+    (PolicyRulesEngine as any).mockImplementation(() => ({}));
+    (ApprovalConfigStorage as any).mockImplementation(() => ({
+      loadConfig: vi.fn().mockResolvedValue({ mode: 'auto', trustedDomains: [], blockedDomains: [] }),
+    }));
+    (AgentConfig as any).getInstance.mockResolvedValue({ getConfig: () => ({}), updateToolsConfig: vi.fn() });
 
     // PiAgent constructor returns the new agent
     (PiAgent as any).mockImplementation((...args: any[]) => {

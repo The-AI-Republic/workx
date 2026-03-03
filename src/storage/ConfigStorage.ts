@@ -14,66 +14,14 @@ import { STORAGE_KEYS, CONFIG_LIMITS } from '../config/defaults';
 import type { LLMCacheConfig } from '../types/storage';
 import {
   getConfigStorage,
-  isConfigStorageInitialized,
   type ConfigStorageProvider
 } from '../core/storage/ConfigStorageProvider';
 
 /**
- * Fallback storage for when ConfigStorageProvider isn't initialized yet.
- * Uses chrome.storage.local directly (for backward compatibility during init).
+ * Get the storage provider. Requires setConfigStorage() to have been called first.
  */
-async function getFallbackStorage(): Promise<ConfigStorageProvider | null> {
-  // Check if chrome.storage.local is available
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    return {
-      async get<T>(key: string): Promise<T | null> {
-        const result = await chrome.storage.local.get(key);
-        return (result[key] as T) ?? null;
-      },
-      async set<T>(key: string, value: T): Promise<void> {
-        await chrome.storage.local.set({ [key]: value });
-      },
-      async remove(key: string): Promise<void> {
-        await chrome.storage.local.remove(key);
-      },
-      async getMany<T>(keys: string[]): Promise<Record<string, T>> {
-        return await chrome.storage.local.get(keys) as Record<string, T>;
-      },
-      async setMany<T>(items: Record<string, T>): Promise<void> {
-        await chrome.storage.local.set(items);
-      },
-      async removeMany(keys: string[]): Promise<void> {
-        await chrome.storage.local.remove(keys);
-      },
-      async getAll(): Promise<Record<string, unknown>> {
-        return await chrome.storage.local.get(null);
-      },
-      async clear(): Promise<void> {
-        await chrome.storage.local.clear();
-      },
-      async getBytesInUse(key?: string): Promise<number | null> {
-        return await chrome.storage.local.getBytesInUse(key ?? null);
-      }
-    };
-  }
-  return null;
-}
-
-/**
- * Get the storage provider, with fallback for initialization
- */
-async function getStorage(): Promise<ConfigStorageProvider> {
-  if (isConfigStorageInitialized()) {
-    return getConfigStorage();
-  }
-
-  // Try fallback for backward compatibility
-  const fallback = await getFallbackStorage();
-  if (fallback) {
-    return fallback;
-  }
-
-  throw new Error('ConfigStorage not available. Initialize ConfigStorageProvider first.');
+function getStorage(): ConfigStorageProvider {
+  return getConfigStorage();
 }
 
 export class ConfigStorage implements IConfigStorage {
@@ -91,7 +39,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async get(): Promise<IStoredConfig | null> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
       return await storage.get<IStoredConfig>(this.configKey);
     } catch (error) {
       console.error('[ConfigStorage] Error reading config:', error);
@@ -105,7 +53,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async set(config: IStoredConfig): Promise<void> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
       await storage.set(this.configKey, config);
     } catch (error) {
       console.error('[ConfigStorage] Error saving config:', error);
@@ -118,7 +66,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async clear(): Promise<void> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
       await storage.removeMany([this.configKey, this.versionKey]);
     } catch (error) {
       throw new ConfigStorageError('delete', `Failed to clear config: ${error}`);
@@ -130,7 +78,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async getStorageInfo(): Promise<IStorageInfo> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
       const used = await storage.getBytesInUse(this.configKey);
       const quota = CONFIG_LIMITS.LOCAL_QUOTA_BYTES;
 
@@ -162,7 +110,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async getLLMCacheConfig(): Promise<LLMCacheConfig> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
       const config = await storage.get<LLMCacheConfig>(this.llmCacheConfigKey);
 
       if (config) {
@@ -184,7 +132,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async setLLMCacheConfig(config: Partial<LLMCacheConfig>): Promise<void> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
 
       // Get current config and merge
       const current = await this.getLLMCacheConfig();
@@ -201,7 +149,7 @@ export class ConfigStorage implements IConfigStorage {
    */
   async clearLLMCacheConfig(): Promise<void> {
     try {
-      const storage = await getStorage();
+      const storage = getStorage();
       await storage.remove(this.llmCacheConfigKey);
     } catch (error) {
       throw new ConfigStorageError('delete', `Failed to clear LLM cache config: ${error}`);

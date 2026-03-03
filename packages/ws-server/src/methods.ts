@@ -1,0 +1,126 @@
+/**
+ * Method Registry
+ *
+ * Maps method names to their required scopes and handler dispatch.
+ *
+ * @module server/protocol/methods
+ */
+
+// ─────────────────────────────────────────────────────────────────────────
+// Scope definitions
+// ─────────────────────────────────────────────────────────────────────────
+
+export type Scope =
+  | 'chat'
+  | 'sessions.read'
+  | 'sessions.write'
+  | 'config.read'
+  | 'config.write'
+  | 'operator.approvals'
+  | 'operator.pairing'
+  | 'admin'
+  | 'node.invoke'
+  | 'node.event';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Method → scope mapping
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface MethodSpec {
+  /** Required scope to invoke this method */
+  scope: Scope;
+  /** Whether this is a streaming method (sends events, not a single response) */
+  streaming?: boolean;
+}
+
+export const METHOD_REGISTRY: Record<string, MethodSpec> = {
+  // Chat
+  'chat.send': { scope: 'chat', streaming: true },
+  'chat.abort': { scope: 'chat' },
+  'chat.history': { scope: 'chat' },
+  'chat.inject': { scope: 'chat' },
+
+  // Sessions
+  'sessions.list': { scope: 'sessions.read' },
+  'sessions.get': { scope: 'sessions.read' },
+  'sessions.patch': { scope: 'sessions.write' },
+  'sessions.reset': { scope: 'sessions.write' },
+  'sessions.delete': { scope: 'sessions.write' },
+  'sessions.compact': { scope: 'sessions.write' },
+
+  // Config
+  'config.get': { scope: 'config.read' },
+  'config.set': { scope: 'config.write' },
+  'config.patch': { scope: 'config.write' },
+
+  // Health
+  'health': { scope: 'admin' },
+
+  // Tools
+  'tools.catalog': { scope: 'admin' },
+
+  // Logs
+  'logs.tail': { scope: 'admin', streaming: true },
+
+  // Execution approvals
+  'exec.approval.resolve': { scope: 'operator.approvals' },
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Event → scope mapping (for filtering outbound events)
+// ─────────────────────────────────────────────────────────────────────────
+
+export const EVENT_SCOPE_MAP: Record<string, Scope> = {
+  'chat': 'chat',
+  'agent': 'chat',
+  'exec.approval.requested': 'operator.approvals',
+  'device.pair.requested': 'operator.pairing',
+  'health': 'admin',
+  // tick, shutdown, connect.* are sent to all authenticated connections
+};
+
+/** Events sent to all authenticated connections regardless of scopes */
+export const BROADCAST_EVENTS = new Set([
+  'tick',
+  'shutdown',
+  'connect.challenge',
+  'connect.hello-ok',
+]);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Handler function type
+// ─────────────────────────────────────────────────────────────────────────
+
+export type MethodHandler = (
+  params: Record<string, unknown> | undefined,
+  context: MethodContext
+) => Promise<unknown>;
+
+export interface MethodContext {
+  connectionId: string;
+  requestId: string;
+  role: string;
+  scopes: string[];
+  userId?: string;
+  sessionKey?: string;
+  /** Send an event frame back to this connection */
+  sendEvent: (event: string, payload?: unknown) => void;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Handler dispatch map (populated at startup by handler modules)
+// ─────────────────────────────────────────────────────────────────────────
+
+const _handlers = new Map<string, MethodHandler>();
+
+export function registerMethodHandler(method: string, handler: MethodHandler): void {
+  _handlers.set(method, handler);
+}
+
+export function getMethodHandler(method: string): MethodHandler | undefined {
+  return _handlers.get(method);
+}
+
+export function getRegisteredMethods(): string[] {
+  return Array.from(_handlers.keys());
+}
