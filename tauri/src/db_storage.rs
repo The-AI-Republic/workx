@@ -25,6 +25,13 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "credentials",
     "skills",
     "tasks",
+    // IndexedDBAdapter stores (used by StorageAdapter subsystems)
+    "cache_items",
+    "sessions",
+    "config",
+    "rollout_cache",
+    "scheduler_tasks",
+    "agent_sessions",
 ];
 
 struct DbStorage {
@@ -909,5 +916,51 @@ mod tests {
         init_in_memory();
         let results = storage_batch(vec![]).unwrap();
         assert!(results.is_empty());
+    }
+
+    // ── Adapter store collections (StorageAdapter subsystems) ────────────
+
+    #[test]
+    fn adapter_stores_crud() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        init_in_memory();
+
+        // cache_items
+        storage_set("cache_items".into(), "sk1".into(), r#"{"storageKey":"sk1","sessionId":"s1"}"#.into()).unwrap();
+        let val = storage_get("cache_items".into(), "sk1".into()).unwrap();
+        assert!(val.is_some());
+
+        // scheduler_tasks
+        storage_set("scheduler_tasks".into(), "t1".into(), r#"{"id":"t1","status":"draft"}"#.into()).unwrap();
+        let rows = storage_query(
+            "scheduler_tasks".into(),
+            Some(r#"{"status":"draft"}"#.into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 1);
+
+        // agent_sessions
+        storage_set("agent_sessions".into(), "ses1".into(), r#"{"sessionId":"ses1","type":"primary"}"#.into()).unwrap();
+        let rows = storage_query(
+            "agent_sessions".into(),
+            Some(r#"{"type":"primary"}"#.into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 1);
+
+        // sessions (metadata)
+        storage_set("sessions".into(), "m1".into(), r#"{"sessionId":"m1","totalSize":100}"#.into()).unwrap();
+        let val = storage_get("sessions".into(), "m1".into()).unwrap();
+        assert!(val.is_some());
+
+        // config
+        storage_set("config".into(), "cfg1".into(), r#"{"key":"cfg1","value":42}"#.into()).unwrap();
+        let val = storage_get("config".into(), "cfg1".into()).unwrap();
+        assert!(val.is_some());
+
+        // rollout_cache
+        storage_set("rollout_cache".into(), "rc1".into(), r#"{"key":"rc1","entry":{}}"#.into()).unwrap();
+        let val = storage_get("rollout_cache".into(), "rc1".into()).unwrap();
+        assert!(val.is_some());
     }
 }

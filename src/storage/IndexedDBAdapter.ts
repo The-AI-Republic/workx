@@ -15,6 +15,7 @@ import type {
   LLMCacheConfig,
   CacheEntry
 } from '../types/storage';
+import type { StorageAdapter } from './StorageAdapter';
 
 /**
  * IndexedDB database constants
@@ -85,7 +86,7 @@ export class StorageUnavailableError extends IndexedDBError {
 /**
  * IndexedDB Adapter - provides Promise-based CRUD operations
  */
-export class IndexedDBAdapter {
+export class IndexedDBAdapter implements StorageAdapter {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 
