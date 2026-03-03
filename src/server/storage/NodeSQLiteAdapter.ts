@@ -11,7 +11,7 @@
  */
 
 import type { StorageAdapter } from '@/storage/StorageAdapter';
-import { STORE_KEY_PATHS, INDEX_FIELD_MAP } from '@/storage/StorageAdapter';
+import { STORE_KEY_PATHS, INDEX_FIELD_MAP, validateStoreName } from '@/storage/StorageAdapter';
 
 /** All stores this adapter manages */
 const ADAPTER_STORES = [
@@ -91,6 +91,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
   }
 
   async get<T>(storeName: string, key: string): Promise<T | null> {
+    validateStoreName(storeName);
     const row = this.getDb()
       .prepare(`SELECT value FROM "${storeName}" WHERE key = ?`)
       .get(key) as { value: string } | undefined;
@@ -98,6 +99,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
   }
 
   async put<T>(storeName: string, value: T): Promise<void> {
+    validateStoreName(storeName);
     const keyPath = STORE_KEY_PATHS[storeName];
     if (!keyPath) {
       throw new Error(`Unknown store: ${storeName} — no keyPath defined`);
@@ -118,6 +120,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
   }
 
   async delete(storeName: string, key: string): Promise<boolean> {
+    validateStoreName(storeName);
     const result = this.getDb()
       .prepare(`DELETE FROM "${storeName}" WHERE key = ?`)
       .run(key);
@@ -125,6 +128,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
   }
 
   async getAll<T>(storeName: string): Promise<T[]> {
+    validateStoreName(storeName);
     const rows = this.getDb()
       .prepare(`SELECT value FROM "${storeName}"`)
       .all() as Array<{ value: string }>;
@@ -136,6 +140,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
     indexName: string,
     query: IDBValidKey | IDBKeyRange
   ): Promise<T[]> {
+    validateStoreName(storeName);
     const fieldMapping = INDEX_FIELD_MAP[indexName];
     if (!fieldMapping) {
       throw new Error(`Unknown index: ${indexName} — no field mapping defined`);
@@ -183,6 +188,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
   }
 
   async batchDelete(storeName: string, keys: string[]): Promise<number> {
+    validateStoreName(storeName);
     if (keys.length === 0) return 0;
 
     const db = this.getDb();
@@ -203,6 +209,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
   }
 
   async clear(storeName: string): Promise<void> {
+    validateStoreName(storeName);
     this.getDb().prepare(`DELETE FROM "${storeName}"`).run();
   }
 

@@ -29,11 +29,16 @@ export class TauriSQLiteAdapter implements StorageAdapter {
     // If not yet called, this initializes the database.
     try {
       await invoke<{ dbPath: string }>('storage_init');
+      this.initialized = true;
     } catch (error) {
-      // If storage is already initialized, this may throw — that's OK.
-      console.warn('[TauriSQLiteAdapter] storage_init:', error);
+      // If storage is already initialized by SQLiteStorageProvider, that's OK.
+      const msg = String(error).toLowerCase();
+      if (msg.includes('already') && msg.includes('initialized')) {
+        this.initialized = true;
+      } else {
+        throw error;
+      }
     }
-    this.initialized = true;
   }
 
   async get<T>(storeName: string, key: string): Promise<T | null> {
@@ -154,12 +159,14 @@ export class TauriSQLiteAdapter implements StorageAdapter {
 
     // Chunk limits to avoid hitting Tauri IPC or SQLite max params limits
     const CHUNK_SIZE = 900;
+    let totalDeleted = 0;
     for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
       const chunk = keys.slice(i, i + CHUNK_SIZE);
-      await invoke('storage_delete_many', { collection: storeName, keys: chunk });
+      const deleted = await invoke<number>('storage_delete_many', { collection: storeName, keys: chunk });
+      totalDeleted += deleted;
     }
 
-    return keys.length;
+    return totalDeleted;
   }
 
   async clear(storeName: string): Promise<void> {

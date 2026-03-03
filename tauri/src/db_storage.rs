@@ -400,12 +400,12 @@ pub fn storage_set_many(
     })
 }
 
-/// Delete multiple keys.
+/// Delete multiple keys. Returns the number of rows deleted.
 #[tauri::command]
-pub fn storage_delete_many(collection: String, keys: Vec<String>) -> Result<(), String> {
+pub fn storage_delete_many(collection: String, keys: Vec<String>) -> Result<usize, String> {
     validate_collection(&collection)?;
     if keys.is_empty() {
-        return Ok(());
+        return Ok(0);
     }
     with_db(|s| {
         let placeholders: Vec<String> = (1..=keys.len()).map(|i| format!("?{}", i)).collect();
@@ -416,10 +416,10 @@ pub fn storage_delete_many(collection: String, keys: Vec<String>) -> Result<(), 
         );
         let params: Vec<&dyn rusqlite::types::ToSql> =
             keys.iter().map(|k| k as &dyn rusqlite::types::ToSql).collect();
-        s.conn
+        let deleted = s.conn
             .execute(&sql, params.as_slice())
             .map_err(|e| format!("Delete many failed: {}", e))?;
-        Ok(())
+        Ok(deleted)
     })
 }
 
@@ -916,6 +916,30 @@ mod tests {
         init_in_memory();
         let results = storage_batch(vec![]).unwrap();
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn delete_many_returns_count() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        init_in_memory();
+
+        // Insert 3 items
+        storage_set("settings".into(), "a".into(), r#""1""#.into()).unwrap();
+        storage_set("settings".into(), "b".into(), r#""2""#.into()).unwrap();
+        storage_set("settings".into(), "c".into(), r#""3""#.into()).unwrap();
+
+        // Delete 2 existing + 1 non-existing key
+        let deleted = storage_delete_many("settings".into(), vec!["a".into(), "b".into(), "missing".into()]).unwrap();
+        assert_eq!(deleted, 2);
+    }
+
+    #[test]
+    fn delete_many_empty_returns_zero() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        init_in_memory();
+
+        let deleted = storage_delete_many("settings".into(), vec![]).unwrap();
+        assert_eq!(deleted, 0);
     }
 
     // ── Adapter store collections (StorageAdapter subsystems) ────────────

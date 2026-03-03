@@ -24,6 +24,22 @@ export const STORE_KEY_PATHS: Record<string, string> = {
 };
 
 /**
+ * Set of valid store names derived from STORE_KEY_PATHS.
+ * Used for SQL injection prevention in Node/server adapters.
+ */
+export const VALID_STORE_NAMES: ReadonlySet<string> = new Set(Object.keys(STORE_KEY_PATHS));
+
+/**
+ * Validate a store name against the known allowlist.
+ * Throws if the name is not in VALID_STORE_NAMES.
+ */
+export function validateStoreName(storeName: string): void {
+  if (!VALID_STORE_NAMES.has(storeName)) {
+    throw new Error(`Invalid store name: ${storeName}`);
+  }
+}
+
+/**
  * Index-to-field mapping for queryByIndex.
  * Maps IndexedDB index names to the JSON field they query on.
  */

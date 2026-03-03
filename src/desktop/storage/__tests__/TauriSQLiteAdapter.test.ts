@@ -39,9 +39,23 @@ describe('TauriSQLiteAdapter', () => {
       expect(mockInvoke).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle storage_init failure gracefully', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('already initialized'));
+    it('should handle "already initialized" error gracefully', async () => {
+      mockInvoke.mockRejectedValueOnce(new Error('Storage already initialized'));
       await adapter.initialize(); // Should not throw
+    });
+
+    it('should re-throw genuine initialization errors', async () => {
+      mockInvoke.mockRejectedValueOnce(new Error('Cannot open database'));
+      await expect(adapter.initialize()).rejects.toThrow('Cannot open database');
+    });
+
+    it('should not set initialized on genuine error', async () => {
+      mockInvoke.mockRejectedValueOnce(new Error('disk full'));
+      await expect(adapter.initialize()).rejects.toThrow('disk full');
+      // After failure, initialize() should try again
+      mockInvoke.mockResolvedValueOnce({ dbPath: '/test/storage.db' });
+      await adapter.initialize();
+      expect(mockInvoke).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -147,14 +161,25 @@ describe('TauriSQLiteAdapter', () => {
   });
 
   describe('batchDelete', () => {
-    it('should call storage_delete_many', async () => {
-      mockInvoke.mockResolvedValueOnce(undefined);
+    it('should return the actual deleted count from Rust', async () => {
+      mockInvoke.mockResolvedValueOnce(2); // Rust returns actual count
       const result = await adapter.batchDelete('cache_items', ['k1', 'k2', 'k3']);
       expect(mockInvoke).toHaveBeenCalledWith('storage_delete_many', {
         collection: 'cache_items',
         keys: ['k1', 'k2', 'k3'],
       });
-      expect(result).toBe(3);
+      expect(result).toBe(2); // Only 2 of 3 existed
+    });
+
+    it('should accumulate counts across chunks', async () => {
+      // Create enough keys to trigger chunking (> 900)
+      const keys = Array.from({ length: 1000 }, (_, i) => `k${i}`);
+      mockInvoke.mockResolvedValueOnce(900); // first chunk
+      mockInvoke.mockResolvedValueOnce(50);  // second chunk (only 50 of 100 existed)
+
+      const result = await adapter.batchDelete('cache_items', keys);
+      expect(mockInvoke).toHaveBeenCalledTimes(2);
+      expect(result).toBe(950);
     });
 
     it('should return 0 for empty keys array', async () => {

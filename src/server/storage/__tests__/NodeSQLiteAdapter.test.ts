@@ -63,10 +63,10 @@ describe('NodeSQLiteAdapter', () => {
       expect(mockPragma).toHaveBeenCalledWith('foreign_keys = ON');
     });
 
-    it('should create tables for all adapter stores', async () => {
+    it('should create tables and indexes for all adapter stores', async () => {
       await adapter.initialize();
-      // 6 stores: cache_items, sessions, config, rollout_cache, scheduler_tasks, agent_sessions
-      expect(mockExec).toHaveBeenCalledTimes(6);
+      // 6 table creations + 9 index creations (3 for cache_items, 4 for scheduler_tasks, 2 for agent_sessions)
+      expect(mockExec).toHaveBeenCalledTimes(15);
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"cache_items"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"scheduler_tasks"'));
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('"agent_sessions"'));
@@ -77,6 +77,49 @@ describe('NodeSQLiteAdapter', () => {
       await adapter.initialize();
       // Second call should not re-initialize
       expect(mockPragma).toHaveBeenCalledTimes(2); // Only from first init
+    });
+  });
+
+  describe('store name validation', () => {
+    it('should reject invalid store names in get()', async () => {
+      await adapter.initialize();
+      await expect(adapter.get('evil_table', 'k1')).rejects.toThrow('Invalid store name: evil_table');
+    });
+
+    it('should reject invalid store names in put()', async () => {
+      await adapter.initialize();
+      await expect(adapter.put('DROP TABLE foo', { id: '1' })).rejects.toThrow('Invalid store name');
+    });
+
+    it('should reject invalid store names in delete()', async () => {
+      await adapter.initialize();
+      await expect(adapter.delete('"; DROP TABLE--', 'k1')).rejects.toThrow('Invalid store name');
+    });
+
+    it('should reject invalid store names in getAll()', async () => {
+      await adapter.initialize();
+      await expect(adapter.getAll('not_a_store')).rejects.toThrow('Invalid store name');
+    });
+
+    it('should reject invalid store names in queryByIndex()', async () => {
+      await adapter.initialize();
+      await expect(adapter.queryByIndex('evil', 'by_status', 'val')).rejects.toThrow('Invalid store name');
+    });
+
+    it('should reject invalid store names in batchDelete()', async () => {
+      await adapter.initialize();
+      await expect(adapter.batchDelete('evil', ['k1'])).rejects.toThrow('Invalid store name');
+    });
+
+    it('should reject invalid store names in clear()', async () => {
+      await adapter.initialize();
+      await expect(adapter.clear('evil')).rejects.toThrow('Invalid store name');
+    });
+
+    it('should accept valid store names', async () => {
+      await adapter.initialize();
+      mockGet.mockReturnValueOnce(undefined);
+      await expect(adapter.get('cache_items', 'k1')).resolves.toBeNull();
     });
   });
 
@@ -130,7 +173,7 @@ describe('NodeSQLiteAdapter', () => {
 
     it('should throw for unknown store', async () => {
       await adapter.initialize();
-      await expect(adapter.put('unknown', { id: '1' })).rejects.toThrow('Unknown store: unknown');
+      await expect(adapter.put('unknown', { id: '1' })).rejects.toThrow('Invalid store name: unknown');
     });
 
     it('should throw for missing keyPath field', async () => {
@@ -181,9 +224,9 @@ describe('NodeSQLiteAdapter', () => {
 
       const result = await adapter.queryByIndex('scheduler_tasks', 'by_status', 'pending');
       expect(mockPrepare).toHaveBeenCalledWith(
-        expect.stringContaining("json_extract(value, '$.' || ?)")
+        expect.stringContaining("json_extract(value, '$.status')")
       );
-      expect(mockAll).toHaveBeenCalledWith('status', 'pending');
+      expect(mockAll).toHaveBeenCalledWith('pending');
       expect(result).toEqual([{ status: 'pending', id: 't1' }]);
     });
 

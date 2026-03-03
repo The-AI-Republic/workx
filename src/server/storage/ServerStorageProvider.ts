@@ -14,6 +14,32 @@
 
 import type { StorageProvider } from '@/core/storage/StorageProvider';
 import type { ListOptions, QueryFilter, Transaction } from '@/core/storage/types';
+import { VALID_STORE_NAMES } from '@/storage/StorageAdapter';
+
+/**
+ * Collections allowed in the server storage provider.
+ * Combines the adapter store names with the Rust-side provider collections.
+ */
+const VALID_COLLECTIONS: ReadonlySet<string> = new Set([
+  ...VALID_STORE_NAMES,
+  'conversations',
+  'messages',
+  'memory',
+  'settings',
+  'cache',
+  'credentials',
+  'skills',
+  'tasks',
+]);
+
+function validateCollection(collection: string): void {
+  if (!VALID_COLLECTIONS.has(collection)) {
+    throw new Error(`Invalid collection: ${collection}`);
+  }
+}
+
+/** SQLite parameter limit safety margin */
+const CHUNK_SIZE = 900;
 
 export class ServerStorageProvider implements StorageProvider {
   private db: import('better-sqlite3').Database | null = null;
@@ -46,6 +72,7 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   private ensureTable(collection: string): void {
+    validateCollection(collection);
     this.getDb().exec(`
       CREATE TABLE IF NOT EXISTS "${collection}" (
         key TEXT PRIMARY KEY,
@@ -92,13 +119,17 @@ export class ServerStorageProvider implements StorageProvider {
     const result = new Map<string, T>();
     if (keys.length === 0) return result;
 
-    const placeholders = keys.map(() => '?').join(', ');
-    const rows = this.getDb()
-      .prepare(`SELECT key, value FROM "${collection}" WHERE key IN (${placeholders})`)
-      .all(...keys) as Array<{ key: string; value: string }>;
+    const db = this.getDb();
+    for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
+      const chunk = keys.slice(i, i + CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(', ');
+      const rows = db
+        .prepare(`SELECT key, value FROM "${collection}" WHERE key IN (${placeholders})`)
+        .all(...chunk) as Array<{ key: string; value: string }>;
 
-    for (const row of rows) {
-      result.set(row.key, JSON.parse(row.value));
+      for (const row of rows) {
+        result.set(row.key, JSON.parse(row.value));
+      }
     }
     return result;
   }
@@ -125,10 +156,13 @@ export class ServerStorageProvider implements StorageProvider {
     this.ensureTable(collection);
     if (keys.length === 0) return;
 
-    const placeholders = keys.map(() => '?').join(', ');
-    this.getDb()
-      .prepare(`DELETE FROM "${collection}" WHERE key IN (${placeholders})`)
-      .run(...keys);
+    const db = this.getDb();
+    for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
+      const chunk = keys.slice(i, i + CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(', ');
+      db.prepare(`DELETE FROM "${collection}" WHERE key IN (${placeholders})`)
+        .run(...chunk);
+    }
   }
 
   async list<T>(collection: string, options?: ListOptions): Promise<T[]> {

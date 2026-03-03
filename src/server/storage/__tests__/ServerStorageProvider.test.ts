@@ -80,6 +80,30 @@ describe('ServerStorageProvider', () => {
     });
   });
 
+  describe('collection validation', () => {
+    it('should reject invalid collection names', async () => {
+      await provider.initialize();
+      await expect(provider.get('evil_table', 'k1')).rejects.toThrow('Invalid collection: evil_table');
+    });
+
+    it('should reject SQL injection attempts', async () => {
+      await provider.initialize();
+      await expect(provider.get('"; DROP TABLE--', 'k1')).rejects.toThrow('Invalid collection');
+    });
+
+    it('should accept Rust-side provider collections', async () => {
+      await provider.initialize();
+      mockGet.mockReturnValueOnce(undefined);
+      await expect(provider.get('conversations', 'k1')).resolves.toBeNull();
+    });
+
+    it('should accept adapter store names', async () => {
+      await provider.initialize();
+      mockGet.mockReturnValueOnce(undefined);
+      await expect(provider.get('cache_items', 'k1')).resolves.toBeNull();
+    });
+  });
+
   describe('get', () => {
     it('should return parsed value', async () => {
       await provider.initialize();
@@ -143,6 +167,23 @@ describe('ServerStorageProvider', () => {
       const result = await provider.getMany('conversations', []);
       expect(result.size).toBe(0);
     });
+
+    it('should chunk large key lists to avoid SQLite parameter limit', async () => {
+      await provider.initialize();
+      // Create 1000 keys — should be split into 2 chunks (900 + 100)
+      const keys = Array.from({ length: 1000 }, (_, i) => `k${i}`);
+      mockAll.mockReturnValueOnce([{ key: 'k0', value: '{"id":"0"}' }]);
+      mockAll.mockReturnValueOnce([{ key: 'k900', value: '{"id":"900"}' }]);
+
+      const result = await provider.getMany<{ id: string }>('conversations', keys);
+      // prepare should have been called twice for the SELECT (once per chunk)
+      const selectCalls = mockPrepare.mock.calls.filter(
+        (c: any[]) => typeof c[0] === 'string' && c[0].includes('WHERE key IN')
+      );
+      expect(selectCalls.length).toBe(2);
+      expect(result.get('k0')).toEqual({ id: '0' });
+      expect(result.get('k900')).toEqual({ id: '900' });
+    });
   });
 
   describe('setMany', () => {
@@ -174,6 +215,18 @@ describe('ServerStorageProvider', () => {
       await provider.initialize();
       await provider.deleteMany('conversations', []);
       // Should not call prepare for delete
+    });
+
+    it('should chunk large key lists to avoid SQLite parameter limit', async () => {
+      await provider.initialize();
+      const keys = Array.from({ length: 1000 }, (_, i) => `k${i}`);
+      mockRun.mockReturnValue({ changes: 0 });
+
+      await provider.deleteMany('conversations', keys);
+      const deleteCalls = mockPrepare.mock.calls.filter(
+        (c: any[]) => typeof c[0] === 'string' && c[0].includes('DELETE') && c[0].includes('WHERE key IN')
+      );
+      expect(deleteCalls.length).toBe(2);
     });
   });
 
