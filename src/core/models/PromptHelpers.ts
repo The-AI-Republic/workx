@@ -85,8 +85,22 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
  * ```
  */
 export async function get_formatted_input(prompt: Prompt): Promise<ResponseItem[]> {
-  // Clone the input array to prevent mutations
-  const items = [...prompt.input];
+  // Clone the input array and strip internal-only properties that are not part of the API schema
+  const items = prompt.input.map(item => {
+    if (item.type === 'message') {
+      // Strip internal properties: modelKey (used for UI display), reasoning_content, thoughtSignature
+      const { modelKey, reasoning_content, ...cleanItem } = item as any;
+      // Also strip thoughtSignature from tool_calls if present
+      if (cleanItem.tool_calls) {
+        cleanItem.tool_calls = cleanItem.tool_calls.map((tc: any) => {
+          const { thoughtSignature, ...cleanTc } = tc;
+          return cleanTc;
+        });
+      }
+      return cleanItem as ResponseItem;
+    }
+    return item;
+  });
 
   // Iterate backwards to find the last screenshot function call output
   for (let i = items.length - 1; i >= 0; i--) {
