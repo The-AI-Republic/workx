@@ -8,8 +8,6 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { SchedulerStorage } from './SchedulerStorage';
-import type { SchedulerAlarms } from '../../extension/background/scheduler-alarms';
 import type {
   SchedulerTaskRecord,
   SchedulerTaskStatus,
@@ -25,10 +23,8 @@ import type {
 } from '../models/types/SchedulerContracts';
 import {
   parseAlarmName,
-  DEFAULT_ALARM_CONFIG,
 } from '../models/types/SchedulerContracts';
 import type { AgentRegistry } from '../registry/AgentRegistry';
-import type { AgentSession } from '../registry/AgentSession';
 
 /**
  * Event emitter type for scheduler events
@@ -38,6 +34,21 @@ export type SchedulerEventEmitter = (
 ) => void;
 
 /**
+ * Notification handler callback — platform-specific notification display
+ */
+export type NotificationHandler = (task: SchedulerTaskRecord) => Promise<void>;
+
+/**
+ * Task launcher callback — platform-specific task execution (open tab, invoke agent, etc.)
+ */
+export type TaskLauncher = (taskId: string, sessionId: string) => Promise<void>;
+
+/**
+ * Connectivity check callback — returns true if the platform is online
+ */
+export type ConnectivityCheck = () => boolean;
+
+/**
  * Scheduler - main orchestrator for scheduled task execution
  * Feature 015: Supports isolated AgentSession per scheduled task
  */
@@ -45,6 +56,9 @@ export class Scheduler {
   private eventEmitter: SchedulerEventEmitter | null = null;
   private registry: AgentRegistry | null = null;
   private taskSessions: Map<string, string> = new Map(); // taskId → sessionId
+  private notificationHandler: NotificationHandler | null = null;
+  private taskLauncher: TaskLauncher | null = null;
+  private connectivityCheck: ConnectivityCheck = () => true;
 
   constructor(
     private storage: ISchedulerStorage,
@@ -63,6 +77,27 @@ export class Scheduler {
    */
   setEventEmitter(emitter: SchedulerEventEmitter): void {
     this.eventEmitter = emitter;
+  }
+
+  /**
+   * Set notification handler for task start notifications
+   */
+  setNotificationHandler(handler: NotificationHandler): void {
+    this.notificationHandler = handler;
+  }
+
+  /**
+   * Set task launcher for platform-specific task execution
+   */
+  setTaskLauncher(launcher: TaskLauncher): void {
+    this.taskLauncher = launcher;
+  }
+
+  /**
+   * Set connectivity check callback (defaults to () => true)
+   */
+  setConnectivityCheck(check: ConnectivityCheck): void {
+    this.connectivityCheck = check;
   }
 
   /**
@@ -265,42 +300,27 @@ export class Scheduler {
   }
 
   /**
-   * Show browser notification when a scheduled task starts
+   * Show notification when a scheduled task starts (delegates to platform handler)
    */
   private async showTaskStartNotification(task: SchedulerTaskRecord): Promise<void> {
-    try {
-      const inputPreview = task.input.length > 50
-        ? task.input.slice(0, 50) + '...'
-        : task.input;
-
-      await chrome.notifications.create(`scheduler-task-${task.id}`, {
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: 'Scheduled Task Starting',
-        message: inputPreview,
-        priority: 2,
-        requireInteraction: false,
-      });
-    } catch (error) {
-      // Notification permission may not be granted - log and continue
-      console.warn('[Scheduler] Failed to show notification:', error);
+    if (this.notificationHandler) {
+      try {
+        await this.notificationHandler(task);
+      } catch (error) {
+        console.warn('[Scheduler] Failed to show notification:', error);
+      }
     }
   }
 
   /**
-   * Open a new browser tab for scheduled task execution
+   * Launch task execution (delegates to platform handler)
    */
   private async openSchedulerTaskTab(taskId: string, sessionId: string): Promise<void> {
-    // Get the extension's sidepanel URL with scheduled task parameters
-    const extensionUrl = chrome.runtime.getURL(
-      `sidepanel/index.html?scheduledTask=${taskId}&sessionId=${sessionId}`
-    );
-
-    // Create a new tab with the sidepanel page
-    await chrome.tabs.create({
-      url: extensionUrl,
-      active: true,
-    });
+    if (this.taskLauncher) {
+      await this.taskLauncher(taskId, sessionId);
+    } else {
+      console.warn('[Scheduler] No task launcher configured — task will not execute');
+    }
   }
 
   /**
@@ -393,7 +413,7 @@ export class Scheduler {
     }
 
     // T042: Don't process if offline
-    if (!navigator.onLine) {
+    if (!this.connectivityCheck()) {
       console.log('[Scheduler] Offline - deferring task execution until connectivity restored');
       return;
     }
@@ -411,10 +431,10 @@ export class Scheduler {
   }
 
   /**
-   * T042: Check if browser is online
+   * T042: Check if platform is online
    */
   isOnline(): boolean {
-    return navigator.onLine;
+    return this.connectivityCheck();
   }
 
   /**
@@ -481,7 +501,7 @@ export class Scheduler {
    */
   async getSchedulerState(): Promise<GetSchedulerStateResponse> {
     const state = await this.storage.getSchedulerState();
-    const counts = await (this.storage as SchedulerStorage).getTaskCounts();
+    const counts = await this.storage.getTaskCounts();
 
     let runningTask: SchedulerTaskSummary | null = null;
     if (state.currentTaskId) {

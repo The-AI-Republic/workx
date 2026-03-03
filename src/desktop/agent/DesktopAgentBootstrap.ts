@@ -36,6 +36,9 @@ import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
 import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
+import { Scheduler } from '@/core/scheduler/Scheduler';
+import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
+import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
 
 /**
  * Singleton instance
@@ -52,6 +55,9 @@ export class DesktopAgentBootstrap {
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
+  private scheduler: Scheduler | null = null;
+  private schedulerAlarms: DesktopSchedulerAlarms | null = null;
+  private schedulerDeepLinkHandler: DesktopSchedulerDeepLinkHandler | null = null;
   private initialized = false;
   private isUpdatingConfig = false;
 
@@ -164,6 +170,9 @@ export class DesktopAgentBootstrap {
 
       // 8. Set up MCP tool registration events
       await this.setupMCPToolRegistration();
+
+      // 9. Initialize scheduler
+      await this.initializeScheduler();
 
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
@@ -347,6 +356,102 @@ export class DesktopAgentBootstrap {
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
+    }
+  }
+
+  /**
+   * Initialize the task scheduler for desktop mode.
+   * Uses IndexedDB via SchedulerStorage + hybrid DesktopSchedulerAlarms.
+   */
+  private async initializeScheduler(): Promise<void> {
+    try {
+      // Desktop reuses IndexedDB-based SchedulerStorage (same as extension)
+      const { IndexedDBAdapter } = await import('@/storage/IndexedDBAdapter');
+      const { SchedulerStorage } = await import('@/core/scheduler/SchedulerStorage');
+
+      const indexedDBAdapter = new IndexedDBAdapter();
+      await indexedDBAdapter.initialize();
+
+      const schedulerStorage = new SchedulerStorage(indexedDBAdapter);
+
+      // Create hybrid alarms (in-process timers + OS-level jobs)
+      this.schedulerAlarms = new DesktopSchedulerAlarms();
+
+      // Create scheduler
+      this.scheduler = new Scheduler(schedulerStorage, this.schedulerAlarms);
+
+      // Wire alarm handler
+      this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
+        await this.scheduler!.handleAlarm(alarmName);
+      });
+
+      // Wire event emitter → dispatch via channel system
+      const channelManager = getChannelManager();
+      this.scheduler.setEventEmitter((event) => {
+        if (this.channel) {
+          channelManager.dispatchEvent(
+            { type: 'scheduler.event', ...event } as any,
+            this.channel.channelId
+          ).catch((error) => {
+            console.error('[DesktopAgentBootstrap] Failed to dispatch scheduler event:', error);
+          });
+        }
+      });
+
+      // Wire task launcher — show window and submit to agent
+      this.scheduler.setTaskLauncher(async (taskId, sessionId) => {
+        console.log(`[DesktopAgentBootstrap] Scheduled task ${taskId} launched (session: ${sessionId})`);
+        // Show the main window for the task
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const { getCurrentWindow } = await import('@tauri-apps/api/window');
+          const win = getCurrentWindow();
+          await win.show();
+          await win.setFocus();
+        } catch {
+          // Non-fatal — window may already be visible
+        }
+      });
+
+      // Wire notification handler via Tauri notification plugin
+      this.scheduler.setNotificationHandler(async (task) => {
+        try {
+          const { sendNotification } = await import('@tauri-apps/plugin-notification');
+          const inputPreview = task.input.length > 50
+            ? task.input.slice(0, 50) + '...'
+            : task.input;
+          sendNotification({
+            title: 'Scheduled Task Starting',
+            body: inputPreview,
+          });
+        } catch {
+          // Notification permission may not be granted
+        }
+      });
+
+      // Wire connectivity check
+      this.scheduler.setConnectivityCheck(() => navigator.onLine);
+
+      // Set up deep link handler for OS-level job triggers
+      this.schedulerDeepLinkHandler = new DesktopSchedulerDeepLinkHandler(this.scheduler);
+      await this.schedulerDeepLinkHandler.initialize();
+
+      // Reconcile OS jobs with in-process timers
+      await this.schedulerAlarms.reconcileOnStartup(async () => {
+        const tasks = await schedulerStorage.getScheduledTasks();
+        return tasks.map(t => ({ id: t.id, scheduledTime: t.scheduledTime }));
+      });
+
+      // Detect missed tasks and start queue processor
+      const missedTasks = await this.scheduler.detectMissedTasks();
+      if (missedTasks.length > 0) {
+        console.log(`[DesktopAgentBootstrap] Detected ${missedTasks.length} missed scheduler tasks`);
+      }
+      await this.schedulerAlarms.startSchedulerTaskQueueProcessor();
+
+      console.log('[DesktopAgentBootstrap] Scheduler initialized');
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not initialize scheduler:', error);
     }
   }
 
@@ -630,10 +735,21 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Get the scheduler instance
+   */
+  getScheduler(): Scheduler | null {
+    return this.scheduler;
+  }
+
+  /**
    * Shutdown the agent system
    */
   async shutdown(): Promise<void> {
     console.log('[DesktopAgentBootstrap] Shutting down...');
+
+    // Dispose scheduler
+    this.schedulerDeepLinkHandler?.dispose();
+    this.schedulerAlarms?.dispose();
 
     // Shutdown channel manager (which shuts down all channels)
     const channelManager = getChannelManager();

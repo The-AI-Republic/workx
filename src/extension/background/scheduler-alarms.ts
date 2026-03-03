@@ -5,7 +5,7 @@
  * Handles task alarms and SchedulerTaskQueue processor alarm.
  */
 
-import type { ISchedulerAlarms, SchedulerAlarmConfig } from '../../core/models/types/SchedulerContracts';
+import type { ISchedulerAlarms, SchedulerAlarmConfig, SchedulerAlarm } from '../../core/models/types/SchedulerContracts';
 import {
   SCHEDULER_ALARM_PREFIX,
   SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
@@ -138,7 +138,7 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   /**
    * Get all active scheduler alarms
    */
-  async getAllAlarms(): Promise<chrome.alarms.Alarm[]> {
+  async getAllAlarms(): Promise<SchedulerAlarm[]> {
     return new Promise((resolve, reject) => {
       chrome.alarms.getAll((alarms) => {
         if (chrome.runtime.lastError) {

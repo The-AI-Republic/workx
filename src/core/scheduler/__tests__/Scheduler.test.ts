@@ -65,9 +65,7 @@ function createMockResult(): TaskResultRecord {
 // Mock factories
 // ---------------------------------------------------------------------------
 
-function createMockStorage(): ISchedulerStorage & {
-  getTaskCounts: ReturnType<typeof vi.fn>;
-} {
+function createMockStorage(): ISchedulerStorage {
   return {
     createTask: vi.fn(),
     getTask: vi.fn(),
@@ -82,7 +80,6 @@ function createMockStorage(): ISchedulerStorage & {
     getOverdueScheduledTasks: vi.fn(),
     getSchedulerState: vi.fn(),
     setSchedulerState: vi.fn(),
-    // SchedulerStorage-specific method accessed via cast
     getTaskCounts: vi.fn(),
   };
 }
@@ -137,21 +134,10 @@ describe('Scheduler', () => {
     scheduler.setEventEmitter(emitter);
     scheduler.setRegistry(registry as any);
 
-    // Add chrome.notifications mock (not present in global setup)
-    (globalThis as any).chrome.notifications = {
-      create: vi.fn().mockResolvedValue(undefined),
-    };
-
-    // Ensure chrome.runtime.getURL is available
-    (globalThis as any).chrome.runtime.getURL = vi.fn(
-      (path: string) => `chrome-extension://test-extension-id/${path}`
-    );
-
-    // Ensure chrome.tabs.create is available
-    (globalThis as any).chrome.tabs.create = vi.fn().mockResolvedValue({ id: 1 });
-
-    // Default: online
-    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+    // Wire platform callbacks (previously hardcoded Chrome APIs)
+    scheduler.setNotificationHandler(vi.fn().mockResolvedValue(undefined));
+    scheduler.setTaskLauncher(vi.fn().mockResolvedValue(undefined));
+    scheduler.setConnectivityCheck(() => true);
   });
 
   // =========================================================================
@@ -532,32 +518,26 @@ describe('Scheduler', () => {
       );
     });
 
-    it('should show a browser notification', async () => {
+    it('should call notification handler', async () => {
+      const notifHandler = vi.fn().mockResolvedValue(undefined);
+      scheduler.setNotificationHandler(notifHandler);
       vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1', input: 'Hello world' }));
 
       await scheduler.executeTask('task-1');
 
-      expect(chrome.notifications.create).toHaveBeenCalledWith(
-        'scheduler-task-task-1',
-        expect.objectContaining({
-          type: 'basic',
-          title: 'Scheduled Task Starting',
-          message: 'Hello world',
-        })
+      expect(notifHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'task-1', input: 'Hello world' })
       );
     });
 
-    it('should open a new browser tab', async () => {
+    it('should call task launcher', async () => {
+      const launcher = vi.fn().mockResolvedValue(undefined);
+      scheduler.setTaskLauncher(launcher);
       vi.mocked(storage.getTask).mockResolvedValue(createMockTask({ id: 'task-1' }));
 
       await scheduler.executeTask('task-1');
 
-      expect(chrome.tabs.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          active: true,
-          url: expect.stringContaining('scheduledTask=task-1'),
-        })
-      );
+      expect(launcher).toHaveBeenCalledWith('task-1', expect.any(String));
     });
   });
 
@@ -566,35 +546,18 @@ describe('Scheduler', () => {
   // =========================================================================
 
   describe('showTaskStartNotification (private)', () => {
-    it('should truncate long input to 50 chars with ellipsis', async () => {
-      const longInput = 'A'.repeat(80);
-      const task = createMockTask({ input: longInput });
+    it('should delegate to notification handler', async () => {
+      const handler = vi.fn().mockResolvedValue(undefined);
+      scheduler.setNotificationHandler(handler);
+      const task = createMockTask({ input: 'Hello' });
 
       await (scheduler as any).showTaskStartNotification(task);
 
-      expect(chrome.notifications.create).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          message: 'A'.repeat(50) + '...',
-        })
-      );
+      expect(handler).toHaveBeenCalledWith(task);
     });
 
-    it('should not truncate short input', async () => {
-      const task = createMockTask({ input: 'Short task' });
-
-      await (scheduler as any).showTaskStartNotification(task);
-
-      expect(chrome.notifications.create).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          message: 'Short task',
-        })
-      );
-    });
-
-    it('should not throw when notification creation fails', async () => {
-      (chrome.notifications.create as any).mockRejectedValue(new Error('No permission'));
+    it('should not throw when notification handler fails', async () => {
+      scheduler.setNotificationHandler(vi.fn().mockRejectedValue(new Error('No permission')));
       const task = createMockTask();
 
       await expect(
@@ -602,15 +565,14 @@ describe('Scheduler', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('should use the correct notification ID format', async () => {
-      const task = createMockTask({ id: 'abc-123' });
+    it('should be a no-op when no handler is set', async () => {
+      // Create scheduler without notification handler
+      const s = new Scheduler(storage, alarms);
+      const task = createMockTask();
 
-      await (scheduler as any).showTaskStartNotification(task);
-
-      expect(chrome.notifications.create).toHaveBeenCalledWith(
-        'scheduler-task-abc-123',
-        expect.any(Object)
-      );
+      await expect(
+        (s as any).showTaskStartNotification(task)
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -619,20 +581,23 @@ describe('Scheduler', () => {
   // =========================================================================
 
   describe('openSchedulerTaskTab (private)', () => {
-    it('should create a tab with the correct URL parameters', async () => {
+    it('should delegate to task launcher callback', async () => {
+      const launcher = vi.fn().mockResolvedValue(undefined);
+      scheduler.setTaskLauncher(launcher);
+
       await (scheduler as any).openSchedulerTaskTab('task-42', 'session-99');
 
-      expect(chrome.tabs.create).toHaveBeenCalledWith({
-        url: expect.stringContaining('scheduledTask=task-42&sessionId=session-99'),
-        active: true,
-      });
+      expect(launcher).toHaveBeenCalledWith('task-42', 'session-99');
     });
 
-    it('should use chrome.runtime.getURL to build the URL', async () => {
-      await (scheduler as any).openSchedulerTaskTab('t1', 's1');
+    it('should warn when no task launcher is set', async () => {
+      const s = new Scheduler(storage, alarms);
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith(
-        'sidepanel/index.html?scheduledTask=t1&sessionId=s1'
+      await (s as any).openSchedulerTaskTab('t1', 's1');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No task launcher configured')
       );
     });
   });
@@ -913,7 +878,7 @@ describe('Scheduler', () => {
     });
 
     it('should not process when offline', async () => {
-      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+      scheduler.setConnectivityCheck(() => false);
       vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState());
 
       await scheduler.processSchedulerTaskQueue();
@@ -958,14 +923,19 @@ describe('Scheduler', () => {
   // =========================================================================
 
   describe('isOnline', () => {
-    it('should return true when navigator.onLine is true', () => {
-      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+    it('should return true when connectivity check returns true', () => {
+      scheduler.setConnectivityCheck(() => true);
       expect(scheduler.isOnline()).toBe(true);
     });
 
-    it('should return false when navigator.onLine is false', () => {
-      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    it('should return false when connectivity check returns false', () => {
+      scheduler.setConnectivityCheck(() => false);
       expect(scheduler.isOnline()).toBe(false);
+    });
+
+    it('should default to true when no connectivity check is set', () => {
+      const s = new Scheduler(storage, alarms);
+      expect(s.isOnline()).toBe(true);
     });
   });
 

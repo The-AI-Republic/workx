@@ -869,6 +869,30 @@ async function initializeScheduler(): Promise<void> {
       console.log('[ServiceWorker] Scheduler connected to AgentRegistry');
     }
 
+    // Wire platform-specific callbacks for Chrome extension
+    scheduler.setNotificationHandler(async (task) => {
+      const inputPreview = task.input.length > 50
+        ? task.input.slice(0, 50) + '...'
+        : task.input;
+      await chrome.notifications.create(`scheduler-task-${task.id}`, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title: 'Scheduled Task Starting',
+        message: inputPreview,
+        priority: 2,
+        requireInteraction: false,
+      });
+    });
+
+    scheduler.setTaskLauncher(async (taskId, sessionId) => {
+      const extensionUrl = chrome.runtime.getURL(
+        `sidepanel/index.html?scheduledTask=${taskId}&sessionId=${sessionId}`
+      );
+      await chrome.tabs.create({ url: extensionUrl, active: true });
+    });
+
+    scheduler.setConnectivityCheck(() => navigator.onLine);
+
     // Set up event emitter to broadcast scheduler events to all clients (T020)
     scheduler.setEventEmitter((event) => {
       // Broadcast to all extension pages (sidepanel, popup, etc.)

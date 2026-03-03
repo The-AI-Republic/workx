@@ -7,8 +7,32 @@
 import type { SchedulerTaskRecord, SchedulerTaskStatus, SchedulerState } from './Scheduler';
 
 // ============================================================================
+// Platform-neutral Alarm Type
+// ============================================================================
+
+/**
+ * Platform-neutral alarm type (structurally compatible with chrome.alarms.Alarm)
+ */
+export interface SchedulerAlarm {
+  name: string;
+  scheduledTime: number;
+  periodInMinutes?: number;
+}
+
+// ============================================================================
 // Storage Interface
 // ============================================================================
+
+/**
+ * Task count result from getTaskCounts()
+ */
+export interface SchedulerTaskCounts {
+  draftCount: number;
+  scheduledCount: number;
+  missedCount: number;
+  waitingCount: number;
+  runningCount: number;
+}
 
 /**
  * Storage operations interface for scheduler tasks
@@ -32,6 +56,9 @@ export interface ISchedulerStorage {
   // Scheduler state
   getSchedulerState(): Promise<SchedulerState>;
   setSchedulerState(state: Partial<SchedulerState>): Promise<void>;
+
+  // Task counts
+  getTaskCounts(): Promise<SchedulerTaskCounts>;
 }
 
 // ============================================================================
@@ -104,7 +131,7 @@ export interface ISchedulerAlarms {
   /**
    * Get all active scheduler alarms.
    */
-  getAllAlarms(): Promise<chrome.alarms.Alarm[]>;
+  getAllAlarms(): Promise<SchedulerAlarm[]>;
 }
 
 /**

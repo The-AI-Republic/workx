@@ -50,6 +50,12 @@ import { registerHealthHandlers } from '../handlers/health';
 import { registerToolsHandlers } from '../handlers/tools';
 import { registerLogsHandlers } from '../handlers/logs';
 import { registerExecHandlers } from '../handlers/exec';
+import { registerSchedulerHandlers } from '../handlers/scheduler';
+
+// Scheduler
+import { ServerSchedulerStorage } from '../scheduler/ServerSchedulerStorage';
+import { ServerSchedulerAlarms } from '../scheduler/ServerSchedulerAlarms';
+import { Scheduler } from '@/core/scheduler/Scheduler';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Singleton
@@ -71,6 +77,9 @@ export class ServerAgentBootstrap {
   private approvalManager: ApprovalManager | null = null;
   private pluginRegistry: PluginRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
+  private scheduler: Scheduler | null = null;
+  private schedulerStorage: ServerSchedulerStorage | null = null;
+  private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private initialized = false;
 
   /**
@@ -149,6 +158,9 @@ export class ServerAgentBootstrap {
 
       // 9. Initialize approval manager
       this.approvalManager = new ApprovalManager();
+
+      // 9b. Initialize scheduler
+      await this.initializeScheduler(dataDir, channelManager);
 
       // 10. Wire handshake snapshot providers
       setHandshakeSnapshotProviders({
@@ -357,6 +369,77 @@ export class ServerAgentBootstrap {
     console.log('[ServerAgentBootstrap] PromptComposer configured for server mode');
   }
 
+  /**
+   * Initialize the task scheduler for server mode.
+   */
+  private async initializeScheduler(
+    dataDir: string,
+    channelManager: ReturnType<typeof getChannelManager>
+  ): Promise<void> {
+    try {
+      // 1. Create storage and initialize
+      this.schedulerStorage = new ServerSchedulerStorage(dataDir);
+      await this.schedulerStorage.initialize();
+
+      // 2. Create alarms (Node.js timers)
+      this.schedulerAlarms = new ServerSchedulerAlarms();
+
+      // 3. Create scheduler
+      this.scheduler = new Scheduler(this.schedulerStorage, this.schedulerAlarms);
+
+      // 4. Wire alarm handler → scheduler.handleAlarm()
+      this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
+        await this.scheduler!.handleAlarm(alarmName);
+      });
+
+      // 5. Wire event emitter → broadcast to WebSocket clients
+      this.scheduler.setEventEmitter((event) => {
+        if (this.channel) {
+          channelManager.dispatchEvent(
+            { type: 'scheduler.event', ...event } as any,
+            this.channel.channelId
+          ).catch((error) => {
+            console.error('[ServerAgentBootstrap] Failed to dispatch scheduler event:', error);
+          });
+        }
+      });
+
+      // 6. Wire task launcher for server mode (log + future agent invoke)
+      this.scheduler.setTaskLauncher(async (taskId, sessionId) => {
+        console.log(`[ServerAgentBootstrap] Scheduled task ${taskId} launched (session: ${sessionId})`);
+        // In server mode, task execution is handled by the agent system
+        // The task is now in 'running' state and can be completed via scheduler.complete/fail
+      });
+
+      // 7. Start queue processor
+      await this.schedulerAlarms.startSchedulerTaskQueueProcessor();
+
+      // 8. Detect missed tasks
+      const missedTasks = await this.scheduler.detectMissedTasks();
+      if (missedTasks.length > 0) {
+        console.log(`[ServerAgentBootstrap] Detected ${missedTasks.length} missed scheduler tasks`);
+      }
+
+      // 9. Restore timers for future scheduled tasks
+      const scheduledTasks = await this.schedulerStorage.getScheduledTasks();
+      for (const task of scheduledTasks) {
+        if (task.scheduledTime && task.scheduledTime > Date.now()) {
+          await this.schedulerAlarms.createTaskAlarm(task.id, task.scheduledTime);
+        }
+      }
+
+      // 10. Register handlers
+      registerSchedulerHandlers({
+        scheduler: this.scheduler,
+        storage: this.schedulerStorage,
+      });
+
+      console.log('[ServerAgentBootstrap] Scheduler initialized');
+    } catch (error) {
+      console.error('[ServerAgentBootstrap] Failed to initialize scheduler:', error);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // Accessors
   // ─────────────────────────────────────────────────────────────────────
@@ -385,6 +468,10 @@ export class ServerAgentBootstrap {
     return this.pluginRegistry;
   }
 
+  getScheduler(): Scheduler | null {
+    return this.scheduler;
+  }
+
   isInitialized(): boolean {
     return this.initialized;
   }
@@ -403,6 +490,10 @@ export class ServerAgentBootstrap {
 
     // Cancel pending approvals
     this.approvalManager?.cancelAll();
+
+    // Shutdown scheduler
+    this.schedulerAlarms?.shutdown();
+    this.schedulerStorage?.close();
 
     // Stop backup manager
     this.backupManager?.stop();
