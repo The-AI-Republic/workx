@@ -36,8 +36,11 @@ vi.mock('@/core/PiAgent', () => {
       async submitOperation() {
         return 'op_123';
       }
+      getApprovalManager() {
+        return {};
+      }
       getToolRegistry() {
-        return { getTool: vi.fn() };
+        return { getTool: vi.fn(), setApprovalGate: vi.fn() };
       }
     },
   };

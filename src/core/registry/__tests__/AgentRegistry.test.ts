@@ -32,6 +32,8 @@ vi.mock('@/core/PiAgent', () => ({
     submitOperation = vi.fn().mockResolvedValue('sub_123');
     cleanup = vi.fn();
     setEventDispatcher = vi.fn();
+    getApprovalManager = vi.fn().mockReturnValue({});
+    getToolRegistry = vi.fn().mockReturnValue({ setApprovalGate: vi.fn() });
     agentId = 'agent_mock';
   },
 }));

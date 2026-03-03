@@ -241,7 +241,7 @@ describe('PiAgent', () => {
 
     config = createMockConfig();
     router = createMockRouter();
-    agent = new PiAgent(config, router);
+    agent = new PiAgent(config, router, undefined, undefined, mockUserNotifierInstance as any);
   });
 
   // =========================================================================

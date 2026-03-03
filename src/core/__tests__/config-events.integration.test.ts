@@ -4,6 +4,27 @@ import { Session } from '@/core/Session';
 import { ToolRegistry } from '@/tools/ToolRegistry';
 import { ApprovalManager } from '@/core/ApprovalManager';
 
+// Provide an in-memory ConfigStorageProvider so ConfigStorage can read/write
+const _memStore: Record<string, unknown> = {};
+vi.mock('@/core/storage/ConfigStorageProvider', () => ({
+  isConfigStorageInitialized: vi.fn(() => true),
+  getConfigStorage: vi.fn(() => ({
+    get: async (key: string) => _memStore[key] ?? null,
+    set: async (key: string, value: unknown) => { _memStore[key] = value; },
+    remove: async (key: string) => { delete _memStore[key]; },
+    getMany: async (keys: string[]) => {
+      const result: Record<string, unknown> = {};
+      for (const k of keys) { if (k in _memStore) result[k] = _memStore[k]; }
+      return result;
+    },
+    setMany: async (items: Record<string, unknown>) => { Object.assign(_memStore, items); },
+    removeMany: async (keys: string[]) => { for (const k of keys) delete _memStore[k]; },
+    getAll: async () => ({ ..._memStore }),
+    clear: async () => { for (const k of Object.keys(_memStore)) delete _memStore[k]; },
+    getBytesInUse: async () => null,
+  })),
+}));
+
 describe('Config Change Events Integration', () => {
   let config: AgentConfig;
 
