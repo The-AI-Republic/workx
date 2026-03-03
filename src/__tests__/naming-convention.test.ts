@@ -141,7 +141,7 @@ describe('Tier 3: Desktop user-facing uses "Apple Pi"', () => {
   });
 
   it('default agent prompt identifies as "Apple Pi"', () => {
-    const src = readSource('src/prompts/default_pi_agent_prompt.md');
+    const src = readSource('src/prompts/default_applepi_agent_prompt.md');
     expect(src).toContain('Apple Pi');
   });
 
@@ -181,12 +181,13 @@ describe('Guard-rails: no cross-tier naming leaks', () => {
     });
   }
 
-  // Extension code should not use 'pi' for extension-specific identifiers
+  // Extension code should not use 'applepi' or 'pi' for extension-specific identifiers
   // (only checking extension-layer files that should use 'browserx')
-  it('ChromeCredentialStore does not use "pi" for its credential prefix', () => {
+  it('ChromeCredentialStore does not use "applepi" or "pi" for its credential prefix', () => {
     const src = readSource('src/extension/storage/ChromeCredentialStore.ts');
     const cleaned = stripImportsAndComments(src);
-    // Should not have pi-credential: prefix
+    // Should not have applepi-credential: or pi-credential: prefix
+    expect(cleaned).not.toMatch(/['"]applepi-credential:/);
     expect(cleaned).not.toMatch(/['"]pi-credential:/);
   });
 

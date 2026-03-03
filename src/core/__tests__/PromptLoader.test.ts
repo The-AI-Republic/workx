@@ -139,7 +139,9 @@ describe('PromptLoader', () => {
 
     // In test/extension mode (__BUILD_MODE__ is undefined), fallback should be browserx
     expect(prompt).toContain('BrowserX');
-    expect(prompt).not.toContain('Pi');
+    // Must not contain "ApplePi" or standalone "Pi" (only "BrowserX" identity)
+    expect(prompt).not.toMatch(/\bApplePi\b/);
+    expect(prompt).not.toMatch(/\bPi\b/);
     expect(prompt).not.toContain('desktop automation agent');
   });
 });

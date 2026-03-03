@@ -9,7 +9,7 @@
 
 // Build-time fragment imports
 import browserxIntro from './fragments/browserx_intro.md?raw';
-import piIntro from './fragments/pi_intro.md?raw';
+import piIntro from './fragments/applepi_intro.md?raw';
 import safety from './fragments/safety.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';

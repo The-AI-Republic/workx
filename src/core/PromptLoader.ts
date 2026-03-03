@@ -13,7 +13,7 @@
 
 // Import default prompts as raw strings at build time (fallbacks)
 import defaultPiExtensionPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
-import defaultPiPrompt from '../prompts/default_pi_agent_prompt.md?raw';
+import defaultPiPrompt from '../prompts/default_applepi_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
 import { PromptComposer, type AgentType, type RuntimeContext } from '../prompts/PromptComposer';
 
