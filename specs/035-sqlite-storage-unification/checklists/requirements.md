@@ -1,7 +1,7 @@
-# Specification Quality Checklist: ChatGPT OAuth Subscription Authentication
+# Specification Quality Checklist: SQLite Storage Unification
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-02-24
+**Created**: 2026-03-02
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,6 +31,6 @@
 
 ## Notes
 
-- All items pass validation. The spec is ready for `/rr.clarify` or `/rr.plan`.
-- The design document (`.ai_design/chatgpt_oauth_design.md`) provides the technical implementation details separately — the spec intentionally stays at the user/business level.
-- Assumptions section documents the key dependency on OpenAI's public OAuth infrastructure remaining available to third-party tools.
+- SC-005 references specific Rust command names for verifiability — this is borderline but acceptable since it constrains scope (reuse existing commands, don't create new ones).
+- The spec references specific class names (CacheManager, SessionCacheManager, etc.) as these are the domain entities being affected, not implementation prescriptions.
+- Spec assumes PR #145 (db_storage.rs) is merged as a prerequisite — documented in Assumptions section.
