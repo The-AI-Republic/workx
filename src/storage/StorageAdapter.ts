@@ -27,13 +27,13 @@ export const STORE_KEY_PATHS: Record<string, string> = {
  * Index-to-field mapping for queryByIndex.
  * Maps IndexedDB index names to the JSON field they query on.
  */
-export const INDEX_FIELD_MAP: Record<string, string> = {
+export const INDEX_FIELD_MAP: Record<string, string | string[]> = {
   by_session: 'sessionId',
-  by_session_timestamp: 'sessionId',
+  by_session_timestamp: ['sessionId', 'timestamp'],
   by_timestamp: 'timestamp',
   by_status: 'status',
   by_scheduled_time: 'scheduledTime',
-  by_status_time: 'status',
+  by_status_time: ['status', 'scheduledTime'],
   by_created_at: 'createdAt',
   by_type: 'type',
   by_state: 'state',

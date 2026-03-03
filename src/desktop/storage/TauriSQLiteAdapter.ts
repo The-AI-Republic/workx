@@ -84,25 +84,81 @@ export class TauriSQLiteAdapter implements StorageAdapter {
     indexName: string,
     query: IDBValidKey | IDBKeyRange
   ): Promise<T[]> {
-    const fieldName = INDEX_FIELD_MAP[indexName];
-    if (!fieldName) {
+    const fieldMapping = INDEX_FIELD_MAP[indexName];
+    if (!fieldMapping) {
       throw new Error(`Unknown index: ${indexName} — no field mapping defined`);
     }
 
-    // Build where clause as JSON object for storage_query
-    const whereObj: Record<string, unknown> = {};
-    whereObj[fieldName] = query;
+    const isKeyRange = (q: any): q is IDBKeyRange =>
+      typeof q === 'object' && q !== null && ('lower' in q || 'upper' in q);
 
-    const rows = await invoke<SQLiteRow[]>('storage_query', {
-      collection: storeName,
-      where: JSON.stringify(whereObj),
-    });
+    // Tauri backend `storage_query` expects a simple JSON equality map.
+    // If the query is an IDBKeyRange or requires compound index tuple comparison,
+    // the current Rust backend `storage_query` doesn't support complex bounds out of the box
+    // since it just iterates json fields for exact matching.
+    // To implement bounds accurately without refactoring Rust, we filter the results in JS.
+    let rows: SQLiteRow[];
+
+    if (isKeyRange(query) || Array.isArray(fieldMapping)) {
+      // Since the Rust backend doesn't support complex queries natively,
+      // we fetch all items and filter in JS to ensure correctness for ranges and compounds.
+      rows = await invoke<SQLiteRow[]>('storage_list', { collection: storeName });
+
+      const fields = Array.isArray(fieldMapping) ? fieldMapping : [fieldMapping];
+
+      const cmp = (a: any, b: any): number => {
+        if (Array.isArray(a) && Array.isArray(b)) {
+          for (let i = 0; i < Math.min(a.length, b.length); i++) {
+            if (a[i] < b[i]) return -1;
+            if (a[i] > b[i]) return 1;
+          }
+          return a.length - b.length;
+        }
+        return a < b ? -1 : (a > b ? 1 : 0);
+      };
+
+      rows = rows.filter(row => {
+        const val = JSON.parse(row.value);
+        const extracted = fields.length === 1 ? val[fields[0]] : fields.map(f => val[f]);
+
+        if (!isKeyRange(query)) {
+          return cmp(extracted, query) === 0;
+        }
+
+        let match = true;
+        if (query.lower !== undefined) {
+          const c = cmp(extracted, query.lower);
+          match = match && (query.lowerOpen ? c > 0 : c >= 0);
+        }
+        if (query.upper !== undefined) {
+          const c = cmp(extracted, query.upper);
+          match = match && (query.upperOpen ? c < 0 : c <= 0);
+        }
+        return match;
+      });
+    } else {
+      // Simple single-field exact query, let Rust handle it
+      const whereObj: Record<string, unknown> = {};
+      whereObj[fieldMapping as string] = query;
+      rows = await invoke<SQLiteRow[]>('storage_query', {
+        collection: storeName,
+        where: JSON.stringify(whereObj),
+      });
+    }
+
     return rows.map((row) => JSON.parse(row.value));
   }
 
   async batchDelete(storeName: string, keys: string[]): Promise<number> {
     if (keys.length === 0) return 0;
-    await invoke('storage_delete_many', { collection: storeName, keys });
+
+    // Chunk limits to avoid hitting Tauri IPC or SQLite max params limits
+    const CHUNK_SIZE = 900;
+    for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
+      const chunk = keys.slice(i, i + CHUNK_SIZE);
+      await invoke('storage_delete_many', { collection: storeName, keys: chunk });
+    }
+
     return keys.length;
   }
 
