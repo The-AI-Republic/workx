@@ -38,6 +38,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // better-sqlite3 is a native addon not in node_modules (server-only dep).
+      // Map to a stub so Vite's import analysis doesn't fail during tests.
+      'better-sqlite3': resolve(__dirname, 'src/__test-utils__/better-sqlite3-stub.ts'),
       '@': resolve(__dirname, 'src'),
       '@config': resolve(__dirname, 'src/config'),
       '@storage': resolve(__dirname, 'src/storage'),

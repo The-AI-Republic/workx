@@ -98,16 +98,16 @@
 
 ### US1 — Desktop App Uses SQLite for All Storage (P1)
 
-- [ ] T021 [US1] Run existing test suite with `npm test` and verify all tests pass without modification
-- [ ] T022 [US1] Manual verification: launch Tauri desktop app, send a message, schedule a task, check DevTools → Application → IndexedDB shows zero pi_cache database, and query SQLite storage.db to confirm conversation, cache, and scheduler data exists
+- [x] T021 [US1] Run existing test suite with `npm test` and verify all tests pass without modification
+- [x] T022 [US1] Manual verification: launch Tauri desktop app, send a message, schedule a task, check DevTools → Application → IndexedDB shows zero pi_cache database, and query SQLite storage.db to confirm conversation, cache, and scheduler data exists
 
 ### US2 — Server Mode Uses SQLite for All Storage (P1)
 
-- [ ] T023 [US2] Manual verification: start Pi server, send message via WebSocket, verify $PI_DATA_DIR/storage/storage.db contains conversation, cache, and session data
+- [x] T023 [US2] Manual verification: start Pi server, send message via WebSocket, verify $PI_DATA_DIR/storage/storage.db contains conversation, cache, and session data
 
 ### US3 — Chrome Extension Continues Using IndexedDB (P1)
 
-- [ ] T024 [US3] Run existing test suite with `npm test` and verify all extension tests pass without modification — no behavioral change for Chrome extension
+- [x] T024 [US3] Run existing test suite with `npm test` and verify all extension tests pass without modification — no behavioral change for Chrome extension
 
 ---
 
@@ -115,11 +115,11 @@
 
 **Purpose**: Test coverage for new code, cleanup
 
-- [ ] T025 [P] Add unit tests for TauriSQLiteAdapter in src/desktop/storage/__tests__/TauriSQLiteAdapter.test.ts — mock invoke() calls, test all 9 StorageAdapter methods including keyPath extraction and queryByIndex field mapping
-- [ ] T026 [P] Add unit tests for NodeSQLiteAdapter in src/server/storage/__tests__/NodeSQLiteAdapter.test.ts — use in-memory better-sqlite3, test all 9 methods including put keyPath extraction, queryByIndex json_extract, batchDelete
-- [ ] T027 [P] Add unit tests for ServerStorageProvider in src/server/storage/__tests__/ServerStorageProvider.test.ts — use in-memory better-sqlite3, test CRUD, list, query, count, transaction, clear, vacuum
-- [ ] T028 [P] Add unit tests for createStorageAdapter factory in src/storage/__tests__/createStorageAdapter.test.ts — mock __BUILD_MODE__, verify correct adapter type returned for each mode
-- [ ] T029 Run full quickstart.md validation: desktop verification, server verification, extension test suite
+- [x] T025 [P] Add unit tests for TauriSQLiteAdapter in src/desktop/storage/__tests__/TauriSQLiteAdapter.test.ts — mock invoke() calls, test all 9 StorageAdapter methods including keyPath extraction and queryByIndex field mapping
+- [x] T026 [P] Add unit tests for NodeSQLiteAdapter in src/server/storage/__tests__/NodeSQLiteAdapter.test.ts — use in-memory better-sqlite3, test all 9 methods including put keyPath extraction, queryByIndex json_extract, batchDelete
+- [x] T027 [P] Add unit tests for ServerStorageProvider in src/server/storage/__tests__/ServerStorageProvider.test.ts — use in-memory better-sqlite3, test CRUD, list, query, count, transaction, clear, vacuum
+- [x] T028 [P] Add unit tests for createStorageAdapter factory in src/storage/__tests__/createStorageAdapter.test.ts — mock __BUILD_MODE__, verify correct adapter type returned for each mode
+- [x] T029 Run full quickstart.md validation: desktop verification, server verification, extension test suite
 
 ---
 
