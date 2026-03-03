@@ -1,4 +1,4 @@
-# Pi Server Mode Execution Tasks
+# Apple Pi Server Mode Execution Tasks
 
 This document tracks the detailed implementation tasks for Server Mode and OpenClaw plugin compatibility, based on the [server_mode_design.md](./server_mode_design.md).
 
@@ -44,7 +44,7 @@ Goal: Real-time agent feedback and control.
     - [ ] Implement operator notification and resolution protocol events.
 - [ ] **Develop `ServerAgentBootstrap`**
     - [ ] Create entry point at `src/server/bootstrap.ts`.
-    - [ ] Wire up `PiAgent` with the new transport and maintenance timers.
+    - [ ] Wire up `RepublicAgent` with the new transport and maintenance timers.
 
 ## Phase 4: Session & Persistence
 Goal: Reliable, file-based state management.
@@ -78,7 +78,7 @@ Goal: Harden the agent for private deployment.
     - [ ] Implement `owner.identities` mapping and **Static Whitelisting**.
     - [ ] Implement pairing request flow for unverified senders (if enabled).
 - [ ] **CLI Identity Tool**
-    - [ ] Create `scripts/pi-identity.js` for local management of platform IDs.
+    - [ ] Create `scripts/applepi-identity.js` for local management of platform IDs.
 - [ ] **Resource Limits & Guardrails**
     - [ ] Implement concurrency limits (max runs/sub-agents).
     - [ ] Implement message queue policies (`summarize` on overflow) and deduplication.

@@ -1,7 +1,7 @@
 # Server Mode (WebSocket) Design Document
 
 ## 1. Objective
-Introduce a third operational mode for Pi: **Server Mode**. This mode runs the PiAgent as a headless WebSocket/HTTP server in a Node.js environment, allowing it to accept remote connections and commands from various clients without requiring the Chrome Extension (BrowserX) or the desktop UI (Apple Pi).
+Introduce a third operational mode for Pi: **Server Mode**. This mode runs the RepublicAgent as a headless WebSocket/HTTP server in a Node.js environment, allowing it to accept remote connections and commands from various clients without requiring the Chrome Extension (BrowserX) or the desktop UI (Apple Pi).
 
 Crucially, **the exact same Server Mode architecture is designed to scale seamlessly from Personal to Enterprise users.**
 *   **Personal Users:** Can deploy the agent to a simple VPS or Raspberry Pi, using local configuration (`.env` whitelists) to securely access their personal assistant via mobile channels (Slack, Telegram).
@@ -11,9 +11,9 @@ This design aims to leverage the fully decoupled message routing architecture al
 
 ## 2. Architecture Overview
 
-Currently, `PiAgent` relies on two main components for communication and I/O:
+Currently, `RepublicAgent` relies on two main components for communication and I/O:
 1.  **`MessageRouter`**: An interface for sending and receiving direct system-level messages (state updates, response events, tool execution callbacks).
-2.  **`ChannelManager`**: A registry of `Channel` instances that route user submissions (from chat UIs, API endpoints, etc.) to the `PiAgent`, and broadcast events from the agent back to those input channels.
+2.  **`ChannelManager`**: A registry of `Channel` instances that route user submissions (from chat UIs, API endpoints, etc.) to the `RepublicAgent`, and broadcast events from the agent back to those input channels.
 
 To implement a WebSocket server mode, we will replicate the Desktop pattern (which uses `DesktopMessageRouter`, `TauriChannel`, and `DesktopAgentBootstrap`) but adapt it for WebSockets.
 
@@ -34,8 +34,8 @@ A new class implementing the `Channel` interface (part of `ChannelManager`).
 The initialization script (similar to `DesktopAgentBootstrap`).
 *   Starts a Node.js HTTP + WebSocket server (e.g., using `ws` library).
 *   On a new WebSocket connection, it performs the connection handshake (see Section 4), then initializes the `ServerMessageRouter` and `ServerChannel`.
-*   Instantiates the `PiAgent` and registers necessary skills/tools (via `FilesystemSkillProvider`).
-*   Wires the `PiAgent`'s event dispatcher to the `ChannelManager`.
+*   Instantiates the `RepublicAgent` and registers necessary skills/tools (via `FilesystemSkillProvider`).
+*   Wires the `RepublicAgent`'s event dispatcher to the `ChannelManager`.
 *   Starts maintenance timers (tick/heartbeat, health refresh).
 
 ## 3. Wire Protocol
@@ -393,11 +393,11 @@ Server Mode supports multiple authentication mechanisms, from simple tokens (per
 | Mode | Use Case | How It Works |
 |------|----------|-------------|
 | `none` | Local development, loopback-only | No auth required. Only allowed when bind is `loopback`. |
-| `token` | Personal VPS, simple deployments | Shared bearer token in `ConnectParams.auth.token`. Token set via `PI_SERVER_TOKEN` env var. |
-| `password` | Simple shared-secret auth | Password in `ConnectParams.auth.password`. Set via `PI_SERVER_PASSWORD` env var. |
+| `token` | Personal VPS, simple deployments | Shared bearer token in `ConnectParams.auth.token`. Token set via `APPLEPI_SERVER_TOKEN` env var. |
+| `password` | Simple shared-secret auth | Password in `ConnectParams.auth.password`. Set via `APPLEPI_SERVER_PASSWORD` env var. |
 | `trusted-proxy` | Reverse proxy (nginx, Cloudflare) | Proxy forwards identity via `X-Forwarded-User` header. Server validates proxy IP against allowlist. |
 
-Auth mode is configured via `server.auth.mode` in `config.json` or the `PI_SERVER_AUTH_MODE` env var.
+Auth mode is configured via `server.auth.mode` in `config.json` or the `APPLEPI_SERVER_AUTH_MODE` env var.
 
 ### 8.2 Device Identity & Pairing
 
@@ -471,7 +471,7 @@ When the agent is running headlessly, certain tool calls (e.g., executing shell 
 ### 10.1 Flow
 
 ```
-PiAgent                        Server                        Operator Client
+RepublicAgent                        Server                        Operator Client
   |                              |                              |
   |  "I need to run `rm -rf`"   |                              |
   |  ──→ approval.request        |                              |
@@ -526,7 +526,7 @@ Examples:
 Since Pi follows a **1:1 user:agent relationship**, even though multiple channels create separate sessions and transcripts (Section 11.1), they all interact with a **single, unified Agent Instance**.
 
 *   **Brain Consistency:** If Alice teaches her agent a fact via Slack, the agent must "remember" it when accessed via WhatsApp.
-*   **Implementation:** The `PiAgent` instance is shared across all `ServerChannel` connections. While each session maintains its own `SubmissionContext` for transcript isolation, the underlying memory providers (Long-Term Memory, Learned Facts) are bound to the single owner.
+*   **Implementation:** The `RepublicAgent` instance is shared across all `ServerChannel` connections. While each session maintains its own `SubmissionContext` for transcript isolation, the underlying memory providers (Long-Term Memory, Learned Facts) are bound to the single owner.
 *   **State Locking:** A simple mutex ensures that only one channel can trigger an active agent "run" at a time per user, preventing race conditions in memory updates.
 
 ### 11.3 Session Operations
@@ -547,7 +547,7 @@ The Desktop app relies on the browser's native `IndexedDB`. Server Mode uses a *
 #### Storage Layout
 
 ```
-$PI_DATA_DIR/sessions/
+$APPLEPI_DATA_DIR/sessions/
   index.db                              # SQLite — session index
   transcripts/
     ws_main_conn_abc123.jsonl           # JSONL — one file per session
@@ -620,7 +620,7 @@ Each session has one JSONL file storing the **full conversation history** — ev
 
 SQLite is the **fast index**, JSONL is the **source of truth**. If SQLite is lost, it can be rebuilt. If a JSONL file is lost, that session's conversation history is gone.
 
-**Data directory:** Configurable via `PI_DATA_DIR` env var, defaults to `~/.pi-server/data/`.
+**Data directory:** Configurable via `APPLEPI_DATA_DIR` env var, defaults to `~/.applepi-server/data/`.
 
 This ensures that if the Node.js server is rebooted or redeployed, conversation history and task state remain intact.
 
@@ -637,7 +637,7 @@ The server supports configurable bind host policies to control network exposure:
 | `tailnet` | Tailscale IP | Zero-config secure networking (personal) |
 | `auto` | Loopback if no auth configured, LAN otherwise | Sensible default |
 
-Configured via `server.bind` in `config.json` or `PI_SERVER_BIND` env var.
+Configured via `server.bind` in `config.json` or `APPLEPI_SERVER_BIND` env var.
 
 ### 12.2 TLS
 
@@ -648,8 +648,8 @@ For production deployments without a reverse proxy, the server supports native T
   "server": {
     "tls": {
       "enabled": true,
-      "certFile": "/etc/ssl/certs/pi-server.pem",
-      "keyFile": "/etc/ssl/private/pi-server.key"
+      "certFile": "/etc/ssl/certs/applepi-server.pem",
+      "keyFile": "/etc/ssl/private/applepi-server.key"
     }
   }
 }
@@ -728,8 +728,8 @@ The server runs a periodic channel health check (default: every 60s) for all reg
 ### 14.1 Configuration Sources
 
 Configuration is loaded from multiple sources in priority order:
-1.  **Environment variables** (highest priority): `PI_SERVER_PORT`, `PI_SERVER_BIND`, `PI_SERVER_TOKEN`, `PI_SERVER_AUTH_MODE`, `PI_DATA_DIR`, etc.
-2.  **Config file**: `config.json` (path configurable via `PI_CONFIG_PATH`, defaults to `~/.pi-server/config.json`).
+1.  **Environment variables** (highest priority): `APPLEPI_SERVER_PORT`, `APPLEPI_SERVER_BIND`, `APPLEPI_SERVER_TOKEN`, `APPLEPI_SERVER_AUTH_MODE`, `APPLEPI_DATA_DIR`, etc.
+2.  **Config file**: `config.json` (path configurable via `APPLEPI_CONFIG_PATH`, defaults to `~/.applepi-server/config.json`).
 3.  **Defaults** (lowest priority): sensible defaults for all settings.
 
 ### 14.2 Runtime Configuration Methods
@@ -784,7 +784,7 @@ The server watches the `config.json` file for changes. When a change is detected
 
 Power users need a way to check the agent's health or configure it directly from the chat interface without invoking an expensive LLM call.
 
-The `ChannelAdapter` interface supports an optional native command router. If a user types `/pi status` or `/pi restart` in Slack, the adapter intercepts this command, executes the local system function (e.g., querying `process.uptime()`), and returns the result *immediately* to the user, bypassing the `PiAgent` entirely.
+The `ChannelAdapter` interface supports an optional native command router. If a user types `/pi status` or `/pi restart` in Slack, the adapter intercepts this command, executes the local system function (e.g., querying `process.uptime()`), and returns the result *immediately* to the user, bypassing the `RepublicAgent` entirely.
 
 ## 16. Chrome DevTools MCP & Tool Registration
 
@@ -795,7 +795,7 @@ In **Server Mode**, we are running natively in Node.js, which makes this even ea
 2.  **Tool Registration:** Analogous to `registerDesktopTools.ts`, we will create a `registerServerTools.ts` script. This script will ask `MCPManager` to connect to the built-in `"browser"` server.
 3.  **Headless Execution:** Since the server operates headlessly, `chrome-devtools-mcp` will need to launch Chrome (or Chromium) locally on the server host. Ensure that `npx chrome-devtools-mcp` is passed arguments suitable for the host operating system (e.g., `--chromeArg=--headless` if running on a Linux box without a GUI).
 4.  **Handling Missing Chrome:** If the server host (e.g., an Ubuntu VM or a Docker container) does **not** have Chrome/Chromium installed, the `chrome-devtools-mcp` startup will fail. To handle this gracefully:
-    *   **Graceful Degradation:** The Server Agent should catch the `mcp_connect` failure in `registerServerTools.ts`. It should log a clear warning ("Chrome not found, browser automation disabled") rather than crashing the server. The PiAgent will continue to operate with other cross-platform tools (terminal, web search, planning).
+    *   **Graceful Degradation:** The Server Agent should catch the `mcp_connect` failure in `registerServerTools.ts`. It should log a clear warning ("Chrome not found, browser automation disabled") rather than crashing the server. The RepublicAgent will continue to operate with other cross-platform tools (terminal, web search, planning).
     *   **Direct Installation Script:** Instead of relying on heavy dependencies like Puppeteer, we should provide a simple installation script (e.g., `scripts/install-chrome.sh`). When the user provisions the server, they can run this script to download and install a known-good headless Chromium binary natively via package managers like `apt` or by grabbing the binary directly from Google's endpoints.
 
 ## 17. Channel Security & Third-Party Integrations
@@ -859,7 +859,7 @@ A user running BrowserX on their laptop should be able to message their agent fr
 Tauri's Rust backend can spin up a WebSocket server alongside the app:
 
 ```
-Slack/Telegram ──→ WS Server (embedded in Tauri Rust) ──→ Tauri IPC ──→ PiAgent (Svelte/TS)
+Slack/Telegram ──→ WS Server (embedded in Tauri Rust) ──→ Tauri IPC ──→ RepublicAgent (Svelte/TS)
 ```
 
 *   The Rust backend starts an `axum` WebSocket listener on a configurable port (default: `18100`).
@@ -878,7 +878,7 @@ Instead, BrowserX gains multi-channel support by **pairing with Apple Pi or Serv
 Slack/Telegram ──→ Channel Plugins (Apple Pi or Server Mode)
                        │
                        ↓
-                   PiAgent (Apple Pi or Server process)
+                   RepublicAgent (Apple Pi or Server process)
                        │
                        ↓ (WS connection)
                    BrowserX extension (WS client, optional)
@@ -889,7 +889,7 @@ Slack/Telegram ──→ Channel Plugins (Apple Pi or Server Mode)
 *   BrowserX operates standalone as a browser-native AI assistant — no channels, no external dependencies.
 *   If the user also runs Apple Pi (Desktop) or Server Mode on the same machine (or network), those runtimes host the channel plugins and WS server.
 *   BrowserX can optionally connect to the Apple Pi / Server Mode WS server as a **client** to see channel activity, but this is not required — channels work independently of BrowserX.
-*   The agent (PiAgent) runs in Apple Pi or Server Mode. BrowserX in this configuration acts as an additional UI window, not the agent host.
+*   The agent (RepublicAgent) runs in Apple Pi or Server Mode. BrowserX in this configuration acts as an additional UI window, not the agent host.
 
 **User scenarios:**
 
@@ -1031,7 +1031,7 @@ Implementations:
     *   Implement discovery: check `localhost:<configured-port>` for a running Pi WS server, or allow the user to enter a custom server URL.
     *   Handle connection lifecycle: auto-reconnect on disconnect, back off on repeated failures.
 17. **BrowserX Pairing UI**
-    *   Add a "Connect to Pi Server" option in the BrowserX settings/popup page.
+    *   Add a "Connect to Apple Pi Server" option in the BrowserX settings/popup page.
     *   Show pairing status (disconnected / connecting / connected) and server info.
     *   Display channel activity from the paired server (e.g., "[via Slack] message from Alice").
     *   If no Apple Pi / Server Mode detected, show a message explaining that channels require Apple Pi or Server Mode.
@@ -1055,7 +1055,7 @@ Channel plugins run in **Server Mode** and **Apple Pi** only. BrowserX does not 
 | **BrowserX** | Does not host plugins | Pairs with Apple Pi or Server Mode as WS client |
 
 #### 20.0.1 Plugin Isolation (Server Mode)
-To ensure that a third-party channel plugin cannot crash the main PiAgent process or leak memory into the global scope:
+To ensure that a third-party channel plugin cannot crash the main RepublicAgent process or leak memory into the global scope:
 *   **Worker Threads:** Each plugin instance runs in its own `worker_threads` context.
 *   **Communication:** The `ChannelPluginBridge` manages an asynchronous message port to the worker.
 *   **Resource Limits:** Worker threads are started with limited heap memory (e.g., `--max-old-space-size=128`).
@@ -1065,14 +1065,14 @@ Server Mode:
   Channel Plugin (in-process)
     → ChannelPluginBridge
     → ChannelManager (direct)
-    → PiAgent (same process)
+    → RepublicAgent (same process)
 
 Desktop Mode (Apple Pi):
   Channel Plugin (Node.js sidecar)
     → ChannelPluginBridge
     → Tauri IPC bridge (TauriBridge)
     → DesktopMessageRouter
-    → PiAgent (Svelte/TS in Tauri webview)
+    → RepublicAgent (Svelte/TS in Tauri webview)
 
 BrowserX (paired):
   BrowserX extension
@@ -1218,7 +1218,7 @@ Channel management lives in the **Settings page** (`/settings`):
 |-------|-------------|-------|
 | **Channel plugins** (`ChannelPlugin` interface) | Yes — full drop-in | Same npm packages, no wrapper |
 | **Plugin SDK** (`OpenClawPluginApi`) | Yes — implemented by Pi | Pi provides its own implementation of the registration API |
-| **Agent runtime** | No | Pi uses its own `PiAgent`, not OpenClaw's agent |
+| **Agent runtime** | No | Pi uses its own `RepublicAgent`, not OpenClaw's agent |
 | **Skills / Memory / Providers** | No | Pi has its own skill, memory, and model provider systems |
 
 Plugin authors write to OpenClaw's `ChannelPlugin` interface. Their plugin runs on OpenClaw, Pi, or any other platform that implements the same contract.
@@ -1355,7 +1355,7 @@ Server startup
 
 ### 20.5 ChannelPluginBridge
 
-The bridge is the core translation layer between an OpenClaw `ChannelPlugin` and Pi's internal systems (`ChannelManager`, `SubmissionContext`, `PiAgent`).
+The bridge is the core translation layer between an OpenClaw `ChannelPlugin` and Pi's internal systems (`ChannelManager`, `SubmissionContext`, `RepublicAgent`).
 
 One bridge instance is created **per plugin per account** (e.g., Slack workspace "acme" gets its own bridge, Slack workspace "personal" gets another).
 
@@ -1375,14 +1375,14 @@ Channel backend (e.g., Slack)
         replyCallback: (event) => bridge.deliverOutbound(event)
       }
   → Bridge checks owner identity (see Section 20.7)
-  → If authorized: submit to PiAgent via ChannelManager
+  → If authorized: submit to RepublicAgent via ChannelManager
   → If not authorized: drop message or send canned rejection
 ```
 
 #### Outbound Flow (Agent → Channel)
 
 ```
-PiAgent produces a response
+RepublicAgent produces a response
   → ChannelManager invokes replyCallback on the SubmissionContext
   → ChannelPluginBridge receives the outbound event
   → Bridge translates to ChannelOutboundContext:
@@ -1525,7 +1525,7 @@ For 1:1 deployments (e.g., personal PC or VPS), security is strictly enforced vi
 
 #### CLI Identity Management
 Alice can manage her identities directly on the server host via a CLI tool:
-`node pi-server.js identity add slack U456789`
+`node applepi-server.js identity add slack U456789`
 This provides a secure bootstrapping path if she loses access to a channel.
 
 #### Verification Flow
@@ -1534,7 +1534,7 @@ When the bridge receives an inbound message:
 
 1.  Extract the sender's platform identity from the message (e.g., Slack `user_id`).
 2.  Look up `owner.identities[channelType]`.
-3.  If the sender matches → allow, route to PiAgent.
+3.  If the sender matches → allow, route to RepublicAgent.
 4.  If no match → check the plugin's `security.resolveDmPolicy()`:
     *   `"reject"` → drop the message silently.
     *   `"pairing"` → hold the message, emit a pairing request to the operator (similar to device pairing in Section 8.2). The operator approves or denies from a connected client. On approval, the sender's identity is added to `owner.identities`.
@@ -1661,7 +1661,7 @@ Signal received (SIGTERM / SIGINT)
   │     └── Update all ChannelAccountSnapshots: { running: false }
   │
   ├── 4. Drain active agent runs
-  │     ├── Wait for in-flight PiAgent runs to complete (up to gracePeriodMs)
+  │     ├── Wait for in-flight RepublicAgent runs to complete (up to gracePeriodMs)
   │     ├── If runs don't finish in time: abort them, emit ChatEvent { state: "aborted" }
   │     └── Flush any buffered delta events to clients
   │
@@ -1689,7 +1689,7 @@ If the process receives a second `SIGTERM` or `SIGINT` during the graceful shutd
 
 ## 22. Deployment & Packaging
 
-Server Mode runs as a Docker container by default. The container hosts the PiAgent, WS server, and channel plugins in a single process, with access to the host filesystem for tool execution.
+Server Mode runs as a Docker container by default. The container hosts the RepublicAgent, WS server, and channel plugins in a single process, with access to the host filesystem for tool execution.
 
 ### 22.1 Docker Image
 
@@ -1721,8 +1721,8 @@ RUN mkdir -p /app/extensions
 # Data directory for sessions, config, logs
 VOLUME /data
 
-ENV PI_DATA_DIR=/data
-ENV PI_CONFIG_PATH=/data/config.json
+ENV APPLEPI_DATA_DIR=/data
+ENV APPLEPI_CONFIG_PATH=/data/config.json
 ENV NODE_ENV=production
 ENV CHROME_BIN=/usr/bin/chromium
 
@@ -1739,7 +1739,7 @@ ENTRYPOINT ["node", "index.js"]
 version: "3.8"
 
 services:
-  pi-server:
+  applepi-server:
     image: pi-agent/server:latest
     build: .
     ports:
@@ -1751,9 +1751,9 @@ services:
       - ${HOME}:/host/home:rw
       - /tmp:/host/tmp:rw
     environment:
-      - PI_SERVER_AUTH_MODE=token
-      - PI_SERVER_TOKEN=${PI_SERVER_TOKEN}
-      - PI_SERVER_BIND=lan
+      - APPLEPI_SERVER_AUTH_MODE=token
+      - APPLEPI_SERVER_TOKEN=${APPLEPI_SERVER_TOKEN}
+      - APPLEPI_SERVER_BIND=lan
       - PI_HOST_MOUNT=/host/home
     stop_grace_period: 15s
     restart: unless-stopped
@@ -1780,10 +1780,10 @@ The agent needs to read/write files and run terminal commands on the host — th
 
 ```bash
 # 1. Create data directory
-mkdir -p ~/.pi-server
+mkdir -p ~/.applepi-server
 
 # 2. Generate auth token
-export PI_SERVER_TOKEN=$(openssl rand -hex 32)
+export APPLEPI_SERVER_TOKEN=$(openssl rand -hex 32)
 
 # 3. Run
 docker compose up -d
@@ -1856,17 +1856,17 @@ Server Mode plugins are managed via the command line, consistent with the Docker
 npm install --prefix /app/extensions openclaw-slack
 
 # Or add to extensions/ and rebuild
-docker compose exec pi-server npm install openclaw-whatsapp --prefix /app/extensions
+docker compose exec applepi-server npm install openclaw-whatsapp --prefix /app/extensions
 
 # List installed plugins
-docker compose exec pi-server node -e "
+docker compose exec applepi-server node -e "
   const { PluginLoader } = require('./plugins/plugin-loader');
   PluginLoader.discover('/app/extensions').then(p => console.table(p));
 "
 
 # Restart to pick up new plugins (hot-reload for channel config,
 # but new plugin packages require restart)
-docker compose restart pi-server
+docker compose restart applepi-server
 ```
 
 **Plugin config** is managed via `config.json` (Section 14) or runtime `config.patch` calls:
@@ -1874,7 +1874,7 @@ docker compose restart pi-server
 ```bash
 # Add Slack credentials via config.patch
 curl -X POST http://localhost:18100 \
-  -H "Authorization: Bearer $PI_SERVER_TOKEN" \
+  -H "Authorization: Bearer $APPLEPI_SERVER_TOKEN" \
   -d '{
     "type": "req", "id": "1", "method": "config.patch",
     "params": {
@@ -1940,7 +1940,7 @@ Trace IDs are included in `ChatEvent` and `AgentEvent` frames so external client
       "enabled": true,
       "exporter": "otlp",
       "endpoint": "http://localhost:4318",
-      "serviceName": "pi-server",
+      "serviceName": "applepi-server",
       "sampleRate": 1.0
     }
   }
@@ -1979,7 +1979,7 @@ Session data must survive server restarts, container rebuilds, and accidental da
 ### 25.1 Storage Layout
 
 ```
-/data/                              # PI_DATA_DIR
+/data/                              # APPLEPI_DATA_DIR
   config.json                       # Server configuration
   sessions/
     index.db                        # SQLite session index
@@ -2000,21 +2000,21 @@ The server performs periodic automatic backups of session data:
 *   **Frequency:** Daily at 3:00 AM local time (configurable via `server.backup.schedule`).
 *   **What's backed up:** SQLite index + all JSONL transcripts, compressed into a timestamped `.tar.gz`.
 *   **Retention:** Keep the last 7 backups (configurable via `server.backup.retention`). Older backups are automatically deleted.
-*   **Location:** `$PI_DATA_DIR/backups/`.
+*   **Location:** `$APPLEPI_DATA_DIR/backups/`.
 
 ### 25.3 Recovery
 
 **From automatic backup:**
 ```bash
 # Stop the server
-docker compose stop pi-server
+docker compose stop applepi-server
 
 # Restore from backup
 cd /path/to/pi-data
 tar xzf backups/sessions-2026-02-27.tar.gz -C sessions/
 
 # Restart
-docker compose start pi-server
+docker compose start applepi-server
 ```
 
 **From SQLite corruption:**
@@ -2030,7 +2030,7 @@ Desktop (Apple Pi) uses the same `SessionManager` and persistence format. When t
 This means:
 *   Session data is portable between Desktop and Server Mode (copy the `sessions/` directory).
 *   The same recovery logic works in both modes.
-*   Desktop stores sessions in its Tauri app data directory; Server Mode stores them in `$PI_DATA_DIR/sessions/`.
+*   Desktop stores sessions in its Tauri app data directory; Server Mode stores them in `$APPLEPI_DATA_DIR/sessions/`.
 
 ## 26. Resource Limits
 
@@ -2081,7 +2081,7 @@ When the agent is busy (at concurrency limit), inbound messages are queued per s
 | Session retention (idle) | 30 days | `server.limits.sessionRetentionDays` |
 | Session reaper interval | 1 hour | (internal, not configurable) |
 
-The session reaper runs periodically and archives sessions that have been idle beyond the retention period. Archived sessions are moved to `$PI_DATA_DIR/sessions/archive/` and excluded from `sessions.list` results but can be restored.
+The session reaper runs periodically and archives sessions that have been idle beyond the retention period. Archived sessions are moved to `$APPLEPI_DATA_DIR/sessions/archive/` and excluded from `sessions.list` results but can be restored.
 
 ### 26.5 Deduplication
 

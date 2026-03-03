@@ -1,22 +1,22 @@
 version: '3.8'
 
 services:
-  pi-server:
+  applepi-server:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "18100:18100"
     volumes:
-      - pi-data:/data
+      - applepi-data:/data
       - ./config.json:/app/config.json:ro
     environment:
-      - PI_SERVER_PORT=18100
-      - PI_SERVER_BIND=auto
-      - PI_SERVER_AUTH_MODE=token
-      - PI_SERVER_TOKEN=${PI_SERVER_TOKEN}
-      - PI_DATA_DIR=/data
-      - PI_CONFIG_PATH=/app/config.json
+      - APPLEPI_SERVER_PORT=18100
+      - APPLEPI_SERVER_BIND=auto
+      - APPLEPI_SERVER_AUTH_MODE=token
+      - APPLEPI_SERVER_TOKEN=${APPLEPI_SERVER_TOKEN}
+      - APPLEPI_DATA_DIR=/data
+      - APPLEPI_CONFIG_PATH=/app/config.json
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
@@ -27,4 +27,4 @@ services:
       start_period: 30s
 
 volumes:
-  pi-data:
+  applepi-data:

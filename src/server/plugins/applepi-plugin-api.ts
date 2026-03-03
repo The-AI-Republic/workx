@@ -22,7 +22,7 @@ export class ApplePiPluginApi implements OpenClawPluginApi {
   }
 
   getHostPlatform(): string {
-    return 'pi-server';
+    return 'applepi-server';
   }
 
   getHostVersion(): string {

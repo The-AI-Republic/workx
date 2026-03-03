@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 /**
- * Pi Identity Management CLI
+ * Apple Pi Identity Management CLI
  *
  * Manages owner platform identities for channel plugins.
  *
  * Usage:
- *   node scripts/pi-identity.js list
- *   node scripts/pi-identity.js add <platform> <userId>
- *   node scripts/pi-identity.js remove <platform> <userId>
+ *   node scripts/applepi-identity.js list
+ *   node scripts/applepi-identity.js add <platform> <userId>
+ *   node scripts/applepi-identity.js remove <platform> <userId>
  *
  * Examples:
- *   node scripts/pi-identity.js add slack U1234567
- *   node scripts/pi-identity.js add telegram 12345678
- *   node scripts/pi-identity.js list
- *   node scripts/pi-identity.js remove slack U1234567
+ *   node scripts/applepi-identity.js add slack U1234567
+ *   node scripts/applepi-identity.js add telegram 12345678
+ *   node scripts/applepi-identity.js list
+ *   node scripts/applepi-identity.js remove slack U1234567
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-const CONFIG_PATH = process.env.PI_CONFIG_PATH ??
-  path.join(process.env.HOME ?? process.env.USERPROFILE ?? '/tmp', '.pi-server', 'config.json');
+const CONFIG_PATH = process.env.APPLEPI_CONFIG_PATH ??
+  path.join(process.env.HOME ?? process.env.USERPROFILE ?? '/tmp', '.applepi-server', 'config.json');
 
 function loadConfig() {
   if (!fs.existsSync(CONFIG_PATH)) return {};
@@ -52,7 +52,7 @@ switch (command) {
 
   case 'add':
     if (!platform || !userId) {
-      console.error('Usage: pi-identity add <platform> <userId>');
+      console.error('Usage: applepi-identity add <platform> <userId>');
       process.exit(1);
     }
     if (!config.owner.identities[platform]) {
@@ -69,7 +69,7 @@ switch (command) {
 
   case 'remove':
     if (!platform || !userId) {
-      console.error('Usage: pi-identity remove <platform> <userId>');
+      console.error('Usage: applepi-identity remove <platform> <userId>');
       process.exit(1);
     }
     if (config.owner.identities[platform]) {
@@ -85,6 +85,6 @@ switch (command) {
     break;
 
   default:
-    console.log('Usage: pi-identity <list|add|remove> [platform] [userId]');
+    console.log('Usage: applepi-identity <list|add|remove> [platform] [userId]');
     process.exit(1);
 }

@@ -84,8 +84,8 @@ export class ServerAgentBootstrap {
 
     console.log('[ServerAgentBootstrap] Initializing...');
     const config = getServerConfig();
-    const dataDir = process.env.PI_DATA_DIR ??
-      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.pi-server/data`;
+    const dataDir = process.env.APPLEPI_DATA_DIR ??
+      `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
     try {
       // 1. Initialize config storage (must happen before AgentConfig)
