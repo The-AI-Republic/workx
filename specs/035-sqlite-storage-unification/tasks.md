@@ -81,12 +81,12 @@
 
 ### Implementation for User Story 6
 
-- [ ] T015 [P] [US6] Create ServerStorageProvider in src/server/storage/ServerStorageProvider.ts — implement full StorageProvider interface using better-sqlite3 per contracts/server-storage-provider.ts (same table schema, WAL mode, SAVEPOINT transactions, DB at $PI_DATA_DIR/storage/storage.db)
-- [ ] T016 [P] [US6] Create FileCredentialStore in src/server/storage/FileCredentialStore.ts — encrypted JSON credential store at $PI_DATA_DIR/credentials.enc following FileConfigStorageProvider pattern per research.md R-008
-- [ ] T017 [US6] Update createStorageProvider in src/core/storage/index.ts — add `__BUILD_MODE__ === 'server'` branch returning ServerStorageProvider (dynamic import from @/server/storage/ServerStorageProvider)
-- [ ] T018 [US6] Update createConfigStorage in src/core/storage/index.ts — add `__BUILD_MODE__ === 'server'` branch returning FileConfigStorageProvider (dynamic import from @/server/storage/FileConfigStorageProvider)
-- [ ] T019 [US6] Update createCredentialStore in src/core/storage/index.ts — add `__BUILD_MODE__ === 'server'` branch returning FileCredentialStore (dynamic import from @/server/storage/FileCredentialStore)
-- [ ] T020 [US6] Initialize StorageProvider and StorageAdapter in server bootstrap in src/server/agent/ServerAgentBootstrap.ts — call initializeStorageProvider() and create adapter via createStorageAdapter() for server subsystems
+- [x] T015 [P] [US6] Create ServerStorageProvider in src/server/storage/ServerStorageProvider.ts — implement full StorageProvider interface using better-sqlite3 per contracts/server-storage-provider.ts (same table schema, WAL mode, SAVEPOINT transactions, DB at $PI_DATA_DIR/storage/storage.db)
+- [x] T016 [P] [US6] Create FileCredentialStore in src/server/storage/FileCredentialStore.ts — encrypted JSON credential store at $PI_DATA_DIR/credentials.enc following FileConfigStorageProvider pattern per research.md R-008
+- [x] T017 [US6] Update createStorageProvider in src/core/storage/index.ts — add `__BUILD_MODE__ === 'server'` branch returning ServerStorageProvider (dynamic import from @/server/storage/ServerStorageProvider)
+- [x] T018 [US6] Update createConfigStorage in src/core/storage/index.ts — add `__BUILD_MODE__ === 'server'` branch returning FileConfigStorageProvider (dynamic import from @/server/storage/FileConfigStorageProvider)
+- [x] T019 [US6] Update createCredentialStore in src/core/storage/index.ts — add `__BUILD_MODE__ === 'server'` branch returning FileCredentialStore (dynamic import from @/server/storage/FileCredentialStore)
+- [x] T020 [US6] Initialize StorageProvider and StorageAdapter in server bootstrap in src/server/agent/ServerAgentBootstrap.ts — call initializeStorageProvider() and create adapter via createStorageAdapter() for server subsystems
 
 **Checkpoint**: Server mode starts without Tauri crashes. All factory functions return correct providers for all three build modes.
 

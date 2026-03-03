@@ -113,12 +113,21 @@ export async function createCredentialStore(): Promise<CredentialStore> {
       '@/extension/storage/ChromeCredentialStore'
     );
     return new ChromeCredentialStore();
-  } else {
+  }
+  if (__BUILD_MODE__ === 'desktop') {
     const { KeytarCredentialStore } = await import(
       '@/desktop/storage/KeytarCredentialStore'
     );
     return new KeytarCredentialStore();
   }
+  if (__BUILD_MODE__ === 'server') {
+    const { getDataDir } = await import('@/server/config/server-config');
+    const { FileCredentialStore } = await import(
+      '@/server/storage/FileCredentialStore'
+    );
+    return new FileCredentialStore(getDataDir());
+  }
+  throw new Error(`Unsupported build mode for CredentialStore: ${__BUILD_MODE__}`);
 }
 
 /**
@@ -139,12 +148,21 @@ export async function createConfigStorage(): Promise<ConfigStorageProvider> {
       '@/extension/storage/ChromeConfigStorage'
     );
     return new ChromeConfigStorage();
-  } else {
+  }
+  if (__BUILD_MODE__ === 'desktop') {
     const { TauriConfigStorage } = await import(
       '@/desktop/storage/TauriConfigStorage'
     );
     return new TauriConfigStorage();
   }
+  if (__BUILD_MODE__ === 'server') {
+    const { getDataDir } = await import('@/server/config/server-config');
+    const { FileConfigStorageProvider } = await import(
+      '@/server/storage/FileConfigStorageProvider'
+    );
+    return new FileConfigStorageProvider(getDataDir());
+  }
+  throw new Error(`Unsupported build mode for ConfigStorage: ${__BUILD_MODE__}`);
 }
 
 
