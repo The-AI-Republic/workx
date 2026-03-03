@@ -377,6 +377,12 @@ export class PiAgent {
 
     turnCtx.setModelClient(modelClient);
     turnCtx.setSelectedModelKey(newModelKey);
+
+    // Reload instructions so prompt-relevant config changes take effect
+    const userInstructions = await loadUserInstructions();
+    turnCtx.setUserInstructions(userInstructions);
+    const baseInstructions = await loadPrompt();
+    turnCtx.setBaseInstructions(baseInstructions);
   }
 
   /**

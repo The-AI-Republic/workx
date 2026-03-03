@@ -177,4 +177,52 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
 
     consoleSpy.mockRestore();
   });
+
+  // -------------------------------------------------------------------------
+  // Concurrency guard
+  // -------------------------------------------------------------------------
+
+  it('should skip concurrent calls — only the first executes', async () => {
+    const bootstrap = createBootstrapWithAgent();
+
+    // Make config.reload block so the second call arrives while the first is still running
+    let resolveReload!: () => void;
+    mockConfig.reload.mockImplementationOnce(
+      () => new Promise<void>((r) => { resolveReload = r; })
+    );
+
+    const first = bootstrap.handleConfigUpdate();
+    // Allow microtasks so the first call enters the guarded section
+    await Promise.resolve();
+    const second = bootstrap.handleConfigUpdate();
+
+    resolveReload();
+    await first;
+    await second;
+
+    expect(mockAgent.hotSwapModelClient).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow sequential calls — guard clears after completion', async () => {
+    const bootstrap = createBootstrapWithAgent();
+
+    await bootstrap.handleConfigUpdate();
+    await bootstrap.handleConfigUpdate();
+
+    expect(mockAgent.hotSwapModelClient).toHaveBeenCalledTimes(2);
+  });
+
+  it('should clear guard even when hotSwapModelClient() throws', async () => {
+    const bootstrap = createBootstrapWithAgent();
+    mockAgent.hotSwapModelClient.mockRejectedValueOnce(new Error('boom'));
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await bootstrap.handleConfigUpdate(); // throws internally, guard should clear
+    await bootstrap.handleConfigUpdate(); // should still execute
+
+    expect(mockAgent.hotSwapModelClient).toHaveBeenCalledTimes(2);
+
+    consoleSpy.mockRestore();
+  });
 });

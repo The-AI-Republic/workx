@@ -46,6 +46,7 @@ export class DesktopAgentBootstrap {
   private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
   private initialized = false;
+  private isUpdatingConfig = false;
 
   /**
    * Initialize the desktop agent system
@@ -421,6 +422,12 @@ export class DesktopAgentBootstrap {
       return;
     }
 
+    if (this.isUpdatingConfig) {
+      console.log('[DesktopAgentBootstrap] Config update already in progress, skipping');
+      return;
+    }
+
+    this.isUpdatingConfig = true;
     try {
       console.log('[DesktopAgentBootstrap] Handling config update...');
 
@@ -437,6 +444,8 @@ export class DesktopAgentBootstrap {
       console.log('[DesktopAgentBootstrap] Config update handled successfully');
     } catch (error) {
       console.error('[DesktopAgentBootstrap] Failed to handle config update:', error);
+    } finally {
+      this.isUpdatingConfig = false;
     }
   }
 

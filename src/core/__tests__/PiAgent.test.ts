@@ -934,6 +934,20 @@ describe('PiAgent', () => {
       await expect(agent.hotSwapModelClient()).rejects.toThrow('auth expired');
     });
 
+    it('should reload user instructions onto TurnContext', async () => {
+      await agent.hotSwapModelClient();
+
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setUserInstructions).toHaveBeenCalledWith('user-instructions');
+    });
+
+    it('should reload base instructions onto TurnContext', async () => {
+      await agent.hotSwapModelClient();
+
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+    });
+
     it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {
       // hotSwapModelClient: does NOT call session.setTurnContext
       await agent.hotSwapModelClient();
