@@ -53,7 +53,7 @@ import { registerPromptExtension } from '../../core/PromptLoader';
 // Task Scheduler imports
 import { Scheduler, SchedulerStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
-import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
+import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 
 // Storage initialization — static imports required because dynamic import()
@@ -340,12 +340,12 @@ async function initializeSessionPersistence(): Promise<void> {
   }
 
   try {
-    // Initialize IndexedDB adapter for session storage
-    const indexedDBAdapter = new IndexedDBAdapter();
-    await indexedDBAdapter.initialize();
+    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
+    const storageAdapter = await createStorageAdapter();
+    await storageAdapter.initialize();
 
     // Create session storage
-    sessionStorage = new SessionStorage(indexedDBAdapter);
+    sessionStorage = new SessionStorage(storageAdapter);
 
     // Wire storage to registry
     registry.setStorage(sessionStorage);
@@ -854,12 +854,12 @@ function setupMessageHandlers(): void {
  */
 async function initializeScheduler(): Promise<void> {
   try {
-    // Initialize IndexedDB adapter for scheduler storage
-    const indexedDBAdapter = new IndexedDBAdapter();
-    await indexedDBAdapter.initialize();
+    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
+    const storageAdapter = await createStorageAdapter();
+    await storageAdapter.initialize();
 
     // Create scheduler components
-    schedulerStorage = new SchedulerStorage(indexedDBAdapter);
+    schedulerStorage = new SchedulerStorage(storageAdapter);
     schedulerAlarms = new SchedulerAlarms();
     scheduler = new Scheduler(schedulerStorage, schedulerAlarms);
 
