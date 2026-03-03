@@ -386,7 +386,19 @@ export class OpenAIResponsesClient extends ModelClient {
     const payload: ResponsesApiRequest | any = {
       model: this.currentModel,
       instructions: fullInstructions,
-      input: await get_formatted_input(prompt),
+      input: (await get_formatted_input(prompt)).map((item: any) => {
+        // Strip thoughtSignature from tool_calls — it's Gemini-specific, not valid for OpenAI
+        if (item.type === 'message' && item.tool_calls) {
+          return {
+            ...item,
+            tool_calls: item.tool_calls.map((tc: any) => {
+              const { thoughtSignature, ...cleanTc } = tc;
+              return cleanTc;
+            }),
+          };
+        }
+        return item;
+      }),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
