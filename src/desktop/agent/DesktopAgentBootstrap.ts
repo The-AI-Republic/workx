@@ -46,6 +46,7 @@ export class DesktopAgentBootstrap {
   private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
   private initialized = false;
+  private isUpdatingConfig = false;
 
   /**
    * Initialize the desktop agent system
@@ -406,7 +407,14 @@ export class DesktopAgentBootstrap {
 
   /**
    * Handle config update notification
-   * Called when settings are changed in the UI
+   * Called when settings are changed in the UI.
+   *
+   * The Settings page uses an isolated AgentConfig instance (not the agent's
+   * singleton) so changes are persisted to storage but the agent's in-memory
+   * config is stale.  We must reload from storage before refreshing.
+   *
+   * Uses hot-swap to update the model client in-place, preserving
+   * conversation history and agent run state.
    */
   async handleConfigUpdate(): Promise<void> {
     if (!this.agent) {
@@ -414,15 +422,30 @@ export class DesktopAgentBootstrap {
       return;
     }
 
+    if (this.isUpdatingConfig) {
+      console.log('[DesktopAgentBootstrap] Config update already in progress, skipping');
+      return;
+    }
+
+    this.isUpdatingConfig = true;
     try {
       console.log('[DesktopAgentBootstrap] Handling config update...');
 
-      // Refresh the model client with new config
-      await this.agent.refreshModelClient();
+      // Reload the agent's AgentConfig singleton from storage so it picks up
+      // changes written by the Settings page's isolated instance.
+      const config = await AgentConfig.getInstance();
+      await config.reload();
+
+      // Hot-swap the model client in-place — preserves conversation and run state.
+      // This handles model changes, API key changes, and routing mode changes
+      // without reinitializing the agent.
+      await this.agent.hotSwapModelClient();
 
       console.log('[DesktopAgentBootstrap] Config update handled successfully');
     } catch (error) {
       console.error('[DesktopAgentBootstrap] Failed to handle config update:', error);
+    } finally {
+      this.isUpdatingConfig = false;
     }
   }
 
