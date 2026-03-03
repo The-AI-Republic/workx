@@ -79,12 +79,21 @@ export async function createStorageProvider(
       '@/extension/storage/IndexedDBStorageProvider'
     );
     return new IndexedDBStorageProvider();
-  } else {
+  }
+  if (__BUILD_MODE__ === 'desktop') {
     const { SQLiteStorageProvider } = await import(
       '@/desktop/storage/SQLiteStorageProvider'
     );
     return new SQLiteStorageProvider();
   }
+  if (__BUILD_MODE__ === 'server') {
+    const { getDataDir } = await import('@/server/config/server-config');
+    const { ServerStorageProvider } = await import(
+      '@/server/storage/ServerStorageProvider'
+    );
+    return new ServerStorageProvider(getDataDir());
+  }
+  throw new Error(`Unsupported build mode: ${__BUILD_MODE__}`);
 }
 
 /**

@@ -45,8 +45,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T005 [US4] Replace hardcoded IndexedDBStorageProvider import and instantiation with `await initializeStorageProvider()` factory call in src/desktop/agent/DesktopAgentBootstrap.ts (lines 115-132) — remove IndexedDBStorageProvider import, use initializeStorageProvider from @/core/storage
-- [ ] T006 [US4] Update createStorageProvider in src/core/storage/index.ts to use explicit `__BUILD_MODE__ === 'desktop'` check (instead of `else` fallthrough) for SQLiteStorageProvider — add `throw` for unknown build modes
+- [x] T005 [US4] Replace hardcoded IndexedDBStorageProvider import and instantiation with `await initializeStorageProvider()` factory call in src/desktop/agent/DesktopAgentBootstrap.ts (lines 115-132) — remove IndexedDBStorageProvider import, use initializeStorageProvider from @/core/storage
+- [x] T006 [US4] Update createStorageProvider in src/core/storage/index.ts to use explicit `__BUILD_MODE__ === 'desktop'` check (instead of `else` fallthrough) for SQLiteStorageProvider — add `throw` for unknown build modes
 
 **Checkpoint**: Desktop app starts, main conversations/messages/settings stored in SQLite via SQLiteStorageProvider. Subsystems (cache, scheduler) still use IndexedDB for now.
 
