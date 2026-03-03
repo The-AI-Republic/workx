@@ -1,7 +1,7 @@
 /**
  * Desktop Authentication Module
  *
- * Exports authentication services for the Pi desktop app.
+ * Exports authentication services for the Apple Pi desktop app.
  *
  * @module desktop/auth
  */

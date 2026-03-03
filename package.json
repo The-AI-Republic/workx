@@ -1,5 +1,5 @@
 {
-  "name": "pi",
+  "name": "browserx",
   "version": "1.0.0",
   "main": "index.js",
   "workspaces": [
@@ -34,12 +34,12 @@
   "license": "UNLICENSED",
   "description": "",
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/postcss": "^4.1.13",
     "@testing-library/svelte": "^5.2.8",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/chrome": "^0.1.12",
     "@types/marked": "^5.0.2",
-    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^25.2.3",
     "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
@@ -57,11 +57,11 @@
     "jsdom": "^27.0.0",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
-    "svelte": "^4.2.20",
+    "svelte": "^5.53.7",
     "svelte-preprocess": "^6.0.3",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
-    "vite": "^5.4.20",
+    "vite": "^6.3.0",
     "vitest": "^3.2.4"
   },
   "dependencies": {

@@ -3,7 +3,7 @@
  *
  * Mechanical extraction of existing IndexedDB code from RolloutRecorder,
  * RolloutWriter, listing.ts, and cleanup.ts into a single class.
- * Same DB schema: PiRollouts v2, stores: rollouts + rollout_items.
+ * Same DB schema: ApplePiRollouts v2, stores: rollouts + rollout_items.
  */
 
 import type { RolloutStorageProvider, StorageStats } from './RolloutStorageProvider';

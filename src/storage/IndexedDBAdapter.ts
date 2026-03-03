@@ -15,11 +15,12 @@ import type {
   LLMCacheConfig,
   CacheEntry
 } from '../types/storage';
+import type { StorageAdapter } from './StorageAdapter';
 
 /**
  * IndexedDB database constants
  */
-export const DB_NAME = 'pi_cache';
+export const DB_NAME = 'applepi_cache';
 export const DB_VERSION = 3;
 
 /**
@@ -85,7 +86,7 @@ export class StorageUnavailableError extends IndexedDBError {
 /**
  * IndexedDB Adapter - provides Promise-based CRUD operations
  */
-export class IndexedDBAdapter {
+export class IndexedDBAdapter implements StorageAdapter {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 

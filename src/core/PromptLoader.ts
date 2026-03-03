@@ -13,7 +13,7 @@
 
 // Import default prompts as raw strings at build time (fallbacks)
 import defaultPiExtensionPrompt from '../prompts/default_browserx_agent_prompt.md?raw';
-import defaultPiPrompt from '../prompts/default_pi_agent_prompt.md?raw';
+import defaultPiPrompt from '../prompts/default_applepi_agent_prompt.md?raw';
 import userInstructions from '../prompts/user_instruction.md?raw';
 import { PromptComposer, type AgentType, type RuntimeContext } from '../prompts/PromptComposer';
 
@@ -41,7 +41,7 @@ export function configurePromptComposer(
 
 /**
  * Check if the PromptComposer has already been configured.
- * Used by PiAgent to skip re-configuration when the desktop bootstrap
+ * Used by RepublicAgent to skip re-configuration when the desktop bootstrap
  * has already called configurePromptComposer() with platform context.
  */
 export function isComposerConfigured(): boolean {

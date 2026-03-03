@@ -1,14 +1,14 @@
 /**
  * Agent Event Broadcasting
  *
- * Converts PiAgent EventMsg to wire-format agent events with sequence numbering.
+ * Converts RepublicAgent EventMsg to wire-format agent events with sequence numbering.
  * Handles tool invocations, thinking, and lifecycle events.
  *
  * @module server/streaming/agent-events
  */
 
 import type { EventMsg } from '@/core/protocol/events';
-import { makeEvent, type EventFrame } from '@pi/ws-server';
+import { makeEvent, type EventFrame } from '@applepi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Sequence numbering
@@ -29,7 +29,7 @@ export function resetSeq(): void {
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * Convert a PiAgent EventMsg to a wire-format agent event.
+ * Convert a RepublicAgent EventMsg to a wire-format agent event.
  * Returns null if the event is not an agent-type event.
  */
 export function toAgentEvent(event: EventMsg): EventFrame | null {

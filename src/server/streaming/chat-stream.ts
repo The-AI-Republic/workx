@@ -8,7 +8,7 @@
  */
 
 import type { EventMsg } from '@/core/protocol/events';
-import { makeEvent, type EventFrame } from '@pi/ws-server';
+import { makeEvent, type EventFrame } from '@applepi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants
@@ -155,7 +155,7 @@ export function flushRemainingDelta(
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * Convert a PiAgent EventMsg to a chat wire event.
+ * Convert a RepublicAgent EventMsg to a chat wire event.
  * Returns null if the event is not a chat-related event.
  */
 export function toChatEvent(

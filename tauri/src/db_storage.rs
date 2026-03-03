@@ -25,6 +25,13 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "credentials",
     "skills",
     "tasks",
+    // IndexedDBAdapter stores (used by StorageAdapter subsystems)
+    "cache_items",
+    "sessions",
+    "config",
+    "rollout_cache",
+    "scheduler_tasks",
+    "agent_sessions",
 ];
 
 struct DbStorage {
@@ -393,12 +400,12 @@ pub fn storage_set_many(
     })
 }
 
-/// Delete multiple keys.
+/// Delete multiple keys. Returns the number of rows deleted.
 #[tauri::command]
-pub fn storage_delete_many(collection: String, keys: Vec<String>) -> Result<(), String> {
+pub fn storage_delete_many(collection: String, keys: Vec<String>) -> Result<usize, String> {
     validate_collection(&collection)?;
     if keys.is_empty() {
-        return Ok(());
+        return Ok(0);
     }
     with_db(|s| {
         let placeholders: Vec<String> = (1..=keys.len()).map(|i| format!("?{}", i)).collect();
@@ -409,10 +416,10 @@ pub fn storage_delete_many(collection: String, keys: Vec<String>) -> Result<(), 
         );
         let params: Vec<&dyn rusqlite::types::ToSql> =
             keys.iter().map(|k| k as &dyn rusqlite::types::ToSql).collect();
-        s.conn
+        let deleted = s.conn
             .execute(&sql, params.as_slice())
             .map_err(|e| format!("Delete many failed: {}", e))?;
-        Ok(())
+        Ok(deleted)
     })
 }
 
@@ -909,5 +916,75 @@ mod tests {
         init_in_memory();
         let results = storage_batch(vec![]).unwrap();
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn delete_many_returns_count() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        init_in_memory();
+
+        // Insert 3 items
+        storage_set("settings".into(), "a".into(), r#""1""#.into()).unwrap();
+        storage_set("settings".into(), "b".into(), r#""2""#.into()).unwrap();
+        storage_set("settings".into(), "c".into(), r#""3""#.into()).unwrap();
+
+        // Delete 2 existing + 1 non-existing key
+        let deleted = storage_delete_many("settings".into(), vec!["a".into(), "b".into(), "missing".into()]).unwrap();
+        assert_eq!(deleted, 2);
+    }
+
+    #[test]
+    fn delete_many_empty_returns_zero() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        init_in_memory();
+
+        let deleted = storage_delete_many("settings".into(), vec![]).unwrap();
+        assert_eq!(deleted, 0);
+    }
+
+    // ── Adapter store collections (StorageAdapter subsystems) ────────────
+
+    #[test]
+    fn adapter_stores_crud() {
+        let _lock = DB_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        init_in_memory();
+
+        // cache_items
+        storage_set("cache_items".into(), "sk1".into(), r#"{"storageKey":"sk1","sessionId":"s1"}"#.into()).unwrap();
+        let val = storage_get("cache_items".into(), "sk1".into()).unwrap();
+        assert!(val.is_some());
+
+        // scheduler_tasks
+        storage_set("scheduler_tasks".into(), "t1".into(), r#"{"id":"t1","status":"draft"}"#.into()).unwrap();
+        let rows = storage_query(
+            "scheduler_tasks".into(),
+            Some(r#"{"status":"draft"}"#.into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 1);
+
+        // agent_sessions
+        storage_set("agent_sessions".into(), "ses1".into(), r#"{"sessionId":"ses1","type":"primary"}"#.into()).unwrap();
+        let rows = storage_query(
+            "agent_sessions".into(),
+            Some(r#"{"type":"primary"}"#.into()),
+            None, None, None, None,
+        ).unwrap();
+        assert_eq!(rows.len(), 1);
+
+        // sessions (metadata)
+        storage_set("sessions".into(), "m1".into(), r#"{"sessionId":"m1","totalSize":100}"#.into()).unwrap();
+        let val = storage_get("sessions".into(), "m1".into()).unwrap();
+        assert!(val.is_some());
+
+        // config
+        storage_set("config".into(), "cfg1".into(), r#"{"key":"cfg1","value":42}"#.into()).unwrap();
+        let val = storage_get("config".into(), "cfg1".into()).unwrap();
+        assert!(val.is_some());
+
+        // rollout_cache
+        storage_set("rollout_cache".into(), "rc1".into(), r#"{"key":"rc1","entry":{}}"#.into()).unwrap();
+        let val = storage_get("rollout_cache".into(), "rc1".into()).unwrap();
+        assert!(val.is_some());
     }
 }

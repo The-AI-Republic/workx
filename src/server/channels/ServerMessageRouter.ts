@@ -21,7 +21,7 @@ type MessageHandler = (
 /**
  * Server-mode MessageRouter implementation.
  *
- * PiAgent requires a MessageRouter for state updates and internal messaging.
+ * RepublicAgent requires a MessageRouter for state updates and internal messaging.
  * In server mode, messages are either handled locally (handler registry)
  * or forwarded to the ServerChannel for dispatch to WebSocket clients.
  */

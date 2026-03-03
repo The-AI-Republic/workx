@@ -1,12 +1,12 @@
-# Pi Server Mode — Production Image
+# Apple Pi Server Mode — Production Image
 #
 # Two deployment modes for browser automation:
 #
 # 1. Bundled Chrome (default): Chrome installed in image, works standalone
-#    docker build -t pi-server .
+#    docker build -t applepi-server .
 #
 # 2. Slim (remote browser): No Chrome, connects to external browser pool
-#    docker build --build-arg INSTALL_CHROME=false -t pi-server-slim .
+#    docker build --build-arg INSTALL_CHROME=false -t applepi-server-slim .
 #    Then set CHROME_REMOTE_URL=http://chrome-pool:9222 at runtime
 
 FROM node:22-slim
@@ -39,9 +39,9 @@ RUN npm ci --omit=dev
 COPY dist/server ./dist/server
 
 # Default configuration
-ENV PI_SERVER_PORT=18100
-ENV PI_SERVER_BIND=auto
-ENV PI_DATA_DIR=/data
+ENV APPLEPI_SERVER_PORT=18100
+ENV APPLEPI_SERVER_BIND=auto
+ENV APPLEPI_DATA_DIR=/data
 ENV NODE_ENV=production
 
 # Create data directory

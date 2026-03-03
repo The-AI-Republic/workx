@@ -19,7 +19,7 @@ import { RolloutRecorder } from '@/storage/rollout/RolloutRecorder';
 // Helpers for setting up test data in IndexedDB
 // ============================================================================
 
-const DB_NAME = 'PiRollouts';
+const DB_NAME = 'ApplePiRollouts';
 const STORE_ROLLOUTS = 'rollouts';
 const STORE_ROLLOUT_ITEMS = 'rollout_items';
 
@@ -60,7 +60,7 @@ function makeRecord(
 }
 
 /**
- * Open/create the PiRollouts database with proper stores,
+ * Open/create the ApplePiRollouts database with proper stores,
  * and seed it with given records.
  */
 async function seedDatabase(records: RolloutMetadataRecord[]): Promise<void> {

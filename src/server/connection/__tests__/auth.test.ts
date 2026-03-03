@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ErrorCode } from '@pi/ws-server';
+import { ErrorCode } from '@applepi/ws-server';
 
 vi.mock('../../config/server-config', () => ({
   getServerConfig: vi.fn(),

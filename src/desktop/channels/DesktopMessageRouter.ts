@@ -2,7 +2,7 @@
  * Desktop Message Router
  *
  * A minimal MessageRouter implementation for desktop mode that uses Tauri events
- * instead of chrome.runtime messaging. Provides compatibility for PiAgent
+ * instead of chrome.runtime messaging. Provides compatibility for RepublicAgent
  * which requires a MessageRouter instance.
  *
  * @module desktop/channels/DesktopMessageRouter

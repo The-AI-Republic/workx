@@ -8,14 +8,14 @@ Pi is a tri-platform AI agent built from a shared core with platform-specific ad
 |-----|----------|-------------|---------|-------|
 | **BrowserX** | Chrome Extension | `src/extension/background/service-worker.ts` | `SidePanelChannel` / `TabPageChannel` (chrome.runtime) | `vite.config.mjs` |
 | **Apple Pi** | Desktop (Tauri) | `src/desktop/main.ts` | `TauriChannel` (Tauri events) | `vite.config.desktop.mts` |
-| **Pi Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
+| **Apple Pi Server** | Headless (Node.js) | `src/server/index.ts` | `ServerChannel` (WebSocket) | `vite.config.server.mts` |
 
 ## High-Level Diagram
 
 ```
                      ┌─────────────────────────────┐
                      │         src/core/            │
-                     │   PiAgent · ToolRegistry     │
+                     │   RepublicAgent · ToolRegistry │
                      │   MCPManager · ApprovalGate  │
                      │   ChannelManager · Models    │
                      └──────┬──────┬──────┬─────────┘
@@ -36,7 +36,7 @@ The core module is platform-agnostic and shared across all three builds:
 
 | Module | Purpose |
 |--------|---------|
-| `PiAgent.ts` | Main agent class — session, turn management, tool execution |
+| `RepublicAgent.ts` | Main agent class — session, turn management, tool execution |
 | `Session.ts` | Conversation session lifecycle |
 | `TurnManager.ts` | Multi-turn reasoning loop |
 | `approval/` | Approval gate, policy engine, risk assessors |
@@ -107,7 +107,7 @@ All platforms follow the same initialization pattern:
 ```
 1. Config Storage Setup (platform-specific provider)
 2. AgentConfig Initialization
-3. PiAgent Creation
+3. RepublicAgent Creation
 4. PromptComposer Configuration (system prompt, platform context)
 5. Channel Creation & Registration (ChannelManager)
 6. Event Forwarding (agent → ChannelManager → channel → UI/client)
@@ -138,7 +138,7 @@ Desktop and server use the same SQLite schema (defined in `tauri/src/rollout_db.
 
 - Extension: `chrome.storage.local`
 - Desktop: Tauri storage commands (Rust backend)
-- Server: `FileConfigStorageProvider` — reads/writes `$PI_DATA_DIR/config-storage.json`
+- Server: `FileConfigStorageProvider` — reads/writes `$APPLEPI_DATA_DIR/config-storage.json`
 
 ## MCP (Model Context Protocol)
 
@@ -165,7 +165,7 @@ MCP servers are scoped to platforms: `'shared'` | `'extension'` | `'desktop'` | 
 MCPManager connects to server → discovers tools → registerMCPTools()
   → creates tool wrappers (prefixed as "server:toolname")
   → registers with ToolRegistry
-  → tools available to PiAgent
+  → tools available to RepublicAgent
 ```
 
 ## Server Mode Architecture
@@ -196,7 +196,7 @@ MCPManager connects to server → discovers tools → registerMCPTools()
           ┌─────────────┼─────────────┐
           │             │             │
    ┌──────▼──────┐ ┌───▼────┐ ┌─────▼──────┐
-   │ PiAgent     │ │Session │ │ Health     │
+   │ RepublicAgent     │ │Session │ │ Health     │
    │ (core)      │ │Index   │ │ Monitor    │
    │             │ │(SQLite)│ │ CPU/Mem/EL │
    └──────┬──────┘ └────────┘ └────────────┘
@@ -256,7 +256,7 @@ Clients connect via WebSocket and communicate using JSON request/response frames
 
 ### Browser Automation
 
-Pi Server connects to Chrome via `chrome-devtools-mcp` MCP server. Three deployment patterns:
+Apple Pi Server connects to Chrome via `chrome-devtools-mcp` MCP server. Three deployment patterns:
 
 | Pattern | Env Var | Use Case |
 |---------|---------|----------|
@@ -271,7 +271,7 @@ If no Chrome is available, the server gracefully degrades — planning and web s
 ```
 src/
 ├── core/                    # Shared agent runtime (all platforms)
-│   ├── PiAgent.ts           # Main agent class
+│   ├── RepublicAgent.ts     # Main agent class
 │   ├── Session.ts           # Conversation session
 │   ├── TurnManager.ts       # Multi-turn reasoning
 │   ├── i18n.ts              # Platform-agnostic t() passthrough

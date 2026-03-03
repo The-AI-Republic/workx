@@ -2,7 +2,7 @@
  * Factory for creating the appropriate RolloutStorageProvider
  * based on the current build mode.
  *
- * - Extension: IndexedDBRolloutStorageProvider (IndexedDB "PiRollouts")
+ * - Extension: IndexedDBRolloutStorageProvider (IndexedDB "ApplePiRollouts")
  * - Desktop:   TauriRolloutStorageProvider (invoke → Rust/rusqlite → SQLite)
  * - Server:    TSRolloutStorageProvider (better-sqlite3 → SQLite)
  */

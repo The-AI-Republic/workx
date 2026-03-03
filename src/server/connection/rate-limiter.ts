@@ -6,7 +6,7 @@
  * @module server/connection/rate-limiter
  */
 
-import { rateLimited, type ErrorShape } from '@pi/ws-server';
+import { rateLimited, type ErrorShape } from '@applepi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Configuration

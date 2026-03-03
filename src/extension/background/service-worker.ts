@@ -8,7 +8,7 @@
  * - Session-aware message routing
  */
 
-import { PiAgent } from '../../core/PiAgent';
+import { RepublicAgent } from '../../core/RepublicAgent';
 import { UserNotifier } from '../../core/UserNotifier';
 import { MessageRouter, MessageType } from '../../core/MessageRouter';
 import { ApprovalGate } from '../../core/approval/ApprovalGate';
@@ -53,7 +53,7 @@ import { registerPromptExtension } from '../../core/PromptLoader';
 // Task Scheduler imports
 import { Scheduler, SchedulerStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
-import { IndexedDBAdapter } from '../../storage/IndexedDBAdapter';
+import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
 
 // Storage initialization — static imports required because dynamic import()
@@ -86,7 +86,7 @@ import { t } from '../../webfront/lib/i18n';
  * This variable is kept only for backward compatibility during migration.
  * All new code should use AgentRegistry to access agent instances.
  */
-let agent: PiAgent | null = null;
+let agent: RepublicAgent | null = null;
 let registry: AgentRegistry | null = null; // Feature 015: Multi-agent registry
 let router: MessageRouter | null = null;
 let cacheManager: CacheManager | null = null;
@@ -107,7 +107,7 @@ let initializationPromise: Promise<void> | null = null;
  * Configure platform-specific approval gate and tab closure handler for extension mode.
  * Called after agent.initialize() to set up approval policies, enhancers, and config storage.
  */
-async function configureExtensionPlatform(targetAgent: PiAgent): Promise<void> {
+async function configureExtensionPlatform(targetAgent: RepublicAgent): Promise<void> {
   const approvalManager = targetAgent.getApprovalManager();
   const toolRegistry = targetAgent.getToolRegistry();
 
@@ -340,12 +340,12 @@ async function initializeSessionPersistence(): Promise<void> {
   }
 
   try {
-    // Initialize IndexedDB adapter for session storage
-    const indexedDBAdapter = new IndexedDBAdapter();
-    await indexedDBAdapter.initialize();
+    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
+    const storageAdapter = await createStorageAdapter();
+    await storageAdapter.initialize();
 
     // Create session storage
-    sessionStorage = new SessionStorage(indexedDBAdapter);
+    sessionStorage = new SessionStorage(storageAdapter);
 
     // Wire storage to registry
     registry.setStorage(sessionStorage);
@@ -384,7 +384,7 @@ async function initializeSessionPersistence(): Promise<void> {
  * @param message The incoming message with optional sessionId
  * @returns The agent to use for this message
  */
-function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): PiAgent | null {
+function getAgentForMessage(message: { payload?: { sessionId?: string; context?: { sessionId?: string } } }): RepublicAgent | null {
   // Feature 015: Route by sessionId if provided, otherwise use primary session
   // Check both payload.sessionId (direct) and payload.context.sessionId (from Submission)
   const sessionId = message.payload?.sessionId ?? message.payload?.context?.sessionId;
@@ -541,7 +541,7 @@ function setupMessageHandlers(): void {
     }
 
     // Recreate agent with resumed session
-    agent = new PiAgent(agentConfig!, router!, {
+    agent = new RepublicAgent(agentConfig!, router!, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -745,7 +745,7 @@ function setupMessageHandlers(): void {
           await agent.cleanup();
         }
 
-        agent = new PiAgent(agentConfig, router!, undefined, undefined, new UserNotifier());
+        agent = new RepublicAgent(agentConfig, router!, undefined, undefined, new UserNotifier());
 
         // Set up event dispatcher for chrome extension mode
         agent.setEventDispatcher((event) => {
@@ -854,12 +854,12 @@ function setupMessageHandlers(): void {
  */
 async function initializeScheduler(): Promise<void> {
   try {
-    // Initialize IndexedDB adapter for scheduler storage
-    const indexedDBAdapter = new IndexedDBAdapter();
-    await indexedDBAdapter.initialize();
+    // Initialize storage adapter (IndexedDB on extension, SQLite on desktop/server)
+    const storageAdapter = await createStorageAdapter();
+    await storageAdapter.initialize();
 
     // Create scheduler components
-    schedulerStorage = new SchedulerStorage(indexedDBAdapter);
+    schedulerStorage = new SchedulerStorage(storageAdapter);
     schedulerAlarms = new SchedulerAlarms();
     scheduler = new Scheduler(schedulerStorage, schedulerAlarms);
 

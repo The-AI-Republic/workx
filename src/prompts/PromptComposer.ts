@@ -9,7 +9,7 @@
 
 // Build-time fragment imports
 import browserxIntro from './fragments/browserx_intro.md?raw';
-import piIntro from './fragments/pi_intro.md?raw';
+import piIntro from './fragments/applepi_intro.md?raw';
 import safety from './fragments/safety.md?raw';
 import browserxTools from './fragments/browserx_tools.md?raw';
 import piTools from './fragments/pi_tools.md?raw';
@@ -18,7 +18,7 @@ import approvalPolicies from './fragments/approval_policies.md?raw';
 import compactSummarization from './fragments/compact_summarization.md?raw';
 import compactSummaryPrefix from './fragments/compact_summary_prefix.md?raw';
 
-export type AgentType = 'browserx' | 'pi';
+export type AgentType = 'browserx' | 'applepi';
 
 export interface RuntimeContext {
   /** Operating system: 'linux' | 'macos' | 'windows' */
@@ -105,7 +105,7 @@ export class PromptComposer {
       lines.push(`- Current date/time: ${context.currentDateTime}`);
     }
 
-    if (agentType === 'pi') {
+    if (agentType === 'applepi') {
       // Desktop agent gets OS/platform details
       if (context.os) {
         const osLabel: Record<string, string> = {

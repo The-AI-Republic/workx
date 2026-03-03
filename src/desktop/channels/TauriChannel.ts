@@ -2,7 +2,7 @@
  * Tauri Channel Adapter
  *
  * Desktop-mode implementation of ChannelAdapter for Tauri windows.
- * Communicates between the frontend UI and the PiAgent via Tauri events.
+ * Communicates between the frontend UI and the RepublicAgent via Tauri events.
  *
  * In desktop mode, both the UI and the agent run in the same WebView process.
  * This channel uses Tauri's event system for decoupled communication.
@@ -46,8 +46,8 @@ interface SubmissionMessage {
  * Flow:
  * 1. UI emits 'pi:submit' events with Op + context
  * 2. TauriChannel receives and routes to registered submission handler
- * 3. Handler (ChannelManager → PiAgent) processes the submission
- * 4. PiAgent emits events via ChannelManager → TauriChannel.sendEvent()
+ * 3. Handler (ChannelManager → RepublicAgent) processes the submission
+ * 4. RepublicAgent emits events via ChannelManager → TauriChannel.sendEvent()
  * 5. TauriChannel emits 'pi:event' for UI to receive
  *
  * @example

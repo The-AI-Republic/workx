@@ -1,14 +1,14 @@
 /**
  * Desktop Authentication Service
  *
- * Handles OAuth authentication for the Pi desktop app using deep links.
+ * Handles OAuth authentication for the Apple Pi desktop app using deep links.
  *
  * Flow:
  * 1. Open browser to HOME_BASE_URL/login?redirect_url=airepublic-pi://auth/callback
  * 2. User logs in via login page (Google OAuth, etc.)
  * 3. Backend redirects to airepublic-pi://auth/callback?access_token=xxx&refresh_token=xxx
- * 4. OS routes deep link to Pi app
- * 5. Pi app extracts tokens and stores them in OS keychain
+ * 4. OS routes deep link to Apple Pi app
+ * 5. Apple Pi app extracts tokens and stores them in OS keychain
  *
  * @module desktop/auth/DesktopAuthService
  */

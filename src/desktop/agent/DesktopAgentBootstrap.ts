@@ -1,13 +1,13 @@
 /**
  * Desktop Agent Bootstrap
  *
- * Initializes and wires up the PiAgent with the channel system for desktop mode.
+ * Initializes and wires up the RepublicAgent with the channel system for desktop mode.
  * In desktop mode, the agent runs directly in the WebView (same process as UI).
  *
  * Flow:
  * 1. Create ChannelManager (routes submissions to agent, events to channels)
  * 2. Create TauriChannel (receives submissions from UI, sends events to UI)
- * 3. Create PiAgent (processes submissions, emits events)
+ * 3. Create RepublicAgent (processes submissions, emits events)
  * 4. Wire them together
  *
  * @module desktop/agent/DesktopAgentBootstrap
@@ -16,7 +16,7 @@
 import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
-import { PiAgent } from '@/core/PiAgent';
+import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
 import { MessageType } from '@/core/MessageRouter';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
@@ -51,7 +51,7 @@ let _instance: DesktopAgentBootstrap | null = null;
  * Manages the lifecycle of the agent and channel system in desktop mode.
  */
 export class DesktopAgentBootstrap {
-  private agent: PiAgent | null = null;
+  private agent: RepublicAgent | null = null;
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
@@ -73,19 +73,19 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for PiAgent
+      // 1. Create the message router for RepublicAgent
       this.messageRouter = new DesktopMessageRouter('background');
 
       // 2. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create PiAgent
-      // PiAgent expects a MessageRouter with updateState method
+      // 3. Create RepublicAgent
+      // RepublicAgent expects a MessageRouter with updateState method
       // DesktopMessageRouter provides this compatibility
-      this.agent = new PiAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
+      this.agent = new RepublicAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
-      // This must happen first so PiAgent.configurePromptComposition() sees
+      // This must happen first so RepublicAgent.configurePromptComposition() sees
       // the composer is already configured and skips re-configuration.
       await this.configurePromptWithPlatformInfo();
 
@@ -120,17 +120,12 @@ export class DesktopAgentBootstrap {
 
       // 5b. Initialize StorageProvider before agent — PlanningTool requires it
       // via getTaskStore() during tool registration in agent.initialize().
-      // Uses IndexedDB directly — SQLiteStorageProvider depends on Tauri Rust commands
-      // (storage_init, etc.) that are not implemented. IndexedDB is a standard Web API
-      // available in Tauri WebView.
-      const { setStorageProvider, isStorageProviderInitialized } = await import('@/core/storage');
+      // Uses SQLiteStorageProvider via the factory (routes through Tauri Rust commands).
+      const { isStorageProviderInitialized, initializeStorageProvider } = await import('@/core/storage');
       if (!isStorageProviderInitialized()) {
         try {
-          const { IndexedDBStorageProvider } = await import('@/extension/storage/IndexedDBStorageProvider');
-          const provider = new IndexedDBStorageProvider();
-          await provider.initialize();
-          setStorageProvider(provider);
-          console.log('[DesktopAgentBootstrap] StorageProvider initialized (IndexedDB)');
+          await initializeStorageProvider();
+          console.log('[DesktopAgentBootstrap] StorageProvider initialized (SQLite)');
         } catch (error) {
           console.error('[DesktopAgentBootstrap] Failed to initialize StorageProvider:', error);
           console.error('[DesktopAgentBootstrap] PlanningTool will be unavailable this session');
@@ -225,7 +220,7 @@ export class DesktopAgentBootstrap {
   /**
    * Set up event forwarding from agent to channel
    *
-   * Uses PiAgent's setEventDispatcher to route events through
+   * Uses RepublicAgent's setEventDispatcher to route events through
    * ChannelManager instead of chrome.runtime.sendMessage.
    */
   private setupEventForwarding(channelManager: ReturnType<typeof getChannelManager>): void {
@@ -234,7 +229,7 @@ export class DesktopAgentBootstrap {
       return;
     }
 
-    // Set the event dispatcher on PiAgent
+    // Set the event dispatcher on RepublicAgent
     // Events will be routed through ChannelManager to TauriChannel
     this.agent.setEventDispatcher((event) => {
       // Dispatch event to the Tauri channel
@@ -463,7 +458,7 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Collect platform info from Tauri and configure PromptComposer for Pi agent.
+   * Collect platform info from Tauri and configure PromptComposer for ApplePi agent.
    * Called before agent.initialize() so the dynamic prompt includes OS/arch/shell.
    */
   private async configurePromptWithPlatformInfo(): Promise<void> {
@@ -488,7 +483,7 @@ export class DesktopAgentBootstrap {
       console.warn('[DesktopAgentBootstrap] Could not fetch platform info:', e);
     }
 
-    configurePromptComposer('pi', staticContext);
+    configurePromptComposer('applepi', staticContext);
     console.log('[DesktopAgentBootstrap] PromptComposer configured for pi with platform context');
   }
 
@@ -497,7 +492,7 @@ export class DesktopAgentBootstrap {
    *
    * Mirrors the service-worker's RESUME_SESSION logic:
    * aborts current tasks, tears down the old session, loads rollout history,
-   * creates a fresh PiAgent with the resumed history, and returns the
+   * creates a fresh RepublicAgent with the resumed history, and returns the
    * reconstructed conversation items.
    */
   async resumeSession(conversationId: string): Promise<unknown[]> {
@@ -525,9 +520,9 @@ export class DesktopAgentBootstrap {
       throw new Error('Conversation not found or has no history');
     }
 
-    // 5. Create a new PiAgent with the resumed initial history
+    // 5. Create a new RepublicAgent with the resumed initial history
     const config = await AgentConfig.getInstance();
-    this.agent = new PiAgent(config, this.messageRouter as any, {
+    this.agent = new RepublicAgent(config, this.messageRouter as any, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -557,7 +552,7 @@ export class DesktopAgentBootstrap {
   /**
    * Get the agent instance
    */
-  getAgent(): PiAgent | null {
+  getAgent(): RepublicAgent | null {
     return this.agent;
   }
 

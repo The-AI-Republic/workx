@@ -769,7 +769,7 @@ export class EventProcessor {
   /**
    * Send approval decision as a standard SUBMISSION.
    * This routes through the same pipeline for both extension and desktop,
-   * reaching PiAgent.handleExecApproval() on all platforms.
+   * reaching RepublicAgent.handleExecApproval() on all platforms.
    */
   private sendApprovalDecision(
     id: string,
