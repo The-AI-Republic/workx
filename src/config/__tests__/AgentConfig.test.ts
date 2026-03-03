@@ -9,12 +9,25 @@ vi.mock('@/core/storage/CredentialStore', () => ({
   getCredentialStore: vi.fn(() => null),
 }));
 
-// Force ConfigStorageProvider to not-initialized so ConfigStorage falls back to chrome.storage.local
+// Provide an in-memory ConfigStorageProvider so ConfigStorage can read/write
+const _memStore: Record<string, unknown> = {};
 vi.mock('@/core/storage/ConfigStorageProvider', () => ({
-  isConfigStorageInitialized: vi.fn(() => false),
-  getConfigStorage: vi.fn(() => {
-    throw new Error('Not initialized');
-  }),
+  isConfigStorageInitialized: vi.fn(() => true),
+  getConfigStorage: vi.fn(() => ({
+    get: async (key: string) => _memStore[key] ?? null,
+    set: async (key: string, value: unknown) => { _memStore[key] = value; },
+    remove: async (key: string) => { delete _memStore[key]; },
+    getMany: async (keys: string[]) => {
+      const result: Record<string, unknown> = {};
+      for (const k of keys) { if (k in _memStore) result[k] = _memStore[k]; }
+      return result;
+    },
+    setMany: async (items: Record<string, unknown>) => { Object.assign(_memStore, items); },
+    removeMany: async (keys: string[]) => { for (const k of keys) delete _memStore[k]; },
+    getAll: async () => ({ ..._memStore }),
+    clear: async () => { for (const k of Object.keys(_memStore)) delete _memStore[k]; },
+    getBytesInUse: async () => null,
+  })),
 }));
 
 describe('AgentConfig', () => {
@@ -24,6 +37,8 @@ describe('AgentConfig', () => {
     // Reset singleton between tests
     (AgentConfig as any).instance = null;
     await chrome.storage.local.clear();
+    // Clear in-memory ConfigStorageProvider between tests
+    for (const k of Object.keys(_memStore)) delete _memStore[k];
   });
 
   afterEach(() => {

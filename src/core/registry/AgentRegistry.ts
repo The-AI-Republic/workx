@@ -7,7 +7,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { AgentSession } from './AgentSession';
 import { SessionStorage, type PersistedSession } from './SessionStorage';
 import { PiAgent } from '../PiAgent';
+import { UserNotifier } from '../UserNotifier';
 import { AgentConfig } from '../../config/AgentConfig';
+import { ApprovalGate } from '../approval/ApprovalGate';
+import { PolicyRulesEngine } from '../approval/PolicyRulesEngine';
+import { getDefaultRules } from '../approval/defaultRules';
+import { DomainSensitivityEnhancer } from '../approval/enhancers/DomainSensitivityEnhancer';
+import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEnhancer';
+import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
 import { MessageRouter } from '../MessageRouter';
 import { TabManager } from '../TabManager';
 import type {
@@ -141,7 +148,7 @@ export class AgentRegistry {
     // T057: Wrap agent creation in try-catch for graceful error handling
     let agent: PiAgent;
     try {
-      agent = new PiAgent(this._config, this._router);
+      agent = new PiAgent(this._config, this._router, undefined, undefined, new UserNotifier());
 
       // Set up event dispatcher for chrome extension mode
       // Events are sent via chrome.runtime to the UI
@@ -157,6 +164,25 @@ export class AgentRegistry {
       });
 
       await agent.initialize();
+
+      // Configure extension-specific approval gate
+      const approvalManager = agent.getApprovalManager();
+      const toolRegistry = agent.getToolRegistry();
+      const policyEngine = new PolicyRulesEngine(getDefaultRules('extension'));
+      const approvalGate = new ApprovalGate(approvalManager, policyEngine);
+      approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+      approvalGate.addEnhancer(new SemanticElementEnhancer());
+      const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+      approvalGate.setConfigStorage(configStorage);
+      try {
+        const storedConfig = await configStorage.loadConfig();
+        approvalGate.setMode(storedConfig.mode);
+        approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+        approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+      } catch (error) {
+        console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
+      }
+      toolRegistry.setApprovalGate(approvalGate);
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event
       console.error(`[AgentRegistry] Failed to initialize agent for session ${session.sessionId}:`, initError);

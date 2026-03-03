@@ -2,8 +2,8 @@
  * Tests for TauriMessageService
  *
  * Covers the desktop-specific message routing: RESUME_SESSION, SESSION_RESET,
- * HEALTH_CHECK, GET_STATE, SUBMISSION, INTERRUPT, and the event/message
- * listener plumbing.
+ * HEALTH_CHECK, GET_STATE, SUBMISSION, INTERRUPT, CONFIG_UPDATE, and the
+ * event/message listener plumbing.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -60,6 +60,7 @@ const mockBootstrap = {
     authMode: 'api_key',
   }),
   getSkillRegistry: vi.fn().mockReturnValue(null),
+  handleConfigUpdate: vi.fn().mockResolvedValue(undefined),
   resumeSession: vi.fn().mockResolvedValue([
     { role: 'user', content: 'previous message' },
     { role: 'assistant', content: 'previous response' },
@@ -80,6 +81,7 @@ vi.mock('../../MessageRouter', () => ({
     SESSION_RESET: 'SESSION_RESET',
     RESUME_SESSION: 'RESUME_SESSION',
     INTERRUPT: 'INTERRUPT',
+    CONFIG_UPDATE: 'CONFIG_UPDATE',
     EVENT: 'EVENT',
     RESPONSE_OUTPUT_TEXT_DELTA: 'RESPONSE_OUTPUT_TEXT_DELTA',
     RESPONSE_REASONING_CONTENT_DELTA: 'RESPONSE_REASONING_CONTENT_DELTA',
@@ -135,6 +137,7 @@ function resetMockReturnValues() {
     authMode: 'api_key',
   });
   mockBootstrap.getSkillRegistry.mockReturnValue(null);
+  mockBootstrap.handleConfigUpdate.mockResolvedValue(undefined);
   mockBootstrap.resumeSession.mockResolvedValue([
     { role: 'user', content: 'previous message' },
     { role: 'assistant', content: 'previous response' },
@@ -264,6 +267,37 @@ describe('TauriMessageService', () => {
       mockAgent.interrupt.mockRejectedValueOnce(new Error('oops'));
       const result = await service.send<any>(MessageType.INTERRUPT);
       expect(result.success).toBe(false);
+    });
+
+    // --- CONFIG_UPDATE ---
+    it('CONFIG_UPDATE should route to bootstrap.handleConfigUpdate()', async () => {
+      await service.send(MessageType.CONFIG_UPDATE);
+      expect(mockBootstrap.handleConfigUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('CONFIG_UPDATE should return { success: true } on success', async () => {
+      const result = await service.send(MessageType.CONFIG_UPDATE);
+      expect(result).toEqual({ success: true });
+    });
+
+    it('CONFIG_UPDATE should return { success: false } on error', async () => {
+      mockBootstrap.handleConfigUpdate.mockRejectedValueOnce(new Error('reload failed'));
+      const result = await service.send(MessageType.CONFIG_UPDATE);
+      expect(result).toEqual({ success: false });
+    });
+
+    it('CONFIG_UPDATE should log error on failure', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockBootstrap.handleConfigUpdate.mockRejectedValueOnce(new Error('boom'));
+
+      await service.send(MessageType.CONFIG_UPDATE);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Config update failed'),
+        expect.any(Error),
+      );
+
+      consoleSpy.mockRestore();
     });
 
     // --- Default ---

@@ -17,7 +17,14 @@ import { TauriChannel } from '../channels/TauriChannel';
 import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { PiAgent } from '@/core/PiAgent';
+import { UserNotifier } from '@/core/UserNotifier';
 import { MessageType } from '@/core/MessageRouter';
+import { ApprovalGate } from '@/core/approval/ApprovalGate';
+import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
+import { getDefaultRules } from '@/core/approval/defaultRules';
+import { DomainSensitivityEnhancer } from '@/core/approval/enhancers/DomainSensitivityEnhancer';
+import { SensitivePathEnhancer } from '@/core/approval/enhancers/SensitivePathEnhancer';
+import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
 import { AgentConfig } from '@/config/AgentConfig';
 import { configurePromptComposer, registerPromptExtension } from '@/core/PromptLoader';
 import type { RuntimeContext } from '@/prompts/PromptComposer';
@@ -46,6 +53,7 @@ export class DesktopAgentBootstrap {
   private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
   private initialized = false;
+  private isUpdatingConfig = false;
 
   /**
    * Initialize the desktop agent system
@@ -68,7 +76,7 @@ export class DesktopAgentBootstrap {
       // 3. Create PiAgent
       // PiAgent expects a MessageRouter with updateState method
       // DesktopMessageRouter provides this compatibility
-      this.agent = new PiAgent(config, this.messageRouter as any);
+      this.agent = new PiAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
       // This must happen first so PiAgent.configurePromptComposition() sees
@@ -128,6 +136,9 @@ export class DesktopAgentBootstrap {
       await this.agent.initialize();
       console.log('[DesktopAgentBootstrap] Agent initialized');
 
+      // 6a. Configure desktop-specific approval gate
+      await this.configureDesktopPlatform();
+
       // 6b. Initialize skills (filesystem-backed, prompt extension)
       await this.initializeSkills();
 
@@ -160,6 +171,46 @@ export class DesktopAgentBootstrap {
       console.error('[DesktopAgentBootstrap] Initialization failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Configure desktop-specific approval gate, MCP tools, and tab closure handler.
+   */
+  private async configureDesktopPlatform(): Promise<void> {
+    if (!this.agent) throw new Error('Agent not initialized');
+
+    const approvalManager = this.agent.getApprovalManager();
+    const toolRegistry = this.agent.getToolRegistry();
+
+    // Approval gate with desktop-specific enhancers
+    const policyEngine = new PolicyRulesEngine(getDefaultRules('desktop'));
+    const approvalGate = new ApprovalGate(approvalManager, policyEngine);
+    approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+    approvalGate.addEnhancer(new SensitivePathEnhancer());
+
+    // Desktop mode uses TauriConfigStorage for approval config
+    const { TauriConfigStorage } = await import('@/desktop/storage/TauriConfigStorage');
+    const tauriStorage = new TauriConfigStorage();
+    const configStorage = new ApprovalConfigStorage(() => ({
+      get: (keys: string[]) => tauriStorage.getMany(keys),
+      set: (items: Record<string, unknown>) => tauriStorage.setMany(items),
+    }));
+    approvalGate.setConfigStorage(configStorage);
+
+    try {
+      const storedConfig = await configStorage.loadConfig();
+      approvalGate.setMode(storedConfig.mode);
+      approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+      approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Failed to load approval config, using defaults:', error);
+    }
+
+    toolRegistry.setApprovalGate(approvalGate);
+
+    // Desktop mode: browser tools come from MCP — enable mcpTools
+    const agentConfig = await AgentConfig.getInstance();
+    agentConfig.updateToolsConfig({ mcpTools: true });
   }
 
   /**
@@ -375,7 +426,7 @@ export class DesktopAgentBootstrap {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
-    });
+    }, undefined, new UserNotifier());
 
     // 6. Re-wire event forwarding via ChannelManager
     const channelManager = getChannelManager();
@@ -388,6 +439,7 @@ export class DesktopAgentBootstrap {
 
     // 8. Initialize agent and session
     await this.agent.initialize();
+    await this.configureDesktopPlatform();
     const session = this.agent.getSession();
     await session.initialize();
 
@@ -406,7 +458,14 @@ export class DesktopAgentBootstrap {
 
   /**
    * Handle config update notification
-   * Called when settings are changed in the UI
+   * Called when settings are changed in the UI.
+   *
+   * The Settings page uses an isolated AgentConfig instance (not the agent's
+   * singleton) so changes are persisted to storage but the agent's in-memory
+   * config is stale.  We must reload from storage before refreshing.
+   *
+   * Uses hot-swap to update the model client in-place, preserving
+   * conversation history and agent run state.
    */
   async handleConfigUpdate(): Promise<void> {
     if (!this.agent) {
@@ -414,15 +473,30 @@ export class DesktopAgentBootstrap {
       return;
     }
 
+    if (this.isUpdatingConfig) {
+      console.log('[DesktopAgentBootstrap] Config update already in progress, skipping');
+      return;
+    }
+
+    this.isUpdatingConfig = true;
     try {
       console.log('[DesktopAgentBootstrap] Handling config update...');
 
-      // Refresh the model client with new config
-      await this.agent.refreshModelClient();
+      // Reload the agent's AgentConfig singleton from storage so it picks up
+      // changes written by the Settings page's isolated instance.
+      const config = await AgentConfig.getInstance();
+      await config.reload();
+
+      // Hot-swap the model client in-place — preserves conversation and run state.
+      // This handles model changes, API key changes, and routing mode changes
+      // without reinitializing the agent.
+      await this.agent.hotSwapModelClient();
 
       console.log('[DesktopAgentBootstrap] Config update handled successfully');
     } catch (error) {
       console.error('[DesktopAgentBootstrap] Failed to handle config update:', error);
+    } finally {
+      this.isUpdatingConfig = false;
     }
   }
 

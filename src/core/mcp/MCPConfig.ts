@@ -64,7 +64,7 @@ export const MCPTransportTypeSchema = z.enum(['sse', 'stdio']);
 /**
  * Schema for platform scope.
  */
-export const MCPPlatformScopeSchema = z.enum(['shared', 'extension', 'desktop']);
+export const MCPPlatformScopeSchema = z.enum(['shared', 'extension', 'desktop', 'server']);
 
 /**
  * Full schema for a persisted MCP server configuration.

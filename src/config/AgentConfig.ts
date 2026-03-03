@@ -70,7 +70,10 @@ export class AgentConfig implements IConfigService {
     }
 
     // One-time migration: move legacy `approval_config` into `agent_config.approval`
-    await this.migrateApprovalConfig();
+    // Only runs in extension mode — uses chrome.storage.local directly
+    if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'extension') {
+      await this.migrateApprovalConfig();
+    }
 
     try {
       const storedConfig = await this.storage.get();

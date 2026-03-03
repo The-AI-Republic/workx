@@ -29,7 +29,6 @@ import {
 } from '../models/types/SchedulerContracts';
 import type { AgentRegistry } from '../registry/AgentRegistry';
 import type { AgentSession } from '../registry/AgentSession';
-import { t } from '@/webfront/lib/i18n';
 
 /**
  * Event emitter type for scheduler events
@@ -277,7 +276,7 @@ export class Scheduler {
       await chrome.notifications.create(`scheduler-task-${task.id}`, {
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: t('Scheduled Task Starting'),
+        title: 'Scheduled Task Starting',
         message: inputPreview,
         priority: 2,
         requireInteraction: false,

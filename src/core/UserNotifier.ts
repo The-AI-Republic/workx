@@ -5,7 +5,7 @@
 
 import type { EventMsg } from './protocol/events';
 import type { Event } from './protocol/types';
-import { t } from '@/webfront/lib/i18n';
+import type { IUserNotifier } from './IUserNotifier';
 
 /**
  * Notification types
@@ -65,7 +65,7 @@ export type ActionHandler = (notificationId: string, actionId: string) => void;
  * UserNotifier class - manages notifications to the user
  * Designed for browser environment
  */
-export class UserNotifier {
+export class UserNotifier implements IUserNotifier {
   private notifications: Map<string, UserNotification> = new Map();
   private notificationCallbacks: Set<NotificationCallback> = new Set();
   private actionHandlers: Map<string, ActionHandler> = new Map();
@@ -379,8 +379,8 @@ export class UserNotifier {
       priority: 'high',
       persistent: true,
       actions: [
-        { id: 'approve', label: t('Approve'), style: 'primary' },
-        { id: 'reject', label: t('Reject'), style: 'danger' },
+        { id: 'approve', label: 'Approve', style: 'primary' },
+        { id: 'reject', label: 'Reject', style: 'danger' },
       ],
       metadata: { approvalId },
     });
@@ -559,10 +559,10 @@ export class UserNotifier {
     inputMessages: string[],
     lastAssistantMessage?: string
   ): Promise<void> {
-    const title = t('Agent Turn Complete');
+    const title = 'Agent Turn Complete';
     const message = lastAssistantMessage
-      ? t(`Completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}`)
-      : t('Agent turn completed successfully');
+      ? `Completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}`
+      : 'Agent turn completed successfully';
 
     // Create notification with metadata
     await this.notify('success', title, message, {
@@ -631,15 +631,15 @@ export class UserNotifier {
     switch (eventMsg.type) {
       case 'Error':
         if (eventMsg.data?.message) {
-          await this.notifyError(t('Error'), eventMsg.data.message);
+          await this.notifyError('Error', eventMsg.data.message);
         }
         break;
 
       case 'ExecApprovalRequest':
         if (eventMsg.data) {
           await this.showApprovalRequest(
-            t('Command Approval Required'),
-            t(`Approve execution: ${eventMsg.data.command}`),
+            'Command Approval Required',
+            `Approve execution: ${eventMsg.data.command}`,
             eventMsg.data.id
           );
         }
@@ -648,8 +648,8 @@ export class UserNotifier {
       case 'ApplyPatchApprovalRequest':
         if (eventMsg.data) {
           await this.showApprovalRequest(
-            t('File Change Approval Required'),
-            t(`Approve changes to: ${eventMsg.data.path}`),
+            'File Change Approval Required',
+            `Approve changes to: ${eventMsg.data.path}`,
             eventMsg.data.id
           );
         }
@@ -657,7 +657,7 @@ export class UserNotifier {
 
       case 'TaskFailed':
         if (eventMsg.data?.reason) {
-          await this.notifyError(t('Task Failed'), eventMsg.data.reason);
+          await this.notifyError('Task Failed', eventMsg.data.reason);
         }
         break;
 

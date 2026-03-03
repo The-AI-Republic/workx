@@ -23,8 +23,9 @@ export type MCPTransportType = 'sse' | 'stdio';
  * - 'shared': Visible on both extension and desktop
  * - 'extension': Only visible in Chrome extension mode
  * - 'desktop': Only visible in desktop (Tauri) mode
+ * - 'server': Only visible in server (headless) mode
  */
-export type MCPPlatformScope = 'shared' | 'extension' | 'desktop';
+export type MCPPlatformScope = 'shared' | 'extension' | 'desktop' | 'server';
 
 // =============================================================================
 // Configuration Types (Persisted in chrome.storage.local)

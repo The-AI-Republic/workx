@@ -156,6 +156,9 @@ export class TauriMessageService implements IMessageService {
       case MessageType.INTERRUPT:
         return this.handleInterrupt() as T;
 
+      case MessageType.CONFIG_UPDATE:
+        return this.handleConfigUpdate() as T;
+
       case MessageType.SKILLS_LIST:
       case MessageType.SKILLS_LOAD:
       case MessageType.SKILLS_SAVE:
@@ -302,6 +305,20 @@ export class TauriMessageService implements IMessageService {
       return { success: true };
     } catch (error) {
       console.error('[TauriMessageService] Interrupt failed:', error);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Handle config update by delegating to DesktopAgentBootstrap
+   */
+  private async handleConfigUpdate(): Promise<{ success: boolean }> {
+    try {
+      const bootstrap = await getAgentBootstrap();
+      await bootstrap.handleConfigUpdate();
+      return { success: true };
+    } catch (error) {
+      console.error('[TauriMessageService] Config update failed:', error);
       return { success: false };
     }
   }

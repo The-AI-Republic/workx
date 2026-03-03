@@ -161,6 +161,8 @@ describe('PiAgent', () => {
       getTurnContext: vi.fn().mockReturnValue({
         setUserInstructions: vi.fn(),
         setBaseInstructions: vi.fn(),
+        setModelClient: vi.fn(),
+        setSelectedModelKey: vi.fn(),
       }),
       updateTurnContext: vi.fn(),
       getTabId: vi.fn().mockReturnValue(-1),
@@ -207,6 +209,7 @@ describe('PiAgent', () => {
         setModel: vi.fn(),
         getModelContextWindow: vi.fn().mockReturnValue(8192),
       }),
+      clearCache: vi.fn(),
       isBackendRouting: vi.fn().mockReturnValue(false),
     };
 
@@ -241,7 +244,7 @@ describe('PiAgent', () => {
 
     config = createMockConfig();
     router = createMockRouter();
-    agent = new PiAgent(config, router);
+    agent = new PiAgent(config, router, undefined, undefined, mockUserNotifierInstance as any);
   });
 
   // =========================================================================
@@ -276,11 +279,6 @@ describe('PiAgent', () => {
       expect(approvalMgr.getApproval).toBeDefined();
     });
 
-    it('should expose the diff tracker via getDiffTracker()', () => {
-      const dt = agent.getDiffTracker();
-      expect(dt).toBeDefined();
-    });
-
     it('should expose the model client factory via getModelClientFactory()', () => {
       const factory = agent.getModelClientFactory();
       expect(factory).toBeDefined();
@@ -301,11 +299,6 @@ describe('PiAgent', () => {
 
     it('should subscribe to config-changed events during construction', () => {
       expect(config.on as Mock).toHaveBeenCalledWith('config-changed', expect.any(Function));
-    });
-
-    it('should set up notification handlers during construction', () => {
-      const notifier = agent.getUserNotifier();
-      expect(notifier.onNotification).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 
@@ -850,6 +843,110 @@ describe('PiAgent', () => {
 
       // Should swallow the error
       await expect(agent.refreshModelClient()).resolves.toBeUndefined();
+    });
+  });
+
+  // =========================================================================
+  // hotSwapModelClient()
+  // =========================================================================
+
+  describe('hotSwapModelClient()', () => {
+    it('should clear factory cache before creating new client', async () => {
+      const callOrder: string[] = [];
+      mockModelClientFactoryInstance.clearCache.mockImplementation(() => {
+        callOrder.push('clearCache');
+      });
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockImplementation(async () => {
+        callOrder.push('createClientForCurrentModel');
+        return { getModel: vi.fn().mockReturnValue('new-model') };
+      });
+
+      await agent.hotSwapModelClient();
+
+      expect(callOrder).toEqual(['clearCache', 'createClientForCurrentModel']);
+    });
+
+    it('should create new client via createClientForCurrentModel', async () => {
+      await agent.hotSwapModelClient();
+
+      expect(mockModelClientFactoryInstance.createClientForCurrentModel).toHaveBeenCalledTimes(1);
+    });
+
+    it('should set new model client on existing TurnContext', async () => {
+      const newMockClient = { getModel: vi.fn().mockReturnValue('swapped-model') };
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockResolvedValue(newMockClient);
+
+      await agent.hotSwapModelClient();
+
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setModelClient).toHaveBeenCalledWith(newMockClient);
+    });
+
+    it('should NOT call session.setTurnContext (no new TurnContext created)', async () => {
+      await agent.hotSwapModelClient();
+
+      expect(mockSessionInstance.setTurnContext).not.toHaveBeenCalled();
+    });
+
+    it('should update selectedModelKey from config on TurnContext', async () => {
+      (config.getConfig as Mock).mockReturnValue({
+        selectedModelKey: 'anthropic:claude-3-opus',
+        tools: {},
+      });
+
+      await agent.hotSwapModelClient();
+
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setSelectedModelKey).toHaveBeenCalledWith('anthropic:claude-3-opus');
+    });
+
+    it('should read config at call time (not stale)', async () => {
+      // First call with original config
+      await agent.hotSwapModelClient();
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setSelectedModelKey).toHaveBeenCalledWith('openai:gpt-5');
+
+      // Change config
+      (config.getConfig as Mock).mockReturnValue({
+        selectedModelKey: 'google:gemini-2.0-flash',
+        tools: {},
+      });
+
+      await agent.hotSwapModelClient();
+      expect(turnCtx.setSelectedModelKey).toHaveBeenCalledWith('google:gemini-2.0-flash');
+    });
+
+    it('should propagate errors from createClientForCurrentModel', async () => {
+      mockModelClientFactoryInstance.createClientForCurrentModel.mockRejectedValue(
+        new Error('auth expired')
+      );
+
+      await expect(agent.hotSwapModelClient()).rejects.toThrow('auth expired');
+    });
+
+    it('should reload user instructions onto TurnContext', async () => {
+      await agent.hotSwapModelClient();
+
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setUserInstructions).toHaveBeenCalledWith('user-instructions');
+    });
+
+    it('should reload base instructions onto TurnContext', async () => {
+      await agent.hotSwapModelClient();
+
+      const turnCtx = mockSessionInstance.getTurnContext();
+      expect(turnCtx.setBaseInstructions).toHaveBeenCalledWith('base-instructions');
+    });
+
+    it('should reuse existing TurnContext unlike refreshModelClient which creates a new one', async () => {
+      // hotSwapModelClient: does NOT call session.setTurnContext
+      await agent.hotSwapModelClient();
+      expect(mockSessionInstance.setTurnContext).not.toHaveBeenCalled();
+      expect(mockSessionInstance.getTurnContext().setModelClient).toHaveBeenCalled();
+
+      // refreshModelClient: DOES call session.setTurnContext (creates new TurnContext)
+      await agent.refreshModelClient();
+      expect(mockSessionInstance.setTurnContext).toHaveBeenCalled();
     });
   });
 
