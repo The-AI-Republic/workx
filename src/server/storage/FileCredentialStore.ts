@@ -39,7 +39,7 @@ export class FileCredentialStore implements CredentialStore {
     }
 
     const crypto = require('node:crypto');
-    this.encryptionKey = crypto.scryptSync(secret, 'pi-server-credentials', 32);
+    this.encryptionKey = crypto.scryptSync(secret, 'pi-server-credentials', 32) as Buffer;
     return this.encryptionKey;
   }
 
