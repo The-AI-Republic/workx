@@ -88,6 +88,13 @@ export class ServerAgentBootstrap {
       `${process.env.HOME ?? process.env.USERPROFILE ?? '/tmp'}/.applepi-server/data`;
 
     try {
+      // 0. Initialize StorageProvider (used by subsystems)
+      const { isStorageProviderInitialized, initializeStorageProvider } = await import('@/core/storage');
+      if (!isStorageProviderInitialized()) {
+        await initializeStorageProvider();
+        console.log('[ServerAgentBootstrap] StorageProvider initialized (SQLite)');
+      }
+
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
 

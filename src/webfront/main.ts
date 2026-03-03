@@ -6,6 +6,7 @@
  */
 
 import './styles.css';
+import { mount } from 'svelte';
 import App from './App.svelte';
 import { initLocale } from './lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -41,7 +42,7 @@ async function init() {
   }
 
   // Mount app after services are initialized
-  const app = new App({
+  const app = mount(App, {
     target: document.getElementById('app')!,
   });
 

@@ -23,6 +23,7 @@ installFetchProxy();
 
 import './desktop.css';
 import '../../webfront/styles.css';
+import { mount } from 'svelte';
 import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
 import { initializeMessaging, TauriMessageService } from '@/core/messaging';
@@ -97,7 +98,7 @@ async function init() {
   }
 
   // 5. Mount the main app
-  const app = new App({
+  const app = mount(App, {
     target: document.getElementById('app')!,
   });
 
