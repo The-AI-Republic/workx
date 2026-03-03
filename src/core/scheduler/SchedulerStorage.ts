@@ -6,7 +6,8 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { IndexedDBAdapter, STORE_NAMES, INDEX_NAMES } from '../../storage/IndexedDBAdapter';
+import type { StorageAdapter } from '../../storage/StorageAdapter';
+import { STORE_NAMES, INDEX_NAMES } from '../../storage/IndexedDBAdapter';
 import type {
   SchedulerTaskRecord,
   SchedulerState,
@@ -28,7 +29,7 @@ import {
  * Storage implementation for scheduler tasks
  */
 export class SchedulerStorage implements ISchedulerStorage {
-  constructor(private db: IndexedDBAdapter) {}
+  constructor(private db: StorageAdapter) {}
 
   /**
    * Create a new task

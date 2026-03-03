@@ -1,4 +1,5 @@
 import type { CacheEntry, CacheConfig } from '../types/storage';
+import type { StorageAdapter } from './StorageAdapter';
 import { IndexedDBAdapter, STORE_NAMES } from './IndexedDBAdapter';
 
 const DEFAULT_CONFIG: CacheConfig = {
@@ -23,10 +24,10 @@ export class CacheManager {
   private config: CacheConfig;
   private currentSize = 0;
   private compressionWorker: Worker | null = null;
-  private dbAdapter: IndexedDBAdapter;
+  private dbAdapter: StorageAdapter;
   private initPromise: Promise<void> | null = null;
 
-  constructor(config?: Partial<CacheConfig>, dbAdapter?: IndexedDBAdapter) {
+  constructor(config?: Partial<CacheConfig>, dbAdapter?: StorageAdapter) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.dbAdapter = dbAdapter || new IndexedDBAdapter();
     this.initializeCompressionWorker();

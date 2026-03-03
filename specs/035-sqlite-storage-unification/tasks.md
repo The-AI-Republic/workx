@@ -60,14 +60,14 @@
 
 ### Implementation for User Story 5
 
-- [ ] T007 [P] [US5] Create TauriSQLiteAdapter in src/desktop/storage/TauriSQLiteAdapter.ts — implement StorageAdapter interface routing through Tauri invoke() commands per plan.md D-002 mappings (get→storage_get, put→storage_set with keyPath extraction, queryByIndex→storage_query with INDEX_FIELD_MAP, getAll→storage_list, batchDelete→storage_delete_many, clear→storage_clear)
-- [ ] T008 [P] [US5] Create NodeSQLiteAdapter in src/server/storage/NodeSQLiteAdapter.ts — implement StorageAdapter interface using better-sqlite3 dynamic import per research.md R-004 pattern (WAL mode, same table schema as Rust backend, DB path: $PI_DATA_DIR/storage/storage.db)
-- [ ] T009 [US5] Create adapter factory in src/storage/createStorageAdapter.ts — 3-way routing: extension→IndexedDBAdapter, desktop→TauriSQLiteAdapter, server→NodeSQLiteAdapter, with final throw for unknown modes (follow createRolloutStorageProvider pattern)
-- [ ] T010 [P] [US5] Update CacheManager in src/storage/CacheManager.ts — change constructor parameter and field type from IndexedDBAdapter to StorageAdapter, update import
-- [ ] T011 [P] [US5] Update SessionCacheManager in src/storage/SessionCacheManager.ts — change constructor parameter and field type from IndexedDBAdapter to StorageAdapter, update import
-- [ ] T012 [P] [US5] Update SchedulerStorage in src/core/scheduler/SchedulerStorage.ts — change constructor parameter type from IndexedDBAdapter to StorageAdapter, update import
-- [ ] T013 [P] [US5] Update SessionStorage in src/core/registry/SessionStorage.ts — change constructor parameter type from IndexedDBAdapter to StorageAdapter, update import
-- [ ] T014 [US5] Update service-worker in src/extension/background/service-worker.ts — where IndexedDBAdapter instances are created for non-extension builds, use createStorageAdapter() factory instead; keep direct IndexedDBAdapter for extension build paths
+- [x] T007 [P] [US5] Create TauriSQLiteAdapter in src/desktop/storage/TauriSQLiteAdapter.ts — implement StorageAdapter interface routing through Tauri invoke() commands per plan.md D-002 mappings (get→storage_get, put→storage_set with keyPath extraction, queryByIndex→storage_query with INDEX_FIELD_MAP, getAll→storage_list, batchDelete→storage_delete_many, clear→storage_clear)
+- [x] T008 [P] [US5] Create NodeSQLiteAdapter in src/server/storage/NodeSQLiteAdapter.ts — implement StorageAdapter interface using better-sqlite3 dynamic import per research.md R-004 pattern (WAL mode, same table schema as Rust backend, DB path: $PI_DATA_DIR/storage/storage.db)
+- [x] T009 [US5] Create adapter factory in src/storage/createStorageAdapter.ts — 3-way routing: extension→IndexedDBAdapter, desktop→TauriSQLiteAdapter, server→NodeSQLiteAdapter, with final throw for unknown modes (follow createRolloutStorageProvider pattern)
+- [x] T010 [P] [US5] Update CacheManager in src/storage/CacheManager.ts — change constructor parameter and field type from IndexedDBAdapter to StorageAdapter, update import
+- [x] T011 [P] [US5] Update SessionCacheManager in src/storage/SessionCacheManager.ts — change constructor parameter and field type from IndexedDBAdapter to StorageAdapter, update import
+- [x] T012 [P] [US5] Update SchedulerStorage in src/core/scheduler/SchedulerStorage.ts — change constructor parameter type from IndexedDBAdapter to StorageAdapter, update import
+- [x] T013 [P] [US5] Update SessionStorage in src/core/registry/SessionStorage.ts — change constructor parameter type from IndexedDBAdapter to StorageAdapter, update import
+- [x] T014 [US5] Update service-worker in src/extension/background/service-worker.ts — where IndexedDBAdapter instances are created for non-extension builds, use createStorageAdapter() factory instead; keep direct IndexedDBAdapter for extension build paths
 
 **Checkpoint**: Desktop subsystems (cache, scheduler, sessions) route through TauriSQLiteAdapter to SQLite. No pi_cache IndexedDB database created on desktop.
 
