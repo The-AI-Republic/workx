@@ -2,7 +2,7 @@
  * Tests for DesktopAgentBootstrap.resumeSession()
  *
  * Validates the full resume flow: abort → close → load rollout → create
- * PiAgent → wire events → restore auth → initialize → return history.
+ * RepublicAgent → wire events → restore auth → initialize → return history.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks — must be declared before the SUT import
 // ---------------------------------------------------------------------------
 
-// Track PiAgent constructor calls
+// Track RepublicAgent constructor calls
 let piAgentConstructorCalls: any[] = [];
 
 const mockNewSession = {
@@ -66,8 +66,8 @@ const mockNewAgent = {
   getApprovalManager: vi.fn().mockReturnValue({}),
 };
 
-vi.mock('@/core/PiAgent', () => ({
-  PiAgent: vi.fn().mockImplementation((...args: any[]) => {
+vi.mock('@/core/RepublicAgent', () => ({
+  RepublicAgent: vi.fn().mockImplementation((...args: any[]) => {
     piAgentConstructorCalls.push(args);
     currentAgent = 'new';
     return mockNewAgent;
@@ -238,7 +238,7 @@ vi.mock('@/core/mcp/MCPToolAdapter', () => ({
 
 // Now import the SUT
 import { DesktopAgentBootstrap } from '../DesktopAgentBootstrap';
-import { PiAgent } from '@/core/PiAgent';
+import { RepublicAgent } from '@/core/RepublicAgent';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
 import { ApprovalConfigStorage } from '@/core/approval/ApprovalConfigStorage';
@@ -324,8 +324,8 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
     }));
     (AgentConfig as any).getInstance.mockResolvedValue({ getConfig: () => ({}), updateToolsConfig: vi.fn() });
 
-    // PiAgent constructor returns the new agent
-    (PiAgent as any).mockImplementation((...args: any[]) => {
+    // RepublicAgent constructor returns the new agent
+    (RepublicAgent as any).mockImplementation((...args: any[]) => {
       piAgentConstructorCalls.push(args);
       currentAgent = 'new';
       return mockNewAgent;
@@ -377,11 +377,11 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
     expect(mockGetRolloutHistory).toHaveBeenCalledWith(conversationId);
   });
 
-  it('should create a new PiAgent with resumed InitialHistory', async () => {
+  it('should create a new RepublicAgent with resumed InitialHistory', async () => {
     const bootstrap = createInitializedBootstrap();
     await bootstrap.resumeSession(conversationId);
 
-    expect(PiAgent).toHaveBeenCalled();
+    expect(RepublicAgent).toHaveBeenCalled();
     const lastCall = piAgentConstructorCalls[piAgentConstructorCalls.length - 1];
     const initialHistory = lastCall[2];
     expect(initialHistory).toEqual({
@@ -391,7 +391,7 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
     });
   });
 
-  it('should replace this.agent with the new PiAgent', async () => {
+  it('should replace this.agent with the new RepublicAgent', async () => {
     const bootstrap = createInitializedBootstrap();
     expect(bootstrap.getAgent()).toBe(mockOldAgent);
 
@@ -453,7 +453,7 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
         payload: { conversationId, history: rolloutItems, rolloutId: conversationId },
       };
     });
-    (PiAgent as any).mockImplementation((...args: any[]) => {
+    (RepublicAgent as any).mockImplementation((...args: any[]) => {
       callOrder.push('createAgent');
       piAgentConstructorCalls.push(args);
       return mockNewAgent;

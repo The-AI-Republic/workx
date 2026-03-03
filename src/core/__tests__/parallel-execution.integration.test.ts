@@ -9,8 +9,8 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 import type { SessionConfig } from '@/core/registry/types';
 
 // Mock dependencies
-vi.mock('@/core/PiAgent', () => ({
-  PiAgent: class MockPiAgent {
+vi.mock('@/core/RepublicAgent', () => ({
+  RepublicAgent: class MockRepublicAgent {
     private _conversationId = 'conv_' + Math.random().toString(36).slice(2);
     private _isProcessing = false;
 

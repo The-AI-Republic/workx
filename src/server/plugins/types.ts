@@ -2,7 +2,7 @@
  * OpenClaw-Compatible Plugin Types
  *
  * Types for the channel plugin system. Any OpenClaw-compatible
- * channel plugin (Slack, Telegram, etc.) can run unmodified on Pi.
+ * channel plugin (Slack, Telegram, etc.) can run unmodified on ApplePi.
  *
  * @module server/plugins/types
  */
@@ -26,7 +26,7 @@ export interface OpenClawPluginDefinition {
 }
 
 /**
- * API provided to plugins by the host (Pi).
+ * API provided to plugins by the host (ApplePi).
  */
 export interface OpenClawPluginApi {
   /** Register a channel plugin */

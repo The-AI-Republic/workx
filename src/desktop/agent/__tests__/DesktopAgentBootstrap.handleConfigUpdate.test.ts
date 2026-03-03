@@ -46,7 +46,7 @@ vi.mock('@/core/channels/ChannelManager', () => ({
     shutdown: vi.fn().mockResolvedValue(undefined),
   })),
 }));
-vi.mock('@/core/PiAgent', () => ({ PiAgent: vi.fn() }));
+vi.mock('@/core/RepublicAgent', () => ({ RepublicAgent: vi.fn() }));
 vi.mock('@/core/MessageRouter', () => ({
   MessageType: { AGENT_REINITIALIZED: 'AGENT_REINITIALIZED', CONFIG_UPDATE: 'CONFIG_UPDATE' },
 }));

@@ -41,7 +41,7 @@ export function configurePromptComposer(
 
 /**
  * Check if the PromptComposer has already been configured.
- * Used by PiAgent to skip re-configuration when the desktop bootstrap
+ * Used by RepublicAgent to skip re-configuration when the desktop bootstrap
  * has already called configurePromptComposer() with platform context.
  */
 export function isComposerConfigured(): boolean {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-vi.mock('@pi/ws-server', () => ({
+vi.mock('@applepi/ws-server', () => ({
   makeEvent: vi.fn(
     (event: string, payload?: unknown, seq?: number) =>
       ({ type: 'event', event, payload, seq })
@@ -28,7 +28,7 @@ import {
   shutdownWatchdog,
 } from '../watchdog';
 import type { TrackedConnection } from '../watchdog';
-import { WS_CLOSE } from '@pi/ws-server';
+import { WS_CLOSE } from '@applepi/ws-server';
 
 function makeWs() {
   return {

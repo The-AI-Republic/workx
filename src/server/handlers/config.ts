@@ -6,8 +6,8 @@
  * @module server/handlers/config
  */
 
-import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
-import { invalidRequest } from '@pi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { invalidRequest } from '@applepi/ws-server';
 import { getServerConfig, redactConfig, loadServerConfig } from '../config/server-config';
 
 export function registerConfigHandlers(): void {

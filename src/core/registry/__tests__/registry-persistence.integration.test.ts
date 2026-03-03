@@ -28,10 +28,10 @@ const mockIndexedDBAdapter = {
   queryByIndex: vi.fn().mockResolvedValue([]),
 };
 
-// Mock PiAgent with class
-vi.mock('@/core/PiAgent', () => {
+// Mock RepublicAgent with class
+vi.mock('@/core/RepublicAgent', () => {
   return {
-    PiAgent: class MockPiAgent {
+    RepublicAgent: class MockRepublicAgent {
       async initialize() {
         return undefined;
       }
@@ -204,7 +204,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now(),
           tabId: 100,
           tabGroupId: null,
-          tabGroupName: 'pi_s_a',
+          tabGroupName: 'browserx_s_a',
           scheduledTaskId: 'task_1',
           persistedAt: Date.now(),
         },
@@ -218,7 +218,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now() - 1000,
           tabId: 101,
           tabGroupId: null,
-          tabGroupName: 'pi_s_b',
+          tabGroupName: 'browserx_s_b',
           scheduledTaskId: 'task_2',
           persistedAt: Date.now() - 1000,
         },
@@ -245,7 +245,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now(),
           tabId: null,
           tabGroupId: null,
-          tabGroupName: 'pi_s_a',
+          tabGroupName: 'browserx_s_a',
           scheduledTaskId: null,
           persistedAt: Date.now(),
         },
@@ -259,7 +259,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
           lastActivityAt: Date.now(),
           tabId: null,
           tabGroupId: null,
-          tabGroupName: 'pi_s_b',
+          tabGroupName: 'browserx_s_b',
           scheduledTaskId: null,
           persistedAt: Date.now(),
         },
@@ -287,7 +287,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now() - 1000,
         tabId: 200,
         tabGroupId: null,
-        tabGroupName: 'pi_s_c',
+        tabGroupName: 'browserx_s_c',
         scheduledTaskId: 'task_resume',
         persistedAt: Date.now() - 1000,
       };
@@ -314,7 +314,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_a',
+        tabGroupName: 'browserx_s_a',
         scheduledTaskId: 'task_active',
         persistedAt: Date.now(),
       };
@@ -343,7 +343,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_d',
+        tabGroupName: 'browserx_s_d',
         scheduledTaskId: null,
         persistedAt: Date.now(),
       };
@@ -418,7 +418,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: now - 48 * 60 * 60 * 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_a',
+        tabGroupName: 'browserx_s_a',
         scheduledTaskId: null,
         persistedAt: now - 48 * 60 * 60 * 1000,
       };
@@ -433,7 +433,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: now - 1 * 60 * 60 * 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_b',
+        tabGroupName: 'browserx_s_b',
         scheduledTaskId: null,
         persistedAt: now - 1 * 60 * 60 * 1000,
       };
@@ -462,7 +462,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now() - 1000,
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_a',
+        tabGroupName: 'browserx_s_a',
         scheduledTaskId: null,
         persistedAt: Date.now() - 1000,
       };
@@ -504,7 +504,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: session.metadata.lastActivityAt,
         tabId: 500,
         tabGroupId: null,
-        tabGroupName: `pi_s_${session.sessionLetter}`,
+        tabGroupName: `browserx_s_${session.sessionLetter}`,
         scheduledTaskId: 'task_integration_test',
         persistedAt: Date.now(),
       };
@@ -544,7 +544,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_a',
+        tabGroupName: 'browserx_s_a',
         scheduledTaskId: null,
         persistedAt: Date.now(),
       };
@@ -584,7 +584,7 @@ describe('SessionStorage Unit Tests', () => {
       lastActivityAt: Date.now(),
       tabId: null,
       tabGroupId: null,
-      tabGroupName: 'pi_s_a',
+      tabGroupName: 'browserx_s_a',
       scheduledTaskId: 'task_unit',
     };
 
@@ -612,7 +612,7 @@ describe('SessionStorage Unit Tests', () => {
       lastActivityAt: Date.now(),
       tabId: 100,
       tabGroupId: null,
-      tabGroupName: 'pi_s_b',
+      tabGroupName: 'browserx_s_b',
       scheduledTaskId: null,
       persistedAt: Date.now(),
     };
@@ -643,7 +643,7 @@ describe('SessionStorage Unit Tests', () => {
         lastActivityAt: Date.now(),
         tabId: null,
         tabGroupId: null,
-        tabGroupName: 'pi_s_a',
+        tabGroupName: 'browserx_s_a',
         scheduledTaskId: null,
         persistedAt: Date.now(),
       },

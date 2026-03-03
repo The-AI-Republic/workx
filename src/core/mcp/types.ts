@@ -1,7 +1,7 @@
 /**
  * MCP Server Integration Type Definitions
  *
- * These types define the contracts for MCP server integration in Pi.
+ * These types define the contracts for MCP server integration in ApplePi.
  * They are used for configuration, runtime state, and tool integration.
  */
 
@@ -378,7 +378,7 @@ export interface IMCPManager {
 // =============================================================================
 
 /**
- * Adapts MCP tools to Pi ToolDefinition format.
+ * Adapts MCP tools to ApplePi ToolDefinition format.
  */
 export interface IMCPToolAdapter {
   /**

@@ -1,10 +1,10 @@
 /**
- * Pi Plugin API
+ * ApplePi Plugin API
  *
- * Pi's implementation of the OpenClawPluginApi interface.
+ * ApplePi's implementation of the OpenClawPluginApi interface.
  * Provides the API surface that plugins interact with during registration.
  *
- * @module server/plugins/pi-plugin-api
+ * @module server/plugins/applepi-plugin-api
  */
 
 import type {
@@ -13,12 +13,12 @@ import type {
 } from './types';
 import { emitLog } from '../handlers/logs';
 
-export class PiPluginApi implements OpenClawPluginApi {
+export class ApplePiPluginApi implements OpenClawPluginApi {
   private registrations: ChannelPluginRegistration[] = [];
 
   registerChannel(registration: ChannelPluginRegistration): void {
     this.registrations.push(registration);
-    console.log(`[PiPluginApi] Channel registered: ${registration.plugin.id}`);
+    console.log(`[ApplePiPluginApi] Channel registered: ${registration.plugin.id}`);
   }
 
   getHostPlatform(): string {

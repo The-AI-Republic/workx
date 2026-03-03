@@ -6,7 +6,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AgentSession } from './AgentSession';
 import { SessionStorage, type PersistedSession } from './SessionStorage';
-import { PiAgent } from '../PiAgent';
+import { RepublicAgent } from '../RepublicAgent';
 import { UserNotifier } from '../UserNotifier';
 import { AgentConfig } from '../../config/AgentConfig';
 import { ApprovalGate } from '../approval/ApprovalGate';
@@ -32,7 +32,7 @@ import {
 } from './types';
 
 /**
- * AgentRegistry manages multiple PiAgent instances, each wrapped in an AgentSession.
+ * AgentRegistry manages multiple RepublicAgent instances, each wrapped in an AgentSession.
  *
  * Key responsibilities:
  * - Create and track agent sessions
@@ -146,9 +146,9 @@ export class AgentRegistry {
     }
 
     // T057: Wrap agent creation in try-catch for graceful error handling
-    let agent: PiAgent;
+    let agent: RepublicAgent;
     try {
-      agent = new PiAgent(this._config, this._router, undefined, undefined, new UserNotifier());
+      agent = new RepublicAgent(this._config, this._router, undefined, undefined, new UserNotifier());
 
       // Set up event dispatcher for chrome extension mode
       // Events are sent via chrome.runtime to the UI

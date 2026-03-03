@@ -901,7 +901,7 @@ Slack/Telegram ──→ Channel Plugins (Apple Pi or Server Mode)
 | Apple Pi only | Channels via Apple Pi | Desktop app hosts plugins + agent directly |
 | Server Mode only | Channels via Server | Server hosts plugins + agent directly |
 
-### 18.5 Shared Module: `@pi/ws-server`
+### 18.5 Shared Module: `@applepi/ws-server`
 
 To avoid duplicating the WebSocket server across three codebases, the protocol and server logic should be extracted into a shared internal package:
 
@@ -921,10 +921,10 @@ Each mode imports and hosts it differently:
 
 | Mode | Import | Usage |
 |------|--------|-------|
-| Server Mode | `import { createWsServer } from '@pi/ws-server'` | Direct — runs as the main process |
+| Server Mode | `import { createWsServer } from '@applepi/ws-server'` | Direct — runs as the main process |
 | Apple Pi | Rust calls sidecar or embeds via Tauri plugin | Bridges WS ↔ Tauri IPC |
 
-BrowserX does not import `@pi/ws-server` — it connects as a WS client to Apple Pi or Server Mode (see Section 18.4).
+BrowserX does not import `@applepi/ws-server` — it connects as a WS client to Apple Pi or Server Mode (see Section 18.4).
 
 ### 18.6 Transport Bridge Interface
 
@@ -952,7 +952,7 @@ Implementations:
 | Phase | Scope | Prerequisite |
 |-------|-------|-------------|
 | **Phase 1** | Build Server Mode standalone (Sections 1–17, 20) | None |
-| **Phase 2** | Extract `@pi/ws-server` shared package from Server Mode code | Phase 1 complete |
+| **Phase 2** | Extract `@applepi/ws-server` shared package from Server Mode code | Phase 1 complete |
 | **Phase 3** | Embed WS server + channel plugins in Apple Pi via Tauri sidecar | Phase 2 complete |
 | **Phase 4** | BrowserX WS client pairing with Apple Pi / Server Mode | Phase 3 complete |
 
@@ -1010,7 +1010,7 @@ Implementations:
 13. **Create `packages/ws-server/`**
     *   Extract protocol, connection, streaming, auth, and RBAC code from `src/server/` into the shared package.
     *   Expose `createWsServer()` factory and `TransportBridge` interface.
-    *   Refactor `src/server/index.ts` to import from `@pi/ws-server` with a `DirectBridge`.
+    *   Refactor `src/server/index.ts` to import from `@applepi/ws-server` with a `DirectBridge`.
     *   Verify Server Mode still works identically after extraction.
 
 ### Phase 3: Embed in Apple Pi (Desktop)
@@ -2025,7 +2025,7 @@ If the SQLite index (`index.db`) is corrupted but JSONL transcript files are int
 
 ### 25.4 Shared Storage Model with Desktop
 
-Desktop (Apple Pi) uses the same `SessionManager` and persistence format. When the shared `@pi/ws-server` package (Section 18.5) is extracted, both modes use the same JSONL transcript format and SQLite index schema.
+Desktop (Apple Pi) uses the same `SessionManager` and persistence format. When the shared `@applepi/ws-server` package (Section 18.5) is extracted, both modes use the same JSONL transcript format and SQLite index schema.
 
 This means:
 *   Session data is portable between Desktop and Server Mode (copy the `sessions/` directory).

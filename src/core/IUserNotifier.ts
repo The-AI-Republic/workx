@@ -3,7 +3,7 @@ import type { UserNotification, NotificationCallback } from './UserNotifier';
 
 /**
  * Platform-agnostic notifier interface.
- * PiAgent programs against this contract; each platform supplies its own
+ * RepublicAgent programs against this contract; each platform supplies its own
  * implementation (Chrome notifications, console logging, no-op, etc.).
  */
 export interface IUserNotifier {

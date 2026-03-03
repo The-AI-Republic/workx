@@ -8,8 +8,8 @@ import { AgentRegistry } from '@/core/registry/AgentRegistry';
 import type { SessionConfig } from '@/core/registry/types';
 
 // Mock dependencies
-vi.mock('@/core/PiAgent', () => ({
-  PiAgent: class MockPiAgent {
+vi.mock('@/core/RepublicAgent', () => ({
+  RepublicAgent: class MockRepublicAgent {
     initialize = async () => undefined;
     setEventDispatcher = (_fn: any) => {};
     getSession = () => ({
@@ -224,14 +224,14 @@ describe('Multi-Session Integration', () => {
         type: 'primary',
         tabId: 42,
         state: 'idle',
-        tabGroupName: 'pi_s_a',
+        tabGroupName: 'browserx_s_a',
       });
       expect(sessions.find((s) => s.type === 'scheduled')).toMatchObject({
         type: 'scheduled',
         scheduledTaskId: 'task_1',
         tabId: 43,
         state: 'idle',
-        tabGroupName: 'pi_s_b',
+        tabGroupName: 'browserx_s_b',
       });
     });
 

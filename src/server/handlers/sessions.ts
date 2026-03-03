@@ -7,8 +7,8 @@
  * @module server/handlers/sessions
  */
 
-import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
-import { invalidRequest, notFound } from '@pi/ws-server';
+import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
+import { invalidRequest, notFound } from '@applepi/ws-server';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Dependencies

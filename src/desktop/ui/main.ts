@@ -5,7 +5,7 @@
  * with desktop-specific styling and initialization.
  *
  * Architecture:
- * 1. Initialize agent bootstrap (PiAgent + TauriChannel + ChannelManager)
+ * 1. Initialize agent bootstrap (RepublicAgent + TauriChannel + ChannelManager)
  * 2. Initialize messaging service (TauriMessageService for UI communication)
  * 3. Initialize desktop services (tray, hotkeys)
  * 4. Mount the UI app
@@ -58,7 +58,7 @@ async function init() {
   }
 
   // 1. Initialize the agent bootstrap first
-  // This creates PiAgent + TauriChannel + ChannelManager
+  // This creates RepublicAgent + TauriChannel + ChannelManager
   try {
     await initializeDesktopAgent();
     console.log('[Desktop] Agent bootstrap initialized');
@@ -104,7 +104,7 @@ async function init() {
   console.log('[Desktop] App mounted');
 
   // Listen for focus input events from hotkeys
-  window.addEventListener('pi:focus-input', () => {
+  window.addEventListener('applepi:focus-input', () => {
     const inputElement = document.querySelector('textarea, input[type="text"]');
     if (inputElement instanceof HTMLElement) {
       inputElement.focus();
@@ -112,7 +112,7 @@ async function init() {
   });
 
   // Listen for quick action events from hotkeys
-  window.addEventListener('pi:quick-action', () => {
+  window.addEventListener('applepi:quick-action', () => {
     console.log('[Desktop] Quick action requested');
   });
 

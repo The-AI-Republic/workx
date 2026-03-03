@@ -104,7 +104,7 @@ Goal: Final packaging and monitoring.
     - [ ] Implement sequence: plugin stop -> run drain -> flush -> exit.
 
 ## Phase 9: Shared Package & Verification
-- [ ] **Extract `@pi/ws-server`**
+- [ ] **Extract `@applepi/ws-server`**
     - [ ] Move protocol and server logic to a shared internal package.
 - [ ] **Verification**
     - [ ] E2E integration tests for Slack/WhatsApp and 1:1 security verification.

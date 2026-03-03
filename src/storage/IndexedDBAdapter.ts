@@ -19,7 +19,7 @@ import type {
 /**
  * IndexedDB database constants
  */
-export const DB_NAME = 'pi_cache';
+export const DB_NAME = 'applepi_cache';
 export const DB_VERSION = 3;
 
 /**

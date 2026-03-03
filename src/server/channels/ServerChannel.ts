@@ -20,7 +20,7 @@ import type {
 import type { EventMsg } from '@/core/protocol/events';
 import type { Op } from '@/core/protocol/types';
 import { shouldReceiveEvent } from '../auth/authorize';
-import { makeEvent } from '@pi/ws-server';
+import { makeEvent } from '@applepi/ws-server';
 import { getTrackedConnections, touchConnection } from '../connection/watchdog';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -33,8 +33,8 @@ type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
  *
  * Flow:
  *   1. Method handlers call onSubmission handler with Op + context
- *   2. Handler → ChannelManager → PiAgent processes the submission
- *   3. PiAgent emits events via ChannelManager → ServerChannel.sendEvent()
+ *   2. Handler → ChannelManager → RepublicAgent processes the submission
+ *   3. RepublicAgent emits events via ChannelManager → ServerChannel.sendEvent()
  *   4. ServerChannel broadcasts event frames to eligible WebSocket clients
  */
 export class ServerChannel implements ChannelAdapter {
