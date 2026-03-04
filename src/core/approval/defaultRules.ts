@@ -11,13 +11,6 @@ import type { PolicyRule } from './types';
  * Shared rules applied on all platforms
  */
 const sharedRules: PolicyRule[] = [
-  // --- DENY rules ---
-  {
-    type: 'deny',
-    match: { riskAbove: 85 },
-    description: 'Deny critical-risk actions (score > 85)',
-  },
-
   // --- ASK rules ---
   {
     type: 'ask',
@@ -93,7 +86,7 @@ const desktopRules: PolicyRule[] = [
   // DENY dangerous terminal commands (SecurityFilter patterns)
   {
     type: 'deny',
-    match: { tool: 'terminal', pattern: 'rm\\s+(-[rf]+\\s+)+/' },
+    match: { tool: 'terminal', pattern: 'rm\\s+(?=(-[rf]+\\s+)*-[rf]*r)(-[rf]+\\s+)+/' },
     description: 'Destructive rm on root is blocked',
   },
   {
