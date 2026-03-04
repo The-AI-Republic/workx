@@ -198,19 +198,24 @@ export class GoogleCompletionClient extends ModelClient {
     // Prepare system instructions
     const fullInstructions = get_full_instructions(prompt, this.modelFamily);
 
-    // Prepare tools
-    const tools = this.mapTools(prompt.tools);
+    // Prepare tools — separate function tools from Google Search grounding
+    const functionTools = this.mapTools(prompt.tools);
+    const useGoogleSearch = prompt.tools?.some(t => t.type === 'web_search') ?? false;
+
+    const configTools: any[] = [];
+    if (functionTools) configTools.push(functionTools);
+    if (useGoogleSearch) configTools.push({ googleSearch: {} });
 
     // Prepare contents
     const contents = await this.mapPromptToContents(prompt);
 
     const config: any = {
       systemInstruction: fullInstructions,
-      tools: tools ? [tools] : undefined,
+      tools: configTools.length > 0 ? configTools : undefined,
     };
 
-    // Add tool config if tools are present
-    if (tools) {
+    // Add tool config if function tools are present
+    if (functionTools) {
       config.toolConfig = {
         functionCallingConfig: {
           mode: 'AUTO'
@@ -221,6 +226,7 @@ export class GoogleCompletionClient extends ModelClient {
     let accumulatedText = '';
     const accumulatedToolCalls: any[] = [];
     let usageMetadata: any = undefined;
+    let groundingDetected = false;
 
     let retryCount = 0;
     const maxRetries = 3;
@@ -243,6 +249,16 @@ export class GoogleCompletionClient extends ModelClient {
 
           const candidate = chunk.candidates?.[0];
           if (!candidate) continue;
+
+          // Detect Google Search grounding metadata
+          if ((candidate as any).groundingMetadata && !groundingDetected) {
+            groundingDetected = true;
+            const searchCallId = `websearch_${Date.now()}`;
+            stream.addEvent({
+              type: 'WebSearchCallBegin',
+              callId: searchCallId,
+            });
+          }
 
           // Handle content parts
           if (candidate.content?.parts) {
@@ -343,6 +359,19 @@ export class GoogleCompletionClient extends ModelClient {
         throw error;
       }
     }
+    // Emit web_search_call OutputItemDone if grounding was used (for UI consistency)
+    if (groundingDetected) {
+      stream.addEvent({
+        type: 'OutputItemDone',
+        item: {
+          type: 'web_search_call',
+          id: `websearch_${Date.now()}`,
+          status: 'completed',
+          action: { type: 'search', query: '' },
+        },
+      });
+    }
+
     // Stream finished. Emit OutputItemDone if we have content/tools.
     if (accumulatedText || accumulatedToolCalls.length > 0) {
       const messageItem: any = {

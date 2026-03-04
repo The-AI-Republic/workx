@@ -150,6 +150,13 @@ export interface IModelConfig {
   supportsImage?: boolean;
 
   /**
+   * Whether model supports native web search (optional)
+   * If true, the provider handles web search server-side (e.g., OpenAI web_search tool, Gemini grounding)
+   * If false/undefined, falls back to CDP-based Google scraping
+   */
+  supportsWebSearch?: boolean;
+
+  /**
    * Model release date (optional)
    * ISO 8601 date string (YYYY-MM-DD) indicating when the model was released
    */
