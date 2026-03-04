@@ -40,10 +40,11 @@ jobs:
 
       - name: Create extension .env
         run: |
-          cat > src/extension/.env << 'EOF'
+          cat > src/extension/.env << EOF
           VITE_COOKIE_DOMAIN=.airepublic.com
           VITE_HOME_PAGE_BASE_URL=https://airepublic.com
           VITE_BACKEND_API_BASE_URL=https://helper.airepublic.com
+          VITE_VAULT_SECRET=${{ secrets.VITE_VAULT_SECRET }}
           EOF
 
       - name: Build extension
