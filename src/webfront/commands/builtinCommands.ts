@@ -111,7 +111,7 @@ async function syncSkillCommands(
         description: skill.description,
         argumentHint: '$ARGUMENTS',
         action: (args?: string) => {
-          onSubmitText(`/${name}${args ? ' ' + args : ''}`);
+          storedOnSubmitText?.(`/${name}${args ? ' ' + args : ''}`);
         },
       });
       registeredSkillNames.add(name);
