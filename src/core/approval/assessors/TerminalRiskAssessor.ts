@@ -22,9 +22,9 @@ const DANGEROUS_COMMANDS = /^(rm|sudo|chmod|chown|chgrp|mv|docker|kill|pkill|kil
 
 /** Critical/blocked patterns (score 95) - mapped from SecurityFilter */
 const CRITICAL_PATTERNS = [
-  /rm\s+(-[rf]+\s+)+\//i,              // rm -rf /
-  /rm\s+(-[rf]+\s+)+~/i,              // rm -rf ~
-  /rm\s+(-[rf]+\s+)+\*/i,             // rm -rf *
+  /rm\s+(?=(-[rf]+\s+)*-[rf]*r)(-[rf]+\s+)+\//i,   // rm -rf / (requires -r flag)
+  /rm\s+(?=(-[rf]+\s+)*-[rf]*r)(-[rf]+\s+)+~/i,   // rm -rf ~ (requires -r flag)
+  /rm\s+(?=(-[rf]+\s+)*-[rf]*r)(-[rf]+\s+)+\*/i,  // rm -rf * (requires -r flag)
   /dd\s+.*of=\/dev\//i,               // dd to device
   /mkfs\./i,                           // Format filesystem
   /:\(\)\{\s*:\|:&\s*\};:/,           // Fork bomb

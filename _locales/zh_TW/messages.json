@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "用於驗證的 API 金鑰（已加密儲存）"
   },
-  "API_key_has_expired": {
-    "message": "API 金鑰已過期"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API 金鑰權限不足"
-  },
   "API_key_saved_successfully": {
     "message": "API 金鑰已成功儲存！"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "代理執行工具"
   },
-  "Agent_Turn_Complete": {
-    "message": "代理回合已完成"
-  },
   "Agent_URL_is_required": {
     "message": "代理 URL 為必填"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "代理已成功移除"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "代理回合已成功完成"
-  },
   "Agent_updated_successfully": {
     "message": "代理已成功更新"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "所有 API 金鑰在靜止時均使用 AES-256-GCM 加密。啟用 PIN 保護以獲得額外安全性。"
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "在這些網域上，所有操作皆自動批准。"
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "始終批准"
   },
+  "Always_dark": {
+    "message": "永遠暗色"
+  },
+  "Always_light": {
+    "message": "永遠亮色"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi：您的個人 AI（Alpha）"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "核准"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "批准變更至：${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "批准執行：${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "您確定要取消此任務嗎？"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "您確定要刪除技能「/$1$」嗎？",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "您確定要移除此代理程式嗎？"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "驗證憑證（已加密儲存）"
-  },
-  "Authentication_failed": {
-    "message": "驗證失敗"
   },
   "Authentication_method_for_the_agent": {
     "message": "代理的驗證方法"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "後端不可用。請稍候再試。"
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "後端伺服器錯誤 - 請稍後再試"
-  },
   "Backoff_Multiplier": {
     "message": "退避倍率"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "已封鎖的網域"
+  },
+  "Body_Markdown": {
+    "message": "內容（Markdown）"
   },
   "Browser_Tools": {
     "message": "瀏覽器工具"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "已取消"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "無法執行任務：未為 ${providerName} 設定 API 金鑰。請前往 設定 → 模型設定 並新增您的 API 金鑰。"
-  },
   "Cannot_select_model_1": {
     "message": "無法選擇模型：$1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "功能"
   },
+  "Change_PIN": {
+    "message": "變更 PIN"
+  },
+  "Changing": {
+    "message": "變更中..."
+  },
   "Chat_History": {
     "message": "聊天記錄"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT 訂閱"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT 會話已過期。請重新登入。"
   },
   "Checking_agent_status": {
     "message": "正在檢查代理狀態..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "選擇要追蹤的更新頻道"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "經典終端機樣式（綠字黑底）"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "簡潔、現代的聊天介面（類似 ChatGPT）"
+  "Clear_search": {
+    "message": "清除搜尋"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "點擊工具列中的 Browserx 圖示或按 Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "關閉"
   },
+  "Close_scheduler": {
+    "message": "關閉排程器"
+  },
   "Close_settings": {
     "message": "關閉設定"
   },
+  "Close_skills": {
+    "message": "關閉技能"
+  },
   "Collapse": {
     "message": "收合"
-  },
-  "Command_Approval_Required": {
-    "message": "需要指令批准"
   },
   "Command_completed": {
     "message": "指令已完成"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "已完成"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "已完成：${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "壓縮快取資料以節省儲存空間"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "已設定伺服器"
+  },
+  "Confirm_New_PIN": {
+    "message": "確認新 PIN"
+  },
+  "Confirm_PIN": {
+    "message": "確認 PIN"
   },
   "Connect": {
     "message": "連接"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "連接成功"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "已透過 ChatGPT 連線"
   },
   "Connecting": {
     "message": "連接中..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "連線測試成功！(API 金鑰有效)"
   },
-  "Connection_was_refused": {
-    "message": "連線被拒絕"
-  },
-  "Connection_was_reset": {
-    "message": "連線已重設"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "內容違反政策：不允許 ${contentType} 內容"
-  },
   "Context_Window": {
     "message": "上下文視窗"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "控制代理要求批准的積極程度。"
   },
+  "Create": {
+    "message": "建立"
+  },
+  "Create_New_Skill": {
+    "message": "建立新技能"
+  },
   "Create_New_Tab": {
     "message": "建立新分頁"
+  },
+  "Create_Skill": {
+    "message": "建立技能"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "建立 6 位數 PIN 以保護您的 API 金鑰。重新啟動瀏覽器後仍需使用此 PIN。"
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "建立技能以新增自訂 / 指令或自動可呼叫的代理行為。"
   },
   "Created": {
     "message": "已建立"
   },
+  "Creating": {
+    "message": "建立中..."
+  },
   "Creator": {
     "message": "建立者"
+  },
+  "Credential_Encryption": {
+    "message": "憑證加密"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "憑證加密與 PIN 保護"
   },
   "Credit_Details": {
     "message": "點數明細"
   },
+  "Current_PIN": {
+    "message": "目前 PIN"
+  },
   "Current_Plan": {
     "message": "目前方案："
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS 查詢失敗"
   },
   "DOM_Tool": {
     "message": "DOM 工具"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "預設"
   },
+  "Delete": {
+    "message": "刪除"
+  },
   "Deny": {
     "message": "拒絕"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "由 AI Republic 開發與支援"
+  },
+  "Disabled": {
+    "message": "已停用"
   },
   "Discard_Changes": {
     "message": "放棄變更"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "啟用來自已連線 MCP 伺服器的模型上下文協議工具"
   },
+  "Enable_PIN": {
+    "message": "啟用 PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "啟用 PIN 保護"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "啟用 browserx 啟動時自動連接"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "輸入 API 金鑰或 Bearer Token"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "輸入 6 位數 PIN 以解鎖您的 API 金鑰。"
+  },
   "Enter_your_LLM_API_key": {
     "message": "輸入您的 LLM API 金鑰"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "輸入目前的 PIN 以移除保護。API 金鑰仍會使用預設金鑰加密。"
   },
   "Enter_your_task": {
     "message": "輸入您的任務..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "使用 Browserx 說明"
+  },
+  "Export": {
+    "message": "匯出"
   },
   "Extension_Permission": {
     "message": "擴充功能與權限"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "建立新分頁失敗，請再試一次。"
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "建立瀏覽器分頁失敗：${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "斷線失敗：$1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "停止任務失敗，請再試一次。"
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "切換至分頁 ${newTabId} 失敗：${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "測試連線失敗"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "需要檔案變更批准"
-  },
   "File_Operations_Not_Available": {
     "message": "檔案操作（不可用）"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "彈性"
+  },
+  "Follows_system_theme": {
+    "message": "遵循系統主題"
+  },
+  "Forgot_PIN": {
+    "message": "忘記 PIN？"
   },
   "Form_Automation_Tool": {
     "message": "表單自動化工具"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "開始使用"
+  },
+  "Green_text_terminal": {
+    "message": "綠色文字終端機"
   },
   "Hello_NAME": {
     "message": "你好，$NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "圖像輸入"
+  },
+  "Import": {
+    "message": "匯入"
+  },
+  "Import_Skill_from_URL": {
+    "message": "從 URL 匯入技能"
+  },
+  "Import_from_URL": {
+    "message": "從 URL 匯入"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "匯入的技能預設不受信任，且無法自動呼叫。"
+  },
+  "Importing": {
+    "message": "匯入中..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "改進此文字：${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "無效的 API 金鑰"
   },
-  "Invalid_API_key_provided": {
-    "message": "提供的 API 金鑰無效"
-  },
   "Invalid_URL_format": {
     "message": "URL 格式無效"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "提交格式無效：op 缺少 type 欄位"
+  },
+  "Invocation_Mode": {
+    "message": "呼叫模式"
   },
   "Keyboard_Shortcuts": {
     "message": "鍵盤快捷鍵"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "載入設定中..."
+  },
+  "Loading_skills": {
+    "message": "載入技能..."
   },
   "Loading_tabs": {
     "message": "載入分頁中..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "模型與供應商設定已從預設配置載入（唯讀）"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "模型已變更為 $1$。請設定您的 API 金鑰。",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "模型已更改為 $1$。對話已保留。",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "模型已變更為 $1$。會話將重新初始化。",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "模型已變更為 $1$。請設定您的 API 金鑰。",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern Chat (保留原文)"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat 自動"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat 暗色"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat 亮色"
   },
   "Monthly_Credits": {
     "message": "每月點數"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "網路錯誤"
   },
-  "Network_error_occurred": {
-    "message": "發生網路錯誤"
-  },
   "Never_expire_permanent": {
     "message": "永不過期（永久）"
   },
   "New_Conversation": {
     "message": "新對話"
+  },
+  "New_PIN": {
+    "message": "新 PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "尚未設定 A2A 代理程式。"
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "沒有排程時間"
   },
+  "No_settings_found": {
+    "message": "未找到設定"
+  },
   "No_skills_available": {
     "message": "沒有可用的技能。"
+  },
+  "No_skills_configured_yet": {
+    "message": "尚未配置任何技能。"
   },
   "No_steps_in_plan": {
     "message": "計畫中無步驟"
   },
   "No_tabs_available": {
     "message": "沒有可用的分頁"
+  },
+  "No_tasks_in_plan": {
+    "message": "計畫中無任務"
   },
   "No_time_set": {
     "message": "未設定時間"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN 保護"
+  },
   "Page_Action_Tool": {
     "message": "頁面操作工具"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "將快取持久化至儲存"
   },
-  "Plan_1_step_s": {
-    "message": "計畫: $1$ 步驟",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "請在設定中檢查您的 API 金鑰。"
-  },
   "Please_enter_a_task_description": {
     "message": "請輸入任務描述"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "請輸入有效的 API 金鑰。"
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "請重新登入以繼續使用 AI 代理。"
-  },
   "Please_select_a_provider": {
     "message": "請選擇供應商"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "請升級方案以解鎖全球最先進的模型"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "埠 1455 正在使用中。請關閉所有使用此埠的應用程式，然後再試一次。"
   },
   "Power": {
     "message": "效能"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "刷新於"
   },
-  "Reject": {
-    "message": "拒絕"
-  },
   "Release_Date": {
     "message": "發行日期"
   },
@@ -1441,10 +1510,13 @@
   "Remove_API_Key": {
     "message": "移除 API 金鑰"
   },
-  "Request_Timeout": {
-    "message": "請求逾時"
+  "Remove_PIN": {
+    "message": "移除 PIN"
   },
-  "Request_timed_out": {
+  "Removing": {
+    "message": "移除中..."
+  },
+  "Request_Timeout": {
     "message": "請求逾時"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "請求逾時（毫秒）（5000-180000）"
   },
-  "Request_was_aborted": {
-    "message": "請求已中止"
+  "Reset_Vault": {
+    "message": "重設保險庫"
   },
-  "Response_failed": {
-    "message": "回應失敗"
+  "Resetting": {
+    "message": "重設中..."
   },
   "Restricted": {
     "message": "受限"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "執行中"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "串流錯誤"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "排程任務"
   },
-  "Scheduled_Task_Starting": {
-    "message": "排程任務啟動中"
-  },
   "Scheduled_Tasks": {
     "message": "排程任務"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "搜尋完成"
   },
+  "Search_settings": {
+    "message": "搜尋設定..."
+  },
   "Searching": {
     "message": "搜尋中..."
+  },
+  "Security": {
+    "message": "安全性"
   },
   "Security_Privacy": {
     "message": "安全與隱私"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "會話錯誤"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "會話已過期 - 請重新登入以繼續使用 AI 代理"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "已達到會話上限。新任務將排隊。"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "設定推出資料的過期時間"
+  },
+  "Setting_up": {
+    "message": "設定中..."
   },
   "Settings": {
     "message": "設定"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "當儲存使用量超過此百分比時顯示警告（預設：90%）"
   },
+  "Sign_in_failed": {
+    "message": "登入失敗"
+  },
   "Sign_in_to_your_account": {
     "message": "登入您的帳戶"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "使用 ChatGPT 登入"
+  },
+  "Signing_in": {
+    "message": "登入中..."
   },
   "Skills": {
     "message": "技能"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "任務詳細資訊"
   },
-  "Task_Failed": {
-    "message": "任務失敗"
-  },
   "Task_History": {
     "message": "任務歷史"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "任務失敗"
+  },
+  "Task_scheduled_for_1": {
+    "message": "任務已排程於 $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "任務已開始"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "代理目前使用後端模式。LLM 請求將透過 AI Republic 伺服器路由。您的對話將透過我們的基礎設施安全處理。"
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "切換模型將會清除目前的對話。是否繼續？"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "伺服器發生錯誤，請稍後再試。"
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "這將永久刪除所有已儲存的 API 金鑰並重置保險庫。您需要重新輸入 API 金鑰。"
   },
   "Time": {
     "message": "時間"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "嘗試失敗次數過多。請於"
+  },
   "Tool_Timeout_ms": {
     "message": "工具逾時 (毫秒)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "工具設定"
+  },
+  "Trust": {
+    "message": "信任"
   },
   "Trusted": {
     "message": "受信任"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "無法載入信用資訊"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "無法連接後端伺服器 - 請檢查您的連線"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "無法連接伺服器。請檢查您的連線並再試一次。"
-  },
   "Unknown_Event": {
     "message": "未知事件"
   },
   "Unknown_error": {
     "message": "未知錯誤"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "檢查代理狀態時發生未知錯誤"
-  },
-  "Unknown_error_occurred": {
-    "message": "發生未知錯誤"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "執行任務時發生未知錯誤"
   },
   "Unknown_error_processing_submission": {
     "message": "處理提交時發生未知錯誤"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "解鎖"
+  },
+  "Unlocking": {
+    "message": "解鎖中..."
+  },
   "Unsaved_Changes": {
     "message": "未儲存的變更"
   },
   "Untitled": {
     "message": "未命名"
+  },
+  "Untrusted": {
+    "message": "未受信任"
   },
   "Upcoming": {
     "message": "即將到來"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "使用自訂 API 金鑰"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "使用您的 ChatGPT Plus/Pro 訂閱代替 API 金鑰"
+  },
   "User_Center": {
     "message": "使用者中心"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "使用額外信用"
+  },
+  "Vault_Locked": {
+    "message": "保險庫已鎖定"
   },
   "Verbosity": {
     "message": "詳細程度"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "你的個人 AI 助理"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "您的會話已過期，請重新登入。"
-  },
   "DISCONNECTED": {
     "message": "[已斷線]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (未知指令)"
   },
+  "more_results": {
+    "message": "更多結果..."
+  },
   "optional": {
     "message": "可選"
+  },
+  "or": {
+    "message": "或"
   },
   "remaining": {
     "message": "剩餘"

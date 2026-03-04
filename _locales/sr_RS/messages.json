@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API кључ за аутентификацију (сачуван шифрован)"
   },
-  "API_key_has_expired": {
-    "message": "API кључ је истекао"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API кључ нема довољна овлашћења"
-  },
   "API_key_saved_successfully": {
     "message": "API кључ успешно сачуван!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Алати за извршење агента"
   },
-  "Agent_Turn_Complete": {
-    "message": "Тур агента завршен"
-  },
   "Agent_URL_is_required": {
     "message": "URL агента је обавезан"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Агент је успешно уклоњен"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Тур агента је успешно завршен"
-  },
   "Agent_updated_successfully": {
     "message": "Агент је успешно ажуриран"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Сви API кључеви су шифровани у миру користећи AES-256-GCM. Омогућите PIN заштиту за додатну безбедност."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Све радње се аутоматски одобравају на овим доменима."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Увек одобри"
   },
+  "Always_dark": {
+    "message": "Увек тамно"
+  },
+  "Always_light": {
+    "message": "Увек светло"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Ваш лични AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Одобри"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Одобри измене у: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Одобри извршавање: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Да ли сте сигурни да желите да откажете овај задатак?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Да ли сте сигурни да желите да избришете вештину „/$1$“?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Да ли сте сигурни да желите да уклоните овог агента?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Аутентификациони акредитив (сачуван шифрованим)"
-  },
-  "Authentication_failed": {
-    "message": "Аутентификација није успела"
   },
   "Authentication_method_for_the_agent": {
     "message": "Метод аутентификације за агента"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Позадински систем није доступан. Сачекајте тренутак и покушајте поново."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Грешка сервера позадинског система – покушајте касније"
-  },
   "Backoff_Multiplier": {
     "message": "Множилац повратног одлагања"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Блокирани домени"
+  },
+  "Body_Markdown": {
+    "message": "Тело (Markdown)"
   },
   "Browser_Tools": {
     "message": "Алати претраживача"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Отказано"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Не могу извршити задатак: Није конфигурисан API кључ за ${providerName}. Идите у Подешавања → Конфигурација модела и додајте ваш API кључ."
-  },
   "Cannot_select_model_1": {
     "message": "Не могу изабрати модел: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Могућности"
   },
+  "Change_PIN": {
+    "message": "Промени PIN"
+  },
+  "Changing": {
+    "message": "Мења се..."
+  },
   "Chat_History": {
     "message": "Историја ћаскања"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT претплата"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Сесија ChatGPT је истекла. Пријавите се поново."
   },
   "Checking_agent_status": {
     "message": "Провера статуса агента..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Изаберите канал ажурирања"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Класичан терминалски стил са зеленим текстом на црној позадини"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Чист, модеран интерфејс за разговор сличан ChatGPT-у"
+  "Clear_search": {
+    "message": "Очисти претрагу"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Кликните на иконицу Browserx у вашој траци са алаткама или притисните Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Затвори"
   },
+  "Close_scheduler": {
+    "message": "Затвори планер"
+  },
   "Close_settings": {
     "message": "Затвори подешавања"
   },
+  "Close_skills": {
+    "message": "Затвори вештине"
+  },
   "Collapse": {
     "message": "Скупи"
-  },
-  "Command_Approval_Required": {
-    "message": "Потребно одобрење команде"
   },
   "Command_completed": {
     "message": "Команда завршена"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Завршено"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Завршено: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Сажмите кеширане податке да бисте уштедели простор за складиштење"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Конфигурисани сервери"
+  },
+  "Confirm_New_PIN": {
+    "message": "Потврди нови PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Потврди PIN"
   },
   "Connect": {
     "message": "Повежи"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Успешно повезано"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Повезано преко ChatGPT"
   },
   "Connecting": {
     "message": "Повезивање..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Тест повезивања успео! (API кључ је важећи)"
   },
-  "Connection_was_refused": {
-    "message": "Веза је одбијена"
-  },
-  "Connection_was_reset": {
-    "message": "Веза је ресетована"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Садржај крши полису: ${contentType} садржај није дозвољен"
-  },
   "Context_Window": {
     "message": "Контекст прозор"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Контролише колико агресивно агент тражи одобрење."
   },
+  "Create": {
+    "message": "Креирај"
+  },
+  "Create_New_Skill": {
+    "message": "Креирај нову вештину"
+  },
   "Create_New_Tab": {
     "message": "Направи нову картицу"
+  },
+  "Create_Skill": {
+    "message": "Креирај вештину"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Креирајте 6-цифрени PIN за заштиту ваших API кључева. Потребан вам је овај PIN након поновног покретања прегледача."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Креирајте вештину за додавање прилагођених / команди или аутоматски позивних понашања агента."
   },
   "Created": {
     "message": "Креирано"
   },
+  "Creating": {
+    "message": "Креирање..."
+  },
   "Creator": {
     "message": "Креатор"
+  },
+  "Credential_Encryption": {
+    "message": "Шифровање акредитива"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Шифровање акредитива и PIN заштита"
   },
   "Credit_Details": {
     "message": "Информације о кредитима"
   },
+  "Current_PIN": {
+    "message": "Тренутни PIN"
+  },
   "Current_Plan": {
     "message": "Тренутни план:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS претрага није успела"
   },
   "DOM_Tool": {
     "message": "DOM алат"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Подразумевано"
   },
+  "Delete": {
+    "message": "Обриши"
+  },
   "Deny": {
     "message": "Одбиј"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Развијено и подржано од AI Republic"
+  },
+  "Disabled": {
+    "message": "Онемогућено"
   },
   "Discard_Changes": {
     "message": "Одбаци измене"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Омогући алате за Model Context Protocol са повезаних MCP сервера"
   },
+  "Enable_PIN": {
+    "message": "Омогући PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Омогући PIN заштиту"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Омогући аутоматско повезивање при покретању browserx-а"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Унесите API кључ или bearer токен"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Унесите ваш 6-цифрени PIN да откључате API кључеве."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Унесите ваш LLM API кључ"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Унесите ваш тренутни PIN да уклоните заштиту. API кључеви ће и даље бити шифровани подразумеваним кључем."
   },
   "Enter_your_task": {
     "message": "Унесите ваш задатак..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Објасни помоћу Browserx-а"
+  },
+  "Export": {
+    "message": "Извези"
   },
   "Extension_Permission": {
     "message": "Екстензија и дозвола"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Неуспело креирање новог таба. Молимо покушајте поново."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Неуспело креирање браузер таба: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Неуспело прекид везе: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Неуспело заустављање задатка. Молимо покушајте поново."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Неуспешно прелазак на картицу ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Тестирање везе није успело"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Потребно одобрење за измену датотеке"
-  },
   "File_Operations_Not_Available": {
     "message": "Операције са датотекама (недоступно)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Флекс"
+  },
+  "Follows_system_theme": {
+    "message": "Прати тему система"
+  },
+  "Forgot_PIN": {
+    "message": "Заборавили сте PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Алат за аутоматизацију форми"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Започни"
+  },
+  "Green_text_terminal": {
+    "message": "Зелени текстуални терминал"
   },
   "Hello_NAME": {
     "message": "Здраво $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Унос слике"
+  },
+  "Import": {
+    "message": "Увези"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Увези вештину са URL-а"
+  },
+  "Import_from_URL": {
+    "message": "Увези са URL-а"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Увезене вештине су подразумевано неповерљиве и не могу се аутоматски позивати."
+  },
+  "Importing": {
+    "message": "Увоз..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Побољшај овај текст: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Неважећи API кључ"
   },
-  "Invalid_API_key_provided": {
-    "message": "Неисправан API кључ"
-  },
   "Invalid_URL_format": {
     "message": "Неисправан формат URL-а"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Неисправан формат подношења: op недостаје поље type"
+  },
+  "Invocation_Mode": {
+    "message": "Режим позивања"
   },
   "Keyboard_Shortcuts": {
     "message": "Тастатурне пречице"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Учитавање подешавања..."
+  },
+  "Loading_skills": {
+    "message": "Учитавање вештина..."
   },
   "Loading_tabs": {
     "message": "Учитавање картица..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Подешавања модела и провајдера учитана из подразумеване конфигурације (само за читање)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Модел је промењен у $1$. Молимо конфигуришите ваш API кључ.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Модел је промењен у $1$. Разговор је сачуван.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Модел је промењен у $1$. Сесија ће бити поново иницијализована.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Модел је промењен у $1$. Молимо конфигуришите ваш API кључ.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Модерни чет"
+  "Modern_Chat_Auto": {
+    "message": "Модеран ћаскање – аутоматски"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Модеран ћаскање – тамно"
+  },
+  "Modern_Chat_Light": {
+    "message": "Модеран ћаскање – светло"
   },
   "Monthly_Credits": {
     "message": "Месечни кредити"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Грешка у мрежи"
   },
-  "Network_error_occurred": {
-    "message": "Дошло је до грешке у мрежи"
-  },
   "Never_expire_permanent": {
     "message": "Не истиче (трајно)"
   },
   "New_Conversation": {
     "message": "Нови разговор"
+  },
+  "New_PIN": {
+    "message": "Нови ПИН"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Још увек нема конфигурисаних A2A агената."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Нема заказаног времена"
   },
+  "No_settings_found": {
+    "message": "Није пронађено подешавање"
+  },
   "No_skills_available": {
     "message": "Нема доступних вештина."
+  },
+  "No_skills_configured_yet": {
+    "message": "Још увек нема подешених вештина."
   },
   "No_steps_in_plan": {
     "message": "Нема корака у плану"
   },
   "No_tabs_available": {
     "message": "Нема доступних картица"
+  },
+  "No_tasks_in_plan": {
+    "message": "Нема задатака у плану"
   },
   "No_time_set": {
     "message": "Време није подешено"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "ПИН"
+  },
+  "PIN_Protection": {
+    "message": "Заштита ПИН-ом"
+  },
   "Page_Action_Tool": {
     "message": "Алат за радње на страници"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Трајно сачувај кеш у складиште"
   },
-  "Plan_1_step_s": {
-    "message": "План: $1$ корак(а)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Молимо проверите ваш API кључ у подешавањима."
-  },
   "Please_enter_a_task_description": {
     "message": "Молимо унесите опис задатка"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Унесите важећи API кључ."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Молимо поново се пријавите да бисте наставили да користите AI агента."
-  },
   "Please_select_a_provider": {
     "message": "Молимо изаберите провајдера"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Молимо надоградите план да бисте откључали најнапредније моделе у свету"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Порт 1455 је у употреби. Затворите све апликације које користе овај порт и покушајте поново."
   },
   "Power": {
     "message": "Снага"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Освежавање за"
   },
-  "Reject": {
-    "message": "Одбиј"
-  },
   "Release_Date": {
     "message": "Датум издања"
   },
@@ -1441,10 +1510,13 @@
   "Remove_API_Key": {
     "message": "Уклони API кључ"
   },
-  "Request_Timeout": {
-    "message": "Временски истек захтева"
+  "Remove_PIN": {
+    "message": "Уклони ПИН"
   },
-  "Request_timed_out": {
+  "Removing": {
+    "message": "Уклањање..."
+  },
+  "Request_Timeout": {
     "message": "Временски истек захтева"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Временски истек захтева у милисекундама (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Захтев је прекинут"
+  "Reset_Vault": {
+    "message": "Ресетуј складиште"
   },
-  "Response_failed": {
-    "message": "Одговор није успео"
+  "Resetting": {
+    "message": "Ресетовање..."
   },
   "Restricted": {
     "message": "Ограничено"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "У току"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "ГРЕШКА У СТРИМУ"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Заказани задатак"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Покретање заказаног задатка"
-  },
   "Scheduled_Tasks": {
     "message": "Заказани задаци"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Претрага завршена"
   },
+  "Search_settings": {
+    "message": "Претрага подешавања..."
+  },
   "Searching": {
     "message": "Тражим..."
+  },
+  "Security": {
+    "message": "Сигурност"
   },
   "Security_Privacy": {
     "message": "Безбедност и приватност"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Грешка сесије"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Сесија је истекла – молимо пријавите се поново да наставите да користите AI агента"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Достигнут је лимит сесија. Нови задаци ће се ставити у ред."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Подесите када треба да истекне фазирано покретање"
+  },
+  "Setting_up": {
+    "message": "Подешавање..."
   },
   "Settings": {
     "message": "Подешавања"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Прикажи упозорење када искоришћење складишта премаши овај проценат (подразумевано: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Пријава није успела"
+  },
   "Sign_in_to_your_account": {
     "message": "Пријавите се на налог"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Пријавите се помоћу ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Пријављивање..."
   },
   "Skills": {
     "message": "Вештине"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Детаљи задатка"
   },
-  "Task_Failed": {
-    "message": "Задатак није успео"
-  },
   "Task_History": {
     "message": "Историја задатака"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Задатак није успео"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Задатак заказан за $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Задатак покренут"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Агент тренутно користи режим позадинског сервера. LLM захтеви ће се прослеђивати преко AI Republic сервера. Ваши разговори се сигурно обрађују преко наше инфраструктуре."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Промена модела ће обрисати тренутни разговор. Желите ли да наставите?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Сервер је наишао на грешку. Молимо покушајте поново касније."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Ово ће трајно избрисати све сачуване API кључеве и ресетовати сеф. Мораћете поново унети своје API кључеве."
   },
   "Time": {
     "message": "Време"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Превише неуспелих покушаја. Покушајте поново за"
+  },
   "Tool_Timeout_ms": {
     "message": "Време истека алата (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Подешавање алата"
+  },
+  "Trust": {
+    "message": "Повери"
   },
   "Trusted": {
     "message": "Поуздано"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Не могу да учитам информације о кредиту"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Није могуће успоставити везу са позадинским сервером – проверите вашу везу"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Није могуће успоставити везу са сервером. Проверите вашу везу и покушајте поново."
-  },
   "Unknown_Event": {
     "message": "Непознат догађај"
   },
   "Unknown_error": {
     "message": "Непозната грешка"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Непозната грешка приликом провере статуса агента"
-  },
-  "Unknown_error_occurred": {
-    "message": "Дошло је до непознате грешке"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Дошло је до непознате грешке током извршавања задатка"
   },
   "Unknown_error_processing_submission": {
     "message": "Непозната грешка приликом обраде поднетог"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Откључај"
+  },
+  "Unlocking": {
+    "message": "Откључавање..."
+  },
   "Unsaved_Changes": {
     "message": "Несачуване измене"
   },
   "Untitled": {
     "message": "Неименовано"
+  },
+  "Untrusted": {
+    "message": "Неповерљиво"
   },
   "Upcoming": {
     "message": "Предстојеће"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Користи сопствени API кључ"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Користите вашу ChatGPT Plus/Pro претплату уместо API кључа"
+  },
   "User_Center": {
     "message": "Кориснички центар"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Коришћење додатних кредита"
+  },
+  "Vault_Locked": {
+    "message": "Сеф је закључан"
   },
   "Verbosity": {
     "message": "Опширност"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Ваш лични AI асистент"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Ваша сесија је истекла. Молимо пријавите се поново."
-  },
   "DISCONNECTED": {
     "message": "[НЕ ПОВЕЗАН]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (непозната команда)"
   },
+  "more_results": {
+    "message": "више резултата..."
+  },
   "optional": {
     "message": "необавезно"
+  },
+  "or": {
+    "message": "или"
   },
   "remaining": {
     "message": "преостало"

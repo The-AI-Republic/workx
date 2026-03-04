@@ -158,10 +158,7 @@ describe('getDefaultRules', () => {
   it('should return extension rules when platform is extension', () => {
     const rules = getDefaultRules('extension');
 
-    // Should include shared rules
-    const denyRule = rules.find(r => r.type === 'deny' && r.match.riskAbove === 85);
-    expect(denyRule).toBeDefined();
-
+    // Should include shared rules (no blanket riskAbove deny — only ask)
     const askRule = rules.find(r => r.type === 'ask' && r.match.riskAbove === 30);
     expect(askRule).toBeDefined();
 
@@ -177,10 +174,6 @@ describe('getDefaultRules', () => {
 
   it('should return desktop rules when platform is desktop', () => {
     const rules = getDefaultRules('desktop');
-
-    // Should include shared rules
-    const denyRule = rules.find(r => r.type === 'deny' && r.match.riskAbove === 85);
-    expect(denyRule).toBeDefined();
 
     // Should include desktop-specific rules
     const terminalAllow = rules.find(r => r.match.tool === 'terminal' && r.type === 'allow');

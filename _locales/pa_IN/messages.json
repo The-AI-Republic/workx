@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "ਪ੍ਰਮਾਣਿਕਤਾ ਲਈ API ਕੀ (ਐਨਕ੍ਰਿਪਟਡ ਸਟੋਰ ਕੀਤੀ)"
   },
-  "API_key_has_expired": {
-    "message": "API ਕੀ ਦੀ ਮਿਆਦ ਖਤਮ ਹੋ ਗਈ ਹੈ"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API ਕੀ ਕੋਲ ਅਪਰਿਆਪਤ ਅਧਿਕਾਰ ਹਨ"
-  },
   "API_key_saved_successfully": {
     "message": "API ਕੀ ਸਫਲਤਾਪੂਰਵਕ ਸੰਭਾਲੀ ਗਈ!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "ਏਜੰਟ ਚਲਾਉਣ ਦੇ ਟੂਲ"
   },
-  "Agent_Turn_Complete": {
-    "message": "ਏਜੰਟ ਟਰਨ ਪੂਰਾ"
-  },
   "Agent_URL_is_required": {
     "message": "ਏਜੰਟ URL ਲਾਜ਼ਮੀ ਹੈ"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "ਏਜੰਟ ਸਫਲਤਾਪੂਰਵਕ ਹਟਾਇਆ ਗਿਆ"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "ਏਜੰਟ ਟਰਨ ਸਫਲਤਾਪੂਰਵਕ ਪੂਰੀ ਹੋਈ"
-  },
   "Agent_updated_successfully": {
     "message": "ਏਜੰਟ ਸਫਲਤਾਪੂਰਵਕ ਅਪਡੇਟ ਕੀਤਾ ਗਿਆ"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "ਸਾਰੇ API ਕੁੰਜੀਆਂ ਨੂੰ AES-256-GCM ਦੀ ਵਰਤੋਂ ਨਾਲ ਵਿਸ਼ਰਾਮ 'ਤੇ ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ ਜਾਂਦਾ ਹੈ। ਵਾਧੂ ਸੁਰੱਖਿਆ ਲਈ PIN ਸੁਰੱਖਿਆ ਨੂੰ ਸਰਗਰਮ ਕਰੋ।"
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "ਇਨ੍ਹਾਂ ਡੋਮੇਨਾਂ 'ਤੇ ਸਾਰੇ ਕਾਰਵਾਈਆਂ ਆਪੇ ਮਨਜ਼ੂਰ ਹਨ।"
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "ਹਮੇਸ਼ਾ ਮਨਜ਼ੂਰ ਕਰੋ"
   },
+  "Always_dark": {
+    "message": "ਹਮੇਸ਼ਾ ਹਨੇਰਾ"
+  },
+  "Always_light": {
+    "message": "ਹਮੇਸ਼ਾ ਰੋਸ਼ਨੀ"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: ਤੁਹਾਡਾ ਨਿੱਜੀ AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "ਮਨਜ਼ੂਰ ਕਰੋ"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "ਬਦਲਾਵਾਂ ਮਨਜ਼ੂਰ ਕਰੋ: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "ਚਲਾਉਣ ਦੀ ਮਨਜ਼ੂਰੀ ਦਿਓ: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "ਕੀ ਤੁਸੀਂ ਯਕੀਨੀ ਹੋ ਕਿ ਤੁਸੀਂ ਇਹ ਟਾਸਕ ਰੱਦ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "ਕੀ ਤੁਸੀਂ ਨਿਸ਼ਚਿਤ ਹੋ ਕਿ ਤੁਸੀਂ ਸਕਿਲ \"/$1$\" ਨੂੰ ਮਿਟਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "ਕੀ ਤੁਸੀਂ ਯਕੀਨੀ ਹੋ ਕਿ ਤੁਸੀਂ ਇਹ ਏਜੈਂਟ ਹਟਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "ਪ੍ਰਮਾਣਿਕਤਾ ਪ੍ਰਮਾਣਪੱਤਰ (ਇਨਕ੍ਰਿਪਟ ਕੀਤਾ ਸੰਭਾਲਿਆ ਗਿਆ)"
-  },
-  "Authentication_failed": {
-    "message": "ਪ੍ਰਮਾਣਿਕਤਾ ਫੇਲ ਹੋਈ"
   },
   "Authentication_method_for_the_agent": {
     "message": "ਏਜੰਟ ਲਈ ਪ੍ਰਮਾਣਿਕਤਾ ਵਿਧੀ"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "ਬੈਕਐਂਡ ਉਪਲਬਧ ਨਹੀਂ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਥੋੜ੍ਹਾ ਇੰਤਜ਼ਾਰ ਕਰੋ ਅਤੇ ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "ਬੈਕਐਂਡ ਸਰਵਰ ਗਲਤੀ - ਕਿਰਪਾ ਕਰਕੇ ਬਾਅਦ ਵਿੱਚ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
-  },
   "Backoff_Multiplier": {
     "message": "ਬੈਕਆਫ਼ ਗੁਣਾ"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "ਬਲੌਕ ਕੀਤੇ ਡੋਮੇਨ"
+  },
+  "Body_Markdown": {
+    "message": "ਬਾਡੀ (Markdown)"
   },
   "Browser_Tools": {
     "message": "ਬ੍ਰਾਊਜ਼ਰ ਟੂਲਜ਼"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "ਰੱਦ ਕੀਤਾ"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "ਕੰਮ ਨੂੰ ਚਲਾਇਆ ਨਹੀਂ ਜਾ ਸਕਦਾ: ${providerName} ਲਈ ਕੋਈ API ਕੁੰਜੀ ਸੰਰਚਿਤ ਨਹੀਂ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ Settings → Model Configuration 'ਤੇ ਜਾਓ ਅਤੇ ਆਪਣੀ API ਕੁੰਜੀ ਸ਼ਾਮਲ ਕਰੋ।"
-  },
   "Cannot_select_model_1": {
     "message": "ਮਾਡਲ ਚੁਣਿਆ ਨਹੀਂ ਜਾ ਸਕਦਾ: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "ਸਮਰੱਥਾਵਾਂ"
   },
+  "Change_PIN": {
+    "message": "PIN ਬਦਲੋ"
+  },
+  "Changing": {
+    "message": "ਬਦਲ ਰਹੀ ਹੈ..."
+  },
   "Chat_History": {
     "message": "ਚੈਟ ਇਤਿਹਾਸ"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT ਸਬਸਕ੍ਰਿਪਸ਼ਨ"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT ਸੈਸ਼ਨ ਦੀ ਮਿਆਦ ਖਤਮ ਹੋ ਗਈ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਸਾਈਨ ਇਨ ਕਰੋ।"
   },
   "Checking_agent_status": {
     "message": "ਏਜੈਂਟ ਦੀ ਸਥਿਤੀ ਦੀ ਜਾਂਚ ਹੋ ਰਹੀ ਹੈ..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "ਕਿਹੜਾ ਅਪਡੇਟ ਚੈਨਲ ਫਾਲੋ ਕਰਨਾ ਹੈ, ਚੁਣੋ"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "ਕਲਾਸਿਕ ਟਰਮੀਨਲ ਸਟਾਈਲ, ਕਾਲੇ ਬੈਕਗਰਾਊਂਡ 'ਤੇ ਹਰਾ ਟੈਕਸਟ"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "ਸਾਫ, ਆਧੁਨਿਕ ਚੈਟ ਇੰਟਰਫੇਸ ਜੋ ChatGPT ਵਰਗਾ ਹੈ"
+  "Clear_search": {
+    "message": "ਖੋਜ ਸਾਫ਼ ਕਰੋ"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "ਆਪਣੀ ਟੂਲਬਾਰ ਵਿੱਚ Browserx ਆਈਕਨ 'ਤੇ ਕਲਿੱਕ ਕਰੋ ਜਾਂ Alt+Shift+C ਦਬਾਓ"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "ਬੰਦ ਕਰੋ"
   },
+  "Close_scheduler": {
+    "message": "ਸ਼ੈਡਿਊਲਰ ਬੰਦ ਕਰੋ"
+  },
   "Close_settings": {
     "message": "ਸੈਟਿੰਗਜ਼ ਬੰਦ ਕਰੋ"
   },
+  "Close_skills": {
+    "message": "ਸਕਿਲਜ਼ ਬੰਦ ਕਰੋ"
+  },
   "Collapse": {
     "message": "ਸਮੈਟੋ"
-  },
-  "Command_Approval_Required": {
-    "message": "ਕਮਾਂਡ ਦੀ ਮਨਜ਼ੂਰੀ ਲੋੜੀਂਦੀ ਹੈ"
   },
   "Command_completed": {
     "message": "ਕਮਾਂਡ ਪੂਰੀ ਹੋਈ"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "ਪੂਰਾ ਹੋਇਆ"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "ਪੂਰਾ ਹੋਇਆ: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "ਸਟੋਰੇਜ ਸਪੇਸ ਬਚਾਉਣ ਲਈ ਕੈਸ਼ਡ ਡਾਟਾ ਸੰਕੁਚਿਤ ਕਰੋ"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "ਸੰਰਚਿਤ ਸਰਵਰ"
+  },
+  "Confirm_New_PIN": {
+    "message": "ਨਵਾਂ PIN ਪੁਸ਼ਟੀ ਕਰੋ"
+  },
+  "Confirm_PIN": {
+    "message": "PIN ਪੁਸ਼ਟੀ ਕਰੋ"
   },
   "Connect": {
     "message": "ਕਨੈਕਟ"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "ਸਫਲਤਾਪੂਰਵਕ ਕਨੈਕਟ ਹੋ ਗਿਆ"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "ChatGPT ਰਾਹੀਂ ਕਨੈਕਟ ਕੀਤਾ"
   },
   "Connecting": {
     "message": "ਕਨੈਕਟ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "ਕਨੈਕਸ਼ਨ ਟੈਸਟ ਸਫਲ! (API ਕੁੰਜੀ ਵੈਧ ਹੈ)"
   },
-  "Connection_was_refused": {
-    "message": "ਕਨੈਕਸ਼ਨ ਨੂੰ ਇਨਕਾਰ ਕੀਤਾ ਗਿਆ"
-  },
-  "Connection_was_reset": {
-    "message": "ਕਨੈਕਸ਼ਨ ਰੀਸੈਟ ਹੋ ਗਿਆ"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "ਸਮੱਗਰੀ ਨੀਤੀ ਦੀ ਉਲੰਘਣਾ ਕਰਦੀ ਹੈ: ${contentType} ਸਮੱਗਰੀ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ"
-  },
   "Context_Window": {
     "message": "ਸੰਦਰਭ ਵਿੰਡੋ"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "ਇਹ ਨਿਯੰਤਰਿਤ ਕਰਦਾ ਹੈ ਕਿ ਏਜੰਟ ਮਨਜ਼ੂਰੀ ਲਈ ਕਿੰਨੀ ਤੀਵਰਤਾ ਨਾਲ ਪੁੱਛਦਾ ਹੈ।"
   },
+  "Create": {
+    "message": "ਬਣਾਓ"
+  },
+  "Create_New_Skill": {
+    "message": "ਨਵੀਂ ਸਕਿਲ ਬਣਾਓ"
+  },
   "Create_New_Tab": {
     "message": "ਨਵਾਂ ਟੈਬ ਬਣਾਓ"
+  },
+  "Create_Skill": {
+    "message": "ਸਕਿਲ ਬਣਾਓ"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "ਆਪਣੀਆਂ API ਕੁੰਜੀਆਂ ਦੀ ਰੱਖਿਆ ਲਈ 6-ਅੰਕਾਂ ਦਾ PIN ਬਣਾਓ। ਬਰਾਊਜ਼ਰ ਨੂੰ ਰੀਸਟਾਰਟ ਕਰਨ ਤੋਂ ਬਾਅਦ ਤੁਹਾਨੂੰ ਇਹ PIN ਲੋੜੀਂਦਾ ਹੋਵੇਗਾ।"
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "ਕਸਟਮ / ਕਮਾਂਡਾਂ ਜਾਂ ਆਟੋ-ਇਨਵੋਕੇਬਲ ਏਜੈਂਟ ਵਿਹਾਰ ਜੋੜਨ ਲਈ ਇੱਕ ਸਕਿਲ ਬਣਾਓ।"
   },
   "Created": {
     "message": "ਬਣਾਇਆ"
   },
+  "Creating": {
+    "message": "ਬਣਾ ਰਹੇ ਹਾਂ..."
+  },
   "Creator": {
     "message": "ਸਿਰਜਣਹਾਰ"
+  },
+  "Credential_Encryption": {
+    "message": "ਪ੍ਰਮਾਣਪੱਤਰ ਇਨਕ੍ਰਿਪਸ਼ਨ"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "ਪ੍ਰਮਾਣਪੱਤਰ ਇਨਕ੍ਰਿਪਸ਼ਨ ਅਤੇ PIN ਸੁਰੱਖਿਆ"
   },
   "Credit_Details": {
     "message": "ਕ੍ਰੈਡਿਟ ਵੇਰਵੇ"
   },
+  "Current_PIN": {
+    "message": "ਮੌਜੂਦਾ PIN"
+  },
   "Current_Plan": {
     "message": "ਮੌਜੂਦਾ ਯੋਜਨਾ:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS ਲੁੱਕਅਪ ਫੇਲ੍ਹ ਹੋਇਆ"
   },
   "DOM_Tool": {
     "message": "DOM ਸਾਧਨ"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "ਮੂਲ"
   },
+  "Delete": {
+    "message": "ਹਟਾਓ"
+  },
   "Deny": {
     "message": "ਇਨਕਾਰ"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republic ਦੁਆਰਾ ਵਿਕਸਿਤ ਅਤੇ ਸਮਰਥਿਤ"
+  },
+  "Disabled": {
+    "message": "ਅਯੋਗ"
   },
   "Discard_Changes": {
     "message": "ਬਦਲਾਅ ਰੱਦ ਕਰੋ"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "ਕਨੈਕਟ ਕੀਤੇ MCP ਸਰਵਰਾਂ ਤੋਂ ਮਾਡਲ ਕਾਂਟੈਕਸਟ ਪ੍ਰੋਟੋਕੋਲ ਟੂਲਸ ਨੂੰ ਯੋਗ ਕਰੋ"
   },
+  "Enable_PIN": {
+    "message": "PIN ਯੋਗ ਕਰੋ"
+  },
+  "Enable_PIN_Protection": {
+    "message": "PIN ਸੁਰੱਖਿਆ ਯੋਗ ਕਰੋ"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "browserx ਸ਼ੁਰੂ ਹੋਣ 'ਤੇ ਆਟੋ-ਕਨੈਕਟ ਯੋਗ ਕਰੋ"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "API ਕੁੰਜੀ ਜਾਂ ਬੇਅਰਰ ਟੋਕਨ ਦਰਜ ਕਰੋ"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "ਆਪਣੀ 6-ਅੰਕੀ PIN ਦਰਜ ਕਰੋ ਤਾਂ ਜੋ API ਕੁੰਜੀਆਂ ਨੂੰ ਅਨਲੌਕ ਕੀਤਾ ਜਾ ਸਕੇ।"
+  },
   "Enter_your_LLM_API_key": {
     "message": "ਆਪਣਾ LLM API ਕੁੰਜੀ ਦਰਜ ਕਰੋ"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "ਪ੍ਰੋਟੈਕਸ਼ਨ ਹਟਾਉਣ ਲਈ ਆਪਣੀ ਮੌਜੂਦਾ PIN ਦਰਜ ਕਰੋ। API ਕੁੰਜੀਆਂ ਫਿਰ ਵੀ ਡਿਫਾਲਟ ਕੁੰਜੀ ਨਾਲ ਇਨਕ੍ਰਿਪਟ ਰਹਿਣਗੀਆਂ।"
   },
   "Enter_your_task": {
     "message": "ਆਪਣਾ ਕੰਮ ਦਰਜ ਕਰੋ..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Browserx ਨਾਲ ਵਿਆਖਿਆ ਕਰੋ"
+  },
+  "Export": {
+    "message": "ਨਿਰਯਾਤ"
   },
   "Extension_Permission": {
     "message": "ਐਕਸਟੈਂਸ਼ਨ ਅਤੇ ਅਨੁਮਤੀ"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "ਨਵੀਂ ਟੈਬ ਬਣਾਉਣ ਵਿੱਚ ਅਸਫਲ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "ਬ੍ਰਾਊਜ਼ਰ ਟੈਬ ਬਣਾਉਣ ਵਿੱਚ ਅਸਫਲ: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "ਡਿਸਕਨੈਕਟ ਕਰਨ ਵਿੱਚ ਅਸਫਲ: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "ਟਾਸਕ ਨੂੰ ਰੋਕਣ ਵਿੱਚ ਅਸਫਲ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "ਟੈਬ ${newTabId} 'ਤੇ ਸਵਿੱਚ ਕਰਨ ਵਿੱਚ ਅਸਫਲ: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "ਕਨੈਕਸ਼ਨ ਦੀ ਜਾਂਚ ਵਿੱਚ ਅਸਫਲ"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "ਫਾਈਲ ਬਦਲਾਅ ਦੀ ਮਨਜ਼ੂਰੀ ਲੋੜੀਂਦੀ ਹੈ"
-  },
   "File_Operations_Not_Available": {
     "message": "ਫਾਈਲ ਕਾਰਵਾਈਆਂ (ਉਪਲਬਧ ਨਹੀਂ)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "ਲਚਕੀਲਾ"
+  },
+  "Follows_system_theme": {
+    "message": "ਸਿਸਟਮ ਥੀਮ ਦੀ ਪਾਲਣਾ ਕਰਦਾ ਹੈ"
+  },
+  "Forgot_PIN": {
+    "message": "PIN ਭੁੱਲ ਗਏ?"
   },
   "Form_Automation_Tool": {
     "message": "ਫਾਰਮ ਆਟੋਮੇਸ਼ਨ ਸਾਧਨ"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "ਸ਼ੁਰੂ ਕਰੋ"
+  },
+  "Green_text_terminal": {
+    "message": "ਹਰਾ ਟੈਕਸਟ ਟਰਮੀਨਲ"
   },
   "Hello_NAME": {
     "message": "ਹੈਲੋ $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "ਚਿੱਤਰ ਇਨਪੁੱਟ"
+  },
+  "Import": {
+    "message": "ਆਯਾਤ"
+  },
+  "Import_Skill_from_URL": {
+    "message": "URL ਤੋਂ ਸਕਿਲ ਆਯਾਤ ਕਰੋ"
+  },
+  "Import_from_URL": {
+    "message": "URL ਤੋਂ ਆਯਾਤ ਕਰੋ"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "ਆਯਾਤ ਕੀਤੇ ਸਕਿਲ ਡਿਫਾਲਟ ਤੌਰ 'ਤੇ ਅਵਿਸ਼ਵਾਸਯੋਗ ਹਨ ਅਤੇ ਆਟੋ-ਕਾਲ ਨਹੀਂ ਹੋ ਸਕਦੇ।"
+  },
+  "Importing": {
+    "message": "ਆਯਾਤ ਕਰ ਰਹੇ ਹਾਂ..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "ਇਸ ਲਿਖਤ ਨੂੰ ਸੁਧਾਰੋ: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "ਅਵੈਧ API ਕੁੰਜੀ"
   },
-  "Invalid_API_key_provided": {
-    "message": "ਗਲਤ API ਕੁੰਜੀ ਦਿੱਤੀ ਗਈ"
-  },
   "Invalid_URL_format": {
     "message": "ਗਲਤ URL ਫਾਰਮੈਟ"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "ਗਲਤ ਸਬਮਿਸ਼ਨ ਫਾਰਮੈਟ: op ਵਿੱਚ type ਫੀਲਡ ਗੁੰਮ ਹੈ"
+  },
+  "Invocation_Mode": {
+    "message": "ਕਾਲ ਮੋਡ"
   },
   "Keyboard_Shortcuts": {
     "message": "ਕੀਬੋਰਡ ਸ਼ਾਰਟਕੱਟ"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "ਸੈਟਿੰਗਾਂ ਲੋਡ ਹੋ ਰਹੀਆਂ ਹਨ..."
+  },
+  "Loading_skills": {
+    "message": "ਕੌਸ਼ਲ ਲੋਡ ਹੋ ਰਹੇ ਹਨ..."
   },
   "Loading_tabs": {
     "message": "ਟੈਬ ਲੋਡ ਹੋ ਰਹੇ ਹਨ..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "ਮਾਡਲ ਅਤੇ ਪ੍ਰਦਾਤਾ ਸੈਟਿੰਗਾਂ ਡਿਫਾਲਟ ਸੰਰਚਨਾ (ਪੜ੍ਹਨ-ਲਾਇਕ) ਤੋਂ ਲੋਡ ਕੀਤੀਆਂ ਗਈਆਂ ਹਨ"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "ਮਾਡਲ $1$ 'ਤੇ ਬਦਲਿਆ ਗਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ API ਕੁੰਜੀ ਕਨਫਿਗਰ ਕਰੋ।",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "ਮਾਡਲ $1$ 'ਤੇ ਬਦਲਿਆ ਗਿਆ। ਗੱਲਬਾਤ ਸੰਭਾਲੀ ਗਈ।",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "ਮਾਡਲ $1$ 'ਤੇ ਬਦਲਿਆ ਗਿਆ। ਸੈਸ਼ਨ ਨੂੰ ਮੁੜ-ਸ਼ੁਰੂ ਕੀਤਾ ਜਾਵੇਗਾ।",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "ਮਾਡਲ $1$ 'ਤੇ ਬਦਲਿਆ ਗਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ API ਕੁੰਜੀ ਕਨਫਿਗਰ ਕਰੋ।",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "ਆਧੁਨਿਕ ਚੈਟ"
+  "Modern_Chat_Auto": {
+    "message": "ਮਾਡਰਨ ਚੈਟ ਆਟੋ"
+  },
+  "Modern_Chat_Dark": {
+    "message": "ਮਾਡਰਨ ਚੈਟ ਡਾਰਕ"
+  },
+  "Modern_Chat_Light": {
+    "message": "ਮਾਡਰਨ ਚੈਟ ਲਾਈਟ"
   },
   "Monthly_Credits": {
     "message": "ਮਾਸਿਕ ਕ੍ਰੈਡਿਟ"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "ਨੈੱਟਵਰਕ ਗਲਤੀ"
   },
-  "Network_error_occurred": {
-    "message": "ਨੈੱਟਵਰਕ ਗਲਤੀ ਹੋਈ"
-  },
   "Never_expire_permanent": {
     "message": "ਕਦੇ ਵੀ ਮਿਆਦ ਖਤਮ ਨਹੀਂ (ਸਥਾਈ)"
   },
   "New_Conversation": {
     "message": "ਨਵੀਂ ਗੱਲਬਾਤ"
+  },
+  "New_PIN": {
+    "message": "ਨਵਾਂ PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "ਅਜੇ ਤੱਕ ਕੋਈ A2A ਏਜੈਂਟ ਸੰਰਚਿਤ ਨਹੀਂ ਹਨ।"
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "ਕੋਈ ਨਿਰਧਾਰਤ ਸਮਾਂ ਨਹੀਂ"
   },
+  "No_settings_found": {
+    "message": "ਕੋਈ ਸੈਟਿੰਗ ਨਹੀਂ ਮਿਲੀ"
+  },
   "No_skills_available": {
     "message": "ਕੋਈ ਸਕਿਲ ਉਪਲਬਧ ਨਹੀਂ।"
+  },
+  "No_skills_configured_yet": {
+    "message": "ਹਾਲੇ ਤੱਕ ਕੋਈ ਕੌਸ਼ਲ ਸੰਰਚਿਤ ਨਹੀਂ ਹਨ।"
   },
   "No_steps_in_plan": {
     "message": "ਯੋਜਨਾ ਵਿੱਚ ਕੋਈ ਕਦਮ ਨਹੀਂ"
   },
   "No_tabs_available": {
     "message": "ਕੋਈ ਟੈਬ ਉਪਲਬਧ ਨਹੀਂ"
+  },
+  "No_tasks_in_plan": {
+    "message": "ਪਲਾਨ ਵਿੱਚ ਕੋਈ ਟਾਸਕ ਨਹੀਂ"
   },
   "No_time_set": {
     "message": "ਕੋਈ ਸਮਾਂ ਸੈੱਟ ਨਹੀਂ ਕੀਤਾ"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN ਸੁਰੱਖਿਆ"
+  },
   "Page_Action_Tool": {
     "message": "ਪੇਜ ਐਕਸ਼ਨ ਟੂਲ"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "ਕੈਸ਼ ਨੂੰ ਸਟੋਰੇਜ ਵਿੱਚ ਸਥਾਈ ਕਰੋ"
   },
-  "Plan_1_step_s": {
-    "message": "ਯੋਜਨਾ: $1$ ਕਦਮ(ਾਂ)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "ਕਿਰਪਾ ਕਰਕੇ ਸੈਟਿੰਗਜ਼ ਵਿੱਚ ਆਪਣੀ API ਕੁੰਜੀ ਦੀ ਜਾਂਚ ਕਰੋ।"
-  },
   "Please_enter_a_task_description": {
     "message": "ਕਿਰਪਾ ਕਰਕੇ ਕਾਰਜ ਦਾ ਵੇਰਵਾ ਦਰਜ ਕਰੋ"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵੈਧ API ਕੁੰਜੀ ਦਰਜ ਕਰੋ।"
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "AI ਏਜੈਂਟ ਦੀ ਵਰਤੋਂ ਜਾਰੀ ਰੱਖਣ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਲਾਗਇਨ ਕਰੋ।"
-  },
   "Please_select_a_provider": {
     "message": "ਕਿਰਪਾ ਕਰਕੇ ਪ੍ਰਦਾਤਾ ਚੁਣੋ"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "ਦੁਨੀਆ ਦੇ ਸਭ ਤੋਂ ਉੱਨਤ ਮਾਡਲਾਂ ਨੂੰ ਅਨਲੌਕ ਕਰਨ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਯੋਜਨਾ ਅਪਗਰੇਡ ਕਰੋ"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "ਪੋਰਟ 1455 ਵਰਤੋਂ ਵਿੱਚ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਇਸ ਪੋਰਟ ਨੂੰ ਵਰਤ ਰਹੀ ਕਿਸੇ ਵੀ ਐਪਲੀਕੇਸ਼ਨ ਨੂੰ ਬੰਦ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   },
   "Power": {
     "message": "ਪਾਵਰ"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "ਨਵੀਂਕਰਨ ਵਿੱਚ"
   },
-  "Reject": {
-    "message": "ਰੱਦ ਕਰੋ"
-  },
   "Release_Date": {
     "message": "ਰਿਲੀਜ਼ ਤਾਰੀਖ"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "API ਕੁੰਜੀ ਹਟਾਓ"
   },
+  "Remove_PIN": {
+    "message": "PIN ਹਟਾਓ"
+  },
+  "Removing": {
+    "message": "ਹਟਾਇਆ ਜਾ ਰਿਹਾ ਹੈ..."
+  },
   "Request_Timeout": {
     "message": "ਬੇਨਤੀ ਟਾਈਮਆਉਟ"
-  },
-  "Request_timed_out": {
-    "message": "ਬੇਨਤੀ ਟਾਈਮਆਉਟ ਹੋ ਗਈ"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "ਬੇਨਤੀ ਟਾਈਮਆਉਟ ਮਿਲੀਸੈਕੰਡ ਵਿੱਚ (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "ਬੇਨਤੀ ਟਾਈਮਆਉਟ ਮਿਲੀਸੈਕੰਡ ਵਿੱਚ (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "ਬੇਨਤੀ ਰੋਕੀ ਗਈ"
+  "Reset_Vault": {
+    "message": "ਵਾਲਟ ਰੀਸੈੱਟ ਕਰੋ"
   },
-  "Response_failed": {
-    "message": "ਜਵਾਬ ਅਸਫਲ"
+  "Resetting": {
+    "message": "ਰੀਸੈੱਟ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
   },
   "Restricted": {
     "message": "ਪਾਬੰਦ"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "ਚੱਲ ਰਿਹਾ ਹੈ"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "ਸਟਰੀਮ ਗਲਤੀ"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "ਸਮਾਂ-ਸੂਚੀਬੱਧ ਕੰਮ"
   },
-  "Scheduled_Task_Starting": {
-    "message": "ਸਮਾਂ-ਸੂਚੀਬੱਧ ਕੰਮ ਸ਼ੁਰੂ ਹੋ ਰਿਹਾ ਹੈ"
-  },
   "Scheduled_Tasks": {
     "message": "ਸਮਾਂ-ਸੂਚੀਬੱਧ ਕੰਮ"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "ਖੋਜ ਪੂਰੀ ਹੋਈ"
   },
+  "Search_settings": {
+    "message": "ਸੈਟਿੰਗਾਂ ਦੀ ਖੋਜ..."
+  },
   "Searching": {
     "message": "ਖੋਜ ਕਰ ਰਹੇ ਹਾਂ..."
+  },
+  "Security": {
+    "message": "ਸੁਰੱਖਿਆ"
   },
   "Security_Privacy": {
     "message": "ਸੁਰੱਖਿਆ ਅਤੇ ਗੋਪਨੀਯਤਾ"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "ਸੈਸ਼ਨ ਗਲਤੀ"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "ਸੈਸ਼ਨ ਸਮਾਪਤ ਹੋ ਗਿਆ - AI ਏਜੈਂਟ ਦੀ ਵਰਤੋਂ ਜਾਰੀ ਰੱਖਣ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਲਾਗਇਨ ਕਰੋ"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "ਸੈਸ਼ਨ ਦੀ ਸੀਮਾ ਪਹੁੰਚ ਗਈ। ਨਵੇਂ ਕੰਮ ਕਤਾਰ ਵਿੱਚ ਰੱਖੇ ਜਾਣਗੇ।"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "ਨਿਰਧਾਰਤ ਕਰੋ ਕਿ ਰੋਲਆਉਟ ਡਾਟਾ ਕਦੋਂ ਮਿਆਦ ਪੁੱਗਣਾ ਚਾਹੀਦਾ ਹੈ"
+  },
+  "Setting_up": {
+    "message": "ਸੈਟਅਪ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
   },
   "Settings": {
     "message": "ਸੈਟਿੰਗਾਂ"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "ਜਦੋਂ ਸਟੋਰੇਜ ਵਰਤੋਂ ਇਸ ਪ੍ਰਤੀਸ਼ਤ ਤੋਂ ਵੱਧ ਹੋਵੇ ਤਾਂ ਚੇਤਾਵਨੀ ਦਿਖਾਓ (ਮੂਲ: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "ਸਾਇਨ ਇਨ ਅਸਫਲ"
+  },
   "Sign_in_to_your_account": {
     "message": "ਆਪਣੇ ਖਾਤੇ ਵਿੱਚ ਸਾਈਨ ਇਨ ਕਰੋ"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "ChatGPT ਨਾਲ ਸਾਇਨ ਇਨ ਕਰੋ"
+  },
+  "Signing_in": {
+    "message": "ਸਾਇਨ ਇਨ ਹੋ ਰਿਹਾ ਹੈ..."
   },
   "Skills": {
     "message": "ਕੁਸ਼ਲਤਾਵਾਂ"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "ਟਾਸਕ ਵੇਰਵੇ"
   },
-  "Task_Failed": {
-    "message": "ਟਾਸਕ ਫੇਲ੍ਹ ਹੋਇਆ"
-  },
   "Task_History": {
     "message": "ਟਾਸਕ ਇਤਿਹਾਸ"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "ਟਾਸਕ ਫੇਲ੍ਹ ਹੋਇਆ"
+  },
+  "Task_scheduled_for_1": {
+    "message": "ਟਾਸਕ $1$ ਲਈ ਨਿਯਤ ਕੀਤਾ ਗਿਆ",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "ਟਾਸਕ ਸ਼ੁਰੂ ਹੋਇਆ"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "ਏਜੈਂਟ ਇਸ ਵੇਲੇ ਬੈਕਐਂਡ ਮੋਡ ਵਰਤ ਰਿਹਾ ਹੈ। LLM ਬੇਨਤੀਆਂ AI Republic ਸਰਵਰ ਰਾਹੀਂ ਭੇਜੀਆਂ ਜਾਣਗੀਆਂ। ਤੁਹਾਡੀਆਂ ਗੱਲਬਾਤਾਂ ਸਾਡੇ ਬੁਨਿਆਦੀ ਢਾਂਚੇ ਰਾਹੀਂ ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਸੰਭਾਲੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।"
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "ਮਾਡਲ ਬਦਲਣ ਨਾਲ ਮੌਜੂਦਾ ਗੱਲਬਾਤ ਮਿਟ ਜਾਏਗੀ। ਕੀ ਤੁਸੀਂ ਜਾਰੀ ਰੱਖਣਾ ਚਾਹੁੰਦੇ ਹੋ?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "ਸਰਵਰ ਨੂੰ ਇੱਕ ਗਲਤੀ ਆਈ। ਕਿਰਪਾ ਕਰਕੇ ਬਾਅਦ ਵਿੱਚ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "ਇਹ ਸਾਰੇ ਸੰਭਾਲੇ ਹੋਏ API ਕੁੰਜੀਆਂ ਨੂੰ ਸਥਾਈ ਤੌਰ 'ਤੇ ਮਿਟਾ ਦੇਵੇਗਾ ਅਤੇ ਵਾਲਟ ਨੂੰ ਰੀਸੈਟ ਕਰੇਗਾ। ਤੁਹਾਨੂੰ ਆਪਣੀਆਂ API ਕੁੰਜੀਆਂ ਨੂੰ ਦੁਬਾਰਾ ਦਰਜ ਕਰਨਾ ਪਵੇਗਾ।"
   },
   "Time": {
     "message": "ਸਮਾਂ"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "ਬਹੁਤ ਜ਼ਿਆਦਾ ਅਸਫਲ ਕੋਸ਼ਿਸ਼ਾਂ। ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+  },
   "Tool_Timeout_ms": {
     "message": "ਟੂਲ ਟਾਈਮਆਉਟ (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "ਟੂਲ ਸੈਟਿੰਗਜ਼"
+  },
+  "Trust": {
+    "message": "ਭਰੋਸਾ"
   },
   "Trusted": {
     "message": "ਭਰੋਸੇਯੋਗ"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "ਕ੍ਰੈਡਿਟ ਜਾਣਕਾਰੀ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "ਬੈਕਐਂਡ ਸਰਵਰ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਹੋ ਸਕੀ - ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ ਕਨੈਕਸ਼ਨ ਚੈੱਕ ਕਰੋ"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "ਸਰਵਰ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ ਕਨੈਕਸ਼ਨ ਚੈੱਕ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
-  },
   "Unknown_Event": {
     "message": "ਅਣਜਾਣ ਘਟਨਾ"
   },
   "Unknown_error": {
     "message": "ਅਣਜਾਣ ਗਲਤੀ"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "ਏਜੈਂਟ ਦੀ ਸਥਿਤੀ ਚੈੱਕ ਕਰਦੇ ਸਮੇਂ ਅਣਜਾਣ ਗਲਤੀ"
-  },
-  "Unknown_error_occurred": {
-    "message": "ਅਣਜਾਣ ਗਲਤੀ ਹੋਈ"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "ਟਾਸਕ ਚਲਾਉਂਦੇ ਸਮੇਂ ਅਣਜਾਣ ਗਲਤੀ ਹੋਈ"
   },
   "Unknown_error_processing_submission": {
     "message": "ਸਬਮਿਸ਼ਨ ਪ੍ਰੋਸੈਸ ਕਰਦੇ ਸਮੇਂ ਅਣਜਾਣ ਗਲਤੀ"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "ਅਨਲੌਕ ਕਰੋ"
+  },
+  "Unlocking": {
+    "message": "ਅਨਲੌਕ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ..."
+  },
   "Unsaved_Changes": {
     "message": "ਬਿਨਾਂ ਸੇਵ ਕੀਤੀਆਂ ਤਬਦੀਲੀਆਂ"
   },
   "Untitled": {
     "message": "ਬਿਨਾਂ ਸਿਰਲੇਖ"
+  },
+  "Untrusted": {
+    "message": "ਅਵਿਸ਼ਵਾਸਯੋਗ"
   },
   "Upcoming": {
     "message": "ਆਉਣ ਵਾਲਾ"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "ਆਪਣਾ API ਕੁੰਜੀ ਵਰਤੋ"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "API ਕੁੰਜੀ ਦੀ ਥਾਂ ਆਪਣੇ ChatGPT Plus/Pro ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਦੀ ਵਰਤੋਂ ਕਰੋ"
+  },
   "User_Center": {
     "message": "ਉਪਭੋਗਤਾ ਕੇਂਦਰ"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "ਵਾਧੂ ਕ੍ਰੈਡਿਟ ਦੀ ਵਰਤੋਂ"
+  },
+  "Vault_Locked": {
+    "message": "ਵਾਲਟ ਲੌਕ ਕੀਤਾ"
   },
   "Verbosity": {
     "message": "ਵਰਬੋਸਿਟੀ"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "ਤੁਹਾਡਾ ਵਿਅਕਤੀਗਤ AI ਸਹਾਇਕ"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "ਤੁਹਾਡਾ ਸੈਸ਼ਨ ਸਮਾਪਤ ਹੋ ਗਿਆ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਲਾਗ ਇਨ ਕਰੋ।"
-  },
   "DISCONNECTED": {
     "message": "[DISCONNECTED]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (unknown command)"
   },
+  "more_results": {
+    "message": "ਹੋਰ ਨਤੀਜੇ..."
+  },
   "optional": {
     "message": "ਵਿਕਲਪਿਕ"
+  },
+  "or": {
+    "message": "ਜਾਂ"
   },
   "remaining": {
     "message": "ਬਾਕੀ"

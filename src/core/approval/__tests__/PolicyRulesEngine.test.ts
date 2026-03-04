@@ -182,7 +182,7 @@ describe('PolicyRulesEngine', () => {
       const rules: PolicyRule[] = [
         {
           type: 'deny',
-          match: { tool: 'terminal', pattern: 'rm\\s+(-[rf]+\\s+)+/', riskAbove: 80 },
+          match: { tool: 'terminal', pattern: 'rm\\s+(?=(-[rf]+\\s+)*-[rf]*r)(-[rf]+\\s+)+/', riskAbove: 80 },
           description: 'Deny destructive rm on root',
         },
       ];
@@ -200,6 +200,24 @@ describe('PolicyRulesEngine', () => {
 
       // Risk and pattern match, but wrong tool
       expect(engine.evaluate('dom_tool', { command: 'rm -rf /' }, 90)).toBeUndefined();
+    });
+
+    it('should not deny rm -f on a specific file path', () => {
+      const rules: PolicyRule[] = [
+        {
+          type: 'deny',
+          match: { tool: 'terminal', pattern: 'rm\\s+(?=(-[rf]+\\s+)*-[rf]*r)(-[rf]+\\s+)+/', riskAbove: 80 },
+          description: 'Deny destructive rm on root',
+        },
+      ];
+
+      const engine = new PolicyRulesEngine(rules);
+
+      // rm -f without -r should not match the deny pattern
+      expect(engine.evaluate('terminal', { command: 'rm -f /home/user/file.txt' }, 90)).toBeUndefined();
+
+      // rm -rf should still match
+      expect(engine.evaluate('terminal', { command: 'rm -rf /' }, 90)).toBe('deny');
     });
   });
 

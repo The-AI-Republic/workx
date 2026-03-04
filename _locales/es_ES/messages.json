@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "Clave API para autenticación (almacenada encriptada)"
   },
-  "API_key_has_expired": {
-    "message": "La clave API ha expirado"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "La clave API tiene permisos insuficientes"
-  },
   "API_key_saved_successfully": {
     "message": "¡Clave API guardada correctamente!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Herramientas del agente"
   },
-  "Agent_Turn_Complete": {
-    "message": "Turno del agente completado"
-  },
   "Agent_URL_is_required": {
     "message": "Se requiere la URL del agente"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agente eliminado correctamente"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Turno del agente completado correctamente"
-  },
   "Agent_updated_successfully": {
     "message": "Agente actualizado correctamente"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Todas las claves API se cifran en reposo mediante AES-256-GCM. Active la protección con PIN para mayor seguridad."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Todas las acciones se aprueban automáticamente en estos dominios."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Aprobar siempre"
   },
+  "Always_dark": {
+    "message": "Siempre oscuro"
+  },
+  "Always_light": {
+    "message": "Siempre claro"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Su IA personal (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Aprobar"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Aprobar cambios en: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Aprobar ejecución: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "¿Está seguro de que desea cancelar esta tarea?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "¿Está seguro de que desea eliminar la habilidad \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "¿Está seguro de que desea eliminar este agente?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Credencial de autenticación (almacenada encriptada)"
-  },
-  "Authentication_failed": {
-    "message": "Autenticación fallida"
   },
   "Authentication_method_for_the_agent": {
     "message": "Método de autenticación para el agente"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend no disponible. Por favor, espere un momento y vuelva a intentarlo."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Error del servidor backend - por favor, inténtelo de nuevo más tarde"
-  },
   "Backoff_Multiplier": {
     "message": "Multiplicador de retroceso"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Dominios bloqueados"
+  },
+  "Body_Markdown": {
+    "message": "Cuerpo (Markdown)"
   },
   "Browser_Tools": {
     "message": "Herramientas del navegador"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Cancelado"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "No se puede ejecutar la tarea: no hay ninguna clave API configurada para ${providerName}. Por favor, vaya a Configuración → Configuración de modelo y añada su clave API."
-  },
   "Cannot_select_model_1": {
     "message": "No se puede seleccionar el modelo: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Capacidades"
   },
+  "Change_PIN": {
+    "message": "Cambiar PIN"
+  },
+  "Changing": {
+    "message": "Cambiando..."
+  },
   "Chat_History": {
     "message": "Historial de chat"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Suscripción a ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "La sesión de ChatGPT ha expirado. Por favor, inicie sesión de nuevo."
   },
   "Checking_agent_status": {
     "message": "Comprobando el estado del agente..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Seleccione el canal de actualizaciones que desea seguir"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Estilo de terminal clásico con texto verde sobre fondo negro"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Interfaz de chat limpia y moderna, similar a ChatGPT"
+  "Clear_search": {
+    "message": "Borrar búsqueda"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Haga clic en el icono de Browserx en la barra de herramientas o pulse Alt+Mayús+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Cerrar"
   },
+  "Close_scheduler": {
+    "message": "Cerrar programador"
+  },
   "Close_settings": {
     "message": "Cerrar configuración"
   },
+  "Close_skills": {
+    "message": "Cerrar habilidades"
+  },
   "Collapse": {
     "message": "Contraer"
-  },
-  "Command_Approval_Required": {
-    "message": "Se requiere aprobación del comando"
   },
   "Command_completed": {
     "message": "Comando completado"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Completado"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Completado: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Comprima los datos en caché para ahorrar espacio de almacenamiento"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Servidores configurados"
+  },
+  "Confirm_New_PIN": {
+    "message": "Confirmar nuevo PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Confirmar PIN"
   },
   "Connect": {
     "message": "Conectar"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Conectado con éxito"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Conectado a través de ChatGPT"
   },
   "Connecting": {
     "message": "Conectando..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "¡Prueba de conexión exitosa! (La clave API es válida)"
   },
-  "Connection_was_refused": {
-    "message": "La conexión fue rechazada"
-  },
-  "Connection_was_reset": {
-    "message": "La conexión se restableció"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "El contenido viola la política: el contenido ${contentType} no está permitido"
-  },
   "Context_Window": {
     "message": "Ventana de contexto"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Controla cuán agresivamente el agente solicita aprobación."
   },
+  "Create": {
+    "message": "Crear"
+  },
+  "Create_New_Skill": {
+    "message": "Crear nueva habilidad"
+  },
   "Create_New_Tab": {
     "message": "Crear Nueva Pestaña"
+  },
+  "Create_Skill": {
+    "message": "Crear habilidad"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Cree un PIN de 6 dígitos para proteger sus claves API. Necesitará este PIN después de reiniciar el navegador."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Cree una habilidad para añadir comandos personalizados / o comportamientos de agente auto-invocables."
   },
   "Created": {
     "message": "Creado"
   },
+  "Creating": {
+    "message": "Creando..."
+  },
   "Creator": {
     "message": "Creador"
+  },
+  "Credential_Encryption": {
+    "message": "Cifrado de credenciales"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Cifrado de credenciales y protección con PIN"
   },
   "Credit_Details": {
     "message": "Detalles de crédito"
   },
+  "Current_PIN": {
+    "message": "PIN actual"
+  },
   "Current_Plan": {
     "message": "Plan actual:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Error en la búsqueda DNS"
   },
   "DOM_Tool": {
     "message": "Herramienta DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Predeterminado"
   },
+  "Delete": {
+    "message": "Eliminar"
+  },
   "Deny": {
     "message": "Denegar"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Desarrollado y respaldado por AI Republic"
+  },
+  "Disabled": {
+    "message": "Desactivado"
   },
   "Discard_Changes": {
     "message": "Descartar cambios"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Activar herramientas del Protocolo de Contexto de Modelo desde los servidores MCP conectados"
   },
+  "Enable_PIN": {
+    "message": "Activar PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Activar protección con PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Activar la conexión automática al iniciar Browserx"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Introduzca la clave API o el token de portador"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Introduzca su PIN de 6 dígitos para desbloquear sus claves API."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Introduzca su clave API de LLM"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Introduzca su PIN actual para eliminar la protección. Las claves API seguirán cifradas con la clave predeterminada."
   },
   "Enter_your_task": {
     "message": "Introduzca su tarea..."
@@ -696,6 +740,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Explicar con Browserx"
+  },
+  "Export": {
+    "message": "Exportar"
   },
   "Extension_Permission": {
     "message": "Extensión y permisos"
@@ -748,12 +795,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Error al crear una nueva pestaña. Por favor, inténtelo de nuevo."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Error al crear la pestaña del navegador: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Error al desconectar: $1$",
@@ -825,9 +866,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Error al detener la tarea. Por favor, inténtelo de nuevo."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Error al cambiar a la pestaña ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Error al probar la conexión"
   },
@@ -842,9 +880,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Se requiere aprobación del cambio de archivo"
-  },
   "File_Operations_Not_Available": {
     "message": "Operaciones de archivo (No disponible)"
   },
@@ -853,6 +888,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Sigue el tema del sistema"
+  },
+  "Forgot_PIN": {
+    "message": "¿Olvidó el PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Herramienta de automatización de formularios"
@@ -874,6 +915,9 @@
   },
   "Get_Started": {
     "message": "Comenzar"
+  },
+  "Green_text_terminal": {
+    "message": "Terminal de texto verde"
   },
   "Hello_NAME": {
     "message": "Hola $NAME$",
@@ -897,6 +941,21 @@
   },
   "Image_Input": {
     "message": "Entrada de imagen"
+  },
+  "Import": {
+    "message": "Importar"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Importar habilidad desde URL"
+  },
+  "Import_from_URL": {
+    "message": "Importar desde URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Las habilidades importadas no son de confianza por defecto y no pueden invocarse automáticamente."
+  },
+  "Importing": {
+    "message": "Importando..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Mejorar este texto: ${info.selectionText}"
@@ -933,9 +992,6 @@
   "Invalid_API_key": {
     "message": "Clave API no válida"
   },
-  "Invalid_API_key_provided": {
-    "message": "Clave API proporcionada no válida"
-  },
   "Invalid_URL_format": {
     "message": "Formato de URL no válido"
   },
@@ -944,6 +1000,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Formato de envío no válido: op sin campo type"
+  },
+  "Invocation_Mode": {
+    "message": "Modo de invocación"
   },
   "Keyboard_Shortcuts": {
     "message": "Atajos de teclado"
@@ -986,6 +1045,9 @@
   },
   "Loading_settings": {
     "message": "Cargando ajustes..."
+  },
+  "Loading_skills": {
+    "message": "Cargando habilidades..."
   },
   "Loading_tabs": {
     "message": "Cargando pestañas..."
@@ -1109,16 +1171,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Configuración del modelo y del proveedor cargada desde la configuración predeterminada (solo lectura)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Modelo cambiado a $1$. Por favor, configure su clave API.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Modelo cambiado a $1$. Conversación preservada.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Modelo cambiado a $1$. La sesión se volverá a inicializar.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Modelo cambiado a $1$. Por favor, configure su clave API.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1136,8 +1198,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Chat moderno"
+  "Modern_Chat_Auto": {
+    "message": "Chat Moderno Automático"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Chat Moderno Oscuro"
+  },
+  "Modern_Chat_Light": {
+    "message": "Chat Moderno Claro"
   },
   "Monthly_Credits": {
     "message": "Créditos mensuales"
@@ -1163,14 +1231,14 @@
   "Network_error": {
     "message": "Error de red"
   },
-  "Network_error_occurred": {
-    "message": "Se produjo un error de red"
-  },
   "Never_expire_permanent": {
     "message": "Nunca expira (permanente)"
   },
   "New_Conversation": {
     "message": "Nueva conversación"
+  },
+  "New_PIN": {
+    "message": "Nuevo PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Aún no se han configurado agentes A2A."
@@ -1208,14 +1276,23 @@
   "No_scheduled_time": {
     "message": "Sin hora programada"
   },
+  "No_settings_found": {
+    "message": "No se encontraron configuraciones"
+  },
   "No_skills_available": {
     "message": "No hay habilidades disponibles."
+  },
+  "No_skills_configured_yet": {
+    "message": "Aún no hay habilidades configuradas."
   },
   "No_steps_in_plan": {
     "message": "No hay pasos en el plan"
   },
   "No_tabs_available": {
     "message": "No hay pestañas disponibles"
+  },
+  "No_tasks_in_plan": {
+    "message": "No hay tareas en el plan"
   },
   "No_time_set": {
     "message": "No se ha establecido hora"
@@ -1278,6 +1355,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Protección con PIN"
+  },
   "Page_Action_Tool": {
     "message": "Herramienta de acción de página"
   },
@@ -1310,17 +1393,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Persistir caché en el almacenamiento"
   },
-  "Plan_1_step_s": {
-    "message": "Plan: $1$ paso(s)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Por favor, compruebe su clave API en la configuración."
-  },
   "Please_enter_a_task_description": {
     "message": "Por favor, introduzca una descripción de la tarea"
   },
@@ -1330,9 +1402,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Por favor, introduzca una clave API válida."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Por favor, inicie sesión de nuevo para seguir utilizando el agente de IA."
-  },
   "Please_select_a_provider": {
     "message": "Por favor, seleccione un proveedor"
   },
@@ -1341,6 +1410,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Por favor, actualice el plan para desbloquear los modelos más avanzados del mundo"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "El puerto 1455 está en uso. Cierre cualquier aplicación que lo utilice y vuelva a intentarlo."
   },
   "Power": {
     "message": "Potencia"
@@ -1425,9 +1497,6 @@
   "Refreshes_in": {
     "message": "Se actualiza en"
   },
-  "Reject": {
-    "message": "Rechazar"
-  },
   "Release_Date": {
     "message": "Fecha de lanzamiento"
   },
@@ -1446,11 +1515,14 @@
   "Remove_API_Key": {
     "message": "Eliminar clave API"
   },
+  "Remove_PIN": {
+    "message": "Eliminar PIN"
+  },
+  "Removing": {
+    "message": "Eliminando..."
+  },
   "Request_Timeout": {
     "message": "Tiempo de espera de la solicitud"
-  },
-  "Request_timed_out": {
-    "message": "La solicitud ha superado el tiempo de espera"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Tiempo de espera de la solicitud en milisegundos (5000-120000)"
@@ -1458,11 +1530,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Tiempo de espera de la solicitud en milisegundos (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "La solicitud fue abortada"
+  "Reset_Vault": {
+    "message": "Restablecer Bóveda"
   },
-  "Response_failed": {
-    "message": "Respuesta fallida"
+  "Resetting": {
+    "message": "Restableciendo..."
   },
   "Restricted": {
     "message": "Restringido"
@@ -1493,6 +1565,9 @@
   },
   "Running": {
     "message": "Ejecutando"
+  },
+  "SKILL_md_URL": {
+    "message": "URL de SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "ERROR DE FLUJO"
@@ -1527,9 +1602,6 @@
   "Scheduled_Task": {
     "message": "Tarea programada"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Inicio de tarea programada"
-  },
   "Scheduled_Tasks": {
     "message": "Tareas programadas"
   },
@@ -1539,8 +1611,14 @@
   "Search_complete": {
     "message": "Búsqueda completada"
   },
+  "Search_settings": {
+    "message": "Buscar configuraciones..."
+  },
   "Searching": {
     "message": "Buscando..."
+  },
+  "Security": {
+    "message": "Seguridad"
   },
   "Security_Privacy": {
     "message": "Seguridad y privacidad"
@@ -1588,14 +1666,14 @@
   "Session_error": {
     "message": "Error de sesión"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Sesión expirada - por favor, inicie sesión de nuevo para continuar usando el agente de IA"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Límite de sesión alcanzado. Las nuevas tareas se pondrán en cola."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Establezca cuándo deben expirar los datos de despliegue"
+  },
+  "Setting_up": {
+    "message": "Configurando..."
   },
   "Settings": {
     "message": "Configuración"
@@ -1618,8 +1696,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Mostrar advertencia cuando el uso de almacenamiento supere este porcentaje (por defecto: 90 %)"
   },
+  "Sign_in_failed": {
+    "message": "Error al iniciar sesión"
+  },
   "Sign_in_to_your_account": {
     "message": "Inicie sesión en su cuenta"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Iniciar sesión con ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Iniciando sesión..."
   },
   "Skills": {
     "message": "Habilidades"
@@ -1693,9 +1780,6 @@
   "Task_Details": {
     "message": "Detalles de la tarea"
   },
-  "Task_Failed": {
-    "message": "Tarea fallida"
-  },
   "Task_History": {
     "message": "Historial de tareas"
   },
@@ -1721,6 +1805,14 @@
   },
   "Task_failed": {
     "message": "Tarea fallida"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Tarea programada para $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Tarea iniciada"
@@ -1749,11 +1841,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "El agente está utilizando actualmente el modo backend. Las solicitudes LLM se enrutarán a través del servidor de AI Republic. Sus conversaciones se procesan de forma segura a través de nuestra infraestructura."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Al cambiar de modelo se borrará la conversación actual. ¿Desea continuar?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "El servidor encontró un error. Por favor, inténtelo de nuevo más tarde."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Esto eliminará permanentemente todas las claves API almacenadas y restablecerá la bóveda. Tendrá que volver a introducir sus claves API."
   },
   "Time": {
     "message": "Tiempo"
@@ -1790,6 +1879,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Demasiados intentos fallidos. Inténtelo de nuevo en"
+  },
   "Tool_Timeout_ms": {
     "message": "Tiempo de espera de la herramienta (ms)"
   },
@@ -1804,6 +1896,9 @@
   },
   "Tools_Settings": {
     "message": "Configuración de herramientas"
+  },
+  "Trust": {
+    "message": "Confiar"
   },
   "Trusted": {
     "message": "Confiable"
@@ -1835,26 +1930,11 @@
   "Unable_to_load_credit_information": {
     "message": "No se pudo cargar la información de crédito"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "No se puede contactar con el servidor backend - por favor, compruebe su conexión"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "No se puede contactar con el servidor. Por favor, compruebe su conexión y vuelva a intentarlo."
-  },
   "Unknown_Event": {
     "message": "Evento desconocido"
   },
   "Unknown_error": {
     "message": "Error desconocido"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Error desconocido al comprobar el estado del agente"
-  },
-  "Unknown_error_occurred": {
-    "message": "Se ha producido un error desconocido"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Se ha producido un error desconocido durante la ejecución de la tarea"
   },
   "Unknown_error_processing_submission": {
     "message": "Error desconocido al procesar el envío"
@@ -1867,11 +1947,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Desbloquear"
+  },
+  "Unlocking": {
+    "message": "Desbloqueando..."
+  },
   "Unsaved_Changes": {
     "message": "Cambios sin guardar"
   },
   "Untitled": {
     "message": "Sin título"
+  },
+  "Untrusted": {
+    "message": "No confiado"
   },
   "Upcoming": {
     "message": "Próximamente"
@@ -1900,6 +1989,9 @@
   "Use_Own_API_Key": {
     "message": "Usar su propia clave API"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Utilice su suscripción a ChatGPT Plus/Pro en lugar de una clave API"
+  },
   "User_Center": {
     "message": "Centro de usuarios"
   },
@@ -1911,6 +2003,9 @@
   },
   "Using_extra_credits": {
     "message": "Uso de créditos extra"
+  },
+  "Vault_Locked": {
+    "message": "Bóveda bloqueada"
   },
   "Verbosity": {
     "message": "Verbosidad"
@@ -1984,9 +2079,6 @@
   "Your_personal_AI_assistant": {
     "message": "Su asistente IA personal"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Su sesión ha expirado. Por favor, vuelva a iniciar sesión."
-  },
   "DISCONNECTED": {
     "message": "[DESCONECTADO]"
   },
@@ -2020,8 +2112,14 @@
   "exec_unknown_command": {
     "message": "exec (comando desconocido)"
   },
+  "more_results": {
+    "message": "más resultados..."
+  },
   "optional": {
     "message": "opcional"
+  },
+  "or": {
+    "message": "o"
   },
   "remaining": {
     "message": "restante"
