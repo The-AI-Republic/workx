@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "Κλειδί API για έλεγχο ταυτότητας (αποθηκευμένο κρυπτογραφημένο)"
   },
-  "API_key_has_expired": {
-    "message": "Το κλειδί API έχει λήξει"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "Το κλειδί API δεν έχει επαρκή δικαιώματα"
-  },
   "API_key_saved_successfully": {
     "message": "Το κλειδί API αποθηκεύτηκε με επιτυχία!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Εργαλεία Εκτέλεσης Πράκτορα"
   },
-  "Agent_Turn_Complete": {
-    "message": "Ο γύρος του πράκτορα ολοκληρώθηκε"
-  },
   "Agent_URL_is_required": {
     "message": "Απαιτείται URL πράκτορα"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Ο πράκτορας αφαιρέθηκε με επιτυχία"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Ο γύρος του πράκτορα ολοκληρώθηκε με επιτυχία"
-  },
   "Agent_updated_successfully": {
     "message": "Ο πράκτορας ενημερώθηκε με επιτυχία"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Όλα τα κλειδιά API κρυπτογραφούνται κατά την αποθήκευση χρησιμοποιώντας AES-256-GCM. Ενεργοποιήστε την προστασία με PIN για επιπλέον ασφάλεια."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Όλες οι ενέργειες εγκρίνονται αυτόματα σε αυτούς τους τομείς."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Πάντα Έγκριση"
   },
+  "Always_dark": {
+    "message": "Πάντα σκοτεινό"
+  },
+  "Always_light": {
+    "message": "Πάντα φωτεινό"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Η προσωπική σας AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Έγκριση"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Έγκριση αλλαγών στο: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Έγκριση εκτέλεσης: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Είστε βέβαιοι ότι θέλετε να ακυρώσετε αυτήν την εργασία;"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Είστε βέβαιοι ότι θέλετε να διαγράψετε τη δεξιότητα \"/$1$\";",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Είστε βέβαιοι ότι θέλετε να αφαιρέσετε αυτόν τον πράκτορα;"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Διαπιστευτήριο αυθεντικοποίησης (αποθηκευμένο κρυπτογραφημένο)"
-  },
-  "Authentication_failed": {
-    "message": "Αποτυχία αυθεντικοποίησης"
   },
   "Authentication_method_for_the_agent": {
     "message": "Μέθοδος ελέγχου ταυτότητας για τον πράκτορα"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Το backend δεν είναι διαθέσιμο. Παρακαλώ περιμένετε λίγο και δοκιμάστε ξανά."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Σφάλμα διακομιστή backend - δοκιμάστε ξανά αργότερα"
-  },
   "Backoff_Multiplier": {
     "message": "Πολλαπλασιαστής Backoff"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Αποκλεισμένοι τομείς"
+  },
+  "Body_Markdown": {
+    "message": "Κείμενο (Markdown)"
   },
   "Browser_Tools": {
     "message": "Εργαλεία Περιηγητή"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Ακυρώθηκε"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Δεν είναι δυνατή η εκτέλεση της εργασίας: Δεν έχει ρυθμιστεί κλειδί API για ${providerName}. Παρακαλώ μεταβείτε στις Ρυθμίσεις → Διαμόρφωση Μοντέλου και προσθέστε το κλειδί API σας."
-  },
   "Cannot_select_model_1": {
     "message": "Δεν είναι δυνατή η επιλογή μοντέλου: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Δυνατότητες"
   },
+  "Change_PIN": {
+    "message": "Αλλαγή PIN"
+  },
+  "Changing": {
+    "message": "Γίνεται αλλαγή..."
+  },
   "Chat_History": {
     "message": "Ιστορικό Συνομιλίας"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Συνδρομή ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Η συνεδρία ChatGPT έληξε. Παρακαλώ συνδεθείτε ξανά."
   },
   "Checking_agent_status": {
     "message": "Έλεγχος κατάστασης πράκτορα..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Επιλέξτε ποιο κανάλι ενημερώσεων να ακολουθήσετε"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Κλασικό στυλ τερματικού με πράσινο κείμενο σε μαύρο φόντο"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Καθαρή, σύγχρονη διεπαφή συνομιλίας, παρόμοια με αυτή του ChatGPT"
+  "Clear_search": {
+    "message": "Καθαρισμός αναζήτησης"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Κάντε κλικ στο εικονίδιο Browserx στη γραμμή εργαλείων ή πατήστε Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Κλείσιμο"
   },
+  "Close_scheduler": {
+    "message": "Κλείσιμο χρονοπρογραμματιστή"
+  },
   "Close_settings": {
     "message": "Κλείσιμο ρυθμίσεων"
   },
+  "Close_skills": {
+    "message": "Κλείσιμο δεξιοτήτων"
+  },
   "Collapse": {
     "message": "Σύμπτυξη"
-  },
-  "Command_Approval_Required": {
-    "message": "Απαιτείται Έγκριση Εντολής"
   },
   "Command_completed": {
     "message": "Η εντολή ολοκληρώθηκε"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Ολοκληρώθηκε"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Ολοκληρώθηκε: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Συμπιέστε τα δεδομένα της προσωρινής αποθήκευσης για να εξοικονομήσετε χώρο αποθήκευσης"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Διαμορφωμένοι Διακομιστές"
+  },
+  "Confirm_New_PIN": {
+    "message": "Επιβεβαίωση νέου PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Επιβεβαίωση PIN"
   },
   "Connect": {
     "message": "Σύνδεση"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Συνδέθηκε επιτυχώς"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Συνδέθηκε μέσω ChatGPT"
   },
   "Connecting": {
     "message": "Γίνεται σύνδεση..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Δοκιμή σύνδεσης επιτυχής! (Το κλειδί API είναι έγκυρο)"
   },
-  "Connection_was_refused": {
-    "message": "Η σύνδεση απορρίφθηκε"
-  },
-  "Connection_was_reset": {
-    "message": "Η σύνδεση επαναφέρθηκε"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Το περιεχόμενο παραβιάζει την πολιτική: το περιεχόμενο ${contentType} δεν επιτρέπεται"
-  },
   "Context_Window": {
     "message": "Παράθυρο Συμφραζομένου"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Ελέγχει πόσο επιθετικά ζητά έγκριση ο πράκτορας."
   },
+  "Create": {
+    "message": "Δημιουργία"
+  },
+  "Create_New_Skill": {
+    "message": "Δημιουργία νέας δεξιότητας"
+  },
   "Create_New_Tab": {
     "message": "Δημιουργία νέας καρτέλας"
+  },
+  "Create_Skill": {
+    "message": "Δημιουργία δεξιότητας"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Δημιουργήστε ένα 6-ψήφιο PIN για την προστασία των κλειδιών API σας. Θα χρειαστείτε αυτό το PIN μετά την επανεκκίνηση του προγράμματος περιήγησης."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Δημιουργήστε μια δεξιότητα για να προσθέσετε προσαρμοσμένες εντολές / ή αυτόματα ενεργοποιούμενες συμπεριφορές πράκτορα."
   },
   "Created": {
     "message": "Δημιουργήθηκε"
   },
+  "Creating": {
+    "message": "Δημιουργία..."
+  },
   "Creator": {
     "message": "Δημιουργός"
+  },
+  "Credential_Encryption": {
+    "message": "Κρυπτογράφηση Διαπιστευτηρίων"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Κρυπτογράφηση διαπιστευτηρίων και προστασία PIN"
   },
   "Credit_Details": {
     "message": "Λεπτομέρειες πίστωσης"
   },
+  "Current_PIN": {
+    "message": "Τρέχον PIN"
+  },
   "Current_Plan": {
     "message": "Τρέχων Σχέδιο:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Απέτυχε η αναζήτηση DNS"
   },
   "DOM_Tool": {
     "message": "Εργαλείο DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Προεπιλογή"
   },
+  "Delete": {
+    "message": "Διαγραφή"
+  },
   "Deny": {
     "message": "Άρνηση"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Αναπτύχθηκε και υποστηρίζεται από την AI Republic"
+  },
+  "Disabled": {
+    "message": "Απενεργοποιημένο"
   },
   "Discard_Changes": {
     "message": "Απόρριψη αλλαγών"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Ενεργοποίηση εργαλείων Πρωτοκόλλου Περιβάλλοντος Μοντέλου από συνδεδεμένους διακομιστές MCP"
   },
+  "Enable_PIN": {
+    "message": "Ενεργοποίηση PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Ενεργοποίηση Προστασίας PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Ενεργοποίηση αυτόματης σύνδεσης κατά την εκκίνηση του browserx"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Εισάγετε κλειδί API ή διακριτικό πρόσβασης"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Εισάγετε το 6-ψήφιο PIN σας για να ξεκλειδώσετε τα κλειδιά API."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Εισάγετε το κλειδί API του LLM"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Εισάγετε το τρέχον PIN σας για να αφαιρέσετε την προστασία. Τα κλειδιά API θα παραμείνουν κρυπτογραφημένα με το προεπιλεγμένο κλειδί."
   },
   "Enter_your_task": {
     "message": "Εισάγετε την εργασία σας..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Εξήγηση με Browserx"
+  },
+  "Export": {
+    "message": "Εξαγωγή"
   },
   "Extension_Permission": {
     "message": "Επέκταση και Δικαιώματα"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Απέτυχε η δημιουργία νέας καρτέλας. Παρακαλώ δοκιμάστε ξανά."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Απέτυχε η δημιουργία καρτέλας προγράμματος περιήγησης: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Απέτυχε η αποσύνδεση: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Απέτυχε η διακοπή της εργασίας. Παρακαλώ δοκιμάστε ξανά."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Απέτυχε η εναλλαγή στην καρτέλα ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Απέτυχε η δοκιμή σύνδεσης"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Απαιτείται έγκριση αλλαγής αρχείου"
-  },
   "File_Operations_Not_Available": {
     "message": "Λειτουργίες αρχείου (Δεν είναι διαθέσιμες)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Ακολουθεί το θέμα του συστήματος"
+  },
+  "Forgot_PIN": {
+    "message": "Ξεχάσατε το PIN;"
   },
   "Form_Automation_Tool": {
     "message": "Εργαλείο Αυτοματοποίησης Φορμών"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Ξεκινήστε"
+  },
+  "Green_text_terminal": {
+    "message": "Πράσινο τερματικό κειμένου"
   },
   "Hello_NAME": {
     "message": "Γεια σας $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Είσοδος Εικόνας"
+  },
+  "Import": {
+    "message": "Εισαγωγή"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Εισαγωγή Δεξιότητας από URL"
+  },
+  "Import_from_URL": {
+    "message": "Εισαγωγή από URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Οι εισαγόμενες δεξιότητες δεν είναι αξιόπιστες εξ ορισμού και δεν μπορούν να ενεργοποιηθούν αυτόματα."
+  },
+  "Importing": {
+    "message": "Εισαγωγή..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Βελτιώστε αυτό το κείμενο: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Μη έγκυρο κλειδί API"
   },
-  "Invalid_API_key_provided": {
-    "message": "Μη έγκυρο κλειδί API"
-  },
   "Invalid_URL_format": {
     "message": "Μη έγκυρη μορφή URL"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Μη έγκυρη μορφή υποβολής: στο op λείπει το πεδίο type"
+  },
+  "Invocation_Mode": {
+    "message": "Λειτουργία Κλήσης"
   },
   "Keyboard_Shortcuts": {
     "message": "Συντομεύσεις Πληκτρολογίου"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Φόρτωση ρυθμίσεων..."
+  },
+  "Loading_skills": {
+    "message": "Φόρτωση δεξιοτήτων..."
   },
   "Loading_tabs": {
     "message": "Φόρτωση καρτελών..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Οι ρυθμίσεις μοντέλου και παρόχου φορτώθηκαν από την προεπιλεγμένη διαμόρφωση (μόνο για ανάγνωση)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Το μοντέλο άλλαξε σε $1$. Παρακαλώ διαμορφώστε το κλειδί API σας.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Το μοντέλο άλλαξε σε $1$. Η συνομιλία διατηρήθηκε.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Το μοντέλο άλλαξε σε $1$. Η συνεδρία θα επανεκκινηθεί.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Το μοντέλο άλλαξε σε $1$. Παρακαλώ διαμορφώστε το κλειδί API σας.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Σύγχρονη Συνομιλία"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Dark"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Light"
   },
   "Monthly_Credits": {
     "message": "Μηνιαίες Πιστώσεις"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Σφάλμα δικτύου"
   },
-  "Network_error_occurred": {
-    "message": "Παρουσιάστηκε σφάλμα δικτύου"
-  },
   "Never_expire_permanent": {
     "message": "Δεν λήγει ποτέ (μόνιμο)"
   },
   "New_Conversation": {
     "message": "Νέα Συζήτηση"
+  },
+  "New_PIN": {
+    "message": "Νέο PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Δεν έχουν ρυθμιστεί ακόμη πράκτορες A2A."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Δεν υπάρχει προγραμματισμένος χρόνος"
   },
+  "No_settings_found": {
+    "message": "Δεν βρέθηκαν ρυθμίσεις"
+  },
   "No_skills_available": {
     "message": "Δεν υπάρχουν διαθέσιμες δεξιότητες."
+  },
+  "No_skills_configured_yet": {
+    "message": "Δεν έχουν ρυθμιστεί ακόμη δεξιότητες."
   },
   "No_steps_in_plan": {
     "message": "Δεν υπάρχουν βήματα στο σχέδιο"
   },
   "No_tabs_available": {
     "message": "Δεν υπάρχουν διαθέσιμες καρτέλες"
+  },
+  "No_tasks_in_plan": {
+    "message": "Δεν υπάρχουν εργασίες στο σχέδιο"
   },
   "No_time_set": {
     "message": "Δεν έχει οριστεί χρόνος"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Προστασία PIN"
+  },
   "Page_Action_Tool": {
     "message": "Εργαλείο Δράσης Σελίδας"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Διατήρηση της κρυφής μνήμης στην αποθήκευση"
   },
-  "Plan_1_step_s": {
-    "message": "Σχέδιο: $1$ βήμα(α)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Παρακαλώ ελέγξτε το κλειδί API σας στις ρυθμίσεις."
-  },
   "Please_enter_a_task_description": {
     "message": "Παρακαλώ εισάγετε περιγραφή εργασίας"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Παρακαλώ εισάγετε ένα έγκυρο κλειδί API."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Παρακαλώ συνδεθείτε ξανά για να συνεχίσετε τη χρήση του AI πράκτορα."
-  },
   "Please_select_a_provider": {
     "message": "Παρακαλώ επιλέξτε πάροχο"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Παρακαλώ αναβαθμίστε το πρόγραμμα για να ξεκλειδώσετε τα πιο προηγμένα μοντέλα του κόσμου"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Η θύρα 1455 είναι σε χρήση. Παρακαλώ κλείστε οποιαδήποτε εφαρμογή χρησιμοποιεί αυτή τη θύρα και δοκιμάστε ξανά."
   },
   "Power": {
     "message": "Ισχύς"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Ανανεώνεται σε"
   },
-  "Reject": {
-    "message": "Απόρριψη"
-  },
   "Release_Date": {
     "message": "Ημερομηνία κυκλοφορίας"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Αφαίρεση κλειδιού API"
   },
+  "Remove_PIN": {
+    "message": "Αφαίρεση PIN"
+  },
+  "Removing": {
+    "message": "Αφαίρεση..."
+  },
   "Request_Timeout": {
     "message": "Λήξη χρόνου αιτήματος"
-  },
-  "Request_timed_out": {
-    "message": "Το αίτημα έληξε"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Χρονικό όριο αιτήματος σε χιλιοστά του δευτερολέπτου (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Χρονικό όριο αιτήματος σε χιλιοστά του δευτερολέπτου (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Το αίτημα ακυρώθηκε"
+  "Reset_Vault": {
+    "message": "Επαναφορά Θησαυρού"
   },
-  "Response_failed": {
-    "message": "Αποτυχία απόκρισης"
+  "Resetting": {
+    "message": "Επαναφορά..."
   },
   "Restricted": {
     "message": "Περιορισμένο"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Εκτελείται"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "ΣΦΑΛΜΑ ΡΟΗΣ"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Προγραμματισμένη εργασία"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Έναρξη προγραμματισμένης εργασίας"
-  },
   "Scheduled_Tasks": {
     "message": "Προγραμματισμένες εργασίες"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Η αναζήτηση ολοκληρώθηκε"
   },
+  "Search_settings": {
+    "message": "Αναζήτηση ρυθμίσεων..."
+  },
   "Searching": {
     "message": "Αναζήτηση..."
+  },
+  "Security": {
+    "message": "Ασφάλεια"
   },
   "Security_Privacy": {
     "message": "Ασφάλεια & Απόρρητο"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Σφάλμα συνεδρίας"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Η συνεδρία έληξε - παρακαλώ συνδεθείτε ξανά για να συνεχίσετε τη χρήση του AI πράκτορα"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Έχει επιτευχθεί το όριο συνεδρίας. Οι νέες εργασίες θα τοποθετηθούν σε ουρά."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Ορίστε πότε πρέπει να λήξουν τα δεδομένα rollout"
+  },
+  "Setting_up": {
+    "message": "Ρύθμιση..."
   },
   "Settings": {
     "message": "Ρυθμίσεις"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Εμφάνιση προειδοποίησης όταν η χρήση αποθήκευσης υπερβαίνει αυτό το ποσοστό (προεπιλογή: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Αποτυχία σύνδεσης"
+  },
   "Sign_in_to_your_account": {
     "message": "Συνδεθείτε στο λογαριασμό σας"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Σύνδεση με το ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Γίνεται σύνδεση..."
   },
   "Skills": {
     "message": "Δεξιότητες"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Λεπτομέρειες Εργασίας"
   },
-  "Task_Failed": {
-    "message": "Αποτυχία εργασίας"
-  },
   "Task_History": {
     "message": "Ιστορικό Εργασίας"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Η εργασία απέτυχε"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Η εργασία προγραμματίστηκε για $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Η εργασία ξεκίνησε"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Ο πράκτορας χρησιμοποιεί αυτή τη στιγμή λειτουργία backend. Τα αιτήματα LLM θα δρομολογηθούν μέσω του διακομιστή AI Republic. Οι συνομιλίες σας υποβάλλονται σε επεξεργασία με ασφάλεια μέσω της υποδομής μας."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Η αλλαγή μοντέλου θα διαγράψει την τρέχουσα συνομιλία. Θέλετε να συνεχίσετε;"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Ο διακομιστής αντιμετώπισε σφάλμα. Παρακαλώ δοκιμάστε ξανά αργότερα."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Αυτό θα διαγράψει μόνιμα όλα τα αποθηκευμένα κλειδιά API και θα επαναφέρει την θυρίδα. Θα χρειαστεί να εισάγετε ξανά τα κλειδιά API σας."
   },
   "Time": {
     "message": "Χρόνος"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Πάρα πολλές αποτυχημένες προσπάθειες. Δοκιμάστε ξανά σε"
+  },
   "Tool_Timeout_ms": {
     "message": "Χρονικό όριο εργαλείου (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Ρυθμίσεις εργαλείων"
+  },
+  "Trust": {
+    "message": "Εμπιστοσύνη"
   },
   "Trusted": {
     "message": "Αξιόπιστο"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Δεν ήταν δυνατή η φόρτωση των πληροφοριών πίστωσης"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Αδυναμία πρόσβασης στον διακομιστή backend - ελέγξτε τη σύνδεσή σας"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Αδυναμία πρόσβασης στον διακομιστή. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά."
-  },
   "Unknown_Event": {
     "message": "Άγνωστο συμβάν"
   },
   "Unknown_error": {
     "message": "Άγνωστο σφάλμα"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Άγνωστο σφάλμα κατά τον έλεγχο της κατάστασης του πράκτορα"
-  },
-  "Unknown_error_occurred": {
-    "message": "Παρουσιάστηκε άγνωστο σφάλμα"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Παρουσιάστηκε άγνωστο σφάλμα κατά την εκτέλεση της εργασίας"
   },
   "Unknown_error_processing_submission": {
     "message": "Άγνωστο σφάλμα κατά την επεξεργασία της υποβολής"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Ξεκλείδωμα"
+  },
+  "Unlocking": {
+    "message": "Γίνεται ξεκλείδωμα..."
+  },
   "Unsaved_Changes": {
     "message": "Μη αποθηκευμένες αλλαγές"
   },
   "Untitled": {
     "message": "Ανώνυμο"
+  },
+  "Untrusted": {
+    "message": "Μη έμπιστο"
   },
   "Upcoming": {
     "message": "Επερχόμενα"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Χρήση δικού σας κλειδιού API"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Χρησιμοποιήστε τη συνδρομή ChatGPT Plus/Pro αντί για κλειδί API"
+  },
   "User_Center": {
     "message": "Κέντρο χρήστη"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Χρήση επιπλέον πιστώσεων"
+  },
+  "Vault_Locked": {
+    "message": "Η θυρίδα είναι κλειδωμένη"
   },
   "Verbosity": {
     "message": "Αναλυτικότητα"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Ο προσωπικός σας βοηθός AI"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Η συνεδρία σας έχει λήξει. Παρακαλώ συνδεθείτε ξανά."
-  },
   "DISCONNECTED": {
     "message": "[ΑΠΟΣΥΝΔΕΤΟ]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (άγνωστη εντολή)"
   },
+  "more_results": {
+    "message": "περισσότερα αποτελέσματα..."
+  },
   "optional": {
     "message": "προαιρετικό"
+  },
+  "or": {
+    "message": "ή"
   },
   "remaining": {
     "message": "υπόλοιπο"

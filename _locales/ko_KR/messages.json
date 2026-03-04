@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "인증용 API 키 (암호화 저장)"
   },
-  "API_key_has_expired": {
-    "message": "API 키가 만료되었습니다"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API 키에 권한이 부족합니다"
-  },
   "API_key_saved_successfully": {
     "message": "API 키가 성공적으로 저장되었습니다!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "에이전트 실행 도구"
   },
-  "Agent_Turn_Complete": {
-    "message": "에이전트 턴 완료"
-  },
   "Agent_URL_is_required": {
     "message": "에이전트 URL이 필요합니다."
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "에이전트가 성공적으로 제거되었습니다."
   },
-  "Agent_turn_completed_successfully": {
-    "message": "에이전트 턴이 성공적으로 완료되었습니다."
-  },
   "Agent_updated_successfully": {
     "message": "에이전트가 성공적으로 업데이트되었습니다."
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "모든 API 키는 AES-256-GCM을 사용하여 저장 시 암호화됩니다. 추가 보안을 위해 PIN 보호를 활성화하십시오."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "이 도메인에서는 모든 작업이 자동 승인됩니다."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "항상 승인"
   },
+  "Always_dark": {
+    "message": "항상 어두운 모드"
+  },
+  "Always_light": {
+    "message": "항상 밝은 모드"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: 개인 AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "승인"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "다음 경로에 대한 변경 승인: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "다음 명령 실행 승인: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "이 작업을 취소하시겠습니까?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "스킬 \"/$1$\"을(를) 삭제하시겠습니까?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "이 에이전트를 제거하시겠습니까?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "인증 자격 증명(암호화 저장됨)"
-  },
-  "Authentication_failed": {
-    "message": "인증에 실패했습니다"
   },
   "Authentication_method_for_the_agent": {
     "message": "에이전트 인증 방법"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "백엔드를 사용할 수 없습니다. 잠시 기다렸다가 다시 시도하십시오."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "백엔드 서버 오류 - 나중에 다시 시도하십시오."
-  },
   "Backoff_Multiplier": {
     "message": "백오프 배수"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "차단된 도메인"
+  },
+  "Body_Markdown": {
+    "message": "본문 (Markdown)"
   },
   "Browser_Tools": {
     "message": "브라우저 도구"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "취소됨"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "작업을 실행할 수 없습니다: ${providerName}에 대한 API 키가 설정되지 않았습니다. 설정 → 모델 구성으로 이동하여 API 키를 추가하십시오."
-  },
   "Cannot_select_model_1": {
     "message": "모델을 선택할 수 없습니다: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "기능"
   },
+  "Change_PIN": {
+    "message": "PIN 변경"
+  },
+  "Changing": {
+    "message": "변경 중..."
+  },
   "Chat_History": {
     "message": "채팅 기록"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT 구독"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT 세션이 만료되었습니다. 다시 로그인해 주십시오."
   },
   "Checking_agent_status": {
     "message": "에이전트 상태 확인 중..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "따라야 할 업데이트 채널 선택"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "검은 배경에 초록색 텍스트가 있는 클래식 터미널 스타일"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "ChatGPT와 유사한 깔끔하고 현대적인 채팅 인터페이스"
+  "Clear_search": {
+    "message": "검색 지우기"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "도구 모음의 Browserx 아이콘을 클릭하거나 Alt+Shift+C를 누르세요"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "닫기"
   },
+  "Close_scheduler": {
+    "message": "스케줄러 닫기"
+  },
   "Close_settings": {
     "message": "설정 닫기"
   },
+  "Close_skills": {
+    "message": "스킬 닫기"
+  },
   "Collapse": {
     "message": "접기"
-  },
-  "Command_Approval_Required": {
-    "message": "명령 승인 필요"
   },
   "Command_completed": {
     "message": "명령이 완료되었습니다"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "완료됨"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "완료: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "저장 공간 절약을 위해 캐시 데이터를 압축합니다"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "구성된 서버"
+  },
+  "Confirm_New_PIN": {
+    "message": "새 PIN 확인"
+  },
+  "Confirm_PIN": {
+    "message": "PIN 확인"
   },
   "Connect": {
     "message": "연결"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "연결에 성공했습니다"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "ChatGPT를 통해 연결됨"
   },
   "Connecting": {
     "message": "연결 중..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "연결 테스트 성공! (API 키가 유효합니다)"
   },
-  "Connection_was_refused": {
-    "message": "연결이 거부되었습니다"
-  },
-  "Connection_was_reset": {
-    "message": "연결이 재설정되었습니다"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "콘텐츠가 정책을 위반합니다: ${contentType} 콘텐츠는 허용되지 않습니다"
-  },
   "Context_Window": {
     "message": "컨텍스트 창"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "에이전트가 승인 요청을 얼마나 적극적으로 할지 제어합니다."
   },
+  "Create": {
+    "message": "생성"
+  },
+  "Create_New_Skill": {
+    "message": "새 스킬 만들기"
+  },
   "Create_New_Tab": {
     "message": "새 탭 만들기"
+  },
+  "Create_Skill": {
+    "message": "스킬 만들기"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "API 키를 보호하기 위해 6자리 PIN을 생성하십시오. 브라우저를 재시작한 후에도 이 PIN이 필요합니다."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "맞춤형 / 명령어나 자동 호출 가능한 에이전트 동작을 추가하기 위해 스킬을 생성하십시오."
   },
   "Created": {
     "message": "생성됨"
   },
+  "Creating": {
+    "message": "생성 중..."
+  },
   "Creator": {
     "message": "생성자"
+  },
+  "Credential_Encryption": {
+    "message": "자격 증명 암호화"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "자격 증명 암호화 및 PIN 보호"
   },
   "Credit_Details": {
     "message": "크레딧 세부 정보"
   },
+  "Current_PIN": {
+    "message": "현재 PIN"
+  },
   "Current_Plan": {
     "message": "현재 플랜:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS 조회 실패"
   },
   "DOM_Tool": {
     "message": "DOM 도구"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "기본값"
   },
+  "Delete": {
+    "message": "삭제"
+  },
   "Deny": {
     "message": "거부"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "AI Republic에서 개발 및 지원함"
+  },
+  "Disabled": {
+    "message": "비활성화"
   },
   "Discard_Changes": {
     "message": "변경 사항 폐기"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "연결된 MCP 서버에서 모델 컨텍스트 프로토콜 도구를 활성화합니다"
   },
+  "Enable_PIN": {
+    "message": "PIN 활성화"
+  },
+  "Enable_PIN_Protection": {
+    "message": "PIN 보호 활성화"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Browserx 시작 시 자동 연결을 활성화합니다"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "API 키 또는 베어러 토큰을 입력하십시오"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "6자리 PIN을 입력하여 API 키를 잠금 해제하십시오."
+  },
   "Enter_your_LLM_API_key": {
     "message": "LLM API 키를 입력하십시오"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "현재 PIN을 입력하여 보호를 해제하십시오. API 키는 여전히 기본 키로 암호화됩니다."
   },
   "Enter_your_task": {
     "message": "작업을 입력하십시오..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Browserx로 설명하기"
+  },
+  "Export": {
+    "message": "내보내기"
   },
   "Extension_Permission": {
     "message": "확장 프로그램 및 권한"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "새 탭 생성에 실패했습니다. 다시 시도해 주세요."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "브라우저 탭 생성에 실패했습니다: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "연결 해제에 실패했습니다: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "작업 중지에 실패했습니다. 다시 시도해 주세요."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "탭 ${newTabId}(으)로 전환에 실패했습니다: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "연결 테스트에 실패했습니다"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "파일 변경 승인 필요합니다"
-  },
   "File_Operations_Not_Available": {
     "message": "파일 작업 (사용할 수 없음)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "시스템 테마 따름"
+  },
+  "Forgot_PIN": {
+    "message": "PIN을 잊으셨나요?"
   },
   "Form_Automation_Tool": {
     "message": "양식 자동화 도구"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "시작하기"
+  },
+  "Green_text_terminal": {
+    "message": "녹색 텍스트 터미널"
   },
   "Hello_NAME": {
     "message": "안녕하세요 $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "이미지 입력"
+  },
+  "Import": {
+    "message": "가져오기"
+  },
+  "Import_Skill_from_URL": {
+    "message": "URL에서 스킬 가져오기"
+  },
+  "Import_from_URL": {
+    "message": "URL에서 가져오기"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "가져온 스킬은 기본적으로 신뢰되지 않으며 자동 호출할 수 없습니다."
+  },
+  "Importing": {
+    "message": "가져오는 중..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "다음 텍스트를 개선하세요: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "잘못된 API 키"
   },
-  "Invalid_API_key_provided": {
-    "message": "제공된 API 키가 유효하지 않습니다"
-  },
   "Invalid_URL_format": {
     "message": "URL 형식이 유효하지 않습니다"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "제출 형식이 유효하지 않습니다: op에 type 필드가 누락되었습니다"
+  },
+  "Invocation_Mode": {
+    "message": "호출 모드"
   },
   "Keyboard_Shortcuts": {
     "message": "키보드 단축키"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "설정을 불러오는 중..."
+  },
+  "Loading_skills": {
+    "message": "스킬을 로드 중..."
   },
   "Loading_tabs": {
     "message": "탭을 로드 중..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "기본 구성에서 로드된 모델 및 제공자 설정 (읽기 전용)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "모델이 $1$(으)로 변경되었습니다. API 키를 구성해 주세요.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "모델이 $1$(으)로 변경되었습니다. 대화가 보존되었습니다.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "모델이 $1$(으)로 변경되었습니다. 세션이 재초기화됩니다.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "모델이 $1$(으)로 변경되었습니다. API 키를 구성해 주세요.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern Chat"
+  "Modern_Chat_Auto": {
+    "message": "모던 채팅 자동"
+  },
+  "Modern_Chat_Dark": {
+    "message": "모던 채팅 다크"
+  },
+  "Modern_Chat_Light": {
+    "message": "모던 채팅 라이트"
   },
   "Monthly_Credits": {
     "message": "월간 크레딧"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "네트워크 오류"
   },
-  "Network_error_occurred": {
-    "message": "네트워크 오류가 발생했습니다"
-  },
   "Never_expire_permanent": {
     "message": "만료 없음(영구적)"
   },
   "New_Conversation": {
     "message": "새 대화"
+  },
+  "New_PIN": {
+    "message": "새 PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "아직 A2A 에이전트가 구성되지 않았습니다."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "예약된 시간이 없습니다"
   },
+  "No_settings_found": {
+    "message": "설정을 찾을 수 없습니다"
+  },
   "No_skills_available": {
     "message": "사용 가능한 스킬이 없습니다."
+  },
+  "No_skills_configured_yet": {
+    "message": "아직 설정된 스킬이 없습니다."
   },
   "No_steps_in_plan": {
     "message": "계획에 단계가 없습니다"
   },
   "No_tabs_available": {
     "message": "사용 가능한 탭이 없습니다"
+  },
+  "No_tasks_in_plan": {
+    "message": "계획에 작업이 없습니다"
   },
   "No_time_set": {
     "message": "시간이 설정되지 않음"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN 보호"
+  },
   "Page_Action_Tool": {
     "message": "페이지 액션 도구"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "캐시를 저장소에 영구 보관"
   },
-  "Plan_1_step_s": {
-    "message": "계획: $1$ 단계",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "설정에서 API 키를 확인하십시오."
-  },
   "Please_enter_a_task_description": {
     "message": "작업 설명을 입력해 주세요."
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "유효한 API 키를 입력해 주세요."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "AI 에이전트를 계속 사용하려면 다시 로그인해 주세요."
-  },
   "Please_select_a_provider": {
     "message": "제공자를 선택해 주세요."
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "전 세계에서 가장 진보된 모델의 차단을 해제하려면 플랜을 업그레이드해 주세요."
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "포트 1455가 사용 중입니다. 해당 포트를 사용하는 애플리케이션을 종료하고 다시 시도하십시오."
   },
   "Power": {
     "message": "전원"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "새로 고침까지"
   },
-  "Reject": {
-    "message": "거부"
-  },
   "Release_Date": {
     "message": "출시 날짜"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "API 키 삭제"
   },
+  "Remove_PIN": {
+    "message": "PIN 제거"
+  },
+  "Removing": {
+    "message": "제거 중..."
+  },
   "Request_Timeout": {
     "message": "요청 시간 초과"
-  },
-  "Request_timed_out": {
-    "message": "요청이 시간 초과되었습니다"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "요청 시간 초과 (밀리초, 5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "요청 시간 초과 (밀리초, 5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "요청이 중단되었습니다"
+  "Reset_Vault": {
+    "message": "볼트 초기화"
   },
-  "Response_failed": {
-    "message": "응답 실패"
+  "Resetting": {
+    "message": "초기화 중..."
   },
   "Restricted": {
     "message": "제한됨"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "실행 중"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "스트림 오류"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "예약된 작업"
   },
-  "Scheduled_Task_Starting": {
-    "message": "예약된 작업 시작"
-  },
   "Scheduled_Tasks": {
     "message": "예약된 작업들"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "검색 완료"
   },
+  "Search_settings": {
+    "message": "설정 검색 중..."
+  },
   "Searching": {
     "message": "검색 중..."
+  },
+  "Security": {
+    "message": "보안"
   },
   "Security_Privacy": {
     "message": "보안 및 개인정보"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "세션 오류"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "세션이 만료되었습니다 - AI 에이전트를 계속 사용하려면 다시 로그인해 주세요"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "세션 제한에 도달했습니다. 새로운 작업이 대기열에 추가됩니다."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "롤아웃 데이터가 만료되는 시점을 설정합니다"
+  },
+  "Setting_up": {
+    "message": "설정 중..."
   },
   "Settings": {
     "message": "설정"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "스토리지 사용량이 이 비율을 초과하면 경고 표시 (기본값: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "로그인에 실패했습니다"
+  },
   "Sign_in_to_your_account": {
     "message": "계정에 로그인하세요"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "ChatGPT로 로그인"
+  },
+  "Signing_in": {
+    "message": "로그인 중..."
   },
   "Skills": {
     "message": "스킬"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "작업 세부 정보"
   },
-  "Task_Failed": {
-    "message": "작업 실패"
-  },
   "Task_History": {
     "message": "작업 기록"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "작업이 실패했습니다"
+  },
+  "Task_scheduled_for_1": {
+    "message": "$1$에 작업이 예약되었습니다",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "작업이 시작되었습니다"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "에이전트가 현재 백엔드 모드를 사용 중입니다. LLM 요청은 AI Republic 서버를 통해 라우팅됩니다. 대화 내용은 당사 인프라를 통해 안전하게 처리됩니다."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "모델 전환 시 현재 대화가 초기화됩니다. 계속하시겠습니까?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "서버에 오류가 발생했습니다. 나중에 다시 시도해 주세요."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "이 작업은 저장된 모든 API 키를 영구적으로 삭제하고 금고를 초기화합니다. API 키를 다시 입력해야 합니다."
   },
   "Time": {
     "message": "시간"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "시도 횟수가 너무 많습니다. 다시 시도하려면"
+  },
   "Tool_Timeout_ms": {
     "message": "도구 제한 시간 (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "도구 설정"
+  },
+  "Trust": {
+    "message": "신뢰"
   },
   "Trusted": {
     "message": "신뢰됨"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "크레딧 정보를 불러올 수 없습니다"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "백엔드 서버에 연결할 수 없습니다 - 연결을 확인해 주세요"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도해 주세요."
-  },
   "Unknown_Event": {
     "message": "알 수 없는 이벤트"
   },
   "Unknown_error": {
     "message": "알 수 없는 오류"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "에이전트 상태 확인 중 알 수 없는 오류"
-  },
-  "Unknown_error_occurred": {
-    "message": "알 수 없는 오류가 발생했습니다"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "작업 실행 중 알 수 없는 오류가 발생했습니다"
   },
   "Unknown_error_processing_submission": {
     "message": "제출 처리 중 알 수 없는 오류가 발생했습니다"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "잠금 해제"
+  },
+  "Unlocking": {
+    "message": "잠금 해제 중..."
+  },
   "Unsaved_Changes": {
     "message": "저장되지 않은 변경 사항"
   },
   "Untitled": {
     "message": "제목 없음"
+  },
+  "Untrusted": {
+    "message": "신뢰되지 않음"
   },
   "Upcoming": {
     "message": "예정"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "내 API 키 사용"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "API 키 대신 ChatGPT Plus/Pro 구독을 사용하세요"
+  },
   "User_Center": {
     "message": "사용자 센터"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "추가 크레딧 사용 중"
+  },
+  "Vault_Locked": {
+    "message": "금고가 잠겼습니다"
   },
   "Verbosity": {
     "message": "자세도"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "귀하의 개인 AI 어시스턴트"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "세션이 만료되었습니다. 다시 로그인해 주세요."
-  },
   "DISCONNECTED": {
     "message": "[연결 끊김]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (알 수 없는 명령)"
   },
+  "more_results": {
+    "message": "추가 결과..."
+  },
   "optional": {
     "message": "선택 사항"
+  },
+  "or": {
+    "message": "또는"
   },
   "remaining": {
     "message": "남은"
