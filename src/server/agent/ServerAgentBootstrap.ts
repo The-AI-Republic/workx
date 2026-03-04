@@ -51,6 +51,7 @@ import { registerToolsHandlers } from '../handlers/tools';
 import { registerLogsHandlers } from '../handlers/logs';
 import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
+import { registerCredentialsHandlers } from '../handlers/credentials';
 
 // Scheduler
 import { ServerSchedulerStorage } from '../scheduler/ServerSchedulerStorage';
@@ -111,6 +112,15 @@ export class ServerAgentBootstrap {
 
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
+
+      // 1.5. Initialize credential store (for secure API key storage)
+      try {
+        const { initializeCredentialStore } = await import('@/core/storage');
+        await initializeCredentialStore();
+        console.log('[ServerAgentBootstrap] Credential store initialized');
+      } catch (error) {
+        console.warn('[ServerAgentBootstrap] Credential store not available — API keys will not persist:', error);
+      }
 
       // 2. Create message router
       this.messageRouter = new ServerMessageRouter('background');
@@ -325,6 +335,26 @@ export class ServerAgentBootstrap {
     registerExecHandlers({
       resolveApproval: async (id, decision, reason) => {
         return this.approvalManager?.resolveApproval(id, decision, reason) ?? false;
+      },
+    });
+
+    registerCredentialsHandlers({
+      setProviderApiKey: async (providerId, apiKey) => {
+        const agentConfig = await AgentConfig.getInstance();
+        return agentConfig.setProviderApiKey(providerId, apiKey);
+      },
+      deleteProviderApiKey: async (providerId) => {
+        const agentConfig = await AgentConfig.getInstance();
+        await agentConfig.deleteProviderApiKey(providerId);
+      },
+      listProviders: async () => {
+        const agentConfig = await AgentConfig.getInstance();
+        const providers = agentConfig.getProviders();
+        return Object.entries(providers).map(([id, p]) => ({
+          id,
+          name: p.name,
+          hasKey: p.apiKey === '[SECURED]',
+        }));
       },
     });
 

@@ -427,6 +427,8 @@ export class AgentConfig implements IConfigService {
     const credentials = this.getCredentials();
     if (credentials) {
       await credentials.set(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`, apiKey);
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot persist API key for ${providerId}`);
     }
 
     // Mark that this provider has an API key configured (without storing the actual key)
@@ -459,6 +461,8 @@ export class AgentConfig implements IConfigService {
       if (apiKey) {
         return apiKey;
       }
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot retrieve API key for ${providerId}`);
     }
 
     return null;
@@ -484,6 +488,8 @@ export class AgentConfig implements IConfigService {
     const credentials = this.getCredentials();
     if (credentials) {
       await credentials.delete(CREDENTIAL_SERVICE, `${CREDENTIAL_ACCOUNT_PREFIX}${providerId}`);
+    } else {
+      console.warn(`[AgentConfig] Credential store not available — cannot delete API key for ${providerId}`);
     }
 
     // Clear the marker

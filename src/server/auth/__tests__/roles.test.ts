@@ -14,6 +14,8 @@ describe('ROLE_DEFAULTS', () => {
       'sessions.write',
       'config.read',
       'config.write',
+      'credentials.read',
+      'credentials.write',
       'operator.approvals',
       'operator.pairing',
       'admin',
@@ -26,6 +28,13 @@ describe('ROLE_DEFAULTS', () => {
 
   it('node has node-specific scopes', () => {
     expect(ROLE_DEFAULTS.node).toEqual(['node.invoke', 'node.event']);
+  });
+
+  it('channel and node roles do not have credential scopes', () => {
+    expect(ROLE_DEFAULTS.channel).not.toContain('credentials.read');
+    expect(ROLE_DEFAULTS.channel).not.toContain('credentials.write');
+    expect(ROLE_DEFAULTS.node).not.toContain('credentials.read');
+    expect(ROLE_DEFAULTS.node).not.toContain('credentials.write');
   });
 
   it('no role has overlapping scope sets with node', () => {
@@ -45,8 +54,8 @@ describe('ROLE_DEFAULTS', () => {
 // ---------------------------------------------------------------------------
 
 describe('ALL_SCOPES', () => {
-  it('contains exactly 10 scopes', () => {
-    expect(ALL_SCOPES).toHaveLength(10);
+  it('contains exactly 12 scopes', () => {
+    expect(ALL_SCOPES).toHaveLength(12);
   });
 
   it('includes all scopes from all roles', () => {
