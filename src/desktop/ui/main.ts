@@ -31,7 +31,6 @@ import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
 import { initializeConfigStorage, initializeCredentialStore } from '@/core/storage';
-import { zoomStore } from '../../webfront/stores/zoomStore';
 
 // Add desktop-mode and terminal-mode classes to body
 document.body.classList.add('desktop-mode', 'terminal-mode');
@@ -88,14 +87,13 @@ async function init() {
     console.warn('[Desktop] Failed to initialize desktop services:', error);
   }
 
-  // 4. Initialize locale and zoom
+  // 4. Initialize locale
   try {
     const config = await AgentConfig.getInstance();
     const agentConfig = config.getConfig();
     initLocale(agentConfig.preferences?.language);
-    zoomStore.initialize(agentConfig.preferences?.zoomLevel);
   } catch (error) {
-    console.warn('[Desktop] Failed to load locale/zoom, using defaults:', error);
+    console.warn('[Desktop] Failed to load locale, using default:', error);
     initLocale();
   }
 
