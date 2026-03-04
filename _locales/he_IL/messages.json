@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "מפתח API לאימות (מאוחסן מוצפן)"
   },
-  "API_key_has_expired": {
-    "message": "מפתח API פג תוקף"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "למפתח API אין הרשאות מספיקות"
-  },
   "API_key_saved_successfully": {
     "message": "מפתח API נשמר בהצלחה!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "כלי ביצוע לסוכן"
   },
-  "Agent_Turn_Complete": {
-    "message": "תור הסוכן הושלם"
-  },
   "Agent_URL_is_required": {
     "message": "נדרש URL של הסוכן"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "הסוכן הוסר בהצלחה"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "תור הסוכן הושלם בהצלחה"
-  },
   "Agent_updated_successfully": {
     "message": "הסוכן עודכן בהצלחה"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "כל מפתחות ה-API מוצפנים במנוחה באמצעות AES-256-GCM. אפשר הגנת PIN לביטחון נוסף."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "כל הפעולות מאושרות אוטומטית בדומיינים אלה."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "אשר תמיד"
   },
+  "Always_dark": {
+    "message": "תמיד חשוך"
+  },
+  "Always_light": {
+    "message": "תמיד מואר"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: ה‑AI האישי שלך (אלפא)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "אשר"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "אשר שינויים ל: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "אשר ביצוע: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "האם אתה בטוח שברצונך לבטל משימה זו?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "האם אתה בטוח שברצונך למחוק את המיומנות \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "האם אתה בטוח שברצונך להסיר סוכן זה?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "אישור אימות (מאוחסן מוצפן)"
-  },
-  "Authentication_failed": {
-    "message": "האימות נכשל"
   },
   "Authentication_method_for_the_agent": {
     "message": "שיטת אימות עבור הסוכן"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "השרת האחורי אינו זמין. אנא המתן רגע ונסה שוב."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "שגיאת שרת אחורי - אנא נסה שוב מאוחר יותר"
-  },
   "Backoff_Multiplier": {
     "message": "מקדם חזרה"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "דומיינים חסומים"
+  },
+  "Body_Markdown": {
+    "message": "גוף (Markdown)"
   },
   "Browser_Tools": {
     "message": "כלי דפדפן"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "בוטל"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "לא ניתן לבצע משימה: אין מפתח API מוגדר עבור ${providerName}. אנא עבור אל הגדרות → תצורת מודל והוסף את מפתח ה‑API שלך."
-  },
   "Cannot_select_model_1": {
     "message": "לא ניתן לבחור מודל: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "יכולות"
   },
+  "Change_PIN": {
+    "message": "שנה PIN"
+  },
+  "Changing": {
+    "message": "מתבצע שינוי..."
+  },
   "Chat_History": {
     "message": "היסטוריית צ'אט"
+  },
+  "ChatGPT_Subscription": {
+    "message": "מנוי ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "הסשן של ChatGPT פג. אנא התחבר מחדש."
   },
   "Checking_agent_status": {
     "message": "בודק את מצב הסוכן..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "בחר איזה ערוץ עדכונים לעקוב אחריו"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "סגנון מסוף קלאסי עם טקסט ירוק על רקע שחור"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "ממשק צ'אט נקי ומודרני בדומה ל-ChatGPT"
+  "Clear_search": {
+    "message": "נקה חיפוש"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "לחץ על סמל Browserx בסרגל הכלים או הקש Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "סגור"
   },
+  "Close_scheduler": {
+    "message": "סגור מתזמן"
+  },
   "Close_settings": {
     "message": "סגור הגדרות"
   },
+  "Close_skills": {
+    "message": "סגור מיומנויות"
+  },
   "Collapse": {
     "message": "כווץ"
-  },
-  "Command_Approval_Required": {
-    "message": "נדרשת אישור פקודה"
   },
   "Command_completed": {
     "message": "הפקודה הושלמה"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "הושלם"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "הושלם: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "דחוס נתוני מטמון כדי לחסוך במקום אחסון"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "שרתים מוגדרים"
+  },
+  "Confirm_New_PIN": {
+    "message": "אשר PIN חדש"
+  },
+  "Confirm_PIN": {
+    "message": "אשר PIN"
   },
   "Connect": {
     "message": "התחבר"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "התחברות בוצעה בהצלחה"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "מחובר דרך ChatGPT"
   },
   "Connecting": {
     "message": "מתחבר..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "בדיקת החיבור הצליחה! (מפתח API תקין)"
   },
-  "Connection_was_refused": {
-    "message": "החיבור נדחה"
-  },
-  "Connection_was_reset": {
-    "message": "החיבור אופס"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "התוכן מפר את המדיניות: תוכן ${contentType} אינו מותר"
-  },
   "Context_Window": {
     "message": "חלון הקשר"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "קובע כמה בתוקף הסוכן מבקש אישור."
   },
+  "Create": {
+    "message": "צור"
+  },
+  "Create_New_Skill": {
+    "message": "צור מיומנות חדשה"
+  },
   "Create_New_Tab": {
     "message": "צור לשונית חדשה"
+  },
+  "Create_Skill": {
+    "message": "צור מיומנות"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "צור PIN של 6 ספרות כדי להגן על מפתחות ה-API שלך. תזדקק ל-PIN זה לאחר הפעלת הדפדפן מחדש."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "צור מיומנות כדי להוסיף פקודות מותאמות / או התנהגויות סוכן המופעלות אוטומטית."
   },
   "Created": {
     "message": "נוצר"
   },
+  "Creating": {
+    "message": "יוצר..."
+  },
   "Creator": {
     "message": "יוצר"
+  },
+  "Credential_Encryption": {
+    "message": "הצפנת אישורים"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "הצפנת אישורים והגנת PIN"
   },
   "Credit_Details": {
     "message": "פרטי אשראי"
   },
+  "Current_PIN": {
+    "message": "קוד PIN נוכחי"
+  },
   "Current_Plan": {
     "message": "תוכנית נוכחית:"
-  },
-  "DNS_lookup_failed": {
-    "message": "חיפוש DNS נכשל"
   },
   "DOM_Tool": {
     "message": "כלי DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "ברירת מחדל"
   },
+  "Delete": {
+    "message": "מחיקה"
+  },
   "Deny": {
     "message": "דחה"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "פותח ומתוחזק על‑ידי AI Republic"
+  },
+  "Disabled": {
+    "message": "מושבת"
   },
   "Discard_Changes": {
     "message": "בטל שינויים"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "הפעל כלים של פרוטוקול הקשר מודל משרתים מחוברים של MCP"
   },
+  "Enable_PIN": {
+    "message": "הפעלת PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "הפעלת הגנת PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "הפעל חיבור אוטומטי כאשר browserx מתחיל"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "הזן מפתח API או אסימון נושא"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "הזן את קוד ה‑PIN בן 6 ספרות שלך כדי לפתוח את מפתחות ה‑API."
+  },
   "Enter_your_LLM_API_key": {
     "message": "הזן את מפתח ה‑API של ה‑LLM שלך"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "הזן את קוד ה‑PIN הנוכחי שלך כדי להסיר את ההגנה. מפתחות ה‑API יישארו מוצפנים עם המפתח ברירת המחדל."
   },
   "Enter_your_task": {
     "message": "הזן את המשימה שלך..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "הסבר עם Browserx"
+  },
+  "Export": {
+    "message": "ייצוא"
   },
   "Extension_Permission": {
     "message": "הרחבה והרשאה"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "יצירת לשונית חדשה נכשלה. אנא נסה שוב."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "יצירת לשונית דפדפן נכשלה: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "התנתקות נכשלה: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "עצירת המשימה נכשלה. אנא נסה שוב."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "החלפת הטאב ${newTabId} נכשלה: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "הבדיקת החיבור נכשלה"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "נדרש אישור שינוי קובץ"
-  },
   "File_Operations_Not_Available": {
     "message": "פעולות קובץ (לא זמינות)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "גמישות"
+  },
+  "Follows_system_theme": {
+    "message": "מתאים לנושא המערכת"
+  },
+  "Forgot_PIN": {
+    "message": "שכחת את ה‑PIN?"
   },
   "Form_Automation_Tool": {
     "message": "כלי אוטומציה לטפסים"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "התחל"
+  },
+  "Green_text_terminal": {
+    "message": "מסוף טקסט ירוק"
   },
   "Hello_NAME": {
     "message": "שלום $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "קלט תמונה"
+  },
+  "Import": {
+    "message": "ייבוא"
+  },
+  "Import_Skill_from_URL": {
+    "message": "ייבא מיומנות מכתובת URL"
+  },
+  "Import_from_URL": {
+    "message": "ייבא מכתובת URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "מיומנויות מיובאות אינן מהימנות כברירת מחדל ולא ניתן להפעילן אוטומטית."
+  },
+  "Importing": {
+    "message": "מייבא..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "שפר את הטקסט הזה: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "מפתח API לא חוקי"
   },
-  "Invalid_API_key_provided": {
-    "message": "מפתח API שסופק אינו תקין"
-  },
   "Invalid_URL_format": {
     "message": "פורמט URL לא תקין"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "פורמט שליחה לא תקין: op חסר שדה type"
+  },
+  "Invocation_Mode": {
+    "message": "מצב הפעלה"
   },
   "Keyboard_Shortcuts": {
     "message": "קיצורי מקלדת"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "טוען הגדרות..."
+  },
+  "Loading_skills": {
+    "message": "טוען כישורים..."
   },
   "Loading_tabs": {
     "message": "טוען כרטיסיות..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "הגדרות מודל וספק נטענו מהגדרה ברירת מחדל (קריאה בלבד)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "המודל שונה ל-$1$. אנא הגדר את מפתח ה-API שלך.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "המודל השתנה ל-$1$. השיחה נשמרה.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "המודל שונה ל-$1$. הסשן יאותחל מחדש.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "המודל שונה ל-$1$. אנא הגדר את מפתח ה-API שלך.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern Chat"
+  "Modern_Chat_Auto": {
+    "message": "צ'אט מודרני אוטומטי"
+  },
+  "Modern_Chat_Dark": {
+    "message": "צ'אט מודרני כהה"
+  },
+  "Modern_Chat_Light": {
+    "message": "צ'אט מודרני בהיר"
   },
   "Monthly_Credits": {
     "message": "קרדיטים חודשיים"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "שגיאת רשת"
   },
-  "Network_error_occurred": {
-    "message": "אירעה שגיאת רשת"
-  },
   "Never_expire_permanent": {
     "message": "לעולם לא פג תוקף (קבוע)"
   },
   "New_Conversation": {
     "message": "שיחה חדשה"
+  },
+  "New_PIN": {
+    "message": "קוד PIN חדש"
   },
   "No_A2A_agents_configured_yet": {
     "message": "עדיין לא הוגדרו סוכני A2A."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "אין זמן מתוזמן"
   },
+  "No_settings_found": {
+    "message": "לא נמצאו הגדרות"
+  },
   "No_skills_available": {
     "message": "אין כישורים זמינים."
+  },
+  "No_skills_configured_yet": {
+    "message": "עדיין לא הוגדרו כישורים."
   },
   "No_steps_in_plan": {
     "message": "אין שלבים בתוכנית"
   },
   "No_tabs_available": {
     "message": "אין לשוניות זמינות"
+  },
+  "No_tasks_in_plan": {
+    "message": "אין משימות בתוכנית"
   },
   "No_time_set": {
     "message": "לא הוגדר זמן"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "הגנת PIN"
+  },
   "Page_Action_Tool": {
     "message": "כלי פעולות דף"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "שמירת מטמון באחסון"
   },
-  "Plan_1_step_s": {
-    "message": "תוכנית: $1$ שלב(ים)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "אנא בדוק את מפתח ה-API שלך בהגדרות."
-  },
   "Please_enter_a_task_description": {
     "message": "אנא הזן תיאור משימה"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "אנא הזן מפתח API תקף."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "אנא התחבר מחדש כדי להמשיך להשתמש בסוכן ה‑AI."
-  },
   "Please_select_a_provider": {
     "message": "אנא בחר ספק"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "אנא שדרג את התוכנית כדי לשחרר את המודלים המתקדמים ביותר בעולם"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "הפורט 1455 נמצא בשימוש. אנא סגור כל יישום המשתמש בפורט זה ונסה שוב."
   },
   "Power": {
     "message": "עוצמה"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "מתרענן בעוד"
   },
-  "Reject": {
-    "message": "דחה"
-  },
   "Release_Date": {
     "message": "תאריך שחרור"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "הסר מפתח API"
   },
+  "Remove_PIN": {
+    "message": "הסר PIN"
+  },
+  "Removing": {
+    "message": "מסיר..."
+  },
   "Request_Timeout": {
     "message": "פסק זמן של הבקשה"
-  },
-  "Request_timed_out": {
-    "message": "הבקשה פגה בזמן"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "פסק זמן של הבקשה במילישניות (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "פסק זמן של הבקשה במילישניות (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "הבקשה בוטלה"
+  "Reset_Vault": {
+    "message": "אפס כספת"
   },
-  "Response_failed": {
-    "message": "התגובה נכשלה"
+  "Resetting": {
+    "message": "מאפס..."
   },
   "Restricted": {
     "message": "מוגבל"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "מתבצע"
+  },
+  "SKILL_md_URL": {
+    "message": "כתובת URL של SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "שגיאת זרם"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "משימה מתוזמנת"
   },
-  "Scheduled_Task_Starting": {
-    "message": "המשימה המתוזמנת מתחילה"
-  },
   "Scheduled_Tasks": {
     "message": "משימות מתוזמנות"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "החיפוש הושלם"
   },
+  "Search_settings": {
+    "message": "חפש הגדרות..."
+  },
   "Searching": {
     "message": "מחפש..."
+  },
+  "Security": {
+    "message": "אבטחה"
   },
   "Security_Privacy": {
     "message": "אבטחה ופרטיות"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "שגיאת סשן"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "תוקף הסשן פג - אנא התחבר מחדש כדי להמשיך להשתמש בסוכן ה‑AI"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "הגעת למגבלת הסשן. משימות חדשות ימתינו בתור."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "הגדר מתי נתוני ההפצה יפוגו"
+  },
+  "Setting_up": {
+    "message": "מתקין..."
   },
   "Settings": {
     "message": "הגדרות"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "הצג אזהרה כאשר השימוש באחסון חורג מאחוז זה (ברירת מחדל: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "הכניסה נכשלה"
+  },
   "Sign_in_to_your_account": {
     "message": "היכנס לחשבון שלך"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "התחבר עם ChatGPT"
+  },
+  "Signing_in": {
+    "message": "מתחבר..."
   },
   "Skills": {
     "message": "כישורים"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "פרטי המשימה"
   },
-  "Task_Failed": {
-    "message": "המשימה נכשלה"
-  },
   "Task_History": {
     "message": "היסטוריית המשימות"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "המשימה נכשלה"
+  },
+  "Task_scheduled_for_1": {
+    "message": "המשימה מתוזמנת ל $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "המשימה החלה"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "הסוכן משתמש כעת במצב backend. בקשות LLM ינותבו דרך שרת AI Republic. השיחות שלך מעובדות בצורה מאובטחת דרך התשתית שלנו."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "החלפת המודל תמחוק את השיחה הנוכחית. האם ברצונך להמשיך?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "השרת נתקל בשגיאה. אנא נסה שוב מאוחר יותר."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "זה ימחק לצמיתות את כל מפתחות ה‑API השמורים ויאפס את הכספת. יהיה עליך להכניס מחדש את מפתחות ה‑API שלך."
   },
   "Time": {
     "message": "זמן"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "יותר מדי ניסיונות כושלים. נסה שוב בעוד"
+  },
   "Tool_Timeout_ms": {
     "message": "פסק זמן לכלי (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "הגדרות כלים"
+  },
+  "Trust": {
+    "message": "אמון"
   },
   "Trusted": {
     "message": "מהימן"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "לא ניתן לטעון את פרטי האשראי"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "לא ניתן להגיע לשרת האחורי - אנא בדוק את החיבור שלך"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "לא ניתן להגיע לשרת. אנא בדוק את החיבור שלך ונסה שוב."
-  },
   "Unknown_Event": {
     "message": "אירוע לא ידוע"
   },
   "Unknown_error": {
     "message": "שגיאה לא ידועה"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "שגיאה לא ידועה בבדיקת מצב הסוכן"
-  },
-  "Unknown_error_occurred": {
-    "message": "אירעה שגיאה לא ידועה"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "אירעה שגיאה לא ידועה במהלך ביצוע המשימה"
   },
   "Unknown_error_processing_submission": {
     "message": "שגיאה לא ידועה בעיבוד ההגשה"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "פתיחה"
+  },
+  "Unlocking": {
+    "message": "פותח..."
+  },
   "Unsaved_Changes": {
     "message": "שינויים שלא נשמרו"
   },
   "Untitled": {
     "message": "ללא שם"
+  },
+  "Untrusted": {
+    "message": "לא מהימן"
   },
   "Upcoming": {
     "message": "בקרוב"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "השתמש במפתח API אישי"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "השתמש במנוי ChatGPT Plus/Pro שלך במקום מפתח API"
+  },
   "User_Center": {
     "message": "מרכז משתמש"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "שימוש בנקודות נוספות"
+  },
+  "Vault_Locked": {
+    "message": "הכספת נעולה"
   },
   "Verbosity": {
     "message": "רמת פירוט"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "העוזר האישי AI שלך"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "הפגישה שלך פגה. אנא התחבר מחדש."
-  },
   "DISCONNECTED": {
     "message": "[מנותק]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (פקודה לא ידועה)"
   },
+  "more_results": {
+    "message": "תוצאות נוספות..."
+  },
   "optional": {
     "message": "אופציונלי"
+  },
+  "or": {
+    "message": "או"
   },
   "remaining": {
     "message": "נותר"

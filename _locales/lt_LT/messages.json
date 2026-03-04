@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API raktas autentifikacijai (saugomas šifruotas)"
   },
-  "API_key_has_expired": {
-    "message": "API raktas nebegalioja"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API raktas neturi pakankamų leidimų"
-  },
   "API_key_saved_successfully": {
     "message": "API raktas sėkmingai išsaugotas!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Agentų vykdymo įrankiai"
   },
-  "Agent_Turn_Complete": {
-    "message": "Agento veiksmas baigtas"
-  },
   "Agent_URL_is_required": {
     "message": "Būtinas agente URL"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agentas sėkmingai pašalintas"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Agento veiksmas sėkmingai baigtas"
-  },
   "Agent_updated_successfully": {
     "message": "Agentas sėkmingai atnaujintas"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Visi API raktai yra šifruojami poilsio būsenoje naudojant AES-256-GCM. Įjunkite PIN apsaugą dėl papildomo saugumo."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Visi veiksmai šiose domenų srityse automatiškai patvirtinami."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Visada patvirtinti"
   },
+  "Always_dark": {
+    "message": "Visada tamsus"
+  },
+  "Always_light": {
+    "message": "Visada šviesus"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Jūsų asmeninis AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Patvirtinti"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Patvirtinkite pakeitimus į: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Patvirtinkite vykdymą: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Ar tikrai norite atšaukti šią užduotį?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Ar tikrai norite ištrinti įgūdį \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Ar tikrai norite pašalinti šį agentą?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Autentifikacijos įgaliojimas (šifruotai saugomas)"
-  },
-  "Authentication_failed": {
-    "message": "Autentifikacija nepavyko"
   },
   "Authentication_method_for_the_agent": {
     "message": "Agentui autentifikacijos metodas"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Serverio posistemė nepasiekiama. Palaukite šiek tiek ir bandykite dar kartą."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Serverio posistemės klaida – bandykite vėliau"
-  },
   "Backoff_Multiplier": {
     "message": "Atidėjimo koeficientas"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Užblokuoti domenai"
+  },
+  "Body_Markdown": {
+    "message": "Turinys (Markdown)"
   },
   "Browser_Tools": {
     "message": "Naršyklės įrankiai"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Atšaukta"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Negalima vykdyti užduoties: ${providerName} API raktas nesukonfigūruotas. Eikite į Nustatymai → Modelio konfigūracija ir pridėkite savo API raktą."
-  },
   "Cannot_select_model_1": {
     "message": "Negalima pasirinkti modelio: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Galimybės"
   },
+  "Change_PIN": {
+    "message": "Keisti PIN"
+  },
+  "Changing": {
+    "message": "Keičiama..."
+  },
   "Chat_History": {
     "message": "Pokalbio istorija"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT prenumerata"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT sesija baigėsi. Prašome prisijungti iš naujo."
   },
   "Checking_agent_status": {
     "message": "Tikrinama agente būsena..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Pasirinkti, kurį atnaujinimų kanalą sekti"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Klasikinis terminalo stilius su žaliu tekstu juodame fone"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Švari, moderni pokalbio sąsaja, panaši į ChatGPT"
+  "Clear_search": {
+    "message": "Išvalyti paiešką"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Spustelėkite Browserx piktogramą įrankių juostoje arba paspauskite Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Uždaryti"
   },
+  "Close_scheduler": {
+    "message": "Uždaryti planuoklį"
+  },
   "Close_settings": {
     "message": "Uždaryti nustatymus"
   },
+  "Close_skills": {
+    "message": "Uždaryti įgūdžius"
+  },
   "Collapse": {
     "message": "Suskleisti"
-  },
-  "Command_Approval_Required": {
-    "message": "Reikalingas komandos patvirtinimas"
   },
   "Command_completed": {
     "message": "Komanda įvykdyta"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Baigta"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Baigta: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Suspausti talpyklos duomenis, kad sutaupytumėte saugyklos vietos"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Sukonfigūruoti serveriai"
+  },
+  "Confirm_New_PIN": {
+    "message": "Patvirtinti naują PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Patvirtinti PIN"
   },
   "Connect": {
     "message": "Prisijungti"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Prisijungta sėkmingai"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Prisijungta per ChatGPT"
   },
   "Connecting": {
     "message": "Jungiamasi..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Prisijungimo testas sėkmingas! (API raktas galiojantis)"
   },
-  "Connection_was_refused": {
-    "message": "Prisijungimas atmestas"
-  },
-  "Connection_was_reset": {
-    "message": "Prisijungimas atstatytas"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Turinys pažeidžia politiką: ${contentType} turinys neleidžiamas"
-  },
   "Context_Window": {
     "message": "Konteksto langas"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Valdo, kaip agresyviai agentas prašo patvirtinimo."
   },
+  "Create": {
+    "message": "Sukurti"
+  },
+  "Create_New_Skill": {
+    "message": "Sukurti naują įgūdį"
+  },
   "Create_New_Tab": {
     "message": "Sukurti naują skirtuką"
+  },
+  "Create_Skill": {
+    "message": "Sukurti įgūdį"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Sukurkite 6‑skaitmeninį PIN, kad apsaugotumėte savo API raktus. Šio PIN reikės po naršyklės paleidimo iš naujo."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Sukurkite įgūdį, kad pridėtumėte pasirinktines / komandas arba automatiškai iškviečiamus agento elgesius."
   },
   "Created": {
     "message": "Sukurta"
   },
+  "Creating": {
+    "message": "Kuriama..."
+  },
   "Creator": {
     "message": "Kūrėjas"
+  },
+  "Credential_Encryption": {
+    "message": "Įgaliojimų šifravimas"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Įgaliojimų šifravimas ir PIN apsauga"
   },
   "Credit_Details": {
     "message": "Kredito informacija"
   },
+  "Current_PIN": {
+    "message": "Dabartinis PIN"
+  },
   "Current_Plan": {
     "message": "Dabartinis planas:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS paieška nepavyko"
   },
   "DOM_Tool": {
     "message": "DOM įrankis"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Numatytasis"
   },
+  "Delete": {
+    "message": "Ištrinti"
+  },
   "Deny": {
     "message": "Atmesti"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Sukūrė ir palaiko AI Republic"
+  },
+  "Disabled": {
+    "message": "Išjungta"
   },
   "Discard_Changes": {
     "message": "Atmesti pakeitimus"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Įjungti Model Context Protocol įrankius iš prijungtų MCP serverių"
   },
+  "Enable_PIN": {
+    "message": "Įjungti PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Įjungti PIN apsaugą"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Įjungti automatinį prisijungimą, kai browserx paleidžiamas"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Įveskite API raktą arba prieigos tokeną"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Įveskite savo 6‑skaitmeninį PIN, kad atrakintumėte API raktus."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Įveskite savo LLM API raktą"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Įveskite dabartinį PIN, kad pašalintumėte apsaugą. API raktai vis tiek bus šifruoti numatytuoju raktu."
   },
   "Enter_your_task": {
     "message": "Įveskite savo užduotį..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Paaiškinkite su Browserx"
+  },
+  "Export": {
+    "message": "Eksportuoti"
   },
   "Extension_Permission": {
     "message": "Plėtinys ir teisės"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Nepavyko sukurti naujos kortelės. Bandykite dar kartą."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Nepavyko sukurti naršyklės kortelės: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Nepavyko atsijungti: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Nepavyko sustabdyti užduoties. Bandykite dar kartą."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Nepavyko perjungti į skirtuką ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Nepavyko išbandyti ryšio"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Reikalingas failo pakeitimo patvirtinimas"
-  },
   "File_Operations_Not_Available": {
     "message": "Failų operacijos (Neprieinama)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Lankstus"
+  },
+  "Follows_system_theme": {
+    "message": "Sekti sistemos temą"
+  },
+  "Forgot_PIN": {
+    "message": "Pamiršote PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Formų automatizavimo įrankis"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Pradėti"
+  },
+  "Green_text_terminal": {
+    "message": "Žalias tekstinis terminalas"
   },
   "Hello_NAME": {
     "message": "Sveiki $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Vaizdo įvestis"
+  },
+  "Import": {
+    "message": "Importuoti"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Importuoti įgūdį iš URL"
+  },
+  "Import_from_URL": {
+    "message": "Importuoti iš URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Importuoti įgūdžiai pagal numatytuosius nustatymus nėra patikimi ir negali būti automatiškai iškviečiami."
+  },
+  "Importing": {
+    "message": "Importuojama..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Patobulinkite šį tekstą: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Neteisingas API raktas"
   },
-  "Invalid_API_key_provided": {
-    "message": "Pateiktas neteisingas API raktas"
-  },
   "Invalid_URL_format": {
     "message": "Neteisingas URL formatas"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Neteisingas pateikimo formatas: op lauke trūksta type lauko"
+  },
+  "Invocation_Mode": {
+    "message": "Iškvietimo režimas"
   },
   "Keyboard_Shortcuts": {
     "message": "Spartieji klavišai"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Įkeliami nustatymai..."
+  },
+  "Loading_skills": {
+    "message": "Įkeliami įgūdžiai..."
   },
   "Loading_tabs": {
     "message": "Įkeliamos kortelės..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Modelio ir tiekėjo nustatymai įkelti iš numatytos konfigūracijos (tik skaitymui)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Modelis pakeistas į $1$. Prašome sukonfigūruoti savo API raktą.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Modelis pakeistas į $1$. Pokalbis išsaugotas.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Modelis pakeistas į $1$. Sesija bus iš naujo inicijuota.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Modelis pakeistas į $1$. Prašome sukonfigūruoti savo API raktą.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern Chat"
+  "Modern_Chat_Auto": {
+    "message": "Modernus pokalbis automatinis"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modernus pokalbis tamsus"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modernus pokalbis šviesus"
   },
   "Monthly_Credits": {
     "message": "Mėnesiniai kreditai"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Tinklo klaida"
   },
-  "Network_error_occurred": {
-    "message": "Įvyko tinklo klaida"
-  },
   "Never_expire_permanent": {
     "message": "Niekada nesibaigia (amžinas)"
   },
   "New_Conversation": {
     "message": "Naujas pokalbis"
+  },
+  "New_PIN": {
+    "message": "Naujas PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Dar nėra sukonfigūruotų A2A agentų."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Nėra suplanuoto laiko"
   },
+  "No_settings_found": {
+    "message": "Nerasta nustatymų"
+  },
   "No_skills_available": {
     "message": "Nėra prieinamų įgūdžių."
+  },
+  "No_skills_configured_yet": {
+    "message": "Kol kas nesukonfigūruota įgūdžių."
   },
   "No_steps_in_plan": {
     "message": "Plane nėra žingsnių"
   },
   "No_tabs_available": {
     "message": "Nėra prieinamų skirtukų"
+  },
+  "No_tasks_in_plan": {
+    "message": "Plane nėra užduočių"
   },
   "No_time_set": {
     "message": "Nenurodytas laikas"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN apsauga"
+  },
   "Page_Action_Tool": {
     "message": "Puslapio veiksmų įrankis"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Išsaugoti podėlį talpykloje"
   },
-  "Plan_1_step_s": {
-    "message": "Plan: $1$ žingsnis(-iai)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Patikrinkite savo API raktą nustatymuose."
-  },
   "Please_enter_a_task_description": {
     "message": "Įveskite užduoties aprašymą"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Įveskite galiojantį API raktą."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Prisijunkite dar kartą, kad galėtumėte toliau naudoti AI agentą."
-  },
   "Please_select_a_provider": {
     "message": "Pasirinkite tiekėją"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Atnaujinkite planą, kad atrakintumėte pasaulio pažangiausius modelius"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Portas 1455 naudojamas. Prašome uždaryti bet kurią programą, naudojančią šį portą, ir bandyti dar kartą."
   },
   "Power": {
     "message": "Galia"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Atnaujinama po"
   },
-  "Reject": {
-    "message": "Atmesti"
-  },
   "Release_Date": {
     "message": "Išleidimo data"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Pašalinti API raktą"
   },
+  "Remove_PIN": {
+    "message": "Pašalinti PIN"
+  },
+  "Removing": {
+    "message": "Šalinama..."
+  },
   "Request_Timeout": {
     "message": "Užklausos laiko limitas"
-  },
-  "Request_timed_out": {
-    "message": "Užklausos laikas baigėsi"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Užklausos laiko limitas milisekundėmis (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Užklausos laiko limitas milisekundėmis (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Užklausa nutraukta"
+  "Reset_Vault": {
+    "message": "Atstatyti saugyklą"
   },
-  "Response_failed": {
-    "message": "Atsakymas nepavyko"
+  "Resetting": {
+    "message": "Atstatoma..."
   },
   "Restricted": {
     "message": "Apribota"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Vykdoma"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "SRAUTO KLAIDA"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Suplanuota užduotis"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Suplanuota užduotis pradeda"
-  },
   "Scheduled_Tasks": {
     "message": "Suplanuotos užduotys"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Paieška baigta"
   },
+  "Search_settings": {
+    "message": "Ieškoti nustatymų..."
+  },
   "Searching": {
     "message": "Ieškoma..."
+  },
+  "Security": {
+    "message": "Saugumas"
   },
   "Security_Privacy": {
     "message": "Saugumas ir privatumas"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Sesijos klaida"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Sesija baigėsi – prisijunkite dar kartą, kad galėtumėte toliau naudoti AI agentą"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Pasiekta sesijos riba. Naujos užduotys bus eilėje."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Nustatykite diegimo duomenų galiojimo pabaigą"
+  },
+  "Setting_up": {
+    "message": "Nustatoma..."
   },
   "Settings": {
     "message": "Nustatymai"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Rodyti įspėjimą, kai saugojimo naudojimas viršija šį procentą (numatyta: 90 %)"
   },
+  "Sign_in_failed": {
+    "message": "Prisijungimas nepavyko"
+  },
   "Sign_in_to_your_account": {
     "message": "Prisijunkite prie savo paskyros"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Prisijungti su ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Prisijungiama..."
   },
   "Skills": {
     "message": "Įgūdžiai"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Užduoties detalės"
   },
-  "Task_Failed": {
-    "message": "Užduotis nepavyko"
-  },
   "Task_History": {
     "message": "Užduočių istorija"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Užduotis nepavyko"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Užduotis suplanuota $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Užduotis pradėta"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agentas šiuo metu naudoja backend režimą. LLM užklausos bus nukreipiamos per AI Republic serverį. Jūsų pokalbiai yra saugiai apdorojami per mūsų infrastruktūrą."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Modelio perjungimas išvalys dabartinį pokalbį. Ar norite tęsti?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Serveris susidūrė su klaida. Bandykite dar kartą vėliau."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Tai visam laikui ištrins visus saugomus API raktus ir atstatys seifą. Jums reikės iš naujo įvesti API raktus."
   },
   "Time": {
     "message": "Laikas"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Per daug nesėkmingų bandymų. Bandykite vėl po"
+  },
   "Tool_Timeout_ms": {
     "message": "Įrankio laiko limitas (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Įrankių nustatymai"
+  },
+  "Trust": {
+    "message": "Patikėti"
   },
   "Trusted": {
     "message": "Patikimas"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Negalima įkelti kreditų informacijos"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Negalima pasiekti galinio serverio – patikrinkite ryšį"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Negalima pasiekti serverio. Patikrinkite ryšį ir bandykite dar kartą."
-  },
   "Unknown_Event": {
     "message": "Nežinomas įvykis"
   },
   "Unknown_error": {
     "message": "Nežinoma klaida"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Nežinoma klaida tikrinant agento būseną"
-  },
-  "Unknown_error_occurred": {
-    "message": "Įvyko nežinoma klaida"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Įvyko nežinoma klaida vykdant užduotį"
   },
   "Unknown_error_processing_submission": {
     "message": "Nežinoma klaida apdorojant pateikimą"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Atrakinti"
+  },
+  "Unlocking": {
+    "message": "Atrakinama..."
+  },
   "Unsaved_Changes": {
     "message": "Neišsaugoti pakeitimai"
   },
   "Untitled": {
     "message": "Be pavadinimo"
+  },
+  "Untrusted": {
+    "message": "Nėra patikimas"
   },
   "Upcoming": {
     "message": "Artėjantis"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Naudoti savo API raktą"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Naudokite savo ChatGPT Plus/Pro prenumeratą vietoj API rakto"
+  },
   "User_Center": {
     "message": "Vartotojo centras"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Naudojami papildomi kreditai"
+  },
+  "Vault_Locked": {
+    "message": "Seifas užrakintas"
   },
   "Verbosity": {
     "message": "Išsamumas"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Jūsų asmeninis AI asistentas"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Jūsų sesija baigėsi. Prašome prisijungti iš naujo."
-  },
   "DISCONNECTED": {
     "message": "[ATSJUNGTA]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (nežinoma komanda)"
   },
+  "more_results": {
+    "message": "daugiau rezultatų..."
+  },
   "optional": {
     "message": "nebūtina"
+  },
+  "or": {
+    "message": "arba"
   },
   "remaining": {
     "message": "likęs"

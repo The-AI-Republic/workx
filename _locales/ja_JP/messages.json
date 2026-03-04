@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "認証用 API キー（暗号化保存）"
   },
-  "API_key_has_expired": {
-    "message": "API キーが期限切れです"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API キーの権限が不足しています"
-  },
   "API_key_saved_successfully": {
     "message": "API キーが正常に保存されました！"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "エージェント実行ツール"
   },
-  "Agent_Turn_Complete": {
-    "message": "エージェントのターン完了"
-  },
   "Agent_URL_is_required": {
     "message": "エージェントURLは必須です"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "エージェントが正常に削除されました"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "エージェントのターンが正常に完了しました"
-  },
   "Agent_updated_successfully": {
     "message": "エージェントが正常に更新されました"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "すべての API キーは AES-256-GCM を使用して保存時に暗号化されています。追加のセキュリティのために PIN 保護を有効にしてください。"
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "これらのドメインではすべてのアクションが自動承認されます。"
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "常に承認"
   },
+  "Always_dark": {
+    "message": "常にダーク"
+  },
+  "Always_light": {
+    "message": "常にライト"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: あなたのパーソナルAI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "承認"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "変更を承認: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "実行を承認: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "このタスクをキャンセルしてもよろしいですか？"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "スキル「/$1$/」を削除してもよろしいですか？",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "このエージェントを削除してもよろしいですか？"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "認証情報（暗号化保存）"
-  },
-  "Authentication_failed": {
-    "message": "認証に失敗しました"
   },
   "Authentication_method_for_the_agent": {
     "message": "エージェントの認証方法"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "バックエンドが利用できません。少し待ってから再試行してください。"
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "バックエンドサーバーエラー - 後でもう一度お試しください"
-  },
   "Backoff_Multiplier": {
     "message": "バックオフ乗数"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "ブロックされたドメイン"
+  },
+  "Body_Markdown": {
+    "message": "本文（Markdown）"
   },
   "Browser_Tools": {
     "message": "ブラウザツール"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "キャンセル"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "タスクを実行できません: ${providerName} の API キーが設定されていません。設定 → モデル構成 に移動し、API キーを追加してください。"
-  },
   "Cannot_select_model_1": {
     "message": "モデルを選択できません: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "機能"
   },
+  "Change_PIN": {
+    "message": "PIN を変更"
+  },
+  "Changing": {
+    "message": "変更中..."
+  },
   "Chat_History": {
     "message": "チャット履歴"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT サブスクリプション"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT セッションが期限切れです。再度サインインしてください。"
   },
   "Checking_agent_status": {
     "message": "エージェントのステータスを確認中..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "使用するアップデートチャンネルを選択"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "黒背景に緑文字のクラシックターミナルスタイル"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "ChatGPTに似た、すっきりしたモダンなチャットインターフェース"
+  "Clear_search": {
+    "message": "検索をクリア"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "ツールバーのBrowserxアイコンをクリックするか、Alt+Shift+C を押してください"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "閉じる"
   },
+  "Close_scheduler": {
+    "message": "スケジューラを閉じる"
+  },
   "Close_settings": {
     "message": "設定を閉じる"
   },
+  "Close_skills": {
+    "message": "スキルを閉じる"
+  },
   "Collapse": {
     "message": "折りたたむ"
-  },
-  "Command_Approval_Required": {
-    "message": "コマンドの承認が必要です"
   },
   "Command_completed": {
     "message": "コマンドが完了しました"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "完了"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "完了: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "キャッシュデータを圧縮してストレージ容量を節約"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "設定済みサーバー"
+  },
+  "Confirm_New_PIN": {
+    "message": "新しい PIN を確認"
+  },
+  "Confirm_PIN": {
+    "message": "PIN を確認"
   },
   "Connect": {
     "message": "接続"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "接続に成功しました"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "ChatGPT 経由で接続中"
   },
   "Connecting": {
     "message": "接続中..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "接続テストに成功しました！ (API キーは有効です)"
   },
-  "Connection_was_refused": {
-    "message": "接続が拒否されました"
-  },
-  "Connection_was_reset": {
-    "message": "接続がリセットされました"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "コンテンツがポリシーに違反しています: ${contentType} コンテンツは許可されていません"
-  },
   "Context_Window": {
     "message": "コンテキストウィンドウ"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "エージェントの承認要求の積極性を制御します。"
   },
+  "Create": {
+    "message": "作成"
+  },
+  "Create_New_Skill": {
+    "message": "新しいスキルを作成"
+  },
   "Create_New_Tab": {
     "message": "新しいタブを作成"
+  },
+  "Create_Skill": {
+    "message": "スキルを作成"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "API キーを保護するために 6 桁の PIN を作成してください。ブラウザを再起動した後にこの PIN が必要になります。"
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "カスタム / コマンドや自動呼び出し可能なエージェント動作を追加するスキルを作成してください。"
   },
   "Created": {
     "message": "作成"
   },
+  "Creating": {
+    "message": "作成中..."
+  },
   "Creator": {
     "message": "作成者"
+  },
+  "Credential_Encryption": {
+    "message": "認証情報の暗号化"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "認証情報の暗号化と PIN 保護"
   },
   "Credit_Details": {
     "message": "クレジットの詳細"
   },
+  "Current_PIN": {
+    "message": "現在の PIN"
+  },
   "Current_Plan": {
     "message": "現在のプラン："
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS ルックアップに失敗しました"
   },
   "DOM_Tool": {
     "message": "DOMツール"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "デフォルト"
   },
+  "Delete": {
+    "message": "削除"
+  },
   "Deny": {
     "message": "拒否"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "開発・サポート: AI Republic"
+  },
+  "Disabled": {
+    "message": "無効"
   },
   "Discard_Changes": {
     "message": "変更を破棄"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "接続されたMCPサーバーからモデルコンテキストプロトコルツールを有効にする"
   },
+  "Enable_PIN": {
+    "message": "PIN を有効化"
+  },
+  "Enable_PIN_Protection": {
+    "message": "PIN 保護を有効にする"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "browserx 起動時に自動接続を有効にする"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "API キーまたはベアラートークンを入力"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "6 桁の PIN を入力して API キーのロックを解除してください。"
+  },
   "Enter_your_LLM_API_key": {
     "message": "LLM API キーを入力"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "現在の PIN を入力して保護を解除してください。API キーはデフォルトキーで暗号化されたままです。"
   },
   "Enter_your_task": {
     "message": "タスクを入力してください..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Browserx で説明"
+  },
+  "Export": {
+    "message": "エクスポート"
   },
   "Extension_Permission": {
     "message": "拡張機能と権限"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "新しいタブの作成に失敗しました。再度お試しください。"
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "ブラウザタブの作成に失敗しました: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "切断に失敗しました: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "タスクの停止に失敗しました。再度お試しください。"
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "タブ ${newTabId} への切り替えに失敗しました: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "接続テストに失敗しました"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "ファイル変更の承認が必要です"
-  },
   "File_Operations_Not_Available": {
     "message": "ファイル操作（利用不可）"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "フレックス"
+  },
+  "Follows_system_theme": {
+    "message": "システムテーマに従う"
+  },
+  "Forgot_PIN": {
+    "message": "PIN を忘れましたか？"
   },
   "Form_Automation_Tool": {
     "message": "フォーム自動化ツール"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "開始する"
+  },
+  "Green_text_terminal": {
+    "message": "緑色テキスト端末"
   },
   "Hello_NAME": {
     "message": "こんにちは $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "画像入力"
+  },
+  "Import": {
+    "message": "インポート"
+  },
+  "Import_Skill_from_URL": {
+    "message": "URL からスキルをインポート"
+  },
+  "Import_from_URL": {
+    "message": "URL からインポート"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "インポートされたスキルはデフォルトで信頼されず、自動呼び出しはできません。"
+  },
+  "Importing": {
+    "message": "インポート中..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "このテキストを改善: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "無効な API キー"
   },
-  "Invalid_API_key_provided": {
-    "message": "提供された API キーが無効です"
-  },
   "Invalid_URL_format": {
     "message": "URL の形式が無効です"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "送信形式が無効です: op の type フィールドが欠落しています"
+  },
+  "Invocation_Mode": {
+    "message": "呼び出しモード"
   },
   "Keyboard_Shortcuts": {
     "message": "キーボードショートカット"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "設定を読み込み中..."
+  },
+  "Loading_skills": {
+    "message": "スキルを読み込み中..."
   },
   "Loading_tabs": {
     "message": "タブを読み込み中..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "デフォルト設定から読み込まれたモデルとプロバイダー設定（読み取り専用）"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "モデルが $1$ に変更されました。APIキーを設定してください。",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "モデルが $1$ に変更されました。会話は保持されます。",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "モデルが $1$ に変更されました。セッションが再初期化されます。",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "モデルが $1$ に変更されました。APIキーを設定してください。",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "モダンチャット"
+  "Modern_Chat_Auto": {
+    "message": "モダンチャット Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "モダンチャット ダーク"
+  },
+  "Modern_Chat_Light": {
+    "message": "モダンチャット ライト"
   },
   "Monthly_Credits": {
     "message": "月間クレジット"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "ネットワークエラー"
   },
-  "Network_error_occurred": {
-    "message": "ネットワークエラーが発生しました"
-  },
   "Never_expire_permanent": {
     "message": "期限なし（永久）"
   },
   "New_Conversation": {
     "message": "新しい会話"
+  },
+  "New_PIN": {
+    "message": "新しい PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "A2A エージェントがまだ設定されていません。"
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "スケジュールされた時間がありません"
   },
+  "No_settings_found": {
+    "message": "設定が見つかりません"
+  },
   "No_skills_available": {
     "message": "利用可能なスキルがありません。"
+  },
+  "No_skills_configured_yet": {
+    "message": "まだスキルが設定されていません。"
   },
   "No_steps_in_plan": {
     "message": "計画にステップがありません"
   },
   "No_tabs_available": {
     "message": "利用可能なタブがありません"
+  },
+  "No_tasks_in_plan": {
+    "message": "計画にタスクがありません"
   },
   "No_time_set": {
     "message": "時間が設定されていません"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN保護"
+  },
   "Page_Action_Tool": {
     "message": "ページアクションツール"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "キャッシュをストレージに永続化"
   },
-  "Plan_1_step_s": {
-    "message": "計画: $1$ ステップ",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "設定で API キーを確認してください。"
-  },
   "Please_enter_a_task_description": {
     "message": "タスクの説明を入力してください"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "有効なAPIキーを入力してください。"
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "AIエージェントの利用を続けるには、再度ログインしてください。"
-  },
   "Please_select_a_provider": {
     "message": "プロバイダーを選択してください"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "世界最先端のモデルを利用できるように、プランをアップグレードしてください"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "ポート1455は使用中です。このポートを使用しているアプリケーションを閉じて、再度お試しください。"
   },
   "Power": {
     "message": "パワー"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "更新まで"
   },
-  "Reject": {
-    "message": "拒否"
-  },
   "Release_Date": {
     "message": "リリース日"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "APIキーを削除"
   },
+  "Remove_PIN": {
+    "message": "PINを削除"
+  },
+  "Removing": {
+    "message": "削除中..."
+  },
   "Request_Timeout": {
     "message": "リクエストタイムアウト"
-  },
-  "Request_timed_out": {
-    "message": "リクエストがタイムアウトしました"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "リクエストタイムアウト（ミリ秒） (5000〜120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "リクエストタイムアウト（ミリ秒） (5000〜180000)"
   },
-  "Request_was_aborted": {
-    "message": "リクエストが中止されました"
+  "Reset_Vault": {
+    "message": "Vaultをリセット"
   },
-  "Response_failed": {
-    "message": "応答に失敗しました"
+  "Resetting": {
+    "message": "リセット中..."
   },
   "Restricted": {
     "message": "制限"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "実行中"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "ストリームエラー"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "スケジュールされたタスク"
   },
-  "Scheduled_Task_Starting": {
-    "message": "スケジュールされたタスクを開始中"
-  },
   "Scheduled_Tasks": {
     "message": "スケジュールされたタスク"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "検索完了"
   },
+  "Search_settings": {
+    "message": "設定を検索..."
+  },
   "Searching": {
     "message": "検索中..."
+  },
+  "Security": {
+    "message": "セキュリティ"
   },
   "Security_Privacy": {
     "message": "セキュリティとプライバシー"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "セッションエラー"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "セッションが期限切れです。AI エージェントの利用を続けるには、再度ログインしてください"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "セッション上限に達しました。新しいタスクはキューに入ります"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "段階的展開データの有効期限を設定"
+  },
+  "Setting_up": {
+    "message": "セットアップ中..."
   },
   "Settings": {
     "message": "設定"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "ストレージ使用率がこの割合を超えたときに警告を表示 (デフォルト: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "サインインに失敗しました"
+  },
   "Sign_in_to_your_account": {
     "message": "アカウントにサインイン"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "ChatGPTでサインイン"
+  },
+  "Signing_in": {
+    "message": "サインイン中..."
   },
   "Skills": {
     "message": "スキル"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "タスク詳細"
   },
-  "Task_Failed": {
-    "message": "タスク失敗"
-  },
   "Task_History": {
     "message": "タスク履歴"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "タスクが失敗しました"
+  },
+  "Task_scheduled_for_1": {
+    "message": "タスクが $1$ に予定されています",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "タスク開始"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "エージェントは現在バックエンドモードを使用しています。LLM リクエストは AI Republic サーバーを経由してルーティングされます。会話は当社のインフラストラクチャを通じて安全に処理されます。"
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "モデルを切り替えると現在の会話がクリアされます。続行しますか？"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "サーバーでエラーが発生しました。後でもう一度お試しください。"
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "これにより、保存されたすべての API キーが完全に削除され、ボールトがリセットされます。API キーを再入力する必要があります。"
   },
   "Time": {
     "message": "時刻"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "失敗が多すぎます。再試行まで"
+  },
   "Tool_Timeout_ms": {
     "message": "ツールのタイムアウト (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "ツール設定"
+  },
+  "Trust": {
+    "message": "信頼"
   },
   "Trusted": {
     "message": "信頼済み"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "クレジット情報を読み込めません"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "バックエンドサーバーに接続できません - 接続を確認してください"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "サーバーに接続できません。接続を確認し、再度お試しください。"
-  },
   "Unknown_Event": {
     "message": "不明なイベント"
   },
   "Unknown_error": {
     "message": "不明なエラー"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "エージェントのステータス確認中に不明なエラーが発生しました"
-  },
-  "Unknown_error_occurred": {
-    "message": "不明なエラーが発生しました"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "タスク実行中に不明なエラーが発生しました"
   },
   "Unknown_error_processing_submission": {
     "message": "送信処理中に不明なエラーが発生しました"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "ロック解除"
+  },
+  "Unlocking": {
+    "message": "ロック解除中..."
+  },
   "Unsaved_Changes": {
     "message": "未保存の変更"
   },
   "Untitled": {
     "message": "無題"
+  },
+  "Untrusted": {
+    "message": "信頼されていない"
   },
   "Upcoming": {
     "message": "近日"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "独自のAPIキーを使用"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "API キーの代わりに ChatGPT Plus/Pro サブスクリプションを使用する"
+  },
   "User_Center": {
     "message": "ユーザーセンター"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "追加クレジットを使用中"
+  },
+  "Vault_Locked": {
+    "message": "ボールトがロックされています"
   },
   "Verbosity": {
     "message": "詳細度"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "あなたのパーソナルAIアシスタント"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "セッションの有効期限が切れました。もう一度ログインしてください。"
-  },
   "DISCONNECTED": {
     "message": "[切断]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec（不明なコマンド）"
   },
+  "more_results": {
+    "message": "さらに結果..."
+  },
   "optional": {
     "message": "任意"
+  },
+  "or": {
+    "message": "または"
   },
   "remaining": {
     "message": "残り"
