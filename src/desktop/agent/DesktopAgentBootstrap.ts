@@ -355,7 +355,7 @@ export class DesktopAgentBootstrap {
   }
 
   /**
-   * Initialize the task scheduler for desktop mode.
+   * Initialize the scheduler for desktop mode.
    * Uses IndexedDB via SchedulerStorage + hybrid DesktopSchedulerAlarms.
    */
   private async initializeScheduler(): Promise<void> {
@@ -393,10 +393,10 @@ export class DesktopAgentBootstrap {
         }
       });
 
-      // Wire task launcher — show window and submit to agent
-      this.scheduler.setTaskLauncher(async (taskId, sessionId) => {
-        console.log(`[DesktopAgentBootstrap] Scheduled task ${taskId} launched (session: ${sessionId})`);
-        // Show the main window for the task
+      // Wire job launcher — show window and submit to agent
+      this.scheduler.setJobLauncher(async (jobId, sessionId) => {
+        console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
+        // Show the main window for the job
         try {
           const { invoke } = await import('@tauri-apps/api/core');
           const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -409,14 +409,14 @@ export class DesktopAgentBootstrap {
       });
 
       // Wire notification handler via Tauri notification plugin
-      this.scheduler.setNotificationHandler(async (task) => {
+      this.scheduler.setNotificationHandler(async (job) => {
         try {
           const { sendNotification } = await import('@tauri-apps/plugin-notification');
-          const inputPreview = task.input.length > 50
-            ? task.input.slice(0, 50) + '...'
-            : task.input;
+          const inputPreview = job.input.length > 50
+            ? job.input.slice(0, 50) + '...'
+            : job.input;
           sendNotification({
-            title: 'Scheduled Task Starting',
+            title: 'Scheduled Job Starting',
             body: inputPreview,
           });
         } catch {
@@ -433,16 +433,16 @@ export class DesktopAgentBootstrap {
 
       // Reconcile OS jobs with in-process timers
       await this.schedulerAlarms.reconcileOnStartup(async () => {
-        const tasks = await schedulerStorage.getScheduledTasks();
-        return tasks.map(t => ({ id: t.id, scheduledTime: t.scheduledTime }));
+        const jobs = await schedulerStorage.getScheduledJobs();
+        return jobs.map(j => ({ id: j.id, scheduledTime: j.scheduledTime }));
       });
 
-      // Detect missed tasks and start queue processor
-      const missedTasks = await this.scheduler.detectMissedTasks();
-      if (missedTasks.length > 0) {
-        console.log(`[DesktopAgentBootstrap] Detected ${missedTasks.length} missed scheduler tasks`);
+      // Detect missed jobs and start queue processor
+      const missedJobs = await this.scheduler.detectMissedJobs();
+      if (missedJobs.length > 0) {
+        console.log(`[DesktopAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
       }
-      await this.schedulerAlarms.startSchedulerTaskQueueProcessor();
+      await this.schedulerAlarms.startJobQueueProcessor();
 
       console.log('[DesktopAgentBootstrap] Scheduler initialized');
     } catch (error) {

@@ -3,7 +3,7 @@
   import { push } from 'svelte-spa-router';
   import { MessageType } from '@/core/MessageRouter';
   import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
-  import type { TaskStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
+  import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
@@ -51,10 +51,10 @@
   };
   // Current UI theme (reactive from store)
   let currentTheme: UITheme = 'terminal';
-  // Scheduled task execution state (US3)
-  let scheduledTaskId: string | null = null;
+  // Scheduled job execution state (US3)
+  let scheduledJobId: string | null = null;
   let scheduledSessionId: string | null = null;
-  let isScheduledTaskMode = false;
+  let isScheduledJobMode = false;
   $: showWelcome =
     !isProcessing && processedEvents.length === 0 && messages.length === 0;
 
@@ -151,10 +151,10 @@
         })
       );
 
-      // Listen for scheduler events (for task cancellation)
+      // Listen for scheduler events (for job cancellation)
       unsubscribers.push(
         service.on(MessageType.SCHEDULER_EVENT, (payload) => {
-          handleSchedulerEvent(payload as TaskStatusChangedEvent);
+          handleSchedulerEvent(payload as JobStatusChangedEvent);
         })
       );
     }
@@ -162,20 +162,20 @@
     // Check connection
     checkConnection();
 
-    // Check if this is a scheduled task execution (US3: T022)
+    // Check if this is a scheduled job execution (US3: T022)
     const urlParams = new URLSearchParams(window.location.search);
-    const taskIdParam = urlParams.get('scheduledTask');
+    const jobIdParam = urlParams.get('scheduledJob');
     const sessionIdParam = urlParams.get('sessionId');
 
-    if (taskIdParam && sessionIdParam) {
-      console.log('[App] Scheduled task mode detected:', taskIdParam);
-      scheduledTaskId = taskIdParam;
+    if (jobIdParam && sessionIdParam) {
+      console.log('[App] Scheduled job mode detected:', jobIdParam);
+      scheduledJobId = jobIdParam;
       scheduledSessionId = sessionIdParam;
-      isScheduledTaskMode = true;
+      isScheduledJobMode = true;
 
-      // Load and execute the scheduled task
-      await loadAndExecuteSchedulerTask(taskIdParam, sessionIdParam);
-      return; // Skip normal initialization for scheduled task mode
+      // Load and execute the scheduled job
+      await loadAndExecuteSchedulerJob(jobIdParam, sessionIdParam);
+      return; // Skip normal initialization for scheduled job mode
     }
 
     // Fetch current session's tabId from storage
@@ -211,16 +211,16 @@
     };
   });
 
-  // T035: Handle scheduled task cancellation events
-  function handleSchedulerEvent(event: TaskStatusChangedEvent) {
-    // Check if this is a cancellation for our running task
+  // T035: Handle scheduled job cancellation events
+  function handleSchedulerEvent(event: JobStatusChangedEvent) {
+    // Check if this is a cancellation for our running job
     if (
-      isScheduledTaskMode &&
-      scheduledTaskId &&
-      event?.taskId === scheduledTaskId &&
+      isScheduledJobMode &&
+      scheduledJobId &&
+      event?.jobId === scheduledJobId &&
       event?.newStatus === 'cancelled'
     ) {
-      console.log('[App] Scheduled task cancelled, aborting execution:', scheduledTaskId);
+      console.log('[App] Scheduled job cancelled, aborting execution:', scheduledJobId);
 
       // Stop processing
       isProcessing = false;
@@ -231,7 +231,7 @@
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: t('Task cancelled by user'),
+        content: t('Job cancelled by user'),
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
@@ -528,9 +528,9 @@
     } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
       isProcessing = false;
 
-      // If this is a scheduled task execution, notify the scheduler (US3)
-      if (isScheduledTaskMode && scheduledTaskId) {
-        notifySchedulerTaskCompletion(msg.type === 'TaskComplete', msg);
+      // If this is a scheduled job execution, notify the scheduler (US3)
+      if (isScheduledJobMode && scheduledJobId) {
+        notifySchedulerJobCompletion(msg.type === 'TaskComplete', msg);
       }
     }
 
@@ -788,82 +788,82 @@
   }
 
   /**
-   * Notify scheduler of task completion (US3)
-   * Called when a scheduled task finishes executing
+   * Notify scheduler of job completion (US3)
+   * Called when a scheduled job finishes executing
    */
-  async function notifySchedulerTaskCompletion(success: boolean, msg: any) {
-    if (!scheduledTaskId || !service) return;
+  async function notifySchedulerJobCompletion(success: boolean, msg: any) {
+    if (!scheduledJobId || !service) return;
 
     try {
       if (success) {
         // Extract result summary from the processed events
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
-        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Task completed';
+        const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await service.send(MessageType.SCHEDULER_COMPLETE_TASK, {
-          taskId: scheduledTaskId,
+        await service.send(MessageType.SCHEDULER_COMPLETE_JOB, {
+          jobId: scheduledJobId,
           result: {
             summary: resultSummary,
             completedAt: Date.now(),
           },
         });
-        console.log('[App] Notified scheduler of task completion:', scheduledTaskId);
+        console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
-        const errorMessage = msg?.data?.message || 'Task failed';
-        await service.send(MessageType.SCHEDULER_FAIL_TASK, {
-          taskId: scheduledTaskId,
+        const errorMessage = msg?.data?.message || 'Job failed';
+        await service.send(MessageType.SCHEDULER_FAIL_JOB, {
+          jobId: scheduledJobId,
           error: errorMessage,
         });
-        console.log('[App] Notified scheduler of task failure:', scheduledTaskId);
+        console.log('[App] Notified scheduler of job failure:', scheduledJobId);
       }
     } catch (error) {
-      console.error('[App] Failed to notify scheduler of task completion:', error);
+      console.error('[App] Failed to notify scheduler of job completion:', error);
     }
   }
 
   /**
-   * Load and execute a scheduled task (US3: T023)
-   * Called when the page is opened with scheduledTask URL parameter
+   * Load and execute a scheduled job (US3: T023)
+   * Called when the page is opened with scheduledJob URL parameter
    */
-  async function loadAndExecuteSchedulerTask(taskId: string, sessionId: string) {
-    console.log('[App] Loading scheduled task:', taskId, 'with session:', sessionId);
+  async function loadAndExecuteSchedulerJob(jobId: string, sessionId: string) {
+    console.log('[App] Loading scheduled job:', jobId, 'with session:', sessionId);
 
     try {
       if (!service) throw new Error('Message service not available');
-      // Fetch task details from scheduler
-      const response = await service.send<{ task?: { input: string; scheduledTime?: number } }>(
-        MessageType.SCHEDULER_GET_TASK_DETAILS,
-        { taskId }
+      // Fetch job details from scheduler
+      const response = await service.send<{ job?: { input: string; scheduledTime?: number } }>(
+        MessageType.SCHEDULER_GET_JOB_DETAILS,
+        { jobId }
       );
 
-      const taskData = response?.data || response;
-      if (!taskData || !taskData.task) {
-        throw new Error('Task not found or invalid response');
+      const jobData = response?.data || response;
+      if (!jobData || !jobData.job) {
+        throw new Error('Job not found or invalid response');
       }
 
-      const task = taskData.task;
-      console.log('[App] Scheduled task loaded:', task);
+      const job = jobData.job;
+      console.log('[App] Scheduled job loaded:', job);
 
-      // Display task input as user message
+      // Display job input as user message
       const userEvent: ProcessedEvent = {
         id: `scheduled_user_${Date.now()}`,
         category: 'message',
         timestamp: new Date(),
         title: 'user',
-        content: task.input,
+        content: job.input,
         style: { textColor: 'text-cyan-400' },
         streaming: false,
         collapsible: false,
       };
       processedEvents = [userEvent];
 
-      // Add a system notification showing this is a scheduled task
+      // Add a system notification showing this is a scheduled job
       const scheduleNotification: ProcessedEvent = {
         id: `scheduled_notice_${Date.now()}`,
         category: 'system',
         timestamp: new Date(),
         title: 'system',
-        content: `Executing scheduled task (${task.scheduledTime ? new Date(task.scheduledTime).toLocaleString() : 'manual trigger'})`,
+        content: `Executing scheduled job (${job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'manual trigger'})`,
         style: { textColor: 'text-yellow-400' },
         streaming: false,
         collapsible: false,
@@ -876,35 +876,35 @@
         throw new Error('Agent is not ready. Please configure your API key.');
       }
 
-      // Execute the task via the agent
+      // Execute the job via the agent
       // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
       await service.send(MessageType.SUBMISSION, {
-        id: `scheduled_${taskId}_${Date.now()}`,
+        id: `scheduled_${jobId}_${Date.now()}`,
         op: {
           type: 'UserInput',
-          items: [{ type: 'text', text: task.input }],
+          items: [{ type: 'text', text: job.input }],
         },
         context: {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
-          scheduledTaskId: taskId,
+          scheduledJobId: jobId,
         },
       });
 
     } catch (error) {
-      console.error('[App] Failed to execute scheduled task:', error);
+      console.error('[App] Failed to execute scheduled job:', error);
 
       // Notify scheduler of failure
       try {
         if (service) {
-          await service.send(MessageType.SCHEDULER_FAIL_TASK, {
-            taskId,
+          await service.send(MessageType.SCHEDULER_FAIL_JOB, {
+            jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       } catch (notifyError) {
-        console.error('[App] Failed to notify scheduler of task failure:', notifyError);
+        console.error('[App] Failed to notify scheduler of job failure:', notifyError);
       }
 
       // Show error in UI

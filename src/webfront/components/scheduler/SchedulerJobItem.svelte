@@ -2,19 +2,19 @@
   import { createEventDispatcher } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import type { SchedulerTaskStatus } from '@/core/models/types/Scheduler';
+  import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
 
   export let id: string;
   export let input: string;
   export let scheduledTime: number | null;
-  export let status: SchedulerTaskStatus;
+  export let status: SchedulerJobStatus;
   export let createdAt: number;
   export let showActions: boolean = true;
 
   const dispatch = createEventDispatcher<{
-    trigger: { taskId: string };
-    cancel: { taskId: string };
-    details: { taskId: string };
+    trigger: { jobId: string };
+    cancel: { jobId: string };
+    details: { jobId: string };
   }>();
 
   let currentTheme: UITheme = 'terminal';
@@ -23,7 +23,7 @@
     currentTheme = theme;
   });
 
-  function getStatusBadgeClasses(s: SchedulerTaskStatus): string {
+  function getStatusBadgeClasses(s: SchedulerJobStatus): string {
     switch (s) {
       case 'running': return 'bg-term-bright-green text-black';
       case 'scheduled': return 'bg-[rgba(0,255,0,0.2)] text-term-bright-green';
@@ -37,13 +37,13 @@
     }
   }
 
-  function getItemBorderClass(s: SchedulerTaskStatus): string {
+  function getItemBorderClass(s: SchedulerJobStatus): string {
     if (s === 'running') return 'border-term-bright-green animate-running-pulse';
     if (s === 'missed') return 'border-term-yellow';
     return '';
   }
 
-  function getStatusLabel(status: SchedulerTaskStatus): string {
+  function getStatusLabel(status: SchedulerJobStatus): string {
     switch (status) {
       case 'running': return t('Running');
       case 'scheduled': return t('Scheduled');
@@ -90,15 +90,15 @@
   }
 
   function handleTrigger() {
-    dispatch('trigger', { taskId: id });
+    dispatch('trigger', { jobId: id });
   }
 
   function handleCancel() {
-    dispatch('cancel', { taskId: id });
+    dispatch('cancel', { jobId: id });
   }
 
   function handleClick() {
-    dispatch('details', { taskId: id });
+    dispatch('details', { jobId: id });
   }
 </script>
 
@@ -118,7 +118,7 @@
       {getStatusLabel(status)}
     </span>
 
-    <!-- Task Input Preview -->
+    <!-- Job Input Preview -->
     <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
       {currentTheme === 'modern'
         ? 'text-chat-text dark:text-chat-text-dark font-chat'

@@ -19,7 +19,7 @@ const ADAPTER_STORES = [
   'sessions',
   'config',
   'rollout_cache',
-  'scheduler_tasks',
+  'scheduler_jobs',
   'agent_sessions',
 ];
 
@@ -49,7 +49,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
 
     const STORE_INDEXES: Record<string, string[]> = {
       cache_items: ['by_session', 'by_session_timestamp', 'by_timestamp'],
-      scheduler_tasks: ['by_status', 'by_scheduled_time', 'by_status_time', 'by_created_at'],
+      scheduler_jobs: ['by_status', 'by_scheduled_time', 'by_status_time', 'by_created_at'],
       agent_sessions: ['by_type', 'by_state']
     };
 

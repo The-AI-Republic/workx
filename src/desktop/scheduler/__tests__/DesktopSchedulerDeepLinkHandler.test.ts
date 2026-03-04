@@ -2,12 +2,12 @@
  * Desktop Scheduler Deep Link Handler Tests
  *
  * Tests for DesktopSchedulerDeepLinkHandler which processes
- * `airepublic-pi://scheduler/trigger?taskId=xxx` deep link events.
+ * `airepublic-pi://scheduler/trigger?jobId=xxx` deep link events.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DesktopSchedulerDeepLinkHandler } from '../DesktopSchedulerDeepLinkHandler';
-import { getTaskAlarmName } from '../../../core/models/types/SchedulerContracts';
+import { getJobAlarmName } from '../../../core/models/types/SchedulerContracts';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Mocks
@@ -85,21 +85,21 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
 
     it('should trigger scheduler alarm for valid scheduler URL', () => {
       capturedListenCallback!({
-        payload: 'airepublic-pi://scheduler/trigger?taskId=task-42',
+        payload: 'airepublic-pi://scheduler/trigger?jobId=task-42',
       });
 
-      expect(scheduler.handleAlarm).toHaveBeenCalledWith(getTaskAlarmName('task-42'));
+      expect(scheduler.handleAlarm).toHaveBeenCalledWith(getJobAlarmName('task-42'));
     });
 
     it('should remove OS job after triggering', async () => {
       capturedListenCallback!({
-        payload: 'airepublic-pi://scheduler/trigger?taskId=task-42',
+        payload: 'airepublic-pi://scheduler/trigger?jobId=task-42',
       });
 
       // removeOsJob is async — wait a tick
       await vi.waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith('scheduler_remove_os_job', {
-          taskId: 'task-42',
+          jobId: 'task-42',
         });
       });
     });
@@ -112,7 +112,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
       expect(scheduler.handleAlarm).not.toHaveBeenCalled();
     });
 
-    it('should ignore URLs without taskId', () => {
+    it('should ignore URLs without jobId', () => {
       capturedListenCallback!({
         payload: 'airepublic-pi://scheduler/trigger',
       });
@@ -136,7 +136,7 @@ describe('DesktopSchedulerDeepLinkHandler', () => {
       // Should not throw
       expect(() => {
         capturedListenCallback!({
-          payload: 'airepublic-pi://scheduler/trigger?taskId=task-1',
+          payload: 'airepublic-pi://scheduler/trigger?jobId=task-1',
         });
       }).not.toThrow();
     });

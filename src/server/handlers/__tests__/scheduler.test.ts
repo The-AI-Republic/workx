@@ -34,32 +34,32 @@ import { registerSchedulerHandlers } from '../scheduler';
 
 function createMockScheduler() {
   return {
-    createDraftTask: vi.fn().mockResolvedValue('draft-1'),
-    scheduleTask: vi.fn().mockResolvedValue('sched-1'),
-    scheduleExistingTask: vi.fn().mockResolvedValue(undefined),
-    triggerTask: vi.fn().mockResolvedValue(undefined),
-    cancelTask: vi.fn().mockResolvedValue(undefined),
-    completeTask: vi.fn().mockResolvedValue(undefined),
-    failTask: vi.fn().mockResolvedValue(undefined),
-    pauseSchedulerTaskQueue: vi.fn().mockResolvedValue(undefined),
-    resumeSchedulerTaskQueue: vi.fn().mockResolvedValue(undefined),
+    createDraftJob: vi.fn().mockResolvedValue('draft-1'),
+    scheduleJob: vi.fn().mockResolvedValue('sched-1'),
+    scheduleExistingJob: vi.fn().mockResolvedValue(undefined),
+    triggerJob: vi.fn().mockResolvedValue(undefined),
+    cancelJob: vi.fn().mockResolvedValue(undefined),
+    completeJob: vi.fn().mockResolvedValue(undefined),
+    failJob: vi.fn().mockResolvedValue(undefined),
+    pauseJobQueue: vi.fn().mockResolvedValue(undefined),
+    resumeJobQueue: vi.fn().mockResolvedValue(undefined),
     getSchedulerState: vi.fn().mockResolvedValue({
       isPaused: false,
-      currentTaskId: null,
+      currentJobId: null,
       draftCount: 0,
       scheduledCount: 0,
       missedCount: 0,
       waitingCount: 0,
       runningCount: 0,
-      runningTask: null,
+      runningJob: null,
     }),
   };
 }
 
-function makeTask(overrides: Record<string, unknown> = {}) {
+function makeJob(overrides: Record<string, unknown> = {}) {
   return {
     id: 'task-1',
-    input: 'Test task input that is reasonably short',
+    input: 'Test job input that is reasonably short',
     scheduledTime: Date.now() + 60000,
     status: 'draft',
     createdAt: Date.now(),
@@ -73,22 +73,22 @@ function makeTask(overrides: Record<string, unknown> = {}) {
 
 function createMockStorage() {
   return {
-    createTask: vi.fn(),
-    getTask: vi.fn().mockResolvedValue(makeTask()),
-    updateTask: vi.fn(),
-    deleteTask: vi.fn(),
-    getDraftTasks: vi.fn().mockResolvedValue([makeTask()]),
-    getScheduledTasks: vi.fn().mockResolvedValue([makeTask({ status: 'scheduled' })]),
-    getMissedTasks: vi.fn().mockResolvedValue([makeTask({ status: 'missed' })]),
-    getSchedulerTaskQueueTasks: vi.fn().mockResolvedValue([makeTask({ status: 'waiting' })]),
-    getArchivedTasks: vi.fn().mockResolvedValue([
-      makeTask({ status: 'completed', completedAt: 1000 }),
+    createJob: vi.fn(),
+    getJob: vi.fn().mockResolvedValue(makeJob()),
+    updateJob: vi.fn(),
+    deleteJob: vi.fn(),
+    getDraftJobs: vi.fn().mockResolvedValue([makeJob()]),
+    getScheduledJobs: vi.fn().mockResolvedValue([makeJob({ status: 'scheduled' })]),
+    getMissedJobs: vi.fn().mockResolvedValue([makeJob({ status: 'missed' })]),
+    getJobQueueJobs: vi.fn().mockResolvedValue([makeJob({ status: 'waiting' })]),
+    getArchivedJobs: vi.fn().mockResolvedValue([
+      makeJob({ status: 'completed', completedAt: 1000 }),
     ]),
-    getNextTaskInSchedulerTaskQueue: vi.fn(),
-    getOverdueScheduledTasks: vi.fn(),
+    getNextJobInQueue: vi.fn(),
+    getOverdueScheduledJobs: vi.fn(),
     getSchedulerState: vi.fn(),
     setSchedulerState: vi.fn(),
-    getTaskCounts: vi.fn(),
+    getJobCounts: vi.fn(),
   };
 }
 
@@ -129,13 +129,13 @@ describe('Scheduler WebSocket handlers', () => {
     expect(handlerMap.has('scheduler.fail')).toBe(true);
     expect(handlerMap.has('scheduler.pauseQueue')).toBe(true);
     expect(handlerMap.has('scheduler.resumeQueue')).toBe(true);
-    expect(handlerMap.has('scheduler.getDraftTasks')).toBe(true);
-    expect(handlerMap.has('scheduler.getScheduledTasks')).toBe(true);
-    expect(handlerMap.has('scheduler.getMissedTasks')).toBe(true);
+    expect(handlerMap.has('scheduler.getDraftJobs')).toBe(true);
+    expect(handlerMap.has('scheduler.getScheduledJobs')).toBe(true);
+    expect(handlerMap.has('scheduler.getMissedJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getQueue')).toBe(true);
-    expect(handlerMap.has('scheduler.getArchivedTasks')).toBe(true);
+    expect(handlerMap.has('scheduler.getArchivedJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getState')).toBe(true);
-    expect(handlerMap.has('scheduler.getTaskDetails')).toBe(true);
+    expect(handlerMap.has('scheduler.getJobDetails')).toBe(true);
   });
 
   // ───────────────────────────────────────────────────────────────────
@@ -143,10 +143,10 @@ describe('Scheduler WebSocket handlers', () => {
   // ───────────────────────────────────────────────────────────────────
 
   describe('scheduler.createDraft', () => {
-    it('should create a draft task and return taskId', async () => {
+    it('should create a draft job and return jobId', async () => {
       const result = await callHandler('scheduler.createDraft', { input: 'hello' });
-      expect(scheduler.createDraftTask).toHaveBeenCalledWith('hello');
-      expect(result).toEqual({ success: true, taskId: 'draft-1' });
+      expect(scheduler.createDraftJob).toHaveBeenCalledWith('hello');
+      expect(result).toEqual({ success: true, jobId: 'draft-1' });
     });
 
     it('should throw when input is missing', async () => {
@@ -163,22 +163,22 @@ describe('Scheduler WebSocket handlers', () => {
   // ───────────────────────────────────────────────────────────────────
 
   describe('scheduler.schedule', () => {
-    it('should schedule a new task with input', async () => {
+    it('should schedule a new job with input', async () => {
       const result = await callHandler('scheduler.schedule', {
-        input: 'new task',
+        input: 'new job',
         scheduledTime: 9999999,
       });
-      expect(scheduler.scheduleTask).toHaveBeenCalledWith('new task', 9999999);
-      expect(result).toEqual({ success: true, taskId: 'sched-1' });
+      expect(scheduler.scheduleJob).toHaveBeenCalledWith('new job', 9999999);
+      expect(result).toEqual({ success: true, jobId: 'sched-1' });
     });
 
-    it('should schedule an existing task by taskId', async () => {
+    it('should schedule an existing job by jobId', async () => {
       const result = await callHandler('scheduler.schedule', {
-        taskId: 'existing-1',
+        jobId: 'existing-1',
         scheduledTime: 9999999,
       });
-      expect(scheduler.scheduleExistingTask).toHaveBeenCalledWith('existing-1', 9999999);
-      expect(result).toEqual({ success: true, taskId: 'existing-1' });
+      expect(scheduler.scheduleExistingJob).toHaveBeenCalledWith('existing-1', 9999999);
+      expect(result).toEqual({ success: true, jobId: 'existing-1' });
     });
 
     it('should throw when scheduledTime is missing', async () => {
@@ -187,10 +187,10 @@ describe('Scheduler WebSocket handlers', () => {
       ).rejects.toThrow('"scheduledTime" is required');
     });
 
-    it('should throw when neither input nor taskId provided', async () => {
+    it('should throw when neither input nor jobId provided', async () => {
       await expect(
         callHandler('scheduler.schedule', { scheduledTime: 9999999 })
-      ).rejects.toThrow('Either "input" or "taskId" is required');
+      ).rejects.toThrow('Either "input" or "jobId" is required');
     });
   });
 
@@ -199,14 +199,14 @@ describe('Scheduler WebSocket handlers', () => {
   // ───────────────────────────────────────────────────────────────────
 
   describe('scheduler.trigger', () => {
-    it('should trigger a task', async () => {
-      const result = await callHandler('scheduler.trigger', { taskId: 'task-1' });
-      expect(scheduler.triggerTask).toHaveBeenCalledWith('task-1');
+    it('should trigger a job', async () => {
+      const result = await callHandler('scheduler.trigger', { jobId: 'task-1' });
+      expect(scheduler.triggerJob).toHaveBeenCalledWith('task-1');
       expect(result).toEqual({ success: true });
     });
 
-    it('should throw when taskId is missing', async () => {
-      await expect(callHandler('scheduler.trigger', {})).rejects.toThrow('"taskId" is required');
+    it('should throw when jobId is missing', async () => {
+      await expect(callHandler('scheduler.trigger', {})).rejects.toThrow('"jobId" is required');
     });
   });
 
@@ -215,14 +215,14 @@ describe('Scheduler WebSocket handlers', () => {
   // ───────────────────────────────────────────────────────────────────
 
   describe('scheduler.cancel', () => {
-    it('should cancel a task', async () => {
-      const result = await callHandler('scheduler.cancel', { taskId: 'task-1' });
-      expect(scheduler.cancelTask).toHaveBeenCalledWith('task-1');
+    it('should cancel a job', async () => {
+      const result = await callHandler('scheduler.cancel', { jobId: 'task-1' });
+      expect(scheduler.cancelJob).toHaveBeenCalledWith('task-1');
       expect(result).toEqual({ success: true });
     });
 
-    it('should throw when taskId is missing', async () => {
-      await expect(callHandler('scheduler.cancel', {})).rejects.toThrow('"taskId" is required');
+    it('should throw when jobId is missing', async () => {
+      await expect(callHandler('scheduler.cancel', {})).rejects.toThrow('"jobId" is required');
     });
   });
 
@@ -231,25 +231,25 @@ describe('Scheduler WebSocket handlers', () => {
   // ───────────────────────────────────────────────────────────────────
 
   describe('scheduler.complete', () => {
-    it('should complete a task with result', async () => {
-      const taskResult = { summary: 'done' };
+    it('should complete a job with result', async () => {
+      const jobResult = { summary: 'done' };
       const result = await callHandler('scheduler.complete', {
-        taskId: 'task-1',
-        result: taskResult,
+        jobId: 'task-1',
+        result: jobResult,
       });
-      expect(scheduler.completeTask).toHaveBeenCalledWith('task-1', taskResult);
+      expect(scheduler.completeJob).toHaveBeenCalledWith('task-1', jobResult);
       expect(result).toEqual({ success: true });
     });
 
-    it('should throw when taskId is missing', async () => {
+    it('should throw when jobId is missing', async () => {
       await expect(
         callHandler('scheduler.complete', { result: {} })
-      ).rejects.toThrow('"taskId" is required');
+      ).rejects.toThrow('"jobId" is required');
     });
 
     it('should throw when result is missing', async () => {
       await expect(
-        callHandler('scheduler.complete', { taskId: 'task-1' })
+        callHandler('scheduler.complete', { jobId: 'task-1' })
       ).rejects.toThrow('"result" is required');
     });
   });
@@ -259,24 +259,24 @@ describe('Scheduler WebSocket handlers', () => {
   // ───────────────────────────────────────────────────────────────────
 
   describe('scheduler.fail', () => {
-    it('should fail a task with error message', async () => {
+    it('should fail a job with error message', async () => {
       const result = await callHandler('scheduler.fail', {
-        taskId: 'task-1',
+        jobId: 'task-1',
         error: 'something broke',
       });
-      expect(scheduler.failTask).toHaveBeenCalledWith('task-1', 'something broke');
+      expect(scheduler.failJob).toHaveBeenCalledWith('task-1', 'something broke');
       expect(result).toEqual({ success: true });
     });
 
-    it('should throw when taskId is missing', async () => {
+    it('should throw when jobId is missing', async () => {
       await expect(
         callHandler('scheduler.fail', { error: 'err' })
-      ).rejects.toThrow('"taskId" is required');
+      ).rejects.toThrow('"jobId" is required');
     });
 
     it('should throw when error is missing', async () => {
       await expect(
-        callHandler('scheduler.fail', { taskId: 'task-1' })
+        callHandler('scheduler.fail', { jobId: 'task-1' })
       ).rejects.toThrow('"error" is required');
     });
   });
@@ -288,7 +288,7 @@ describe('Scheduler WebSocket handlers', () => {
   describe('scheduler.pauseQueue', () => {
     it('should pause the scheduler queue', async () => {
       const result = await callHandler('scheduler.pauseQueue');
-      expect(scheduler.pauseSchedulerTaskQueue).toHaveBeenCalled();
+      expect(scheduler.pauseJobQueue).toHaveBeenCalled();
       expect(result).toEqual({ success: true });
     });
   });
@@ -296,7 +296,7 @@ describe('Scheduler WebSocket handlers', () => {
   describe('scheduler.resumeQueue', () => {
     it('should resume the scheduler queue', async () => {
       const result = await callHandler('scheduler.resumeQueue');
-      expect(scheduler.resumeSchedulerTaskQueue).toHaveBeenCalled();
+      expect(scheduler.resumeJobQueue).toHaveBeenCalled();
       expect(result).toEqual({ success: true });
     });
   });
@@ -305,85 +305,85 @@ describe('Scheduler WebSocket handlers', () => {
   // Query handlers
   // ───────────────────────────────────────────────────────────────────
 
-  describe('scheduler.getDraftTasks', () => {
-    it('should return draft tasks as summaries', async () => {
-      const result = await callHandler('scheduler.getDraftTasks');
-      expect(storage.getDraftTasks).toHaveBeenCalled();
-      const tasks = (result as any).tasks;
-      expect(tasks).toHaveLength(1);
-      expect(tasks[0].id).toBe('task-1');
-      expect(tasks[0].status).toBe('draft');
+  describe('scheduler.getDraftJobs', () => {
+    it('should return draft jobs as summaries', async () => {
+      const result = await callHandler('scheduler.getDraftJobs');
+      expect(storage.getDraftJobs).toHaveBeenCalled();
+      const jobs = (result as any).jobs;
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].id).toBe('task-1');
+      expect(jobs[0].status).toBe('draft');
     });
 
     it('should truncate long input to 100 chars', async () => {
       const longInput = 'x'.repeat(200);
-      storage.getDraftTasks.mockResolvedValue([makeTask({ input: longInput })]);
-      const result = await callHandler('scheduler.getDraftTasks');
-      const tasks = (result as any).tasks;
-      expect(tasks[0].input).toHaveLength(100);
+      storage.getDraftJobs.mockResolvedValue([makeJob({ input: longInput })]);
+      const result = await callHandler('scheduler.getDraftJobs');
+      const jobs = (result as any).jobs;
+      expect(jobs[0].input).toHaveLength(100);
     });
   });
 
-  describe('scheduler.getScheduledTasks', () => {
-    it('should return scheduled tasks', async () => {
-      const result = await callHandler('scheduler.getScheduledTasks');
-      expect(storage.getScheduledTasks).toHaveBeenCalled();
-      expect((result as any).tasks).toHaveLength(1);
+  describe('scheduler.getScheduledJobs', () => {
+    it('should return scheduled jobs', async () => {
+      const result = await callHandler('scheduler.getScheduledJobs');
+      expect(storage.getScheduledJobs).toHaveBeenCalled();
+      expect((result as any).jobs).toHaveLength(1);
     });
   });
 
-  describe('scheduler.getMissedTasks', () => {
-    it('should return missed tasks', async () => {
-      const result = await callHandler('scheduler.getMissedTasks');
-      expect(storage.getMissedTasks).toHaveBeenCalled();
-      expect((result as any).tasks).toHaveLength(1);
+  describe('scheduler.getMissedJobs', () => {
+    it('should return missed jobs', async () => {
+      const result = await callHandler('scheduler.getMissedJobs');
+      expect(storage.getMissedJobs).toHaveBeenCalled();
+      expect((result as any).jobs).toHaveLength(1);
     });
   });
 
   describe('scheduler.getQueue', () => {
-    it('should return waiting tasks', async () => {
+    it('should return waiting jobs', async () => {
       const result = await callHandler('scheduler.getQueue');
-      expect(storage.getSchedulerTaskQueueTasks).toHaveBeenCalled();
-      expect((result as any).tasks).toHaveLength(1);
+      expect(storage.getJobQueueJobs).toHaveBeenCalled();
+      expect((result as any).jobs).toHaveLength(1);
     });
   });
 
   // ───────────────────────────────────────────────────────────────────
-  // scheduler.getArchivedTasks
+  // scheduler.getArchivedJobs
   // ───────────────────────────────────────────────────────────────────
 
-  describe('scheduler.getArchivedTasks', () => {
-    it('should return archived tasks with default pagination', async () => {
-      const result = await callHandler('scheduler.getArchivedTasks');
-      expect(storage.getArchivedTasks).toHaveBeenCalledWith(50, 0);
+  describe('scheduler.getArchivedJobs', () => {
+    it('should return archived jobs with default pagination', async () => {
+      const result = await callHandler('scheduler.getArchivedJobs');
+      expect(storage.getArchivedJobs).toHaveBeenCalledWith(50, 0);
       const data = result as any;
-      expect(data.tasks).toHaveLength(1);
+      expect(data.jobs).toHaveLength(1);
       expect(data.total).toBe(1);
       expect(data.hasMore).toBe(false);
     });
 
     it('should pass custom limit and offset', async () => {
-      await callHandler('scheduler.getArchivedTasks', { limit: 10, offset: 5 });
-      expect(storage.getArchivedTasks).toHaveBeenCalledWith(10, 5);
+      await callHandler('scheduler.getArchivedJobs', { limit: 10, offset: 5 });
+      expect(storage.getArchivedJobs).toHaveBeenCalledWith(10, 5);
     });
 
     it('should set hasMore=true when result length equals limit', async () => {
-      const tasks = Array.from({ length: 10 }, (_, i) =>
-        makeTask({ id: `t-${i}`, status: 'completed', completedAt: i })
+      const jobs = Array.from({ length: 10 }, (_, i) =>
+        makeJob({ id: `t-${i}`, status: 'completed', completedAt: i })
       );
-      storage.getArchivedTasks.mockResolvedValue(tasks);
-      const result = await callHandler('scheduler.getArchivedTasks', { limit: 10 });
+      storage.getArchivedJobs.mockResolvedValue(jobs);
+      const result = await callHandler('scheduler.getArchivedJobs', { limit: 10 });
       expect((result as any).hasMore).toBe(true);
     });
 
     it('should include sessionId and error in archived output', async () => {
-      storage.getArchivedTasks.mockResolvedValue([
-        makeTask({ status: 'failed', error: 'timeout', sessionId: 's-1', completedAt: 1000 }),
+      storage.getArchivedJobs.mockResolvedValue([
+        makeJob({ status: 'failed', error: 'timeout', sessionId: 's-1', completedAt: 1000 }),
       ]);
-      const result = await callHandler('scheduler.getArchivedTasks');
-      const task = (result as any).tasks[0];
-      expect(task.sessionId).toBe('s-1');
-      expect(task.error).toBe('timeout');
+      const result = await callHandler('scheduler.getArchivedJobs');
+      const job = (result as any).jobs[0];
+      expect(job.sessionId).toBe('s-1');
+      expect(job.error).toBe('timeout');
     });
   });
 
@@ -400,26 +400,26 @@ describe('Scheduler WebSocket handlers', () => {
   });
 
   // ───────────────────────────────────────────────────────────────────
-  // scheduler.getTaskDetails
+  // scheduler.getJobDetails
   // ───────────────────────────────────────────────────────────────────
 
-  describe('scheduler.getTaskDetails', () => {
-    it('should return task details', async () => {
-      const result = await callHandler('scheduler.getTaskDetails', { taskId: 'task-1' });
-      expect(storage.getTask).toHaveBeenCalledWith('task-1');
-      expect((result as any).task.id).toBe('task-1');
+  describe('scheduler.getJobDetails', () => {
+    it('should return job details', async () => {
+      const result = await callHandler('scheduler.getJobDetails', { jobId: 'task-1' });
+      expect(storage.getJob).toHaveBeenCalledWith('task-1');
+      expect((result as any).job.id).toBe('task-1');
     });
 
-    it('should throw when taskId is missing', async () => {
-      await expect(callHandler('scheduler.getTaskDetails', {})).rejects.toThrow(
-        '"taskId" is required'
+    it('should throw when jobId is missing', async () => {
+      await expect(callHandler('scheduler.getJobDetails', {})).rejects.toThrow(
+        '"jobId" is required'
       );
     });
 
-    it('should return null task when not found', async () => {
-      storage.getTask.mockResolvedValue(null);
-      const result = await callHandler('scheduler.getTaskDetails', { taskId: 'nope' });
-      expect((result as any).task).toBeNull();
+    it('should return null when job not found', async () => {
+      storage.getJob.mockResolvedValue(null);
+      const result = await callHandler('scheduler.getJobDetails', { jobId: 'nope' });
+      expect((result as any).job).toBeNull();
     });
   });
 });

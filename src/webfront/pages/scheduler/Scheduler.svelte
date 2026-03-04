@@ -139,7 +139,7 @@
 
     try {
       if (!service) throw new Error('Message service not available');
-      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_TASK, {
+      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_JOB, {
         input: taskInput,
         scheduledTime,
       });

@@ -6,7 +6,7 @@
  * OS-level jobs via Tauri commands (persistent across full app quit).
  *
  * Natural deduplication: whichever fires first wins —
- * scheduler.handleAlarm() checks task status before executing.
+ * scheduler.handleAlarm() checks job status before executing.
  *
  * @module desktop/scheduler/DesktopSchedulerAlarms
  */
@@ -18,9 +18,9 @@ import type {
 } from '../../core/models/types/SchedulerContracts';
 import {
   DEFAULT_ALARM_CONFIG,
-  getTaskAlarmName,
+  getJobAlarmName,
   SCHEDULER_ALARM_PREFIX,
-  SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
+  SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
 } from '../../core/models/types/SchedulerContracts';
 
 /**
@@ -59,14 +59,14 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Create both an in-process timer and an OS-level job for a task.
+   * Create both an in-process timer and an OS-level job for a scheduled job.
    */
-  async createTaskAlarm(taskId: string, scheduledTime: number): Promise<void> {
-    const alarmName = getTaskAlarmName(taskId);
+  async createJobAlarm(jobId: string, scheduledTime: number): Promise<void> {
+    const alarmName = getJobAlarmName(jobId);
     const now = Date.now();
     const delayMs = Math.max(scheduledTime - now, 0);
 
-    // Clear any existing timer for this task
+    // Clear any existing timer for this job
     this.clearTimerEntry(alarmName);
 
     // 1. In-process timer (precise, fires while app is running)
@@ -93,7 +93,7 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('scheduler_register_os_job', {
-        taskId,
+        jobId,
         scheduledTime,
       });
     } catch (error) {
@@ -104,41 +104,41 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
   /**
    * Clear both the in-process timer and OS-level job.
    */
-  async clearTaskAlarm(taskId: string): Promise<void> {
-    const alarmName = getTaskAlarmName(taskId);
+  async clearJobAlarm(jobId: string): Promise<void> {
+    const alarmName = getJobAlarmName(jobId);
     this.clearTimerEntry(alarmName);
 
     // Remove OS-level job
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('scheduler_remove_os_job', { taskId });
+      await invoke('scheduler_remove_os_job', { jobId });
     } catch (error) {
       console.warn('[DesktopSchedulerAlarms] Failed to remove OS job:', error);
     }
   }
 
   /**
-   * Check if a timer exists for a task.
+   * Check if a timer exists for a job.
    */
-  async hasTaskAlarm(taskId: string): Promise<boolean> {
-    const alarmName = getTaskAlarmName(taskId);
+  async hasJobAlarm(jobId: string): Promise<boolean> {
+    const alarmName = getJobAlarmName(jobId);
     return this.timers.has(alarmName);
   }
 
   /**
    * Start the queue processor interval timer (in-process only).
    */
-  async startSchedulerTaskQueueProcessor(): Promise<void> {
+  async startJobQueueProcessor(): Promise<void> {
     if (this.queueProcessorTimer) {
       clearInterval(this.queueProcessorTimer);
     }
 
-    const intervalMs = this.config.schedulerTaskQueueProcessorInterval * 60000;
+    const intervalMs = this.config.jobQueueProcessorInterval * 60000;
 
     this.queueProcessorTimer = setInterval(async () => {
       if (this.alarmHandler) {
         try {
-          await this.alarmHandler(SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM);
+          await this.alarmHandler(SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM);
         } catch (error) {
           console.error('[DesktopSchedulerAlarms] Error in queue processor:', error);
         }
@@ -149,7 +149,7 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
   /**
    * Stop the queue processor interval timer.
    */
-  async stopSchedulerTaskQueueProcessor(): Promise<void> {
+  async stopJobQueueProcessor(): Promise<void> {
     if (this.queueProcessorTimer) {
       clearInterval(this.queueProcessorTimer);
       this.queueProcessorTimer = null;
@@ -168,9 +168,9 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
 
     if (this.queueProcessorTimer) {
       alarms.push({
-        name: SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
+        name: SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
         scheduledTime: Date.now(),
-        periodInMinutes: this.config.schedulerTaskQueueProcessorInterval,
+        periodInMinutes: this.config.jobQueueProcessorInterval,
       });
     }
 
@@ -180,11 +180,11 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
   /**
    * Reconcile OS jobs with in-process timers on app startup.
    * - List OS jobs
-   * - Recreate in-process timers for pending tasks
-   * - Clean stale OS jobs (tasks that no longer exist)
+   * - Recreate in-process timers for pending jobs
+   * - Clean stale OS jobs (jobs that no longer exist)
    */
   async reconcileOnStartup(
-    getScheduledTasks: () => Promise<Array<{ id: string; scheduledTime: number | null }>>
+    getScheduledJobs: () => Promise<Array<{ id: string; scheduledTime: number | null }>>
   ): Promise<void> {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -192,17 +192,17 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
       // Get OS jobs
       const osJobIds = await invoke<string[]>('scheduler_list_os_jobs');
 
-      // Get scheduled tasks from storage
-      const tasks = await getScheduledTasks();
-      const taskMap = new Map(tasks.map(t => [t.id, t]));
+      // Get scheduled jobs from storage
+      const jobs = await getScheduledJobs();
+      const jobMap = new Map(jobs.map(j => [j.id, j]));
 
-      // Recreate in-process timers for valid tasks
-      for (const taskId of osJobIds) {
-        const task = taskMap.get(taskId);
-        if (task && task.scheduledTime && task.scheduledTime > Date.now()) {
-          // Task is still valid — create in-process timer
-          const alarmName = getTaskAlarmName(taskId);
-          const delayMs = task.scheduledTime - Date.now();
+      // Recreate in-process timers for valid jobs
+      for (const jobId of osJobIds) {
+        const job = jobMap.get(jobId);
+        if (job && job.scheduledTime && job.scheduledTime > Date.now()) {
+          // Job is still valid — create in-process timer
+          const alarmName = getJobAlarmName(jobId);
+          const delayMs = job.scheduledTime - Date.now();
 
           const timer = setTimeout(async () => {
             this.timers.delete(alarmName);
@@ -217,12 +217,12 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
 
           this.timers.set(alarmName, {
             timer,
-            alarm: { name: alarmName, scheduledTime: task.scheduledTime },
+            alarm: { name: alarmName, scheduledTime: job.scheduledTime },
           });
         } else {
-          // Task no longer exists or is past — clean up OS job
+          // Job no longer exists or is past — clean up OS job
           try {
-            await invoke('scheduler_remove_os_job', { taskId });
+            await invoke('scheduler_remove_os_job', { jobId });
           } catch {
             // Non-fatal
           }

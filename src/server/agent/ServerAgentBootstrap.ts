@@ -377,7 +377,7 @@ export class ServerAgentBootstrap {
   }
 
   /**
-   * Initialize the task scheduler for server mode.
+   * Initialize the scheduler for server mode.
    */
   private async initializeScheduler(
     dataDir: string,
@@ -411,27 +411,27 @@ export class ServerAgentBootstrap {
         }
       });
 
-      // 6. Wire task launcher for server mode (log + future agent invoke)
-      this.scheduler.setTaskLauncher(async (taskId, sessionId) => {
-        console.log(`[ServerAgentBootstrap] Scheduled task ${taskId} launched (session: ${sessionId})`);
-        // In server mode, task execution is handled by the agent system
-        // The task is now in 'running' state and can be completed via scheduler.complete/fail
+      // 6. Wire job launcher for server mode (log + future agent invoke)
+      this.scheduler.setJobLauncher(async (jobId, sessionId) => {
+        console.log(`[ServerAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
+        // In server mode, job execution is handled by the agent system
+        // The job is now in 'running' state and can be completed via scheduler.complete/fail
       });
 
       // 7. Start queue processor
-      await this.schedulerAlarms.startSchedulerTaskQueueProcessor();
+      await this.schedulerAlarms.startJobQueueProcessor();
 
-      // 8. Detect missed tasks
-      const missedTasks = await this.scheduler.detectMissedTasks();
-      if (missedTasks.length > 0) {
-        console.log(`[ServerAgentBootstrap] Detected ${missedTasks.length} missed scheduler tasks`);
+      // 8. Detect missed jobs
+      const missedJobs = await this.scheduler.detectMissedJobs();
+      if (missedJobs.length > 0) {
+        console.log(`[ServerAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
       }
 
-      // 9. Restore timers for future scheduled tasks
-      const scheduledTasks = await this.schedulerStorage.getScheduledTasks();
-      for (const task of scheduledTasks) {
-        if (task.scheduledTime && task.scheduledTime > Date.now()) {
-          await this.schedulerAlarms.createTaskAlarm(task.id, task.scheduledTime);
+      // 9. Restore timers for future scheduled jobs
+      const scheduledJobs = await this.schedulerStorage.getScheduledJobs();
+      for (const job of scheduledJobs) {
+        if (job.scheduledTime && job.scheduledTime > Date.now()) {
+          await this.schedulerAlarms.createJobAlarm(job.id, job.scheduledTime);
         }
       }
 

@@ -2,7 +2,7 @@
  * Scheduler Method Handlers
  *
  * Handles scheduler.* WebSocket method calls for server mode.
- * Follows sessions.ts handler pattern.
+ * Follows sessions.ts handler pattern for job management.
  *
  * @module server/handlers/scheduler
  */
@@ -11,7 +11,7 @@ import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
 import { invalidRequest, notFound } from '@pi/ws-server';
 import type { Scheduler } from '../../core/scheduler/Scheduler';
 import type { ISchedulerStorage } from '../../core/models/types/SchedulerContracts';
-import type { TaskResultRecord } from '../../core/models/types/Scheduler';
+import type { JobResultRecord } from '../../core/models/types/Scheduler';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Dependencies
@@ -35,13 +35,13 @@ export function registerSchedulerHandlers(deps: SchedulerHandlerDeps): void {
   registerMethodHandler('scheduler.fail', handleFail);
   registerMethodHandler('scheduler.pauseQueue', handlePauseQueue);
   registerMethodHandler('scheduler.resumeQueue', handleResumeQueue);
-  registerMethodHandler('scheduler.getDraftTasks', handleGetDraftTasks);
-  registerMethodHandler('scheduler.getScheduledTasks', handleGetScheduledTasks);
-  registerMethodHandler('scheduler.getMissedTasks', handleGetMissedTasks);
+  registerMethodHandler('scheduler.getDraftJobs', handleGetDraftJobs);
+  registerMethodHandler('scheduler.getScheduledJobs', handleGetScheduledJobs);
+  registerMethodHandler('scheduler.getMissedJobs', handleGetMissedJobs);
   registerMethodHandler('scheduler.getQueue', handleGetQueue);
-  registerMethodHandler('scheduler.getArchivedTasks', handleGetArchivedTasks);
+  registerMethodHandler('scheduler.getArchivedJobs', handleGetArchivedJobs);
   registerMethodHandler('scheduler.getState', handleGetState);
-  registerMethodHandler('scheduler.getTaskDetails', handleGetTaskDetails);
+  registerMethodHandler('scheduler.getJobDetails', handleGetJobDetails);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -53,13 +53,13 @@ function getDeps(): SchedulerHandlerDeps {
   return _deps;
 }
 
-function toTaskSummary(task: any) {
+function toJobSummary(job: any) {
   return {
-    id: task.id,
-    input: task.input.slice(0, 100),
-    scheduledTime: task.scheduledTime,
-    status: task.status,
-    createdAt: task.createdAt,
+    id: job.id,
+    input: job.input.slice(0, 100),
+    scheduledTime: job.scheduledTime,
+    status: job.status,
+    createdAt: job.createdAt,
   };
 }
 
@@ -75,8 +75,8 @@ async function handleCreateDraft(
   const input = params?.input as string;
   if (!input) throw invalidRequest('"input" is required');
 
-  const taskId = await scheduler.createDraftTask(input);
-  return { success: true, taskId };
+  const jobId = await scheduler.createDraftJob(input);
+  return { success: true, jobId };
 }
 
 async function handleSchedule(
@@ -85,19 +85,19 @@ async function handleSchedule(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const input = params?.input as string | undefined;
-  const taskId = params?.taskId as string | undefined;
+  const jobId = params?.jobId as string | undefined;
   const scheduledTime = params?.scheduledTime as number | undefined;
 
   if (!scheduledTime) throw invalidRequest('"scheduledTime" is required');
 
-  if (taskId) {
-    await scheduler.scheduleExistingTask(taskId, scheduledTime);
-    return { success: true, taskId };
+  if (jobId) {
+    await scheduler.scheduleExistingJob(jobId, scheduledTime);
+    return { success: true, jobId };
   } else if (input) {
-    const newTaskId = await scheduler.scheduleTask(input, scheduledTime);
-    return { success: true, taskId: newTaskId };
+    const newJobId = await scheduler.scheduleJob(input, scheduledTime);
+    return { success: true, jobId: newJobId };
   } else {
-    throw invalidRequest('Either "input" or "taskId" is required');
+    throw invalidRequest('Either "input" or "jobId" is required');
   }
 }
 
@@ -106,10 +106,10 @@ async function handleTrigger(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { scheduler } = getDeps();
-  const taskId = params?.taskId as string;
-  if (!taskId) throw invalidRequest('"taskId" is required');
+  const jobId = params?.jobId as string;
+  if (!jobId) throw invalidRequest('"jobId" is required');
 
-  await scheduler.triggerTask(taskId);
+  await scheduler.triggerJob(jobId);
   return { success: true };
 }
 
@@ -118,10 +118,10 @@ async function handleCancel(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { scheduler } = getDeps();
-  const taskId = params?.taskId as string;
-  if (!taskId) throw invalidRequest('"taskId" is required');
+  const jobId = params?.jobId as string;
+  if (!jobId) throw invalidRequest('"jobId" is required');
 
-  await scheduler.cancelTask(taskId);
+  await scheduler.cancelJob(jobId);
   return { success: true };
 }
 
@@ -130,12 +130,12 @@ async function handleComplete(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { scheduler } = getDeps();
-  const taskId = params?.taskId as string;
-  const result = params?.result as TaskResultRecord;
-  if (!taskId) throw invalidRequest('"taskId" is required');
+  const jobId = params?.jobId as string;
+  const result = params?.result as JobResultRecord;
+  if (!jobId) throw invalidRequest('"jobId" is required');
   if (!result) throw invalidRequest('"result" is required');
 
-  await scheduler.completeTask(taskId, result);
+  await scheduler.completeJob(jobId, result);
   return { success: true };
 }
 
@@ -144,12 +144,12 @@ async function handleFail(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { scheduler } = getDeps();
-  const taskId = params?.taskId as string;
+  const jobId = params?.jobId as string;
   const error = params?.error as string;
-  if (!taskId) throw invalidRequest('"taskId" is required');
+  if (!jobId) throw invalidRequest('"jobId" is required');
   if (!error) throw invalidRequest('"error" is required');
 
-  await scheduler.failTask(taskId, error);
+  await scheduler.failJob(jobId, error);
   return { success: true };
 }
 
@@ -158,7 +158,7 @@ async function handlePauseQueue(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { scheduler } = getDeps();
-  await scheduler.pauseSchedulerTaskQueue();
+  await scheduler.pauseJobQueue();
   return { success: true };
 }
 
@@ -167,35 +167,35 @@ async function handleResumeQueue(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { scheduler } = getDeps();
-  await scheduler.resumeSchedulerTaskQueue();
+  await scheduler.resumeJobQueue();
   return { success: true };
 }
 
-async function handleGetDraftTasks(
+async function handleGetDraftJobs(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
-  const tasks = await storage.getDraftTasks();
-  return { tasks: tasks.map(toTaskSummary) };
+  const jobs = await storage.getDraftJobs();
+  return { jobs: jobs.map(toJobSummary) };
 }
 
-async function handleGetScheduledTasks(
+async function handleGetScheduledJobs(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
-  const tasks = await storage.getScheduledTasks();
-  return { tasks: tasks.map(toTaskSummary) };
+  const jobs = await storage.getScheduledJobs();
+  return { jobs: jobs.map(toJobSummary) };
 }
 
-async function handleGetMissedTasks(
+async function handleGetMissedJobs(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
-  const tasks = await storage.getMissedTasks();
-  return { tasks: tasks.map(toTaskSummary) };
+  const jobs = await storage.getMissedJobs();
+  return { jobs: jobs.map(toJobSummary) };
 }
 
 async function handleGetQueue(
@@ -203,30 +203,30 @@ async function handleGetQueue(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
-  const tasks = await storage.getSchedulerTaskQueueTasks();
-  return { tasks: tasks.map(toTaskSummary) };
+  const jobs = await storage.getJobQueueJobs();
+  return { jobs: jobs.map(toJobSummary) };
 }
 
-async function handleGetArchivedTasks(
+async function handleGetArchivedJobs(
   params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
   const limit = (params?.limit as number) ?? 50;
   const offset = (params?.offset as number) ?? 0;
-  const tasks = await storage.getArchivedTasks(limit, offset);
+  const jobs = await storage.getArchivedJobs(limit, offset);
   return {
-    tasks: tasks.map(t => ({
-      id: t.id,
-      input: t.input.slice(0, 100),
-      scheduledTime: t.scheduledTime,
-      completedAt: t.completedAt,
-      status: t.status,
-      sessionId: t.sessionId,
-      error: t.error,
+    jobs: jobs.map(j => ({
+      id: j.id,
+      input: j.input.slice(0, 100),
+      scheduledTime: j.scheduledTime,
+      completedAt: j.completedAt,
+      status: j.status,
+      sessionId: j.sessionId,
+      error: j.error,
     })),
-    total: tasks.length,
-    hasMore: tasks.length === limit,
+    total: jobs.length,
+    hasMore: jobs.length === limit,
   };
 }
 
@@ -238,14 +238,14 @@ async function handleGetState(
   return scheduler.getSchedulerState();
 }
 
-async function handleGetTaskDetails(
+async function handleGetJobDetails(
   params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
-  const taskId = params?.taskId as string;
-  if (!taskId) throw invalidRequest('"taskId" is required');
+  const jobId = params?.jobId as string;
+  if (!jobId) throw invalidRequest('"jobId" is required');
 
-  const task = await storage.getTask(taskId);
-  return { task };
+  const job = await storage.getJob(jobId);
+  return { job };
 }

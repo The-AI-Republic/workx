@@ -2,7 +2,7 @@
  * Server Scheduler Alarms
  *
  * Node.js timer-based ISchedulerAlarms implementation for server mode.
- * Uses setTimeout/setInterval instead of Chrome Alarms API.
+ * Uses setTimeout/setInterval instead of Chrome Alarms API for job scheduling.
  *
  * Key differences from Chrome alarms:
  * - No minimum delay (Chrome has 1-minute minimum)
@@ -19,8 +19,8 @@ import type {
 } from '../../core/models/types/SchedulerContracts';
 import {
   DEFAULT_ALARM_CONFIG,
-  getTaskAlarmName,
-  SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
+  getJobAlarmName,
+  SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
 } from '../../core/models/types/SchedulerContracts';
 
 /**
@@ -60,14 +60,14 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Create a timer for a scheduled task.
+   * Create a timer for a scheduled job.
    */
-  async createTaskAlarm(taskId: string, scheduledTime: number): Promise<void> {
-    const alarmName = getTaskAlarmName(taskId);
+  async createJobAlarm(jobId: string, scheduledTime: number): Promise<void> {
+    const alarmName = getJobAlarmName(jobId);
     const now = Date.now();
     const delayMs = Math.max(scheduledTime - now, 0);
 
-    // Clear any existing timer for this task
+    // Clear any existing timer for this job
     this.clearTimerEntry(alarmName);
 
     const timer = setTimeout(async () => {
@@ -94,37 +94,37 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Clear a timer for a scheduled task.
+   * Clear a timer for a scheduled job.
    */
-  async clearTaskAlarm(taskId: string): Promise<void> {
-    const alarmName = getTaskAlarmName(taskId);
+  async clearJobAlarm(jobId: string): Promise<void> {
+    const alarmName = getJobAlarmName(jobId);
     this.clearTimerEntry(alarmName);
   }
 
   /**
-   * Check if a timer exists for a task.
+   * Check if a timer exists for a job.
    */
-  async hasTaskAlarm(taskId: string): Promise<boolean> {
-    const alarmName = getTaskAlarmName(taskId);
+  async hasJobAlarm(jobId: string): Promise<boolean> {
+    const alarmName = getJobAlarmName(jobId);
     return this.timers.has(alarmName);
   }
 
   /**
    * Start the queue processor interval timer.
-   * Fires periodically to check for tasks that need processing.
+   * Fires periodically to check for jobs that need processing.
    */
-  async startSchedulerTaskQueueProcessor(): Promise<void> {
+  async startJobQueueProcessor(): Promise<void> {
     // Clear existing if running
     if (this.queueProcessorTimer) {
       clearInterval(this.queueProcessorTimer);
     }
 
-    const intervalMs = this.config.schedulerTaskQueueProcessorInterval * 60000;
+    const intervalMs = this.config.jobQueueProcessorInterval * 60000;
 
     this.queueProcessorTimer = setInterval(async () => {
       if (this.alarmHandler) {
         try {
-          await this.alarmHandler(SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM);
+          await this.alarmHandler(SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM);
         } catch (error) {
           console.error('[ServerSchedulerAlarms] Error in queue processor:', error);
         }
@@ -138,7 +138,7 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
   /**
    * Stop the queue processor interval timer.
    */
-  async stopSchedulerTaskQueueProcessor(): Promise<void> {
+  async stopJobQueueProcessor(): Promise<void> {
     if (this.queueProcessorTimer) {
       clearInterval(this.queueProcessorTimer);
       this.queueProcessorTimer = null;
@@ -158,9 +158,9 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
     // Include queue processor if running
     if (this.queueProcessorTimer) {
       alarms.push({
-        name: SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
+        name: SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
         scheduledTime: Date.now(), // Periodic — no fixed scheduled time
-        periodInMinutes: this.config.schedulerTaskQueueProcessorInterval,
+        periodInMinutes: this.config.jobQueueProcessorInterval,
       });
     }
 
@@ -171,7 +171,7 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
    * Graceful shutdown — clear all timers.
    */
   shutdown(): void {
-    // Clear all task timers
+    // Clear all job timers
     for (const [name, entry] of this.timers) {
       clearTimeout(entry.timer);
     }

@@ -3,11 +3,11 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
-  import SchedulerTaskItem from './SchedulerTaskItem.svelte';
-  import ArchivedTasksView from './ArchivedTasksView.svelte';
-  import ScheduleTaskModal from './ScheduleTaskModal.svelte';
-  import type { SchedulerTaskSummary } from '@/core/models/types/SchedulerContracts';
-  import type { SchedulerTaskRecord } from '@/core/models/types/Scheduler';
+  import SchedulerJobItem from './SchedulerJobItem.svelte';
+  import ArchivedJobsView from './ArchivedJobsView.svelte';
+  import ScheduleJobModal from './ScheduleJobModal.svelte';
+  import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
+  import type { SchedulerJobRecord } from '@/core/models/types/Scheduler';
 
   export let show: boolean = false;
   export let onClose: () => void = () => {};
@@ -18,15 +18,15 @@
   let showArchivedView = false;
   let showScheduleModal = false;
 
-  // Task lists
-  let missedTasks: SchedulerTaskSummary[] = [];
-  let scheduledTasks: SchedulerTaskSummary[] = [];
-  let queuedTasks: SchedulerTaskSummary[] = [];
-  let runningTask: SchedulerTaskSummary | null = null;
+  // Job lists
+  let missedJobs: SchedulerJobSummary[] = [];
+  let scheduledJobs: SchedulerJobSummary[] = [];
+  let queuedJobs: SchedulerJobSummary[] = [];
+  let runningJob: SchedulerJobSummary | null = null;
 
-  // Task details expansion (T019)
-  let expandedTaskId: string | null = null;
-  let expandedTaskDetails: SchedulerTaskRecord | null = null;
+  // Job details expansion (T019)
+  let expandedJobId: string | null = null;
+  let expandedJobDetails: SchedulerJobRecord | null = null;
   let isLoadingDetails = false;
 
   // T042: Offline status tracking
@@ -40,7 +40,7 @@
     sessionLetter: string;
     type: string;
     state: string;
-    scheduledTaskId: string | null;
+    scheduledJobId: string | null;
   }> = [];
   let showSessionDetails = false;
 
@@ -122,18 +122,18 @@
     try {
       const [stateRes, missedRes, scheduledRes, queueRes] = await Promise.all([
         sendMessage(MessageType.SCHEDULER_GET_STATE),
-        sendMessage(MessageType.SCHEDULER_GET_MISSED_TASKS),
-        sendMessage(MessageType.SCHEDULER_GET_SCHEDULED_TASKS),
+        sendMessage(MessageType.SCHEDULER_GET_MISSED_JOBS),
+        sendMessage(MessageType.SCHEDULER_GET_SCHEDULED_JOBS),
         sendMessage(MessageType.SCHEDULER_GET_QUEUE),
       ]);
 
       const stateData = stateRes?.data || stateRes;
       isPaused = stateData?.isPaused || false;
-      runningTask = stateData?.runningTask || null;
+      runningJob = stateData?.runningJob || null;
 
-      missedTasks = (missedRes?.data?.tasks || missedRes?.tasks || []);
-      scheduledTasks = (scheduledRes?.data?.tasks || scheduledRes?.tasks || []);
-      queuedTasks = (queueRes?.data?.tasks || queueRes?.tasks || []);
+      missedJobs = (missedRes?.data?.jobs || missedRes?.jobs || []);
+      scheduledJobs = (scheduledRes?.data?.jobs || scheduledRes?.jobs || []);
+      queuedJobs = (queueRes?.data?.jobs || queueRes?.jobs || []);
 
       // Feature 015: Fetch session data
       await fetchSessionData();
@@ -158,23 +158,23 @@
     }
   }
 
-  async function handleTriggerTask(event: CustomEvent<{ taskId: string }>) {
+  async function handleTriggerJob(event: CustomEvent<{ jobId: string }>) {
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_TASK, { taskId: event.detail.taskId });
+      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: event.detail.jobId });
       await fetchAllData();
     } catch (error) {
-      console.error('[SchedulerPopup] Failed to trigger task:', error);
+      console.error('[SchedulerPopup] Failed to trigger job:', error);
     }
   }
 
-  async function handleCancelTask(event: CustomEvent<{ taskId: string }>) {
-    if (!confirm(t('Are you sure you want to cancel this task?'))) return;
+  async function handleCancelJob(event: CustomEvent<{ jobId: string }>) {
+    if (!confirm(t('Are you sure you want to cancel this job?'))) return;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_TASK, { taskId: event.detail.taskId });
+      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: event.detail.jobId });
       await fetchAllData();
     } catch (error) {
-      console.error('[SchedulerPopup] Failed to cancel task:', error);
+      console.error('[SchedulerPopup] Failed to cancel job:', error);
     }
   }
 
@@ -199,54 +199,54 @@
     }
   }
 
-  function handleAddTask() {
+  function handleAddJob() {
     showScheduleModal = true;
   }
 
-  async function handleScheduleTask(event: CustomEvent<{ input: string; scheduledTime: number }>) {
+  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number }>) {
     const { input, scheduledTime } = event.detail;
     showScheduleModal = false;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_SCHEDULE_TASK, { input, scheduledTime });
-      // Refresh the task list
+      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, { input, scheduledTime });
+      // Refresh the job list
       await fetchAllData();
     } catch (error) {
-      console.error('[SchedulerPopup] Failed to schedule task:', error);
+      console.error('[SchedulerPopup] Failed to schedule job:', error);
     }
   }
 
-  $: totalTasks = missedTasks.length + scheduledTasks.length + queuedTasks.length + (runningTask ? 1 : 0);
+  $: totalJobs = missedJobs.length + scheduledJobs.length + queuedJobs.length + (runningJob ? 1 : 0);
 
-  // T019: Handle task details expansion
-  async function handleTaskDetails(event: CustomEvent<{ taskId: string }>) {
-    const { taskId } = event.detail;
+  // T019: Handle job details expansion
+  async function handleJobDetails(event: CustomEvent<{ jobId: string }>) {
+    const { jobId } = event.detail;
 
-    // Toggle off if clicking same task
-    if (expandedTaskId === taskId) {
-      expandedTaskId = null;
-      expandedTaskDetails = null;
+    // Toggle off if clicking same job
+    if (expandedJobId === jobId) {
+      expandedJobId = null;
+      expandedJobDetails = null;
       return;
     }
 
-    expandedTaskId = taskId;
+    expandedJobId = jobId;
     isLoadingDetails = true;
 
     try {
-      const response = await sendMessage<{ data?: SchedulerTaskRecord } | SchedulerTaskRecord>(
-        MessageType.SCHEDULER_GET_TASK_DETAILS,
-        { taskId }
+      const response = await sendMessage<{ data?: SchedulerJobRecord } | SchedulerJobRecord>(
+        MessageType.SCHEDULER_GET_JOB_DETAILS,
+        { jobId }
       );
-      expandedTaskDetails = (response as { data?: SchedulerTaskRecord })?.data || response as SchedulerTaskRecord;
+      expandedJobDetails = (response as { data?: SchedulerJobRecord })?.data || response as SchedulerJobRecord;
     } catch (error) {
-      console.error('[SchedulerPopup] Failed to fetch task details:', error);
-      expandedTaskDetails = null;
+      console.error('[SchedulerPopup] Failed to fetch job details:', error);
+      expandedJobDetails = null;
     } finally {
       isLoadingDetails = false;
     }
   }
 
-  // Navigate to task session for completed tasks
+  // Navigate to job session for completed jobs
   function navigateToSession(sessionId: string) {
     // Open side panel with the session ID
     window.location.href = `index.html?sessionId=${sessionId}`;
@@ -255,8 +255,8 @@
 
   // Close expanded details
   function closeDetails() {
-    expandedTaskId = null;
-    expandedTaskDetails = null;
+    expandedJobId = null;
+    expandedJobDetails = null;
   }
 </script>
 
@@ -277,7 +277,7 @@
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}"
-        >{$_t('Scheduled Tasks')}</h3>
+        >{$_t('Scheduled Jobs')}</h3>
         <!-- Feature 015 (T052): Session capacity badge -->
         <button
           class="flex items-center gap-1 py-0.5 px-2 rounded-xl cursor-pointer transition-all duration-200 text-sm
@@ -307,8 +307,8 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleAddTask}
-          title={$_t('Add Task')}
+          on:click={handleAddJob}
+          title={$_t('Add Job')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -360,13 +360,13 @@
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}"
         >{$_t('Loading...')}</div>
-      {:else if totalTasks === 0}
+      {:else if totalJobs === 0}
         <div class="text-center py-6
           {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}">
-          <p>{$_t('No scheduled tasks')}</p>
-          <p class="text-sm opacity-70 mt-2">{$_t('Long-press the send button to schedule a task')}</p>
+          <p>{$_t('No scheduled jobs')}</p>
+          <p class="text-sm opacity-70 mt-2">{$_t('Long-press the send button to schedule a job')}</p>
         </div>
       {:else}
         <!-- Feature 015 (T052, T053): Session Details Panel -->
@@ -420,19 +420,19 @@
                         {currentTheme === 'modern'
                           ? 'text-chat-text dark:text-chat-text-dark'
                           : 'text-term-bright-green'}"
-                      >{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Task')}</span>
+                      >{session.type === 'primary' ? $_t('User Session') : $_t('Scheduled Job')}</span>
                       <span class="text-sm capitalize
                         {currentTheme === 'modern'
                           ? (session.state === 'active' ? 'text-chat-button dark:text-chat-button-dark' : session.state === 'initializing' ? 'text-amber-500' : 'text-chat-text-muted dark:text-chat-text-muted-dark')
                           : (session.state === 'active' ? 'text-term-bright-green' : session.state === 'initializing' ? 'text-term-yellow' : 'text-term-dim-green')}"
                       >{session.state}</span>
                     </div>
-                    {#if session.scheduledTaskId}
+                    {#if session.scheduledJobId}
                       <span class="flex items-center
                         {currentTheme === 'modern'
                           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                           : 'text-term-dim-green'}"
-                        title={$_t('Task ID')}
+                        title={$_t('Job ID')}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <circle cx="12" cy="12" r="10"></circle>
@@ -455,7 +455,7 @@
                   <line x1="12" y1="9" x2="12" y2="13"></line>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
-                <span>{$_t('Session limit reached. New tasks will queue.')}</span>
+                <span>{$_t('Session limit reached. New jobs will queue.')}</span>
               </div>
             {/if}
           </div>
@@ -521,12 +521,12 @@
                 <line x1="12" y1="20" x2="12.01" y2="20"></line>
               </svg>
             </span>
-            <span>{$_t('Offline - tasks will run when connected')}</span>
+            <span>{$_t('Offline - jobs will run when connected')}</span>
           </div>
         {/if}
 
-        <!-- Task Details Panel (T019) -->
-        {#if expandedTaskId && expandedTaskDetails}
+        <!-- Job Details Panel (T019) -->
+        {#if expandedJobId && expandedJobDetails}
           <div class="rounded overflow-hidden
             {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
@@ -539,7 +539,7 @@
                 {currentTheme === 'modern'
                   ? 'text-chat-text dark:text-chat-text-dark'
                   : 'text-term-bright-green'}"
-              >{$_t('Task Details')}</h4>
+              >{$_t('Job Details')}</h4>
               <button
                 class="p-0.5 bg-transparent border-none cursor-pointer flex items-center
                   {currentTheme === 'modern'
@@ -564,12 +564,12 @@
                 <span class="break-words
                   {currentTheme === 'modern'
                     ? 'text-chat-text dark:text-chat-text-dark'
-                    : (expandedTaskDetails.status === 'running' ? 'text-term-bright-green'
-                      : expandedTaskDetails.status === 'completed' ? 'text-[#00ffff]'
-                      : expandedTaskDetails.status === 'failed' ? 'text-term-red'
-                      : expandedTaskDetails.status === 'missed' ? 'text-term-yellow'
+                    : (expandedJobDetails.status === 'running' ? 'text-term-bright-green'
+                      : expandedJobDetails.status === 'completed' ? 'text-[#00ffff]'
+                      : expandedJobDetails.status === 'failed' ? 'text-term-red'
+                      : expandedJobDetails.status === 'missed' ? 'text-term-yellow'
                       : 'text-term-bright-green')}"
-                >{expandedTaskDetails.status}</span>
+                >{expandedJobDetails.status}</span>
               </div>
               <div class="flex gap-2 mb-2 text-sm">
                 <span class="shrink-0
@@ -581,9 +581,9 @@
                   {currentTheme === 'modern'
                     ? 'text-chat-text dark:text-chat-text-dark'
                     : 'text-term-bright-green'}"
-                >{new Date(expandedTaskDetails.createdAt).toLocaleString()}</span>
+                >{new Date(expandedJobDetails.createdAt).toLocaleString()}</span>
               </div>
-              {#if expandedTaskDetails.scheduledTime}
+              {#if expandedJobDetails.scheduledTime}
                 <div class="flex gap-2 mb-2 text-sm">
                   <span class="shrink-0
                     {currentTheme === 'modern'
@@ -594,10 +594,10 @@
                     {currentTheme === 'modern'
                       ? 'text-chat-text dark:text-chat-text-dark'
                       : 'text-term-bright-green'}"
-                  >{new Date(expandedTaskDetails.scheduledTime).toLocaleString()}</span>
+                  >{new Date(expandedJobDetails.scheduledTime).toLocaleString()}</span>
                 </div>
               {/if}
-              {#if expandedTaskDetails.completedAt}
+              {#if expandedJobDetails.completedAt}
                 <div class="flex gap-2 mb-2 text-sm">
                   <span class="shrink-0
                     {currentTheme === 'modern'
@@ -608,7 +608,7 @@
                     {currentTheme === 'modern'
                       ? 'text-chat-text dark:text-chat-text-dark'
                       : 'text-term-bright-green'}"
-                  >{new Date(expandedTaskDetails.completedAt).toLocaleString()}</span>
+                  >{new Date(expandedJobDetails.completedAt).toLocaleString()}</span>
                 </div>
               {/if}
               <div class="mt-3 pt-3 border-t border-dashed
@@ -624,9 +624,9 @@
                   {currentTheme === 'modern'
                     ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
                     : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
-                >{expandedTaskDetails.input}</pre>
+                >{expandedJobDetails.input}</pre>
               </div>
-              {#if expandedTaskDetails.error}
+              {#if expandedJobDetails.error}
                 <div class="mt-3 pt-3 border-t border-dashed
                   {currentTheme === 'modern'
                     ? 'border-chat-border dark:border-chat-border-dark'
@@ -638,10 +638,10 @@
                   <pre class="mt-2 mb-0 p-2 rounded text-sm font-terminal whitespace-pre-wrap break-words max-h-[150px] overflow-y-auto
                     {currentTheme === 'modern'
                       ? 'bg-chat-error/5 dark:bg-chat-error-dark/10 text-chat-error dark:text-chat-error-dark border border-chat-error/20 dark:border-chat-error-dark/20'
-                      : 'bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]'}">{expandedTaskDetails.error}</pre>
+                      : 'bg-[rgba(0,0,0,0.4)] text-term-red border border-[rgba(255,0,0,0.3)]'}">{expandedJobDetails.error}</pre>
                 </div>
               {/if}
-              {#if expandedTaskDetails.result}
+              {#if expandedJobDetails.result}
                 <div class="mt-3 pt-3 border-t border-dashed
                   {currentTheme === 'modern'
                     ? 'border-chat-border dark:border-chat-border-dark'
@@ -655,23 +655,23 @@
                     {currentTheme === 'modern'
                       ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
                       : 'bg-[rgba(0,0,0,0.4)] text-term-bright-green'}"
-                  >{expandedTaskDetails.result.summary}</pre>
+                  >{expandedJobDetails.result.summary}</pre>
                   <div class="flex gap-4 mt-2 text-sm
                     {currentTheme === 'modern'
                       ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                       : 'text-term-dim-green'}">
-                    <span>{$_t('Tokens')}: {expandedTaskDetails.result.tokenUsage.totalTokens}</span>
-                    <span>{$_t('Duration')}: {(expandedTaskDetails.result.duration / 1000).toFixed(1)}s</span>
+                    <span>{$_t('Tokens')}: {expandedJobDetails.result.tokenUsage.totalTokens}</span>
+                    <span>{$_t('Duration')}: {(expandedJobDetails.result.duration / 1000).toFixed(1)}s</span>
                   </div>
                 </div>
               {/if}
-              {#if expandedTaskDetails.sessionId && (expandedTaskDetails.status === 'completed' || expandedTaskDetails.status === 'failed')}
+              {#if expandedJobDetails.sessionId && (expandedJobDetails.status === 'completed' || expandedJobDetails.status === 'failed')}
                 <button
                   class="flex items-center justify-center gap-1.5 w-full mt-3 py-2 rounded cursor-pointer text-sm transition-all duration-200
                     {currentTheme === 'modern'
                       ? 'bg-chat-button dark:bg-chat-button-dark border-none text-white hover:opacity-90'
                       : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-                  on:click={() => navigateToSession(expandedTaskDetails.sessionId)}
+                  on:click={() => navigateToSession(expandedJobDetails.sessionId)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -688,75 +688,75 @@
               : 'text-term-dim-green'}"
           >{$_t('Loading details...')}</div>
         {:else}
-          <!-- Running Task -->
-          {#if runningTask}
+          <!-- Running Job -->
+          {#if runningJob}
             <div class="mb-4">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
                 {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
               >{$_t('Running')}</h4>
-              <SchedulerTaskItem
-                {...runningTask}
+              <SchedulerJobItem
+                {...runningJob}
                 showActions={true}
-                on:cancel={handleCancelTask}
-                on:details={handleTaskDetails}
+                on:cancel={handleCancelJob}
+                on:details={handleJobDetails}
               />
             </div>
           {/if}
 
-          <!-- Missed Tasks -->
-          {#if missedTasks.length > 0}
+          <!-- Missed Jobs -->
+          {#if missedJobs.length > 0}
             <div class="mb-4">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
                 {currentTheme === 'modern'
                   ? 'text-amber-500'
                   : 'text-term-yellow'}"
-              >{$_t('Missed')} ({missedTasks.length})</h4>
-              {#each missedTasks as task (task.id)}
-                <SchedulerTaskItem
-                  {...task}
-                  on:trigger={handleTriggerTask}
-                  on:cancel={handleCancelTask}
-                  on:details={handleTaskDetails}
+              >{$_t('Missed')} ({missedJobs.length})</h4>
+              {#each missedJobs as job (job.id)}
+                <SchedulerJobItem
+                  {...job}
+                  on:trigger={handleTriggerJob}
+                  on:cancel={handleCancelJob}
+                  on:details={handleJobDetails}
                 />
               {/each}
             </div>
           {/if}
 
-          <!-- Queued Tasks -->
-          {#if queuedTasks.length > 0}
+          <!-- Queued Jobs -->
+          {#if queuedJobs.length > 0}
             <div class="mb-4">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
                 {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
-              >{$_t('Queued')} ({queuedTasks.length})</h4>
-              {#each queuedTasks as task (task.id)}
-                <SchedulerTaskItem
-                  {...task}
-                  on:trigger={handleTriggerTask}
-                  on:cancel={handleCancelTask}
-                  on:details={handleTaskDetails}
+              >{$_t('Queued')} ({queuedJobs.length})</h4>
+              {#each queuedJobs as job (job.id)}
+                <SchedulerJobItem
+                  {...job}
+                  on:trigger={handleTriggerJob}
+                  on:cancel={handleCancelJob}
+                  on:details={handleJobDetails}
                 />
               {/each}
             </div>
           {/if}
 
-          <!-- Scheduled Tasks -->
-          {#if scheduledTasks.length > 0}
+          <!-- Scheduled Jobs -->
+          {#if scheduledJobs.length > 0}
             <div class="mb-4 last:mb-0">
               <h4 class="m-0 mb-2 text-sm uppercase tracking-wider
                 {currentTheme === 'modern'
                   ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                   : 'text-term-dim-green'}"
-              >{$_t('Upcoming')} ({scheduledTasks.length})</h4>
-              {#each scheduledTasks as task (task.id)}
-                <SchedulerTaskItem
-                  {...task}
-                  on:trigger={handleTriggerTask}
-                  on:cancel={handleCancelTask}
-                  on:details={handleTaskDetails}
+              >{$_t('Upcoming')} ({scheduledJobs.length})</h4>
+              {#each scheduledJobs as job (job.id)}
+                <SchedulerJobItem
+                  {...job}
+                  on:trigger={handleTriggerJob}
+                  on:cancel={handleCancelJob}
+                  on:details={handleJobDetails}
                 />
               {/each}
             </div>
@@ -782,18 +782,18 @@
   </div>
 {/if}
 
-<!-- Archived Tasks View -->
-<ArchivedTasksView
+<!-- Archived Jobs View -->
+<ArchivedJobsView
   show={showArchivedView}
   onClose={() => showArchivedView = false}
 />
 
-<!-- Schedule Task Modal -->
-<ScheduleTaskModal
+<!-- Schedule Job Modal -->
+<ScheduleJobModal
   show={showScheduleModal}
   input=""
   on:close={() => showScheduleModal = false}
-  on:schedule={handleScheduleTask}
+  on:schedule={handleScheduleJob}
 />
 
 <style>

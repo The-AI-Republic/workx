@@ -14,16 +14,16 @@ import * as fs from 'node:fs';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   ISchedulerStorage,
-  SchedulerTaskCounts,
+  SchedulerJobCounts,
 } from '../../core/models/types/SchedulerContracts';
 import type {
-  SchedulerTaskRecord,
+  SchedulerJobRecord,
   SchedulerState,
 } from '../../core/models/types/Scheduler';
 import {
   createDefaultSchedulerState,
-  createDraftTaskRecord,
-  createScheduledTaskRecord,
+  createDraftJobRecord,
+  createScheduledJobRecord,
 } from '../../core/models/types/Scheduler';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -56,9 +56,9 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
     // Enable WAL mode for better concurrent read performance
     this.db.pragma('journal_mode = WAL');
 
-    // Create tasks table
+    // Create jobs table
     this.db.exec(`
-      CREATE TABLE IF NOT EXISTS scheduler_tasks (
+      CREATE TABLE IF NOT EXISTS scheduler_jobs (
         id TEXT PRIMARY KEY,
         input TEXT NOT NULL,
         scheduledTime INTEGER,
@@ -73,10 +73,10 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
 
     // Create indexes
     this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_scheduler_tasks_status ON scheduler_tasks(status);
-      CREATE INDEX IF NOT EXISTS idx_scheduler_tasks_scheduled_time ON scheduler_tasks(scheduledTime);
-      CREATE INDEX IF NOT EXISTS idx_scheduler_tasks_status_time ON scheduler_tasks(status, scheduledTime);
-      CREATE INDEX IF NOT EXISTS idx_scheduler_tasks_created_at ON scheduler_tasks(createdAt);
+      CREATE INDEX IF NOT EXISTS idx_scheduler_jobs_status ON scheduler_jobs(status);
+      CREATE INDEX IF NOT EXISTS idx_scheduler_jobs_scheduled_time ON scheduler_jobs(scheduledTime);
+      CREATE INDEX IF NOT EXISTS idx_scheduler_jobs_status_time ON scheduler_jobs(status, scheduledTime);
+      CREATE INDEX IF NOT EXISTS idx_scheduler_jobs_created_at ON scheduler_jobs(createdAt);
     `);
 
     // Create state table (single row)
@@ -84,14 +84,14 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
       CREATE TABLE IF NOT EXISTS scheduler_state (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         isPaused INTEGER NOT NULL DEFAULT 0,
-        currentTaskId TEXT,
+        currentJobId TEXT,
         lastProcessedTime INTEGER NOT NULL DEFAULT 0
       )
     `);
 
     // Insert default state if not exists
     this.db.prepare(`
-      INSERT OR IGNORE INTO scheduler_state (id, isPaused, currentTaskId, lastProcessedTime)
+      INSERT OR IGNORE INTO scheduler_state (id, isPaused, currentJobId, lastProcessedTime)
       VALUES (1, 0, NULL, 0)
     `).run();
 
@@ -106,51 +106,51 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Task CRUD
+  // Job CRUD
   // ─────────────────────────────────────────────────────────────────────
 
-  async createTask(input: string, scheduledTime?: number): Promise<SchedulerTaskRecord> {
+  async createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord> {
     const db = this.ensureDb();
     const id = uuidv4();
-    const task = scheduledTime
-      ? createScheduledTaskRecord(id, input, scheduledTime)
-      : createDraftTaskRecord(id, input);
+    const job = scheduledTime
+      ? createScheduledJobRecord(id, input, scheduledTime)
+      : createDraftJobRecord(id, input);
 
     db.prepare(`
-      INSERT INTO scheduler_tasks (id, input, scheduledTime, createdAt, status, sessionId, completedAt, error, result)
+      INSERT INTO scheduler_jobs (id, input, scheduledTime, createdAt, status, sessionId, completedAt, error, result)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      task.id,
-      task.input,
-      task.scheduledTime,
-      task.createdAt,
-      task.status,
-      task.sessionId,
-      task.completedAt,
-      task.error,
-      task.result ? JSON.stringify(task.result) : null,
+      job.id,
+      job.input,
+      job.scheduledTime,
+      job.createdAt,
+      job.status,
+      job.sessionId,
+      job.completedAt,
+      job.error,
+      job.result ? JSON.stringify(job.result) : null,
     );
 
-    return task;
+    return job;
   }
 
-  async getTask(id: string): Promise<SchedulerTaskRecord | null> {
+  async getJob(id: string): Promise<SchedulerJobRecord | null> {
     const db = this.ensureDb();
-    const row = db.prepare('SELECT * FROM scheduler_tasks WHERE id = ?').get(id) as any;
-    return row ? this.rowToTask(row) : null;
+    const row = db.prepare('SELECT * FROM scheduler_jobs WHERE id = ?').get(id) as any;
+    return row ? this.rowToJob(row) : null;
   }
 
-  async updateTask(id: string, updates: Partial<SchedulerTaskRecord>): Promise<void> {
+  async updateJob(id: string, updates: Partial<SchedulerJobRecord>): Promise<void> {
     const db = this.ensureDb();
-    const existing = await this.getTask(id);
+    const existing = await this.getJob(id);
     if (!existing) {
-      throw new Error(`Task not found: ${id}`);
+      throw new Error(`Job not found: ${id}`);
     }
 
     const updated = { ...existing, ...updates, id };
 
     db.prepare(`
-      UPDATE scheduler_tasks
+      UPDATE scheduler_jobs
       SET input = ?, scheduledTime = ?, createdAt = ?, status = ?,
           sessionId = ?, completedAt = ?, error = ?, result = ?
       WHERE id = ?
@@ -167,73 +167,73 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
     );
   }
 
-  async deleteTask(id: string): Promise<void> {
+  async deleteJob(id: string): Promise<void> {
     const db = this.ensureDb();
-    db.prepare('DELETE FROM scheduler_tasks WHERE id = ?').run(id);
+    db.prepare('DELETE FROM scheduler_jobs WHERE id = ?').run(id);
   }
 
   // ─────────────────────────────────────────────────────────────────────
   // Queries
   // ─────────────────────────────────────────────────────────────────────
 
-  async getDraftTasks(): Promise<SchedulerTaskRecord[]> {
+  async getDraftJobs(): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
     const rows = db.prepare(
-      'SELECT * FROM scheduler_tasks WHERE status = ? ORDER BY createdAt ASC'
+      'SELECT * FROM scheduler_jobs WHERE status = ? ORDER BY createdAt ASC'
     ).all('draft') as any[];
-    return rows.map(r => this.rowToTask(r));
+    return rows.map(r => this.rowToJob(r));
   }
 
-  async getScheduledTasks(): Promise<SchedulerTaskRecord[]> {
+  async getScheduledJobs(): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
     const rows = db.prepare(
-      'SELECT * FROM scheduler_tasks WHERE status = ? ORDER BY scheduledTime ASC'
+      'SELECT * FROM scheduler_jobs WHERE status = ? ORDER BY scheduledTime ASC'
     ).all('scheduled') as any[];
-    return rows.map(r => this.rowToTask(r));
+    return rows.map(r => this.rowToJob(r));
   }
 
-  async getMissedTasks(): Promise<SchedulerTaskRecord[]> {
+  async getMissedJobs(): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
     const rows = db.prepare(
-      'SELECT * FROM scheduler_tasks WHERE status = ? ORDER BY scheduledTime ASC'
+      'SELECT * FROM scheduler_jobs WHERE status = ? ORDER BY scheduledTime ASC'
     ).all('missed') as any[];
-    return rows.map(r => this.rowToTask(r));
+    return rows.map(r => this.rowToJob(r));
   }
 
-  async getSchedulerTaskQueueTasks(): Promise<SchedulerTaskRecord[]> {
+  async getJobQueueJobs(): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
     const rows = db.prepare(
-      'SELECT * FROM scheduler_tasks WHERE status = ? ORDER BY createdAt ASC'
+      'SELECT * FROM scheduler_jobs WHERE status = ? ORDER BY createdAt ASC'
     ).all('waiting') as any[];
-    return rows.map(r => this.rowToTask(r));
+    return rows.map(r => this.rowToJob(r));
   }
 
-  async getArchivedTasks(limit: number, offset: number): Promise<SchedulerTaskRecord[]> {
+  async getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
     const rows = db.prepare(
-      `SELECT * FROM scheduler_tasks
+      `SELECT * FROM scheduler_jobs
        WHERE status IN ('completed', 'failed')
        ORDER BY completedAt DESC
        LIMIT ? OFFSET ?`
     ).all(limit, offset) as any[];
-    return rows.map(r => this.rowToTask(r));
+    return rows.map(r => this.rowToJob(r));
   }
 
-  async getNextTaskInSchedulerTaskQueue(): Promise<SchedulerTaskRecord | null> {
+  async getNextJobInQueue(): Promise<SchedulerJobRecord | null> {
     const db = this.ensureDb();
     const row = db.prepare(
-      'SELECT * FROM scheduler_tasks WHERE status = ? ORDER BY createdAt ASC LIMIT 1'
+      'SELECT * FROM scheduler_jobs WHERE status = ? ORDER BY createdAt ASC LIMIT 1'
     ).get('waiting') as any;
-    return row ? this.rowToTask(row) : null;
+    return row ? this.rowToJob(row) : null;
   }
 
-  async getOverdueScheduledTasks(): Promise<SchedulerTaskRecord[]> {
+  async getOverdueScheduledJobs(): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
     const now = Date.now();
     const rows = db.prepare(
-      'SELECT * FROM scheduler_tasks WHERE status = ? AND scheduledTime IS NOT NULL AND scheduledTime < ?'
+      'SELECT * FROM scheduler_jobs WHERE status = ? AND scheduledTime IS NOT NULL AND scheduledTime < ?'
     ).all('scheduled', now) as any[];
-    return rows.map(r => this.rowToTask(r));
+    return rows.map(r => this.rowToJob(r));
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -248,7 +248,7 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
     }
     return {
       isPaused: Boolean(row.isPaused),
-      currentTaskId: row.currentTaskId ?? null,
+      currentJobId: row.currentJobId ?? null,
       lastProcessedTime: row.lastProcessedTime ?? 0,
     };
   }
@@ -260,28 +260,28 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
 
     db.prepare(`
       UPDATE scheduler_state
-      SET isPaused = ?, currentTaskId = ?, lastProcessedTime = ?
+      SET isPaused = ?, currentJobId = ?, lastProcessedTime = ?
       WHERE id = 1
     `).run(
       updated.isPaused ? 1 : 0,
-      updated.currentTaskId,
+      updated.currentJobId,
       updated.lastProcessedTime,
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Task Counts
+  // Job Counts
   // ─────────────────────────────────────────────────────────────────────
 
-  async getTaskCounts(): Promise<SchedulerTaskCounts> {
+  async getJobCounts(): Promise<SchedulerJobCounts> {
     const db = this.ensureDb();
     const rows = db.prepare(
-      `SELECT status, COUNT(*) as count FROM scheduler_tasks
+      `SELECT status, COUNT(*) as count FROM scheduler_jobs
        WHERE status IN ('draft', 'scheduled', 'missed', 'waiting', 'running')
        GROUP BY status`
     ).all() as { status: string; count: number }[];
 
-    const counts: SchedulerTaskCounts = {
+    const counts: SchedulerJobCounts = {
       draftCount: 0,
       scheduledCount: 0,
       missedCount: 0,
@@ -307,9 +307,9 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
   // ─────────────────────────────────────────────────────────────────────
 
   /**
-   * Convert a SQLite row to a SchedulerTaskRecord.
+   * Convert a SQLite row to a SchedulerJobRecord.
    */
-  private rowToTask(row: any): SchedulerTaskRecord {
+  private rowToJob(row: any): SchedulerJobRecord {
     return {
       id: row.id,
       input: row.input,

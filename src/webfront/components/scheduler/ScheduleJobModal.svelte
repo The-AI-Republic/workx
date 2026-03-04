@@ -104,11 +104,11 @@
   }
 
   function validateAndSchedule() {
-    const taskInput = isEditable ? editableInput.trim() : input;
+    const jobInput = isEditable ? editableInput.trim() : input;
 
     // Validate input
-    if (!taskInput) {
-      errorMessage = t('Please enter a task description');
+    if (!jobInput) {
+      errorMessage = t('Please enter a job description');
       return;
     }
 
@@ -121,7 +121,7 @@
       return;
     }
 
-    dispatch('schedule', { input: taskInput, scheduledTime });
+    dispatch('schedule', { input: jobInput, scheduledTime });
   }
 
   function handleClose() {
@@ -173,7 +173,7 @@
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}">
-          {$_t('Schedule A New Task')}
+          {$_t('Schedule A New Job')}
         </h2>
         <button
           class="bg-transparent border-none cursor-pointer p-1 flex items-center rounded transition-all duration-200
@@ -192,7 +192,7 @@
 
       <!-- Content -->
       <div class="p-4 overflow-y-auto flex-1">
-        <!-- Task Input/Preview -->
+        <!-- Job Input/Preview -->
         <div class="mb-4 p-3 rounded
           {currentTheme === 'modern'
             ? 'bg-chat-code-bg dark:bg-chat-code-bg-dark border border-chat-border dark:border-chat-border-dark'
@@ -201,7 +201,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green'}"
-          >{$_t('Task')}:</span>
+          >{$_t('Job')}:</span>
           {#if isEditable}
             <textarea
               class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
@@ -209,7 +209,7 @@
                   ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:border-chat-primary dark:focus:border-chat-primary-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
                   : 'bg-[rgba(0,0,0,0.5)] border border-term-dim-green text-term-bright-green font-terminal focus:border-term-bright-green placeholder:text-term-dim-green/60'}"
               bind:value={editableInput}
-              placeholder={$_t('Enter your task...')}
+              placeholder={$_t('Enter your job...')}
               rows="3"
             ></textarea>
           {:else}

@@ -1,7 +1,7 @@
 /**
  * Desktop Scheduler Deep Link Handler
  *
- * Handles incoming `airepublic-pi://scheduler/trigger?taskId=xxx` deep links
+ * Handles incoming `airepublic-pi://scheduler/trigger?jobId=xxx` deep links
  * that fire when an OS-level scheduled job activates.
  *
  * Listens on the existing `auth-callback` Tauri event (reuses current
@@ -11,7 +11,7 @@
  */
 
 import type { Scheduler } from '../../core/scheduler/Scheduler';
-import { getTaskAlarmName } from '../../core/models/types/SchedulerContracts';
+import { getJobAlarmName } from '../../core/models/types/SchedulerContracts';
 
 export class DesktopSchedulerDeepLinkHandler {
   private unlisten: (() => void) | null = null;
@@ -43,31 +43,31 @@ export class DesktopSchedulerDeepLinkHandler {
   private handleDeepLink(url: string): void {
     try {
       // Parse the URL — handle both `airepublic-pi://scheduler/trigger` formats
-      // The URL may come as `airepublic-pi://scheduler/trigger?taskId=xxx`
+      // The URL may come as `airepublic-pi://scheduler/trigger?jobId=xxx`
       // or just the path portion depending on the platform
       if (!url.includes('scheduler/trigger')) {
         return; // Not a scheduler URL — let auth handler process it
       }
 
-      // Extract taskId from query params
+      // Extract jobId from query params
       const urlObj = new URL(url);
-      const taskId = urlObj.searchParams.get('taskId');
+      const jobId = urlObj.searchParams.get('jobId');
 
-      if (!taskId) {
-        console.warn('[DesktopSchedulerDeepLinkHandler] Missing taskId in deep link:', url);
+      if (!jobId) {
+        console.warn('[DesktopSchedulerDeepLinkHandler] Missing jobId in deep link:', url);
         return;
       }
 
-      console.log(`[DesktopSchedulerDeepLinkHandler] Received trigger for task ${taskId}`);
+      console.log(`[DesktopSchedulerDeepLinkHandler] Received trigger for job ${jobId}`);
 
       // Trigger the alarm handler
-      const alarmName = getTaskAlarmName(taskId);
+      const alarmName = getJobAlarmName(jobId);
       this.scheduler.handleAlarm(alarmName).catch((error) => {
-        console.error(`[DesktopSchedulerDeepLinkHandler] Failed to handle alarm for task ${taskId}:`, error);
+        console.error(`[DesktopSchedulerDeepLinkHandler] Failed to handle alarm for job ${jobId}:`, error);
       });
 
       // Clean up the OS job (it already fired)
-      this.removeOsJob(taskId);
+      this.removeOsJob(jobId);
     } catch (error) {
       console.error('[DesktopSchedulerDeepLinkHandler] Error processing deep link:', error);
     }
@@ -76,10 +76,10 @@ export class DesktopSchedulerDeepLinkHandler {
   /**
    * Remove the OS-level job after it fires (no longer needed).
    */
-  private async removeOsJob(taskId: string): Promise<void> {
+  private async removeOsJob(jobId: string): Promise<void> {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('scheduler_remove_os_job', { taskId });
+      await invoke('scheduler_remove_os_job', { jobId });
     } catch (error) {
       console.warn('[DesktopSchedulerDeepLinkHandler] Failed to remove OS job:', error);
     }
