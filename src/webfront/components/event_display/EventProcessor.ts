@@ -29,7 +29,7 @@ export class EventProcessor {
   private streamingStates = new Map<string, StreamingState>();
 
   // Configuration
-  private showReasoning: boolean = true;
+  private showReasoning: boolean = false;
   private maxOutputLines: number = 20;
 
   /**
