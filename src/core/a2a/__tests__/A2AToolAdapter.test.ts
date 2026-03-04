@@ -408,7 +408,7 @@ describe('A2AConfig — Storage Helpers', () => {
       const agent = makeValidAgent();
       await saveAgents([agent]);
 
-      const stored = await chrome.storage.local.get('a2aAgents');
+      const stored = await chrome.storage.local.get('a2aAgents') as Record<string, any>;
       expect(stored.a2aAgents).toHaveLength(1);
       expect(stored.a2aAgents[0].id).toBe(agent.id);
     });

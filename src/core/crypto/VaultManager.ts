@@ -454,7 +454,7 @@ async function loadSession(): Promise<VaultSession | null> {
       resolve(null);
       return;
     }
-    chrome.storage.session.get(VAULT_STORAGE_KEYS.SESSION, (result) => {
+    chrome.storage.session.get(VAULT_STORAGE_KEYS.SESSION, (result: Record<string, any>) => {
       resolve(result[VAULT_STORAGE_KEYS.SESSION] ?? null);
     });
   });
@@ -496,7 +496,7 @@ async function loadMetadata(): Promise<VaultMetadata | null> {
       resolve(null);
       return;
     }
-    chrome.storage.local.get(VAULT_STORAGE_KEYS.METADATA, (result) => {
+    chrome.storage.local.get(VAULT_STORAGE_KEYS.METADATA, (result: Record<string, any>) => {
       resolve(result[VAULT_STORAGE_KEYS.METADATA] ?? null);
     });
   });

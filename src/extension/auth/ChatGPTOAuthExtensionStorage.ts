@@ -34,10 +34,10 @@ export class ChatGPTOAuthExtensionStorage implements ChatGPTOAuthStorage {
       }
 
       return {
-        accessToken,
-        refreshToken,
-        idToken: result[STORAGE_KEYS.ID_TOKEN] || undefined,
-        expiresAt: result[STORAGE_KEYS.EXPIRES_AT] || 0,
+        accessToken: accessToken as string,
+        refreshToken: refreshToken as string,
+        idToken: (result[STORAGE_KEYS.ID_TOKEN] as string) || undefined,
+        expiresAt: (result[STORAGE_KEYS.EXPIRES_AT] as number) || 0,
       };
     } catch (error) {
       console.error('[ChatGPTOAuthExtensionStorage] Failed to get tokens:', error);

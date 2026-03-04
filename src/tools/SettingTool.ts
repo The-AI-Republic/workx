@@ -293,7 +293,7 @@ export class SettingTool extends BaseTool {
    */
   private async checkYoloMode(): Promise<boolean> {
     const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
-    const config = result[STORAGE_KEYS.CONFIG];
+    const config = result[STORAGE_KEYS.CONFIG] as Record<string, any> | undefined;
     return config?.approval?.mode === 'yolo';
   }
 

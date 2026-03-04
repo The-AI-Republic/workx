@@ -170,7 +170,7 @@ const MAX_CLEANUP_LOGS = 50; // Keep last 50 cleanup results
 async function logCleanupResult(result: CleanupResult): Promise<void> {
   try {
     // Get existing logs
-    const stored = await chrome.storage.local.get('rollout_cleanup_logs');
+    const stored = await chrome.storage.local.get('rollout_cleanup_logs') as Record<string, any>;
     const logs: CleanupResult[] = stored.rollout_cleanup_logs || [];
 
     // Add new log
@@ -193,7 +193,7 @@ async function logCleanupResult(result: CleanupResult): Promise<void> {
  */
 export async function getCleanupLogs(): Promise<CleanupResult[]> {
   try {
-    const stored = await chrome.storage.local.get('rollout_cleanup_logs');
+    const stored = await chrome.storage.local.get('rollout_cleanup_logs') as Record<string, any>;
     return stored.rollout_cleanup_logs || [];
   } catch (error) {
     console.error('[Rollout Cleanup] Failed to get logs:', error);

@@ -304,6 +304,7 @@ export interface IUserPreferences {
    * User's preferred language code (e.g., 'en', 'es', 'zh')
    */
   language?: string;
+  zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
 }
