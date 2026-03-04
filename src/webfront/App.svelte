@@ -15,7 +15,11 @@
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
-  import { zoomStore } from './stores/zoomStore';
+
+  // Zoom constants
+  const MIN_ZOOM = 50;
+  const MAX_ZOOM = 200;
+  const ZOOM_STEP = 10;
 
   // Route definitions
   // Add new routes here as the app grows
@@ -178,25 +182,41 @@
     }
   }
 
-  /**
-   * Handle zoom keyboard shortcuts (Ctrl/Cmd + Plus/Minus/Zero)
-   */
+  function applyZoom(level: number) {
+    document.documentElement.style.fontSize = `${level}%`;
+  }
+
+  async function setZoom(level: number) {
+    const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, level));
+    applyZoom(clamped);
+    try {
+      const config = await AgentConfig.getInstance();
+      const agentConfig = config.getConfig();
+      await config.updateConfig({
+        preferences: { ...agentConfig.preferences, zoomLevel: clamped },
+      });
+    } catch (error) {
+      console.warn('[App] Failed to save zoom level:', error);
+    }
+  }
+
   function handleZoom(e: KeyboardEvent) {
     if (!(e.ctrlKey || e.metaKey)) return;
 
+    const zoom = parseInt(document.documentElement.style.fontSize) || 100;
     switch (e.key) {
       case '=':
       case '+':
         e.preventDefault();
-        zoomStore.zoomIn();
+        setZoom(zoom + ZOOM_STEP);
         break;
       case '-':
         e.preventDefault();
-        zoomStore.zoomOut();
+        setZoom(zoom - ZOOM_STEP);
         break;
       case '0':
         e.preventDefault();
-        zoomStore.resetZoom();
+        setZoom(100);
         break;
     }
   }
@@ -207,8 +227,12 @@
     // Check vault lock state
     refreshVaultStatus();
 
-    // Register zoom keyboard shortcuts
+    // Register zoom keyboard shortcuts and restore saved zoom level
     window.addEventListener('keydown', handleZoom);
+    AgentConfig.getInstance().then((config) => {
+      const zoom = config.getConfig().preferences?.zoomLevel;
+      if (zoom && zoom !== 100) applyZoom(zoom);
+    }).catch(() => {});
 
     // Initial auth check
     checkAndUpdateAuth();
