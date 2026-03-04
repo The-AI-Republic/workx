@@ -347,7 +347,7 @@ export class TurnManager {
 
       if (this.nativeWebSearchEnabled) {
         // Native provider web search — handled server-side
-        tools.push({ type: 'web_search' } as any);
+        tools.push({ type: 'web_search' });
       } else {
         // CDP fallback — function tool triggers local scraping
         tools.push({

@@ -227,6 +227,7 @@ export class GoogleCompletionClient extends ModelClient {
     const accumulatedToolCalls: any[] = [];
     let usageMetadata: any = undefined;
     let groundingDetected = false;
+    let searchCallId = '';
 
     let retryCount = 0;
     const maxRetries = 3;
@@ -253,7 +254,7 @@ export class GoogleCompletionClient extends ModelClient {
           // Detect Google Search grounding metadata
           if ((candidate as any).groundingMetadata && !groundingDetected) {
             groundingDetected = true;
-            const searchCallId = `websearch_${Date.now()}`;
+            searchCallId = `websearch_${Date.now()}`;
             stream.addEvent({
               type: 'WebSearchCallBegin',
               callId: searchCallId,
@@ -365,7 +366,7 @@ export class GoogleCompletionClient extends ModelClient {
         type: 'OutputItemDone',
         item: {
           type: 'web_search_call',
-          id: `websearch_${Date.now()}`,
+          id: searchCallId,
           status: 'completed',
           action: { type: 'search', query: '' },
         },
