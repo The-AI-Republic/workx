@@ -304,6 +304,12 @@ export interface IUserPreferences {
    * User's preferred language code (e.g., 'en', 'es', 'zh')
    */
   language?: string;
+  /**
+   * UI zoom level as a percentage (50–200, step 10)
+   * Applied via document.documentElement.style.fontSize
+   * Default: 100
+   */
+  zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;
 }

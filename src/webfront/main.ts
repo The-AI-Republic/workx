@@ -11,6 +11,7 @@ import App from './App.svelte';
 import { initLocale } from './lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
 import { initializeMessaging, ChromeMessageService } from '@/core/messaging';
+import { zoomStore } from './stores/zoomStore';
 
 // Add terminal-mode class to body for terminal styling
 document.body.classList.add('terminal-mode');
@@ -31,13 +32,14 @@ async function init() {
     // Continue anyway - the app will show connection error state
   }
 
-  // Initialize locale
+  // Initialize locale and zoom
   try {
     const config = await AgentConfig.getInstance();
     const agentConfig = config.getConfig();
     initLocale(agentConfig.preferences?.language);
+    zoomStore.initialize(agentConfig.preferences?.zoomLevel);
   } catch (error) {
-    console.warn('[Extension] Failed to load locale, using default:', error);
+    console.warn('[Extension] Failed to load locale/zoom, using defaults:', error);
     initLocale();
   }
 

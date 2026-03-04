@@ -15,6 +15,7 @@
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
+  import { zoomStore } from './stores/zoomStore';
 
   // Route definitions
   // Add new routes here as the app grows
@@ -177,11 +178,37 @@
     }
   }
 
+  /**
+   * Handle zoom keyboard shortcuts (Ctrl/Cmd + Plus/Minus/Zero)
+   */
+  function handleZoom(e: KeyboardEvent) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+
+    switch (e.key) {
+      case '=':
+      case '+':
+        e.preventDefault();
+        zoomStore.zoomIn();
+        break;
+      case '-':
+        e.preventDefault();
+        zoomStore.zoomOut();
+        break;
+      case '0':
+        e.preventDefault();
+        zoomStore.resetZoom();
+        break;
+    }
+  }
+
   // Check user authentication when sidepanel opens
   // Note: Locale is already initialized in main.ts before app mounts
   onMount(() => {
     // Check vault lock state
     refreshVaultStatus();
+
+    // Register zoom keyboard shortcuts
+    window.addEventListener('keydown', handleZoom);
 
     // Initial auth check
     checkAndUpdateAuth();
@@ -207,6 +234,9 @@
   });
 
   onDestroy(() => {
+    // Clean up zoom keyboard shortcut listener
+    window.removeEventListener('keydown', handleZoom);
+
     // Clean up cookie change listener
     if (cookieChangeListener && typeof chrome !== 'undefined' && chrome.cookies?.onChanged) {
       chrome.cookies.onChanged.removeListener(cookieChangeListener);
