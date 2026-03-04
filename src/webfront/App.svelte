@@ -184,6 +184,7 @@
 
   function applyZoom(level: number) {
     document.documentElement.style.fontSize = `${level}%`;
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: level }));
   }
 
   async function setZoom(level: number) {
