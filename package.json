@@ -92,6 +92,7 @@
   },
   "optionalDependencies": {
     "better-sqlite3": "^11.7.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "sqlite-vec": "^0.1.7-alpha.2"
   }
 }
