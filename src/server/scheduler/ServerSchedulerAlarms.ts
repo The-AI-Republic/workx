@@ -23,6 +23,9 @@ import {
   SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
 } from '../../core/models/types/SchedulerContracts';
 
+/** Maximum safe value for setTimeout delay (2^31 - 1 ms, ~24.8 days) */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 /**
  * Alarm handler callback — called when any timer fires
  */
@@ -64,13 +67,24 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
    */
   async createJobAlarm(jobId: string, scheduledTime: number): Promise<void> {
     const alarmName = getJobAlarmName(jobId);
-    const now = Date.now();
-    const delayMs = Math.max(scheduledTime - now, 0);
 
     // Clear any existing timer for this job
     this.clearTimerEntry(alarmName);
 
+    const now = Date.now();
+    const delayMs = Math.max(scheduledTime - now, 0);
+
+    // Cap at MAX_TIMEOUT_MS to avoid setTimeout overflow; use a chained re-check if needed
+    const clampedDelay = Math.min(delayMs, MAX_TIMEOUT_MS);
+    const needsRecheck = delayMs > MAX_TIMEOUT_MS;
+
     const timer = setTimeout(async () => {
+      if (needsRecheck && scheduledTime > Date.now()) {
+        // Not yet time — re-arm the alarm
+        this.timers.delete(alarmName);
+        await this.createJobAlarm(jobId, scheduledTime);
+        return;
+      }
       this.timers.delete(alarmName);
       if (this.alarmHandler) {
         try {
@@ -79,7 +93,7 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
           console.error(`[ServerSchedulerAlarms] Error handling alarm ${alarmName}:`, error);
         }
       }
-    }, delayMs);
+    }, clampedDelay);
 
     // Don't block process shutdown
     timer.unref();

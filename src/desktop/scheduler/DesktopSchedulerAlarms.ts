@@ -23,6 +23,9 @@ import {
   SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
 } from '../../core/models/types/SchedulerContracts';
 
+/** Maximum safe value for setTimeout delay (2^31 - 1 ms, ~24.8 days) */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 /**
  * Alarm handler callback
  */
@@ -63,14 +66,25 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
    */
   async createJobAlarm(jobId: string, scheduledTime: number): Promise<void> {
     const alarmName = getJobAlarmName(jobId);
-    const now = Date.now();
-    const delayMs = Math.max(scheduledTime - now, 0);
 
     // Clear any existing timer for this job
     this.clearTimerEntry(alarmName);
 
+    const now = Date.now();
+    const delayMs = Math.max(scheduledTime - now, 0);
+
+    // Cap at MAX_TIMEOUT_MS to avoid setTimeout overflow; use a chained re-check if needed
+    const clampedDelay = Math.min(delayMs, MAX_TIMEOUT_MS);
+    const needsRecheck = delayMs > MAX_TIMEOUT_MS;
+
     // 1. In-process timer (precise, fires while app is running)
     const timer = setTimeout(async () => {
+      if (needsRecheck && scheduledTime > Date.now()) {
+        // Not yet time — re-arm the alarm
+        this.timers.delete(alarmName);
+        await this.createJobAlarm(jobId, scheduledTime);
+        return;
+      }
       this.timers.delete(alarmName);
       if (this.alarmHandler) {
         try {
@@ -79,7 +93,7 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
           console.error(`[DesktopSchedulerAlarms] Error handling alarm ${alarmName}:`, error);
         }
       }
-    }, delayMs);
+    }, clampedDelay);
 
     this.timers.set(alarmName, {
       timer,
@@ -200,25 +214,8 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
       for (const jobId of osJobIds) {
         const job = jobMap.get(jobId);
         if (job && job.scheduledTime && job.scheduledTime > Date.now()) {
-          // Job is still valid — create in-process timer
-          const alarmName = getJobAlarmName(jobId);
-          const delayMs = job.scheduledTime - Date.now();
-
-          const timer = setTimeout(async () => {
-            this.timers.delete(alarmName);
-            if (this.alarmHandler) {
-              try {
-                await this.alarmHandler(alarmName);
-              } catch (error) {
-                console.error(`[DesktopSchedulerAlarms] Error handling alarm ${alarmName}:`, error);
-              }
-            }
-          }, delayMs);
-
-          this.timers.set(alarmName, {
-            timer,
-            alarm: { name: alarmName, scheduledTime: job.scheduledTime },
-          });
+          // Job is still valid — create alarm (handles overflow capping internally)
+          await this.createJobAlarm(jobId, job.scheduledTime);
         } else {
           // Job no longer exists or is past — clean up OS job
           try {

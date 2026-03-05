@@ -142,29 +142,35 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
 
   async updateJob(id: string, updates: Partial<SchedulerJobRecord>): Promise<void> {
     const db = this.ensureDb();
-    const existing = await this.getJob(id);
-    if (!existing) {
-      throw new Error(`Job not found: ${id}`);
-    }
 
-    const updated = { ...existing, ...updates, id };
+    const txn = db.transaction(() => {
+      const row = db.prepare('SELECT * FROM scheduler_jobs WHERE id = ?').get(id) as any;
+      if (!row) {
+        throw new Error(`Job not found: ${id}`);
+      }
 
-    db.prepare(`
-      UPDATE scheduler_jobs
-      SET input = ?, scheduledTime = ?, createdAt = ?, status = ?,
-          sessionId = ?, completedAt = ?, error = ?, result = ?
-      WHERE id = ?
-    `).run(
-      updated.input,
-      updated.scheduledTime,
-      updated.createdAt,
-      updated.status,
-      updated.sessionId,
-      updated.completedAt,
-      updated.error,
-      updated.result ? JSON.stringify(updated.result) : null,
-      updated.id,
-    );
+      const existing = this.rowToJob(row);
+      const updated = { ...existing, ...updates, id };
+
+      db.prepare(`
+        UPDATE scheduler_jobs
+        SET input = ?, scheduledTime = ?, createdAt = ?, status = ?,
+            sessionId = ?, completedAt = ?, error = ?, result = ?
+        WHERE id = ?
+      `).run(
+        updated.input,
+        updated.scheduledTime,
+        updated.createdAt,
+        updated.status,
+        updated.sessionId,
+        updated.completedAt,
+        updated.error,
+        updated.result ? JSON.stringify(updated.result) : null,
+        updated.id,
+      );
+    });
+
+    txn();
   }
 
   async deleteJob(id: string): Promise<void> {

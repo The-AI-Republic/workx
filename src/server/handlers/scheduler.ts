@@ -13,6 +13,8 @@ import type { Scheduler } from '../../core/scheduler/Scheduler';
 import type { ISchedulerStorage } from '../../core/models/types/SchedulerContracts';
 import type { JobResultRecord } from '../../core/models/types/Scheduler';
 
+const MAX_INPUT_LENGTH = 50_000;
+
 // ─────────────────────────────────────────────────────────────────────────
 // Dependencies
 // ─────────────────────────────────────────────────────────────────────────
@@ -74,6 +76,8 @@ async function handleCreateDraft(
   const { scheduler } = getDeps();
   const input = params?.input as string;
   if (!input) throw invalidRequest('"input" is required');
+  if (typeof input !== 'string') throw invalidRequest('"input" must be a string');
+  if (input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
 
   const jobId = await scheduler.createDraftJob(input);
   return { success: true, jobId };
@@ -89,6 +93,9 @@ async function handleSchedule(
   const scheduledTime = params?.scheduledTime as number | undefined;
 
   if (!scheduledTime) throw invalidRequest('"scheduledTime" is required');
+  if (typeof scheduledTime !== 'number' || scheduledTime <= 0) throw invalidRequest('"scheduledTime" must be a positive number');
+  if (input !== undefined && typeof input !== 'string') throw invalidRequest('"input" must be a string');
+  if (typeof input === 'string' && input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
 
   if (jobId) {
     await scheduler.scheduleExistingJob(jobId, scheduledTime);
@@ -134,6 +141,9 @@ async function handleComplete(
   const result = params?.result as JobResultRecord;
   if (!jobId) throw invalidRequest('"jobId" is required');
   if (!result) throw invalidRequest('"result" is required');
+  if (typeof result !== 'object' || typeof (result as any).summary !== 'string') {
+    throw invalidRequest('"result" must be an object with a "summary" string field');
+  }
 
   await scheduler.completeJob(jobId, result);
   return { success: true };

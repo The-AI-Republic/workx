@@ -10,6 +10,23 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Validate that a job_id is a valid UUID to prevent path traversal / injection.
+fn validate_job_id(job_id: &str) -> Result<(), String> {
+    // UUID format: 8-4-4-4-12 hex chars
+    let parts: Vec<&str> = job_id.split('-').collect();
+    let valid = parts.len() == 5
+        && parts[0].len() == 8
+        && parts[1].len() == 4
+        && parts[2].len() == 4
+        && parts[3].len() == 4
+        && parts[4].len() == 12
+        && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_hexdigit()));
+    if !valid {
+        return Err(format!("Invalid job_id: must be a valid UUID, got '{}'", job_id));
+    }
+    Ok(())
+}
+
 /// Register an OS-level scheduled job.
 ///
 /// * `job_id` — unique job identifier
@@ -19,6 +36,8 @@ pub async fn scheduler_register_os_job(
     job_id: String,
     scheduled_time: i64,
 ) -> Result<(), String> {
+    validate_job_id(&job_id)?;
+
     #[cfg(target_os = "macos")]
     {
         register_launchd_job(&job_id, scheduled_time)
@@ -38,6 +57,8 @@ pub async fn scheduler_register_os_job(
 /// Remove an OS-level scheduled job.
 #[tauri::command]
 pub async fn scheduler_remove_os_job(job_id: String) -> Result<(), String> {
+    validate_job_id(&job_id)?;
+
     #[cfg(target_os = "macos")]
     {
         remove_launchd_job(&job_id)
@@ -77,6 +98,8 @@ pub async fn scheduler_list_os_jobs() -> Result<Vec<String>, String> {
 /// Check if an OS-level scheduled job exists.
 #[tauri::command]
 pub async fn scheduler_has_os_job(job_id: String) -> Result<bool, String> {
+    validate_job_id(&job_id)?;
+
     #[cfg(target_os = "macos")]
     {
         let plist_path = launchd_plist_path(&job_id);
@@ -146,6 +169,7 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
 
     let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
 
+    let plist_file = format!("{}{}.plist", PLIST_PREFIX, job_id);
     let plist_content = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -155,9 +179,9 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
     <string>{prefix}{job_id}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/open</string>
-        <string>-g</string>
-        <string>{deep_link}</string>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>/usr/bin/open -g "{deep_link}"; rm -f "$HOME/Library/LaunchAgents/{plist_file}"</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -177,6 +201,7 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         prefix = PLIST_PREFIX,
         job_id = job_id,
         deep_link = deep_link,
+        plist_file = plist_file,
         month = dt.month(),
         day = dt.day(),
         hour = dt.hour(),
@@ -280,7 +305,7 @@ fn register_schtasks_job(job_id: &str, scheduled_time: i64) -> Result<(), String
             "/SC", "ONCE",
             "/SD", &date_str,
             "/ST", &time_str,
-            "/TR", &format!("cmd /c start {}", deep_link),
+            "/TR", &format!("cmd /c start \"\" \"{}\"", deep_link),
             "/F",
         ])
         .output()
@@ -429,14 +454,15 @@ fn register_crontab_fallback(job_id: &str, scheduled_time: i64) -> Result<(), St
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
     let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
+    let marker = format!("pi-scheduler-{}", job_id);
     let cron_entry = format!(
-        "{min} {hour} {day} {month} * xdg-open \"{deep_link}\" # pi-scheduler-{job_id}",
+        "{min} {hour} {day} {month} * xdg-open \"{deep_link}\"; crontab -l 2>/dev/null | grep -v '{marker}' | crontab - # {marker}",
         min = dt.minute(),
         hour = dt.hour(),
         day = dt.day(),
         month = dt.month(),
         deep_link = deep_link,
-        job_id = job_id,
+        marker = marker,
     );
 
     // Read existing crontab
@@ -447,7 +473,6 @@ fn register_crontab_fallback(job_id: &str, scheduled_time: i64) -> Result<(), St
         .unwrap_or_default();
 
     // Remove any existing entry for this job
-    let marker = format!("pi-scheduler-{}", job_id);
     let filtered: Vec<&str> = existing
         .lines()
         .filter(|l| !l.contains(&marker))

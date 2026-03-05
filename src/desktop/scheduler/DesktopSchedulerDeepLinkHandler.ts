@@ -60,14 +60,13 @@ export class DesktopSchedulerDeepLinkHandler {
 
       console.log(`[DesktopSchedulerDeepLinkHandler] Received trigger for job ${jobId}`);
 
-      // Trigger the alarm handler
+      // Trigger the alarm handler, then clean up the OS job after it succeeds
       const alarmName = getJobAlarmName(jobId);
-      this.scheduler.handleAlarm(alarmName).catch((error) => {
-        console.error(`[DesktopSchedulerDeepLinkHandler] Failed to handle alarm for job ${jobId}:`, error);
-      });
-
-      // Clean up the OS job (it already fired)
-      this.removeOsJob(jobId);
+      this.scheduler.handleAlarm(alarmName)
+        .then(() => this.removeOsJob(jobId))
+        .catch((error) => {
+          console.error(`[DesktopSchedulerDeepLinkHandler] Failed to handle alarm for job ${jobId}:`, error);
+        });
     } catch (error) {
       console.error('[DesktopSchedulerDeepLinkHandler] Error processing deep link:', error);
     }

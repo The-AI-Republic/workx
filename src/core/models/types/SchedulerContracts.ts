@@ -252,23 +252,23 @@ export interface CancelJobResponse {
 }
 
 export interface GetDraftJobsResponse {
-  tasks: SchedulerJobSummary[];
+  jobs: SchedulerJobSummary[];
 }
 
 export interface GetScheduledJobsResponse {
-  tasks: SchedulerJobSummary[];
+  jobs: SchedulerJobSummary[];
 }
 
 export interface GetMissedJobsResponse {
-  tasks: SchedulerJobSummary[]; // Jobs with 'missed' status
+  jobs: SchedulerJobSummary[]; // Jobs with 'missed' status
 }
 
 export interface GetJobQueueResponse {
-  tasks: SchedulerJobSummary[]; // Jobs in 'waiting' status (FIFO)
+  jobs: SchedulerJobSummary[]; // Jobs in 'waiting' status (FIFO)
 }
 
 export interface GetArchivedJobsResponse {
-  tasks: ArchivedJobSummary[];
+  jobs: ArchivedJobSummary[];
   total: number;
   hasMore: boolean;
 }
@@ -284,7 +284,7 @@ export interface GetSchedulerStateResponse {
 }
 
 export interface GetJobDetailsResponse {
-  task: SchedulerJobFull | null;
+  job: SchedulerJobFull | null;
 }
 
 // ============================================================================
