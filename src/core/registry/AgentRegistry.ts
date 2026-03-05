@@ -517,7 +517,6 @@ export class AgentRegistry {
       const sessionConfig: SessionConfig = {
         type: persistedSession.type,
         tabId: persistedSession.tabId ?? undefined,
-        scheduledTaskId: persistedSession.scheduledTaskId ?? undefined,
       };
 
       // Create new session (this will allocate a new letter if needed)

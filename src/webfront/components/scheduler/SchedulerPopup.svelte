@@ -40,7 +40,6 @@
     sessionLetter: string;
     type: string;
     state: string;
-    scheduledJobId: string | null;
   }> = [];
   let showSessionDetails = false;
 
@@ -427,19 +426,6 @@
                           : (session.state === 'active' ? 'text-term-bright-green' : session.state === 'initializing' ? 'text-term-yellow' : 'text-term-dim-green')}"
                       >{session.state}</span>
                     </div>
-                    {#if session.scheduledJobId}
-                      <span class="flex items-center
-                        {currentTheme === 'modern'
-                          ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-                          : 'text-term-dim-green'}"
-                        title={$_t('Job ID')}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                      </span>
-                    {/if}
                   </div>
                 {/each}
               </div>

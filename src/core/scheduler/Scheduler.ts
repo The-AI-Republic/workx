@@ -261,7 +261,6 @@ export class Scheduler {
       try {
         const session = await this.registry.createSession({
           type: 'scheduled',
-          scheduledJobId: jobId,
         });
         sessionId = session.sessionId;
         this.jobSessions.set(jobId, sessionId);

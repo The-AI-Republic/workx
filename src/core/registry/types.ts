@@ -29,9 +29,6 @@ export interface SessionConfig {
   /** Initial tab binding (optional) */
   tabId?: number | null;
 
-  /** Associated scheduled task ID (required for 'scheduled' type) */
-  scheduledTaskId?: string | null;
-
   /** Conversation ID to resume from (optional) */
   resumeFrom?: string | null;
 }
@@ -69,9 +66,6 @@ export interface SessionMetadata {
 
   /** Tab group name: browserx_s_<letter> */
   tabGroupName: string;
-
-  /** Associated scheduled task ID (if any) */
-  scheduledTaskId: string | null;
 }
 
 /**

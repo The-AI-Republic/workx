@@ -888,7 +888,6 @@
         context: {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
-          scheduledJobId: jobId,
         },
       });
 

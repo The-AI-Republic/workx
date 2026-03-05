@@ -99,7 +99,6 @@ export interface SessionMetadataSummary {
   state: 'initializing' | 'active' | 'idle' | 'terminated';
   tabId: number | null;
   tabGroupName: string;
-  scheduledTaskId: string | null;
   createdAt: number;
   lastActivityAt: number;
 }

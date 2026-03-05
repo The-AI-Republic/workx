@@ -429,7 +429,6 @@ describe('Scheduler', () => {
 
       expect(registry.createSession).toHaveBeenCalledWith({
         type: 'scheduled',
-        scheduledJobId: 'task-1',
       });
     });
 
