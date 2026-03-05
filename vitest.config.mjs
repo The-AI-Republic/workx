@@ -37,6 +37,7 @@ export default defineConfig({
     restoreMocks: true
   },
   resolve: {
+    conditions: ['browser'],
     alias: {
       // better-sqlite3 is a native addon not in node_modules (server-only dep).
       // Map to a stub so Vite's import analysis doesn't fail during tests.

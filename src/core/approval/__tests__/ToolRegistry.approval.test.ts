@@ -91,9 +91,9 @@ describe('ToolRegistry with ApprovalGate', () => {
     expect(handler).toHaveBeenCalled();
   });
 
-  it('should deny a critical-risk tool without executing the handler', async () => {
+  it('should deny a tool matching a pattern-based deny rule without executing the handler', async () => {
     wireApprovalGate([
-      { type: 'deny', match: { riskAbove: 85 }, description: 'Deny critical' },
+      { type: 'deny', match: { tool: 'terminal', pattern: 'rm\\s+(?=(-[rf]+\\s+)*-[rf]*r)(-[rf]+\\s+)+/' }, description: 'Deny recursive rm on root' },
     ]);
 
     // Create a high-risk assessor
@@ -106,11 +106,11 @@ describe('ToolRegistry with ApprovalGate', () => {
       }),
     };
 
-    await registry.register(createToolDef('dangerous_tool'), handler, criticalAssessor);
+    await registry.register(createToolDef('terminal'), handler, criticalAssessor);
 
     const result = await registry.execute({
-      toolName: 'dangerous_tool',
-      parameters: { input: 'danger' },
+      toolName: 'terminal',
+      parameters: { command: 'rm -rf /' },
       sessionId: 'session_1',
       turnId: 'turn_1',
     });

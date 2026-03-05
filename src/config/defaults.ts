@@ -12,6 +12,7 @@ export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   theme: 'system',
   uiTheme: 'modern-auto',
   autoStartEnabled: false,
+  zoomLevel: 100,
   shortcuts: {},
   experimental: {}
 };

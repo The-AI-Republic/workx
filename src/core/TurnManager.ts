@@ -253,8 +253,9 @@ export class TurnManager {
 
           case 'ReasoningSummaryDelta':
             // Reasoning summary delta (for o1/o3 models)
+            // Map to AgentReasoningDelta so the UI can accumulate into a single reasoning block
             await this.emitEvent({
-              type: 'ReasoningSummaryDelta',
+              type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
             break;
@@ -262,15 +263,15 @@ export class TurnManager {
           case 'ReasoningContentDelta':
             // Reasoning content delta (for o1/o3 models)
             await this.emitEvent({
-              type: 'ReasoningContentDelta',
+              type: 'AgentReasoningDelta',
               data: { delta: event.delta },
             });
             break;
 
           case 'ReasoningSummaryPartAdded':
-            // Reasoning summary part added
+            // Reasoning summary section break - UI handles accumulation
             await this.emitEvent({
-              type: 'ReasoningSummaryPartAdded',
+              type: 'AgentReasoningSectionBreak',
               data: {},
             });
             break;

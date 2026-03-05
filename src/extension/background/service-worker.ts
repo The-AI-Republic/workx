@@ -631,7 +631,7 @@ function setupMessageHandlers(): void {
           const config = message.config;
           // 1. Save to storage (nested under agent_config.approval)
           const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
-          const agentConfig = result[STORAGE_KEYS.CONFIG] || {};
+          const agentConfig = (result[STORAGE_KEYS.CONFIG] || {}) as Record<string, any>;
           const existing = agentConfig.approval || { ...DEFAULT_APPROVAL_CONFIG };
           const merged = { ...existing, ...config };
           agentConfig.approval = merged;
@@ -2166,8 +2166,8 @@ async function performRolloutCleanup(): Promise<void> {
   // Remove old temporary data (older than 24 hours)
   for (const key in storage) {
     if (key.startsWith('temp_')) {
-      const data = storage[key];
-      if (data.timestamp && now - data.timestamp > 24 * 60 * 60 * 1000) {
+      const data = storage[key] as Record<string, any>;
+      if (data?.timestamp && now - data.timestamp > 24 * 60 * 60 * 1000) {
         keysToRemove.push(key);
       }
     }

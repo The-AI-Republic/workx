@@ -16,6 +16,11 @@
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
 
+  // Zoom constants
+  const MIN_ZOOM = 50;
+  const MAX_ZOOM = 200;
+  const ZOOM_STEP = 10;
+
   // Route definitions
   // Add new routes here as the app grows
   const routes = {
@@ -177,11 +182,58 @@
     }
   }
 
+  function applyZoom(level: number) {
+    document.documentElement.style.fontSize = `${level}%`;
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: level }));
+  }
+
+  async function setZoom(level: number) {
+    const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, level));
+    applyZoom(clamped);
+    try {
+      const config = await AgentConfig.getInstance();
+      const agentConfig = config.getConfig();
+      await config.updateConfig({
+        preferences: { ...agentConfig.preferences, zoomLevel: clamped },
+      });
+    } catch (error) {
+      console.warn('[App] Failed to save zoom level:', error);
+    }
+  }
+
+  function handleZoom(e: KeyboardEvent) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+
+    const zoom = parseInt(document.documentElement.style.fontSize) || 100;
+    switch (e.key) {
+      case '=':
+      case '+':
+        e.preventDefault();
+        setZoom(zoom + ZOOM_STEP);
+        break;
+      case '-':
+        e.preventDefault();
+        setZoom(zoom - ZOOM_STEP);
+        break;
+      case '0':
+        e.preventDefault();
+        setZoom(100);
+        break;
+    }
+  }
+
   // Check user authentication when sidepanel opens
   // Note: Locale is already initialized in main.ts before app mounts
   onMount(() => {
     // Check vault lock state
     refreshVaultStatus();
+
+    // Register zoom keyboard shortcuts and restore saved zoom level
+    window.addEventListener('keydown', handleZoom);
+    AgentConfig.getInstance().then((config) => {
+      const zoom = config.getConfig().preferences?.zoomLevel;
+      if (zoom && zoom !== 100) applyZoom(zoom);
+    }).catch(() => {});
 
     // Initial auth check
     checkAndUpdateAuth();
@@ -207,6 +259,9 @@
   });
 
   onDestroy(() => {
+    // Clean up zoom keyboard shortcut listener
+    window.removeEventListener('keydown', handleZoom);
+
     // Clean up cookie change listener
     if (cookieChangeListener && typeof chrome !== 'undefined' && chrome.cookies?.onChanged) {
       chrome.cookies.onChanged.removeListener(cookieChangeListener);

@@ -85,8 +85,16 @@ export function get_full_instructions(prompt: Prompt, model: ModelFamily): strin
  * ```
  */
 export async function get_formatted_input(prompt: Prompt): Promise<ResponseItem[]> {
-  // Clone the input array to prevent mutations
-  const items = [...prompt.input];
+  // Clone the input array and strip internal-only properties that are not part of the API schema
+  // Note: thoughtSignature on tool_calls is NOT stripped here because Gemini requires it
+  const items = prompt.input.map(item => {
+    if (item.type === 'message') {
+      // Strip internal properties: modelKey (used for UI display), reasoning_content
+      const { modelKey, reasoning_content, ...cleanItem } = item as any;
+      return cleanItem as ResponseItem;
+    }
+    return item;
+  });
 
   // Iterate backwards to find the last screenshot function call output
   for (let i = items.length - 1; i >= 0; i--) {

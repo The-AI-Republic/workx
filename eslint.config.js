@@ -83,6 +83,8 @@ export default [
       'svelte/no-immutable-reactive-statements': 'warn',
       'svelte/no-unused-svelte-ignore': 'warn',
       'svelte/no-reactive-literals': 'warn',
+      // Disable Svelte 5 reactivity rule - SvelteDate/SvelteMap don't exist in Svelte 4
+      'svelte/prefer-svelte-reactivity': 'off',
     },
   },
 

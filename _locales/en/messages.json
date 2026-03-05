@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API key for authentication (stored encrypted)"
   },
-  "API_key_has_expired": {
-    "message": "API key has expired"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API key has insufficient permissions"
-  },
   "API_key_saved_successfully": {
     "message": "API key saved successfully!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Agent Execution Tools"
   },
-  "Agent_Turn_Complete": {
-    "message": "Agent Turn Complete"
-  },
   "Agent_URL_is_required": {
     "message": "Agent URL is required"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agent removed successfully"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Agent turn completed successfully"
-  },
   "Agent_updated_successfully": {
     "message": "Agent updated successfully"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "All API keys are encrypted at rest using AES-256-GCM. Enable PIN protection for additional security."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "All actions are auto-approved on these domains."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Always Approve"
   },
+  "Always_dark": {
+    "message": "Always dark"
+  },
+  "Always_light": {
+    "message": "Always light"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Your personal AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Approve"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Approve changes to: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Approve execution: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Are you sure you want to cancel this task?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Are you sure you want to delete the skill \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Are you sure you want to remove this agent?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Authentication credential (stored encrypted)"
-  },
-  "Authentication_failed": {
-    "message": "Authentication failed"
   },
   "Authentication_method_for_the_agent": {
     "message": "Authentication method for the agent"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend not available. Please wait a moment and try again."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Backend server error - please try again later"
-  },
   "Backoff_Multiplier": {
     "message": "Backoff Multiplier"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Blocked Domains"
+  },
+  "Body_Markdown": {
+    "message": "Body (Markdown)"
   },
   "Browser_Tools": {
     "message": "Browser Tools"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Cancelled"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Cannot execute task: No API key configured for ${providerName}. Please go to Settings → Model Configuration and add your API key."
-  },
   "Cannot_select_model_1": {
     "message": "Cannot select model: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Capabilities"
   },
+  "Change_PIN": {
+    "message": "Change PIN"
+  },
+  "Changing": {
+    "message": "Changing..."
+  },
   "Chat_History": {
     "message": "Chat History"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT Subscription"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT session expired. Please sign in again."
   },
   "Checking_agent_status": {
     "message": "Checking agent status..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Choose which update channel to follow"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Classic terminal style with green text on black background"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Clean, modern chat interface similar to ChatGPT"
+  "Clear_search": {
+    "message": "Clear search"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Click the Browserx icon in your toolbar or press Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Close"
   },
+  "Close_scheduler": {
+    "message": "Close scheduler"
+  },
   "Close_settings": {
     "message": "Close settings"
   },
+  "Close_skills": {
+    "message": "Close skills"
+  },
   "Collapse": {
     "message": "Collapse"
-  },
-  "Command_Approval_Required": {
-    "message": "Command Approval Required"
   },
   "Command_completed": {
     "message": "Command completed"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Completed"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Compress cached data to save storage space"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Configured Servers"
+  },
+  "Confirm_New_PIN": {
+    "message": "Confirm New PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Confirm PIN"
   },
   "Connect": {
     "message": "Connect"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Connected successfully"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Connected via ChatGPT"
   },
   "Connecting": {
     "message": "Connecting..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Connection test successful! (API key is valid)"
   },
-  "Connection_was_refused": {
-    "message": "Connection was refused"
-  },
-  "Connection_was_reset": {
-    "message": "Connection was reset"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Content violates policy: ${contentType} content is not allowed"
-  },
   "Context_Window": {
     "message": "Context Window"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Controls how aggressively the agent asks for approval."
   },
+  "Create": {
+    "message": "Create"
+  },
+  "Create_New_Skill": {
+    "message": "Create New Skill"
+  },
   "Create_New_Tab": {
     "message": "Create New Tab"
+  },
+  "Create_Skill": {
+    "message": "Create Skill"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Create a 6-digit PIN to protect your API keys. You'll need this PIN after restarting the browser."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Create a skill to add custom / commands or auto-invocable agent behaviors."
   },
   "Created": {
     "message": "Created"
   },
+  "Creating": {
+    "message": "Creating..."
+  },
   "Creator": {
     "message": "Creator"
+  },
+  "Credential_Encryption": {
+    "message": "Credential Encryption"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Credential encryption and PIN protection"
   },
   "Credit_Details": {
     "message": "Credit Details"
   },
+  "Current_PIN": {
+    "message": "Current PIN"
+  },
   "Current_Plan": {
     "message": "Current Plan:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS lookup failed"
   },
   "DOM_Tool": {
     "message": "DOM Tool"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Default"
   },
+  "Delete": {
+    "message": "Delete"
+  },
   "Deny": {
     "message": "Deny"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Developed and supported by AI Republic"
+  },
+  "Disabled": {
+    "message": "Disabled"
   },
   "Discard_Changes": {
     "message": "Discard Changes"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Enable Model Context Protocol tools from connected MCP servers"
   },
+  "Enable_PIN": {
+    "message": "Enable PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Enable PIN Protection"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Enable auto-connect when browserx starts"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Enter API key or bearer token"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Enter your 6-digit PIN to unlock your API keys."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Enter your LLM API key"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Enter your current PIN to remove protection. API keys will still be encrypted with the default key."
   },
   "Enter_your_task": {
     "message": "Enter your task..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Explain with Browserx"
+  },
+  "Export": {
+    "message": "Export"
   },
   "Extension_Permission": {
     "message": "Extension & Permission"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Failed to create a new tab. Please try again."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Failed to create browser tab: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Failed to disconnect: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Failed to stop the task. Please try again."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Failed to switch to tab ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Failed to test connection"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "File Change Approval Required"
-  },
   "File_Operations_Not_Available": {
     "message": "File Operations (Not Available)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Follows system theme"
+  },
+  "Forgot_PIN": {
+    "message": "Forgot PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Form Automation Tool"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Get Started"
+  },
+  "Green_text_terminal": {
+    "message": "Green text terminal"
   },
   "Hello_NAME": {
     "message": "Hello $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Image Input"
+  },
+  "Import": {
+    "message": "Import"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Import Skill from URL"
+  },
+  "Import_from_URL": {
+    "message": "Import from URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Imported skills are untrusted by default and cannot auto-invoke."
+  },
+  "Importing": {
+    "message": "Importing..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Improve this text: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Invalid API key"
   },
-  "Invalid_API_key_provided": {
-    "message": "Invalid API key provided"
-  },
   "Invalid_URL_format": {
     "message": "Invalid URL format"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Invalid submission format: op missing type field"
+  },
+  "Invocation_Mode": {
+    "message": "Invocation Mode"
   },
   "Keyboard_Shortcuts": {
     "message": "Keyboard Shortcuts"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Loading settings..."
+  },
+  "Loading_skills": {
+    "message": "Loading skills..."
   },
   "Loading_tabs": {
     "message": "Loading tabs..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Model and provider settings loaded from default configuration (read-only)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Model changed to $1$. Please configure your API key.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Model changed to $1$. Conversation preserved.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Model changed to $1$. Session will be reinitialized.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model changed to $1$. Please configure your API key.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern Chat"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Dark"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Light"
   },
   "Monthly_Credits": {
     "message": "Monthly Credits"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Network error"
   },
-  "Network_error_occurred": {
-    "message": "Network error occurred"
-  },
   "Never_expire_permanent": {
     "message": "Never expire (permanent)"
   },
   "New_Conversation": {
     "message": "New Conversation"
+  },
+  "New_PIN": {
+    "message": "New PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "No A2A agents configured yet."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "No scheduled time"
   },
+  "No_settings_found": {
+    "message": "No settings found"
+  },
   "No_skills_available": {
     "message": "No skills available."
+  },
+  "No_skills_configured_yet": {
+    "message": "No skills configured yet."
   },
   "No_steps_in_plan": {
     "message": "No steps in plan"
   },
   "No_tabs_available": {
     "message": "No tabs available"
+  },
+  "No_tasks_in_plan": {
+    "message": "No tasks in plan"
   },
   "No_time_set": {
     "message": "No time set"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN Protection"
+  },
   "Page_Action_Tool": {
     "message": "Page Action Tool"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Persist Cache to Storage"
   },
-  "Plan_1_step_s": {
-    "message": "Plan: $1$ step(s)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Please check your API key in settings."
-  },
   "Please_enter_a_task_description": {
     "message": "Please enter a task description"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Please input a valid API key."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Please log in again to continue using the AI agent."
-  },
   "Please_select_a_provider": {
     "message": "Please select a provider"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Please upgrade the plan to unblock world's most advanced models"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Port 1455 is in use. Please close any application using this port and try again."
   },
   "Power": {
     "message": "Power"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Refreshes in"
   },
-  "Reject": {
-    "message": "Reject"
-  },
   "Release_Date": {
     "message": "Release Date"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Remove API Key"
   },
+  "Remove_PIN": {
+    "message": "Remove PIN"
+  },
+  "Removing": {
+    "message": "Removing..."
+  },
   "Request_Timeout": {
     "message": "Request Timeout"
-  },
-  "Request_timed_out": {
-    "message": "Request timed out"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Request timeout in milliseconds (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Request timeout in milliseconds (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Request was aborted"
+  "Reset_Vault": {
+    "message": "Reset Vault"
   },
-  "Response_failed": {
-    "message": "Response failed"
+  "Resetting": {
+    "message": "Resetting..."
   },
   "Restricted": {
     "message": "Restricted"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Running"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "STREAM ERROR"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Scheduled Task"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Scheduled Task Starting"
-  },
   "Scheduled_Tasks": {
     "message": "Scheduled Tasks"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Search complete"
   },
+  "Search_settings": {
+    "message": "Search settings..."
+  },
   "Searching": {
     "message": "Searching..."
+  },
+  "Security": {
+    "message": "Security"
   },
   "Security_Privacy": {
     "message": "Security & Privacy"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Session error"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Session expired - please log in again to continue using the AI agent"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Session limit reached. New tasks will queue."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Set when rollout data should expire"
+  },
+  "Setting_up": {
+    "message": "Setting up..."
   },
   "Settings": {
     "message": "Settings"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Show warning when storage usage exceeds this percentage (default: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Sign in failed"
+  },
   "Sign_in_to_your_account": {
     "message": "Sign in to your account"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Sign in with ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Signing in..."
   },
   "Skills": {
     "message": "Skills"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Task Details"
   },
-  "Task_Failed": {
-    "message": "Task Failed"
-  },
   "Task_History": {
     "message": "Task History"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Task failed"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Task scheduled for $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Task started"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "The agent is currently using backend mode. LLM requests will route through AI Republic server. Your conversations are processed securely through our infrastructure."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "The model switch will clear the current conversation. Do you want to continue?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "The server encountered an error. Please try again later."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "This will permanently delete all stored API keys and reset the vault. You will need to re-enter your API keys."
   },
   "Time": {
     "message": "Time"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Too many failed attempts. Try again in"
+  },
   "Tool_Timeout_ms": {
     "message": "Tool Timeout (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Tools Settings"
+  },
+  "Trust": {
+    "message": "Trust"
   },
   "Trusted": {
     "message": "Trusted"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Unable to load credit information"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Unable to reach the backend server - please check your connection"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Unable to reach the server. Please check your connection and try again."
-  },
   "Unknown_Event": {
     "message": "Unknown Event"
   },
   "Unknown_error": {
     "message": "Unknown error"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Unknown error checking agent status"
-  },
-  "Unknown_error_occurred": {
-    "message": "Unknown error occurred"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Unknown error occurred during task execution"
   },
   "Unknown_error_processing_submission": {
     "message": "Unknown error processing submission"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Unlock"
+  },
+  "Unlocking": {
+    "message": "Unlocking..."
+  },
   "Unsaved_Changes": {
     "message": "Unsaved Changes"
   },
   "Untitled": {
     "message": "Untitled"
+  },
+  "Untrusted": {
+    "message": "Untrusted"
   },
   "Upcoming": {
     "message": "Upcoming"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Use Own API Key"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Use your ChatGPT Plus/Pro subscription instead of an API key"
+  },
   "User_Center": {
     "message": "User Center"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Using extra credits"
+  },
+  "Vault_Locked": {
+    "message": "Vault Locked"
   },
   "Verbosity": {
     "message": "Verbosity"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Your personal AI assistant"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Your session has expired. Please log in again."
-  },
   "DISCONNECTED": {
     "message": "[DISCONNECTED]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (unknown command)"
   },
+  "more_results": {
+    "message": "more results..."
+  },
   "optional": {
     "message": "optional"
+  },
+  "or": {
+    "message": "or"
   },
   "remaining": {
     "message": "remaining"

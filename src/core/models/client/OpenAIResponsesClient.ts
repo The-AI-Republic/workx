@@ -386,7 +386,19 @@ export class OpenAIResponsesClient extends ModelClient {
     const payload: ResponsesApiRequest | any = {
       model: this.currentModel,
       instructions: fullInstructions,
-      input: await get_formatted_input(prompt),
+      input: (await get_formatted_input(prompt)).map((item: any) => {
+        // Strip thoughtSignature from tool_calls — it's Gemini-specific, not valid for OpenAI
+        if (item.type === 'message' && item.tool_calls) {
+          return {
+            ...item,
+            tool_calls: item.tool_calls.map((tc: any) => {
+              const { thoughtSignature, ...cleanTc } = tc;
+              return cleanTc;
+            }),
+          };
+        }
+        return item;
+      }),
       tools: toolsJson,
       tool_choice: 'auto',
       parallel_tool_calls: false,
@@ -667,7 +679,7 @@ export class OpenAIResponsesClient extends ModelClient {
     const events: ResponseEvent[] = [];
 
     // Map SDK event types to ResponseEvent types
-    // SDK event types will be determined once we test with actual responses
+    // Uses the same event names as the SSE handler (handleSseEvent)
     switch (sdkEvent.type) {
       case 'response.created':
         events.push({ type: 'Created' });
@@ -680,36 +692,40 @@ export class OpenAIResponsesClient extends ModelClient {
         });
         break;
 
-      case 'response.content_part.delta':
-      case 'response.output.text.delta':
+      case 'response.output_text.delta':
         events.push({
           type: 'OutputTextDelta',
-          delta: sdkEvent.delta || sdkEvent.text || '',
+          delta: sdkEvent.delta || '',
         });
         break;
 
-      case 'response.reasoning.summary.delta':
+      case 'response.reasoning_summary_text.delta':
         events.push({
           type: 'ReasoningSummaryDelta',
           delta: sdkEvent.delta || '',
         });
         break;
 
-      case 'response.reasoning.content.delta':
+      case 'response.reasoning_text.delta':
         events.push({
           type: 'ReasoningContentDelta',
           delta: sdkEvent.delta || '',
         });
         break;
 
-      case 'response.reasoning.summary.part.added':
+      case 'response.reasoning_summary_part.added':
         events.push({ type: 'ReasoningSummaryPartAdded' });
         break;
 
+      case 'response.output_item.added':
+        // Detect web search call begin
+        if (sdkEvent.item?.type === 'web_search_call') {
+          const callId = sdkEvent.item.id || '';
+          events.push({ type: 'WebSearchCallBegin', callId });
+        }
+        break;
+
       case 'response.completed':
-      case 'response.done':
-        // Emit the Completed event
-        // Note: Items are already emitted via 'response.output_item.done' events during the stream
         events.push({
           type: 'Completed',
           responseId: sdkEvent.response?.id || sdkEvent.id || '',
@@ -717,9 +733,23 @@ export class OpenAIResponsesClient extends ModelClient {
         });
         break;
 
-      // Add other event type mappings as needed
+      case 'response.failed':
+        // Will be caught as an error by the SDK stream
+        break;
+
+      // Informational events - no action needed
+      case 'response.in_progress':
+      case 'response.output_text.done':
+      case 'response.content_part.added':
+      case 'response.content_part.done':
+      case 'response.function_call_arguments.delta':
+      case 'response.custom_tool_call_input.delta':
+      case 'response.custom_tool_call_input.done':
+      case 'response.reasoning_summary_text.done':
+      case 'response.reasoning_summary_part.done':
+        break;
+
       default:
-        // Log unknown events for debugging - we'll adjust mappings based on actual SDK behavior
         console.debug('[OpenAIResponsesClient] Unknown SDK event type:', sdkEvent.type, sdkEvent);
         break;
     }

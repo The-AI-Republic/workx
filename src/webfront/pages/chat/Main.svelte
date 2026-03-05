@@ -43,6 +43,21 @@
   let currentTabId: number = -1; // Track current session's bound tab
   let agentReady = false;
   let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = { ready: false, authMode: 'none' };
+  let zoomLevel = parseInt(document.documentElement.style.fontSize) || 100;
+
+  function onZoomChanged(e: Event) {
+    zoomLevel = (e as CustomEvent<number>).detail;
+  }
+
+  function resetZoom() {
+    document.documentElement.style.fontSize = '100%';
+    zoomLevel = 100;
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 100 }));
+    AgentConfig.getInstance().then((config) => {
+      const agentConfig = config.getConfig();
+      config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
+    }).catch(() => {});
+  }
   let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = {
     show: false,
     tokensSaved: 0,
@@ -64,6 +79,9 @@
   });
 
   onMount(async () => {
+    // Listen for zoom level changes
+    window.addEventListener('zoom-changed', onZoomChanged);
+
     // Clear messages from previous session
     messages = [];
     processedEvents = [];
@@ -248,7 +266,7 @@
   }
 
   onDestroy(() => {
-    // Cleanup is handled by the onMount return function
+    window.removeEventListener('zoom-changed', onZoomChanged);
   });
 
   /**
@@ -929,7 +947,14 @@
     <div class="flex flex-col h-full min-h-0 max-w-[1200px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
-          <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+          <div class="flex items-center space-x-2">
+            <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("Browserx (Alpha)") : $_t("Apple Pi: Your personal AI (Alpha)")} />
+            {#if zoomLevel !== 100}
+              <button on:click={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
+                [{zoomLevel}%] ✕
+              </button>
+            {/if}
+          </div>
           <div class="flex items-center space-x-2">
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />

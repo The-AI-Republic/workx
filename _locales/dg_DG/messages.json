@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API key for authentication (stored encrypted wow)"
   },
-  "API_key_has_expired": {
-    "message": "API key has expired wow"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API key has insufficient permissions wow"
-  },
   "API_key_saved_successfully": {
     "message": "API key saved very successfully wow!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "much agent execution tools wow"
   },
-  "Agent_Turn_Complete": {
-    "message": "Agent turn complete wow"
-  },
   "Agent_URL_is_required": {
     "message": "Agent URL is required wow"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agent removed successfully wow"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Agent turn completed successfully wow"
-  },
   "Agent_updated_successfully": {
     "message": "Agent updated successfully wow"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "All API keys are encrypted at rest using AES-256-GCM. such encryption. Enable PIN protection for much additional security. wow"
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "All actions are auto-approved on these domains wow."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "always approve wow"
   },
+  "Always_dark": {
+    "message": "always dark wow"
+  },
+  "Always_light": {
+    "message": "always light wow"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: very personal AI (Alpha) wow"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "much approve wow"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "approve changes to: ${eventMsg.data.path} wow"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "approve execution: ${eventMsg.data.command} wow"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "are you sure you want to cancel this task? wow"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "are you sure you want to delete such skill \"/$1$\"? wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "are you sure you want to remove this agent? wow"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "very authentication credential (stored encrypted) wow"
-  },
-  "Authentication_failed": {
-    "message": "much authentication failed wow"
   },
   "Authentication_method_for_the_agent": {
     "message": "much authentication method for the agent wow"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "backend not available. please wait a moment and try again wow"
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "backend server error - please try again later wow"
-  },
   "Backoff_Multiplier": {
     "message": "much backoff multiplier wow"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "blocked domains wow"
+  },
+  "Body_Markdown": {
+    "message": "body (markdown) wow"
   },
   "Browser_Tools": {
     "message": "much browser tools wow"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "cancelled wow"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "cannot execute task: no API key configured for ${providerName}. please go to Settings → Model Configuration and add your API key. very sorry wow"
-  },
   "Cannot_select_model_1": {
     "message": "cannot select model: $1$ wow",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "capabilities wow"
   },
+  "Change_PIN": {
+    "message": "change PIN wow"
+  },
+  "Changing": {
+    "message": "changing... wow"
+  },
   "Chat_History": {
     "message": "much chat history wow"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT subscription wow"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT session expired. very please sign in again. wow"
   },
   "Checking_agent_status": {
     "message": "checking agent status... very"
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "very choose which update channel to follow wow"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "such classic terminal style with green text on black background wow"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "so clean modern chat interface similar to ChatGPT wow"
+  "Clear_search": {
+    "message": "clear search wow"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "much click the Browserx icon in your toolbar or press Alt+Shift+C wow"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "close wow"
   },
+  "Close_scheduler": {
+    "message": "close scheduler wow"
+  },
   "Close_settings": {
     "message": "such close settings wow"
   },
+  "Close_skills": {
+    "message": "close skills wow"
+  },
   "Collapse": {
     "message": "collapse wow"
-  },
-  "Command_Approval_Required": {
-    "message": "command approval required wow"
   },
   "Command_completed": {
     "message": "command completed wow"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "completed wow"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "completed: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''} wow"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "much compress cached data to save storage space wow"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "configured servers wow"
+  },
+  "Confirm_New_PIN": {
+    "message": "confirm new PIN wow"
+  },
+  "Confirm_PIN": {
+    "message": "confirm PIN wow"
   },
   "Connect": {
     "message": "much connect wow"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "such connected successfully wow"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "connected via ChatGPT wow"
   },
   "Connecting": {
     "message": "very connecting... wow"
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "such connection test successful! (API key is valid) wow"
   },
-  "Connection_was_refused": {
-    "message": "much connection was refused wow"
-  },
-  "Connection_was_reset": {
-    "message": "much connection was reset wow"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "much content violates policy: ${contentType} content is not allowed wow"
-  },
   "Context_Window": {
     "message": "much context window wow"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "such controls how aggressively the agent asks for approval wow"
   },
+  "Create": {
+    "message": "create wow"
+  },
+  "Create_New_Skill": {
+    "message": "create new skill wow"
+  },
   "Create_New_Tab": {
     "message": "much create new tab wow"
+  },
+  "Create_Skill": {
+    "message": "create skill wow"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "create a 6-digit PIN to protect your API keys. such protection. you'll need this PIN after restarting the browser. wow"
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "create a skill to add custom / commands or auto-invocable agent behaviors. very custom. wow"
   },
   "Created": {
     "message": "much created wow"
   },
+  "Creating": {
+    "message": "much creating wow..."
+  },
   "Creator": {
     "message": "much creator wow"
+  },
+  "Credential_Encryption": {
+    "message": "much credential encryption wow"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "much credential encryption and PIN protection wow"
   },
   "Credit_Details": {
     "message": "such credit details wow"
   },
+  "Current_PIN": {
+    "message": "current PIN wow"
+  },
   "Current_Plan": {
     "message": "very current plan: wow"
-  },
-  "DNS_lookup_failed": {
-    "message": "such DNS lookup failed wow"
   },
   "DOM_Tool": {
     "message": "such DOM tool wow"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "much default wow"
   },
+  "Delete": {
+    "message": "delete wow"
+  },
   "Deny": {
     "message": "such deny wow"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "such developed and supported by AI Republic wow"
+  },
+  "Disabled": {
+    "message": "disabled wow"
   },
   "Discard_Changes": {
     "message": "much discard changes wow"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Enable Model Context Protocol tools from connected MCP servers wow"
   },
+  "Enable_PIN": {
+    "message": "enable PIN wow"
+  },
+  "Enable_PIN_Protection": {
+    "message": "enable PIN protection wow"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Enable auto-connect when browserx starts wow"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Enter API key or bearer token wow"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "enter your 6-digit PIN to unlock your API keys wow."
+  },
   "Enter_your_LLM_API_key": {
     "message": "much enter LLM API key wow"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "enter your current PIN to remove protection wow. API keys will still be encrypted with the default key wow."
   },
   "Enter_your_task": {
     "message": "Enter your task... wow"
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Explain with Browserx wow"
+  },
+  "Export": {
+    "message": "export wow"
   },
   "Extension_Permission": {
     "message": "such extension & permission wow"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "such fail to create new tab. please try again wow"
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "such fail to create browser tab: ${errorMsg} wow"
   },
   "Failed_to_disconnect_1": {
     "message": "such fail to disconnect: $1$ wow",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "such fail to stop the task. please try again wow"
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "much fail to switch to tab ${newTabId}: ${errorMsg} wow"
-  },
   "Failed_to_test_connection": {
     "message": "much fail to test connection wow"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "such file change approval required wow"
-  },
   "File_Operations_Not_Available": {
     "message": "such file operations wow (not available), very sad"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "much flex wow"
+  },
+  "Follows_system_theme": {
+    "message": "follows system theme wow"
+  },
+  "Forgot_PIN": {
+    "message": "forgot PIN? wow"
   },
   "Form_Automation_Tool": {
     "message": "such form automation tool wow"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "much get started wow"
+  },
+  "Green_text_terminal": {
+    "message": "green text terminal wow"
   },
   "Hello_NAME": {
     "message": "Hello $NAME$ wow",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "very image input wow"
+  },
+  "Import": {
+    "message": "import wow"
+  },
+  "Import_Skill_from_URL": {
+    "message": "import skill from URL wow"
+  },
+  "Import_from_URL": {
+    "message": "import from URL wow"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "imported skills are untrusted by default and cannot auto-invoke wow."
+  },
+  "Importing": {
+    "message": "importing... wow"
   },
   "Improve_this_text_info_selectionText": {
     "message": "much improve this text: ${info.selectionText} wow"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "very invalid API key wow"
   },
-  "Invalid_API_key_provided": {
-    "message": "much invalid API key wow"
-  },
   "Invalid_URL_format": {
     "message": "much invalid URL format wow"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "much invalid submission format: op missing type field wow"
+  },
+  "Invocation_Mode": {
+    "message": "invocation mode wow"
   },
   "Keyboard_Shortcuts": {
     "message": "much keyboard shortcuts wow"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "much loading settings... wow"
+  },
+  "Loading_skills": {
+    "message": "Loading skills... wow"
   },
   "Loading_tabs": {
     "message": "loading tabs... wow"
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "such model and provider settings loaded from default configuration (read-only) wow"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "model changed to $1$. such please configure your API key wow",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Model changed to $1$. Conversation preserved. much wow",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "model changed to $1$. such session will be reinitialized wow",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "model changed to $1$. such please configure your API key wow",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "such modern chat wow"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto wow"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Dark wow"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Light wow"
   },
   "Monthly_Credits": {
     "message": "such monthly credits wow"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "so network error"
   },
-  "Network_error_occurred": {
-    "message": "so network error occurred"
-  },
   "Never_expire_permanent": {
     "message": "such never expire (permanent) wow"
   },
   "New_Conversation": {
     "message": "much new conversation wow"
+  },
+  "New_PIN": {
+    "message": "New PIN wow"
   },
   "No_A2A_agents_configured_yet": {
     "message": "no A2A agents configured yet wow."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "no scheduled time wow"
   },
+  "No_settings_found": {
+    "message": "No settings found wow"
+  },
   "No_skills_available": {
     "message": "no skills available wow."
+  },
+  "No_skills_configured_yet": {
+    "message": "No skills configured yet. wow"
   },
   "No_steps_in_plan": {
     "message": "no steps in plan wow"
   },
   "No_tabs_available": {
     "message": "no tabs available wow"
+  },
+  "No_tasks_in_plan": {
+    "message": "No tasks in plan wow"
   },
   "No_time_set": {
     "message": "no time set wow"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN wow"
+  },
+  "PIN_Protection": {
+    "message": "PIN Protection wow"
+  },
   "Page_Action_Tool": {
     "message": "much page action tool wow"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "much persist cache to storage wow"
   },
-  "Plan_1_step_s": {
-    "message": "plan: $1$ step(s) wow",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "please check your API key in settings wow."
-  },
   "Please_enter_a_task_description": {
     "message": "much please enter task description wow"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "pls input valid API key wow"
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "much please log in again to continue using AI agent wow"
-  },
   "Please_select_a_provider": {
     "message": "much please select provider wow"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "much please upgrade plan to unblock world's most advanced models wow"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Port 1455 is in use. Please close any application using this port and try again. much wow"
   },
   "Power": {
     "message": "Much Power Wow"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "refreshes in, so soon wow"
   },
-  "Reject": {
-    "message": "such reject wow"
-  },
   "Release_Date": {
     "message": "much release date wow"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "much remove API Key wow"
   },
+  "Remove_PIN": {
+    "message": "Remove PIN wow"
+  },
+  "Removing": {
+    "message": "Removing... wow"
+  },
   "Request_Timeout": {
     "message": "Much Request Timeout Wow"
-  },
-  "Request_timed_out": {
-    "message": "Request timed out wow"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Much Request timeout in milliseconds (5000-120000) Wow"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Much Request timeout in milliseconds (5000-180000) Wow"
   },
-  "Request_was_aborted": {
-    "message": "Request was aborted wow"
+  "Reset_Vault": {
+    "message": "Reset Vault wow"
   },
-  "Response_failed": {
-    "message": "Response failed wow"
+  "Resetting": {
+    "message": "Resetting... wow"
   },
   "Restricted": {
     "message": "Restricted wow"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Running wow"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL wow"
   },
   "STREAM_ERROR": {
     "message": "STREAM ERROR wow"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Scheduled Task wow"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Scheduled Task Starting wow"
-  },
   "Scheduled_Tasks": {
     "message": "Scheduled Tasks wow"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Search complete wow"
   },
+  "Search_settings": {
+    "message": "Search settings... wow"
+  },
   "Searching": {
     "message": "Searching... wow"
+  },
+  "Security": {
+    "message": "Security wow"
   },
   "Security_Privacy": {
     "message": "much security & privacy wow"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "much session error wow"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "much session expired - please log in again to continue using the AI agent wow"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "much session limit reached. new tasks will queue wow"
   },
   "Set_when_rollout_data_should_expire": {
     "message": "much set when rollout data should expire wow"
+  },
+  "Setting_up": {
+    "message": "Setting up... wow"
   },
   "Settings": {
     "message": "much settings wow"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "much show warning when storage usage exceeds this percentage (default: 90%) wow"
   },
+  "Sign_in_failed": {
+    "message": "Sign in failed wow"
+  },
   "Sign_in_to_your_account": {
     "message": "sign in to your account, much sign in wow"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Sign in with ChatGPT wow"
+  },
+  "Signing_in": {
+    "message": "Signing in... wow"
   },
   "Skills": {
     "message": "such skills wow"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "much task details wow"
   },
-  "Task_Failed": {
-    "message": "such task failed wow"
-  },
   "Task_History": {
     "message": "much task history wow"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "such task failed wow"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Task scheduled for $1$ wow",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "very task started wow"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "the agent is currently using backend mode wow. llm requests will route through ai republic server very secure wow. your conversations are processed securely through our infrastructure much wow"
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "much model switch will clear the current conversation. Do you want to continue? wow"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "such server encountered an error. Please try again later. wow"
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "This will permanently delete all stored API keys and reset the vault wow. You will need to re-enter your API keys such."
   },
   "Time": {
     "message": "such time wow"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Too many failed attempts wow. Try again in"
+  },
   "Tool_Timeout_ms": {
     "message": "much tool timeout (ms) wow"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "much tools settings wow"
+  },
+  "Trust": {
+    "message": "Trust wow"
   },
   "Trusted": {
     "message": "trusted wow"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "so unable to load credit information wow"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "unable to reach the backend server - please check your connection wow"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "unable to reach the server. please check your connection and try again wow"
-  },
   "Unknown_Event": {
     "message": "unknown event wow"
   },
   "Unknown_error": {
     "message": "unknown error wow"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "unknown error checking agent status wow"
-  },
-  "Unknown_error_occurred": {
-    "message": "unknown error occurred wow"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "unknown error occurred during task execution wow"
   },
   "Unknown_error_processing_submission": {
     "message": "unknown error processing submission wow"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Unlock wow"
+  },
+  "Unlocking": {
+    "message": "Unlocking... wow"
+  },
   "Unsaved_Changes": {
     "message": "such unsaved changes wow"
   },
   "Untitled": {
     "message": "such untitled"
+  },
+  "Untrusted": {
+    "message": "Untrusted wow"
   },
   "Upcoming": {
     "message": "so upcoming"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "very use own API key wow"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Use your ChatGPT Plus/Pro subscription instead of an API key wow"
+  },
   "User_Center": {
     "message": "much user center wow"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "so using extra credits wow"
+  },
+  "Vault_Locked": {
+    "message": "Vault Locked wow"
   },
   "Verbosity": {
     "message": "much verbosity"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "your personal AI assistant wow"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "much session expired. very please log in again wow."
-  },
   "DISCONNECTED": {
     "message": "[DISCONNECTED]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (unknown command) wow"
   },
+  "more_results": {
+    "message": "more results... wow"
+  },
   "optional": {
     "message": "optional wow"
+  },
+  "or": {
+    "message": "or wow"
   },
   "remaining": {
     "message": "remaining wow"

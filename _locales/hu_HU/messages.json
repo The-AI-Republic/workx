@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API kulcs a hitelesítéshez (titkosítva tárolva)"
   },
-  "API_key_has_expired": {
-    "message": "Az API kulcs lejárt"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "Az API kulcsnak nincs elegendő jogosultsága"
-  },
   "API_key_saved_successfully": {
     "message": "Az API kulcs sikeresen mentve!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Ügynök végrehajtási eszközök"
   },
-  "Agent_Turn_Complete": {
-    "message": "Ügynök kör befejezve"
-  },
   "Agent_URL_is_required": {
     "message": "Az ügynök URL-je kötelező"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Az ügynök sikeresen eltávolítva"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Az ügynök kör sikeresen befejezve"
-  },
   "Agent_updated_successfully": {
     "message": "Az ügynök sikeresen frissítve"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Minden API kulcs nyugalomban AES-256-GCM algoritmussal van titkosítva. Engedélyezze a PIN védelmet a további biztonság érdekében."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Minden művelet automatikusan jóváhagyott ezeken a domaineken."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Mindig jóváhagy"
   },
+  "Always_dark": {
+    "message": "Mindig sötét"
+  },
+  "Always_light": {
+    "message": "Mindig világos"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: A személyes AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Jóváhagy"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Jóváhagyja a változtatásokat: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Jóváhagyja a végrehajtást: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Biztosan le szeretné állítani ezt a feladatot?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Biztosan törölni szeretné a(z) \"/$1$\" képességet?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Biztosan eltávolítja ezt az ügynököt?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Hitelesítési adat (titkosítva tárolva)"
-  },
-  "Authentication_failed": {
-    "message": "A hitelesítés sikertelen"
   },
   "Authentication_method_for_the_agent": {
     "message": "Az ügynök hitelesítési módja"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "A háttérszolgáltatás nem érhető el. Kérjük, várjon egy pillanatot, majd próbálja újra."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Háttérszerver hiba – próbálja meg később újra"
-  },
   "Backoff_Multiplier": {
     "message": "Visszavonási szorzó"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Blokkolt domainek"
+  },
+  "Body_Markdown": {
+    "message": "Törzs (Markdown)"
   },
   "Browser_Tools": {
     "message": "Böngésző eszközök"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Megszakítva"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Nem lehet végrehajtani a feladatot: nincs API-kulcs beállítva a(z) ${providerName} számára. Kérjük, lépjen a Beállítások → Modellkonfiguráció menübe, és adja hozzá az API-kulcsot."
-  },
   "Cannot_select_model_1": {
     "message": "Nem választható modell: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Képességek"
   },
+  "Change_PIN": {
+    "message": "PIN módosítása"
+  },
+  "Changing": {
+    "message": "Módosítás..."
+  },
   "Chat_History": {
     "message": "Csevegési előzmények"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT előfizetés"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "A ChatGPT munkamenet lejárt. Jelentkezzen be újra."
   },
   "Checking_agent_status": {
     "message": "Ügynök állapota ellenőrzése..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Válassza ki, melyik frissítési csatornát kövesse"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Klasszikus terminálstílus fekete háttérrel és zöld szöveggel"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Tiszta, modern csevegőfelület, hasonló a ChatGPThez"
+  "Clear_search": {
+    "message": "Keresés törlése"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Kattintson a Browserx ikonra az eszköztárban, vagy nyomja meg az Alt+Shift+C kombinációt"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Bezárás"
   },
+  "Close_scheduler": {
+    "message": "Ütemező bezárása"
+  },
   "Close_settings": {
     "message": "Beállítások bezárása"
   },
+  "Close_skills": {
+    "message": "Képességek bezárása"
+  },
   "Collapse": {
     "message": "Összecsukás"
-  },
-  "Command_Approval_Required": {
-    "message": "Parancs jóváhagyása szükséges"
   },
   "Command_completed": {
     "message": "Parancs befejezve"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Befejezve"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Befejezve: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Gyorsítótárazott adatok tömörítése a tárhely megtakarítása érdekében"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Beállított szerverek"
+  },
+  "Confirm_New_PIN": {
+    "message": "Új PIN megerősítése"
+  },
+  "Confirm_PIN": {
+    "message": "PIN megerősítése"
   },
   "Connect": {
     "message": "Csatlakozás"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Sikeresen csatlakozott"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "ChatGPT-n keresztül csatlakozva"
   },
   "Connecting": {
     "message": "Kapcsolódás..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Kapcsolat teszt sikeres! (Az API kulcs érvényes)"
   },
-  "Connection_was_refused": {
-    "message": "A kapcsolatot megtagadták"
-  },
-  "Connection_was_reset": {
-    "message": "A kapcsolat vissza lett állítva"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "A tartalom megsérti a szabályzatot: ${contentType} tartalom nem engedélyezett"
-  },
   "Context_Window": {
     "message": "Környezetablak"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Szabályozza, hogy az ügynök mennyire határozottan kér jóváhagyást."
   },
+  "Create": {
+    "message": "Létrehozás"
+  },
+  "Create_New_Skill": {
+    "message": "Új képesség létrehozása"
+  },
   "Create_New_Tab": {
     "message": "Új lap létrehozása"
+  },
+  "Create_Skill": {
+    "message": "Képesség létrehozása"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Hozzon létre egy 6 számjegyű PIN-kódot az API kulcsok védelméhez. A böngésző újraindítása után szüksége lesz erre a PIN-kódra."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Hozzon létre egy képességet egyedi / parancsok vagy automatikusan meghívható ügynök viselkedések hozzáadásához."
   },
   "Created": {
     "message": "Létrehozva"
   },
+  "Creating": {
+    "message": "Létrehozás..."
+  },
   "Creator": {
     "message": "Létrehozó"
+  },
+  "Credential_Encryption": {
+    "message": "Hitelesítő titkosítás"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Hitelesítő titkosítás és PIN védelem"
   },
   "Credit_Details": {
     "message": "Kredit részletei"
   },
+  "Current_PIN": {
+    "message": "Jelenlegi PIN"
+  },
   "Current_Plan": {
     "message": "Jelenlegi csomag:"
-  },
-  "DNS_lookup_failed": {
-    "message": "A DNS-keresés sikertelen"
   },
   "DOM_Tool": {
     "message": "DOM-eszköz"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Alapértelmezett"
   },
+  "Delete": {
+    "message": "Törlés"
+  },
   "Deny": {
     "message": "Elutasít"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Az AI Republic fejlesztette és támogatja"
+  },
+  "Disabled": {
+    "message": "Letiltva"
   },
   "Discard_Changes": {
     "message": "Módosítások elvetése"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Model Context Protocol eszközök engedélyezése a csatlakoztatott MCP szerverekről"
   },
+  "Enable_PIN": {
+    "message": "PIN engedélyezése"
+  },
+  "Enable_PIN_Protection": {
+    "message": "PIN védelem engedélyezése"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Automatikus csatlakozás engedélyezése a browserx indításakor"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Adja meg az API kulcsot vagy a hozzáférési tokent"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Adja meg a 6 számjegyű PIN-kódot az API kulcsok feloldásához."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Adja meg az LLM API kulcsát"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Adja meg a jelenlegi PIN-kódot a védelem eltávolításához. Az API kulcsok továbbra is az alapértelmezett kulccsal lesznek titkosítva."
   },
   "Enter_your_task": {
     "message": "Adja meg a feladatát..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Magyarázd el a Browserx-szel"
+  },
+  "Export": {
+    "message": "Exportálás"
   },
   "Extension_Permission": {
     "message": "Bővítmény és engedély"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Nem sikerült új lapot létrehozni. Próbálja újra."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Nem sikerült a böngészőlap létrehozása: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Nem sikerült a szétkapcsolás: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Nem sikerült leállítani a feladatot. Próbálja újra."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Nem sikerült átváltani a(z) ${newTabId} fülre: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Nem sikerült tesztelni a kapcsolatot"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Fájlváltozás jóváhagyása szükséges"
-  },
   "File_Operations_Not_Available": {
     "message": "Fájlműveletek (Nem érhető el)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Rugalmas"
+  },
+  "Follows_system_theme": {
+    "message": "A rendszer témáját követi"
+  },
+  "Forgot_PIN": {
+    "message": "Elfelejtette a PIN-kódot?"
   },
   "Form_Automation_Tool": {
     "message": "Űrlap-automatizálási eszköz"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Első lépések"
+  },
+  "Green_text_terminal": {
+    "message": "Zöld szöveges terminál"
   },
   "Hello_NAME": {
     "message": "Üdv, $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Képbemenet"
+  },
+  "Import": {
+    "message": "Importálás"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Képesség importálása URL-ről"
+  },
+  "Import_from_URL": {
+    "message": "Importálás URL-ről"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Az importált képességek alapértelmezés szerint nem megbízhatóak, és nem hívhatók meg automatikusan."
+  },
+  "Importing": {
+    "message": "Importálás..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Javítsa ezt a szöveget: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Érvénytelen API kulcs"
   },
-  "Invalid_API_key_provided": {
-    "message": "Érvénytelen API kulcs megadva"
-  },
   "Invalid_URL_format": {
     "message": "Érvénytelen URL formátum"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Érvénytelen beküldési formátum: az op mezőből hiányzik a type mező"
+  },
+  "Invocation_Mode": {
+    "message": "Meghívási mód"
   },
   "Keyboard_Shortcuts": {
     "message": "Gyorsbillentyűk"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Beállítások betöltése..."
+  },
+  "Loading_skills": {
+    "message": "Képességek betöltése..."
   },
   "Loading_tabs": {
     "message": "Lapok betöltése..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "A modell és a szolgáltató beállításai az alapértelmezett konfigurációból töltődtek be (csak olvasható)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "A modell megváltozott $1$-ra. Kérjük, konfigurálja az API kulcsát.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "A modell $1$-ra módosítva. A beszélgetés megmaradt.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "A modell megváltozott $1$-ra. A munkamenet újra lesz inicializálva.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "A modell megváltozott $1$-ra. Kérjük, konfigurálja az API kulcsát.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern csevegés"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Dark"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Light"
   },
   "Monthly_Credits": {
     "message": "Havi kreditek"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Hálózati hiba"
   },
-  "Network_error_occurred": {
-    "message": "Hálózati hiba történt"
-  },
   "Never_expire_permanent": {
     "message": "Soha nem jár le (állandó)"
   },
   "New_Conversation": {
     "message": "Új beszélgetés"
+  },
+  "New_PIN": {
+    "message": "Új PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Még nincsenek A2A ügynökök konfigurálva."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Nincs ütemezett idő"
   },
+  "No_settings_found": {
+    "message": "Nem található beállítás"
+  },
   "No_skills_available": {
     "message": "Nincs elérhető készség."
+  },
+  "No_skills_configured_yet": {
+    "message": "Még nincsenek beállított képességek."
   },
   "No_steps_in_plan": {
     "message": "Nincs lépés a tervben"
   },
   "No_tabs_available": {
     "message": "Nincs elérhető lap"
+  },
+  "No_tasks_in_plan": {
+    "message": "Nincs feladat a tervben"
   },
   "No_time_set": {
     "message": "Nincs beállítva idő"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN védelem"
+  },
   "Page_Action_Tool": {
     "message": "Oldalművelet eszköz"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Gyorsítótár tartós tárolása"
   },
-  "Plan_1_step_s": {
-    "message": "Terv: $1$ lépés",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Ellenőrizze az API kulcsát a beállításokban."
-  },
   "Please_enter_a_task_description": {
     "message": "Kérjük, adja meg a feladat leírását"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Kérjük, adjon meg egy érvényes API kulcsot."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Kérjük, jelentkezzen be újra az AI ügynök használatának folytatásához."
-  },
   "Please_select_a_provider": {
     "message": "Kérjük, válasszon szolgáltatót"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Kérjük, frissítse a csomagot a világ legfejlettebb modelljeinek feloldásához"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "A 1455-ös port használatban van. Kérjük, zárja be az e portot használó alkalmazást, majd próbálja újra."
   },
   "Power": {
     "message": "Teljesítmény"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Frissítés: $1"
   },
-  "Reject": {
-    "message": "Elutasít"
-  },
   "Release_Date": {
     "message": "Kiadás dátuma"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "API kulcs eltávolítása"
   },
+  "Remove_PIN": {
+    "message": "PIN eltávolítása"
+  },
+  "Removing": {
+    "message": "Eltávolítás..."
+  },
   "Request_Timeout": {
     "message": "Kérés időtúllépése"
-  },
-  "Request_timed_out": {
-    "message": "A kérés időtúllépett"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Kérés időtúllépése ezredmásodpercben (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Kérés időtúllépése ezredmásodpercben (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "A kérés megszakadt"
+  "Reset_Vault": {
+    "message": "Vault visszaállítása"
   },
-  "Response_failed": {
-    "message": "Válasz sikertelen"
+  "Resetting": {
+    "message": "Visszaállítás..."
   },
   "Restricted": {
     "message": "Korlátozott"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Fut"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "STREAM HIBA"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Ütemezett feladat"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Ütemezett feladat indítása"
-  },
   "Scheduled_Tasks": {
     "message": "Ütemezett feladatok"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Keresés befejezve"
   },
+  "Search_settings": {
+    "message": "Beállítások keresése..."
+  },
   "Searching": {
     "message": "Keresés..."
+  },
+  "Security": {
+    "message": "Biztonság"
   },
   "Security_Privacy": {
     "message": "Biztonság és adatvédelem"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Munkamenet hiba"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "A munkamenet lejárt – kérjük, jelentkezzen be újra az AI ügynök használatának folytatásához"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "A munkamenetkorlát elérve. Az új feladatok sorba kerülnek."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Állítsa be, hogy mikor járjon le a bevezetés adata"
+  },
+  "Setting_up": {
+    "message": "Beállítás..."
   },
   "Settings": {
     "message": "Beállítások"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Figyelmeztetés megjelenítése, ha a tárhelyhasználat meghaladja ezt a százalékot (alapértelmezett: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "A bejelentkezés sikertelen"
+  },
   "Sign_in_to_your_account": {
     "message": "Jelentkezzen be a fiókjába"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Bejelentkezés a ChatGPT-vel"
+  },
+  "Signing_in": {
+    "message": "Bejelentkezés..."
   },
   "Skills": {
     "message": "Képességek"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Feladat részletei"
   },
-  "Task_Failed": {
-    "message": "Feladat sikertelen"
-  },
   "Task_History": {
     "message": "Feladat előzmények"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Feladat sikertelen"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Feladat ütemezve $1$-ra",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Feladat elindítva"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Az ügynök jelenleg backend módban működik. Az LLM kérések az AI Republic szerveren keresztül irányítódnak. Beszélgetéseit biztonságosan dolgozzuk fel infrastruktúránk segítségével."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "A modell váltása törli a jelenlegi beszélgetést. Folytatni szeretné?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "A szerver hibát észlelt. Kérjük, próbálja meg később."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Ez véglegesen törli az összes tárolt API kulcsot és visszaállítja a széfet. Újra meg kell adnia az API kulcsait."
   },
   "Time": {
     "message": "Idő"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Túl sok sikertelen kísérlet. Próbálja újra"
+  },
   "Tool_Timeout_ms": {
     "message": "Eszköz időkorlát (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Eszközök beállításai"
+  },
+  "Trust": {
+    "message": "Megbízás"
   },
   "Trusted": {
     "message": "Megbízható"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Nem sikerült betölteni a kreditinformációkat"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Nem sikerült elérni a háttérszervert – ellenőrizze a kapcsolatot"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Nem sikerült elérni a szervert. Ellenőrizze a kapcsolatot, és próbálja újra."
-  },
   "Unknown_Event": {
     "message": "Ismeretlen esemény"
   },
   "Unknown_error": {
     "message": "Ismeretlen hiba"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Ismeretlen hiba az ügynök állapotának ellenőrzésekor"
-  },
-  "Unknown_error_occurred": {
-    "message": "Ismeretlen hiba történt"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Ismeretlen hiba történt a feladat végrehajtása során"
   },
   "Unknown_error_processing_submission": {
     "message": "Ismeretlen hiba a beküldés feldolgozása közben"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Feloldás"
+  },
+  "Unlocking": {
+    "message": "Feloldás..."
+  },
   "Unsaved_Changes": {
     "message": "Mentetlen módosítások"
   },
   "Untitled": {
     "message": "Névtelen"
+  },
+  "Untrusted": {
+    "message": "Nem megbízható"
   },
   "Upcoming": {
     "message": "Közelgő"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Saját API kulcs használata"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Használja a ChatGPT Plus/Pro előfizetését API kulcs helyett"
+  },
   "User_Center": {
     "message": "Felhasználói központ"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Extra kreditek használata"
+  },
+  "Vault_Locked": {
+    "message": "A széf zárolva"
   },
   "Verbosity": {
     "message": "Részletesség"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Személyes AI asszisztensed"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "A munkamenet lejárt. Jelentkezzen be újra."
-  },
   "DISCONNECTED": {
     "message": "[LECSATLAKOZVA]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (ismeretlen parancs)"
   },
+  "more_results": {
+    "message": "további eredmények..."
+  },
   "optional": {
     "message": "opcionális"
+  },
+  "or": {
+    "message": "vagy"
   },
   "remaining": {
     "message": "maradék"

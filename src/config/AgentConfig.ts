@@ -184,7 +184,7 @@ export class AgentConfig implements IConfigService {
       const legacyApproval = result['approval_config'];
       if (!legacyApproval) return; // Nothing to migrate
 
-      const agentConfig = result['agent_config'] || {};
+      const agentConfig = (result['agent_config'] || {}) as Record<string, any>;
       // Merge: legacy values fill in, but don't overwrite if already migrated
       agentConfig.approval = { ...legacyApproval, ...(agentConfig.approval || {}) };
 
