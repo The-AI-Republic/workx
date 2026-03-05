@@ -42,15 +42,19 @@ export class DesktopSchedulerDeepLinkHandler {
    */
   private handleDeepLink(url: string): void {
     try {
-      // Parse the URL — handle both `airepublic-pi://scheduler/trigger` formats
-      // The URL may come as `airepublic-pi://scheduler/trigger?jobId=xxx`
-      // or just the path portion depending on the platform
-      if (!url.includes('scheduler/trigger')) {
+      // Parse the URL — expected format: `airepublic-pi://scheduler/trigger?jobId=xxx`
+      const urlObj = new URL(url);
+
+      // Match on hostname + pathname for proper URL path matching
+      // URL parses `airepublic-pi://scheduler/trigger` as host="scheduler", pathname="/trigger"
+      const isSchedulerTrigger =
+        urlObj.hostname === 'scheduler' && urlObj.pathname === '/trigger';
+
+      if (!isSchedulerTrigger) {
         return; // Not a scheduler URL — let auth handler process it
       }
 
       // Extract jobId from query params
-      const urlObj = new URL(url);
       const jobId = urlObj.searchParams.get('jobId');
 
       if (!jobId) {

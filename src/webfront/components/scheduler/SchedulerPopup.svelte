@@ -3,6 +3,7 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
+  import { tryGetMessageService } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
@@ -45,6 +46,9 @@
 
   // T057: Session error display for graceful degradation feedback
   let lastSessionError: { message: string; sessionId: string; timestamp: number } | null = null;
+
+  // Event listener cleanup for desktop/server mode
+  let eventUnsubscribers: Array<() => void> = [];
 
   // Subscribe to theme
   uiTheme.subscribe((theme) => {
@@ -90,9 +94,39 @@
   }
 
   onMount(() => {
-    // Listen for scheduler events from service worker (extension mode only)
+    // Listen for scheduler events from service worker (extension mode)
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.addListener(handleSchedulerEvent);
+    }
+
+    // Listen for scheduler events via message service (desktop/server mode)
+    const service = tryGetMessageService();
+    if (service) {
+      eventUnsubscribers.push(
+        service.on(MessageType.SCHEDULER_EVENT, () => {
+          if (show) fetchAllData();
+        })
+      );
+      eventUnsubscribers.push(
+        service.on(MessageType.SESSION_EVENT, (payload) => {
+          if (show) {
+            const p = payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+            if (p?.type === 'session:error') {
+              lastSessionError = {
+                message: p.error || 'Unknown session error',
+                sessionId: p.sessionId || 'unknown',
+                timestamp: p.timestamp || Date.now()
+              };
+              setTimeout(() => {
+                if (lastSessionError?.timestamp === p.timestamp) {
+                  lastSessionError = null;
+                }
+              }, 5000);
+            }
+            fetchSessionData();
+          }
+        })
+      );
     }
 
     // T042: Listen for online/offline events
@@ -101,10 +135,16 @@
   });
 
   onDestroy(() => {
-    // Clean up event listener (extension mode only)
+    // Clean up extension event listener
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
     }
+
+    // Clean up message service listeners
+    for (const unsub of eventUnsubscribers) {
+      unsub();
+    }
+    eventUnsubscribers = [];
 
     // T042: Clean up online/offline listeners
     window.removeEventListener('online', handleOnline);
@@ -126,13 +166,12 @@
         sendMessage(MessageType.SCHEDULER_GET_QUEUE),
       ]);
 
-      const stateData = stateRes?.data || stateRes;
-      isPaused = stateData?.isPaused || false;
-      runningJob = stateData?.runningJob || null;
+      isPaused = (stateRes as any)?.isPaused || false;
+      runningJob = (stateRes as any)?.runningJob || null;
 
-      missedJobs = (missedRes?.data?.jobs || missedRes?.jobs || []);
-      scheduledJobs = (scheduledRes?.data?.jobs || scheduledRes?.jobs || []);
-      queuedJobs = (queueRes?.data?.jobs || queueRes?.jobs || []);
+      missedJobs = (missedRes as any)?.jobs || [];
+      scheduledJobs = (scheduledRes as any)?.jobs || [];
+      queuedJobs = (queueRes as any)?.jobs || [];
 
       // Feature 015: Fetch session data
       await fetchSessionData();

@@ -411,15 +411,38 @@ export class ServerAgentBootstrap {
         }
       });
 
-      // 6. Wire job launcher for server mode (log + future agent invoke)
+      // 6. Wire job launcher → submit job input to agent
       this.scheduler.setJobLauncher(async (jobId, sessionId) => {
         console.log(`[ServerAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
-        // In server mode, job execution is handled by the agent system
-        // The job is now in 'running' state and can be completed via scheduler.complete/fail
+        const job = await this.schedulerStorage!.getJob(jobId);
+        if (!job) {
+          throw new Error(`Job not found for execution: ${jobId}`);
+        }
+
+        if (!this.agent) {
+          throw new Error('Agent not initialized — cannot execute scheduled job');
+        }
+
+        // Submit job input to agent as a UserInput operation
+        try {
+          await this.agent.submitOperation(
+            {
+              type: 'UserInput',
+              items: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: job.input }] }],
+            },
+            { tabId: sessionId }
+          );
+        } catch (error) {
+          console.error(`[ServerAgentBootstrap] Failed to submit scheduled job ${jobId}:`, error);
+          throw error;
+        }
       });
 
       // 7. Start queue processor
       await this.schedulerAlarms.startJobQueueProcessor();
+
+      // 7b. Recover stale running jobs from previous server session
+      await this.scheduler.recoverStaleRunningJob();
 
       // 8. Detect missed jobs
       const missedJobs = await this.scheduler.detectMissedJobs();

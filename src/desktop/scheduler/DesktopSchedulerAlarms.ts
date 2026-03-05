@@ -78,11 +78,17 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
     const needsRecheck = delayMs > MAX_TIMEOUT_MS;
 
     // 1. In-process timer (precise, fires while app is running)
+    console.log(`[DesktopSchedulerAlarms] Creating timer for ${alarmName}, delay=${clampedDelay}ms (${Math.round(clampedDelay / 1000)}s)`);
     const timer = setTimeout(async () => {
+      console.log(`[DesktopSchedulerAlarms] Timer fired for ${alarmName}`);
       if (needsRecheck && scheduledTime > Date.now()) {
         // Not yet time — re-arm the alarm
         this.timers.delete(alarmName);
-        await this.createJobAlarm(jobId, scheduledTime);
+        try {
+          await this.createJobAlarm(jobId, scheduledTime);
+        } catch (error) {
+          console.error(`[DesktopSchedulerAlarms] Failed to re-arm alarm ${alarmName}:`, error);
+        }
         return;
       }
       this.timers.delete(alarmName);
@@ -92,6 +98,8 @@ export class DesktopSchedulerAlarms implements ISchedulerAlarms {
         } catch (error) {
           console.error(`[DesktopSchedulerAlarms] Error handling alarm ${alarmName}:`, error);
         }
+      } else {
+        console.warn(`[DesktopSchedulerAlarms] No alarm handler set when timer fired for ${alarmName}`);
       }
     }, clampedDelay);
 

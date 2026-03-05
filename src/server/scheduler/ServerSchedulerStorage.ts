@@ -63,7 +63,7 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
         input TEXT NOT NULL,
         scheduledTime INTEGER,
         createdAt INTEGER NOT NULL,
-        status TEXT NOT NULL DEFAULT 'draft',
+        status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'missed', 'waiting', 'running', 'completed', 'failed', 'cancelled')),
         sessionId TEXT,
         completedAt INTEGER,
         error TEXT,
@@ -225,6 +225,14 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
     return rows.map(r => this.rowToJob(r));
   }
 
+  async getArchivedJobsCount(): Promise<number> {
+    const db = this.ensureDb();
+    const row = db.prepare(
+      `SELECT COUNT(*) as count FROM scheduler_jobs WHERE status IN ('completed', 'failed')`
+    ).get() as { count: number };
+    return row.count;
+  }
+
   async getNextJobInQueue(): Promise<SchedulerJobRecord | null> {
     const db = this.ensureDb();
     const row = db.prepare(
@@ -316,6 +324,14 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
    * Convert a SQLite row to a SchedulerJobRecord.
    */
   private rowToJob(row: any): SchedulerJobRecord {
+    let result = null;
+    if (row.result) {
+      try {
+        result = JSON.parse(row.result);
+      } catch {
+        console.warn(`[ServerSchedulerStorage] Corrupt result JSON for job ${row.id}, treating as null`);
+      }
+    }
     return {
       id: row.id,
       input: row.input,
@@ -325,7 +341,7 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
       sessionId: row.sessionId ?? null,
       completedAt: row.completedAt ?? null,
       error: row.error ?? null,
-      result: row.result ? JSON.parse(row.result) : null,
+      result,
     };
   }
 

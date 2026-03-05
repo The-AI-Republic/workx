@@ -82,7 +82,11 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
       if (needsRecheck && scheduledTime > Date.now()) {
         // Not yet time — re-arm the alarm
         this.timers.delete(alarmName);
-        await this.createJobAlarm(jobId, scheduledTime);
+        try {
+          await this.createJobAlarm(jobId, scheduledTime);
+        } catch (error) {
+          console.error(`[ServerSchedulerAlarms] Failed to re-arm alarm ${alarmName}:`, error);
+        }
         return;
       }
       this.timers.delete(alarmName);
@@ -186,7 +190,7 @@ export class ServerSchedulerAlarms implements ISchedulerAlarms {
    */
   shutdown(): void {
     // Clear all job timers
-    for (const [name, entry] of this.timers) {
+    for (const entry of this.timers.values()) {
       clearTimeout(entry.timer);
     }
     this.timers.clear();

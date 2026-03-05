@@ -102,7 +102,7 @@ pub async fn scheduler_has_os_job(job_id: String) -> Result<bool, String> {
 
     #[cfg(target_os = "macos")]
     {
-        let plist_path = launchd_plist_path(&job_id);
+        let plist_path = launchd_plist_path(&job_id)?;
         Ok(plist_path.exists())
     }
 
@@ -118,7 +118,7 @@ pub async fn scheduler_has_os_job(job_id: String) -> Result<bool, String> {
 
     #[cfg(target_os = "linux")]
     {
-        let timer_path = systemd_timer_path(&job_id);
+        let timer_path = systemd_timer_path(&job_id)?;
         Ok(timer_path.exists())
     }
 }
@@ -143,11 +143,16 @@ pub async fn scheduler_clear_os_jobs() -> Result<(), String> {
 const PLIST_PREFIX: &str = "com.airepublic.pi.scheduler.";
 
 #[cfg(target_os = "macos")]
-fn launchd_plist_path(job_id: &str) -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    PathBuf::from(home)
+fn get_home_dir() -> Result<String, String> {
+    std::env::var("HOME").map_err(|_| "HOME environment variable not set".to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn launchd_plist_path(job_id: &str) -> Result<PathBuf, String> {
+    let home = get_home_dir()?;
+    Ok(PathBuf::from(home)
         .join("Library/LaunchAgents")
-        .join(format!("{}{}.plist", PLIST_PREFIX, job_id))
+        .join(format!("{}{}.plist", PLIST_PREFIX, job_id)))
 }
 
 #[cfg(target_os = "macos")]
@@ -160,7 +165,7 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         .single()
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
-    let plist_path = launchd_plist_path(job_id);
+    let plist_path = launchd_plist_path(job_id)?;
 
     // Ensure LaunchAgents directory exists
     if let Some(parent) = plist_path.parent() {
@@ -230,7 +235,7 @@ fn register_launchd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
 
 #[cfg(target_os = "macos")]
 fn remove_launchd_job(job_id: &str) -> Result<(), String> {
-    let plist_path = launchd_plist_path(job_id);
+    let plist_path = launchd_plist_path(job_id)?;
 
     if plist_path.exists() {
         // Unload first
@@ -247,7 +252,7 @@ fn remove_launchd_job(job_id: &str) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 fn list_launchd_jobs() -> Result<Vec<String>, String> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+    let home = get_home_dir()?;
     let agents_dir = PathBuf::from(home).join("Library/LaunchAgents");
 
     if !agents_dir.exists() {
@@ -372,19 +377,24 @@ fn list_schtasks_jobs() -> Result<Vec<String>, String> {
 const SYSTEMD_PREFIX: &str = "pi-scheduler-";
 
 #[cfg(target_os = "linux")]
-fn systemd_user_dir() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    PathBuf::from(home).join(".config/systemd/user")
+fn get_home_dir() -> Result<String, String> {
+    std::env::var("HOME").map_err(|_| "HOME environment variable not set".to_string())
 }
 
 #[cfg(target_os = "linux")]
-fn systemd_service_path(job_id: &str) -> PathBuf {
-    systemd_user_dir().join(format!("{}{}.service", SYSTEMD_PREFIX, job_id))
+fn systemd_user_dir() -> Result<PathBuf, String> {
+    let home = get_home_dir()?;
+    Ok(PathBuf::from(home).join(".config/systemd/user"))
 }
 
 #[cfg(target_os = "linux")]
-fn systemd_timer_path(job_id: &str) -> PathBuf {
-    systemd_user_dir().join(format!("{}{}.timer", SYSTEMD_PREFIX, job_id))
+fn systemd_service_path(job_id: &str) -> Result<PathBuf, String> {
+    Ok(systemd_user_dir()?.join(format!("{}{}.service", SYSTEMD_PREFIX, job_id)))
+}
+
+#[cfg(target_os = "linux")]
+fn systemd_timer_path(job_id: &str) -> Result<PathBuf, String> {
+    Ok(systemd_user_dir()?.join(format!("{}{}.timer", SYSTEMD_PREFIX, job_id)))
 }
 
 #[cfg(target_os = "linux")]
@@ -397,20 +407,29 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         .single()
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
-    let user_dir = systemd_user_dir();
+    let user_dir = systemd_user_dir()?;
     fs::create_dir_all(&user_dir)
         .map_err(|e| format!("Failed to create systemd user dir: {}", e))?;
 
     let unit_name = format!("{}{}", SYSTEMD_PREFIX, job_id);
     let deep_link = format!("airepublic-pi://scheduler/trigger?jobId={}", job_id);
 
+    // Find the right command to open deep links (xdg-open may not be available on headless)
+    let open_cmd = if Command::new("xdg-open").arg("--version").output().is_ok() {
+        "/usr/bin/xdg-open"
+    } else {
+        // Fallback: use our own binary to handle the deep link directly
+        return register_crontab_fallback(job_id, scheduled_time);
+    };
+
     // Write service file
     let service_content = format!(
-        "[Unit]\nDescription=Pi Scheduler Job {job_id}\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/xdg-open \"{deep_link}\"\n",
+        "[Unit]\nDescription=Pi Scheduler Job {job_id}\n\n[Service]\nType=oneshot\nExecStart={open_cmd} \"{deep_link}\"\n",
         job_id = job_id,
+        open_cmd = open_cmd,
         deep_link = deep_link,
     );
-    fs::write(systemd_service_path(job_id), service_content)
+    fs::write(systemd_service_path(job_id)?, service_content)
         .map_err(|e| format!("Failed to write service file: {}", e))?;
 
     // Write timer file
@@ -420,7 +439,7 @@ fn register_systemd_job(job_id: &str, scheduled_time: i64) -> Result<(), String>
         job_id = job_id,
         calendar = calendar,
     );
-    fs::write(systemd_timer_path(job_id), timer_content)
+    fs::write(systemd_timer_path(job_id)?, timer_content)
         .map_err(|e| format!("Failed to write timer file: {}", e))?;
 
     // Reload and enable
@@ -518,8 +537,12 @@ fn remove_systemd_job(job_id: &str) -> Result<(), String> {
         .output();
 
     // Remove files
-    let _ = fs::remove_file(systemd_service_path(job_id));
-    let _ = fs::remove_file(systemd_timer_path(job_id));
+    if let Ok(path) = systemd_service_path(job_id) {
+        let _ = fs::remove_file(path);
+    }
+    if let Ok(path) = systemd_timer_path(job_id) {
+        let _ = fs::remove_file(path);
+    }
 
     // Also clean up crontab entry if it exists
     if let Ok(output) = Command::new("crontab").arg("-l").output() {
@@ -555,7 +578,7 @@ fn remove_systemd_job(job_id: &str) -> Result<(), String> {
 
 #[cfg(target_os = "linux")]
 fn list_systemd_jobs() -> Result<Vec<String>, String> {
-    let user_dir = systemd_user_dir();
+    let user_dir = systemd_user_dir()?;
 
     if !user_dir.exists() {
         return Ok(vec![]);

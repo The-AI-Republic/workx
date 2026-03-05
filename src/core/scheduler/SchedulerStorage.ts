@@ -149,6 +149,23 @@ export class SchedulerStorage implements ISchedulerStorage {
   }
 
   /**
+   * Count archived jobs (completed or failed)
+   */
+  async getArchivedJobsCount(): Promise<number> {
+    const completed = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
+      INDEX_NAMES.SCHEDULER_BY_STATUS,
+      'completed'
+    );
+    const failed = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
+      INDEX_NAMES.SCHEDULER_BY_STATUS,
+      'failed'
+    );
+    return completed.length + failed.length;
+  }
+
+  /**
    * Get the next job in the queue (FIFO by createdAt)
    */
   async getNextJobInQueue(): Promise<SchedulerJobRecord | null> {

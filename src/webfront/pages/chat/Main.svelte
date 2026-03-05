@@ -181,6 +181,8 @@
     checkConnection();
 
     // Check if this is a scheduled job execution (US3: T022)
+    // Extension: detected via URL params from chrome.tabs.create
+    // Desktop: detected via DOM event from DesktopAgentBootstrap job launcher
     const urlParams = new URLSearchParams(window.location.search);
     const jobIdParam = urlParams.get('scheduledJob');
     const sessionIdParam = urlParams.get('sessionId');
@@ -195,6 +197,9 @@
       await loadAndExecuteSchedulerJob(jobIdParam, sessionIdParam);
       return; // Skip normal initialization for scheduled job mode
     }
+
+    // Desktop: listen for scheduler job launch events (no page reload needed)
+    window.addEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
 
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
@@ -265,8 +270,19 @@
     }
   }
 
+  // Desktop: handle scheduler job launch event from DesktopAgentBootstrap
+  function handleSchedulerLaunchJob(event: CustomEvent<{ jobId: string; sessionId: string }>) {
+    const { jobId, sessionId } = event.detail;
+    console.log('[App] Scheduler launch-job event received:', jobId);
+    scheduledJobId = jobId;
+    scheduledSessionId = sessionId;
+    isScheduledJobMode = true;
+    loadAndExecuteSchedulerJob(jobId, sessionId);
+  }
+
   onDestroy(() => {
     window.removeEventListener('zoom-changed', onZoomChanged);
+    window.removeEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
   });
 
   /**

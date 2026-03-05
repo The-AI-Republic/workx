@@ -434,45 +434,69 @@ export class TauriMessageService implements IMessageService {
 
     switch (type) {
       case MessageType.SCHEDULER_CREATE_DRAFT_JOB: {
-        const { input } = payload as { input: string };
-        const jobId = await scheduler.createDraftJob(input);
+        const p = payload as { input?: string } | undefined;
+        if (!p?.input || typeof p.input !== 'string') {
+          return { success: false, error: '"input" is required and must be a string' };
+        }
+        const jobId = await scheduler.createDraftJob(p.input);
         return { success: true, jobId };
       }
 
       case MessageType.SCHEDULER_SCHEDULE_JOB: {
-        const { input, jobId, scheduledTime } = payload as { input?: string; jobId?: string; scheduledTime: number };
-        if (jobId) {
-          await scheduler.scheduleExistingJob(jobId, scheduledTime);
-          return { success: true, jobId };
-        } else if (input) {
-          const newJobId = await scheduler.scheduleJob(input, scheduledTime);
+        const p = payload as { input?: string; jobId?: string; scheduledTime?: number } | undefined;
+        if (!p?.scheduledTime || typeof p.scheduledTime !== 'number' || p.scheduledTime <= 0) {
+          return { success: false, error: '"scheduledTime" is required and must be a positive number' };
+        }
+        if (p.jobId) {
+          await scheduler.scheduleExistingJob(p.jobId, p.scheduledTime);
+          return { success: true, jobId: p.jobId };
+        } else if (p.input) {
+          const newJobId = await scheduler.scheduleJob(p.input, p.scheduledTime);
           return { success: true, jobId: newJobId };
         } else {
-          return { success: false, error: 'Either input or jobId is required' };
+          return { success: false, error: 'Either "input" or "jobId" is required' };
         }
       }
 
       case MessageType.SCHEDULER_TRIGGER_JOB: {
-        const { jobId } = payload as { jobId: string };
-        await scheduler.triggerJob(jobId);
+        const p = payload as { jobId?: string } | undefined;
+        if (!p?.jobId) {
+          return { success: false, error: '"jobId" is required' };
+        }
+        await scheduler.triggerJob(p.jobId);
         return { success: true };
       }
 
       case MessageType.SCHEDULER_CANCEL_JOB: {
-        const { jobId } = payload as { jobId: string };
-        await scheduler.cancelJob(jobId);
+        const p = payload as { jobId?: string } | undefined;
+        if (!p?.jobId) {
+          return { success: false, error: '"jobId" is required' };
+        }
+        await scheduler.cancelJob(p.jobId);
         return { success: true };
       }
 
       case MessageType.SCHEDULER_COMPLETE_JOB: {
-        const { jobId, result } = payload as { jobId: string; result: any };
-        await scheduler.completeJob(jobId, result);
+        const p = payload as { jobId?: string; result?: any } | undefined;
+        if (!p?.jobId) {
+          return { success: false, error: '"jobId" is required' };
+        }
+        if (!p.result || typeof p.result !== 'object' || typeof p.result.summary !== 'string') {
+          return { success: false, error: '"result" must be an object with a "summary" string field' };
+        }
+        await scheduler.completeJob(p.jobId, p.result);
         return { success: true };
       }
 
       case MessageType.SCHEDULER_FAIL_JOB: {
-        const { jobId, error } = payload as { jobId: string; error: string };
-        await scheduler.failJob(jobId, error);
+        const p = payload as { jobId?: string; error?: string } | undefined;
+        if (!p?.jobId) {
+          return { success: false, error: '"jobId" is required' };
+        }
+        if (!p.error) {
+          return { success: false, error: '"error" is required' };
+        }
+        await scheduler.failJob(p.jobId, p.error);
         return { success: true };
       }
 
@@ -505,8 +529,21 @@ export class TauriMessageService implements IMessageService {
       }
 
       case MessageType.SCHEDULER_GET_ARCHIVED_JOBS: {
-        const { limit = 50, offset = 0 } = (payload || {}) as { limit?: number; offset?: number };
-        const jobs = await storage.getArchivedJobs(limit, offset);
+        const { limit: rawLimit, offset: rawOffset } = (payload || {}) as { limit?: number; offset?: number };
+
+        // Validate and clamp limit/offset
+        const limit = typeof rawLimit === 'number' && rawLimit > 0
+          ? Math.min(Math.floor(rawLimit), 200)
+          : 50;
+        const offset = typeof rawOffset === 'number' && rawOffset >= 0
+          ? Math.floor(rawOffset)
+          : 0;
+
+        const [jobs, total] = await Promise.all([
+          storage.getArchivedJobs(limit, offset),
+          storage.getArchivedJobsCount(),
+        ]);
+
         return {
           jobs: jobs.map((j: SchedulerJobRecord) => ({
             id: j.id,
@@ -517,8 +554,8 @@ export class TauriMessageService implements IMessageService {
             sessionId: j.sessionId,
             error: j.error,
           })),
-          total: jobs.length,
-          hasMore: jobs.length === limit,
+          total,
+          hasMore: offset + jobs.length < total,
         };
       }
 
@@ -526,8 +563,11 @@ export class TauriMessageService implements IMessageService {
         return scheduler.getSchedulerState();
 
       case MessageType.SCHEDULER_GET_JOB_DETAILS: {
-        const { jobId } = payload as { jobId: string };
-        const job = await storage.getJob(jobId);
+        const p = payload as { jobId?: string } | undefined;
+        if (!p?.jobId) {
+          return { success: false, error: '"jobId" is required' };
+        }
+        const job = await storage.getJob(p.jobId);
         return { job };
       }
 

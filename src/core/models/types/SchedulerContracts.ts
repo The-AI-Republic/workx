@@ -50,6 +50,7 @@ export interface ISchedulerStorage {
   getMissedJobs(): Promise<SchedulerJobRecord[]>; // Overdue jobs (status: missed)
   getJobQueueJobs(): Promise<SchedulerJobRecord[]>; // Job queue (status: waiting)
   getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]>;
+  getArchivedJobsCount(): Promise<number>;
   getNextJobInQueue(): Promise<SchedulerJobRecord | null>; // FIFO by createdAt
   getOverdueScheduledJobs(): Promise<SchedulerJobRecord[]>; // status: scheduled AND scheduledTime < now
 

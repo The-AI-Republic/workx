@@ -31,7 +31,7 @@ vi.mock('uuid', () => ({
 
 function createMockJob(overrides: Partial<SchedulerJobRecord> = {}): SchedulerJobRecord {
   return {
-    id: 'task-1',
+    id: 'job-1',
     input: 'Test job input',
     scheduledTime: null,
     createdAt: 1000,
@@ -76,6 +76,7 @@ function createMockStorage(): ISchedulerStorage {
     getMissedJobs: vi.fn(),
     getJobQueueJobs: vi.fn(),
     getArchivedJobs: vi.fn(),
+    getArchivedJobsCount: vi.fn(),
     getNextJobInQueue: vi.fn(),
     getOverdueScheduledJobs: vi.fn(),
     getSchedulerState: vi.fn(),
@@ -261,26 +262,26 @@ describe('Scheduler', () => {
   describe('scheduleExistingJob', () => {
     it('should schedule a draft job', async () => {
       const futureTime = Date.now() + 60000;
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'draft' }));
 
-      await scheduler.scheduleExistingJob('task-1', futureTime);
+      await scheduler.scheduleExistingJob('job-1', futureTime);
 
-      expect(storage.updateJob).toHaveBeenCalledWith('task-1', {
+      expect(storage.updateJob).toHaveBeenCalledWith('job-1', {
         scheduledTime: futureTime,
         status: 'scheduled',
       });
-      expect(alarms.createJobAlarm).toHaveBeenCalledWith('task-1', futureTime);
+      expect(alarms.createJobAlarm).toHaveBeenCalledWith('job-1', futureTime);
     });
 
     it('should emit a status change event (draft -> scheduled)', async () => {
       const futureTime = Date.now() + 60000;
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'draft' }));
 
-      await scheduler.scheduleExistingJob('task-1', futureTime);
+      await scheduler.scheduleExistingJob('job-1', futureTime);
 
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: 'job-1',
           previousStatus: 'draft',
           newStatus: 'scheduled',
         })
@@ -296,14 +297,14 @@ describe('Scheduler', () => {
 
     it('should throw if job is not in draft status', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'running' }));
-      await expect(scheduler.scheduleExistingJob('task-1', Date.now() + 60000)).rejects.toThrow(
+      await expect(scheduler.scheduleExistingJob('job-1', Date.now() + 60000)).rejects.toThrow(
         'Cannot schedule job in running status'
       );
     });
 
     it('should throw if scheduled time is in the past', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'draft' }));
-      await expect(scheduler.scheduleExistingJob('task-1', Date.now() - 1000)).rejects.toThrow(
+      await expect(scheduler.scheduleExistingJob('job-1', Date.now() - 1000)).rejects.toThrow(
         'Scheduled time must be in the future'
       );
     });
@@ -321,59 +322,59 @@ describe('Scheduler', () => {
 
     it('should throw if job status does not allow triggering', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'running' }));
-      await expect(scheduler.triggerJob('task-1')).rejects.toThrow(
+      await expect(scheduler.triggerJob('job-1')).rejects.toThrow(
         'Cannot trigger job in running status'
       );
     });
 
     it('should throw for completed jobs', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'completed' }));
-      await expect(scheduler.triggerJob('task-1')).rejects.toThrow(
+      await expect(scheduler.triggerJob('job-1')).rejects.toThrow(
         'Cannot trigger job in completed status'
       );
     });
 
     it('should throw for failed jobs', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'failed' }));
-      await expect(scheduler.triggerJob('task-1')).rejects.toThrow(
+      await expect(scheduler.triggerJob('job-1')).rejects.toThrow(
         'Cannot trigger job in failed status'
       );
     });
 
     it('should throw for cancelled jobs', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'cancelled' }));
-      await expect(scheduler.triggerJob('task-1')).rejects.toThrow(
+      await expect(scheduler.triggerJob('job-1')).rejects.toThrow(
         'Cannot trigger job in cancelled status'
       );
     });
 
     it('should clear alarm if job was scheduled', async () => {
-      const job = createMockJob({ id: 'task-1', status: 'scheduled' });
+      const job = createMockJob({ id: 'job-1', status: 'scheduled' });
       vi.mocked(storage.getJob).mockResolvedValue(job);
       vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
 
-      await scheduler.triggerJob('task-1');
-      expect(alarms.clearJobAlarm).toHaveBeenCalledWith('task-1');
+      await scheduler.triggerJob('job-1');
+      expect(alarms.clearJobAlarm).toHaveBeenCalledWith('job-1');
     });
 
     it('should not clear alarm if job was a draft', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'draft' }));
       vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
 
-      await scheduler.triggerJob('task-1');
+      await scheduler.triggerJob('job-1');
       expect(alarms.clearJobAlarm).not.toHaveBeenCalled();
     });
 
     it('should queue job as waiting if another job is running', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-2', status: 'draft' }));
-      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-2', status: 'draft' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: 'job-1' }));
 
-      await scheduler.triggerJob('task-2');
+      await scheduler.triggerJob('job-2');
 
-      expect(storage.updateJob).toHaveBeenCalledWith('task-2', { status: 'waiting' });
+      expect(storage.updateJob).toHaveBeenCalledWith('job-2', { status: 'waiting' });
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-2',
+          jobId: 'job-2',
           previousStatus: 'draft',
           newStatus: 'waiting',
         })
@@ -381,32 +382,32 @@ describe('Scheduler', () => {
     });
 
     it('should execute immediately if no job is running', async () => {
-      const job = createMockJob({ id: 'task-1', status: 'draft' });
+      const job = createMockJob({ id: 'job-1', status: 'draft' });
       vi.mocked(storage.getJob)
         .mockResolvedValueOnce(job) // triggerJob lookup
         .mockResolvedValueOnce(job); // executeJob lookup
       vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
 
-      await scheduler.triggerJob('task-1');
+      await scheduler.triggerJob('job-1');
 
       // executeJob should update status to running
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({ status: 'running' })
       );
     });
 
     it('should allow triggering missed jobs', async () => {
-      const job = createMockJob({ id: 'task-m', status: 'missed' });
+      const job = createMockJob({ id: 'job-m', status: 'missed' });
       vi.mocked(storage.getJob)
         .mockResolvedValueOnce(job)
         .mockResolvedValueOnce(job);
       vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
 
-      await scheduler.triggerJob('task-m');
+      await scheduler.triggerJob('job-m');
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-m',
+        'job-m',
         expect.objectContaining({ status: 'running' })
       );
     });
@@ -423,9 +424,9 @@ describe('Scheduler', () => {
     });
 
     it('should create an AgentSession via registry when available', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       expect(registry.createSession).toHaveBeenCalledWith({
         type: 'scheduled',
@@ -433,110 +434,110 @@ describe('Scheduler', () => {
     });
 
     it('should store job-session mapping on success', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
-      expect((scheduler as any).jobSessions.get('task-1')).toBe('agent-session-1');
+      expect((scheduler as any).jobSessions.get('job-1')).toBe('agent-session-1');
     });
 
     it('should use legacy session ID when registry.createSession fails', async () => {
       registry.createSession.mockRejectedValue(new Error('Session creation failed'));
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({ status: 'running', sessionId: 'session_mock-uuid-1234' })
       );
     });
 
     it('should use legacy session ID when registry is null', async () => {
       const s = new Scheduler(storage, alarms);
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await s.executeJob('task-1');
+      await s.executeJob('job-1');
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({ sessionId: 'session_mock-uuid-1234' })
       );
     });
 
     it('should use legacy session ID when canCreateSession returns false', async () => {
       registry.canCreateSession.mockReturnValue(false);
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       expect(registry.createSession).not.toHaveBeenCalled();
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({ sessionId: 'session_mock-uuid-1234' })
       );
     });
 
     it('should update job status to running', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({ status: 'running' })
       );
     });
 
     it('should set scheduler state with currentJobId', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       expect(storage.setSchedulerState).toHaveBeenCalledWith(
-        expect.objectContaining({ currentJobId: 'task-1' })
+        expect.objectContaining({ currentJobId: 'job-1' })
       );
     });
 
     it('should emit job status change and state change events', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'draft' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       // Status change: draft -> running
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: 'job-1',
           previousStatus: 'draft',
           newStatus: 'running',
         })
       );
-      // State change
+      // State change — currentJobId is now set to the running job
       expect(emitter).toHaveBeenCalledWith(
-        expect.objectContaining({ isPaused: false, currentJobId: null })
+        expect.objectContaining({ isPaused: false, currentJobId: 'job-1' })
       );
     });
 
     it('should call notification handler', async () => {
       const notifHandler = vi.fn().mockResolvedValue(undefined);
       scheduler.setNotificationHandler(notifHandler);
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', input: 'Hello world' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', input: 'Hello world' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
       expect(notifHandler).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'task-1', input: 'Hello world' })
+        expect.objectContaining({ id: 'job-1', input: 'Hello world' })
       );
     });
 
     it('should call job launcher', async () => {
       const launcher = vi.fn().mockResolvedValue(undefined);
       scheduler.setJobLauncher(launcher);
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
-      await scheduler.executeJob('task-1');
+      await scheduler.executeJob('job-1');
 
-      expect(launcher).toHaveBeenCalledWith('task-1', expect.any(String));
+      expect(launcher).toHaveBeenCalledWith('job-1', expect.any(String));
     });
   });
 
@@ -584,9 +585,9 @@ describe('Scheduler', () => {
       const launcher = vi.fn().mockResolvedValue(undefined);
       scheduler.setJobLauncher(launcher);
 
-      await (scheduler as any).launchJob('task-42', 'session-99');
+      await (scheduler as any).launchJob('job-42', 'session-99');
 
-      expect(launcher).toHaveBeenCalledWith('task-42', 'session-99');
+      expect(launcher).toHaveBeenCalledWith('job-42', 'session-99');
     });
 
     it('should warn when no job launcher is set', async () => {
@@ -617,28 +618,28 @@ describe('Scheduler', () => {
 
     it('should throw if job is not in running status', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'draft' }));
-      await expect(scheduler.completeJob('task-1', result)).rejects.toThrow(
+      await expect(scheduler.completeJob('job-1', result)).rejects.toThrow(
         'Cannot complete job in draft status'
       );
     });
 
     it('should clean up the agent session', async () => {
-      const job = createMockJob({ id: 'task-1', status: 'running' });
+      const job = createMockJob({ id: 'job-1', status: 'running' });
       vi.mocked(storage.getJob).mockResolvedValue(job);
-      (scheduler as any).jobSessions.set('task-1', 'session-x');
+      (scheduler as any).jobSessions.set('job-1', 'session-x');
 
-      await scheduler.completeJob('task-1', result);
+      await scheduler.completeJob('job-1', result);
 
       expect(registry.removeSession).toHaveBeenCalledWith('session-x');
     });
 
     it('should update job with completed status and result', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
 
-      await scheduler.completeJob('task-1', result);
+      await scheduler.completeJob('job-1', result);
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({
           status: 'completed',
           completedAt: expect.any(Number),
@@ -648,21 +649,21 @@ describe('Scheduler', () => {
     });
 
     it('should clear currentJobId from scheduler state', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
 
-      await scheduler.completeJob('task-1', result);
+      await scheduler.completeJob('job-1', result);
 
       expect(storage.setSchedulerState).toHaveBeenCalledWith({ currentJobId: null });
     });
 
     it('should emit status change (running -> completed)', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
 
-      await scheduler.completeJob('task-1', result);
+      await scheduler.completeJob('job-1', result);
 
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: 'job-1',
           previousStatus: 'running',
           newStatus: 'completed',
         })
@@ -670,10 +671,10 @@ describe('Scheduler', () => {
     });
 
     it('should process the queue after completion', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
       vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
 
-      await scheduler.completeJob('task-1', result);
+      await scheduler.completeJob('job-1', result);
 
       // processJobQueue should be called, which calls getSchedulerState
       expect(storage.getSchedulerState).toHaveBeenCalled();
@@ -692,27 +693,27 @@ describe('Scheduler', () => {
 
     it('should throw if job is not running', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'scheduled' }));
-      await expect(scheduler.failJob('task-1', 'err')).rejects.toThrow(
+      await expect(scheduler.failJob('job-1', 'err')).rejects.toThrow(
         'Cannot fail job in scheduled status'
       );
     });
 
     it('should clean up the agent session', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
-      (scheduler as any).jobSessions.set('task-1', 'session-y');
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
+      (scheduler as any).jobSessions.set('job-1', 'session-y');
 
-      await scheduler.failJob('task-1', 'Something broke');
+      await scheduler.failJob('job-1', 'Something broke');
 
       expect(registry.removeSession).toHaveBeenCalledWith('session-y');
     });
 
     it('should update job with failed status and error', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
 
-      await scheduler.failJob('task-1', 'Timeout exceeded');
+      await scheduler.failJob('job-1', 'Timeout exceeded');
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({
           status: 'failed',
           completedAt: expect.any(Number),
@@ -722,21 +723,21 @@ describe('Scheduler', () => {
     });
 
     it('should clear currentJobId from scheduler state', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
 
-      await scheduler.failJob('task-1', 'err');
+      await scheduler.failJob('job-1', 'err');
 
       expect(storage.setSchedulerState).toHaveBeenCalledWith({ currentJobId: null });
     });
 
     it('should emit status change (running -> failed)', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
 
-      await scheduler.failJob('task-1', 'err');
+      await scheduler.failJob('job-1', 'err');
 
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: 'job-1',
           previousStatus: 'running',
           newStatus: 'failed',
         })
@@ -744,10 +745,10 @@ describe('Scheduler', () => {
     });
 
     it('should process the queue after failure', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
       vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
 
-      await scheduler.failJob('task-1', 'err');
+      await scheduler.failJob('job-1', 'err');
 
       expect(storage.getSchedulerState).toHaveBeenCalled();
     });
@@ -765,58 +766,59 @@ describe('Scheduler', () => {
 
     it('should throw if job is already completed', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'completed' }));
-      await expect(scheduler.cancelJob('task-1')).rejects.toThrow(
+      await expect(scheduler.cancelJob('job-1')).rejects.toThrow(
         'Cannot cancel job in completed status'
       );
     });
 
     it('should throw if job is already failed', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'failed' }));
-      await expect(scheduler.cancelJob('task-1')).rejects.toThrow(
+      await expect(scheduler.cancelJob('job-1')).rejects.toThrow(
         'Cannot cancel job in failed status'
       );
     });
 
     it('should throw if job is already cancelled', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'cancelled' }));
-      await expect(scheduler.cancelJob('task-1')).rejects.toThrow(
+      await expect(scheduler.cancelJob('job-1')).rejects.toThrow(
         'Cannot cancel job in cancelled status'
       );
     });
 
     it('should clear alarm when cancelling a scheduled job', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'scheduled' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'scheduled' }));
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
-      expect(alarms.clearJobAlarm).toHaveBeenCalledWith('task-1');
+      expect(alarms.clearJobAlarm).toHaveBeenCalledWith('job-1');
     });
 
     it('should not clear alarm for non-scheduled jobs', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ status: 'draft' }));
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
       expect(alarms.clearJobAlarm).not.toHaveBeenCalled();
     });
 
     it('should clean up session and clear state when cancelling a running job', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
-      (scheduler as any).jobSessions.set('task-1', 'session-z');
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: 'job-1' }));
+      (scheduler as any).jobSessions.set('job-1', 'session-z');
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
       expect(registry.removeSession).toHaveBeenCalledWith('session-z');
       expect(storage.setSchedulerState).toHaveBeenCalledWith({ currentJobId: null });
     });
 
     it('should update job status to cancelled with completedAt', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'draft' }));
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
       expect(storage.updateJob).toHaveBeenCalledWith(
-        'task-1',
+        'job-1',
         expect.objectContaining({
           status: 'cancelled',
           completedAt: expect.any(Number),
@@ -825,13 +827,13 @@ describe('Scheduler', () => {
     });
 
     it('should emit status change event', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'waiting' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'waiting' }));
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: 'job-1',
           previousStatus: 'waiting',
           newStatus: 'cancelled',
         })
@@ -839,10 +841,10 @@ describe('Scheduler', () => {
     });
 
     it('should process queue after cancelling a running job', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'running' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'running' }));
       vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
       // processJobQueue should have been called
       // It calls getSchedulerState at least once for the emitStateChange in cancelJob,
@@ -851,11 +853,11 @@ describe('Scheduler', () => {
     });
 
     it('should not process queue after cancelling a non-running job', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-1', status: 'draft' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1', status: 'draft' }));
       // Reset to track only calls after cancel
       vi.mocked(storage.getSchedulerState).mockClear();
 
-      await scheduler.cancelJob('task-1');
+      await scheduler.cancelJob('job-1');
 
       // getSchedulerState should NOT be called for processJobQueue
       // (it may be called for emitStateChange, but only if status was running)
@@ -886,7 +888,7 @@ describe('Scheduler', () => {
     });
 
     it('should not process when a job is already running', async () => {
-      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: 'task-x' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: 'job-x' }));
 
       await scheduler.processJobQueue();
 
@@ -1000,23 +1002,23 @@ describe('Scheduler', () => {
     });
 
     it('should trigger a scheduled job when job alarm fires', async () => {
-      const job = createMockJob({ id: 'task-abc', status: 'scheduled' });
+      const job = createMockJob({ id: 'job-abc', status: 'scheduled' });
       vi.mocked(storage.getJob)
         .mockResolvedValueOnce(job) // handleAlarm lookup
         .mockResolvedValueOnce(job) // triggerJob lookup
         .mockResolvedValueOnce(job); // executeJob lookup
       vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
 
-      await scheduler.handleAlarm('scheduler-job-task-abc');
+      await scheduler.handleAlarm('scheduler-job-job-abc');
 
       // triggerJob should clear alarm for scheduled jobs
-      expect(alarms.clearJobAlarm).toHaveBeenCalledWith('task-abc');
+      expect(alarms.clearJobAlarm).toHaveBeenCalledWith('job-abc');
     });
 
     it('should not trigger if job is not in scheduled status', async () => {
-      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'task-abc', status: 'completed' }));
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-abc', status: 'completed' }));
 
-      await scheduler.handleAlarm('scheduler-job-task-abc');
+      await scheduler.handleAlarm('scheduler-job-job-abc');
 
       // Should not attempt to trigger
       expect(alarms.clearJobAlarm).not.toHaveBeenCalled();
@@ -1025,7 +1027,7 @@ describe('Scheduler', () => {
     it('should not trigger if job is not found', async () => {
       vi.mocked(storage.getJob).mockResolvedValue(null);
 
-      await scheduler.handleAlarm('scheduler-job-task-abc');
+      await scheduler.handleAlarm('scheduler-job-job-abc');
 
       expect(alarms.clearJobAlarm).not.toHaveBeenCalled();
     });
@@ -1222,11 +1224,11 @@ describe('Scheduler', () => {
 
   describe('emitStatusChange (private)', () => {
     it('should call emitter with correct event payload', () => {
-      (scheduler as any).emitStatusChange('task-1', 'draft', 'running');
+      (scheduler as any).emitStatusChange('job-1', 'draft', 'running');
 
       expect(emitter).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: 'job-1',
           previousStatus: 'draft',
           newStatus: 'running',
           timestamp: expect.any(Number),
@@ -1246,22 +1248,23 @@ describe('Scheduler', () => {
   // =========================================================================
 
   describe('emitStateChange (private)', () => {
-    it('should emit state with isPaused and currentJobId', async () => {
-      vi.mocked(storage.getSchedulerState).mockResolvedValue(
-        createMockState({ isPaused: true, currentJobId: 'task-x' })
-      );
-
-      await (scheduler as any).emitStateChange();
+    it('should emit state with isPaused and currentJobId', () => {
+      (scheduler as any).emitStateChange({ isPaused: true, currentJobId: 'job-x' });
 
       expect(emitter).toHaveBeenCalledWith({
         isPaused: true,
-        currentJobId: 'task-x',
+        currentJobId: 'job-x',
       });
     });
 
-    it('should not throw when emitter is null', async () => {
+    it('should not throw when emitter is null', () => {
       const s = new Scheduler(storage, alarms);
-      await expect((s as any).emitStateChange()).resolves.toBeUndefined();
+      expect(() => (s as any).emitStateChange({ isPaused: false, currentJobId: null })).not.toThrow();
+    });
+
+    it('should not emit when no state argument is provided', () => {
+      (scheduler as any).emitStateChange();
+      expect(emitter).not.toHaveBeenCalled();
     });
   });
 
@@ -1271,35 +1274,35 @@ describe('Scheduler', () => {
 
   describe('cleanupJobSession (private)', () => {
     it('should remove session from registry and jobSessions map', async () => {
-      (scheduler as any).jobSessions.set('task-1', 'session-abc');
+      (scheduler as any).jobSessions.set('job-1', 'session-abc');
 
-      await (scheduler as any).cleanupJobSession('task-1');
+      await (scheduler as any).cleanupJobSession('job-1');
 
       expect(registry.removeSession).toHaveBeenCalledWith('session-abc');
-      expect((scheduler as any).jobSessions.has('task-1')).toBe(false);
+      expect((scheduler as any).jobSessions.has('job-1')).toBe(false);
     });
 
     it('should do nothing if no session mapping exists', async () => {
-      await (scheduler as any).cleanupJobSession('task-nonexistent');
+      await (scheduler as any).cleanupJobSession('job-nonexistent');
       expect(registry.removeSession).not.toHaveBeenCalled();
     });
 
     it('should do nothing if registry is null', async () => {
       const s = new Scheduler(storage, alarms);
-      (s as any).jobSessions.set('task-1', 'session-abc');
+      (s as any).jobSessions.set('job-1', 'session-abc');
 
-      await (s as any).cleanupJobSession('task-1');
+      await (s as any).cleanupJobSession('job-1');
 
       // No registry, so removeSession should not be called
       expect(registry.removeSession).not.toHaveBeenCalled();
     });
 
     it('should not throw if removeSession fails', async () => {
-      (scheduler as any).jobSessions.set('task-1', 'session-err');
+      (scheduler as any).jobSessions.set('job-1', 'session-err');
       registry.removeSession.mockRejectedValue(new Error('Cleanup failed'));
 
       await expect(
-        (scheduler as any).cleanupJobSession('task-1')
+        (scheduler as any).cleanupJobSession('job-1')
       ).resolves.toBeUndefined();
     });
   });
@@ -1387,6 +1390,80 @@ describe('Scheduler', () => {
 
       await scheduler.scheduleJob('New scheduled job', futureTime);
       expect(alarms.createJobAlarm).toHaveBeenCalledWith('sched-2', futureTime);
+    });
+  });
+
+  // =========================================================================
+  // recoverStaleRunningJob
+  // =========================================================================
+
+  describe('recoverStaleRunningJob', () => {
+    it('should fail a stale running job and clear currentJobId', async () => {
+      const staleJob = createMockJob({ id: 'stale-1', status: 'running' });
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
+        createMockState({ currentJobId: 'stale-1' })
+      );
+      vi.mocked(storage.getJob).mockResolvedValue(staleJob);
+      vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
+
+      await scheduler.recoverStaleRunningJob();
+
+      // Should fail the stale job
+      expect(storage.updateJob).toHaveBeenCalledWith(
+        'stale-1',
+        expect.objectContaining({
+          status: 'failed',
+          error: expect.stringContaining('interrupted'),
+        })
+      );
+      // Should clear currentJobId
+      expect(storage.setSchedulerState).toHaveBeenCalledWith({ currentJobId: null });
+    });
+
+    it('should do nothing when no currentJobId in state', async () => {
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
+        createMockState({ currentJobId: null })
+      );
+
+      await scheduler.recoverStaleRunningJob();
+
+      expect(storage.updateJob).not.toHaveBeenCalled();
+      expect(storage.setSchedulerState).not.toHaveBeenCalled();
+    });
+
+    it('should clear stale currentJobId when job no longer exists', async () => {
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
+        createMockState({ currentJobId: 'gone-1' })
+      );
+      vi.mocked(storage.getJob).mockResolvedValue(null);
+      vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
+
+      await scheduler.recoverStaleRunningJob();
+
+      expect(storage.setSchedulerState).toHaveBeenCalledWith({ currentJobId: null });
+    });
+
+    it('should drain the queue after recovering a stale job', async () => {
+      const staleJob = createMockJob({ id: 'stale-2', status: 'running' });
+      const waitingJob = createMockJob({ id: 'waiting-1', status: 'waiting' });
+
+      vi.mocked(storage.getSchedulerState)
+        .mockResolvedValueOnce(createMockState({ currentJobId: 'stale-2' })) // recoverStaleRunningJob reads state
+        .mockResolvedValueOnce(createMockState({ currentJobId: null })); // processJobQueue reads state
+
+      vi.mocked(storage.getJob)
+        .mockResolvedValueOnce(staleJob) // recover reads stale job
+        .mockResolvedValueOnce(waitingJob); // executeJob reads next job
+
+      vi.mocked(storage.getNextJobInQueue).mockResolvedValueOnce(waitingJob);
+
+      await scheduler.recoverStaleRunningJob();
+
+      // Should have started the waiting job
+      expect(storage.updateJob).toHaveBeenCalledWith(
+        'waiting-1',
+        expect.objectContaining({ status: 'running' })
+      );
     });
   });
 });

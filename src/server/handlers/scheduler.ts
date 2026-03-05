@@ -8,7 +8,7 @@
  */
 
 import { registerMethodHandler, type MethodContext } from '@pi/ws-server';
-import { invalidRequest, notFound } from '@pi/ws-server';
+import { invalidRequest } from '@pi/ws-server';
 import type { Scheduler } from '../../core/scheduler/Scheduler';
 import type { ISchedulerStorage } from '../../core/models/types/SchedulerContracts';
 import type { JobResultRecord } from '../../core/models/types/Scheduler';
@@ -222,9 +222,22 @@ async function handleGetArchivedJobs(
   _ctx: MethodContext
 ): Promise<unknown> {
   const { storage } = getDeps();
-  const limit = (params?.limit as number) ?? 50;
-  const offset = (params?.offset as number) ?? 0;
-  const jobs = await storage.getArchivedJobs(limit, offset);
+  const rawLimit = params?.limit;
+  const rawOffset = params?.offset;
+
+  // Validate and clamp limit/offset
+  const limit = typeof rawLimit === 'number' && rawLimit > 0
+    ? Math.min(Math.floor(rawLimit), 200)
+    : 50;
+  const offset = typeof rawOffset === 'number' && rawOffset >= 0
+    ? Math.floor(rawOffset)
+    : 0;
+
+  const [jobs, total] = await Promise.all([
+    storage.getArchivedJobs(limit, offset),
+    storage.getArchivedJobsCount(),
+  ]);
+
   return {
     jobs: jobs.map(j => ({
       id: j.id,
@@ -235,8 +248,8 @@ async function handleGetArchivedJobs(
       sessionId: j.sessionId,
       error: j.error,
     })),
-    total: jobs.length,
-    hasMore: jobs.length === limit,
+    total,
+    hasMore: offset + jobs.length < total,
   };
 }
 

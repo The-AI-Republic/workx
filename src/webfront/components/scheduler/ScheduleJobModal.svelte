@@ -115,9 +115,9 @@
     const scheduledTime = getScheduledTimestamp();
     const now = Date.now();
 
-    // Must be at least 1 minute in the future
-    if (scheduledTime <= now + 60000) {
-      errorMessage = t('Scheduled time must be at least 1 minute in the future');
+    // Must be at least 30 seconds in the future
+    if (scheduledTime <= now + 30000) {
+      errorMessage = t('Scheduled time must be at least 30 seconds in the future');
       return;
     }
 
@@ -229,7 +229,7 @@
               : 'text-term-dim-green'}"
           >{$_t('Quick Schedule')}:</span>
           <div class="flex gap-2 flex-wrap">
-            {#each [{ min: 5, label: '5m' }, { min: 15, label: '15m' }, { min: 30, label: '30m' }, { min: 60, label: '1h' }, { min: 180, label: '3h' }, { min: 1440, label: '24h' }] as btn}
+            {#each [{ min: 2, label: '2m' }, { min: 5, label: '5m' }, { min: 15, label: '15m' }, { min: 30, label: '30m' }, { min: 60, label: '1h' }, { min: 180, label: '3h' }, { min: 1440, label: '24h' }] as btn}
               <button
                 class="py-1.5 px-3 text-sm bg-transparent rounded cursor-pointer transition-all duration-200
                   {currentTheme === 'modern'

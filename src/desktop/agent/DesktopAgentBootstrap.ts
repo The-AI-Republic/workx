@@ -356,18 +356,18 @@ export class DesktopAgentBootstrap {
 
   /**
    * Initialize the scheduler for desktop mode.
-   * Uses IndexedDB via SchedulerStorage + hybrid DesktopSchedulerAlarms.
+   * Uses platform-aware StorageAdapter + hybrid DesktopSchedulerAlarms.
    */
   private async initializeScheduler(): Promise<void> {
     try {
-      // Desktop reuses IndexedDB-based SchedulerStorage (same as extension)
-      const { IndexedDBAdapter } = await import('@/storage/IndexedDBAdapter');
+      // Use platform-aware StorageAdapter factory (IndexedDB/SQLite/Node depending on build)
+      const { createStorageAdapter } = await import('@/storage/createStorageAdapter');
       const { SchedulerStorage } = await import('@/core/scheduler/SchedulerStorage');
 
-      const indexedDBAdapter = new IndexedDBAdapter();
-      await indexedDBAdapter.initialize();
+      const storageAdapter = await createStorageAdapter();
+      await storageAdapter.initialize();
 
-      const schedulerStorage = new SchedulerStorage(indexedDBAdapter);
+      const schedulerStorage = new SchedulerStorage(storageAdapter);
 
       // Create hybrid alarms (in-process timers + OS-level jobs)
       this.schedulerAlarms = new DesktopSchedulerAlarms();
@@ -380,25 +380,26 @@ export class DesktopAgentBootstrap {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // Wire event emitter → dispatch via channel system
-      const channelManager = getChannelManager();
-      this.scheduler.setEventEmitter((event) => {
-        if (this.channel) {
-          channelManager.dispatchEvent(
-            { type: 'scheduler.event', ...event } as any,
-            this.channel.channelId
-          ).catch((error) => {
-            console.error('[DesktopAgentBootstrap] Failed to dispatch scheduler event:', error);
+      // Wire event emitter → dispatch via pi:message so TauriMessageService
+      // routes it to SCHEDULER_EVENT handlers in the UI (Main.svelte)
+      this.scheduler.setEventEmitter(async (event) => {
+        try {
+          const { emit } = await import('@tauri-apps/api/event');
+          await emit('pi:message', {
+            type: MessageType.SCHEDULER_EVENT,
+            payload: event,
           });
+        } catch (error) {
+          console.error('[DesktopAgentBootstrap] Failed to emit scheduler event:', error);
         }
       });
 
-      // Wire job launcher — show window and submit to agent
+      // Wire job launcher — show window and dispatch event for Main.svelte to execute
+      // Desktop uses a DOM event (same process) instead of extension's chrome.tabs.create
       this.scheduler.setJobLauncher(async (jobId, sessionId) => {
         console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
-        // Show the main window for the job
+        // Show the main window
         try {
-          const { invoke } = await import('@tauri-apps/api/core');
           const { getCurrentWindow } = await import('@tauri-apps/api/window');
           const win = getCurrentWindow();
           await win.show();
@@ -406,6 +407,10 @@ export class DesktopAgentBootstrap {
         } catch {
           // Non-fatal — window may already be visible
         }
+        // Dispatch DOM event so Main.svelte can execute the job without page reload
+        window.dispatchEvent(new CustomEvent('scheduler:launch-job', {
+          detail: { jobId, sessionId },
+        }));
       });
 
       // Wire notification handler via Tauri notification plugin
@@ -436,6 +441,9 @@ export class DesktopAgentBootstrap {
         const jobs = await schedulerStorage.getScheduledJobs();
         return jobs.map(j => ({ id: j.id, scheduledTime: j.scheduledTime }));
       });
+
+      // Recover stale running jobs from previous app session
+      await this.scheduler.recoverStaleRunningJob();
 
       // Detect missed jobs and start queue processor
       const missedJobs = await this.scheduler.detectMissedJobs();
