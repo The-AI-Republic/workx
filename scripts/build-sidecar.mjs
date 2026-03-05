@@ -163,3 +163,15 @@ for (const target of targets) {
   console.log(`\n✓ Sidecar built: ${outputPath}`);
   console.log('  (Launcher extracts chrome-devtools-mcp at runtime and runs it with system Node.js)\n');
 }
+
+// On macOS, create a universal binary via lipo for Tauri's bundler
+// (--target universal-apple-darwin expects a binary named with that triple).
+if (process.platform === 'darwin') {
+  const arm64Bin = path.join(binDir, 'chrome-devtools-mcp-aarch64-apple-darwin');
+  const x64Bin = path.join(binDir, 'chrome-devtools-mcp-x86_64-apple-darwin');
+  const universalBin = path.join(binDir, 'chrome-devtools-mcp-universal-apple-darwin');
+  console.log('Creating universal binary via lipo...');
+  execSync(`lipo -create -output "${universalBin}" "${arm64Bin}" "${x64Bin}"`, { stdio: 'inherit' });
+  fs.chmodSync(universalBin, 0o755);
+  console.log(`✓ Universal sidecar: ${universalBin}`);
+}
