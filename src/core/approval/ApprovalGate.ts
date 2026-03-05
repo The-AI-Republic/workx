@@ -190,12 +190,8 @@ export class ApprovalGate {
       return 'auto_approve';
     }
 
-    if (decision === 'deny') {
-      await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', assessment.factors);
-      return 'deny';
-    }
-
     // decision === 'ask_user': delegate to ApprovalManager
+    // ('deny' is already handled by the early return after ruleDecision check above)
     const approvalRequest: ApprovalRequest = {
       id: `approval_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       type: this.mapToolToApprovalType(toolName),
