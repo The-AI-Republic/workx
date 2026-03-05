@@ -66,6 +66,13 @@ export class Scheduler {
   ) {}
 
   /**
+   * Get the storage adapter (for direct queries from message handlers)
+   */
+  getStorage(): ISchedulerStorage {
+    return this.storage;
+  }
+
+  /**
    * Feature 015: Set the AgentRegistry for creating isolated sessions
    */
   setRegistry(registry: AgentRegistry): void {

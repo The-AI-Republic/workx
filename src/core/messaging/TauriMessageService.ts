@@ -24,8 +24,20 @@ import type {
 import type { EventMsg } from '../protocol/events';
 import type { Op } from '../protocol/types';
 import type { Skill, InvocationMode } from '../skills/types';
+import type { SchedulerJobRecord } from '../models/types/Scheduler';
 
 import { isPayloadRef, retrievePayload } from '@/desktop/channels/LargePayloadStore';
+
+/** Map a SchedulerJobRecord to a summary object for UI */
+function toJobSummary(j: SchedulerJobRecord) {
+  return {
+    id: j.id,
+    input: j.input.slice(0, 100),
+    scheduledTime: j.scheduledTime,
+    status: j.status,
+    createdAt: j.createdAt,
+  };
+}
 
 // Tauri API types (loaded dynamically)
 type TauriEmit = (event: string, payload?: unknown) => Promise<void>;
@@ -168,6 +180,23 @@ export class TauriMessageService implements IMessageService {
       case MessageType.SKILLS_EXPORT:
       case MessageType.SKILLS_TRUST:
         return this.handleSkillsMessage(type, payload) as T;
+
+      case MessageType.SCHEDULER_CREATE_DRAFT_JOB:
+      case MessageType.SCHEDULER_SCHEDULE_JOB:
+      case MessageType.SCHEDULER_TRIGGER_JOB:
+      case MessageType.SCHEDULER_CANCEL_JOB:
+      case MessageType.SCHEDULER_COMPLETE_JOB:
+      case MessageType.SCHEDULER_FAIL_JOB:
+      case MessageType.SCHEDULER_PAUSE_QUEUE:
+      case MessageType.SCHEDULER_RESUME_QUEUE:
+      case MessageType.SCHEDULER_GET_DRAFT_JOBS:
+      case MessageType.SCHEDULER_GET_SCHEDULED_JOBS:
+      case MessageType.SCHEDULER_GET_MISSED_JOBS:
+      case MessageType.SCHEDULER_GET_QUEUE:
+      case MessageType.SCHEDULER_GET_ARCHIVED_JOBS:
+      case MessageType.SCHEDULER_GET_STATE:
+      case MessageType.SCHEDULER_GET_JOB_DETAILS:
+        return this.handleSchedulerMessage(type, payload) as T;
 
       default:
         // For other message types, emit as event and return success
@@ -389,6 +418,121 @@ export class TauriMessageService implements IMessageService {
 
       default:
         return { success: false, error: `Unknown skills message type: ${type}` };
+    }
+  }
+
+  /**
+   * Handle SCHEDULER_* messages by delegating to the Scheduler instance
+   */
+  private async handleSchedulerMessage(type: MessageType, payload: unknown): Promise<unknown> {
+    const bootstrap = await getAgentBootstrap();
+    const scheduler = bootstrap.getScheduler();
+    if (!scheduler) {
+      throw new Error('Scheduler not initialized');
+    }
+    const storage = scheduler.getStorage();
+
+    switch (type) {
+      case MessageType.SCHEDULER_CREATE_DRAFT_JOB: {
+        const { input } = payload as { input: string };
+        const jobId = await scheduler.createDraftJob(input);
+        return { success: true, jobId };
+      }
+
+      case MessageType.SCHEDULER_SCHEDULE_JOB: {
+        const { input, jobId, scheduledTime } = payload as { input?: string; jobId?: string; scheduledTime: number };
+        if (jobId) {
+          await scheduler.scheduleExistingJob(jobId, scheduledTime);
+          return { success: true, jobId };
+        } else if (input) {
+          const newJobId = await scheduler.scheduleJob(input, scheduledTime);
+          return { success: true, jobId: newJobId };
+        } else {
+          return { success: false, error: 'Either input or jobId is required' };
+        }
+      }
+
+      case MessageType.SCHEDULER_TRIGGER_JOB: {
+        const { jobId } = payload as { jobId: string };
+        await scheduler.triggerJob(jobId);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULER_CANCEL_JOB: {
+        const { jobId } = payload as { jobId: string };
+        await scheduler.cancelJob(jobId);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULER_COMPLETE_JOB: {
+        const { jobId, result } = payload as { jobId: string; result: any };
+        await scheduler.completeJob(jobId, result);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULER_FAIL_JOB: {
+        const { jobId, error } = payload as { jobId: string; error: string };
+        await scheduler.failJob(jobId, error);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULER_PAUSE_QUEUE:
+        await scheduler.pauseJobQueue();
+        return { success: true };
+
+      case MessageType.SCHEDULER_RESUME_QUEUE:
+        await scheduler.resumeJobQueue();
+        return { success: true };
+
+      case MessageType.SCHEDULER_GET_DRAFT_JOBS: {
+        const jobs = await storage.getDraftJobs();
+        return { jobs: jobs.map(toJobSummary) };
+      }
+
+      case MessageType.SCHEDULER_GET_SCHEDULED_JOBS: {
+        const jobs = await storage.getScheduledJobs();
+        return { jobs: jobs.map(toJobSummary) };
+      }
+
+      case MessageType.SCHEDULER_GET_MISSED_JOBS: {
+        const jobs = await storage.getMissedJobs();
+        return { jobs: jobs.map(toJobSummary) };
+      }
+
+      case MessageType.SCHEDULER_GET_QUEUE: {
+        const jobs = await storage.getJobQueueJobs();
+        return { jobs: jobs.map(toJobSummary) };
+      }
+
+      case MessageType.SCHEDULER_GET_ARCHIVED_JOBS: {
+        const { limit = 50, offset = 0 } = (payload || {}) as { limit?: number; offset?: number };
+        const jobs = await storage.getArchivedJobs(limit, offset);
+        return {
+          jobs: jobs.map((j: SchedulerJobRecord) => ({
+            id: j.id,
+            input: j.input.slice(0, 100),
+            scheduledTime: j.scheduledTime,
+            completedAt: j.completedAt,
+            status: j.status,
+            sessionId: j.sessionId,
+            error: j.error,
+          })),
+          total: jobs.length,
+          hasMore: jobs.length === limit,
+        };
+      }
+
+      case MessageType.SCHEDULER_GET_STATE:
+        return scheduler.getSchedulerState();
+
+      case MessageType.SCHEDULER_GET_JOB_DETAILS: {
+        const { jobId } = payload as { jobId: string };
+        const job = await storage.getJob(jobId);
+        return { job };
+      }
+
+      default:
+        return { success: false, error: `Unknown scheduler message type: ${type}` };
     }
   }
 
