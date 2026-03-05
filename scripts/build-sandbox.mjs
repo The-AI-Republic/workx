@@ -47,7 +47,7 @@ if (process.platform !== 'win32') {
   const binDir = path.join(root, 'tauri', 'binaries');
   fs.mkdirSync(binDir, { recursive: true });
   const triples = process.platform === 'darwin'
-    ? ['aarch64-apple-darwin', 'x86_64-apple-darwin']
+    ? ['aarch64-apple-darwin', 'x86_64-apple-darwin', 'universal-apple-darwin']
     : [mapping.triple];
   for (const triple of triples) {
     const placeholder = path.join(binDir, `windows-sandbox-${triple}`);
