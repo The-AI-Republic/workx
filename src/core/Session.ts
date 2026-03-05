@@ -29,6 +29,9 @@ import type { CompactionResult, CompactionTrigger } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
 import type { ModelClient } from './models/ModelClient';
 
+// Memory system
+import type { MemoryService } from './memory/MemoryService';
+
 // Title generation imports
 import { TitleGenerator } from './title';
 
@@ -64,6 +67,7 @@ export class Session {
   private interruptRequested: boolean = false;
   private compactService: CompactService;
   private titleGenerator: TitleGenerator;
+  private _memoryService: MemoryService | null = null;
   // Title generation stage: 0 = not started, 1 = generated at 2 messages, 2 = generated at 5 messages (final)
   private titleGenerationStage: number = 0;
   private initializationPromise: Promise<void> | null = null;
@@ -746,6 +750,20 @@ export class Session {
    */
   setTabId(tabId: number): void {
     this.sessionState.setTabId(tabId);
+  }
+
+  /**
+   * Get the memory service (null if memory is disabled or unsupported)
+   */
+  getMemoryService(): MemoryService | null {
+    return this._memoryService;
+  }
+
+  /**
+   * Set the memory service (called during initialization)
+   */
+  setMemoryService(service: MemoryService | null): void {
+    this._memoryService = service;
   }
 
   /**

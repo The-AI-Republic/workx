@@ -69,6 +69,8 @@ const EXPECTED_CLIENT_FILES = [
   'FireworksClient.ts',
   'FireworksChatCompletionClient.ts',
   'TogetherChatCompletionClient.ts',
+  'OpenAIEmbeddingProvider.ts',
+  'GoogleEmbeddingProvider.ts',
 ];
 
 // ---------------------------------------------------------------------------

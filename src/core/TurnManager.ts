@@ -18,6 +18,7 @@ import type { IToolsConfig } from '../config/types';
 import { mapResponseItemToEventMessages } from './events/EventMapping';
 import type { ResponseItem } from './protocol/types';
 import { WebSearchTool } from '../tools/WebSearchTool';
+import { SEARCH_MEMORY_TOOL } from '../tools/MemorySearchTool';
 
 /**
  * Optional MCP capability interface for sessions that support MCP tools.
@@ -121,10 +122,24 @@ export class TurnManager {
     // Build tools list from turn context
     const tools = await this.buildToolsFromContext();
 
+    // Inject global memory context into base instructions (read path)
+    let baseInstructions = this.turnContext.getBaseInstructions();
+    const memoryService = this.session.getMemoryService();
+    if (memoryService) {
+      try {
+        const memoryContext = await memoryService.getFormattedGlobalContext();
+        if (memoryContext) {
+          baseInstructions = (baseInstructions ?? '') + '\n\n' + memoryContext;
+        }
+      } catch (err) {
+        console.warn('[TurnManager] Memory recall failed (non-critical):', err);
+      }
+    }
+
     const prompt: ModelPrompt = {
       input,
       tools,
-      base_instructions_override: this.turnContext.getBaseInstructions(),
+      base_instructions_override: baseInstructions,
       user_instructions: this.turnContext.getUserInstructions(),
     };
 
@@ -236,6 +251,9 @@ export class TurnManager {
           case 'Completed': {
             // Stream completed with final token usage
             totalTokenUsage = event.tokenUsage;
+
+            // Fire-and-forget memory extraction (write path)
+            this.fireMemoryExtraction(processedItems);
 
             return {
               processedItems,
@@ -354,6 +372,14 @@ export class TurnManager {
           },
         },
       });
+    }
+
+    // Add search_memory tool if memory service is available
+    if (this.session.getMemoryService()) {
+      const hasSearchMemory = tools.some(t => t.type === 'function' && t.function.name === 'search_memory');
+      if (!hasSearchMemory) {
+        tools.push(SEARCH_MEMORY_TOOL);
+      }
     }
 
     // Add MCP tools if enabled and available
@@ -618,6 +644,24 @@ export class TurnManager {
         case 'web_search':
           result = await this.executeWebSearch(parsedParams.query);
           break;
+
+        case 'search_memory': {
+          const ms = this.session.getMemoryService();
+          if (!ms) {
+            result = { results: [], message: 'Memory system not available' };
+          } else {
+            const memories = await ms.searchTopical(
+              parsedParams.query,
+              { userId: this.turnContext.getSessionId() }
+            );
+            result = memories.map(m => ({
+              fact: m.fact.factText,
+              category: m.fact.category,
+              relevance: m.distance,
+            }));
+          }
+          break;
+        }
 
         default: {
           // Check ToolRegistry for browser tools BEFORE falling back to MCP
@@ -1072,6 +1116,46 @@ export class TurnManager {
     }
 
     return undefined;
+  }
+
+  /**
+   * Fire-and-forget memory extraction from the completed turn's items.
+   * Extracts user and assistant messages, sends them to MemoryService.
+   */
+  private fireMemoryExtraction(processedItems: ProcessedResponseItem[]): void {
+    const memoryService = this.session.getMemoryService();
+    if (!memoryService) return;
+
+    // Collect user and assistant messages from this turn
+    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    for (const pi of processedItems) {
+      const item = pi.item;
+      if (item?.type === 'message' && item.role && typeof item.content === 'string') {
+        if (item.role === 'user' || item.role === 'assistant') {
+          messages.push({ role: item.role, content: item.content });
+        }
+      }
+      // Handle content arrays (e.g., [{type: 'output_text', text: '...'}])
+      if (item?.type === 'message' && Array.isArray(item.content)) {
+        const text = item.content
+          .filter((c: any) => c.type === 'output_text' || c.type === 'input_text')
+          .map((c: any) => c.text)
+          .join('\n');
+        if (text && (item.role === 'user' || item.role === 'assistant')) {
+          messages.push({ role: item.role, content: text });
+        }
+      }
+    }
+
+    if (messages.length === 0) return;
+
+    void memoryService
+      .processConversation(messages, {
+        userId: this.turnContext.getSessionId(),
+      })
+      .catch((err) =>
+        console.warn('[TurnManager] Memory extraction failed (non-critical):', err)
+      );
   }
 
   /**
