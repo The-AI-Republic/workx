@@ -40,14 +40,19 @@ if (!mapping) {
 
 if (process.platform !== 'win32') {
   console.log('windows-sandbox is Windows-only, skipping build.');
-  // Create an empty placeholder so Tauri bundler doesn't fail on the
+  // Create empty placeholders so Tauri bundler doesn't fail on the
   // missing externalBin entry. The file is never executed on non-Windows.
+  // On macOS, create placeholders for BOTH architectures so that
+  // universal builds (--target universal-apple-darwin) succeed.
   const binDir = path.join(root, 'tauri', 'binaries');
   fs.mkdirSync(binDir, { recursive: true });
-  const placeholder = path.join(binDir, `windows-sandbox-${mapping.triple}${mapping.ext}`);
-  if (!fs.existsSync(placeholder)) {
-    fs.writeFileSync(placeholder, '');
-    if (mapping.ext === '') {
+  const triples = process.platform === 'darwin'
+    ? ['aarch64-apple-darwin', 'x86_64-apple-darwin']
+    : [mapping.triple];
+  for (const triple of triples) {
+    const placeholder = path.join(binDir, `windows-sandbox-${triple}`);
+    if (!fs.existsSync(placeholder)) {
+      fs.writeFileSync(placeholder, '');
       fs.chmodSync(placeholder, 0o755);
     }
   }
