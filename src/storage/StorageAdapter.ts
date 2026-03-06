@@ -21,6 +21,7 @@ export const STORE_KEY_PATHS: Record<string, string> = {
   rollout_cache: 'key',
   scheduler_jobs: 'id',
   agent_sessions: 'sessionId',
+  token_usage_records: 'id',
 };
 
 /**
@@ -53,6 +54,7 @@ export const INDEX_FIELD_MAP: Record<string, string | string[]> = {
   by_created_at: 'createdAt',
   by_type: 'type',
   by_state: 'state',
+  by_model: 'model',
 };
 
 /**

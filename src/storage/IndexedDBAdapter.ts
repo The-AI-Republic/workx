@@ -21,7 +21,7 @@ import type { StorageAdapter } from './StorageAdapter';
  * IndexedDB database constants
  */
 export const DB_NAME = 'applepi_cache';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /**
  * Object store names
@@ -38,7 +38,9 @@ export const STORE_NAMES = {
   /** Scheduler jobs */
   SCHEDULER_JOBS: 'scheduler_jobs',
   /** Feature 015: Agent session persistence */
-  AGENT_SESSIONS: 'agent_sessions'
+  AGENT_SESSIONS: 'agent_sessions',
+  /** Token usage records per task */
+  TOKEN_USAGE_RECORDS: 'token_usage_records'
 } as const;
 
 /**
@@ -55,7 +57,11 @@ export const INDEX_NAMES = {
   SCHEDULER_BY_STATUS: 'by_status',
   SCHEDULER_BY_SCHEDULED_TIME: 'by_scheduled_time',
   SCHEDULER_BY_STATUS_TIME: 'by_status_time',
-  SCHEDULER_BY_CREATED_AT: 'by_created_at'
+  SCHEDULER_BY_CREATED_AT: 'by_created_at',
+  /** Token usage indexes */
+  TOKEN_USAGE_BY_SESSION: 'by_session',
+  TOKEN_USAGE_BY_TIMESTAMP: 'by_timestamp',
+  TOKEN_USAGE_BY_MODEL: 'by_model'
 } as const;
 
 /**
@@ -248,6 +254,33 @@ export class IndexedDBAdapter implements StorageAdapter {
             agentSessionsStore.createIndex(
               'by_state',
               'state',
+              { unique: false }
+            );
+          }
+        }
+
+        // Version 4: Token usage records store
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains(STORE_NAMES.TOKEN_USAGE_RECORDS)) {
+            const tokenUsageStore = db.createObjectStore(STORE_NAMES.TOKEN_USAGE_RECORDS, {
+              keyPath: 'id'
+            });
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_SESSION,
+              'sessionId',
+              { unique: false }
+            );
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_TIMESTAMP,
+              'timestamp',
+              { unique: false }
+            );
+
+            tokenUsageStore.createIndex(
+              INDEX_NAMES.TOKEN_USAGE_BY_MODEL,
+              'model',
               { unique: false }
             );
           }

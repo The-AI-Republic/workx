@@ -19,6 +19,8 @@ import type {
 } from './protocol/events';
 import type { CompactionResult } from './compact/types';
 import { estimateRequestTokens } from './compact/utils';
+import { TokenUsageStore } from '@/storage/TokenUsageStore';
+import type { TokenUsageRecord } from '@/storage/types';
 
 /**
  * Task state for tracking execution
@@ -215,6 +217,9 @@ export class TaskRunner {
           );
         }
         await this.emitAbortedEvent(outcome.abortedReason);
+
+        // Fire-and-forget: persist partial token usage for aborted tasks
+        this.persistTokenUsage(outcome.tokenUsage.total, outcome.turnCount);
 
         return {
           success: false,
@@ -456,6 +461,29 @@ export class TaskRunner {
       type: 'TaskComplete',
       data,
     });
+
+    // Fire-and-forget: persist token usage record
+    this.persistTokenUsage(outcome.tokenUsage.total, outcome.turnCount);
+  }
+
+  private persistTokenUsage(total: TokenUsage | undefined, turnCount: number): void {
+    const usage = total ?? { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };
+    const record: TokenUsageRecord = {
+      id: `${this.session.getSessionId()}_${this.submissionId}_${Date.now()}`,
+      sessionId: this.session.getSessionId(),
+      taskId: this.submissionId,
+      model: this.turnContext.getModel(),
+      timestamp: new Date().toISOString(),
+      input_tokens: usage.input_tokens,
+      cached_input_tokens: usage.cached_input_tokens,
+      output_tokens: usage.output_tokens,
+      reasoning_output_tokens: usage.reasoning_output_tokens,
+      total_tokens: usage.total_tokens,
+      turn_count: turnCount,
+    };
+    TokenUsageStore.getInstance().save(record).catch((err) =>
+      console.warn('[TaskRunner] Token usage save failed:', err)
+    );
   }
 
   private async emitErrorEvent(message: string): Promise<void> {
