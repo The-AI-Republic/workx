@@ -9,18 +9,19 @@ import type {
   MemorySearchResult,
 } from '@/core/memory/types';
 
+// C1 fix: Rust uses #[serde(rename_all = "camelCase")] so fields arrive as camelCase
 interface TauriMemoryFactRow {
   id: string;
-  fact_text: string;
+  factText: string;
   category: string;
-  user_id: string | null;
-  agent_id: string | null;
-  session_id: string | null;
-  content_hash: string;
-  created_at: number;
-  updated_at: number;
-  last_accessed_at: number;
-  access_count: number;
+  userId: string | null;
+  agentId: string | null;
+  sessionId: string | null;
+  contentHash: string;
+  createdAt: number;
+  updatedAt: number;
+  lastAccessedAt: number;
+  accessCount: number;
   metadata: string | null;
 }
 
@@ -30,29 +31,29 @@ interface TauriMemorySearchRow extends TauriMemoryFactRow {
 
 interface TauriMemoryHistoryRow {
   id: string;
-  memory_id: string;
+  memoryId: string;
   event: string;
-  old_content: string | null;
-  new_content: string | null;
+  oldContent: string | null;
+  newContent: string | null;
   timestamp: number;
 }
 
 function rowToFact(row: TauriMemoryFactRow): MemoryFact {
   return {
     id: row.id,
-    factText: row.fact_text,
+    factText: row.factText,
     category: row.category as MemoryCategory,
     scope: {
-      userId: row.user_id ?? undefined,
-      agentId: row.agent_id ?? undefined,
-      sessionId: row.session_id ?? undefined,
+      userId: row.userId ?? undefined,
+      agentId: row.agentId ?? undefined,
+      sessionId: row.sessionId ?? undefined,
     },
-    contentHash: row.content_hash,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    lastAccessedAt: row.last_accessed_at,
-    accessCount: row.access_count,
-    metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+    contentHash: row.contentHash,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    lastAccessedAt: row.lastAccessedAt,
+    accessCount: row.accessCount,
+    metadata: row.metadata ? (() => { try { return JSON.parse(row.metadata!); } catch { return undefined; } })() : undefined,
   };
 }
 
@@ -67,7 +68,8 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     // Use platform-specific data directory for the memory DB
     const { appDataDir } = await import('@tauri-apps/api/path');
     const dataDir = await appDataDir();
-    this.dbPath = `${dataDir}memory.db`;
+    const { join } = await import('@tauri-apps/api/path');
+    this.dbPath = await join(dataDir, 'memory.db');
 
     await invoke('memory_init', {
       dbPath: this.dbPath,
@@ -182,6 +184,14 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     await invoke('memory_migrate_dimensions', { newDimensions });
   }
 
+  async setMigrationStatus(status: 'COMPLETE' | 'PENDING'): Promise<void> {
+    await invoke('memory_set_migration_status', { status });
+  }
+
+  async getMigrationStatus(): Promise<'COMPLETE' | 'PENDING'> {
+    return invoke<'COMPLETE' | 'PENDING'>('memory_get_migration_status');
+  }
+
   async close(): Promise<void> {
     await invoke('memory_close');
   }
@@ -206,10 +216,10 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     });
     return rows.map((row) => ({
       id: row.id,
-      memoryId: row.memory_id,
+      memoryId: row.memoryId,
       event: row.event as MemoryOperation['event'],
-      oldContent: row.old_content,
-      newContent: row.new_content,
+      oldContent: row.oldContent,
+      newContent: row.newContent,
       timestamp: row.timestamp,
     }));
   }
@@ -225,10 +235,10 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     });
     return rows.map((row) => ({
       id: row.id,
-      memoryId: row.memory_id,
+      memoryId: row.memoryId,
       event: row.event as MemoryOperation['event'],
-      oldContent: row.old_content,
-      newContent: row.new_content,
+      oldContent: row.oldContent,
+      newContent: row.newContent,
       timestamp: row.timestamp,
     }));
   }

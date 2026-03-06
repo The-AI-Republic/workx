@@ -12,14 +12,9 @@ import {
 import { CachedEmbeddingProvider } from './EmbeddingCache';
 import { MemoryService } from './MemoryService';
 import { createMemoryFileSystem } from './MemoryFileSystem';
-import { DEFAULT_MEMORY_CONFIG, type MemoryConfig } from './types';
-import type { MemoryStore, MemoryHistoryStore } from './MemoryStore';
+import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './types';
 
 declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
-
-interface LLMCaller {
-  complete(systemPrompt: string, userPrompt: string): Promise<string>;
-}
 
 export interface MemoryServiceInit {
   llmProvider: string;
@@ -41,17 +36,30 @@ export async function createMemoryService(
   }
 
   try {
+    // Select embedding provider first so we can use its config
+    const embeddingConfig = selectEmbeddingProvider(init.llmProvider);
+
+    // L2: Don't mutate — create a new config with auto-selected embedding values,
+    // but let user overrides take precedence
     const config: MemoryConfig = {
       ...DEFAULT_MEMORY_CONFIG,
+      embeddingDimensions: embeddingConfig.dimensions,
+      embeddingModel: embeddingConfig.model,
       ...init.config,
     };
 
     if (!config.enabled) return null;
 
-    // Select and create embedding provider
-    const embeddingConfig = selectEmbeddingProvider(init.llmProvider);
-    config.embeddingDimensions = embeddingConfig.dimensions;
-    config.embeddingModel = embeddingConfig.model;
+    // L3: Anthropic doesn't offer embeddings. If user is on Anthropic and has no
+    // separate OpenAI key, we can't create an embedding provider.
+    if (!init.apiKey) {
+      console.warn(`[Memory] Memory system disabled: no API key configured for embedding provider (${init.llmProvider})`);
+      return null;
+    }
+    if (init.llmProvider === 'anthropic') {
+      console.warn('[Memory] Anthropic does not offer embeddings. Memory system requires an OpenAI-compatible API key.');
+      return null;
+    }
 
     const rawProvider = await createEmbeddingProvider(
       embeddingConfig,
@@ -60,8 +68,13 @@ export async function createMemoryService(
     );
     const embeddingProvider = new CachedEmbeddingProvider(rawProvider);
 
-    // Create platform-specific memory store
-    const store = (await createMemoryStore()) as MemoryStore & MemoryHistoryStore;
+    // M5: createMemoryStore returns MemoryStore; all implementations also
+    // implement MemoryHistoryStore, but verify at runtime
+    const store = await createMemoryStore();
+    if (!('logOperation' in store)) {
+      console.warn('[Memory] Store does not implement MemoryHistoryStore');
+      return null;
+    }
     await store.initialize(config);
 
     // Create filesystem adapter for CoreMemoryManager
@@ -69,13 +82,18 @@ export async function createMemoryService(
 
     // Wire everything together
     const memoryService = new MemoryService(
-      store,
+      store as any, // Verified to have logOperation above
       embeddingProvider,
       init.llmCaller,
       fs,
       memoryDir,
       config
     );
+
+    // Run background migration check (non-blocking)
+    memoryService.checkAndRunMigration().catch(err => {
+      console.error('[Memory] Background migration check failed:', err);
+    });
 
     return memoryService;
   } catch (err) {

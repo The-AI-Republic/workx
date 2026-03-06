@@ -5,11 +5,7 @@
  */
 
 import conflictPrompt from './prompts/conflict.md?raw';
-import type { MemoryConfig, MemoryDecision, MemoryFact } from './types';
-
-interface LLMCaller {
-  complete(systemPrompt: string, userPrompt: string): Promise<string>;
-}
+import type { LLMCaller, MemoryConfig, MemoryDecision, MemoryFact } from './types';
 
 export class ConflictResolver {
   private llm: LLMCaller;
@@ -63,6 +59,15 @@ export class ConflictResolver {
       const response = await this.llm.complete(systemPrompt, '');
       const decisions = this.parseDecisions(response);
 
+      // H3: If parsing returned empty (garbled JSON), default to ADD rather than losing facts
+      if (decisions.length === 0) {
+        console.warn('[Memory] Conflict resolution returned no decisions, defaulting to ADD');
+        return newFacts.map((fact) => ({
+          fact,
+          action: 'ADD' as const,
+        }));
+      }
+
       // Map integer IDs back to real UUIDs
       return decisions.map((d) => {
         if (d.memoryId) {
@@ -81,8 +86,10 @@ export class ConflictResolver {
 
   private parseDecisions(response: string): MemoryDecision[] {
     try {
-      const jsonMatch = response.match(/\{[\s\S]*"decisions"[\s\S]*\}/);
+      // Match JSON object containing "decisions" array, avoiding greedy capture
+      const jsonMatch = response.match(/\{[^{}]*"decisions"\s*:\s*\[[\s\S]*?\]\s*\}/);
       if (!jsonMatch) {
+        // H3: Fall back to returning null to signal parse failure (caller defaults to ADD)
         return [];
       }
 

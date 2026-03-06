@@ -47,6 +47,10 @@ export interface MemoryStore {
 
   migrateDimensions(newDimensions: number): Promise<void>;
 
+  setMigrationStatus(status: 'COMPLETE' | 'PENDING'): Promise<void>;
+
+  getMigrationStatus(): Promise<'COMPLETE' | 'PENDING'>;
+
   close(): Promise<void>;
 }
 

@@ -239,11 +239,12 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   async search(
     embedding: Float32Array,
     limit: number,
-    scope?: MemoryScope
+    _scope?: MemoryScope
   ): Promise<MemorySearchResult[]> {
     const db = this.db!;
     const embeddingBuf = float32ToBuffer(embedding);
 
+    // M6: Single-user system — no userId filtering needed
     const rows = db
       .prepare(
         `SELECT
@@ -260,19 +261,10 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
       )
       .all(embeddingBuf, limit) as Array<Record<string, unknown>>;
 
-    let results = rows.map((row) => ({
+    return rows.map((row) => ({
       fact: rowToFact(row),
       distance: row.distance as number,
     }));
-
-    // Post-filter by scope (vec0 doesn't support WHERE on metadata columns)
-    if (scope?.userId) {
-      results = results.filter(
-        (r) => r.fact.scope.userId === scope.userId
-      );
-    }
-
-    return results;
   }
 
   async getByCategories(
@@ -401,6 +393,22 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     ).run(String(newDimensions));
   }
 
+  async setMigrationStatus(status: 'COMPLETE' | 'PENDING'): Promise<void> {
+    const db = this.db!;
+    db.prepare(
+      "INSERT OR REPLACE INTO memory_meta (key, value) VALUES ('migration_status', ?)"
+    ).run(status);
+  }
+
+  async getMigrationStatus(): Promise<'COMPLETE' | 'PENDING'> {
+    const db = this.db!;
+    const row = db
+      .prepare("SELECT value FROM memory_meta WHERE key = 'migration_status'")
+      .get() as { value: string } | undefined;
+
+    return (row?.value as 'COMPLETE' | 'PENDING') || 'COMPLETE';
+  }
+
   async close(): Promise<void> {
     if (this.db) {
       this.db.close();
@@ -444,9 +452,10 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
       'SELECT id, memory_id, event, old_content, new_content, timestamp FROM memory_history ORDER BY timestamp DESC';
 
     const params: unknown[] = [];
-    if (limit) {
+    // M7: OFFSET requires LIMIT in SQLite — add default large limit if needed
+    if (limit || offset) {
       query += ' LIMIT ?';
-      params.push(limit);
+      params.push(limit || 1000000);
     }
     if (offset) {
       query += ' OFFSET ?';

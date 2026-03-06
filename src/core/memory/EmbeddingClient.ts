@@ -40,9 +40,10 @@ export function selectEmbeddingProvider(
         dimensions: 768,
       };
 
-    case 'anthropic':
     default:
-      // Anthropic doesn't offer embeddings — fall back to OpenAI
+      // Default to OpenAI-compatible embeddings for unknown providers.
+      // Note: Anthropic users are blocked earlier in createMemoryService
+      // since Anthropic API keys won't work with OpenAI embedding endpoints.
       return {
         provider: 'openai',
         model: 'text-embedding-3-small',

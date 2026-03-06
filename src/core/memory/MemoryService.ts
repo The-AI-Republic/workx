@@ -20,6 +20,8 @@ import { ConflictResolver } from './ConflictResolver';
 import { CoreMemoryManager } from './CoreMemoryManager';
 import {
   isCoreCategory,
+  type LLMCaller,
+  type FileSystem,
   type MemoryCategory,
   type MemoryConfig,
   type MemoryFact,
@@ -27,17 +29,6 @@ import {
   type MemorySearchResult,
   ALWAYS_INJECT_CATEGORIES,
 } from './types';
-
-interface LLMCaller {
-  complete(systemPrompt: string, userPrompt: string): Promise<string>;
-}
-
-interface FileSystem {
-  readFile(path: string): Promise<string>;
-  writeFile(path: string, content: string): Promise<void>;
-  ensureDir(path: string): Promise<void>;
-  exists(path: string): Promise<boolean>;
-}
 
 /**
  * Compute SHA-256 content hash of a string.
@@ -52,16 +43,13 @@ async function contentHash(text: string): Promise<string> {
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Fallback for environments without crypto.subtle
-  // (shouldn't happen in modern runtimes)
-  let hash = 0;
-  const str = text;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
+  // Node.js fallback (crypto.subtle may not be available in older Node)
+  try {
+    const { createHash } = await import('crypto');
+    return createHash('sha256').update(text).digest('hex');
+  } catch {
+    throw new Error('No SHA-256 implementation available (crypto.subtle or node:crypto required)');
   }
-  return Math.abs(hash).toString(16);
 }
 
 // Simple category classifier based on keywords
@@ -98,7 +86,15 @@ function classifyFact(fact: string): MemoryCategory {
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     if (category === 'general') continue;
     for (const keyword of keywords) {
-      if (lower.includes(keyword)) {
+      // Use word-boundary matching to avoid false positives
+      // (e.g. "information" matching "format", "stubborn" matching "born")
+      const pattern = keyword.includes(' ')
+        ? keyword // Multi-word phrases: exact substring match is fine
+        : new RegExp(`\\b${keyword}\\b`);
+      const matches = typeof pattern === 'string'
+        ? lower.includes(pattern)
+        : pattern.test(lower);
+      if (matches) {
         return category as MemoryCategory;
       }
     }
@@ -131,6 +127,43 @@ export class MemoryService {
     this.conflictResolver = new ConflictResolver(llm, config);
     this.coreMemoryManager = new CoreMemoryManager(llm, fs, memoryDir);
     this.config = config;
+  }
+
+  /**
+   * Check if a schema migration is pending, and run re-embedding in background if so.
+   */
+  async checkAndRunMigration(): Promise<void> {
+    if (!this.config.enabled) return;
+
+    try {
+      const status = await this.store.getMigrationStatus();
+      if (status !== 'PENDING') return;
+
+      console.log('[Memory] Dimension migration PENDING detected. Starting background re-embedding job...');
+
+      const allFacts = await this.store.getAll();
+      const batchSize = 25; // Smaller batches for cloud embedding API limits
+
+      for (let i = 0; i < allFacts.length; i += batchSize) {
+        const batch = allFacts.slice(i, i + batchSize);
+        const texts = batch.map(f => f.factText);
+
+        try {
+          const embeddings = await this.embeddingProvider.embedBatch(texts);
+          for (let j = 0; j < batch.length; j++) {
+            await this.store.update(batch[j].id, batch[j], embeddings[j]);
+          }
+        } catch (err) {
+          console.error(`[Memory] Failed to re-embed batch ${i}-${i + batchSize}. Aborting migration for this run.`, err);
+          return; // Abort, will retry on next startup
+        }
+      }
+
+      await this.store.setMigrationStatus('COMPLETE');
+      console.log(`[Memory] Dimension migration COMPLETE. Re-embedded ${allFacts.length} memories.`);
+    } catch (err) {
+      console.error('[Memory] Failed to check or run migration status:', err);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -235,10 +268,28 @@ export class MemoryService {
       existingMemoriesArray
     );
 
+    // Build a fact-text → embedding lookup so each decision gets the correct embedding.
+    // The decisions array can differ in length from facts (LLM may combine/split),
+    // so we match by fact text rather than index.
+    const factToEmbedding = new Map<string, Float32Array>();
+    for (let i = 0; i < facts.length; i++) {
+      factToEmbedding.set(facts[i], embeddings[i]);
+    }
+
     // Execute decisions
     for (let i = 0; i < decisions.length; i++) {
       const decision = decisions[i];
-      const embedding = embeddings[Math.min(i, embeddings.length - 1)];
+      // Look up the correct embedding by fact text; if the LLM rewrote the fact,
+      // re-embed it fresh to ensure correct vector storage.
+      let embedding = factToEmbedding.get(decision.fact);
+      if (!embedding) {
+        try {
+          embedding = await this.embeddingProvider.embed(decision.fact);
+        } catch {
+          // Fall back to first embedding if re-embed fails
+          embedding = embeddings[0];
+        }
+      }
 
       try {
         switch (decision.action) {
@@ -376,7 +427,7 @@ export class MemoryService {
     // Update access stats
     if (filtered.length > 0) {
       const ids = filtered.map((r) => r.fact.id);
-      void this.store.updateAccessStats(ids).catch(() => {});
+      void this.store.updateAccessStats(ids).catch(() => { });
     }
 
     return filtered;

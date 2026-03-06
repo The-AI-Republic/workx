@@ -12,7 +12,7 @@ import type { EventMsg } from './protocol/events';
 import { RolloutRecorder, type RolloutItem } from '../storage/rollout';
 import { v4 as uuidv4 } from 'uuid';
 import { TurnContext } from './TurnContext';
-import type { AgentConfig } from '../config/AgentConfig';
+import { AgentConfig } from '../config/AgentConfig';
 import type { SessionTask } from './tasks/SessionTask';
 import type { ToolRegistry } from '../tools/ToolRegistry';
 
@@ -31,6 +31,7 @@ import type { ModelClient } from './models/ModelClient';
 
 // Memory system
 import type { MemoryService } from './memory/MemoryService';
+import { createMemoryService } from './memory/createMemoryService';
 
 // Title generation imports
 import { TitleGenerator } from './title';
@@ -1001,6 +1002,43 @@ export class Session {
       if (this.services) {
         this.services.rollout = null;
       }
+    }
+
+    // Initialize memory service (for desktop/server only)
+    try {
+      if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
+        const agentConfig = config || await AgentConfig.getInstance();
+        const selectedKey = agentConfig.getConfig().selectedModelKey;
+        // Handle format 'providerId:modelId'
+        const providerId = selectedKey.includes(':') ? selectedKey.split(':')[0] : 'openai';
+        const apiKey = await agentConfig.getProviderApiKey(providerId);
+
+        const llmCaller = {
+          complete: async (systemPrompt: string, userPrompt: string) => {
+            const client = this.turnContext.getModelClient();
+            if (!client) throw new Error('No model client available');
+            const response = await client.complete({
+              model: client.getModel(),
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ]
+            });
+            return response.choices[0]?.message?.content || '';
+          }
+        };
+
+        const memoryService = await createMemoryService({
+          llmProvider: providerId,
+          apiKey: apiKey || '', // Pass empty string to trigger graceful degradation inside createMemoryService
+          baseUrl: agentConfig.getProvider(providerId)?.baseUrl,
+          llmCaller
+        });
+
+        this.setMemoryService(memoryService);
+      }
+    } catch (err) {
+      console.error('[Memory] Initialization failed:', err);
     }
   }
 

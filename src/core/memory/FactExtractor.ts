@@ -4,15 +4,11 @@
  */
 
 import extractionPrompt from './prompts/extraction.md?raw';
-import type { MemoryConfig } from './types';
+import type { LLMCaller, MemoryConfig } from './types';
 
 export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
-}
-
-interface LLMCaller {
-  complete(systemPrompt: string, userPrompt: string): Promise<string>;
 }
 
 export class FactExtractor {
@@ -99,8 +95,9 @@ export class FactExtractor {
 
   private parseFacts(response: string): string[] {
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*"facts"[\s\S]*\}/);
+      // Try to extract the last JSON object containing "facts" (avoids
+      // capturing preamble text with braces via greedy matching)
+      const jsonMatch = response.match(/\{[^{}]*"facts"\s*:\s*\[[\s\S]*?\]\s*\}/);
       if (!jsonMatch) return [];
 
       const parsed = JSON.parse(jsonMatch[0]);

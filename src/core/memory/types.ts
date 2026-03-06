@@ -100,3 +100,20 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
 export function isCoreCategory(category: MemoryCategory): boolean {
   return (ALWAYS_INJECT_CATEGORIES as readonly string[]).includes(category);
 }
+
+// ---------------------------------------------------------------------------
+// Shared interfaces (L1: centralized to avoid duplication)
+// ---------------------------------------------------------------------------
+
+/** Generic LLM completion caller used by memory subsystem components. */
+export interface LLMCaller {
+  complete(systemPrompt: string, userPrompt: string): Promise<string>;
+}
+
+/** Platform-agnostic filesystem operations for core-memory.md. */
+export interface FileSystem {
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  ensureDir(path: string): Promise<void>;
+  exists(path: string): Promise<boolean>;
+}

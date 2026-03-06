@@ -3,14 +3,9 @@
  * Provides read/write/exists/ensureDir for core-memory.md operations.
  */
 
-declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
+import type { FileSystem } from './types';
 
-interface FileSystem {
-  readFile(path: string): Promise<string>;
-  writeFile(path: string, content: string): Promise<void>;
-  ensureDir(path: string): Promise<void>;
-  exists(path: string): Promise<boolean>;
-}
+declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
 
 /**
  * Create a platform-appropriate filesystem adapter.
@@ -64,9 +59,10 @@ async function createNodeFileSystem(): Promise<{
   fs: FileSystem;
   memoryDir: string;
 }> {
-  const nodeFs = require('fs');
-  const nodePath = require('path');
-  const os = require('os');
+  // H2: Use async fs.promises instead of blocking *Sync calls
+  const nodeFs = await import('fs');
+  const nodePath = await import('path');
+  const os = await import('os');
 
   const memoryDir = nodePath.join(
     os.homedir(),
@@ -74,14 +70,22 @@ async function createNodeFileSystem(): Promise<{
     'memory'
   );
 
+  const fsPromises = nodeFs.promises;
   const fs: FileSystem = {
-    readFile: async (path: string) =>
-      nodeFs.readFileSync(path, 'utf-8') as string,
-    writeFile: async (path: string, content: string) =>
-      nodeFs.writeFileSync(path, content, 'utf-8'),
-    ensureDir: async (path: string) =>
-      nodeFs.mkdirSync(path, { recursive: true }),
-    exists: async (path: string) => nodeFs.existsSync(path),
+    readFile: (path: string) => fsPromises.readFile(path, 'utf-8'),
+    writeFile: (path: string, content: string) =>
+      fsPromises.writeFile(path, content, 'utf-8'),
+    ensureDir: async (path: string) => {
+      await fsPromises.mkdir(path, { recursive: true });
+    },
+    exists: async (path: string) => {
+      try {
+        await fsPromises.access(path);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 
   return { fs, memoryDir };

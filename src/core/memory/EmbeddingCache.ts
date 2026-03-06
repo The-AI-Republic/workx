@@ -18,51 +18,53 @@ export class CachedEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<Float32Array> {
-    const key = text.replace(/\n/g, ' ').trim();
-    const cached = this.cache.get(key);
+    // M3: Normalize text consistently for both cache key AND provider call
+    const normalized = text.replace(/\n/g, ' ').trim();
+    const cached = this.cache.get(normalized);
     if (cached) {
       this.hits++;
       // Move to end (most recently used) by re-inserting
-      this.cache.delete(key);
-      this.cache.set(key, cached);
+      this.cache.delete(normalized);
+      this.cache.set(normalized, cached);
       return cached;
     }
 
     this.misses++;
-    const result = await this.provider.embed(text);
-    this.set(key, result);
+    const result = await this.provider.embed(normalized);
+    this.set(normalized, result);
     return result;
   }
 
   async embedBatch(texts: string[]): Promise<Float32Array[]> {
-    const keys = texts.map((t) => t.replace(/\n/g, ' ').trim());
-    const results: (Float32Array | null)[] = new Array(keys.length).fill(null);
+    // M3: Normalize all texts consistently
+    const normalized = texts.map((t) => t.replace(/\n/g, ' ').trim());
+    const results: (Float32Array | null)[] = new Array(normalized.length).fill(null);
     const uncachedIndices: number[] = [];
     const uncachedTexts: string[] = [];
 
     // Check cache for each text
-    for (let i = 0; i < keys.length; i++) {
-      const cached = this.cache.get(keys[i]);
+    for (let i = 0; i < normalized.length; i++) {
+      const cached = this.cache.get(normalized[i]);
       if (cached) {
         this.hits++;
         // Move to end (LRU)
-        this.cache.delete(keys[i]);
-        this.cache.set(keys[i], cached);
+        this.cache.delete(normalized[i]);
+        this.cache.set(normalized[i], cached);
         results[i] = cached;
       } else {
         this.misses++;
         uncachedIndices.push(i);
-        uncachedTexts.push(texts[i]);
+        uncachedTexts.push(normalized[i]);
       }
     }
 
-    // Batch-embed uncached texts
+    // Batch-embed uncached (already normalized) texts
     if (uncachedTexts.length > 0) {
       const embeddings = await this.provider.embedBatch(uncachedTexts);
       for (let j = 0; j < uncachedIndices.length; j++) {
         const idx = uncachedIndices[j];
         results[idx] = embeddings[j];
-        this.set(keys[idx], embeddings[j]);
+        this.set(normalized[idx], embeddings[j]);
       }
     }
 

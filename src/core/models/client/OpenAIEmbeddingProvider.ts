@@ -30,6 +30,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     const response = await this.client.embeddings.create({
       model: this.model,
       input,
+      dimensions: this.dimensions,
     });
     return new Float32Array(response.data[0].embedding);
   }
@@ -41,6 +42,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     const response = await this.client.embeddings.create({
       model: this.model,
       input: inputs,
+      dimensions: this.dimensions,
     });
 
     // Sort by index to maintain order

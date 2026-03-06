@@ -240,19 +240,20 @@ describe('ConflictResolver.resolve - error handling', () => {
     expect(result[1]).toEqual({ fact: 'Fact 2', action: 'ADD' });
   });
 
-  it('returns empty array when LLM returns non-JSON', async () => {
+  it('defaults to ADD when LLM returns non-JSON', async () => {
     const { resolver } = createResolver('Not valid JSON at all');
 
     const result = await resolver.resolve(['test'], [makeFact()]);
-    // parseDecisions returns [] → the map still applies, but with empty results
-    expect(result).toEqual([]);
+    // H3: parseDecisions returns [] → defaults to ADD to avoid losing facts
+    expect(result).toEqual([{ fact: 'test', action: 'ADD' }]);
   });
 
-  it('returns empty array when LLM returns JSON without decisions key', async () => {
+  it('defaults to ADD when LLM returns JSON without decisions key', async () => {
     const { resolver } = createResolver('{"items": []}');
 
     const result = await resolver.resolve(['test'], [makeFact()]);
-    expect(result).toEqual([]);
+    // H3: parseDecisions returns [] → defaults to ADD
+    expect(result).toEqual([{ fact: 'test', action: 'ADD' }]);
   });
 
   it('filters out decisions with invalid actions', async () => {

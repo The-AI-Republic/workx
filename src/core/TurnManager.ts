@@ -253,7 +253,7 @@ export class TurnManager {
             totalTokenUsage = event.tokenUsage;
 
             // Fire-and-forget memory extraction (write path)
-            this.fireMemoryExtraction(processedItems);
+            this.fireMemoryExtraction(prompt.input, processedItems);
 
             return {
               processedItems,
@@ -652,12 +652,13 @@ export class TurnManager {
           } else {
             const memories = await ms.searchTopical(
               parsedParams.query,
-              { userId: this.turnContext.getSessionId() }
+              { userId: 'default-user' }
             );
+            // L5: Convert distance (lower=better) to similarity score (higher=better)
             result = memories.map(m => ({
               fact: m.fact.factText,
               category: m.fact.category,
-              relevance: m.distance,
+              similarity: 1 / (1 + m.distance),
             }));
           }
           break;
@@ -1122,36 +1123,54 @@ export class TurnManager {
    * Fire-and-forget memory extraction from the completed turn's items.
    * Extracts user and assistant messages, sends them to MemoryService.
    */
-  private fireMemoryExtraction(processedItems: ProcessedResponseItem[]): void {
+  private fireMemoryExtraction(input: any[], processedItems: ProcessedResponseItem[]): void {
     const memoryService = this.session.getMemoryService();
     if (!memoryService) return;
 
-    // Collect user and assistant messages from this turn
     const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+    // C4: Extract user messages from the input array (the primary source of facts)
+    for (const item of input) {
+      if (typeof item === 'string') {
+        messages.push({ role: 'user', content: item });
+      } else if (item?.role === 'user' && typeof item.content === 'string') {
+        messages.push({ role: 'user', content: item.content });
+      } else if (item?.type === 'message' && item.role === 'user') {
+        const text = typeof item.content === 'string'
+          ? item.content
+          : Array.isArray(item.content)
+            ? item.content
+                .filter((c: any) => c.type === 'input_text' || c.type === 'text')
+                .map((c: any) => c.text ?? c.content ?? '')
+                .join('\n')
+            : '';
+        if (text) messages.push({ role: 'user', content: text });
+      }
+    }
+
+    // Collect assistant messages from processedItems
     for (const pi of processedItems) {
       const item = pi.item;
-      if (item?.type === 'message' && item.role && typeof item.content === 'string') {
-        if (item.role === 'user' || item.role === 'assistant') {
-          messages.push({ role: item.role, content: item.content });
-        }
+      if (item?.type === 'message' && item.role === 'assistant' && typeof item.content === 'string') {
+        messages.push({ role: 'assistant', content: item.content });
       }
-      // Handle content arrays (e.g., [{type: 'output_text', text: '...'}])
-      if (item?.type === 'message' && Array.isArray(item.content)) {
+      if (item?.type === 'message' && item.role === 'assistant' && Array.isArray(item.content)) {
         const text = item.content
           .filter((c: any) => c.type === 'output_text' || c.type === 'input_text')
           .map((c: any) => c.text)
           .join('\n');
-        if (text && (item.role === 'user' || item.role === 'assistant')) {
-          messages.push({ role: item.role, content: text });
+        if (text) {
+          messages.push({ role: 'assistant', content: text });
         }
       }
     }
 
     if (messages.length === 0) return;
 
+    // C5: Use stable user ID ('default-user') instead of ephemeral sessionId
     void memoryService
       .processConversation(messages, {
-        userId: this.turnContext.getSessionId(),
+        userId: 'default-user',
       })
       .catch((err) =>
         console.warn('[TurnManager] Memory extraction failed (non-critical):', err)

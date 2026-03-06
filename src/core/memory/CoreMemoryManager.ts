@@ -5,17 +5,7 @@
  */
 
 import coreMergePrompt from './prompts/core_merge.md?raw';
-
-interface LLMCaller {
-  complete(systemPrompt: string, userPrompt: string): Promise<string>;
-}
-
-interface FileSystem {
-  readFile(path: string): Promise<string>;
-  writeFile(path: string, content: string): Promise<void>;
-  ensureDir(path: string): Promise<void>;
-  exists(path: string): Promise<boolean>;
-}
+import type { LLMCaller, FileSystem } from './types';
 
 const DEFAULT_CORE_MEMORY = `# User Profile
 
@@ -38,7 +28,9 @@ export class CoreMemoryManager {
   }
 
   private get filePath(): string {
-    return `${this.memoryDir}/core-memory.md`;
+    // Use platform-safe separator (memoryDir may use \ on Windows)
+    const sep = this.memoryDir.includes('\\') ? '\\' : '/';
+    return `${this.memoryDir}${sep}core-memory.md`;
   }
 
   /**
@@ -87,9 +79,24 @@ export class CoreMemoryManager {
         .replace(/\n?```\s*$/i, '')
         .trim();
 
-      if (cleaned.length > 0) {
-        await this.fs.writeFile(this.filePath, cleaned + '\n');
+      // C3: Validate LLM output before writing
+      if (cleaned.length === 0) return;
+
+      // Must contain at least one markdown heading
+      if (!cleaned.includes('#')) {
+        console.warn('[Memory] Core memory merge rejected: output has no markdown headings');
+        return;
       }
+
+      // Prevent near-wipes: new content must be at least 50% of existing size
+      if (existingMarkdown.length > 50 && cleaned.length < existingMarkdown.length * 0.5) {
+        console.warn(
+          `[Memory] Core memory merge rejected: output (${cleaned.length} chars) is less than 50% of existing (${existingMarkdown.length} chars)`
+        );
+        return;
+      }
+
+      await this.fs.writeFile(this.filePath, cleaned + '\n');
     } catch (err) {
       console.warn('[Memory] Core memory merge failed:', err);
     }

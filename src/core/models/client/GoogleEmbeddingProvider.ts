@@ -25,19 +25,19 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
       model: this.model,
       contents: input,
     });
-    return new Float32Array(result.embeddings![0].values!);
+    // H4: Guard against empty/malformed API response
+    if (!result.embeddings?.[0]?.values) {
+      throw new Error('Google embedding API returned empty result');
+    }
+    return new Float32Array(result.embeddings[0].values);
   }
 
   async embedBatch(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
 
-    // Google's embedContent supports batch via multiple contents
-    const results: Float32Array[] = [];
-    for (const text of texts) {
-      const result = await this.embed(text);
-      results.push(result);
-    }
-    return results;
+    // H5: Use parallel calls instead of sequential for better throughput
+    const promises = texts.map((text) => this.embed(text));
+    return Promise.all(promises);
   }
 
   getDimensions(): number {
