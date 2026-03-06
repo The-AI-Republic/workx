@@ -128,41 +128,56 @@ export class SchedulerStorage implements ISchedulerStorage {
   }
 
   /**
-   * Get archived jobs (completed or failed)
+   * Get archived jobs (completed, failed, or cancelled)
    */
-  async getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]> {
-    const completed = await this.db.queryByIndex<SchedulerJobRecord>(
-      STORE_NAMES.SCHEDULER_JOBS,
-      INDEX_NAMES.SCHEDULER_BY_STATUS,
-      'completed'
-    );
-    const failed = await this.db.queryByIndex<SchedulerJobRecord>(
-      STORE_NAMES.SCHEDULER_JOBS,
-      INDEX_NAMES.SCHEDULER_BY_STATUS,
-      'failed'
+  async getArchivedJobs(
+    limit: number,
+    offset: number,
+    sortDirection: 'newest' | 'oldest' = 'newest',
+    statusFilter?: string[]
+  ): Promise<SchedulerJobRecord[]> {
+    const statuses = statusFilter && statusFilter.length > 0
+      ? statusFilter
+      : ['completed', 'failed', 'cancelled'];
+
+    const results = await Promise.all(
+      statuses.map(status =>
+        this.db.queryByIndex<SchedulerJobRecord>(
+          STORE_NAMES.SCHEDULER_JOBS,
+          INDEX_NAMES.SCHEDULER_BY_STATUS,
+          status
+        )
+      )
     );
 
-    const archived = [...completed, ...failed]
-      .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+    const archived = results.flat().sort((a, b) =>
+      sortDirection === 'newest'
+        ? (b.completedAt || 0) - (a.completedAt || 0)
+        : (a.completedAt || 0) - (b.completedAt || 0)
+    );
 
     return archived.slice(offset, offset + limit);
   }
 
   /**
-   * Count archived jobs (completed or failed)
+   * Count archived jobs (completed, failed, or cancelled)
    */
-  async getArchivedJobsCount(): Promise<number> {
-    const completed = await this.db.queryByIndex<SchedulerJobRecord>(
-      STORE_NAMES.SCHEDULER_JOBS,
-      INDEX_NAMES.SCHEDULER_BY_STATUS,
-      'completed'
+  async getArchivedJobsCount(statusFilter?: string[]): Promise<number> {
+    const statuses = statusFilter && statusFilter.length > 0
+      ? statusFilter
+      : ['completed', 'failed', 'cancelled'];
+
+    const results = await Promise.all(
+      statuses.map(status =>
+        this.db.queryByIndex<SchedulerJobRecord>(
+          STORE_NAMES.SCHEDULER_JOBS,
+          INDEX_NAMES.SCHEDULER_BY_STATUS,
+          status
+        )
+      )
     );
-    const failed = await this.db.queryByIndex<SchedulerJobRecord>(
-      STORE_NAMES.SCHEDULER_JOBS,
-      INDEX_NAMES.SCHEDULER_BY_STATUS,
-      'failed'
-    );
-    return completed.length + failed.length;
+
+    return results.reduce((sum, arr) => sum + arr.length, 0);
   }
 
   /**

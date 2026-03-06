@@ -241,12 +241,16 @@
     showScheduleModal = true;
   }
 
-  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number }>) {
-    const { input, scheduledTime } = event.detail;
+  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number; recurrence?: import('@/core/models/types/Scheduler').RecurrenceRule }>) {
+    const { input, scheduledTime, recurrence } = event.detail;
     showScheduleModal = false;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, { input, scheduledTime });
+      const payload: { input: string; scheduledTime: number; recurrence?: import('@/core/models/types/Scheduler').RecurrenceRule } = { input, scheduledTime };
+      if (recurrence) {
+        payload.recurrence = recurrence;
+      }
+      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, payload);
       // Refresh the job list
       await fetchAllData();
     } catch (error) {

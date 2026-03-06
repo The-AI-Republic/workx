@@ -4,7 +4,7 @@
  * Interfaces for storage, alarms, and messaging in the Job Scheduler feature.
  */
 
-import type { SchedulerJobRecord, SchedulerJobStatus, SchedulerState } from './Scheduler';
+import type { SchedulerJobRecord, SchedulerJobStatus, SchedulerState, RecurrenceRule } from './Scheduler';
 
 // ============================================================================
 // Platform-neutral Alarm Type
@@ -207,6 +207,7 @@ export interface ScheduleJobRequest {
   input?: string; // For new job with time
   jobId?: string; // For scheduling existing draft
   scheduledTime: number; // Unix timestamp in ms
+  recurrence?: RecurrenceRule; // Optional repeat configuration
 }
 
 export interface TriggerJobRequest {
@@ -224,6 +225,8 @@ export interface GetJobDetailsRequest {
 export interface GetArchivedJobsRequest {
   limit?: number; // Default: 50
   offset?: number; // Default: 0
+  sortDirection?: 'newest' | 'oldest';
+  statusFilter?: SchedulerJobStatus[];
 }
 
 // ============================================================================
@@ -314,6 +317,7 @@ export interface SchedulerJobSummary {
   scheduledTime: number | null; // Null for draft jobs
   status: SchedulerJobStatus;
   createdAt: number;
+  recurrence?: RecurrenceRule | null;
 }
 
 export interface ArchivedJobSummary {
@@ -321,9 +325,10 @@ export interface ArchivedJobSummary {
   input: string; // First 100 chars
   scheduledTime: number | null;
   completedAt: number;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'failed' | 'cancelled';
   sessionId: string | null;
   error?: string;
+  recurrence?: RecurrenceRule | null;
 }
 
 export interface SchedulerJobFull {

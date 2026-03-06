@@ -2,13 +2,15 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
+  import RecurrenceSelector from './RecurrenceSelector.svelte';
+  import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
   export let show: boolean = false;
   export let input: string = '';
 
   const dispatch = createEventDispatcher<{
     close: void;
-    schedule: { input: string; scheduledTime: number };
+    schedule: { input: string; scheduledTime: number; recurrence?: RecurrenceRule };
   }>();
 
   let currentTheme: UITheme = 'terminal';
@@ -16,6 +18,7 @@
   let selectedTime: string = '';
   let errorMessage: string = '';
   let editableInput: string = '';
+  let recurrence: RecurrenceRule | null = null;
 
   // Determine if input should be editable (when opened without pre-filled input)
   $: isEditable = !input.trim();
@@ -42,6 +45,7 @@
     selectedTime = formatTimeForInput(now);
     errorMessage = '';
     editableInput = input || '';
+    recurrence = null;
   }
 
   function formatDateForInput(date: Date): string {
@@ -121,7 +125,11 @@
       return;
     }
 
-    dispatch('schedule', { input: jobInput, scheduledTime });
+    const detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule } = { input: jobInput, scheduledTime };
+    if (recurrence) {
+      detail.recurrence = recurrence;
+    }
+    dispatch('schedule', detail);
   }
 
   function handleClose() {
@@ -276,6 +284,14 @@
               bind:value={selectedTime}
             />
           </div>
+        </div>
+
+        <!-- Recurrence -->
+        <div class="mb-4">
+          <RecurrenceSelector
+            {recurrence}
+            on:change={(e) => { recurrence = e.detail; }}
+          />
         </div>
 
         <!-- Schedule Preview -->

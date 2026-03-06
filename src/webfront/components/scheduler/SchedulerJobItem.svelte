@@ -2,7 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
+  import type { SchedulerJobStatus, RecurrenceRule } from '@/core/models/types/Scheduler';
+  import { formatRecurrenceRule } from '@/core/scheduler/recurrence';
 
   export let id: string;
   export let input: string;
@@ -10,6 +11,7 @@
   export let status: SchedulerJobStatus;
   export let createdAt: number;
   export let showActions: boolean = true;
+  export let recurrence: RecurrenceRule | null | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     trigger: { jobId: string };
@@ -117,6 +119,22 @@
     <span class="inline-block px-1.5 py-0.5 text-sm font-semibold uppercase rounded mb-1 {getStatusBadgeClasses(status)}">
       {getStatusLabel(status)}
     </span>
+    {#if recurrence}
+      <span
+        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-sm rounded mb-1 ml-1
+          {currentTheme === 'modern'
+            ? 'bg-[rgba(96,165,250,0.15)] text-blue-400'
+            : 'bg-[rgba(0,255,0,0.15)] text-term-dim-green'}"
+        title={formatRecurrenceRule(recurrence)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </span>
+    {/if}
 
     <!-- Job Input Preview -->
     <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap

@@ -13,6 +13,11 @@ import type {
   SchedulerJobStatus,
   JobResultRecord,
 } from '../models/types/Scheduler';
+import {
+  calculateNextRunTime,
+  shouldContinueRecurrence,
+  createNextRecurrenceRule,
+} from './recurrence';
 import type {
   ISchedulerStorage,
   ISchedulerAlarms,
@@ -124,7 +129,7 @@ export class Scheduler {
    * Schedule a new job for future execution
    * @returns The created job ID
    */
-  async scheduleJob(input: string, scheduledTime: number): Promise<string> {
+  async scheduleJob(input: string, scheduledTime: number, recurrence?: import('../models/types/Scheduler').RecurrenceRule): Promise<string> {
     // Validate scheduled time is in the future
     const now = Date.now();
     if (scheduledTime <= now) {
@@ -133,6 +138,11 @@ export class Scheduler {
 
     // Create the job with scheduled status
     const job = await this.storage.createJob(input, scheduledTime);
+
+    // Store recurrence rule if provided
+    if (recurrence) {
+      await this.storage.updateJob(job.id, { recurrence });
+    }
 
     // Create alarm for the job — clean up on failure to avoid orphaned jobs
     try {
@@ -415,6 +425,9 @@ export class Scheduler {
     this.emitStatusChange(jobId, previousStatus, 'completed');
     this.emitStateChange({ isPaused: false, currentJobId: null });
 
+    // Handle recurrence: create next job if rule permits
+    await this.handleRecurrence(job);
+
     // Process next job in queue
     await this.processJobQueue();
   }
@@ -451,6 +464,9 @@ export class Scheduler {
 
     this.emitStatusChange(jobId, previousStatus, 'failed');
     this.emitStateChange({ isPaused: false, currentJobId: null });
+
+    // Handle recurrence: create next job if rule permits (failed jobs don't break the chain)
+    await this.handleRecurrence(job);
 
     // Process next job in queue
     await this.processJobQueue();
@@ -615,6 +631,7 @@ export class Scheduler {
       scheduledTime: job.scheduledTime,
       status: job.status,
       createdAt: job.createdAt,
+      recurrence: job.recurrence,
     };
   }
 
@@ -646,6 +663,35 @@ export class Scheduler {
         isPaused: state.isPaused,
         currentJobId: state.currentJobId,
       });
+    }
+  }
+
+  /**
+   * Handle recurrence after a job completes or fails.
+   * Creates the next job in the recurrence chain if the rule permits.
+   * Does NOT create next occurrence for cancelled jobs (handled by cancelJob).
+   */
+  private async handleRecurrence(job: SchedulerJobRecord): Promise<void> {
+    if (!job.recurrence) return;
+
+    const rule = job.recurrence;
+    if (!shouldContinueRecurrence(rule)) return;
+
+    const lastScheduledTime = job.scheduledTime || job.createdAt;
+    const nextTime = calculateNextRunTime(lastScheduledTime, rule);
+    if (!nextTime) return;
+
+    try {
+      const nextRule = createNextRecurrenceRule(rule);
+      nextRule.parentJobId = rule.parentJobId || job.id;
+
+      // Create via storage interface, then update with recurrence data
+      const nextJob = await this.storage.createJob(job.input, nextTime);
+      await this.storage.updateJob(nextJob.id, { recurrence: nextRule });
+      await this.alarms.createJobAlarm(nextJob.id, nextTime);
+      console.log(`[Scheduler] Created next recurrence job ${nextJob.id} scheduled at ${new Date(nextTime).toISOString()}`);
+    } catch (error) {
+      console.error(`[Scheduler] Failed to create next recurrence for job ${job.id}:`, error);
     }
   }
 
