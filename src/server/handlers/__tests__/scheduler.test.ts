@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Capture registered handlers so we can call them directly
 const handlerMap = new Map<string, Function>();
-vi.mock('@pi/ws-server', () => ({
+vi.mock('@applepi/ws-server', () => ({
   registerMethodHandler: (name: string, handler: Function) => {
     handlerMap.set(name, handler);
   },
@@ -84,6 +84,7 @@ function createMockStorage() {
     getArchivedJobs: vi.fn().mockResolvedValue([
       makeJob({ status: 'completed', completedAt: 1000 }),
     ]),
+    getArchivedJobsCount: vi.fn().mockResolvedValue(1),
     getNextJobInQueue: vi.fn(),
     getOverdueScheduledJobs: vi.fn(),
     getSchedulerState: vi.fn(),
@@ -367,11 +368,12 @@ describe('Scheduler WebSocket handlers', () => {
       expect(storage.getArchivedJobs).toHaveBeenCalledWith(10, 5);
     });
 
-    it('should set hasMore=true when result length equals limit', async () => {
+    it('should set hasMore=true when total exceeds offset + returned jobs', async () => {
       const jobs = Array.from({ length: 10 }, (_, i) =>
         makeJob({ id: `t-${i}`, status: 'completed', completedAt: i })
       );
       storage.getArchivedJobs.mockResolvedValue(jobs);
+      storage.getArchivedJobsCount.mockResolvedValue(20); // 20 total, only 10 returned
       const result = await callHandler('scheduler.getArchivedJobs', { limit: 10 });
       expect((result as any).hasMore).toBe(true);
     });
