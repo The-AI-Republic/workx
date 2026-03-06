@@ -198,8 +198,12 @@
       return; // Skip normal initialization for scheduled job mode
     }
 
-    // Desktop: listen for scheduler job launch events (no page reload needed)
-    window.addEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
+    // Desktop: listen for scheduler job launch events (legacy, kept for backward compat)
+    // Note: Desktop bootstrap now submits jobs directly to the agent, so this listener
+    // is only needed if any code path still dispatches 'scheduler:launch-job' DOM events.
+    if (platform.platformName === 'extension') {
+      window.addEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
+    }
 
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
@@ -282,7 +286,9 @@
 
   onDestroy(() => {
     window.removeEventListener('zoom-changed', onZoomChanged);
-    window.removeEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
+    if (platform.platformName === 'extension') {
+      window.removeEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
+    }
   });
 
   /**
@@ -563,7 +569,9 @@
       isProcessing = false;
 
       // If this is a scheduled job execution, notify the scheduler (US3)
-      if (isScheduledJobMode && scheduledJobId) {
+      // Desktop/server: completion is handled at the bootstrap level (event interception)
+      // Extension: still relies on UI-level notification via message service
+      if (isScheduledJobMode && scheduledJobId && platform.platformName === 'extension') {
         notifySchedulerJobCompletion(msg.type === 'TaskComplete', msg);
       }
     }

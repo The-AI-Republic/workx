@@ -39,6 +39,7 @@ import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor
 import { Scheduler } from '@/core/scheduler/Scheduler';
 import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
 import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
+import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
 /**
  * Singleton instance
@@ -58,6 +59,7 @@ export class DesktopAgentBootstrap {
   private scheduler: Scheduler | null = null;
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
   private schedulerDeepLinkHandler: DesktopSchedulerDeepLinkHandler | null = null;
+  private runningSchedulerJobId: string | null = null;
   private initialized = false;
   private isUpdatingConfig = false;
 
@@ -236,6 +238,9 @@ export class DesktopAgentBootstrap {
       channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch((error) => {
         console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
       });
+
+      // Intercept completion events for scheduler
+      this.handleSchedulerEventCompletion(event.msg);
     });
 
     console.log('[DesktopAgentBootstrap] Event forwarding configured via ChannelManager');
@@ -394,9 +399,9 @@ export class DesktopAgentBootstrap {
         }
       });
 
-      // Wire job launcher — show window and dispatch event for Main.svelte to execute
-      // Desktop uses a DOM event (same process) instead of extension's chrome.tabs.create
+      // Wire job launcher — show window and submit directly to agent
       this.scheduler.setJobLauncher(async (jobId, sessionId) => {
+        this.runningSchedulerJobId = jobId;
         console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
         // Show the main window
         try {
@@ -407,10 +412,14 @@ export class DesktopAgentBootstrap {
         } catch {
           // Non-fatal — window may already be visible
         }
-        // Dispatch DOM event so Main.svelte can execute the job without page reload
-        window.dispatchEvent(new CustomEvent('scheduler:launch-job', {
-          detail: { jobId, sessionId },
-        }));
+        // Submit directly to agent (bootstrap-level, no UI dependency)
+        const job = await schedulerStorage.getJob(jobId);
+        if (!job) throw new Error(`Job not found: ${jobId}`);
+        if (!this.agent) throw new Error('Agent not initialized');
+        await this.agent.submitOperation(
+          { type: 'UserInput', items: [{ type: 'text', text: job.input }] },
+          {} // Session isolation handled by AgentRegistry, not tabId
+        );
       });
 
       // Wire notification handler via Tauri notification plugin
@@ -431,6 +440,29 @@ export class DesktopAgentBootstrap {
 
       // Wire connectivity check
       this.scheduler.setConnectivityCheck(() => navigator.onLine);
+
+      // Initialize AgentRegistry for session isolation
+      try {
+        const agentConfig = await AgentConfig.getInstance();
+        const channelManager = getChannelManager();
+        const registry = new AgentRegistry({
+          maxConcurrent: 1,
+          agentFactory: async (config, router) => {
+            const agent = new RepublicAgent(config, router, undefined, undefined, new UserNotifier());
+            await agent.initialize();
+            return agent;
+          },
+          eventDispatcherFactory: (sessionId) => (event) => {
+            channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch(() => {});
+            this.handleSchedulerEventCompletion(event.msg);
+          },
+        });
+        registry.initialize(agentConfig, this.messageRouter! as any);
+        this.scheduler.setRegistry(registry);
+        console.log('[DesktopAgentBootstrap] AgentRegistry initialized for session isolation');
+      } catch (error) {
+        console.warn('[DesktopAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
+      }
 
       // Set up deep link handler for OS-level job triggers
       this.schedulerDeepLinkHandler = new DesktopSchedulerDeepLinkHandler(this.scheduler);
@@ -455,6 +487,38 @@ export class DesktopAgentBootstrap {
       console.log('[DesktopAgentBootstrap] Scheduler initialized');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize scheduler:', error);
+    }
+  }
+
+  /**
+   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * the currently running scheduled job at the bootstrap level.
+   */
+  private handleSchedulerEventCompletion(msg: EventMsg): void {
+    if (!this.runningSchedulerJobId || !this.scheduler) return;
+    const jobId = this.runningSchedulerJobId;
+
+    if (msg.type === 'TaskComplete') {
+      this.runningSchedulerJobId = null;
+      const summary = (msg as any).data?.last_agent_message?.slice(0, 500) || 'Job completed';
+      const tokenData = (msg as any).data?.token_usage?.total;
+      this.scheduler.completeJob(jobId, {
+        summary,
+        tokenUsage: {
+          inputTokens: tokenData?.input_tokens ?? 0,
+          outputTokens: tokenData?.output_tokens ?? 0,
+          totalTokens: tokenData?.total_tokens ?? 0,
+        },
+        duration: 0,
+      }).catch((error) => {
+        console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
+      });
+    } else if (msg.type === 'TaskFailed') {
+      this.runningSchedulerJobId = null;
+      const error = (msg as any).data?.error || (msg as any).data?.reason || 'Job failed';
+      this.scheduler.failJob(jobId, error).catch((err) => {
+        console.error(`[DesktopAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
+      });
     }
   }
 

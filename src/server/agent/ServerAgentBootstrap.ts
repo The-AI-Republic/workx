@@ -57,6 +57,9 @@ import { ServerSchedulerStorage } from '../scheduler/ServerSchedulerStorage';
 import { ServerSchedulerAlarms } from '../scheduler/ServerSchedulerAlarms';
 import { Scheduler } from '@/core/scheduler/Scheduler';
 
+// Session isolation
+import { AgentRegistry } from '@/core/registry/AgentRegistry';
+
 // ─────────────────────────────────────────────────────────────────────────
 // Singleton
 // ─────────────────────────────────────────────────────────────────────────
@@ -80,6 +83,7 @@ export class ServerAgentBootstrap {
   private scheduler: Scheduler | null = null;
   private schedulerStorage: ServerSchedulerStorage | null = null;
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
+  private runningSchedulerJobId: string | null = null;
   private initialized = false;
 
   /**
@@ -251,6 +255,9 @@ export class ServerAgentBootstrap {
           data: event.msg,
         });
       }
+
+      // Intercept completion events for scheduler
+      this.handleSchedulerEventCompletion(event.msg);
     });
 
     console.log('[ServerAgentBootstrap] Event forwarding configured');
@@ -413,6 +420,7 @@ export class ServerAgentBootstrap {
 
       // 6. Wire job launcher → submit job input to agent
       this.scheduler.setJobLauncher(async (jobId, sessionId) => {
+        this.runningSchedulerJobId = jobId;
         console.log(`[ServerAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
         const job = await this.schedulerStorage!.getJob(jobId);
         if (!job) {
@@ -428,15 +436,41 @@ export class ServerAgentBootstrap {
           await this.agent.submitOperation(
             {
               type: 'UserInput',
-              items: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: job.input }] }],
+              items: [{ type: 'text', text: job.input }],
             },
-            { tabId: sessionId }
+            {} // Session isolation handled by AgentRegistry, not tabId
           );
         } catch (error) {
           console.error(`[ServerAgentBootstrap] Failed to submit scheduled job ${jobId}:`, error);
           throw error;
         }
       });
+
+      // 6a. Connectivity check — ensure agent is initialized before executing jobs
+      this.scheduler.setConnectivityCheck(() => this.agent !== null && this.initialized);
+
+      // 6b. Initialize AgentRegistry for session isolation
+      try {
+        const agentConfig = await AgentConfig.getInstance();
+        const registry = new AgentRegistry({
+          maxConcurrent: 1,
+          agentFactory: async (config, router) => {
+            const agent = new RepublicAgent(config, router);
+            await agent.initialize();
+            return agent;
+          },
+          eventDispatcherFactory: (sessionId) => (event) => {
+            // Forward events to WebSocket clients AND intercept completions
+            channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch(() => {});
+            this.handleSchedulerEventCompletion(event.msg);
+          },
+        });
+        registry.initialize(agentConfig, this.messageRouter! as any);
+        this.scheduler.setRegistry(registry);
+        console.log('[ServerAgentBootstrap] AgentRegistry initialized for session isolation');
+      } catch (error) {
+        console.warn('[ServerAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
+      }
 
       // 7. Start queue processor
       await this.schedulerAlarms.startJobQueueProcessor();
@@ -467,6 +501,38 @@ export class ServerAgentBootstrap {
       console.log('[ServerAgentBootstrap] Scheduler initialized');
     } catch (error) {
       console.error('[ServerAgentBootstrap] Failed to initialize scheduler:', error);
+    }
+  }
+
+  /**
+   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * the currently running scheduled job at the bootstrap level.
+   */
+  private handleSchedulerEventCompletion(msg: EventMsg): void {
+    if (!this.runningSchedulerJobId || !this.scheduler) return;
+    const jobId = this.runningSchedulerJobId;
+
+    if (msg.type === 'TaskComplete') {
+      this.runningSchedulerJobId = null;
+      const summary = (msg as any).data?.last_agent_message?.slice(0, 500) || 'Job completed';
+      const tokenData = (msg as any).data?.token_usage?.total;
+      this.scheduler.completeJob(jobId, {
+        summary,
+        tokenUsage: {
+          inputTokens: tokenData?.input_tokens ?? 0,
+          outputTokens: tokenData?.output_tokens ?? 0,
+          totalTokens: tokenData?.total_tokens ?? 0,
+        },
+        duration: 0,
+      }).catch((error) => {
+        console.error(`[ServerAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
+      });
+    } else if (msg.type === 'TaskFailed') {
+      this.runningSchedulerJobId = null;
+      const error = (msg as any).data?.error || (msg as any).data?.reason || 'Job failed';
+      this.scheduler.failJob(jobId, error).catch((err) => {
+        console.error(`[ServerAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
+      });
     }
   }
 

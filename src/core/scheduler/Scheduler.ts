@@ -60,6 +60,7 @@ export class Scheduler {
   private jobLauncher: JobLauncher | null = null;
   private connectivityCheck: ConnectivityCheck = () => true;
   private triggeringJobs: Set<string> = new Set(); // guard against concurrent triggers
+  private isExecuting = false; // mutex to prevent concurrent executeJob calls
 
   constructor(
     private storage: ISchedulerStorage,
@@ -209,10 +210,10 @@ export class Scheduler {
         console.log(`[Scheduler] Alarm cleared for ${jobId}`);
       }
 
-      // Check if another job is currently running
+      // Check if another job is currently running or being started
       const state = await this.storage.getSchedulerState();
-      console.log(`[Scheduler] currentJobId=${state.currentJobId}, isPaused=${state.isPaused}`);
-      if (state.currentJobId) {
+      console.log(`[Scheduler] currentJobId=${state.currentJobId}, isPaused=${state.isPaused}, isExecuting=${this.isExecuting}`);
+      if (state.currentJobId || this.isExecuting) {
         // Add to job queue
         await this.storage.updateJob(jobId, { status: 'waiting' });
         this.emitStatusChange(jobId, previousStatus, 'waiting');
@@ -280,60 +281,73 @@ export class Scheduler {
    * Opens a new browser tab with the job for execution
    */
   async executeJob(jobId: string): Promise<void> {
-    console.log(`[Scheduler] executeJob starting for ${jobId}`);
-    const job = await this.storage.getJob(jobId);
-    if (!job) {
-      throw new Error(`Job not found: ${jobId}`);
+    // Mutex: prevent concurrent executeJob calls (cross-job race)
+    if (this.isExecuting) {
+      console.log(`[Scheduler] executeJob skipped (another job is being started), queueing ${jobId}`);
+      await this.storage.updateJob(jobId, { status: 'waiting' });
+      return;
     }
+    this.isExecuting = true;
 
-    // Guard: only execute jobs in a valid pre-execution status
-    if (!['draft', 'scheduled', 'missed', 'waiting'].includes(job.status)) {
-      throw new Error(`Cannot execute job in ${job.status} status`);
-    }
-
-    const previousStatus = job.status;
-
-    // Feature 015: Create an isolated AgentSession for this scheduled job
-    let sessionId: string;
-    if (this.registry && this.registry.canCreateSession()) {
-      try {
-        const session = await this.registry.createSession({
-          type: 'scheduled',
-        });
-        sessionId = session.sessionId;
-        this.jobSessions.set(jobId, sessionId);
-        console.log(`[Scheduler] Created AgentSession ${sessionId} for job ${jobId}`);
-      } catch (error) {
-        console.error(`[Scheduler] Failed to create AgentSession for job ${jobId}:`, error);
-        // Fallback to legacy session ID
-        sessionId = `session_${uuidv4()}`;
+    try {
+      console.log(`[Scheduler] executeJob starting for ${jobId}`);
+      const job = await this.storage.getJob(jobId);
+      if (!job) {
+        throw new Error(`Job not found: ${jobId}`);
       }
-    } else {
-      // Legacy fallback when registry is not available
-      sessionId = `session_${uuidv4()}`;
-      console.log(`[Scheduler] Using legacy session ID ${sessionId} for job ${jobId}`);
+
+      // Guard: only execute jobs in a valid pre-execution status
+      if (!['draft', 'scheduled', 'missed', 'waiting'].includes(job.status)) {
+        console.warn(`[Scheduler] Cannot execute job ${jobId} in ${job.status} status, skipping`);
+        return;
+      }
+
+      const previousStatus = job.status;
+
+      // Feature 015: Create an isolated AgentSession for this scheduled job
+      let sessionId: string;
+      if (this.registry && this.registry.canCreateSession()) {
+        try {
+          const session = await this.registry.createSession({
+            type: 'scheduled',
+          });
+          sessionId = session.sessionId;
+          this.jobSessions.set(jobId, sessionId);
+          console.log(`[Scheduler] Created AgentSession ${sessionId} for job ${jobId}`);
+        } catch (error) {
+          console.error(`[Scheduler] Failed to create AgentSession for job ${jobId}:`, error);
+          // Fallback to legacy session ID
+          sessionId = `session_${uuidv4()}`;
+        }
+      } else {
+        // Legacy fallback when registry is not available
+        sessionId = `session_${uuidv4()}`;
+        console.log(`[Scheduler] Using legacy session ID ${sessionId} for job ${jobId}`);
+      }
+
+      // Update job to running status
+      await this.storage.updateJob(jobId, {
+        status: 'running',
+        sessionId,
+      });
+
+      // Update scheduler state
+      await this.storage.setSchedulerState({
+        currentJobId: jobId,
+        lastProcessedTime: Date.now(),
+      });
+
+      this.emitStatusChange(jobId, previousStatus, 'running');
+      this.emitStateChange({ currentJobId: jobId });
+
+      // Show browser notification (T025)
+      await this.showJobStartNotification(job);
+
+      // Launch job for execution (errors are caught in launchJob and mark job as failed)
+      await this.launchJob(jobId, sessionId);
+    } finally {
+      this.isExecuting = false;
     }
-
-    // Update job to running status
-    await this.storage.updateJob(jobId, {
-      status: 'running',
-      sessionId,
-    });
-
-    // Update scheduler state
-    await this.storage.setSchedulerState({
-      currentJobId: jobId,
-      lastProcessedTime: Date.now(),
-    });
-
-    this.emitStatusChange(jobId, previousStatus, 'running');
-    this.emitStateChange({ currentJobId: jobId });
-
-    // Show browser notification (T025)
-    await this.showJobStartNotification(job);
-
-    // Launch job for execution
-    await this.launchJob(jobId, sessionId);
   }
 
   /**
@@ -461,8 +475,8 @@ export class Scheduler {
       return;
     }
 
-    // Don't process if a job is already running
-    if (state.currentJobId) {
+    // Don't process if a job is already running or being started
+    if (state.currentJobId || this.isExecuting) {
       return;
     }
 

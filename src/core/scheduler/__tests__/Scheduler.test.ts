@@ -541,6 +541,154 @@ describe('Scheduler', () => {
     });
   });
 
+  describe('executeJob — status guard', () => {
+    it('should skip execution for completed jobs', async () => {
+      vi.mocked(storage.getJob).mockResolvedValue(
+        createMockJob({ id: 'job-1', status: 'completed' })
+      );
+
+      await scheduler.executeJob('job-1');
+
+      // Should NOT update to running
+      expect(storage.updateJob).not.toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: 'running' })
+      );
+    });
+
+    it('should skip execution for failed jobs', async () => {
+      vi.mocked(storage.getJob).mockResolvedValue(
+        createMockJob({ id: 'job-1', status: 'failed' })
+      );
+
+      await scheduler.executeJob('job-1');
+
+      expect(storage.updateJob).not.toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: 'running' })
+      );
+    });
+
+    it('should skip execution for cancelled jobs', async () => {
+      vi.mocked(storage.getJob).mockResolvedValue(
+        createMockJob({ id: 'job-1', status: 'cancelled' })
+      );
+
+      await scheduler.executeJob('job-1');
+
+      expect(storage.updateJob).not.toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: 'running' })
+      );
+    });
+
+    it('should skip execution for running jobs', async () => {
+      vi.mocked(storage.getJob).mockResolvedValue(
+        createMockJob({ id: 'job-1', status: 'running' })
+      );
+
+      await scheduler.executeJob('job-1');
+
+      // Should not call setSchedulerState (job already running)
+      expect(storage.setSchedulerState).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('executeJob — execution mutex', () => {
+    it('should queue job when another executeJob is in progress', async () => {
+      // Make the first executeJob slow by making the launcher take time
+      let resolveFirst: () => void;
+      const firstPromise = new Promise<void>((resolve) => { resolveFirst = resolve; });
+      const launcher = vi.fn().mockImplementation(() => firstPromise);
+      scheduler.setJobLauncher(launcher);
+
+      const job1 = createMockJob({ id: 'job-1', status: 'draft' });
+      const job2 = createMockJob({ id: 'job-2', status: 'draft' });
+
+      vi.mocked(storage.getJob)
+        .mockResolvedValueOnce(job1)
+        .mockResolvedValueOnce(job2);
+
+      // Start first job (it will hang on the launcher)
+      const exec1 = scheduler.executeJob('job-1');
+      // Start second job immediately — should be queued
+      const exec2 = scheduler.executeJob('job-2');
+
+      // Let first job finish
+      resolveFirst!();
+      await exec1;
+      await exec2;
+
+      // Job 2 should have been set to waiting (mutex blocked it)
+      expect(storage.updateJob).toHaveBeenCalledWith('job-2', { status: 'waiting' });
+    });
+
+    it('should clear mutex even when executeJob throws', async () => {
+      vi.mocked(storage.getJob).mockResolvedValueOnce(null); // Will throw "not found"
+
+      await expect(scheduler.executeJob('missing')).rejects.toThrow();
+
+      // Mutex should be cleared — next executeJob should work
+      vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-2', status: 'draft' }));
+      await scheduler.executeJob('job-2');
+      expect(storage.updateJob).toHaveBeenCalledWith(
+        'job-2',
+        expect.objectContaining({ status: 'running' })
+      );
+    });
+  });
+
+  describe('recoverStaleRunningJob — additional coverage', () => {
+    it('should emit status change event when failing stale job', async () => {
+      const staleJob = createMockJob({ id: 'stale-1', status: 'running' });
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
+        createMockState({ currentJobId: 'stale-1' })
+      );
+      vi.mocked(storage.getJob).mockResolvedValue(staleJob);
+      vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
+
+      await scheduler.recoverStaleRunningJob();
+
+      expect(emitter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobId: 'stale-1',
+          previousStatus: 'running',
+          newStatus: 'failed',
+        })
+      );
+    });
+
+    it('should emit state change event when clearing currentJobId', async () => {
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
+        createMockState({ currentJobId: 'gone-1' })
+      );
+      vi.mocked(storage.getJob).mockResolvedValue(null);
+      vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
+
+      await scheduler.recoverStaleRunningJob();
+
+      expect(emitter).toHaveBeenCalledWith(
+        expect.objectContaining({ currentJobId: null })
+      );
+    });
+
+    it('should not mark job as failed if it is already in a terminal status', async () => {
+      const completedJob = createMockJob({ id: 'done-1', status: 'completed' });
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(
+        createMockState({ currentJobId: 'done-1' })
+      );
+      vi.mocked(storage.getJob).mockResolvedValue(completedJob);
+      vi.mocked(storage.getNextJobInQueue).mockResolvedValue(null);
+
+      await scheduler.recoverStaleRunningJob();
+
+      // Should NOT update the completed job to failed
+      expect(storage.updateJob).not.toHaveBeenCalled();
+      // But SHOULD clear the stale currentJobId
+      expect(storage.setSchedulerState).toHaveBeenCalledWith({ currentJobId: null });
+    });
+  });
+
   // =========================================================================
   // showJobStartNotification (private)
   // =========================================================================

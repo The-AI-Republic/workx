@@ -52,12 +52,14 @@ export class AgentRegistry {
   private _config: AgentConfig | null = null;
   private _router: MessageRouter | null = null;
   private _storage: SessionStorage | null = null;
+  private _registryConfig: RegistryConfig;
 
   /**
    * Create a new AgentRegistry
    * @param config Registry configuration
    */
   constructor(config: RegistryConfig = {}) {
+    this._registryConfig = config;
     this._maxConcurrent = config.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
 
     // Clamp to valid range
@@ -148,41 +150,52 @@ export class AgentRegistry {
     // T057: Wrap agent creation in try-catch for graceful error handling
     let agent: RepublicAgent;
     try {
-      agent = new RepublicAgent(this._config, this._router, undefined, undefined, new UserNotifier());
+      if (this._registryConfig.agentFactory) {
+        // Server/Desktop path: use provided factory for agent creation
+        agent = await this._registryConfig.agentFactory(this._config, this._router);
 
-      // Set up event dispatcher for chrome extension mode
-      // Events are sent via chrome.runtime to the UI
-      agent.setEventDispatcher((event) => {
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          chrome.runtime.sendMessage({
-            type: 'EVENT',
-            payload: event,
-          }).catch(() => {
-            // Ignore errors if no listeners
-          });
+        // Set event dispatcher via factory if provided
+        if (this._registryConfig.eventDispatcherFactory) {
+          agent.setEventDispatcher(this._registryConfig.eventDispatcherFactory(session.sessionId));
         }
-      });
+      } else {
+        // Extension path: hardcoded chrome extension logic (existing behavior)
+        agent = new RepublicAgent(this._config, this._router, undefined, undefined, new UserNotifier());
 
-      await agent.initialize();
+        // Set up event dispatcher for chrome extension mode
+        // Events are sent via chrome.runtime to the UI
+        agent.setEventDispatcher((event) => {
+          if (typeof chrome !== 'undefined' && chrome.runtime) {
+            chrome.runtime.sendMessage({
+              type: 'EVENT',
+              payload: event,
+            }).catch(() => {
+              // Ignore errors if no listeners
+            });
+          }
+        });
 
-      // Configure extension-specific approval gate
-      const approvalManager = agent.getApprovalManager();
-      const toolRegistry = agent.getToolRegistry();
-      const policyEngine = new PolicyRulesEngine(getDefaultRules('extension'));
-      const approvalGate = new ApprovalGate(approvalManager, policyEngine);
-      approvalGate.addEnhancer(new DomainSensitivityEnhancer());
-      approvalGate.addEnhancer(new SemanticElementEnhancer());
-      const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
-      approvalGate.setConfigStorage(configStorage);
-      try {
-        const storedConfig = await configStorage.loadConfig();
-        approvalGate.setMode(storedConfig.mode);
-        approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
-        approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
-      } catch (error) {
-        console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
+        await agent.initialize();
+
+        // Configure extension-specific approval gate
+        const approvalManager = agent.getApprovalManager();
+        const toolRegistry = agent.getToolRegistry();
+        const policyEngine = new PolicyRulesEngine(getDefaultRules('extension'));
+        const approvalGate = new ApprovalGate(approvalManager, policyEngine);
+        approvalGate.addEnhancer(new DomainSensitivityEnhancer());
+        approvalGate.addEnhancer(new SemanticElementEnhancer());
+        const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+        approvalGate.setConfigStorage(configStorage);
+        try {
+          const storedConfig = await configStorage.loadConfig();
+          approvalGate.setMode(storedConfig.mode);
+          approvalGate.setTrustedDomains(storedConfig.trustedDomains || []);
+          approvalGate.setBlockedDomains(storedConfig.blockedDomains || []);
+        } catch (error) {
+          console.warn('[AgentRegistry] Failed to load approval config, using defaults:', error);
+        }
+        toolRegistry.setApprovalGate(approvalGate);
       }
-      toolRegistry.setApprovalGate(approvalGate);
     } catch (initError) {
       // Agent initialization failed - clean up and emit error event
       console.error(`[AgentRegistry] Failed to initialize agent for session ${session.sessionId}:`, initError);
@@ -215,11 +228,14 @@ export class AgentRegistry {
     }
 
     // T057: Wrap tab closure handling setup in try-catch
-    try {
-      this._setupTabClosureHandling(session);
-    } catch (tabError) {
-      console.warn(`[AgentRegistry] Tab closure handling setup failed:`, tabError);
-      // Non-critical - session can still function without tab closure handling
+    // Skip for server/desktop (no Chrome tab management)
+    if (!this._registryConfig.agentFactory) {
+      try {
+        this._setupTabClosureHandling(session);
+      } catch (tabError) {
+        console.warn(`[AgentRegistry] Tab closure handling setup failed:`, tabError);
+        // Non-critical - session can still function without tab closure handling
+      }
     }
 
     // Subscribe to session events and forward to registry listeners

@@ -271,11 +271,13 @@
     isLoadingDetails = true;
 
     try {
-      const response = await sendMessage<{ data?: SchedulerJobRecord } | SchedulerJobRecord>(
+      const response = await sendMessage<{ job?: SchedulerJobRecord; data?: SchedulerJobRecord } | SchedulerJobRecord>(
         MessageType.SCHEDULER_GET_JOB_DETAILS,
         { jobId }
       );
-      expandedJobDetails = (response as { data?: SchedulerJobRecord })?.data || response as SchedulerJobRecord;
+      // Handler returns { job: ... }, unwrap accordingly
+      const r = response as { job?: SchedulerJobRecord; data?: SchedulerJobRecord };
+      expandedJobDetails = r?.job || r?.data || response as SchedulerJobRecord;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to fetch job details:', error);
       expandedJobDetails = null;
