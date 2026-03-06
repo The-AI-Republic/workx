@@ -91,5 +91,5 @@ export function isNavActive(route: string, currentLocation: string): boolean {
     ];
     return !allRoutes.some((r) => currentLocation.startsWith(r));
   }
-  return currentLocation === route;
+  return currentLocation.startsWith(route);
 }

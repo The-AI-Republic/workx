@@ -71,6 +71,8 @@ import type {
   CancelJobRequest,
   GetJobDetailsRequest,
   GetArchivedJobsRequest,
+  RescheduleJobRequest,
+  GetAllJobsInRangeRequest,
 } from '../../core/models/types/SchedulerContracts';
 import type { JobResultRecord } from '../../core/models/types/Scheduler';
 
@@ -1095,6 +1097,29 @@ function setupSchedulerMessageHandlers(): void {
     const { jobId } = message.payload as GetJobDetailsRequest;
     const job = await schedulerStorage!.getJob(jobId);
     return { job };
+  });
+
+  // Reschedule a job
+  router.on(MessageType.SCHEDULER_RESCHEDULE_JOB, async (message) => {
+    const { jobId, scheduledTime } = message.payload as RescheduleJobRequest;
+    await scheduler!.rescheduleJob(jobId, scheduledTime);
+    return { success: true };
+  });
+
+  // Get all jobs in a date range
+  router.on(MessageType.SCHEDULER_GET_ALL_JOBS_IN_RANGE, async (message) => {
+    const { startTime, endTime } = message.payload as GetAllJobsInRangeRequest;
+    const jobs = await schedulerStorage!.getAllJobsInRange(startTime, endTime);
+    return {
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        input: j.input.slice(0, 100),
+        scheduledTime: j.scheduledTime,
+        status: j.status,
+        createdAt: j.createdAt,
+        recurrence: j.recurrence,
+      })),
+    };
   });
 
   console.log('[ServiceWorker] Scheduler message handlers registered');

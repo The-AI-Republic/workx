@@ -1,0 +1,163 @@
+<script lang="ts">
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { t, _t } from '../../lib/i18n';
+  import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
+
+  export let job: {
+    id: string;
+    input: string;
+    scheduledTime: number | null;
+    status: SchedulerJobStatus;
+    createdAt: number;
+    sessionId?: string;
+    [key: string]: unknown;
+  };
+  export let show: boolean = false;
+  export let position: { x: number; y: number } = { x: 0, y: 0 };
+
+  const dispatch = createEventDispatcher<{
+    trigger: { jobId: string };
+    cancel: { jobId: string };
+    close: void;
+  }>();
+
+  let currentTheme: UITheme = 'terminal';
+  let popoverEl: HTMLDivElement;
+
+  const unsubTheme = uiTheme.subscribe((theme) => {
+    currentTheme = theme;
+  });
+
+  function handleClickOutside(e: MouseEvent) {
+    if (popoverEl && !popoverEl.contains(e.target as Node)) {
+      dispatch('close');
+    }
+  }
+
+  function getStatusColor(status: SchedulerJobStatus): string {
+    switch (status) {
+      case 'running': return 'text-blue-400';
+      case 'scheduled': return 'text-green-400';
+      case 'missed': return 'text-yellow-400';
+      case 'failed': return 'text-red-400';
+      case 'completed': return 'text-gray-400';
+      case 'cancelled': return 'text-gray-500';
+      default: return '';
+    }
+  }
+
+  function formatTime(ts: number | null): string {
+    if (!ts) return t('No time set');
+    return new Date(ts).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  // Clamp position to viewport
+  $: clampedX = Math.min(position.x, (typeof window !== 'undefined' ? window.innerWidth : 400) - 280);
+  $: clampedY = Math.min(position.y, (typeof window !== 'undefined' ? window.innerHeight : 600) - 200);
+
+  onMount(() => {
+    setTimeout(() => {
+      window.addEventListener('click', handleClickOutside);
+    }, 10);
+  });
+
+  onDestroy(() => {
+    unsubTheme();
+    window.removeEventListener('click', handleClickOutside);
+  });
+</script>
+
+{#if show}
+  <div
+    bind:this={popoverEl}
+    class="fixed z-[10001] w-[260px] rounded-lg shadow-lg overflow-hidden animate-pop-in
+      {currentTheme === 'modern'
+        ? 'bg-chat-bg dark:bg-chat-bg-dark border border-chat-border dark:border-chat-border-dark'
+        : 'bg-[#0a0a0a] border border-term-dim-green'}"
+    style="left: {clampedX}px; top: {clampedY}px;"
+  >
+    <!-- Header -->
+    <div class="flex justify-between items-center px-3 py-2
+      {currentTheme === 'modern'
+        ? 'bg-chat-surface dark:bg-chat-surface-dark border-b border-chat-border dark:border-chat-border-dark'
+        : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
+      <span class="text-xs font-semibold uppercase {getStatusColor(job.status)}">{job.status}</span>
+      <button
+        class="p-0.5 bg-transparent border-none cursor-pointer
+          {currentTheme === 'modern'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+            : 'text-term-dim-green hover:text-term-green'}"
+        on:click={() => dispatch('close')}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="px-3 py-2">
+      <p class="m-0 mb-2 text-sm leading-relaxed break-words
+        {currentTheme === 'modern'
+          ? 'text-chat-text dark:text-chat-text-dark font-chat'
+          : 'text-term-green font-terminal'}">
+        {job.input.slice(0, 100)}{job.input.length > 100 ? '...' : ''}
+      </p>
+
+      {#if job.scheduledTime}
+        <div class="text-xs mb-1
+          {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+          {$_t('Scheduled')}: {formatTime(job.scheduledTime)}
+        </div>
+      {/if}
+
+      <div class="text-xs
+        {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+        {$_t('Created')}: {formatTime(job.createdAt)}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-2 px-3 py-2
+      {currentTheme === 'modern'
+        ? 'border-t border-chat-border dark:border-chat-border-dark'
+        : 'border-t border-term-dim-green'}">
+      {#if job.status === 'scheduled' || job.status === 'missed' || job.status === 'draft'}
+        <button
+          class="flex-1 py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+            {currentTheme === 'modern'
+              ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20'
+              : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-green hover:bg-[rgba(0,255,0,0.2)]'}"
+          on:click={() => dispatch('trigger', { jobId: job.id })}
+        >{$_t('Trigger')}</button>
+        <button
+          class="flex-1 py-1.5 text-xs rounded cursor-pointer transition-all duration-200
+            bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-red-400 hover:bg-[rgba(239,68,68,0.2)]"
+          on:click={() => dispatch('cancel', { jobId: job.id })}
+        >{$_t('Cancel')}</button>
+      {:else if (job.status === 'completed' || job.status === 'failed') && job.sessionId}
+        <a
+          class="flex-1 py-1.5 text-xs rounded text-center no-underline transition-all duration-200
+            {currentTheme === 'modern'
+              ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+              : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-green hover:bg-[rgba(0,255,0,0.2)]'}"
+          href="index.html?sessionId={job.sessionId}"
+        >{$_t('View Session')}</a>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<style>
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-pop-in {
+    animation: popIn 0.15s ease-out;
+  }
+</style>

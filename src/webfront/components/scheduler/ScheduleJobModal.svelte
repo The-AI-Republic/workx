@@ -7,6 +7,8 @@
 
   export let show: boolean = false;
   export let input: string = '';
+  export let prefillDate: string = '';
+  export let prefillTime: string = '';
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -34,15 +36,18 @@
   }
 
   function initializeDefaults() {
-    // Default to 1 hour from now
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    now.setMinutes(0);
-    now.setSeconds(0);
-    now.setMilliseconds(0);
+    if (prefillDate) {
+      selectedDate = prefillDate;
+    } else {
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+      now.setSeconds(0);
+      now.setMilliseconds(0);
+      selectedDate = formatDateForInput(now);
+    }
 
-    selectedDate = formatDateForInput(now);
-    selectedTime = formatTimeForInput(now);
+    selectedTime = prefillTime || formatTimeForInput(new Date(new Date().setHours(new Date().getHours() + 1, 0, 0, 0)));
     errorMessage = '';
     editableInput = input || '';
     recurrence = null;

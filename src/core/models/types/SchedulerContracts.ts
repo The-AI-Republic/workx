@@ -229,6 +229,25 @@ export interface GetArchivedJobsRequest {
   statusFilter?: SchedulerJobStatus[];
 }
 
+export interface RescheduleJobRequest {
+  jobId: string;
+  scheduledTime: number;
+}
+
+export interface RescheduleJobResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface GetAllJobsInRangeRequest {
+  startTime: number;
+  endTime: number;
+}
+
+export interface GetAllJobsInRangeResponse {
+  jobs: SchedulerJobSummary[];
+}
+
 // ============================================================================
 // Response Payloads
 // ============================================================================

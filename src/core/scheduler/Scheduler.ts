@@ -232,6 +232,36 @@ export class Scheduler {
   }
 
   /**
+   * Reschedule a job to a new time.
+   * Only allowed for scheduled, missed, or draft status jobs.
+   */
+  async rescheduleJob(jobId: string, newScheduledTime: number): Promise<void> {
+    const job = await this.storage.getJob(jobId);
+    if (!job) {
+      throw new Error(`Job not found: ${jobId}`);
+    }
+
+    if (!['scheduled', 'missed', 'draft'].includes(job.status)) {
+      throw new Error(`Cannot reschedule job in ${job.status} status`);
+    }
+
+    const previousStatus = job.status;
+
+    // Clear existing alarm if scheduled
+    if (job.status === 'scheduled') {
+      await this.alarms.clearJobAlarm(jobId);
+    }
+
+    await this.storage.updateJob(jobId, {
+      scheduledTime: newScheduledTime,
+      status: 'scheduled',
+    });
+
+    await this.alarms.createJobAlarm(jobId, newScheduledTime);
+    this.emitStatusChange(jobId, previousStatus, 'scheduled');
+  }
+
+  /**
    * Cancel a job
    * Feature 015: Cleans up the isolated AgentSession if job was running
    */

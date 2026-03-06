@@ -181,6 +181,17 @@ export class SchedulerStorage implements ISchedulerStorage {
   }
 
   /**
+   * Get all jobs whose scheduledTime falls within a date range (inclusive).
+   * Skips jobs with null scheduledTime (drafts).
+   */
+  async getAllJobsInRange(startTime: number, endTime: number): Promise<SchedulerJobRecord[]> {
+    const allJobs = await this.db.getAll<SchedulerJobRecord>(STORE_NAMES.SCHEDULER_JOBS);
+    return allJobs.filter(
+      (job) => job.scheduledTime != null && job.scheduledTime >= startTime && job.scheduledTime <= endTime
+    );
+  }
+
+  /**
    * Get the next job in the queue (FIFO by createdAt)
    */
   async getNextJobInQueue(): Promise<SchedulerJobRecord | null> {
