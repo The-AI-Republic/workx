@@ -1038,7 +1038,7 @@ export class Session {
         const memoryService = await createMemoryService({
           llmProvider: providerId,
           apiKey: apiKey || '', // Pass empty string to trigger graceful degradation inside createMemoryService
-          baseUrl: agentConfig.getProvider(providerId)?.baseUrl,
+          baseUrl: agentConfig.getProvider(providerId)?.baseUrl ?? undefined,
           llmCaller
         });
 

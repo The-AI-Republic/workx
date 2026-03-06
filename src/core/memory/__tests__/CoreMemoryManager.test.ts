@@ -185,7 +185,7 @@ describe('CoreMemoryManager.mergeCoreFacts', () => {
     // writeFile should not be called with empty content
     // But ensureFile may call writeFile — check that only ensureFile call happened
     const writeCalls = fs.writeFile.mock.calls.filter(
-      ([, content]: [string, string]) => content !== '' && !content.includes('# User Profile')
+      (args: any[]) => args[1] !== '' && !(args[1] as string).includes('# User Profile')
     );
     expect(writeCalls).toHaveLength(0);
   });

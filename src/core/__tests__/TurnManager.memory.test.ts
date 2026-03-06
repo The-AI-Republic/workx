@@ -91,19 +91,22 @@ describe('TurnManager - search_memory tool registration', () => {
 // ---------------------------------------------------------------------------
 
 describe('SEARCH_MEMORY_TOOL', () => {
+  // Cast to access .function since ToolDefinition is a union type
+  const tool = SEARCH_MEMORY_TOOL as Extract<typeof SEARCH_MEMORY_TOOL, { type: 'function' }>;
+
   it('has correct tool structure', () => {
-    expect(SEARCH_MEMORY_TOOL.type).toBe('function');
-    expect(SEARCH_MEMORY_TOOL.function.name).toBe('search_memory');
-    expect(SEARCH_MEMORY_TOOL.function.parameters.required).toContain('query');
+    expect(tool.type).toBe('function');
+    expect(tool.function.name).toBe('search_memory');
+    expect((tool.function.parameters as any).required).toContain('query');
   });
 
   it('has a description', () => {
-    expect(SEARCH_MEMORY_TOOL.function.description).toBeTruthy();
-    expect(SEARCH_MEMORY_TOOL.function.description.length).toBeGreaterThan(20);
+    expect(tool.function.description).toBeTruthy();
+    expect(tool.function.description.length).toBeGreaterThan(20);
   });
 
   it('has query parameter defined', () => {
-    const props = SEARCH_MEMORY_TOOL.function.parameters.properties as Record<string, any>;
+    const props = (tool.function.parameters as any).properties as Record<string, any>;
     expect(props.query).toBeDefined();
     expect(props.query.type).toBe('string');
   });

@@ -48,6 +48,8 @@ function createMockStore(): MemoryStore & MemoryHistoryStore {
     getSchemaDimensions: vi.fn().mockResolvedValue(null),
     migrateDimensions: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
+    setMigrationStatus: vi.fn().mockResolvedValue(undefined),
+    getMigrationStatus: vi.fn().mockResolvedValue('COMPLETE'),
     logOperation: vi.fn().mockResolvedValue(undefined),
     getHistory: vi.fn().mockResolvedValue([]),
     getAllHistory: vi.fn().mockResolvedValue([]),
