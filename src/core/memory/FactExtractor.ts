@@ -95,16 +95,43 @@ export class FactExtractor {
 
   private parseFacts(response: string): string[] {
     try {
-      // Try to extract the last JSON object containing "facts" (avoids
-      // capturing preamble text with braces via greedy matching)
-      const jsonMatch = response.match(/\{[^{}]*"facts"\s*:\s*\[[\s\S]*?\]\s*\}/);
-      if (!jsonMatch) return [];
+      // Strategy 1: Try parsing the entire response as JSON
+      try {
+        const direct = JSON.parse(response);
+        if (Array.isArray(direct.facts)) {
+          return direct.facts.filter(
+            (f: unknown) => typeof f === 'string' && f.length > 0
+          );
+        }
+      } catch { /* not pure JSON — try extraction */ }
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed.facts)) {
-        return parsed.facts.filter(
-          (f: unknown) => typeof f === 'string' && f.length > 0
-        );
+      // Strategy 2: Find JSON by scanning for balanced braces containing "facts"
+      const idx = response.indexOf('"facts"');
+      if (idx === -1) return [];
+
+      // Walk backwards to find the opening {
+      let start = -1;
+      for (let i = idx - 1; i >= 0; i--) {
+        if (response[i] === '{') { start = i; break; }
+      }
+      if (start === -1) return [];
+
+      // Walk forwards to find balanced closing }
+      let depth = 0;
+      for (let i = start; i < response.length; i++) {
+        if (response[i] === '{') depth++;
+        else if (response[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            const parsed = JSON.parse(response.slice(start, i + 1));
+            if (Array.isArray(parsed.facts)) {
+              return parsed.facts.filter(
+                (f: unknown) => typeof f === 'string' && f.length > 0
+              );
+            }
+            break;
+          }
+        }
       }
       return [];
     } catch {

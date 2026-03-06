@@ -20,10 +20,10 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<Float32Array> {
-    const input = text.replace(/\n/g, ' ').trim();
+    // Normalization (newline→space, trim) is handled by CachedEmbeddingProvider
     const result = await this.client.models.embedContent({
       model: this.model,
-      contents: input,
+      contents: text,
     });
     // H4: Guard against empty/malformed API response
     if (!result.embeddings?.[0]?.values) {
@@ -35,9 +35,15 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
   async embedBatch(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
 
-    // H5: Use parallel calls instead of sequential for better throughput
-    const promises = texts.map((text) => this.embed(text));
-    return Promise.all(promises);
+    // Process in batches of 5 to avoid API rate limits
+    const CONCURRENCY = 5;
+    const results: Float32Array[] = [];
+    for (let i = 0; i < texts.length; i += CONCURRENCY) {
+      const batch = texts.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(batch.map((text) => this.embed(text)));
+      results.push(...batchResults);
+    }
+    return results;
   }
 
   getDimensions(): number {

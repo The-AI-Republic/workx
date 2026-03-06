@@ -37,7 +37,7 @@ export interface MemoryStore {
 
   getById(id: string): Promise<MemoryFact | null>;
 
-  getAll(scope?: MemoryScope, limit?: number): Promise<MemoryFact[]>;
+  getAll(scope?: MemoryScope, limit?: number, offset?: number): Promise<MemoryFact[]>;
 
   updateAccessStats(ids: string[]): Promise<void>;
 

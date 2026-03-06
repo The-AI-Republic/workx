@@ -86,28 +86,48 @@ export class ConflictResolver {
 
   private parseDecisions(response: string): MemoryDecision[] {
     try {
-      // Match JSON object containing "decisions" array, avoiding greedy capture
-      const jsonMatch = response.match(/\{[^{}]*"decisions"\s*:\s*\[[\s\S]*?\]\s*\}/);
-      if (!jsonMatch) {
-        // H3: Fall back to returning null to signal parse failure (caller defaults to ADD)
-        return [];
+      const extractDecisions = (obj: Record<string, unknown>): MemoryDecision[] => {
+        if (!Array.isArray(obj.decisions)) return [];
+        return obj.decisions
+          .filter(
+            (d: Record<string, unknown>) =>
+              typeof d.fact === 'string' &&
+              ['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(d.action as string)
+          )
+          .map((d: Record<string, unknown>) => ({
+            fact: d.fact as string,
+            action: d.action as MemoryDecision['action'],
+            memoryId: d.memoryId != null ? String(d.memoryId) : undefined,
+            reasoning: d.reasoning as string | undefined,
+          }));
+      };
+
+      // Strategy 1: Try parsing the entire response as JSON
+      try {
+        return extractDecisions(JSON.parse(response));
+      } catch { /* not pure JSON — try extraction */ }
+
+      // Strategy 2: Find JSON by scanning for balanced braces containing "decisions"
+      const idx = response.indexOf('"decisions"');
+      if (idx === -1) return [];
+
+      let start = -1;
+      for (let i = idx - 1; i >= 0; i--) {
+        if (response[i] === '{') { start = i; break; }
       }
+      if (start === -1) return [];
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(parsed.decisions)) return [];
-
-      return parsed.decisions
-        .filter(
-          (d: Record<string, unknown>) =>
-            typeof d.fact === 'string' &&
-            ['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(d.action as string)
-        )
-        .map((d: Record<string, unknown>) => ({
-          fact: d.fact as string,
-          action: d.action as MemoryDecision['action'],
-          memoryId: d.memoryId != null ? String(d.memoryId) : undefined,
-          reasoning: d.reasoning as string | undefined,
-        }));
+      let depth = 0;
+      for (let i = start; i < response.length; i++) {
+        if (response[i] === '{') depth++;
+        else if (response[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            return extractDecisions(JSON.parse(response.slice(start, i + 1)));
+          }
+        }
+      }
+      return [];
     } catch {
       console.warn('[Memory] Failed to parse conflict resolution response');
       return [];

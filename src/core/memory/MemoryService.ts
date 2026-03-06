@@ -88,14 +88,16 @@ function classifyFact(fact: string): MemoryCategory {
     for (const keyword of keywords) {
       // Use word-boundary matching to avoid false positives
       // (e.g. "information" matching "format", "stubborn" matching "born")
-      const pattern = keyword.includes(' ')
-        ? keyword // Multi-word phrases: exact substring match is fine
-        : new RegExp(`\\b${keyword}\\b`);
-      const matches = typeof pattern === 'string'
-        ? lower.includes(pattern)
-        : pattern.test(lower);
-      if (matches) {
-        return category as MemoryCategory;
+      if (keyword.includes(' ')) {
+        // Multi-word phrases: exact substring match
+        if (lower.includes(keyword)) {
+          return category as MemoryCategory;
+        }
+      } else {
+        const pattern = new RegExp(`\\b${keyword}\\b`);
+        if (pattern.test(lower)) {
+          return category as MemoryCategory;
+        }
       }
     }
   }
@@ -111,7 +113,11 @@ export class MemoryService {
   private config: MemoryConfig;
   private processingQueues = new Map<string, Promise<void>>();
   private lastExtractionTime = new Map<string, number>();
+  private pendingMessages = new Map<string, ConversationMessage[]>();
   private minExtractionIntervalMs = 10000; // 10 seconds cooldown
+  private migrationReady: Promise<void> = Promise.resolve();
+  private migrationReadyResolve: (() => void) | null = null;
+  private closed = false;
 
   constructor(
     store: MemoryStore & MemoryHistoryStore,
@@ -130,6 +136,16 @@ export class MemoryService {
   }
 
   /**
+   * Mark the service as migration-pending. Callers of search/processConversation
+   * will wait until the migration gate is released.
+   */
+  beginMigration(): void {
+    this.migrationReady = new Promise<void>((resolve) => {
+      this.migrationReadyResolve = resolve;
+    });
+  }
+
+  /**
    * Check if a schema migration is pending, and run re-embedding in background if so.
    */
   async checkAndRunMigration(): Promise<void> {
@@ -141,7 +157,19 @@ export class MemoryService {
 
       console.log('[Memory] Dimension migration PENDING detected. Starting background re-embedding job...');
 
-      const allFacts = await this.store.getAll();
+      // Paginate to avoid loading entire DB into memory (#14)
+      const PAGE_SIZE = 500;
+      let offset = 0;
+      let allFacts: import('./types').MemoryFact[] = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const page = await this.store.getAll(undefined, PAGE_SIZE, offset);
+        if (page.length === 0) break;
+        allFacts = allFacts.concat(page);
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE) break;
+      }
+
       const batchSize = 25; // Smaller batches for cloud embedding API limits
 
       for (let i = 0; i < allFacts.length; i += batchSize) {
@@ -163,6 +191,12 @@ export class MemoryService {
       console.log(`[Memory] Dimension migration COMPLETE. Re-embedded ${allFacts.length} memories.`);
     } catch (err) {
       console.error('[Memory] Failed to check or run migration status:', err);
+    } finally {
+      // Release the readiness gate so queued operations proceed
+      if (this.migrationReadyResolve) {
+        this.migrationReadyResolve();
+        this.migrationReadyResolve = null;
+      }
     }
   }
 
@@ -178,15 +212,28 @@ export class MemoryService {
     messages: ConversationMessage[],
     scope: MemoryScope
   ): Promise<void> {
+    // Wait for any in-flight migration to complete before writing
+    await this.migrationReady;
+
     const queueKey = scope.userId ?? 'default';
 
-    // Rate-limit extraction
+    // Rate-limit: buffer messages instead of dropping them
     const now = Date.now();
     const lastTime = this.lastExtractionTime.get(queueKey) ?? 0;
     if (now - lastTime < this.minExtractionIntervalMs) {
-      // Queue will handle it — the next extraction will pick up new messages
+      // Buffer these messages — they will be included in the next extraction
+      const pending = this.pendingMessages.get(queueKey) ?? [];
+      pending.push(...messages);
+      this.pendingMessages.set(queueKey, pending);
       return;
     }
+
+    // Drain any buffered messages and combine with current
+    const buffered = this.pendingMessages.get(queueKey);
+    const allMessages = buffered && buffered.length > 0
+      ? [...buffered, ...messages]
+      : messages;
+    this.pendingMessages.delete(queueKey);
 
     // Chain onto the existing queue for this user
     const previousTask =
@@ -194,7 +241,7 @@ export class MemoryService {
     const currentTask = previousTask
       .then(() => {
         this.lastExtractionTime.set(queueKey, Date.now());
-        return this._doProcessConversation(messages, scope);
+        return this._doProcessConversation(allMessages, scope);
       })
       .catch((err) =>
         console.warn('[Memory] Extraction failed (non-critical):', err)
@@ -214,7 +261,7 @@ export class MemoryService {
     messages: ConversationMessage[],
     scope: MemoryScope
   ): Promise<void> {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled || this.closed) return;
 
     // Step 1: Extract facts
     const facts = await this.factExtractor.extract(messages);
@@ -286,8 +333,9 @@ export class MemoryService {
         try {
           embedding = await this.embeddingProvider.embed(decision.fact);
         } catch {
-          // Fall back to first embedding if re-embed fails
-          embedding = embeddings[0];
+          // Skip this decision — storing a mismatched vector would make it unsearchable
+          console.warn(`[Memory] Skipping decision for "${decision.fact}": re-embedding failed`);
+          continue;
         }
       }
 
@@ -409,6 +457,8 @@ export class MemoryService {
     scope: MemoryScope,
     limit?: number
   ): Promise<MemorySearchResult[]> {
+    // Wait for any in-flight migration to complete before searching
+    await this.migrationReady;
     const embedding = await this.embeddingProvider.embed(query);
     const results = await this.store.search(
       embedding,
@@ -452,5 +502,16 @@ ${coreMarkdown.trim()}
   async getFormattedGlobalContext(): Promise<string> {
     const markdown = await this.getGlobalContextText();
     return this.formatGlobalMemoryContext(markdown);
+  }
+
+  /**
+   * Close the underlying store and release resources.
+   * In-flight extractions will be short-circuited.
+   */
+  async close(): Promise<void> {
+    this.closed = true;
+    this.pendingMessages.clear();
+    this.processingQueues.clear();
+    await this.store.close();
   }
 }

@@ -47,6 +47,13 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   private db: BetterSqlite3Database | null = null;
   private dataDir: string;
 
+  private getDb(): BetterSqlite3Database {
+    if (!this.db) {
+      throw new Error('NodeMemoryStore: database not initialized. Call initialize() first.');
+    }
+    return this.db;
+  }
+
   constructor(dataDir?: string) {
     this.dataDir =
       dataDir ??
@@ -70,14 +77,14 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     this.db = new Database(dbPath) as BetterSqlite3Database;
 
     // Enable WAL mode
-    this.db!.pragma('journal_mode = WAL');
+    this.getDb().pragma('journal_mode = WAL');
 
     // Load sqlite-vec extension
     const sqliteVec = require('sqlite-vec');
     sqliteVec.load(this.db);
 
     // Verify sqlite-vec loaded
-    const versionRow = this.db!.prepare('SELECT vec_version()').get() as Record<string, string>;
+    const versionRow = this.getDb().prepare('SELECT vec_version()').get() as Record<string, string>;
     if (!versionRow) {
       throw new Error('sqlite-vec extension failed to load');
     }
@@ -95,8 +102,15 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     }
   }
 
+  private assertValidDimensions(dimensions: number): void {
+    if (!Number.isInteger(dimensions) || dimensions < 1 || dimensions > 10000) {
+      throw new Error(`Invalid embedding dimensions: ${dimensions}. Must be an integer between 1 and 10000.`);
+    }
+  }
+
   private runMigration(dimensions: number): void {
-    const db = this.db!;
+    this.assertValidDimensions(dimensions);
+    const db = this.getDb();
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS memory_facts (
@@ -166,7 +180,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async insert(fact: MemoryFact, embedding: Float32Array): Promise<void> {
-    const db = this.db!;
+    const db = this.getDb();
     const now = Date.now();
 
     const insertFn = db.transaction(() => {
@@ -200,7 +214,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     fact: Partial<MemoryFact>,
     embedding: Float32Array
   ): Promise<void> {
-    const db = this.db!;
+    const db = this.getDb();
     const now = Date.now();
 
     const updateFn = db.transaction(() => {
@@ -226,7 +240,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async delete(id: string): Promise<void> {
-    const db = this.db!;
+    const db = this.getDb();
 
     const deleteFn = db.transaction(() => {
       db.prepare('DELETE FROM memory_facts WHERE id = ?').run(id);
@@ -241,7 +255,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     limit: number,
     _scope?: MemoryScope
   ): Promise<MemorySearchResult[]> {
-    const db = this.db!;
+    const db = this.getDb();
     const embeddingBuf = float32ToBuffer(embedding);
 
     // M6: Single-user system — no userId filtering needed
@@ -273,7 +287,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   ): Promise<MemoryFact[]> {
     if (categories.length === 0) return [];
 
-    const db = this.db!;
+    const db = this.getDb();
     const placeholders = categories.map(() => '?').join(', ');
     let query = `SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata
                  FROM memory_facts WHERE category IN (${placeholders})`;
@@ -292,7 +306,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async getById(id: string): Promise<MemoryFact | null> {
-    const db = this.db!;
+    const db = this.getDb();
     const row = db
       .prepare(
         'SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts WHERE id = ?'
@@ -301,8 +315,8 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     return row ? rowToFact(row) : null;
   }
 
-  async getAll(scope?: MemoryScope, limit?: number): Promise<MemoryFact[]> {
-    const db = this.db!;
+  async getAll(scope?: MemoryScope, limit?: number, offset?: number): Promise<MemoryFact[]> {
+    const db = this.getDb();
     let query =
       'SELECT id, fact_text, category, user_id, agent_id, session_id, content_hash, created_at, updated_at, last_accessed_at, access_count, metadata FROM memory_facts';
 
@@ -315,9 +329,13 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
 
     query += ' ORDER BY updated_at DESC';
 
-    if (limit) {
+    if (limit || offset) {
       query += ' LIMIT ?';
-      params.push(limit);
+      params.push(limit || 1000000);
+    }
+    if (offset) {
+      query += ' OFFSET ?';
+      params.push(offset);
     }
 
     const rows = db.prepare(query).all(...params) as Array<
@@ -329,7 +347,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   async updateAccessStats(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
 
-    const db = this.db!;
+    const db = this.getDb();
     const now = Date.now();
 
     const updateFn = db.transaction(() => {
@@ -345,7 +363,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async count(scope?: MemoryScope): Promise<number> {
-    const db = this.db!;
+    const db = this.getDb();
 
     if (scope?.userId) {
       const row = db
@@ -361,7 +379,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async getSchemaDimensions(): Promise<number | null> {
-    const db = this.db!;
+    const db = this.getDb();
     const row = db
       .prepare("SELECT value FROM memory_meta WHERE key = 'embedding_dimensions'")
       .get() as { value: string } | undefined;
@@ -371,7 +389,8 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async migrateDimensions(newDimensions: number): Promise<void> {
-    const db = this.db!;
+    this.assertValidDimensions(newDimensions);
+    const db = this.getDb();
 
     // Set migration status to PENDING
     db.prepare(
@@ -394,14 +413,14 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   }
 
   async setMigrationStatus(status: 'COMPLETE' | 'PENDING'): Promise<void> {
-    const db = this.db!;
+    const db = this.getDb();
     db.prepare(
       "INSERT OR REPLACE INTO memory_meta (key, value) VALUES ('migration_status', ?)"
     ).run(status);
   }
 
   async getMigrationStatus(): Promise<'COMPLETE' | 'PENDING'> {
-    const db = this.db!;
+    const db = this.getDb();
     const row = db
       .prepare("SELECT value FROM memory_meta WHERE key = 'migration_status'")
       .get() as { value: string } | undefined;
@@ -419,14 +438,14 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
   // MemoryHistoryStore implementation
 
   async logOperation(op: MemoryOperation): Promise<void> {
-    const db = this.db!;
+    const db = this.getDb();
     db.prepare(
       'INSERT INTO memory_history (id, memory_id, event, old_content, new_content, timestamp) VALUES (?, ?, ?, ?, ?, ?)'
     ).run(op.id, op.memoryId, op.event, op.oldContent, op.newContent, op.timestamp);
   }
 
   async getHistory(memoryId: string): Promise<MemoryOperation[]> {
-    const db = this.db!;
+    const db = this.getDb();
     const rows = db
       .prepare(
         'SELECT id, memory_id, event, old_content, new_content, timestamp FROM memory_history WHERE memory_id = ? ORDER BY timestamp DESC'
@@ -447,7 +466,7 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     limit?: number,
     offset?: number
   ): Promise<MemoryOperation[]> {
-    const db = this.db!;
+    const db = this.getDb();
     let query =
       'SELECT id, memory_id, event, old_content, new_content, timestamp FROM memory_history ORDER BY timestamp DESC';
 

@@ -1015,8 +1015,15 @@ export class Session {
 
         const llmCaller = {
           complete: async (systemPrompt: string, userPrompt: string) => {
-            const client = this.turnContext.getModelClient();
-            if (!client) throw new Error('No model client available');
+            // Model client is set lazily during turn execution.
+            // Memory operations (extraction, conflict resolution) only run after
+            // the first turn, so the client should always be available by then.
+            const client = this.turnContext?.getModelClient?.();
+            if (!client) {
+              throw new Error(
+                'No model client available yet. Memory LLM calls require at least one turn to have started.'
+              );
+            }
             const response = await client.complete({
               model: client.getModel(),
               messages: [

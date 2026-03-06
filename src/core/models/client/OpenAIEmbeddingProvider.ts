@@ -26,10 +26,10 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<Float32Array> {
-    const input = text.replace(/\n/g, ' ').trim();
+    // Normalization (newline→space, trim) is handled by CachedEmbeddingProvider
     const response = await this.client.embeddings.create({
       model: this.model,
-      input,
+      input: text,
       dimensions: this.dimensions,
     });
     return new Float32Array(response.data[0].embedding);
@@ -38,10 +38,9 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   async embedBatch(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
 
-    const inputs = texts.map((t) => t.replace(/\n/g, ' ').trim());
     const response = await this.client.embeddings.create({
       model: this.model,
-      input: inputs,
+      input: texts,
       dimensions: this.dimensions,
     });
 

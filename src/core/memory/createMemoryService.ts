@@ -90,7 +90,9 @@ export async function createMemoryService(
       config
     );
 
-    // Run background migration check (non-blocking)
+    // Run background migration check (non-blocking).
+    // Set the readiness gate first so search/write operations wait until migration completes.
+    memoryService.beginMigration();
     memoryService.checkAndRunMigration().catch(err => {
       console.error('[Memory] Background migration check failed:', err);
     });

@@ -53,7 +53,7 @@ function rowToFact(row: TauriMemoryFactRow): MemoryFact {
     updatedAt: row.updatedAt,
     lastAccessedAt: row.lastAccessedAt,
     accessCount: row.accessCount,
-    metadata: row.metadata ? (() => { try { return JSON.parse(row.metadata!); } catch { return undefined; } })() : undefined,
+    metadata: row.metadata ? (() => { try { return JSON.parse(row.metadata!); } catch (e) { console.warn('[Memory] Failed to parse metadata for fact', row.id, e); return undefined; } })() : undefined,
   };
 }
 
@@ -157,7 +157,7 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     return row ? rowToFact(row) : null;
   }
 
-  async getAll(scope?: MemoryScope, limit?: number): Promise<MemoryFact[]> {
+  async getAll(scope?: MemoryScope, limit?: number, _offset?: number): Promise<MemoryFact[]> {
     const rows = await invoke<TauriMemoryFactRow[]>('memory_get_all', {
       userId: scope?.userId ?? null,
       limit: limit ?? null,
@@ -205,6 +205,7 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
       event: op.event,
       oldContent: op.oldContent,
       newContent: op.newContent,
+      timestamp: op.timestamp,
     });
   }
 

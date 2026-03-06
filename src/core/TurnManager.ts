@@ -1157,7 +1157,7 @@ export class TurnManager {
       if (item?.type === 'message' && item.role === 'assistant' && Array.isArray(item.content)) {
         const text = item.content
           .filter((c: any) => c.type === 'output_text' || c.type === 'input_text')
-          .map((c: any) => c.text)
+          .map((c: any) => c.text ?? c.content ?? '')
           .join('\n');
         if (text) {
           messages.push({ role: 'assistant', content: text });
