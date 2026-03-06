@@ -198,13 +198,6 @@
       return; // Skip normal initialization for scheduled job mode
     }
 
-    // Desktop: listen for scheduler job launch events (legacy, kept for backward compat)
-    // Note: Desktop bootstrap now submits jobs directly to the agent, so this listener
-    // is only needed if any code path still dispatches 'scheduler:launch-job' DOM events.
-    if (platform.platformName === 'extension') {
-      window.addEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
-    }
-
     // Fetch current session's tabId from storage
     await fetchCurrentTabId();
 
@@ -274,21 +267,8 @@
     }
   }
 
-  // Desktop: handle scheduler job launch event from DesktopAgentBootstrap
-  function handleSchedulerLaunchJob(event: CustomEvent<{ jobId: string; sessionId: string }>) {
-    const { jobId, sessionId } = event.detail;
-    console.log('[App] Scheduler launch-job event received:', jobId);
-    scheduledJobId = jobId;
-    scheduledSessionId = sessionId;
-    isScheduledJobMode = true;
-    loadAndExecuteSchedulerJob(jobId, sessionId);
-  }
-
   onDestroy(() => {
     window.removeEventListener('zoom-changed', onZoomChanged);
-    if (platform.platformName === 'extension') {
-      window.removeEventListener('scheduler:launch-job', handleSchedulerLaunchJob as EventListener);
-    }
   });
 
   /**

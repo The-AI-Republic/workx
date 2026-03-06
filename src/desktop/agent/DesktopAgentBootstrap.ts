@@ -60,6 +60,7 @@ export class DesktopAgentBootstrap {
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
   private schedulerDeepLinkHandler: DesktopSchedulerDeepLinkHandler | null = null;
   private runningSchedulerJobId: string | null = null;
+  private runningJobStartTime: number = 0;
   private initialized = false;
   private isUpdatingConfig = false;
 
@@ -400,8 +401,11 @@ export class DesktopAgentBootstrap {
       });
 
       // Wire job launcher — show window and submit directly to agent
-      this.scheduler.setJobLauncher(async (jobId, sessionId) => {
+      // `registryAgent` is the isolated agent created by AgentRegistry for this job's session.
+      // Falls back to the primary agent when registry is not available.
+      this.scheduler.setJobLauncher(async (jobId, sessionId, registryAgent) => {
         this.runningSchedulerJobId = jobId;
+        this.runningJobStartTime = Date.now();
         console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
         // Show the main window
         try {
@@ -412,13 +416,14 @@ export class DesktopAgentBootstrap {
         } catch {
           // Non-fatal — window may already be visible
         }
-        // Submit directly to agent (bootstrap-level, no UI dependency)
+        // Submit to registry agent (isolated session) or fallback to primary agent
         const job = await schedulerStorage.getJob(jobId);
         if (!job) throw new Error(`Job not found: ${jobId}`);
-        if (!this.agent) throw new Error('Agent not initialized');
-        await this.agent.submitOperation(
+        const targetAgent = registryAgent ?? this.agent;
+        if (!targetAgent) throw new Error('Agent not initialized');
+        await targetAgent.submitOperation(
           { type: 'UserInput', items: [{ type: 'text', text: job.input }] },
-          {} // Session isolation handled by AgentRegistry, not tabId
+          {}
         );
       });
 
@@ -438,8 +443,11 @@ export class DesktopAgentBootstrap {
         }
       });
 
-      // Wire connectivity check
-      this.scheduler.setConnectivityCheck(() => navigator.onLine);
+      // Wire connectivity check — require both network and agent readiness
+      this.scheduler.setConnectivityCheck(() => {
+        const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        return online && this.agent !== null && this.initialized;
+      });
 
       // Initialize AgentRegistry for session isolation
       try {
@@ -497,11 +505,15 @@ export class DesktopAgentBootstrap {
   private handleSchedulerEventCompletion(msg: EventMsg): void {
     if (!this.runningSchedulerJobId || !this.scheduler) return;
     const jobId = this.runningSchedulerJobId;
+    const duration = this.runningJobStartTime > 0 ? Date.now() - this.runningJobStartTime : 0;
 
     if (msg.type === 'TaskComplete') {
       this.runningSchedulerJobId = null;
-      const summary = (msg as any).data?.last_agent_message?.slice(0, 500) || 'Job completed';
-      const tokenData = (msg as any).data?.token_usage?.total;
+      this.runningJobStartTime = 0;
+      // EventMsg.data shape for TaskComplete: { last_agent_message?: string, token_usage?: { total?: { input_tokens, output_tokens, total_tokens } } }
+      const data = (msg as EventMsg & { data?: Record<string, any> }).data;
+      const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
+      const tokenData = data?.token_usage?.total;
       this.scheduler.completeJob(jobId, {
         summary,
         tokenUsage: {
@@ -509,13 +521,15 @@ export class DesktopAgentBootstrap {
           outputTokens: tokenData?.output_tokens ?? 0,
           totalTokens: tokenData?.total_tokens ?? 0,
         },
-        duration: 0,
+        duration,
       }).catch((error) => {
         console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
       });
     } else if (msg.type === 'TaskFailed') {
       this.runningSchedulerJobId = null;
-      const error = (msg as any).data?.error || (msg as any).data?.reason || 'Job failed';
+      this.runningJobStartTime = 0;
+      const data = (msg as EventMsg & { data?: Record<string, any> }).data;
+      const error = data?.error || data?.reason || 'Job failed';
       this.scheduler.failJob(jobId, error).catch((err) => {
         console.error(`[DesktopAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
       });

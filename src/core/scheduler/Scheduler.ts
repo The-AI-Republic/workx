@@ -40,8 +40,10 @@ export type NotificationHandler = (job: SchedulerJobRecord) => Promise<void>;
 
 /**
  * Job launcher callback — platform-specific job execution (open tab, invoke agent, etc.)
+ * When AgentRegistry is used, `agent` is the registry-created agent for this job's session.
+ * When no registry is available, `agent` is null and the launcher must use the primary agent.
  */
-export type JobLauncher = (jobId: string, sessionId: string) => Promise<void>;
+export type JobLauncher = (jobId: string, sessionId: string, agent: import('../RepublicAgent').RepublicAgent | null) => Promise<void>;
 
 /**
  * Connectivity check callback — returns true if the platform is online
@@ -183,14 +185,10 @@ export class Scheduler {
    */
   async triggerJob(jobId: string): Promise<void> {
     // Guard against concurrent triggers (in-process timer + OS deep link can both fire)
-    if (this.triggeringJobs.has(jobId)) {
-      console.log(`[Scheduler] triggerJob skipped (already in progress) for ${jobId}`);
-      return;
-    }
+    if (this.triggeringJobs.has(jobId)) return;
     this.triggeringJobs.add(jobId);
 
     try {
-      console.log(`[Scheduler] triggerJob called for ${jobId}`);
       const job = await this.storage.getJob(jobId);
       if (!job) {
         throw new Error(`Job not found: ${jobId}`);
@@ -205,21 +203,17 @@ export class Scheduler {
 
       // Clear alarm if job was scheduled
       if (job.status === 'scheduled') {
-        console.log(`[Scheduler] Clearing alarm for ${jobId}...`);
         await this.alarms.clearJobAlarm(jobId);
-        console.log(`[Scheduler] Alarm cleared for ${jobId}`);
       }
 
       // Check if another job is currently running or being started
       const state = await this.storage.getSchedulerState();
-      console.log(`[Scheduler] currentJobId=${state.currentJobId}, isPaused=${state.isPaused}, isExecuting=${this.isExecuting}`);
       if (state.currentJobId || this.isExecuting) {
         // Add to job queue
         await this.storage.updateJob(jobId, { status: 'waiting' });
         this.emitStatusChange(jobId, previousStatus, 'waiting');
       } else {
         // Execute immediately
-        console.log(`[Scheduler] Calling executeJob for ${jobId}`);
         await this.executeJob(jobId);
       }
     } finally {
@@ -283,14 +277,12 @@ export class Scheduler {
   async executeJob(jobId: string): Promise<void> {
     // Mutex: prevent concurrent executeJob calls (cross-job race)
     if (this.isExecuting) {
-      console.log(`[Scheduler] executeJob skipped (another job is being started), queueing ${jobId}`);
       await this.storage.updateJob(jobId, { status: 'waiting' });
       return;
     }
     this.isExecuting = true;
 
     try {
-      console.log(`[Scheduler] executeJob starting for ${jobId}`);
       const job = await this.storage.getJob(jobId);
       if (!job) {
         throw new Error(`Job not found: ${jobId}`);
@@ -338,7 +330,7 @@ export class Scheduler {
       });
 
       this.emitStatusChange(jobId, previousStatus, 'running');
-      this.emitStateChange({ currentJobId: jobId });
+      this.emitStateChange({ isPaused: false, currentJobId: jobId });
 
       // Show browser notification (T025)
       await this.showJobStartNotification(job);
@@ -370,7 +362,14 @@ export class Scheduler {
   private async launchJob(jobId: string, sessionId: string): Promise<void> {
     try {
       if (this.jobLauncher) {
-        await this.jobLauncher(jobId, sessionId);
+        // Resolve the agent from the registry session (if available)
+        let agent = null;
+        const registrySessionId = this.jobSessions.get(jobId);
+        if (registrySessionId && this.registry) {
+          const session = this.registry.getSession(registrySessionId);
+          agent = session?.agent ?? null;
+        }
+        await this.jobLauncher(jobId, sessionId, agent);
       } else {
         console.warn('[Scheduler] No job launcher configured — job will not execute');
       }
@@ -414,7 +413,7 @@ export class Scheduler {
     await this.storage.setSchedulerState({ currentJobId: null });
 
     this.emitStatusChange(jobId, previousStatus, 'completed');
-    this.emitStateChange({ currentJobId: null });
+    this.emitStateChange({ isPaused: false, currentJobId: null });
 
     // Process next job in queue
     await this.processJobQueue();
@@ -451,7 +450,7 @@ export class Scheduler {
     await this.storage.setSchedulerState({ currentJobId: null });
 
     this.emitStatusChange(jobId, previousStatus, 'failed');
-    this.emitStateChange({ currentJobId: null });
+    this.emitStateChange({ isPaused: false, currentJobId: null });
 
     // Process next job in queue
     await this.processJobQueue();
@@ -470,10 +469,7 @@ export class Scheduler {
     }
 
     // T042: Don't process if offline
-    if (!this.connectivityCheck()) {
-      console.log('[Scheduler] Offline - deferring job execution until connectivity restored');
-      return;
-    }
+    if (!this.connectivityCheck()) return;
 
     // Don't process if a job is already running or being started
     if (state.currentJobId || this.isExecuting) {
@@ -498,18 +494,20 @@ export class Scheduler {
    * Pause job queue processing
    */
   async pauseJobQueue(): Promise<void> {
+    const state = await this.storage.getSchedulerState();
     await this.storage.setSchedulerState({ isPaused: true });
     await this.alarms.stopJobQueueProcessor();
-    this.emitStateChange({ isPaused: true });
+    this.emitStateChange({ isPaused: true, currentJobId: state.currentJobId });
   }
 
   /**
    * Resume job queue processing
    */
   async resumeJobQueue(): Promise<void> {
+    const state = await this.storage.getSchedulerState();
     await this.storage.setSchedulerState({ isPaused: false });
     await this.alarms.startJobQueueProcessor();
-    this.emitStateChange({ isPaused: false });
+    this.emitStateChange({ isPaused: false, currentJobId: state.currentJobId });
 
     // Process queue immediately
     await this.processJobQueue();
@@ -519,21 +517,14 @@ export class Scheduler {
    * Handle alarm event from chrome.alarms
    */
   async handleAlarm(alarmName: string): Promise<void> {
-    console.log(`[Scheduler] handleAlarm called: ${alarmName}`);
     const event = parseAlarmName(alarmName);
-    if (!event) {
-      console.warn(`[Scheduler] Could not parse alarm name: ${alarmName}`);
-      return;
-    }
+    if (!event) return;
 
     if (event.type === 'job') {
       // Job alarm fired - trigger the job
       const job = await this.storage.getJob(event.jobId);
-      console.log(`[Scheduler] Job ${event.jobId} status: ${job?.status ?? 'NOT FOUND'}`);
       if (job && job.status === 'scheduled') {
         await this.triggerJob(event.jobId);
-      } else {
-        console.warn(`[Scheduler] Skipping job ${event.jobId}: status=${job?.status ?? 'null'}`);
       }
     } else if (event.type === 'scheduler-job-queue-processor') {
       // Queue processor alarm - process the queue
@@ -564,7 +555,7 @@ export class Scheduler {
 
     // Clear currentJobId regardless (the job reference might be stale)
     await this.storage.setSchedulerState({ currentJobId: null });
-    this.emitStateChange({ currentJobId: null });
+    this.emitStateChange({ isPaused: state.isPaused, currentJobId: null });
     console.log('[Scheduler] Cleared stale currentJobId');
 
     // Drain waiting jobs that were blocked behind the stale job
@@ -647,13 +638,13 @@ export class Scheduler {
 
   /**
    * Emit scheduler state change event with known values.
-   * Synchronous to avoid stale reads and unhandled promise rejections.
+   * Both fields are required to avoid silent data loss from partial objects.
    */
-  private emitStateChange(state?: { isPaused?: boolean; currentJobId?: string | null }): void {
-    if (this.eventEmitter && state) {
+  private emitStateChange(state: { isPaused: boolean; currentJobId: string | null }): void {
+    if (this.eventEmitter) {
       this.eventEmitter({
-        isPaused: state.isPaused ?? false,
-        currentJobId: state.currentJobId ?? null,
+        isPaused: state.isPaused,
+        currentJobId: state.currentJobId,
       });
     }
   }

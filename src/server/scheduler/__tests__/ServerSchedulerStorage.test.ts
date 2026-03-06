@@ -80,6 +80,12 @@ class InMemorySchedulerStorage implements ISchedulerStorage {
       .slice(offset, offset + limit);
   }
 
+  async getArchivedJobsCount(): Promise<number> {
+    return [...this.jobs.values()]
+      .filter(t => t.status === 'completed' || t.status === 'failed')
+      .length;
+  }
+
   async getNextJobInQueue(): Promise<SchedulerJobRecord | null> {
     const queue = await this.getJobQueueJobs();
     return queue[0] ?? null;

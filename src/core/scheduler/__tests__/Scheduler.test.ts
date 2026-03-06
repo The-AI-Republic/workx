@@ -97,10 +97,12 @@ function createMockAlarms(): ISchedulerAlarms {
 }
 
 function createMockRegistry() {
+  const mockAgent = { submitOperation: vi.fn().mockResolvedValue('op-1') };
   return {
     canCreateSession: vi.fn(() => true),
     createSession: vi.fn(async () => ({ sessionId: 'agent-session-1' })),
     removeSession: vi.fn(),
+    getSession: vi.fn(() => ({ agent: mockAgent })),
   };
 }
 
@@ -530,14 +532,15 @@ describe('Scheduler', () => {
       );
     });
 
-    it('should call job launcher', async () => {
+    it('should call job launcher with agent from registry session', async () => {
       const launcher = vi.fn().mockResolvedValue(undefined);
       scheduler.setJobLauncher(launcher);
       vi.mocked(storage.getJob).mockResolvedValue(createMockJob({ id: 'job-1' }));
 
       await scheduler.executeJob('job-1');
 
-      expect(launcher).toHaveBeenCalledWith('job-1', expect.any(String));
+      // Launcher receives (jobId, sessionId, agent) — agent from registry session
+      expect(launcher).toHaveBeenCalledWith('job-1', expect.any(String), expect.any(Object));
     });
   });
 
@@ -729,13 +732,14 @@ describe('Scheduler', () => {
   // =========================================================================
 
   describe('launchJob (private)', () => {
-    it('should delegate to job launcher callback', async () => {
+    it('should delegate to job launcher callback with null agent when no session mapping', async () => {
       const launcher = vi.fn().mockResolvedValue(undefined);
       scheduler.setJobLauncher(launcher);
 
       await (scheduler as any).launchJob('job-42', 'session-99');
 
-      expect(launcher).toHaveBeenCalledWith('job-42', 'session-99');
+      // No jobSessions mapping for 'job-42', so agent is null
+      expect(launcher).toHaveBeenCalledWith('job-42', 'session-99', null);
     });
 
     it('should warn when no job launcher is set', async () => {
@@ -1410,9 +1414,9 @@ describe('Scheduler', () => {
       expect(() => (s as any).emitStateChange({ isPaused: false, currentJobId: null })).not.toThrow();
     });
 
-    it('should not emit when no state argument is provided', () => {
-      (scheduler as any).emitStateChange();
-      expect(emitter).not.toHaveBeenCalled();
+    it('should emit full state with both isPaused and currentJobId', () => {
+      (scheduler as any).emitStateChange({ isPaused: false, currentJobId: null });
+      expect(emitter).toHaveBeenCalledWith({ isPaused: false, currentJobId: null });
     });
   });
 
