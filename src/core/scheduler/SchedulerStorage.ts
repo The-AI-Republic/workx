@@ -1,7 +1,7 @@
 /**
  * Scheduler Storage
  *
- * IndexedDB persistence layer for scheduler tasks.
+ * IndexedDB persistence layer for scheduler jobs.
  * Implements ISchedulerStorage interface.
  */
 
@@ -9,13 +9,13 @@ import { v4 as uuidv4 } from 'uuid';
 import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { STORE_NAMES, INDEX_NAMES } from '../../storage/IndexedDBAdapter';
 import type {
-  SchedulerTaskRecord,
+  SchedulerJobRecord,
   SchedulerState,
 } from '../models/types/Scheduler';
 import {
   createDefaultSchedulerState,
-  createDraftTaskRecord,
-  createScheduledTaskRecord,
+  createDraftJobRecord,
+  createScheduledJobRecord,
 } from '../models/types/Scheduler';
 import type { ISchedulerStorage } from '../models/types/SchedulerContracts';
 import { SCHEDULER_STATE_KEY } from '../models/types/SchedulerContracts';
@@ -26,118 +26,118 @@ import {
 } from '../storage/ConfigStorageProvider';
 
 /**
- * Storage implementation for scheduler tasks
+ * Storage implementation for scheduler jobs
  */
 export class SchedulerStorage implements ISchedulerStorage {
   constructor(private db: StorageAdapter) {}
 
   /**
-   * Create a new task
-   * @param input - Task input/prompt
+   * Create a new job
+   * @param input - Job input/prompt
    * @param scheduledTime - Optional scheduled time (if omitted, creates draft)
    */
-  async createTask(input: string, scheduledTime?: number): Promise<SchedulerTaskRecord> {
+  async createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord> {
     const id = uuidv4();
-    const task = scheduledTime
-      ? createScheduledTaskRecord(id, input, scheduledTime)
-      : createDraftTaskRecord(id, input);
+    const job = scheduledTime
+      ? createScheduledJobRecord(id, input, scheduledTime)
+      : createDraftJobRecord(id, input);
 
-    await this.db.put(STORE_NAMES.SCHEDULER_TASKS, task);
-    return task;
+    await this.db.put(STORE_NAMES.SCHEDULER_JOBS, job);
+    return job;
   }
 
   /**
-   * Get a task by ID
+   * Get a job by ID
    */
-  async getTask(id: string): Promise<SchedulerTaskRecord | null> {
-    return this.db.get<SchedulerTaskRecord>(STORE_NAMES.SCHEDULER_TASKS, id);
+  async getJob(id: string): Promise<SchedulerJobRecord | null> {
+    return this.db.get<SchedulerJobRecord>(STORE_NAMES.SCHEDULER_JOBS, id);
   }
 
   /**
-   * Update a task
+   * Update a job
    */
-  async updateTask(id: string, updates: Partial<SchedulerTaskRecord>): Promise<void> {
-    const existing = await this.getTask(id);
+  async updateJob(id: string, updates: Partial<SchedulerJobRecord>): Promise<void> {
+    const existing = await this.getJob(id);
     if (!existing) {
-      throw new Error(`Task not found: ${id}`);
+      throw new Error(`Job not found: ${id}`);
     }
 
-    const updated: SchedulerTaskRecord = {
+    const updated: SchedulerJobRecord = {
       ...existing,
       ...updates,
       id, // Ensure ID is preserved
     };
 
-    await this.db.put(STORE_NAMES.SCHEDULER_TASKS, updated);
+    await this.db.put(STORE_NAMES.SCHEDULER_JOBS, updated);
   }
 
   /**
-   * Delete a task
+   * Delete a job
    */
-  async deleteTask(id: string): Promise<void> {
-    await this.db.delete(STORE_NAMES.SCHEDULER_TASKS, id);
+  async deleteJob(id: string): Promise<void> {
+    await this.db.delete(STORE_NAMES.SCHEDULER_JOBS, id);
   }
 
   /**
-   * Get all draft tasks (no scheduled time)
+   * Get all draft jobs (no scheduled time)
    */
-  async getDraftTasks(): Promise<SchedulerTaskRecord[]> {
-    const tasks = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+  async getDraftJobs(): Promise<SchedulerJobRecord[]> {
+    const jobs = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'draft'
     );
-    return tasks.sort((a, b) => a.createdAt - b.createdAt);
+    return jobs.sort((a, b) => a.createdAt - b.createdAt);
   }
 
   /**
-   * Get all scheduled tasks (awaiting their scheduled time)
+   * Get all scheduled jobs (awaiting their scheduled time)
    */
-  async getScheduledTasks(): Promise<SchedulerTaskRecord[]> {
-    const tasks = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+  async getScheduledJobs(): Promise<SchedulerJobRecord[]> {
+    const jobs = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'scheduled'
     );
-    return tasks.sort((a, b) => (a.scheduledTime || 0) - (b.scheduledTime || 0));
+    return jobs.sort((a, b) => (a.scheduledTime || 0) - (b.scheduledTime || 0));
   }
 
   /**
-   * Get all missed tasks (scheduled time passed while browser was closed)
+   * Get all missed jobs (scheduled time passed while browser was closed)
    */
-  async getMissedTasks(): Promise<SchedulerTaskRecord[]> {
-    const tasks = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+  async getMissedJobs(): Promise<SchedulerJobRecord[]> {
+    const jobs = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'missed'
     );
-    return tasks.sort((a, b) => (a.scheduledTime || 0) - (b.scheduledTime || 0));
+    return jobs.sort((a, b) => (a.scheduledTime || 0) - (b.scheduledTime || 0));
   }
 
   /**
-   * Get tasks in the SchedulerTaskQueue (waiting status)
+   * Get jobs in the job queue (waiting status)
    */
-  async getSchedulerTaskQueueTasks(): Promise<SchedulerTaskRecord[]> {
-    const tasks = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+  async getJobQueueJobs(): Promise<SchedulerJobRecord[]> {
+    const jobs = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'waiting'
     );
     // FIFO order by createdAt
-    return tasks.sort((a, b) => a.createdAt - b.createdAt);
+    return jobs.sort((a, b) => a.createdAt - b.createdAt);
   }
 
   /**
-   * Get archived tasks (completed or failed)
+   * Get archived jobs (completed or failed)
    */
-  async getArchivedTasks(limit: number, offset: number): Promise<SchedulerTaskRecord[]> {
-    const completed = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+  async getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]> {
+    const completed = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'completed'
     );
-    const failed = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+    const failed = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'failed'
     );
@@ -149,32 +149,49 @@ export class SchedulerStorage implements ISchedulerStorage {
   }
 
   /**
-   * Get the next task in the SchedulerTaskQueue (FIFO by createdAt)
+   * Count archived jobs (completed or failed)
    */
-  async getNextTaskInSchedulerTaskQueue(): Promise<SchedulerTaskRecord | null> {
-    const queue = await this.getSchedulerTaskQueueTasks();
+  async getArchivedJobsCount(): Promise<number> {
+    const completed = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
+      INDEX_NAMES.SCHEDULER_BY_STATUS,
+      'completed'
+    );
+    const failed = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
+      INDEX_NAMES.SCHEDULER_BY_STATUS,
+      'failed'
+    );
+    return completed.length + failed.length;
+  }
+
+  /**
+   * Get the next job in the queue (FIFO by createdAt)
+   */
+  async getNextJobInQueue(): Promise<SchedulerJobRecord | null> {
+    const queue = await this.getJobQueueJobs();
     return queue[0] || null;
   }
 
   /**
-   * Get overdue scheduled tasks (status: scheduled AND scheduledTime < now)
+   * Get overdue scheduled jobs (status: scheduled AND scheduledTime < now)
    */
-  async getOverdueScheduledTasks(): Promise<SchedulerTaskRecord[]> {
-    const scheduled = await this.getScheduledTasks();
+  async getOverdueScheduledJobs(): Promise<SchedulerJobRecord[]> {
+    const scheduled = await this.getScheduledJobs();
     const now = Date.now();
-    return scheduled.filter(task => task.scheduledTime !== null && task.scheduledTime < now);
+    return scheduled.filter(job => job.scheduledTime !== null && job.scheduledTime < now);
   }
 
   /**
-   * Get the current task (running status)
+   * Get the current job (running status)
    */
-  async getCurrentTask(): Promise<SchedulerTaskRecord | null> {
-    const tasks = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+  async getCurrentJob(): Promise<SchedulerJobRecord | null> {
+    const jobs = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       'running'
     );
-    return tasks[0] || null;
+    return jobs[0] || null;
   }
 
   /**
@@ -287,21 +304,21 @@ export class SchedulerStorage implements ISchedulerStorage {
   }
 
   /**
-   * Count tasks by status
+   * Count jobs by status
    */
   async countByStatus(status: string): Promise<number> {
-    const tasks = await this.db.queryByIndex<SchedulerTaskRecord>(
-      STORE_NAMES.SCHEDULER_TASKS,
+    const jobs = await this.db.queryByIndex<SchedulerJobRecord>(
+      STORE_NAMES.SCHEDULER_JOBS,
       INDEX_NAMES.SCHEDULER_BY_STATUS,
       status
     );
-    return tasks.length;
+    return jobs.length;
   }
 
   /**
-   * Get task counts for UI display
+   * Get job counts for UI display
    */
-  async getTaskCounts(): Promise<{
+  async getJobCounts(): Promise<{
     draftCount: number;
     scheduledCount: number;
     missedCount: number;

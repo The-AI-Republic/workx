@@ -91,11 +91,9 @@ describe('Multi-Session Integration', () => {
       // Create scheduled task sessions
       const scheduledSession1 = await registry.createSession({
         type: 'scheduled',
-        scheduledTaskId: 'task_1',
       });
       const scheduledSession2 = await registry.createSession({
         type: 'scheduled',
-        scheduledTaskId: 'task_2',
       });
 
       // Verify all sessions are created
@@ -129,7 +127,7 @@ describe('Multi-Session Integration', () => {
 
       // Create sessions up to limit
       await registry.createSession({ type: 'primary' });
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 'task_1' });
+      await registry.createSession({ type: 'scheduled' });
 
       // Verify we're at limit
       expect(registry.getActiveCount()).toBe(2);
@@ -137,7 +135,7 @@ describe('Multi-Session Integration', () => {
 
       // Attempt to create another session should fail
       await expect(
-        registry.createSession({ type: 'scheduled', scheduledTaskId: 'task_2' })
+        registry.createSession({ type: 'scheduled' })
       ).rejects.toThrow('Max concurrent sessions reached');
     });
 
@@ -147,7 +145,7 @@ describe('Multi-Session Integration', () => {
 
       // Create sessions up to limit
       const session1 = await registry.createSession({ type: 'primary' });
-      const session2 = await registry.createSession({ type: 'scheduled', scheduledTaskId: 'task_1' });
+      const session2 = await registry.createSession({ type: 'scheduled' });
 
       expect(registry.canCreateSession()).toBe(false);
 
@@ -156,7 +154,7 @@ describe('Multi-Session Integration', () => {
 
       // Now we should be able to create another
       expect(registry.canCreateSession()).toBe(true);
-      const session3 = await registry.createSession({ type: 'scheduled', scheduledTaskId: 'task_2' });
+      const session3 = await registry.createSession({ type: 'scheduled' });
 
       expect(registry.getActiveCount()).toBe(2);
       expect(session3.sessionLetter).toBe('b'); // Letter should be reused
@@ -213,7 +211,6 @@ describe('Multi-Session Integration', () => {
       await registry.createSession({ type: 'primary', tabId: 42 });
       await registry.createSession({
         type: 'scheduled',
-        scheduledTaskId: 'task_1',
         tabId: 43,
       });
 
@@ -228,7 +225,6 @@ describe('Multi-Session Integration', () => {
       });
       expect(sessions.find((s) => s.type === 'scheduled')).toMatchObject({
         type: 'scheduled',
-        scheduledTaskId: 'task_1',
         tabId: 43,
         state: 'idle',
         tabGroupName: 'browserx_s_b',

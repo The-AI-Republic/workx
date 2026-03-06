@@ -19,7 +19,7 @@ export const STORE_KEY_PATHS: Record<string, string> = {
   sessions: 'sessionId',
   config: 'key',
   rollout_cache: 'key',
-  scheduler_tasks: 'id',
+  scheduler_jobs: 'id',
   agent_sessions: 'sessionId',
 };
 

@@ -10,6 +10,7 @@ mod mcp_manager;
 mod oauth_server;
 mod sandbox;
 mod rollout_db;
+mod scheduler_commands;
 mod skills_commands;
 mod storage_commands;
 mod terminal_commands;
@@ -413,6 +414,12 @@ fn main() {
             db_storage::storage_clear,
             db_storage::storage_vacuum,
             db_storage::storage_batch,
+            // Scheduler OS-level job commands
+            scheduler_commands::scheduler_register_os_job,
+            scheduler_commands::scheduler_remove_os_job,
+            scheduler_commands::scheduler_list_os_jobs,
+            scheduler_commands::scheduler_has_os_job,
+            scheduler_commands::scheduler_clear_os_jobs,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

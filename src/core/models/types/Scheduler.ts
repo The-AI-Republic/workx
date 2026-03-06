@@ -1,37 +1,37 @@
 /**
  * Scheduler Type Definitions
  *
- * Core types for the Task Scheduler feature.
- * Enables scheduled and queued execution of AI tasks.
+ * Core types for the Job Scheduler feature.
+ * Enables scheduled and queued execution of AI jobs.
  */
 
 import type { TokenUsage } from './TokenUsage';
 
 // ============================================================================
-// Task Status
+// Job Status
 // ============================================================================
 
 /**
- * Status values for scheduler tasks
+ * Status values for scheduler jobs
  */
-export type SchedulerTaskStatus =
-  | 'draft' // Task created, no scheduled time set
+export type SchedulerJobStatus =
+  | 'draft' // Job created, no scheduled time set
   | 'scheduled' // Has scheduled time, alarm is set
   | 'missed' // Scheduled time passed while browser was closed, awaiting user action
-  | 'waiting' // In SchedulerTaskQueue - triggered but blocked by running task
+  | 'waiting' // In job queue - triggered but blocked by running job
   | 'running' // Currently executing
   | 'completed' // Successfully finished
   | 'failed' // Execution failed
   | 'cancelled'; // User cancelled
 
 // ============================================================================
-// Task Result
+// Job Result
 // ============================================================================
 
 /**
- * Result record embedded in SchedulerTask after completion
+ * Result record embedded in SchedulerJob after completion
  */
-export interface TaskResultRecord {
+export interface JobResultRecord {
   /** Brief outcome summary (first 200 chars of response) */
   summary: string;
 
@@ -47,39 +47,39 @@ export interface TaskResultRecord {
 }
 
 // ============================================================================
-// Scheduler Task Record
+// Scheduler Job Record
 // ============================================================================
 
 /**
- * A task record stored in IndexedDB scheduler_tasks store
+ * A job record stored in IndexedDB scheduler_jobs store
  */
-export interface SchedulerTaskRecord {
+export interface SchedulerJobRecord {
   /** UUID v4 primary key */
   id: string;
 
-  /** User's task description/prompt */
+  /** User's job description/prompt */
   input: string;
 
-  /** Unix timestamp (ms) when task should execute. Null for draft tasks. */
+  /** Unix timestamp (ms) when job should execute. Null for draft jobs. */
   scheduledTime: number | null;
 
-  /** Unix timestamp (ms) when task was created */
+  /** Unix timestamp (ms) when job was created */
   createdAt: number;
 
-  /** Current task state */
-  status: SchedulerTaskStatus;
+  /** Current job state */
+  status: SchedulerJobStatus;
 
-  /** Associated conversation session ID (set when task starts) */
+  /** Associated conversation session ID (set when job starts) */
   sessionId: string | null;
 
-  /** Unix timestamp (ms) when task finished */
+  /** Unix timestamp (ms) when job finished */
   completedAt: number | null;
 
-  /** Error message if task failed */
+  /** Error message if job failed */
   error: string | null;
 
   /** Execution result summary (set on completion) */
-  result: TaskResultRecord | null;
+  result: JobResultRecord | null;
 }
 
 // ============================================================================
@@ -90,13 +90,13 @@ export interface SchedulerTaskRecord {
  * Global scheduler state stored in chrome.storage.local for fast access
  */
 export interface SchedulerState {
-  /** Whether SchedulerTaskQueue processing is paused */
+  /** Whether job queue processing is paused */
   isPaused: boolean;
 
-  /** ID of currently running task */
-  currentTaskId: string | null;
+  /** ID of currently running job */
+  currentJobId: string | null;
 
-  /** Timestamp of last SchedulerTaskQueue processing */
+  /** Timestamp of last job queue processing */
   lastProcessedTime: number;
 }
 
@@ -110,15 +110,15 @@ export interface SchedulerState {
 export function createDefaultSchedulerState(): SchedulerState {
   return {
     isPaused: false,
-    currentTaskId: null,
+    currentJobId: null,
     lastProcessedTime: 0,
   };
 }
 
 /**
- * Creates a new draft task record
+ * Creates a new draft job record
  */
-export function createDraftTaskRecord(id: string, input: string): SchedulerTaskRecord {
+export function createDraftJobRecord(id: string, input: string): SchedulerJobRecord {
   return {
     id,
     input,
@@ -133,13 +133,13 @@ export function createDraftTaskRecord(id: string, input: string): SchedulerTaskR
 }
 
 /**
- * Creates a new scheduled task record
+ * Creates a new scheduled job record
  */
-export function createScheduledTaskRecord(
+export function createScheduledJobRecord(
   id: string,
   input: string,
   scheduledTime: number
-): SchedulerTaskRecord {
+): SchedulerJobRecord {
   return {
     id,
     input,
@@ -157,7 +157,7 @@ export function createScheduledTaskRecord(
 // Type Guards
 // ============================================================================
 
-const VALID_STATUSES: SchedulerTaskStatus[] = [
+const VALID_STATUSES: SchedulerJobStatus[] = [
   'draft',
   'scheduled',
   'missed',
@@ -169,16 +169,16 @@ const VALID_STATUSES: SchedulerTaskStatus[] = [
 ];
 
 /**
- * Type guard to check if a string is a valid SchedulerTaskStatus
+ * Type guard to check if a value is a valid SchedulerJobStatus
  */
-export function isSchedulerTaskStatus(value: string): value is SchedulerTaskStatus {
-  return VALID_STATUSES.includes(value as SchedulerTaskStatus);
+export function isSchedulerJobStatus(value: string): value is SchedulerJobStatus {
+  return VALID_STATUSES.includes(value as SchedulerJobStatus);
 }
 
 /**
- * Type guard to check if object is a valid SchedulerTaskRecord
+ * Type guard to check if object is a valid SchedulerJobRecord
  */
-export function isSchedulerTaskRecord(obj: unknown): obj is SchedulerTaskRecord {
+export function isSchedulerJobRecord(obj: unknown): obj is SchedulerJobRecord {
   if (!obj || typeof obj !== 'object') return false;
   const record = obj as Record<string, unknown>;
   return (
@@ -187,18 +187,18 @@ export function isSchedulerTaskRecord(obj: unknown): obj is SchedulerTaskRecord 
     (record.scheduledTime === null || typeof record.scheduledTime === 'number') &&
     typeof record.createdAt === 'number' &&
     typeof record.status === 'string' &&
-    isSchedulerTaskStatus(record.status) &&
+    isSchedulerJobStatus(record.status) &&
     (record.sessionId === null || typeof record.sessionId === 'string') &&
     (record.completedAt === null || typeof record.completedAt === 'number') &&
     (record.error === null || typeof record.error === 'string') &&
-    (record.result === null || isTaskResultRecord(record.result))
+    (record.result === null || isJobResultRecord(record.result))
   );
 }
 
 /**
- * Type guard to check if object is a valid TaskResultRecord
+ * Type guard for JobResultRecord
  */
-export function isTaskResultRecord(obj: unknown): obj is TaskResultRecord {
+export function isJobResultRecord(obj: unknown): obj is JobResultRecord {
   if (!obj || typeof obj !== 'object') return false;
   const record = obj as Record<string, unknown>;
   return (
@@ -217,7 +217,7 @@ export function isSchedulerState(obj: unknown): obj is SchedulerState {
   const state = obj as Record<string, unknown>;
   return (
     typeof state.isPaused === 'boolean' &&
-    (state.currentTaskId === null || typeof state.currentTaskId === 'string') &&
+    (state.currentJobId === null || typeof state.currentJobId === 'string') &&
     typeof state.lastProcessedTime === 'number'
   );
 }
