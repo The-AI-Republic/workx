@@ -36,6 +36,10 @@ import type { SubmissionContext } from '@/core/channels/types';
 import type { EventMsg } from '@/core/protocol/events';
 import { t } from '@/webfront/lib/i18n';
 import { StaticRiskAssessor } from '@/core/approval/assessors/StaticRiskAssessor';
+import { Scheduler } from '@/core/scheduler/Scheduler';
+import { DesktopSchedulerAlarms } from '../scheduler/DesktopSchedulerAlarms';
+import { DesktopSchedulerDeepLinkHandler } from '../scheduler/DesktopSchedulerDeepLinkHandler';
+import { AgentRegistry } from '@/core/registry/AgentRegistry';
 
 /**
  * Singleton instance
@@ -52,6 +56,11 @@ export class DesktopAgentBootstrap {
   private channel: TauriChannel | null = null;
   private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
+  private scheduler: Scheduler | null = null;
+  private schedulerAlarms: DesktopSchedulerAlarms | null = null;
+  private schedulerDeepLinkHandler: DesktopSchedulerDeepLinkHandler | null = null;
+  private runningSchedulerJobId: string | null = null;
+  private runningJobStartTime: number = 0;
   private initialized = false;
   private isUpdatingConfig = false;
 
@@ -160,6 +169,9 @@ export class DesktopAgentBootstrap {
       // 8. Set up MCP tool registration events
       await this.setupMCPToolRegistration();
 
+      // 9. Initialize scheduler
+      await this.initializeScheduler();
+
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
     } catch (error) {
@@ -227,6 +239,9 @@ export class DesktopAgentBootstrap {
       channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch((error) => {
         console.error('[DesktopAgentBootstrap] Failed to dispatch event:', error);
       });
+
+      // Intercept completion events for scheduler
+      this.handleSchedulerEventCompletion(event.msg);
     });
 
     console.log('[DesktopAgentBootstrap] Event forwarding configured via ChannelManager');
@@ -342,6 +357,182 @@ export class DesktopAgentBootstrap {
       console.log('[DesktopAgentBootstrap] Skills initialized, found', this.skillRegistry.getSkillMetas().length, 'skills');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize skills:', error);
+    }
+  }
+
+  /**
+   * Initialize the scheduler for desktop mode.
+   * Uses platform-aware StorageAdapter + hybrid DesktopSchedulerAlarms.
+   */
+  private async initializeScheduler(): Promise<void> {
+    try {
+      // Use platform-aware StorageAdapter factory (IndexedDB/SQLite/Node depending on build)
+      const { createStorageAdapter } = await import('@/storage/createStorageAdapter');
+      const { SchedulerStorage } = await import('@/core/scheduler/SchedulerStorage');
+
+      const storageAdapter = await createStorageAdapter();
+      await storageAdapter.initialize();
+
+      const schedulerStorage = new SchedulerStorage(storageAdapter);
+
+      // Create hybrid alarms (in-process timers + OS-level jobs)
+      this.schedulerAlarms = new DesktopSchedulerAlarms();
+
+      // Create scheduler
+      this.scheduler = new Scheduler(schedulerStorage, this.schedulerAlarms);
+
+      // Wire alarm handler
+      this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
+        await this.scheduler!.handleAlarm(alarmName);
+      });
+
+      // Wire event emitter → dispatch via pi:message so TauriMessageService
+      // routes it to SCHEDULER_EVENT handlers in the UI (Main.svelte)
+      this.scheduler.setEventEmitter(async (event) => {
+        try {
+          const { emit } = await import('@tauri-apps/api/event');
+          await emit('pi:message', {
+            type: MessageType.SCHEDULER_EVENT,
+            payload: event,
+          });
+        } catch (error) {
+          console.error('[DesktopAgentBootstrap] Failed to emit scheduler event:', error);
+        }
+      });
+
+      // Wire job launcher — show window and submit directly to agent
+      // `registryAgent` is the isolated agent created by AgentRegistry for this job's session.
+      // Falls back to the primary agent when registry is not available.
+      this.scheduler.setJobLauncher(async (jobId, sessionId, registryAgent) => {
+        this.runningSchedulerJobId = jobId;
+        this.runningJobStartTime = Date.now();
+        console.log(`[DesktopAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
+        // Show the main window
+        try {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window');
+          const win = getCurrentWindow();
+          await win.show();
+          await win.setFocus();
+        } catch {
+          // Non-fatal — window may already be visible
+        }
+        // Submit to registry agent (isolated session) or fallback to primary agent
+        const job = await schedulerStorage.getJob(jobId);
+        if (!job) throw new Error(`Job not found: ${jobId}`);
+        const targetAgent = registryAgent ?? this.agent;
+        if (!targetAgent) throw new Error('Agent not initialized');
+        await targetAgent.submitOperation(
+          { type: 'UserInput', items: [{ type: 'text', text: job.input }] },
+          {}
+        );
+      });
+
+      // Wire notification handler via Tauri notification plugin
+      this.scheduler.setNotificationHandler(async (job) => {
+        try {
+          const { sendNotification } = await import('@tauri-apps/plugin-notification');
+          const inputPreview = job.input.length > 50
+            ? job.input.slice(0, 50) + '...'
+            : job.input;
+          sendNotification({
+            title: 'Scheduled Job Starting',
+            body: inputPreview,
+          });
+        } catch {
+          // Notification permission may not be granted
+        }
+      });
+
+      // Wire connectivity check — require both network and agent readiness
+      this.scheduler.setConnectivityCheck(() => {
+        const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        return online && this.agent !== null && this.initialized;
+      });
+
+      // Initialize AgentRegistry for session isolation
+      try {
+        const agentConfig = await AgentConfig.getInstance();
+        const channelManager = getChannelManager();
+        const registry = new AgentRegistry({
+          maxConcurrent: 1,
+          agentFactory: async (config, router) => {
+            const agent = new RepublicAgent(config, router, undefined, undefined, new UserNotifier());
+            await agent.initialize();
+            return agent;
+          },
+          eventDispatcherFactory: (sessionId) => (event) => {
+            channelManager.dispatchEvent(event.msg, this.channel!.channelId).catch(() => {});
+            this.handleSchedulerEventCompletion(event.msg);
+          },
+        });
+        registry.initialize(agentConfig, this.messageRouter! as any);
+        this.scheduler.setRegistry(registry);
+        console.log('[DesktopAgentBootstrap] AgentRegistry initialized for session isolation');
+      } catch (error) {
+        console.warn('[DesktopAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
+      }
+
+      // Set up deep link handler for OS-level job triggers
+      this.schedulerDeepLinkHandler = new DesktopSchedulerDeepLinkHandler(this.scheduler);
+      await this.schedulerDeepLinkHandler.initialize();
+
+      // Reconcile OS jobs with in-process timers
+      await this.schedulerAlarms.reconcileOnStartup(async () => {
+        const jobs = await schedulerStorage.getScheduledJobs();
+        return jobs.map(j => ({ id: j.id, scheduledTime: j.scheduledTime }));
+      });
+
+      // Recover stale running jobs from previous app session
+      await this.scheduler.recoverStaleRunningJob();
+
+      // Detect missed jobs and start queue processor
+      const missedJobs = await this.scheduler.detectMissedJobs();
+      if (missedJobs.length > 0) {
+        console.log(`[DesktopAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
+      }
+      await this.schedulerAlarms.startJobQueueProcessor();
+
+      console.log('[DesktopAgentBootstrap] Scheduler initialized');
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] Could not initialize scheduler:', error);
+    }
+  }
+
+  /**
+   * Intercept TaskComplete/TaskFailed events from the agent to complete/fail
+   * the currently running scheduled job at the bootstrap level.
+   */
+  private handleSchedulerEventCompletion(msg: EventMsg): void {
+    if (!this.runningSchedulerJobId || !this.scheduler) return;
+    const jobId = this.runningSchedulerJobId;
+    const duration = this.runningJobStartTime > 0 ? Date.now() - this.runningJobStartTime : 0;
+
+    if (msg.type === 'TaskComplete') {
+      this.runningSchedulerJobId = null;
+      this.runningJobStartTime = 0;
+      // EventMsg.data shape for TaskComplete: { last_agent_message?: string, token_usage?: { total?: { input_tokens, output_tokens, total_tokens } } }
+      const data = (msg as EventMsg & { data?: Record<string, any> }).data;
+      const summary = data?.last_agent_message?.slice(0, 500) || 'Job completed';
+      const tokenData = data?.token_usage?.total;
+      this.scheduler.completeJob(jobId, {
+        summary,
+        tokenUsage: {
+          inputTokens: tokenData?.input_tokens ?? 0,
+          outputTokens: tokenData?.output_tokens ?? 0,
+          totalTokens: tokenData?.total_tokens ?? 0,
+        },
+        duration,
+      }).catch((error) => {
+        console.error(`[DesktopAgentBootstrap] Failed to complete scheduler job ${jobId}:`, error);
+      });
+    } else if (msg.type === 'TaskFailed') {
+      this.runningSchedulerJobId = null;
+      this.runningJobStartTime = 0;
+      const data = (msg as EventMsg & { data?: Record<string, any> }).data;
+      const error = data?.error || data?.reason || 'Job failed';
+      this.scheduler.failJob(jobId, error).catch((err) => {
+        console.error(`[DesktopAgentBootstrap] Failed to fail scheduler job ${jobId}:`, err);
+      });
     }
   }
 
@@ -625,10 +816,21 @@ export class DesktopAgentBootstrap {
   }
 
   /**
+   * Get the scheduler instance
+   */
+  getScheduler(): Scheduler | null {
+    return this.scheduler;
+  }
+
+  /**
    * Shutdown the agent system
    */
   async shutdown(): Promise<void> {
     console.log('[DesktopAgentBootstrap] Shutting down...');
+
+    // Dispose scheduler
+    this.schedulerDeepLinkHandler?.dispose();
+    this.schedulerAlarms?.dispose();
 
     // Shutdown channel manager (which shuts down all channels)
     const channelManager = getChannelManager();

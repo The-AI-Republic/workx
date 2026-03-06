@@ -104,24 +104,24 @@
   }
 
   function validateAndSchedule() {
-    const taskInput = isEditable ? editableInput.trim() : input;
+    const jobInput = isEditable ? editableInput.trim() : input;
 
     // Validate input
-    if (!taskInput) {
-      errorMessage = t('Please enter a task description');
+    if (!jobInput) {
+      errorMessage = t('Please enter a job description');
       return;
     }
 
     const scheduledTime = getScheduledTimestamp();
     const now = Date.now();
 
-    // Must be at least 1 minute in the future
-    if (scheduledTime <= now + 60000) {
-      errorMessage = t('Scheduled time must be at least 1 minute in the future');
+    // Must be at least 30 seconds in the future
+    if (scheduledTime <= now + 30000) {
+      errorMessage = t('Scheduled time must be at least 30 seconds in the future');
       return;
     }
 
-    dispatch('schedule', { input: taskInput, scheduledTime });
+    dispatch('schedule', { input: jobInput, scheduledTime });
   }
 
   function handleClose() {
@@ -173,7 +173,7 @@
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat'
             : 'text-term-bright-green font-terminal'}">
-          {$_t('Schedule A New Task')}
+          {$_t('Schedule A New Job')}
         </h2>
         <button
           class="bg-transparent border-none cursor-pointer p-1 flex items-center rounded transition-all duration-200
@@ -192,7 +192,7 @@
 
       <!-- Content -->
       <div class="p-4 overflow-y-auto flex-1">
-        <!-- Task Input/Preview -->
+        <!-- Job Input/Preview -->
         <div class="mb-4 p-3 rounded
           {currentTheme === 'modern'
             ? 'bg-chat-code-bg dark:bg-chat-code-bg-dark border border-chat-border dark:border-chat-border-dark'
@@ -201,7 +201,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
               : 'text-term-dim-green'}"
-          >{$_t('Task')}:</span>
+          >{$_t('Job')}:</span>
           {#if isEditable}
             <textarea
               class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
@@ -209,7 +209,7 @@
                   ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:border-chat-primary dark:focus:border-chat-primary-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
                   : 'bg-[rgba(0,0,0,0.5)] border border-term-dim-green text-term-bright-green font-terminal focus:border-term-bright-green placeholder:text-term-dim-green/60'}"
               bind:value={editableInput}
-              placeholder={$_t('Enter your task...')}
+              placeholder={$_t('Enter your job...')}
               rows="3"
             ></textarea>
           {:else}
@@ -229,7 +229,7 @@
               : 'text-term-dim-green'}"
           >{$_t('Quick Schedule')}:</span>
           <div class="flex gap-2 flex-wrap">
-            {#each [{ min: 5, label: '5m' }, { min: 15, label: '15m' }, { min: 30, label: '30m' }, { min: 60, label: '1h' }, { min: 180, label: '3h' }, { min: 1440, label: '24h' }] as btn}
+            {#each [{ min: 2, label: '2m' }, { min: 5, label: '5m' }, { min: 15, label: '15m' }, { min: 30, label: '30m' }, { min: 60, label: '1h' }, { min: 180, label: '3h' }, { min: 1440, label: '24h' }] as btn}
               <button
                 class="py-1.5 px-3 text-sm bg-transparent rounded cursor-pointer transition-all duration-200
                   {currentTheme === 'modern'

@@ -56,7 +56,6 @@ export class AgentSession {
       tabId: config.tabId ?? null,
       tabGroupId: null,
       tabGroupName: `browserx_s_${this._sessionLetter}`,
-      scheduledTaskId: config.scheduledTaskId ?? null,
     };
   }
 

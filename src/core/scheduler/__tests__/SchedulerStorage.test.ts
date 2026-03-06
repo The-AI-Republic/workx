@@ -2,18 +2,18 @@
  * Unit tests for SchedulerStorage
  *
  * Tests cover:
- * - Task CRUD operations (create, get, update, delete)
- * - Query methods (getDraftTasks, getScheduledTasks, getMissedTasks, etc.)
+ * - Job CRUD operations (create, get, update, delete)
+ * - Query methods (getDraftJobs, getScheduledJobs, getMissedJobs, etc.)
  * - Scheduler state management (getSchedulerState, setSchedulerState)
  * - chrome.storage.local fallback when ConfigStorageProvider is not initialized
  * - Error handling and edge cases
- * - Task counting and UI display helpers
+ * - Job counting and UI display helpers
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { STORE_NAMES, INDEX_NAMES } from '@/storage/IndexedDBAdapter';
 import type { IndexedDBAdapter } from '@/storage/IndexedDBAdapter';
-import type { SchedulerTaskRecord, SchedulerState } from '@/core/models/types/Scheduler';
+import type { SchedulerJobRecord, SchedulerState } from '@/core/models/types/Scheduler';
 import { SCHEDULER_STATE_KEY } from '@/core/models/types/SchedulerContracts';
 
 // ---------------------------------------------------------------------------
@@ -57,10 +57,10 @@ function createMockDB(): IndexedDBAdapter {
   } as unknown as IndexedDBAdapter;
 }
 
-function makeTask(overrides: Partial<SchedulerTaskRecord> = {}): SchedulerTaskRecord {
+function makeJob(overrides: Partial<SchedulerJobRecord> = {}): SchedulerJobRecord {
   return {
     id: 'task-1',
-    input: 'Test task',
+    input: 'Test job',
     scheduledTime: null,
     createdAt: 1000,
     status: 'draft',
@@ -97,167 +97,167 @@ describe('SchedulerStorage', () => {
   });
 
   // =========================================================================
-  // createTask
+  // createJob
   // =========================================================================
-  describe('createTask()', () => {
-    it('should create a draft task when no scheduledTime is provided', async () => {
-      const task = await storage.createTask('Write a report');
+  describe('createJob()', () => {
+    it('should create a draft job when no scheduledTime is provided', async () => {
+      const job = await storage.createJob('Write a report');
 
-      expect(task.id).toBe('test-uuid-1');
-      expect(task.input).toBe('Write a report');
-      expect(task.status).toBe('draft');
-      expect(task.scheduledTime).toBeNull();
-      expect(task.sessionId).toBeNull();
-      expect(task.completedAt).toBeNull();
-      expect(task.error).toBeNull();
-      expect(task.result).toBeNull();
+      expect(job.id).toBe('test-uuid-1');
+      expect(job.input).toBe('Write a report');
+      expect(job.status).toBe('draft');
+      expect(job.scheduledTime).toBeNull();
+      expect(job.sessionId).toBeNull();
+      expect(job.completedAt).toBeNull();
+      expect(job.error).toBeNull();
+      expect(job.result).toBeNull();
     });
 
-    it('should create a scheduled task when scheduledTime is provided', async () => {
+    it('should create a scheduled job when scheduledTime is provided', async () => {
       const scheduledTime = Date.now() + 60000;
-      const task = await storage.createTask('Schedule me', scheduledTime);
+      const job = await storage.createJob('Schedule me', scheduledTime);
 
-      expect(task.id).toBe('test-uuid-1');
-      expect(task.input).toBe('Schedule me');
-      expect(task.status).toBe('scheduled');
-      expect(task.scheduledTime).toBe(scheduledTime);
+      expect(job.id).toBe('test-uuid-1');
+      expect(job.input).toBe('Schedule me');
+      expect(job.status).toBe('scheduled');
+      expect(job.scheduledTime).toBe(scheduledTime);
     });
 
-    it('should persist the task to IndexedDB via db.put', async () => {
-      const task = await storage.createTask('Persist me');
+    it('should persist the job to IndexedDB via db.put', async () => {
+      const job = await storage.createJob('Persist me');
 
       expect(mockDB.put).toHaveBeenCalledTimes(1);
-      expect(mockDB.put).toHaveBeenCalledWith(STORE_NAMES.SCHEDULER_TASKS, task);
+      expect(mockDB.put).toHaveBeenCalledWith(STORE_NAMES.SCHEDULER_JOBS, job);
     });
 
-    it('should generate unique IDs for each task', async () => {
-      const task1 = await storage.createTask('Task 1');
-      const task2 = await storage.createTask('Task 2');
+    it('should generate unique IDs for each job', async () => {
+      const job1 = await storage.createJob('Job 1');
+      const job2 = await storage.createJob('Job 2');
 
-      expect(task1.id).toBe('test-uuid-1');
-      expect(task2.id).toBe('test-uuid-2');
-      expect(task1.id).not.toBe(task2.id);
+      expect(job1.id).toBe('test-uuid-1');
+      expect(job2.id).toBe('test-uuid-2');
+      expect(job1.id).not.toBe(job2.id);
     });
 
-    it('should set createdAt to current timestamp for draft tasks', async () => {
+    it('should set createdAt to current timestamp for draft jobs', async () => {
       const before = Date.now();
-      const task = await storage.createTask('Timestamped');
+      const job = await storage.createJob('Timestamped');
       const after = Date.now();
 
-      expect(task.createdAt).toBeGreaterThanOrEqual(before);
-      expect(task.createdAt).toBeLessThanOrEqual(after);
+      expect(job.createdAt).toBeGreaterThanOrEqual(before);
+      expect(job.createdAt).toBeLessThanOrEqual(after);
     });
 
-    it('should set createdAt to current timestamp for scheduled tasks', async () => {
+    it('should set createdAt to current timestamp for scheduled jobs', async () => {
       const before = Date.now();
-      const task = await storage.createTask('Scheduled', Date.now() + 60000);
+      const job = await storage.createJob('Scheduled', Date.now() + 60000);
       const after = Date.now();
 
-      expect(task.createdAt).toBeGreaterThanOrEqual(before);
-      expect(task.createdAt).toBeLessThanOrEqual(after);
+      expect(job.createdAt).toBeGreaterThanOrEqual(before);
+      expect(job.createdAt).toBeLessThanOrEqual(after);
     });
 
     it('should propagate IndexedDB errors from db.put', async () => {
       (mockDB.put as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('DB write failed'));
 
-      await expect(storage.createTask('Failing')).rejects.toThrow('DB write failed');
+      await expect(storage.createJob('Failing')).rejects.toThrow('DB write failed');
     });
 
     it('should handle empty string input', async () => {
-      const task = await storage.createTask('');
-      expect(task.input).toBe('');
-      expect(task.status).toBe('draft');
+      const job = await storage.createJob('');
+      expect(job.input).toBe('');
+      expect(job.status).toBe('draft');
     });
 
     it('should handle very long input strings', async () => {
       const longInput = 'x'.repeat(10000);
-      const task = await storage.createTask(longInput);
-      expect(task.input).toBe(longInput);
+      const job = await storage.createJob(longInput);
+      expect(job.input).toBe(longInput);
     });
   });
 
   // =========================================================================
-  // getTask
+  // getJob
   // =========================================================================
-  describe('getTask()', () => {
-    it('should return a task when found', async () => {
-      const task = makeTask({ id: 'abc-123' });
-      (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(task);
+  describe('getJob()', () => {
+    it('should return a job when found', async () => {
+      const job = makeJob({ id: 'abc-123' });
+      (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(job);
 
-      const result = await storage.getTask('abc-123');
+      const result = await storage.getJob('abc-123');
 
-      expect(result).toEqual(task);
-      expect(mockDB.get).toHaveBeenCalledWith(STORE_NAMES.SCHEDULER_TASKS, 'abc-123');
+      expect(result).toEqual(job);
+      expect(mockDB.get).toHaveBeenCalledWith(STORE_NAMES.SCHEDULER_JOBS, 'abc-123');
     });
 
-    it('should return null when task not found', async () => {
+    it('should return null when job not found', async () => {
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-      const result = await storage.getTask('nonexistent');
+      const result = await storage.getJob('nonexistent');
       expect(result).toBeNull();
     });
 
     it('should propagate IndexedDB errors from db.get', async () => {
       (mockDB.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('DB read failed'));
 
-      await expect(storage.getTask('abc')).rejects.toThrow('DB read failed');
+      await expect(storage.getJob('abc')).rejects.toThrow('DB read failed');
     });
   });
 
   // =========================================================================
-  // updateTask
+  // updateJob
   // =========================================================================
-  describe('updateTask()', () => {
-    it('should merge updates into existing task', async () => {
-      const existing = makeTask({ id: 'u-1', status: 'draft' });
+  describe('updateJob()', () => {
+    it('should merge updates into existing job', async () => {
+      const existing = makeJob({ id: 'u-1', status: 'draft' });
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
 
-      await storage.updateTask('u-1', { status: 'scheduled', scheduledTime: 9999 });
+      await storage.updateJob('u-1', { status: 'scheduled', scheduledTime: 9999 });
 
       expect(mockDB.put).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         expect.objectContaining({
           id: 'u-1',
           status: 'scheduled',
           scheduledTime: 9999,
-          input: 'Test task',
+          input: 'Test job',
         })
       );
     });
 
     it('should preserve the original ID even if updates try to change it', async () => {
-      const existing = makeTask({ id: 'original-id' });
+      const existing = makeJob({ id: 'original-id' });
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
 
-      await storage.updateTask('original-id', { id: 'attempted-new-id' } as any);
+      await storage.updateJob('original-id', { id: 'attempted-new-id' } as any);
 
       expect(mockDB.put).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         expect.objectContaining({ id: 'original-id' })
       );
     });
 
-    it('should throw when task does not exist', async () => {
+    it('should throw when job does not exist', async () => {
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-      await expect(storage.updateTask('ghost', { status: 'running' }))
-        .rejects.toThrow('Task not found: ghost');
+      await expect(storage.updateJob('ghost', { status: 'running' }))
+        .rejects.toThrow('Job not found: ghost');
     });
 
     it('should propagate db.put errors', async () => {
-      const existing = makeTask({ id: 'u-2' });
+      const existing = makeJob({ id: 'u-2' });
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
       (mockDB.put as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Write error'));
 
-      await expect(storage.updateTask('u-2', { status: 'running' }))
+      await expect(storage.updateJob('u-2', { status: 'running' }))
         .rejects.toThrow('Write error');
     });
 
     it('should allow updating multiple fields at once', async () => {
-      const existing = makeTask({ id: 'u-3' });
+      const existing = makeJob({ id: 'u-3' });
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
 
-      await storage.updateTask('u-3', {
+      await storage.updateJob('u-3', {
         status: 'completed',
         completedAt: 5000,
         sessionId: 'session-x',
@@ -269,7 +269,7 @@ describe('SchedulerStorage', () => {
       });
 
       expect(mockDB.put).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         expect.objectContaining({
           status: 'completed',
           completedAt: 5000,
@@ -280,16 +280,16 @@ describe('SchedulerStorage', () => {
     });
 
     it('should allow updating with an error message', async () => {
-      const existing = makeTask({ id: 'u-4' });
+      const existing = makeJob({ id: 'u-4' });
       (mockDB.get as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
 
-      await storage.updateTask('u-4', {
+      await storage.updateJob('u-4', {
         status: 'failed',
         error: 'Something went wrong',
       });
 
       expect(mockDB.put).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         expect.objectContaining({
           status: 'failed',
           error: 'Something went wrong',
@@ -299,39 +299,39 @@ describe('SchedulerStorage', () => {
   });
 
   // =========================================================================
-  // deleteTask
+  // deleteJob
   // =========================================================================
-  describe('deleteTask()', () => {
+  describe('deleteJob()', () => {
     it('should call db.delete with the correct store and key', async () => {
-      await storage.deleteTask('del-1');
+      await storage.deleteJob('del-1');
 
-      expect(mockDB.delete).toHaveBeenCalledWith(STORE_NAMES.SCHEDULER_TASKS, 'del-1');
+      expect(mockDB.delete).toHaveBeenCalledWith(STORE_NAMES.SCHEDULER_JOBS, 'del-1');
     });
 
-    it('should not throw when deleting a nonexistent task', async () => {
+    it('should not throw when deleting a nonexistent job', async () => {
       (mockDB.delete as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
-      await expect(storage.deleteTask('nonexistent')).resolves.toBeUndefined();
+      await expect(storage.deleteJob('nonexistent')).resolves.toBeUndefined();
     });
 
     it('should propagate db.delete errors', async () => {
       (mockDB.delete as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Delete failed'));
 
-      await expect(storage.deleteTask('del-2')).rejects.toThrow('Delete failed');
+      await expect(storage.deleteJob('del-2')).rejects.toThrow('Delete failed');
     });
   });
 
   // =========================================================================
-  // getDraftTasks
+  // getDraftJobs
   // =========================================================================
-  describe('getDraftTasks()', () => {
+  describe('getDraftJobs()', () => {
     it('should query by status index with "draft"', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getDraftTasks();
+      await storage.getDraftJobs();
 
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'draft'
       );
@@ -339,13 +339,13 @@ describe('SchedulerStorage', () => {
 
     it('should sort drafts by createdAt ascending', async () => {
       const tasks = [
-        makeTask({ id: 'd-3', createdAt: 3000, status: 'draft' }),
-        makeTask({ id: 'd-1', createdAt: 1000, status: 'draft' }),
-        makeTask({ id: 'd-2', createdAt: 2000, status: 'draft' }),
+        makeJob({ id: 'd-3', createdAt: 3000, status: 'draft' }),
+        makeJob({ id: 'd-1', createdAt: 1000, status: 'draft' }),
+        makeJob({ id: 'd-2', createdAt: 2000, status: 'draft' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getDraftTasks();
+      const result = await storage.getDraftJobs();
 
       expect(result.map(t => t.id)).toEqual(['d-1', 'd-2', 'd-3']);
     });
@@ -353,48 +353,48 @@ describe('SchedulerStorage', () => {
     it('should return empty array when no drafts exist', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getDraftTasks();
+      const result = await storage.getDraftJobs();
       expect(result).toEqual([]);
     });
   });
 
   // =========================================================================
-  // getScheduledTasks
+  // getScheduledJobs
   // =========================================================================
-  describe('getScheduledTasks()', () => {
+  describe('getScheduledJobs()', () => {
     it('should query by status index with "scheduled"', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getScheduledTasks();
+      await storage.getScheduledJobs();
 
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'scheduled'
       );
     });
 
-    it('should sort scheduled tasks by scheduledTime ascending', async () => {
+    it('should sort scheduled jobs by scheduledTime ascending', async () => {
       const tasks = [
-        makeTask({ id: 's-3', scheduledTime: 3000, status: 'scheduled' }),
-        makeTask({ id: 's-1', scheduledTime: 1000, status: 'scheduled' }),
-        makeTask({ id: 's-2', scheduledTime: 2000, status: 'scheduled' }),
+        makeJob({ id: 's-3', scheduledTime: 3000, status: 'scheduled' }),
+        makeJob({ id: 's-1', scheduledTime: 1000, status: 'scheduled' }),
+        makeJob({ id: 's-2', scheduledTime: 2000, status: 'scheduled' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getScheduledTasks();
+      const result = await storage.getScheduledJobs();
 
       expect(result.map(t => t.id)).toEqual(['s-1', 's-2', 's-3']);
     });
 
-    it('should handle tasks with null scheduledTime (treated as 0)', async () => {
+    it('should handle jobs with null scheduledTime (treated as 0)', async () => {
       const tasks = [
-        makeTask({ id: 's-2', scheduledTime: 2000, status: 'scheduled' }),
-        makeTask({ id: 's-null', scheduledTime: null, status: 'scheduled' }),
+        makeJob({ id: 's-2', scheduledTime: 2000, status: 'scheduled' }),
+        makeJob({ id: 's-null', scheduledTime: null, status: 'scheduled' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getScheduledTasks();
+      const result = await storage.getScheduledJobs();
 
       expect(result[0].id).toBe('s-null');
       expect(result[1].id).toBe('s-2');
@@ -403,72 +403,72 @@ describe('SchedulerStorage', () => {
     it('should return empty array when none scheduled', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getScheduledTasks();
+      const result = await storage.getScheduledJobs();
       expect(result).toEqual([]);
     });
   });
 
   // =========================================================================
-  // getMissedTasks
+  // getMissedJobs
   // =========================================================================
-  describe('getMissedTasks()', () => {
+  describe('getMissedJobs()', () => {
     it('should query by status index with "missed"', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getMissedTasks();
+      await storage.getMissedJobs();
 
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'missed'
       );
     });
 
-    it('should sort missed tasks by scheduledTime ascending', async () => {
+    it('should sort missed jobs by scheduledTime ascending', async () => {
       const tasks = [
-        makeTask({ id: 'm-2', scheduledTime: 2000, status: 'missed' }),
-        makeTask({ id: 'm-1', scheduledTime: 1000, status: 'missed' }),
+        makeJob({ id: 'm-2', scheduledTime: 2000, status: 'missed' }),
+        makeJob({ id: 'm-1', scheduledTime: 1000, status: 'missed' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getMissedTasks();
+      const result = await storage.getMissedJobs();
 
       expect(result.map(t => t.id)).toEqual(['m-1', 'm-2']);
     });
 
-    it('should return empty array when no missed tasks', async () => {
+    it('should return empty array when no missed jobs', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getMissedTasks();
+      const result = await storage.getMissedJobs();
       expect(result).toEqual([]);
     });
   });
 
   // =========================================================================
-  // getSchedulerTaskQueueTasks
+  // getJobQueueJobs
   // =========================================================================
-  describe('getSchedulerTaskQueueTasks()', () => {
+  describe('getJobQueueJobs()', () => {
     it('should query by status index with "waiting"', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getSchedulerTaskQueueTasks();
+      await storage.getJobQueueJobs();
 
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'waiting'
       );
     });
 
-    it('should sort waiting tasks by createdAt (FIFO)', async () => {
+    it('should sort waiting jobs by createdAt (FIFO)', async () => {
       const tasks = [
-        makeTask({ id: 'w-3', createdAt: 3000, status: 'waiting' }),
-        makeTask({ id: 'w-1', createdAt: 1000, status: 'waiting' }),
-        makeTask({ id: 'w-2', createdAt: 2000, status: 'waiting' }),
+        makeJob({ id: 'w-3', createdAt: 3000, status: 'waiting' }),
+        makeJob({ id: 'w-1', createdAt: 1000, status: 'waiting' }),
+        makeJob({ id: 'w-2', createdAt: 2000, status: 'waiting' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getSchedulerTaskQueueTasks();
+      const result = await storage.getJobQueueJobs();
 
       expect(result.map(t => t.id)).toEqual(['w-1', 'w-2', 'w-3']);
     });
@@ -476,97 +476,97 @@ describe('SchedulerStorage', () => {
     it('should return empty array when queue is empty', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getSchedulerTaskQueueTasks();
+      const result = await storage.getJobQueueJobs();
       expect(result).toEqual([]);
     });
   });
 
   // =========================================================================
-  // getArchivedTasks
+  // getArchivedJobs
   // =========================================================================
-  describe('getArchivedTasks()', () => {
+  describe('getArchivedJobs()', () => {
     it('should query both completed and failed statuses', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getArchivedTasks(10, 0);
+      await storage.getArchivedJobs(10, 0);
 
       expect(mockDB.queryByIndex).toHaveBeenCalledTimes(2);
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'completed'
       );
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'failed'
       );
     });
 
-    it('should sort archived tasks by completedAt descending (most recent first)', async () => {
+    it('should sort archived jobs by completedAt descending (most recent first)', async () => {
       const completed = [
-        makeTask({ id: 'c-1', status: 'completed', completedAt: 1000 }),
-        makeTask({ id: 'c-3', status: 'completed', completedAt: 3000 }),
+        makeJob({ id: 'c-1', status: 'completed', completedAt: 1000 }),
+        makeJob({ id: 'c-3', status: 'completed', completedAt: 3000 }),
       ];
       const failed = [
-        makeTask({ id: 'f-2', status: 'failed', completedAt: 2000 }),
+        makeJob({ id: 'f-2', status: 'failed', completedAt: 2000 }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(completed)
         .mockResolvedValueOnce(failed);
 
-      const result = await storage.getArchivedTasks(10, 0);
+      const result = await storage.getArchivedJobs(10, 0);
 
       expect(result.map(t => t.id)).toEqual(['c-3', 'f-2', 'c-1']);
     });
 
     it('should apply pagination with limit and offset', async () => {
       const completed = [
-        makeTask({ id: 'c-1', status: 'completed', completedAt: 1000 }),
-        makeTask({ id: 'c-2', status: 'completed', completedAt: 2000 }),
-        makeTask({ id: 'c-3', status: 'completed', completedAt: 3000 }),
-        makeTask({ id: 'c-4', status: 'completed', completedAt: 4000 }),
-        makeTask({ id: 'c-5', status: 'completed', completedAt: 5000 }),
+        makeJob({ id: 'c-1', status: 'completed', completedAt: 1000 }),
+        makeJob({ id: 'c-2', status: 'completed', completedAt: 2000 }),
+        makeJob({ id: 'c-3', status: 'completed', completedAt: 3000 }),
+        makeJob({ id: 'c-4', status: 'completed', completedAt: 4000 }),
+        makeJob({ id: 'c-5', status: 'completed', completedAt: 5000 }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(completed)
         .mockResolvedValueOnce([]);
 
       // offset=1, limit=2 -> skip the first (c-5), take next 2 (c-4, c-3)
-      const result = await storage.getArchivedTasks(2, 1);
+      const result = await storage.getArchivedJobs(2, 1);
 
       expect(result.map(t => t.id)).toEqual(['c-4', 'c-3']);
     });
 
-    it('should return empty array when no archived tasks', async () => {
+    it('should return empty array when no archived jobs', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
 
-      const result = await storage.getArchivedTasks(10, 0);
+      const result = await storage.getArchivedJobs(10, 0);
       expect(result).toEqual([]);
     });
 
-    it('should handle offset beyond available tasks', async () => {
-      const completed = [makeTask({ id: 'c-1', status: 'completed', completedAt: 1000 })];
+    it('should handle offset beyond available jobs', async () => {
+      const completed = [makeJob({ id: 'c-1', status: 'completed', completedAt: 1000 })];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(completed)
         .mockResolvedValueOnce([]);
 
-      const result = await storage.getArchivedTasks(10, 100);
+      const result = await storage.getArchivedJobs(10, 100);
       expect(result).toEqual([]);
     });
 
     it('should handle null completedAt values (treated as 0)', async () => {
       const completed = [
-        makeTask({ id: 'c-null', status: 'completed', completedAt: null }),
-        makeTask({ id: 'c-2', status: 'completed', completedAt: 2000 }),
+        makeJob({ id: 'c-null', status: 'completed', completedAt: null }),
+        makeJob({ id: 'c-2', status: 'completed', completedAt: 2000 }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(completed)
         .mockResolvedValueOnce([]);
 
-      const result = await storage.getArchivedTasks(10, 0);
+      const result = await storage.getArchivedJobs(10, 0);
 
       // c-2 (2000) comes before c-null (0) in descending order
       expect(result[0].id).toBe('c-2');
@@ -575,17 +575,17 @@ describe('SchedulerStorage', () => {
   });
 
   // =========================================================================
-  // getNextTaskInSchedulerTaskQueue
+  // getNextJobInQueue
   // =========================================================================
-  describe('getNextTaskInSchedulerTaskQueue()', () => {
-    it('should return the first task in FIFO order', async () => {
+  describe('getNextJobInQueue()', () => {
+    it('should return the first job in FIFO order', async () => {
       const tasks = [
-        makeTask({ id: 'w-2', createdAt: 2000, status: 'waiting' }),
-        makeTask({ id: 'w-1', createdAt: 1000, status: 'waiting' }),
+        makeJob({ id: 'w-2', createdAt: 2000, status: 'waiting' }),
+        makeJob({ id: 'w-1', createdAt: 1000, status: 'waiting' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getNextTaskInSchedulerTaskQueue();
+      const result = await storage.getNextJobInQueue();
 
       expect(result).not.toBeNull();
       expect(result!.id).toBe('w-1');
@@ -594,97 +594,97 @@ describe('SchedulerStorage', () => {
     it('should return null when queue is empty', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getNextTaskInSchedulerTaskQueue();
+      const result = await storage.getNextJobInQueue();
       expect(result).toBeNull();
     });
   });
 
   // =========================================================================
-  // getOverdueScheduledTasks
+  // getOverdueScheduledJobs
   // =========================================================================
-  describe('getOverdueScheduledTasks()', () => {
-    it('should return tasks with scheduledTime in the past', async () => {
+  describe('getOverdueScheduledJobs()', () => {
+    it('should return jobs with scheduledTime in the past', async () => {
       const now = Date.now();
       const tasks = [
-        makeTask({ id: 'o-1', scheduledTime: now - 10000, status: 'scheduled' }),
-        makeTask({ id: 'o-future', scheduledTime: now + 60000, status: 'scheduled' }),
-        makeTask({ id: 'o-2', scheduledTime: now - 5000, status: 'scheduled' }),
+        makeJob({ id: 'o-1', scheduledTime: now - 10000, status: 'scheduled' }),
+        makeJob({ id: 'o-future', scheduledTime: now + 60000, status: 'scheduled' }),
+        makeJob({ id: 'o-2', scheduledTime: now - 5000, status: 'scheduled' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getOverdueScheduledTasks();
+      const result = await storage.getOverdueScheduledJobs();
 
       expect(result.map(t => t.id)).toEqual(['o-1', 'o-2']);
     });
 
-    it('should return empty array when no tasks are overdue', async () => {
+    it('should return empty array when no jobs are overdue', async () => {
       const now = Date.now();
       const tasks = [
-        makeTask({ id: 's-1', scheduledTime: now + 60000, status: 'scheduled' }),
+        makeJob({ id: 's-1', scheduledTime: now + 60000, status: 'scheduled' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getOverdueScheduledTasks();
+      const result = await storage.getOverdueScheduledJobs();
       expect(result).toEqual([]);
     });
 
-    it('should exclude tasks with null scheduledTime', async () => {
+    it('should exclude jobs with null scheduledTime', async () => {
       const tasks = [
-        makeTask({ id: 's-null', scheduledTime: null, status: 'scheduled' }),
+        makeJob({ id: 's-null', scheduledTime: null, status: 'scheduled' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getOverdueScheduledTasks();
+      const result = await storage.getOverdueScheduledJobs();
       expect(result).toEqual([]);
     });
 
-    it('should return empty array when no scheduled tasks exist', async () => {
+    it('should return empty array when no scheduled jobs exist', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getOverdueScheduledTasks();
+      const result = await storage.getOverdueScheduledJobs();
       expect(result).toEqual([]);
     });
   });
 
   // =========================================================================
-  // getCurrentTask
+  // getCurrentJob
   // =========================================================================
-  describe('getCurrentTask()', () => {
+  describe('getCurrentJob()', () => {
     it('should query by status index with "running"', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getCurrentTask();
+      await storage.getCurrentJob();
 
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'running'
       );
     });
 
-    it('should return the running task', async () => {
-      const runningTask = makeTask({ id: 'r-1', status: 'running' });
+    it('should return the running job', async () => {
+      const runningTask = makeJob({ id: 'r-1', status: 'running' });
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([runningTask]);
 
-      const result = await storage.getCurrentTask();
+      const result = await storage.getCurrentJob();
       expect(result).toEqual(runningTask);
     });
 
-    it('should return null when no running task', async () => {
+    it('should return null when no running job', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await storage.getCurrentTask();
+      const result = await storage.getCurrentJob();
       expect(result).toBeNull();
     });
 
-    it('should return only the first running task if multiple exist', async () => {
+    it('should return only the first running job if multiple exist', async () => {
       const tasks = [
-        makeTask({ id: 'r-1', status: 'running' }),
-        makeTask({ id: 'r-2', status: 'running' }),
+        makeJob({ id: 'r-1', status: 'running' }),
+        makeJob({ id: 'r-2', status: 'running' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
-      const result = await storage.getCurrentTask();
+      const result = await storage.getCurrentJob();
       expect(result!.id).toBe('r-1');
     });
   });
@@ -693,11 +693,11 @@ describe('SchedulerStorage', () => {
   // countByStatus
   // =========================================================================
   describe('countByStatus()', () => {
-    it('should return count of tasks with the given status', async () => {
+    it('should return count of jobs with the given status', async () => {
       const tasks = [
-        makeTask({ id: 'd-1', status: 'draft' }),
-        makeTask({ id: 'd-2', status: 'draft' }),
-        makeTask({ id: 'd-3', status: 'draft' }),
+        makeJob({ id: 'd-1', status: 'draft' }),
+        makeJob({ id: 'd-2', status: 'draft' }),
+        makeJob({ id: 'd-3', status: 'draft' }),
       ];
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue(tasks);
 
@@ -705,7 +705,7 @@ describe('SchedulerStorage', () => {
       expect(count).toBe(3);
     });
 
-    it('should return 0 when no tasks match', async () => {
+    it('should return 0 when no jobs match', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
       const count = await storage.countByStatus('running');
@@ -718,7 +718,7 @@ describe('SchedulerStorage', () => {
       await storage.countByStatus('waiting');
 
       expect(mockDB.queryByIndex).toHaveBeenCalledWith(
-        STORE_NAMES.SCHEDULER_TASKS,
+        STORE_NAMES.SCHEDULER_JOBS,
         INDEX_NAMES.SCHEDULER_BY_STATUS,
         'waiting'
       );
@@ -726,18 +726,18 @@ describe('SchedulerStorage', () => {
   });
 
   // =========================================================================
-  // getTaskCounts
+  // getJobCounts
   // =========================================================================
-  describe('getTaskCounts()', () => {
+  describe('getJobCounts()', () => {
     it('should return counts for all relevant statuses', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce([makeTask()])                         // draft
-        .mockResolvedValueOnce([makeTask(), makeTask()])             // scheduled
+        .mockResolvedValueOnce([makeJob()])                         // draft
+        .mockResolvedValueOnce([makeJob(), makeJob()])             // scheduled
         .mockResolvedValueOnce([])                                   // missed
-        .mockResolvedValueOnce([makeTask(), makeTask(), makeTask()]) // waiting
-        .mockResolvedValueOnce([makeTask()]);                        // running
+        .mockResolvedValueOnce([makeJob(), makeJob(), makeJob()]) // waiting
+        .mockResolvedValueOnce([makeJob()]);                        // running
 
-      const counts = await storage.getTaskCounts();
+      const counts = await storage.getJobCounts();
 
       expect(counts).toEqual({
         draftCount: 1,
@@ -751,7 +751,7 @@ describe('SchedulerStorage', () => {
     it('should return all zeros when no tasks exist', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const counts = await storage.getTaskCounts();
+      const counts = await storage.getJobCounts();
 
       expect(counts).toEqual({
         draftCount: 0,
@@ -765,7 +765,7 @@ describe('SchedulerStorage', () => {
     it('should query all five statuses in parallel', async () => {
       (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await storage.getTaskCounts();
+      await storage.getJobCounts();
 
       expect(mockDB.queryByIndex).toHaveBeenCalledTimes(5);
       const statusArgs = (mockDB.queryByIndex as ReturnType<typeof vi.fn>).mock.calls.map(
@@ -792,7 +792,7 @@ describe('SchedulerStorage', () => {
 
       expect(state).toEqual({
         isPaused: false,
-        currentTaskId: null,
+        currentJobId: null,
         lastProcessedTime: 0,
       });
 
@@ -807,7 +807,7 @@ describe('SchedulerStorage', () => {
 
       expect(state).toEqual({
         isPaused: false,
-        currentTaskId: null,
+        currentJobId: null,
         lastProcessedTime: 0,
       });
 
@@ -818,7 +818,7 @@ describe('SchedulerStorage', () => {
       // Pre-populate chrome.storage.local with scheduler state
       const customState: SchedulerState = {
         isPaused: true,
-        currentTaskId: 'task-abc',
+        currentJobId: 'task-abc',
         lastProcessedTime: 12345,
       };
       await chrome.storage.local.set({ [SCHEDULER_STATE_KEY]: customState });
@@ -834,7 +834,7 @@ describe('SchedulerStorage', () => {
 
       expect(state).toEqual({
         isPaused: false,
-        currentTaskId: null,
+        currentJobId: null,
         lastProcessedTime: 0,
       });
     });
@@ -842,7 +842,7 @@ describe('SchedulerStorage', () => {
     it('should use ConfigStorageProvider when initialized', async () => {
       const customState: SchedulerState = {
         isPaused: true,
-        currentTaskId: 'task-xyz',
+        currentJobId: 'task-xyz',
         lastProcessedTime: 99999,
       };
       const mockConfigStorage = {
@@ -886,7 +886,7 @@ describe('SchedulerStorage', () => {
 
       expect(state).toEqual({
         isPaused: false,
-        currentTaskId: null,
+        currentJobId: null,
         lastProcessedTime: 0,
       });
     });
@@ -913,7 +913,7 @@ describe('SchedulerStorage', () => {
 
       expect(state).toEqual({
         isPaused: false,
-        currentTaskId: null,
+        currentJobId: null,
         lastProcessedTime: 0,
       });
       expect(warnSpy).toHaveBeenCalled();
@@ -940,7 +940,7 @@ describe('SchedulerStorage', () => {
       // Pre-populate with existing state
       const existingState: SchedulerState = {
         isPaused: false,
-        currentTaskId: 'task-1',
+        currentJobId: 'task-1',
         lastProcessedTime: 100,
       };
       await chrome.storage.local.set({ [SCHEDULER_STATE_KEY]: existingState });
@@ -951,25 +951,25 @@ describe('SchedulerStorage', () => {
       const result = await chrome.storage.local.get(SCHEDULER_STATE_KEY);
       expect(result[SCHEDULER_STATE_KEY]).toEqual({
         isPaused: true,
-        currentTaskId: 'task-1',
+        currentJobId: 'task-1',
         lastProcessedTime: 100,
       });
     });
 
-    it('should update only the currentTaskId', async () => {
+    it('should update only the currentJobId', async () => {
       const existingState: SchedulerState = {
         isPaused: false,
-        currentTaskId: null,
+        currentJobId: null,
         lastProcessedTime: 200,
       };
       await chrome.storage.local.set({ [SCHEDULER_STATE_KEY]: existingState });
 
-      await storage.setSchedulerState({ currentTaskId: 'new-task' });
+      await storage.setSchedulerState({ currentJobId: 'new-task' });
 
       const result = await chrome.storage.local.get(SCHEDULER_STATE_KEY);
       expect(result[SCHEDULER_STATE_KEY]).toEqual({
         isPaused: false,
-        currentTaskId: 'new-task',
+        currentJobId: 'new-task',
         lastProcessedTime: 200,
       });
     });
@@ -987,7 +987,7 @@ describe('SchedulerStorage', () => {
       const mockConfigStorage = {
         get: vi.fn().mockResolvedValue({
           isPaused: false,
-          currentTaskId: null,
+          currentJobId: null,
           lastProcessedTime: 0,
         }),
         set: vi.fn().mockResolvedValue(undefined),
