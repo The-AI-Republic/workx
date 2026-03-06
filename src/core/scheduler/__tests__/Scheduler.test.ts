@@ -416,6 +416,76 @@ describe('Scheduler', () => {
   });
 
   // =========================================================================
+  // triggerJob — concurrent trigger guard
+  // =========================================================================
+
+  describe('triggerJob — concurrent trigger guard', () => {
+    it('should skip second concurrent trigger for the same jobId', async () => {
+      // Make triggerJob slow by making getJob slow on first call
+      let resolveFirst: () => void;
+      const slowGetJob = new Promise<any>((resolve) => {
+        resolveFirst = () => resolve(createMockJob({ id: 'job-1', status: 'scheduled' }));
+      });
+
+      vi.mocked(storage.getJob)
+        .mockReturnValueOnce(slowGetJob as any) // First trigger — slow
+        .mockResolvedValueOnce(createMockJob({ id: 'job-1', status: 'scheduled' })); // Second trigger (if it runs)
+
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
+
+      // Start first trigger (it will hang on getJob)
+      const trigger1 = scheduler.triggerJob('job-1');
+      // Start second trigger immediately — should be skipped by guard
+      const trigger2 = scheduler.triggerJob('job-1');
+
+      // Let first trigger proceed
+      resolveFirst!();
+      await trigger1;
+      await trigger2;
+
+      // getJob should only be called once (second trigger was skipped)
+      expect(storage.getJob).toHaveBeenCalledTimes(2); // once for trigger, once for executeJob
+    });
+
+    it('should allow triggering different jobIds concurrently', async () => {
+      vi.mocked(storage.getJob)
+        .mockResolvedValueOnce(createMockJob({ id: 'job-1', status: 'draft' }))
+        .mockResolvedValueOnce(createMockJob({ id: 'job-1', status: 'draft' })) // executeJob lookup
+        .mockResolvedValueOnce(createMockJob({ id: 'job-2', status: 'draft' }));
+
+      vi.mocked(storage.getSchedulerState)
+        .mockResolvedValueOnce(createMockState({ currentJobId: null }))
+        .mockResolvedValueOnce(createMockState({ currentJobId: 'job-1' })); // job-2 sees job-1 running
+
+      await Promise.all([
+        scheduler.triggerJob('job-1'),
+        scheduler.triggerJob('job-2'),
+      ]);
+
+      // Both jobs should have been processed (different IDs)
+      expect(storage.getJob).toHaveBeenCalledTimes(3);
+    });
+
+    it('should clear triggeringJobs guard even when triggerJob throws', async () => {
+      vi.mocked(storage.getJob).mockResolvedValue(null); // Will throw "Job not found"
+
+      await expect(scheduler.triggerJob('job-1')).rejects.toThrow('Job not found');
+
+      // Guard should be cleared — next trigger for same ID should work
+      vi.mocked(storage.getJob)
+        .mockResolvedValueOnce(createMockJob({ id: 'job-1', status: 'draft' }))
+        .mockResolvedValueOnce(createMockJob({ id: 'job-1', status: 'draft' }));
+      vi.mocked(storage.getSchedulerState).mockResolvedValue(createMockState({ currentJobId: null }));
+
+      await scheduler.triggerJob('job-1');
+      expect(storage.updateJob).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({ status: 'running' })
+      );
+    });
+  });
+
+  // =========================================================================
   // executeJob
   // =========================================================================
 
