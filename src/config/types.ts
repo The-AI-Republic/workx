@@ -393,6 +393,13 @@ export interface IToolsConfig {
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
+  /**
+   * Whether to use native provider web search when the model supports it.
+   * - When true (default): Uses provider-side web search for capable models,
+   *   falls back to CDP-based Google scraping for models without native support
+   * - When false: Forces CDP-based Google scraping for all models
+   */
+  useNativeWebSearch?: boolean;
   fileOperations?: boolean;
   mcpTools?: boolean;
   customTools?: Record<string, boolean>;

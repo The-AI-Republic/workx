@@ -343,7 +343,8 @@ export class TurnManager {
     );
     if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
       const modelClient = this.turnContext.getModelClient();
-      this.nativeWebSearchEnabled = modelClient.supportsNativeWebSearch();
+      const useNative = toolsConfig.useNativeWebSearch !== false;
+      this.nativeWebSearchEnabled = useNative && modelClient.supportsNativeWebSearch();
 
       if (this.nativeWebSearchEnabled) {
         // Native provider web search — handled server-side

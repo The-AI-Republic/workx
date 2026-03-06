@@ -975,3 +975,134 @@ describe('TurnManager - tryRunTurn stream processing', () => {
     expect(deltaCalls[1][0].msg.data.delta).toBe(' world');
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('TurnManager - useNativeWebSearch toggle', () => {
+  function createWebSearchMocks(toolsConfig: any, supportsNative: boolean) {
+    const session = {
+      getSessionId: vi.fn().mockReturnValue('test-session-id'),
+      getTabId: vi.fn().mockReturnValue(1),
+      emitEvent: vi.fn().mockResolvedValue(undefined),
+      recordTurnContext: vi.fn().mockResolvedValue(undefined),
+      showRawAgentReasoning: vi.fn().mockReturnValue(false),
+    } as any;
+
+    const mockModelClient = {
+      stream: vi.fn(),
+      supportsNativeWebSearch: vi.fn().mockReturnValue(supportsNative),
+    };
+
+    const turnContext = {
+      getToolsConfig: vi.fn().mockReturnValue(toolsConfig),
+      getModelClient: vi.fn().mockReturnValue(mockModelClient),
+      getCwd: vi.fn().mockReturnValue('/test'),
+      getSessionId: vi.fn().mockReturnValue('test-session-id'),
+      getApprovalPolicy: vi.fn().mockReturnValue('auto'),
+      getSandboxPolicy: vi.fn().mockReturnValue('read-only'),
+      getModel: vi.fn().mockReturnValue('gpt-4'),
+      getEffort: vi.fn().mockReturnValue(undefined),
+      getSummary: vi.fn().mockReturnValue({ enabled: false }),
+      getBaseInstructions: vi.fn().mockReturnValue(undefined),
+      getUserInstructions: vi.fn().mockReturnValue(undefined),
+      getSelectedModelKey: vi.fn().mockReturnValue('openai:gpt-4'),
+    } as any;
+
+    const toolRegistry = {
+      getTool: vi.fn().mockReturnValue(undefined),
+      execute: vi.fn(),
+      listTools: vi.fn().mockReturnValue([]),
+    } as any;
+
+    return { session, turnContext, toolRegistry, mockModelClient };
+  }
+
+  it('should use native web search when useNativeWebSearch is true and model supports it', async () => {
+    const { session, turnContext, toolRegistry } = createWebSearchMocks(
+      { webSearch: true, useNativeWebSearch: true },
+      true
+    );
+    const tm = new TurnManager(session, turnContext, toolRegistry);
+
+    const tools = await (tm as any).buildToolsFromContext();
+    const webSearchTool = tools.find((t: any) => t.type === 'web_search' || (t.type === 'function' && t.function?.name === 'web_search'));
+
+    expect(webSearchTool).toBeDefined();
+    expect(webSearchTool.type).toBe('web_search');
+    expect((tm as any).nativeWebSearchEnabled).toBe(true);
+  });
+
+  it('should use native web search by default (useNativeWebSearch undefined) when model supports it', async () => {
+    const { session, turnContext, toolRegistry } = createWebSearchMocks(
+      { webSearch: true },
+      true
+    );
+    const tm = new TurnManager(session, turnContext, toolRegistry);
+
+    const tools = await (tm as any).buildToolsFromContext();
+    const webSearchTool = tools.find((t: any) => t.type === 'web_search');
+
+    expect(webSearchTool).toBeDefined();
+    expect((tm as any).nativeWebSearchEnabled).toBe(true);
+  });
+
+  it('should fall back to CDP when useNativeWebSearch is false even if model supports native', async () => {
+    const { session, turnContext, toolRegistry } = createWebSearchMocks(
+      { webSearch: true, useNativeWebSearch: false },
+      true
+    );
+    const tm = new TurnManager(session, turnContext, toolRegistry);
+
+    const tools = await (tm as any).buildToolsFromContext();
+    const webSearchTool = tools.find((t: any) => t.type === 'function' && t.function?.name === 'web_search');
+
+    expect(webSearchTool).toBeDefined();
+    expect(webSearchTool.type).toBe('function');
+    expect(webSearchTool.function.name).toBe('web_search');
+    expect((tm as any).nativeWebSearchEnabled).toBe(false);
+  });
+
+  it('should fall back to CDP when useNativeWebSearch is true but model does not support native', async () => {
+    const { session, turnContext, toolRegistry } = createWebSearchMocks(
+      { webSearch: true, useNativeWebSearch: true },
+      false
+    );
+    const tm = new TurnManager(session, turnContext, toolRegistry);
+
+    const tools = await (tm as any).buildToolsFromContext();
+    const webSearchTool = tools.find((t: any) => t.type === 'function' && t.function?.name === 'web_search');
+
+    expect(webSearchTool).toBeDefined();
+    expect(webSearchTool.type).toBe('function');
+    expect((tm as any).nativeWebSearchEnabled).toBe(false);
+  });
+
+  it('should fall back to CDP when useNativeWebSearch is undefined and model does not support native', async () => {
+    const { session, turnContext, toolRegistry } = createWebSearchMocks(
+      { webSearch: true },
+      false
+    );
+    const tm = new TurnManager(session, turnContext, toolRegistry);
+
+    const tools = await (tm as any).buildToolsFromContext();
+    const webSearchTool = tools.find((t: any) => t.type === 'function' && t.function?.name === 'web_search');
+
+    expect(webSearchTool).toBeDefined();
+    expect(webSearchTool.type).toBe('function');
+    expect((tm as any).nativeWebSearchEnabled).toBe(false);
+  });
+
+  it('should not add any web search tool when webSearch is disabled', async () => {
+    const { session, turnContext, toolRegistry } = createWebSearchMocks(
+      { webSearch: false, useNativeWebSearch: true },
+      true
+    );
+    const tm = new TurnManager(session, turnContext, toolRegistry);
+
+    const tools = await (tm as any).buildToolsFromContext();
+    const webSearchTool = tools.find((t: any) =>
+      t.type === 'web_search' || (t.type === 'function' && t.function?.name === 'web_search')
+    );
+
+    expect(webSearchTool).toBeUndefined();
+  });
+});
