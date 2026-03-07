@@ -12,12 +12,16 @@
     settingsConfig,
     modelId,
     providerId,
+    isDirty = $bindable(false),
     onBack,
+    onSaved,
   }: {
     settingsConfig: AgentConfig | null;
     modelId: string;
     providerId: string;
+    isDirty?: boolean;
     onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
   } = $props();
 
   // State

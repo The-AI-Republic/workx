@@ -10,11 +10,13 @@
   let {
     settingsConfig,
     highlightSettingId = $bindable<string | undefined>(undefined),
+    isDirty = $bindable(false),
     onBack,
     onSaved,
   }: {
     settingsConfig: AgentConfig;
     highlightSettingId?: string | undefined;
+    isDirty?: boolean;
     onBack?: () => void;
     onSaved?: (detail: { success: boolean; error?: string }) => void;
   } = $props();
@@ -24,7 +26,6 @@
   let currentCache: ICacheSettings = $state({});
   let originalStorage: IStorageConfig = $state({});
   let currentStorage: IStorageConfig = $state({});
-  let isDirty = $state(false);
   let isSaving = $state(false);
   let saveMessage = $state('');
   let saveMessageType: 'success' | 'error' | '' = $state('');

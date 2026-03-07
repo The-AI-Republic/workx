@@ -15,11 +15,13 @@
   let {
     settingsConfig,
     highlightSettingId = undefined,
+    isDirty = $bindable(false),
     onBack,
     onSaved,
   }: {
     settingsConfig: AgentConfig;
     highlightSettingId?: string | undefined;
+    isDirty?: boolean;
     onBack?: () => void;
     onSaved?: (detail: { success: boolean; error?: string }) => void;
   } = $props();
@@ -29,13 +31,13 @@
 
   // Form state
   let originalPreferences: IUserPreferences = {};
-  let currentPreferences: IUserPreferences = {};
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let currentPreferences: IUserPreferences = $state({});
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // Language state
-  let selectedLanguage = getCurrentLocale();
+  let selectedLanguage = $state(getCurrentLocale());
   let browserLanguage = getCurrentLocale();
 
   $effect(() => {

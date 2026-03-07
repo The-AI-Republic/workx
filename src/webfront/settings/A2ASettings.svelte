@@ -18,10 +18,12 @@
 
   let {
     settingsConfig,
+    isDirty = $bindable(false),
     onBack,
     onSaved,
   }: {
     settingsConfig: AgentConfig;
+    isDirty?: boolean;
     onBack?: () => void;
     onSaved?: (detail: { success: boolean; error?: string }) => void;
   } = $props();
@@ -30,7 +32,6 @@
   let agents: IA2AAgentConfig[] = $state([]);
   let connections: IA2AConnection[] = $state([]);
   let allSkills: Array<{ agentName: string; skill: IA2ASkill }> = $state([]);
-  let isDirty = $state(false);
   let isLoading = $state(true);
   let isSaving = $state(false);
   let saveMessage = $state('');

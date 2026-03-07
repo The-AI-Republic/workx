@@ -11,11 +11,13 @@
   let {
     settingsConfig,
     highlightSettingId = undefined,
+    isDirty = $bindable(false),
     onBack,
     onSaved,
   }: {
     settingsConfig: AgentConfig;
     highlightSettingId?: string | undefined;
+    isDirty?: boolean;
     onBack?: () => void;
     onSaved?: (detail: { success: boolean; error?: string }) => void;
   } = $props();
@@ -26,7 +28,6 @@
   // Form state
   let originalTools: IToolsConfig = $state({});
   let currentTools: IToolsConfig = $state({});
-  let isDirty = $state(false);
   let isSaving = $state(false);
   let saveMessage = $state('');
   let saveMessageType: 'success' | 'error' | '' = $state('');
