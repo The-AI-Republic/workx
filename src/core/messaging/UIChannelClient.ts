@@ -2,7 +2,7 @@
  * UIChannelClient
  *
  * Universal frontend client for sending Ops and receiving EventMsgs.
- * Replaces both ChromeMessageService and TauriMessageService.
+ * Unified client for all platforms (extension, desktop, server).
  *
  * The RPC pattern (serviceRequest → Promise) exists only here.
  * The transport and backend are fire-and-forget.

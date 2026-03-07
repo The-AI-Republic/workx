@@ -130,7 +130,7 @@ const runtimePolyfill = {
           return;
 
         case 'HEALTH_CHECK':
-          // Health check should go through TauriMessageService, but provide fallback
+          // Health check fallback for desktop mode
           console.log('[chromePolyfill] HEALTH_CHECK received (desktop mode)');
           responseCallback?.({
             type: 'HEALTH_STATUS',

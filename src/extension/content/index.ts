@@ -4,6 +4,3 @@
  */
 
 export * from './content-script';
-export { MessageType } from '../../core/message-types';
-
-// For convenience, export key functions

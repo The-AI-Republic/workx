@@ -6,9 +6,8 @@
  *
  * Architecture:
  * 1. Initialize agent bootstrap (RepublicAgent + TauriChannel + ChannelManager)
- * 2. Initialize messaging service (TauriMessageService for UI communication)
- * 3. Initialize desktop services (tray, hotkeys)
- * 4. Mount the UI app
+ * 2. Initialize desktop services (tray, hotkeys)
+ * 3. Mount the UI app
  *
  * @module desktop/ui/main
  */

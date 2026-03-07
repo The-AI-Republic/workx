@@ -3,7 +3,7 @@
  *
  * Covers the public API of RepublicAgent with fully mocked dependencies.
  * All external modules (AgentConfig, Session, ModelClientFactory, ToolRegistry,
- * MessageRouter, UserNotifier, ApprovalManager, DiffTracker, TurnContext,
+ * UserNotifier, ApprovalManager, DiffTracker, TurnContext,
  * RegularTask, PromptLoader, registerPlatformTools, TabManager) are mocked
  * so the tests are deterministic and have no external side effects.
  */
