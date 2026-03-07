@@ -6,7 +6,7 @@
 
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { fade, scale } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import type { ModelMetadata } from '@/config/types.js';
   import { t, _t } from '../../lib/i18n';
 
@@ -100,10 +100,10 @@
     <!-- Model Name and Provider -->
     <div class="mb-3">
       <h4 class="text-base font-semibold text-gray-100 mb-1">
-        {model.displayName}
+        {model.name}
       </h4>
       <p class="text-sm text-gray-400">
-        {$_t('Provider:')} {model.provider.toUpperCase()}
+        {$_t('Provider:')} {model.providerId.toUpperCase()}
       </p>
     </div>
 

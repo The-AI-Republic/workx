@@ -62,7 +62,7 @@
   show={showDetailsPopup}
   onClose={() => showDetailsPopup = false}
 >
-  <div slot="trigger" class="flex items-center">
+  {#snippet trigger()}<div class="flex items-center">
     <Tooltip content={$_t("Credit Details")} disabled={showDetailsPopup || isLoading}>
       <button
         class="flex items-center justify-center gap-1.5 py-1.5 px-2.5 min-w-[50px] min-h-[28px] cursor-pointer transition-all duration-200
@@ -78,7 +78,7 @@
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           class="w-3.5 h-3.5 transition-transform duration-200"
-          style="fill: {isLoading ? (currentTheme === 'modern' ? '#8e8ea0' : '#00cc00') : getCreditColor()};"
+          style="fill: {isLoading ? ($uiTheme === 'modern' ? '#8e8ea0' : '#00cc00') : getCreditColor()};"
         >
           <path
             d="M12 .587l3.668 7.429L24 9.168l-6 5.847 1.416 8.268L12 18.896 4.584 23.283 6 15.015 0 9.168l8.332-1.152z"
@@ -86,7 +86,7 @@
         </svg>
         <span class="text-sm font-semibold
           {$uiTheme === 'modern' ? 'font-chat' : 'font-mono'}"
-          style="color: {isLoading ? (currentTheme === 'modern' ? '#8e8ea0' : '#00cc00') : getCreditColor()};">
+          style="color: {isLoading ? ($uiTheme === 'modern' ? '#8e8ea0' : '#00cc00') : getCreditColor()};">
           {#if isLoading}
             ...
           {:else}
@@ -95,9 +95,9 @@
         </span>
       </button>
     </Tooltip>
-  </div>
+  </div>{/snippet}
 
-  <div slot="content" class="min-w-[220px]">
+  {#snippet content()}<div class="min-w-[220px]">
     {#if isLoading}
       <div class="flex items-center justify-center gap-2 p-5 min-w-[180px]">
         <span class="loading-dot w-1.5 h-1.5 rounded-full
@@ -132,7 +132,7 @@
             {$uiTheme === 'modern' ? 'font-chat text-white' : 'text-term-green'}">{$_t("Remaining:")}</span>
           <span class="text-sm font-medium
             {$uiTheme === 'modern' ? 'font-chat' : 'font-mono'}
-            {isNegativeCredits ? (currentTheme === 'modern' ? 'text-red-500' : 'text-red-400') : (currentTheme === 'modern' ? 'text-white/90' : 'text-term-bright-green')}"
+            {isNegativeCredits ? ($uiTheme === 'modern' ? 'text-red-500' : 'text-red-400') : ($uiTheme === 'modern' ? 'text-white/90' : 'text-term-bright-green')}"
             style="color: {getCreditColor()};">
             {formatCreditValue(credits.daily_advanced_credits)}
           </span>
@@ -221,7 +221,7 @@
         </a>
       {/if}
     {/if}
-  </div>
+  </div>{/snippet}
 </PopupCard>
 
 <style>

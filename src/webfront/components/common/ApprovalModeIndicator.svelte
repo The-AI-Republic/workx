@@ -63,7 +63,7 @@
   show={showPopup}
   onClose={() => showPopup = false}
 >
-  <div slot="trigger" class="flex items-center">
+  {#snippet trigger()}<div class="flex items-center">
     <Tooltip content="{$_t('Approval Mode')}: {currentLabel}" disabled={showPopup}>
       <button
         class="relative p-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
@@ -78,9 +78,9 @@
         <span class="w-4 h-4 rounded-full block transition-colors duration-200" style="background-color: {currentColor};"></span>
       </button>
     </Tooltip>
-  </div>
+  </div>{/snippet}
 
-  <div slot="content" class="min-w-[240px]">
+  {#snippet content()}<div class="min-w-[240px]">
     {#each MODE_OPTIONS as option}
       <button
         class="flex items-center gap-2.5 w-full py-2 px-3 bg-transparent border-none rounded-md cursor-pointer text-sm text-left transition-colors duration-150
@@ -99,5 +99,5 @@
         </div>
       </button>
     {/each}
-  </div>
+  </div>{/snippet}
 </PopupCard>

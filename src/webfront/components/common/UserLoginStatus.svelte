@@ -189,7 +189,7 @@
   {:else if $userStore.isLoggedIn}
     <!-- Logged in state - show user avatar with initials -->
     <PopupCard title="" show={showMenu} onClose={closeMenu}>
-      <div slot="trigger">
+      {#snippet trigger()}<div>
         <Tooltip content={$_t("User Center")} disabled={showMenu}>
           <div
             class="relative w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
@@ -209,9 +209,9 @@
                 : 'text-term-green font-terminal'}">{$userInitials}</span>
           </div>
         </Tooltip>
-      </div>
+      </div>{/snippet}
 
-      <div slot="content" class="min-w-[180px]">
+      {#snippet content()}<div class="min-w-[180px]">
         <!-- User Info Section -->
         <a
           href="{HOME_PAGE_BASE_URL}/user-center/info"
@@ -270,7 +270,7 @@
           </svg>
           <span>{$_t("Settings")}</span>
         </button>
-      </div>
+      </div>{/snippet}
     </PopupCard>
   {:else}
     <!-- Not logged in state - show login link -->
