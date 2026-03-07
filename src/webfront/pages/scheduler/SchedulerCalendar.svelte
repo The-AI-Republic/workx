@@ -206,12 +206,9 @@
 
   async function handleEditInstance(detail: { scheduleEventId: string; instanceTime: number }) {
     showPopover = false;
-    try {
-      await sendMessage(MessageType.SCHEDULE_EDIT_INSTANCE, detail);
-      await fetchEvents();
-    } catch (error) {
-      console.error('[SchedulerCalendar] Failed to edit instance:', error);
-    }
+    // TODO: Open edit modal to collect overrides (overrideInput, overrideTime)
+    // then send SCHEDULE_EDIT_INSTANCE with the populated overrides object.
+    console.log('[SchedulerCalendar] Edit instance:', detail.scheduleEventId, 'at', detail.instanceTime);
   }
 
   async function handleEditSeries(detail: { scheduleEventId: string }) {

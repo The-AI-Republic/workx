@@ -78,9 +78,10 @@
   let clampedY = $derived(Math.min(position.y, (typeof window !== 'undefined' ? window.innerHeight : 600) - 200));
 
   onMount(() => {
-    setTimeout(() => {
+    // Defer listener to next frame to avoid the same click that opened the popover
+    requestAnimationFrame(() => {
       window.addEventListener('click', handleClickOutside);
-    }, 10);
+    });
   });
 
   onDestroy(() => {

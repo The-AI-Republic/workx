@@ -1134,6 +1134,7 @@ function setupSchedulerMessageHandlers(): void {
     if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
     const { input, scheduledTime, rrule } = message.payload;
     if (typeof input !== 'string' || !input) throw new Error('"input" is required');
+    if (input.length > 50000) throw new Error('Input too long');
     if (typeof scheduledTime !== 'number') throw new Error('"scheduledTime" must be a number');
     const event = await scheduleManager.createEvent(input, scheduledTime, (typeof rrule === 'string' ? rrule : null));
     return { success: true, eventId: event.id };
@@ -1147,7 +1148,10 @@ function setupSchedulerMessageHandlers(): void {
     // Allowlist update fields
     const updates: Record<string, unknown> = {};
     if (rawUpdates && typeof rawUpdates === 'object') {
-      if ('input' in rawUpdates && typeof rawUpdates.input === 'string') updates.input = rawUpdates.input;
+      if ('input' in rawUpdates && typeof rawUpdates.input === 'string') {
+        if (rawUpdates.input.length > 50000) throw new Error('Input too long');
+        updates.input = rawUpdates.input;
+      }
       if ('scheduledTime' in rawUpdates && typeof rawUpdates.scheduledTime === 'number') updates.scheduledTime = rawUpdates.scheduledTime;
       if ('rrule' in rawUpdates && (typeof rawUpdates.rrule === 'string' || rawUpdates.rrule === null)) updates.rrule = rawUpdates.rrule;
       if ('enabled' in rawUpdates && typeof rawUpdates.enabled === 'boolean') updates.enabled = rawUpdates.enabled;
@@ -1170,6 +1174,7 @@ function setupSchedulerMessageHandlers(): void {
     if (!scheduleManager) return { instances: [] };
     const { startTime, endTime } = message.payload;
     if (typeof startTime !== 'number' || typeof endTime !== 'number') throw new Error('"startTime" and "endTime" must be numbers');
+    if (endTime <= startTime) throw new Error('"endTime" must be after "startTime"');
     // Limit range to 1 year
     const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
     const clampedEnd = Math.min(endTime, startTime + MAX_RANGE_MS);

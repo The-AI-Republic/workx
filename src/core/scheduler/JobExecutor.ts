@@ -162,10 +162,12 @@ export class JobExecutor {
         // Show notification
         await this.showNotification(scheduleEventId, instanceTime, input);
 
+        // Emit running event before launch (launchJob catches errors and calls failExecution,
+        // which would emit 'failed' — so we must emit 'running' first)
+        this.emitEvent(executionId, scheduleEventId, 'running');
+
         // Launch job
         await this.launchJob(executionId, sessionId);
-
-        this.emitEvent(executionId, scheduleEventId, 'running');
 
         return executionId;
       } finally {

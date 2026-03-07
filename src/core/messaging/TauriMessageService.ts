@@ -196,6 +196,15 @@ export class TauriMessageService implements IMessageService {
       case MessageType.SCHEDULER_GET_ARCHIVED_JOBS:
       case MessageType.SCHEDULER_GET_STATE:
       case MessageType.SCHEDULER_GET_JOB_DETAILS:
+      case MessageType.SCHEDULER_RESCHEDULE_JOB:
+      case MessageType.SCHEDULER_GET_ALL_JOBS_IN_RANGE:
+      case MessageType.SCHEDULE_CREATE_EVENT:
+      case MessageType.SCHEDULE_UPDATE_EVENT:
+      case MessageType.SCHEDULE_DELETE_EVENT:
+      case MessageType.SCHEDULE_GET_EVENTS_IN_RANGE:
+      case MessageType.SCHEDULE_EDIT_INSTANCE:
+      case MessageType.SCHEDULE_DELETE_INSTANCE:
+      case MessageType.EXECUTION_GET_HISTORY:
         return this.handleSchedulerMessage(type, payload) as T;
 
       default:
@@ -569,6 +578,120 @@ export class TauriMessageService implements IMessageService {
         }
         const job = await storage.getJob(p.jobId);
         return { job };
+      }
+
+      case MessageType.SCHEDULER_RESCHEDULE_JOB: {
+        const p = payload as { jobId?: string; scheduledTime?: number } | undefined;
+        if (!p?.jobId) return { success: false, error: '"jobId" is required' };
+        if (typeof p.scheduledTime !== 'number') return { success: false, error: '"scheduledTime" must be a number' };
+        await scheduler.rescheduleJob(p.jobId, p.scheduledTime);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULER_GET_ALL_JOBS_IN_RANGE: {
+        const p = payload as { startTime?: number; endTime?: number } | undefined;
+        if (typeof p?.startTime !== 'number' || typeof p?.endTime !== 'number') {
+          return { jobs: [] };
+        }
+        const jobs = await storage.getScheduledJobs();
+        const filtered = jobs.filter(j =>
+          j.scheduledTime && j.scheduledTime >= p.startTime! && j.scheduledTime <= p.endTime!
+        );
+        return {
+          jobs: filtered.map((j: SchedulerJobRecord) => ({
+            id: j.id,
+            input: j.input.slice(0, 100),
+            scheduledTime: j.scheduledTime,
+            status: j.status,
+            createdAt: j.createdAt,
+            recurrence: j.recurrence,
+          })),
+        };
+      }
+
+      case MessageType.SCHEDULE_CREATE_EVENT: {
+        const scheduleManager = scheduler.getScheduleManager();
+        if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+        const p = payload as { input?: string; scheduledTime?: number; rrule?: string } | undefined;
+        if (typeof p?.input !== 'string' || !p.input) return { success: false, error: '"input" is required' };
+        if (typeof p.scheduledTime !== 'number') return { success: false, error: '"scheduledTime" must be a number' };
+        if (p.input.length > 50000) return { success: false, error: 'Input too long' };
+        const event = await scheduleManager.createEvent(p.input, p.scheduledTime, typeof p.rrule === 'string' ? p.rrule : null);
+        return { success: true, eventId: event.id };
+      }
+
+      case MessageType.SCHEDULE_UPDATE_EVENT: {
+        const scheduleManager = scheduler.getScheduleManager();
+        if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+        const p = payload as { eventId?: string; updates?: Record<string, unknown> } | undefined;
+        if (typeof p?.eventId !== 'string' || !p.eventId) return { success: false, error: '"eventId" is required' };
+        const updates: Record<string, unknown> = {};
+        if (p.updates && typeof p.updates === 'object') {
+          if ('input' in p.updates && typeof p.updates.input === 'string') {
+            if ((p.updates.input as string).length > 50000) return { success: false, error: 'Input too long' };
+            updates.input = p.updates.input;
+          }
+          if ('scheduledTime' in p.updates && typeof p.updates.scheduledTime === 'number') updates.scheduledTime = p.updates.scheduledTime;
+          if ('rrule' in p.updates && (typeof p.updates.rrule === 'string' || p.updates.rrule === null)) updates.rrule = p.updates.rrule;
+          if ('enabled' in p.updates && typeof p.updates.enabled === 'boolean') updates.enabled = p.updates.enabled;
+        }
+        await scheduleManager.editSeries(p.eventId, updates);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULE_DELETE_EVENT: {
+        const scheduleManager = scheduler.getScheduleManager();
+        if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+        const p = payload as { eventId?: string } | undefined;
+        if (typeof p?.eventId !== 'string' || !p.eventId) return { success: false, error: '"eventId" is required' };
+        await scheduleManager.deleteEvent(p.eventId);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULE_GET_EVENTS_IN_RANGE: {
+        const scheduleManager = scheduler.getScheduleManager();
+        if (!scheduleManager) return { instances: [] };
+        const p = payload as { startTime?: number; endTime?: number } | undefined;
+        if (typeof p?.startTime !== 'number' || typeof p?.endTime !== 'number') return { instances: [] };
+        if (p.endTime <= p.startTime) return { instances: [] };
+        const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+        const clampedEnd = Math.min(p.endTime, p.startTime + MAX_RANGE_MS);
+        const instances = await scheduleManager.getInstancesInRange(p.startTime, clampedEnd);
+        return { instances };
+      }
+
+      case MessageType.SCHEDULE_EDIT_INSTANCE: {
+        const scheduleManager = scheduler.getScheduleManager();
+        if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+        const p = payload as { scheduleEventId?: string; instanceTime?: number; overrides?: Record<string, unknown> } | undefined;
+        if (typeof p?.scheduleEventId !== 'string' || !p.scheduleEventId) return { success: false, error: '"scheduleEventId" is required' };
+        if (typeof p.instanceTime !== 'number') return { success: false, error: '"instanceTime" must be a number' };
+        const overrides: Record<string, unknown> = {};
+        if (p.overrides && typeof p.overrides === 'object') {
+          if ('overrideInput' in p.overrides && typeof p.overrides.overrideInput === 'string') overrides.overrideInput = p.overrides.overrideInput;
+          if ('overrideTime' in p.overrides && typeof p.overrides.overrideTime === 'number') overrides.overrideTime = p.overrides.overrideTime;
+        }
+        await scheduleManager.editInstance(p.scheduleEventId, p.instanceTime, overrides);
+        return { success: true };
+      }
+
+      case MessageType.SCHEDULE_DELETE_INSTANCE: {
+        const scheduleManager = scheduler.getScheduleManager();
+        if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+        const p = payload as { scheduleEventId?: string; instanceTime?: number } | undefined;
+        if (typeof p?.scheduleEventId !== 'string' || !p.scheduleEventId) return { success: false, error: '"scheduleEventId" is required' };
+        if (typeof p.instanceTime !== 'number') return { success: false, error: '"instanceTime" must be a number' };
+        await scheduleManager.deleteInstance(p.scheduleEventId, p.instanceTime);
+        return { success: true };
+      }
+
+      case MessageType.EXECUTION_GET_HISTORY: {
+        const jobExecutor = scheduler.getJobExecutor();
+        if (!jobExecutor) return { executions: [] };
+        const p = payload as { scheduleEventId?: string } | undefined;
+        if (typeof p?.scheduleEventId !== 'string' || !p.scheduleEventId) return { executions: [] };
+        const executions = await jobExecutor.getExecutionHistory(p.scheduleEventId);
+        return { executions };
       }
 
       default:

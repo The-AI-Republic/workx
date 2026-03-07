@@ -131,7 +131,8 @@ export function expandInstances(
     return instances
       .map(d => d.getTime())
       .filter(t => !exdateSet.has(normalizeToMinute(t)));
-  } catch {
+  } catch (error) {
+    console.warn('[rruleAdapter] Failed to expand instances:', error);
     return [];
   }
 }
@@ -183,7 +184,8 @@ export function getNextInstance(
     }
 
     return null;
-  } catch {
+  } catch (error) {
+    console.warn('[rruleAdapter] Failed to get next instance:', error);
     return null;
   }
 }

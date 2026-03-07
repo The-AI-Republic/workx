@@ -503,6 +503,9 @@ export class ServerAgentBootstrap {
         }
       }
 
+      // 9b. Restore alarms for new model ScheduleEvents
+      await this.scheduler.restoreScheduleAlarms();
+
       // 10. Register handlers
       registerSchedulerHandlers({
         scheduler: this.scheduler,

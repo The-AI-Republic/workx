@@ -56,23 +56,28 @@ export class ScheduleManager {
     input: string,
     scheduledTime: number,
     rrule: string | null = null,
-    id?: string
+    id?: string,
+    options?: { skipAlarmAndValidation?: boolean }
   ): Promise<ScheduleEvent> {
-    const now = Date.now();
-    if (scheduledTime <= now) {
-      throw new Error('Scheduled time must be in the future');
+    if (!options?.skipAlarmAndValidation) {
+      const now = Date.now();
+      if (scheduledTime <= now) {
+        throw new Error('Scheduled time must be in the future');
+      }
     }
 
     const eventId = id || uuidv4();
     const event = createScheduleEvent(eventId, input, scheduledTime, rrule);
     await this.scheduleStorage.createEvent(event);
 
-    // Arm alarm for the first occurrence
-    try {
-      await this.alarms.createJobAlarm(eventId, scheduledTime);
-    } catch (error) {
-      await this.scheduleStorage.deleteEvent(eventId);
-      throw error;
+    // Arm alarm for the first occurrence (skip if caller already managed the alarm)
+    if (!options?.skipAlarmAndValidation) {
+      try {
+        await this.alarms.createJobAlarm(eventId, scheduledTime);
+      } catch (error) {
+        await this.scheduleStorage.deleteEvent(eventId);
+        throw error;
+      }
     }
 
     return event;
@@ -349,10 +354,8 @@ export class ScheduleManager {
       await this.alarmFiredHandler(eventId, instanceTime, effectiveInput);
     }
 
-    // Arm the next alarm for recurring events
-    if (event.rrule) {
-      await this.armNextAlarm(eventId);
-    }
+    // Note: alarm re-arming is handled by the executionCompleteHandler callback
+    // (wired in Scheduler constructor) to avoid double-arming.
   }
 
   /**

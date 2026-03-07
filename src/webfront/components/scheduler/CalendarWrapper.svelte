@@ -23,6 +23,12 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
+  let currentView = $state(initialView);
+
+  // Track initialView prop changes (e.g., wide mode toggle)
+  $effect(() => {
+    currentView = initialView;
+  });
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {
@@ -32,7 +38,7 @@
   });
 
   let calendarOptions = $derived({
-    view: initialView,
+    view: currentView,
     events: events,
     headerToolbar: {
       start: 'prev,next today',
@@ -54,6 +60,10 @@
       oneventdrop?.({ event: info.event, oldEvent: info.oldEvent });
     },
     datesSet: (info: any) => {
+      // Track user's view selection so it doesn't reset on data refresh
+      if (info.view?.type) {
+        currentView = info.view.type;
+      }
       ondatesset?.({ start: info.start, end: info.end, view: info.view });
     },
     select: (info: any) => {

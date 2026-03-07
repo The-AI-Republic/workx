@@ -56,6 +56,10 @@ export const INDEX_FIELD_MAP: Record<string, string | string[]> = {
   by_created_at: 'createdAt',
   by_type: 'type',
   by_state: 'state',
+  by_enabled: 'enabled',
+  by_event_instance: ['scheduleEventId', 'instanceTime'],
+  by_event_id: 'scheduleEventId',
+  by_instance_time: 'instanceTime',
 };
 
 /**

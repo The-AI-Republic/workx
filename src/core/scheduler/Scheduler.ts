@@ -222,16 +222,17 @@ export class Scheduler {
     }
 
     // Also create in new model if available (use same ID for consistent routing)
+    // skipAlarmAndValidation: alarm already created above, time already validated above
     if (this.scheduleManager && recurrence) {
       try {
         const rruleString = recurrenceRuleToRRule(recurrence, scheduledTime);
-        await this.scheduleManager.createEvent(input, scheduledTime, rruleString, job.id);
+        await this.scheduleManager.createEvent(input, scheduledTime, rruleString, job.id, { skipAlarmAndValidation: true });
       } catch (error) {
         console.warn('[Scheduler] Failed to create ScheduleEvent for new model:', error);
       }
     } else if (this.scheduleManager) {
       try {
-        await this.scheduleManager.createEvent(input, scheduledTime, null, job.id);
+        await this.scheduleManager.createEvent(input, scheduledTime, null, job.id, { skipAlarmAndValidation: true });
       } catch (error) {
         console.warn('[Scheduler] Failed to create ScheduleEvent for new model:', error);
       }

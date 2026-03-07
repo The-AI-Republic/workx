@@ -496,6 +496,9 @@ export class DesktopAgentBootstrap {
       }
       await this.schedulerAlarms.startJobQueueProcessor();
 
+      // Restore alarms for new model ScheduleEvents
+      await this.scheduler.restoreScheduleAlarms();
+
       console.log('[DesktopAgentBootstrap] Scheduler initialized');
     } catch (error) {
       console.warn('[DesktopAgentBootstrap] Could not initialize scheduler:', error);
