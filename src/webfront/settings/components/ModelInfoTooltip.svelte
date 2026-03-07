@@ -10,17 +10,21 @@
   import type { ModelMetadata } from '@/config/types.js';
   import { t, _t } from '../../lib/i18n';
 
-  export let model: ModelMetadata;
-  export let anchorElement: HTMLElement | null = null;
-  export let visible = false;
+  let { model, anchorElement = null, visible = false }: {
+    model: ModelMetadata;
+    anchorElement?: HTMLElement | null;
+    visible?: boolean;
+  } = $props();
 
   let tooltipElement: HTMLDivElement;
-  let position = { top: 0, left: 0 };
+  let position = $state({ top: 0, left: 0 });
 
   // Update tooltip position when visibility changes or anchor moves
-  $: if (visible && anchorElement && tooltipElement) {
-    updatePosition();
-  }
+  $effect(() => {
+    if (visible && anchorElement && tooltipElement) {
+      updatePosition();
+    }
+  });
 
   function updatePosition() {
     if (!anchorElement || !tooltipElement) return;

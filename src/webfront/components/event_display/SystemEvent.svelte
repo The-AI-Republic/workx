@@ -4,7 +4,7 @@
    */
   import type { ProcessedEvent } from '@/types/ui';
 
-  export let event: ProcessedEvent;
+  let { event }: { event: ProcessedEvent } = $props();
 </script>
 
 <div class="system-event">

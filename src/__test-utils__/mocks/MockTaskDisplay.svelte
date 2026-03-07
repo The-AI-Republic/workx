@@ -1,19 +1,23 @@
 <script lang="ts">
   import type { AgentTask } from '../../src/core/AgentTask';
 
-  export let task: AgentTask;
-  export let reactive = false;
-  export let showExecution = false;
+  let { task, reactive = false, showExecution = false }: {
+    task: AgentTask;
+    reactive?: boolean;
+    showExecution?: boolean;
+  } = $props();
 
-  let taskModel = 'claude-3-haiku-20240307';
-  let taskApproval = 'untrusted';
-  let executionModel = '';
+  let taskModel = $state('claude-3-haiku-20240307');
+  let taskApproval = $state('untrusted');
+  let executionModel = $state('');
 
-  $: if (task && reactive) {
-    const config = task.getConfig();
-    taskModel = config.model;
-    taskApproval = config.approval_policy;
-  }
+  $effect(() => {
+    if (task && reactive) {
+      const config = task.getConfig();
+      taskModel = config.model;
+      taskApproval = config.approval_policy;
+    }
+  });
 
   function executeTask() {
     if (task) {
@@ -28,7 +32,7 @@
   <div data-testid="task-approval">{taskApproval}</div>
 
   {#if showExecution}
-    <button data-testid="execute-button" on:click={executeTask}>Execute</button>
+    <button data-testid="execute-button" onclick={executeTask}>Execute</button>
     {#if executionModel}
       <div data-testid="execution-model">{executionModel}</div>
     {/if}

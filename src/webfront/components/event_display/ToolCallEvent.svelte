@@ -6,7 +6,7 @@
   import { formatDuration } from '@/utils/formatters';
   import { _t } from '../../lib/i18n';
 
-  export let event: ProcessedEvent;
+  let { event }: { event: ProcessedEvent } = $props();
 </script>
 
 <div class="tool-call-event">

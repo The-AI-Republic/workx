@@ -1,13 +1,10 @@
 <script lang="ts">
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme } from '../stores/themeStore';
 
-  export let type: 'default' | 'warning' | 'error' | 'input' | 'system' = 'default';
-  export let content: string;
-
-  let currentTheme: UITheme = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let { type = 'default', content }: {
+    type?: 'default' | 'warning' | 'error' | 'input' | 'system';
+    content: string;
+  } = $props();
 
   const terminalColors: Record<string, string> = {
     default: 'text-term-green',
@@ -25,11 +22,11 @@
     system: 'text-chat-text-muted dark:text-chat-text-muted-dark',
   };
 
-  $: colorClasses = currentTheme === 'modern'
+  let colorClasses = $derived($uiTheme === 'modern'
     ? (modernColors[type] || modernColors.default)
-    : (terminalColors[type] || terminalColors.default);
+    : (terminalColors[type] || terminalColors.default));
 </script>
 
-<div class="terminal-message {type} {currentTheme} text-sm leading-relaxed font-[inherit] {colorClasses}" aria-live="polite" aria-atomic="true">
+<div class="terminal-message {type} {$uiTheme} text-sm leading-relaxed font-[inherit] {colorClasses}" aria-live="polite" aria-atomic="true">
   {content}
 </div>

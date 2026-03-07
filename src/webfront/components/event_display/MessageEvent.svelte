@@ -4,14 +4,9 @@
    */
   import { marked } from 'marked';
   import type { ProcessedEvent } from '@/types/ui';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
 
-  export let event: ProcessedEvent;
-
-  let currentTheme: UITheme = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let { event }: { event: ProcessedEvent } = $props();
 
   // Parse markdown content
   function parseMarkdown(text: string): string {
@@ -23,31 +18,31 @@
     }) as string;
   }
 
-  $: contentHtml = typeof event.content === 'string'
+  let contentHtml = $derived(typeof event.content === 'string'
     ? parseMarkdown(event.content)
-    : JSON.stringify(event.content);
+    : JSON.stringify(event.content));
 
-  $: isUserMessage = event.title === 'user';
+  let isUserMessage = $derived(event.title === 'user');
 
   // Modern Chat theme text color depends on user vs agent message
-  $: modernTextClasses = isUserMessage
+  let modernTextClasses = $derived(isUserMessage
     ? 'text-white'
-    : 'text-chat-text dark:text-chat-text-dark';
+    : 'text-chat-text dark:text-chat-text-dark');
 
   // Content text classes based on theme
-  $: contentClasses = currentTheme === 'modern'
+  let contentClasses = $derived($uiTheme === 'modern'
     ? modernTextClasses
-    : event.style.textColor;
+    : event.style.textColor);
 </script>
 
-<div class="message-event {currentTheme}" class:user-message={isUserMessage}>
+<div class="message-event {$uiTheme}" class:user-message={isUserMessage}>
   <div class="markdown-content text-sm min-w-0 overflow-hidden {contentClasses}">
     {@html contentHtml}
   </div>
 
   {#if event.streaming}
     <span class="streaming-cursor inline-block
-      {currentTheme === 'modern' && isUserMessage
+      {$uiTheme === 'modern' && isUserMessage
         ? 'text-white'
         : 'text-current'}">▊</span>
   {/if}
