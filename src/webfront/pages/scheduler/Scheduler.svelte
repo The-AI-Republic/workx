@@ -25,7 +25,22 @@
     const unsub = uiTheme.subscribe((theme) => {
       currentTheme = theme;
     });
-    return unsub;
+    // Clear store after reading
+    schedulerStore.clear();
+
+    // Get UIChannelClient
+    getInitializedUIClient()
+      .then((c) => { client = c; })
+      .catch((error) => {
+        console.error('[Scheduler] UIChannelClient not initialized:', error);
+      });
+
+    // Initialize defaults
+    initializeDefaults();
+
+    return () => {
+      unsub();
+    };
   });
 
   $effect(() => {
