@@ -150,6 +150,13 @@ export interface IModelConfig {
   supportsImage?: boolean;
 
   /**
+   * Whether model supports native web search (optional)
+   * If true, the provider handles web search server-side (e.g., OpenAI web_search tool, Gemini grounding)
+   * If false/undefined, falls back to CDP-based Google scraping
+   */
+  supportsWebSearch?: boolean;
+
+  /**
    * Model release date (optional)
    * ISO 8601 date string (YYYY-MM-DD) indicating when the model was released
    */
@@ -386,6 +393,13 @@ export interface IToolsConfig {
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
+  /**
+   * Whether to use native provider web search when the model supports it.
+   * - When true (default): Uses provider-side web search for capable models,
+   *   falls back to CDP-based Google scraping for models without native support
+   * - When false: Forces CDP-based Google scraping for all models
+   */
+  useNativeWebSearch?: boolean;
   fileOperations?: boolean;
   mcpTools?: boolean;
   customTools?: Record<string, boolean>;

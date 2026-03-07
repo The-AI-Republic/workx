@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API kľúč pre autentifikáciu (uložený šifrovane)"
   },
-  "API_key_has_expired": {
-    "message": "API kľúč vypršal"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API kľúč nemá dostatočné oprávnenia"
-  },
   "API_key_saved_successfully": {
     "message": "API kľúč bol úspešne uložený!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Nástroje na vykonávanie úloh agentom"
   },
-  "Agent_Turn_Complete": {
-    "message": "Tah agenta dokončený"
-  },
   "Agent_URL_is_required": {
     "message": "URL agenta je povinná"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agent bol úspešne odstránený"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Tah agenta úspešne dokončený"
-  },
   "Agent_updated_successfully": {
     "message": "Agent bol úspešne aktualizovaný"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Všetky API kľúče sú pri nečinnosti šifrované pomocou AES-256-GCM. Povoliť ochranu PIN kódom pre ďalšie zabezpečenie."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Všetky akcie sú na týchto doménach automaticky schválené."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Vždy schváliť"
   },
+  "Always_dark": {
+    "message": "Vždy tmavý"
+  },
+  "Always_light": {
+    "message": "Vždy svetlý"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Váš osobný AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Schváliť"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Schváliť zmeny v: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Schváliť spustenie: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Ste si istí, že chcete zrušiť túto úlohu?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Ste si istí, že chcete odstrániť zručnosť \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Ste si istí, že chcete odstrániť tohto agenta?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Overovacie poverenie (uložené šifrovane)"
-  },
-  "Authentication_failed": {
-    "message": "Overenie zlyhalo"
   },
   "Authentication_method_for_the_agent": {
     "message": "Metóda overovania pre agenta"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend nie je dostupný. Počkajte chvíľu a skúste to znova."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Chyba servera backendu – skúste to neskôr"
-  },
   "Backoff_Multiplier": {
     "message": "Multiplikátor spätného odkladu"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Blokované domény"
+  },
+  "Body_Markdown": {
+    "message": "Telo (Markdown)"
   },
   "Browser_Tools": {
     "message": "Nástroje prehliadača"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Zrušené"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Nie je možné spustiť úlohu: Pre ${providerName} nie je nastavený API kľúč. Prejdite do Nastavenia → Konfigurácia modelu a pridajte svoj API kľúč."
-  },
   "Cannot_select_model_1": {
     "message": "Nie je možné vybrať model: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Schopnosti"
   },
+  "Change_PIN": {
+    "message": "Zmeniť PIN"
+  },
+  "Changing": {
+    "message": "Meniť..."
+  },
   "Chat_History": {
     "message": "História chatu"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Predplatné ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Relácia ChatGPT vypršala. Prosím, prihláste sa znova."
   },
   "Checking_agent_status": {
     "message": "Kontrola stavu agenta..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Vyberte, ktorý kanál aktualizácií sledovať"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Klasický štýl terminálu so zeleným textom na čiernom pozadí"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Čisté, moderné rozhranie chatu podobné ChatGPT"
+  "Clear_search": {
+    "message": "Vymazať vyhľadávanie"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Kliknite na ikonu Browserx v paneli nástrojov alebo stlačte Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Zavrieť"
   },
+  "Close_scheduler": {
+    "message": "Zavrieť plánovač"
+  },
   "Close_settings": {
     "message": "Zavrieť nastavenia"
   },
+  "Close_skills": {
+    "message": "Zavrieť zručnosti"
+  },
   "Collapse": {
     "message": "Zbaliť"
-  },
-  "Command_Approval_Required": {
-    "message": "Vyžaduje sa schválenie príkazu"
   },
   "Command_completed": {
     "message": "Príkaz dokončený"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Dokončené"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Dokončené: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimovať dáta vo vyrovnávacej pamäti na úsporu úložného priestoru"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Nakonfigurované servery"
+  },
+  "Confirm_New_PIN": {
+    "message": "Potvrdiť nový PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Potvrdiť PIN"
   },
   "Connect": {
     "message": "Pripojiť"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Úspešne pripojené"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Pripojené cez ChatGPT"
   },
   "Connecting": {
     "message": "Pripája sa..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Test pripojenia bol úspešný! (API kľúč je platný)"
   },
-  "Connection_was_refused": {
-    "message": "Pripojenie bolo odmietnuté"
-  },
-  "Connection_was_reset": {
-    "message": "Pripojenie bolo resetované"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Obsah porušuje politiku: obsah typu ${contentType} nie je povolený"
-  },
   "Context_Window": {
     "message": "Kontextové okno"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Riadi, ako agresívne agent požaduje schválenie."
   },
+  "Create": {
+    "message": "Vytvoriť"
+  },
+  "Create_New_Skill": {
+    "message": "Vytvoriť novú zručnosť"
+  },
   "Create_New_Tab": {
     "message": "Vytvoriť novú kartu"
+  },
+  "Create_Skill": {
+    "message": "Vytvoriť zručnosť"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Vytvorte 6‑miestny PIN na ochranu vašich API kľúčov. Tento PIN budete potrebovať po reštarte prehliadača."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Vytvorte zručnosť na pridanie vlastných / príkazov alebo automaticky vyvolateľných správaní agenta."
   },
   "Created": {
     "message": "Vytvorené"
   },
+  "Creating": {
+    "message": "Vytváram..."
+  },
   "Creator": {
     "message": "Autor"
+  },
+  "Credential_Encryption": {
+    "message": "Šifrovanie poverení"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Šifrovanie poverení a ochrana PIN kódom"
   },
   "Credit_Details": {
     "message": "Podrobnosti kreditu"
   },
+  "Current_PIN": {
+    "message": "Aktuálny PIN"
+  },
   "Current_Plan": {
     "message": "Aktuálny plán:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Vyhľadávanie DNS zlyhalo"
   },
   "DOM_Tool": {
     "message": "Nástroj DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Predvolené"
   },
+  "Delete": {
+    "message": "Odstrániť"
+  },
   "Deny": {
     "message": "Odmietnuť"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Vyvinuté a podporované spoločnosťou AI Republic"
+  },
+  "Disabled": {
+    "message": "Vypnuté"
   },
   "Discard_Changes": {
     "message": "Zahodiť zmeny"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Povoliť nástroje Model Context Protocol z pripojených MCP serverov"
   },
+  "Enable_PIN": {
+    "message": "Povoliť PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Povoliť ochranu PIN kódom"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Povoliť automatické pripojenie pri spustení browserx"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Zadajte API kľúč alebo token"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Zadajte svoj 6‑miestny PIN pre odomknutie vašich API kľúčov."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Zadajte svoj LLM API kľúč"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Zadajte svoj aktuálny PIN pre odstránenie ochrany. API kľúče budú aj naďalej šifrované predvoleným kľúčom."
   },
   "Enter_your_task": {
     "message": "Zadajte svoju úlohu..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Vysvetliť pomocou Browserx"
+  },
+  "Export": {
+    "message": "Exportovať"
   },
   "Extension_Permission": {
     "message": "Rozšírenie a povolenie"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Zlyhalo vytvorenie novej karty. Skúste to znova."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Zlyhalo vytvorenie prehliadačovej karty: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Zlyhalo odpojenie: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Zlyhalo zastavenie úlohy. Skúste to znova."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Zlyhalo prepnutie na kartu ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Zlyhalo testovanie pripojenia"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Vyžaduje sa schválenie zmeny súboru"
-  },
   "File_Operations_Not_Available": {
     "message": "Operácie so súbormi (nedostupné)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Podľa témy systému"
+  },
+  "Forgot_PIN": {
+    "message": "Zabudli ste PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Nástroj na automatizáciu formulárov"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Začnite"
+  },
+  "Green_text_terminal": {
+    "message": "Zelený textový terminál"
   },
   "Hello_NAME": {
     "message": "Dobrý deň $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Vstup obrázku"
+  },
+  "Import": {
+    "message": "Importovať"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Importovať zručnosť z URL"
+  },
+  "Import_from_URL": {
+    "message": "Importovať z URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Importované zručnosti nie sú predvolene dôveryhodné a nemôžu sa automaticky spúšťať."
+  },
+  "Importing": {
+    "message": "Importujem..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Vylepšiť tento text: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Neplatný API kľúč"
   },
-  "Invalid_API_key_provided": {
-    "message": "Zadaný neplatný API kľúč"
-  },
   "Invalid_URL_format": {
     "message": "Neplatný formát URL"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Neplatný formát odoslania: v op chýba pole type"
+  },
+  "Invocation_Mode": {
+    "message": "Režim vyvolania"
   },
   "Keyboard_Shortcuts": {
     "message": "Klávesové skratky"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Načítavam nastavenia..."
+  },
+  "Loading_skills": {
+    "message": "Načítavajú sa zručnosti..."
   },
   "Loading_tabs": {
     "message": "Načítavajú sa karty..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Nastavenia modelu a poskytovateľa načítané z predvolenej konfigurácie (iba na čítanie)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Model bol zmenený na $1$. Prosím, nakonfigurujte svoj API kľúč.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Model zmenený na $1$. Konverzácia zachovaná.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Model bol zmenený na $1$. Relácia bude znovu inicializovaná.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Model bol zmenený na $1$. Prosím, nakonfigurujte svoj API kľúč.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Moderný chat"
+  "Modern_Chat_Auto": {
+    "message": "Moderný chat – automatický"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Moderný chat – tmavý"
+  },
+  "Modern_Chat_Light": {
+    "message": "Moderný chat – svetlý"
   },
   "Monthly_Credits": {
     "message": "Mesačné kredity"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Chyba siete"
   },
-  "Network_error_occurred": {
-    "message": "Vyskytla sa chyba siete"
-  },
   "Never_expire_permanent": {
     "message": "Nikdy nevyprší (trvalé)"
   },
   "New_Conversation": {
     "message": "Nová konverzácia"
+  },
+  "New_PIN": {
+    "message": "Nový PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Zatiaľ nie sú nakonfigurovaní žiadni A2A agenti."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Žiadny naplánovaný čas"
   },
+  "No_settings_found": {
+    "message": "Nenašli sa žiadne nastavenia"
+  },
   "No_skills_available": {
     "message": "Žiadne dostupné zručnosti."
+  },
+  "No_skills_configured_yet": {
+    "message": "Zatiaľ nie sú nastavené žiadne zručnosti."
   },
   "No_steps_in_plan": {
     "message": "Žiadne kroky v pláne"
   },
   "No_tabs_available": {
     "message": "Nie sú dostupné žiadne karty"
+  },
+  "No_tasks_in_plan": {
+    "message": "V pláne nie sú žiadne úlohy"
   },
   "No_time_set": {
     "message": "Nie je nastavený čas"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Ochrana PIN kódom"
+  },
   "Page_Action_Tool": {
     "message": "Nástroj akcií stránky"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Trvalo ukladať cache"
   },
-  "Plan_1_step_s": {
-    "message": "Plán: $1$ krok(ov)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Skontrolujte svoj API kľúč v nastaveniach."
-  },
   "Please_enter_a_task_description": {
     "message": "Zadajte popis úlohy"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Zadajte platný API kľúč."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Prihláste sa znova, aby ste mohli pokračovať v používaní AI agenta."
-  },
   "Please_select_a_provider": {
     "message": "Vyberte poskytovateľa"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Upgradujte plán, aby ste odblokovali najpokročilejšie modely na svete"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Port 1455 je obsadený. Prosím, zatvorte aplikáciu používajúcu tento port a skúste to znova."
   },
   "Power": {
     "message": "Výkon"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Obnoví sa za"
   },
-  "Reject": {
-    "message": "Odmietnuť"
-  },
   "Release_Date": {
     "message": "Dátum vydania"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Odstrániť API kľúč"
   },
+  "Remove_PIN": {
+    "message": "Odstrániť PIN"
+  },
+  "Removing": {
+    "message": "Odstraňovanie..."
+  },
   "Request_Timeout": {
     "message": "Časový limit požiadavky"
-  },
-  "Request_timed_out": {
-    "message": "Požiadavka vypršala"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Časový limit požiadavky v milisekundách (5000‑120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Časový limit požiadavky v milisekundách (5000‑180000)"
   },
-  "Request_was_aborted": {
-    "message": "Požiadavka bola prerušená"
+  "Reset_Vault": {
+    "message": "Resetovať trezor"
   },
-  "Response_failed": {
-    "message": "Odpoveď zlyhala"
+  "Resetting": {
+    "message": "Resetovanie..."
   },
   "Restricted": {
     "message": "Obmedzené"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Prebieha"
+  },
+  "SKILL_md_URL": {
+    "message": "URL SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "CHYBA PRÚDU"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Naplánovaná úloha"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Spúšťa sa naplánovaná úloha"
-  },
   "Scheduled_Tasks": {
     "message": "Naplánované úlohy"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Vyhľadávanie dokončené"
   },
+  "Search_settings": {
+    "message": "Hľadať nastavenia..."
+  },
   "Searching": {
     "message": "Vyhľadávanie..."
+  },
+  "Security": {
+    "message": "Zabezpečenie"
   },
   "Security_Privacy": {
     "message": "Bezpečnosť a súkromie"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Chyba relácie"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Relácia vypršala – prihláste sa znova, aby ste mohli pokračovať v používaní AI agenta"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Dosiahnutý limit relácií. Nové úlohy budú zaradené do fronty."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Nastavte, kedy majú vypršať údaje nasadenia"
+  },
+  "Setting_up": {
+    "message": "Nastavovanie..."
   },
   "Settings": {
     "message": "Nastavenia"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Zobraziť varovanie, keď využitie úložiska prekročí toto percento (predvolené: 90 %)"
   },
+  "Sign_in_failed": {
+    "message": "Prihlásenie zlyhalo"
+  },
   "Sign_in_to_your_account": {
     "message": "Prihláste sa do svojho účtu"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Prihlásiť sa pomocou ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Prihlasovanie..."
   },
   "Skills": {
     "message": "Zručnosti"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Podrobnosti úlohy"
   },
-  "Task_Failed": {
-    "message": "Úloha zlyhala"
-  },
   "Task_History": {
     "message": "História úlohy"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Úloha zlyhala"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Úloha naplánovaná na $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Úloha spustená"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agent momentálne používa režim backendu. Požiadavky na LLM budú smerované cez server AI Republic. Vaše konverzácie sú bezpečne spracovávané prostredníctvom našej infraštruktúry."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Zmena modelu vymaže aktuálny rozhovor. Chcete pokračovať?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Server zaznamenal chybu. Skúste to neskôr."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Týmto sa natrvalo odstránia všetky uložené API kľúče a resetuje trezor. Budete musieť znovu zadať svoje API kľúče."
   },
   "Time": {
     "message": "Čas"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Príliš veľa neúspešných pokusov. Skúste znova o"
+  },
   "Tool_Timeout_ms": {
     "message": "Časový limit nástroja (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Nastavenia nástrojov"
+  },
+  "Trust": {
+    "message": "Dôverovať"
   },
   "Trusted": {
     "message": "Dôveryhodné"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Nie je možné načítať informácie o kreditoch"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Nie je možné dosiahnuť backendový server – skontrolujte svoje pripojenie"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Nie je možné dosiahnuť server. Skontrolujte svoje pripojenie a skúste to znova."
-  },
   "Unknown_Event": {
     "message": "Neznáma udalosť"
   },
   "Unknown_error": {
     "message": "Neznáma chyba"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Neznáma chyba pri kontrole stavu agenta"
-  },
-  "Unknown_error_occurred": {
-    "message": "Vyskytla sa neznáma chyba"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Vyskytla sa neznáma chyba počas vykonávania úlohy"
   },
   "Unknown_error_processing_submission": {
     "message": "Neznáma chyba pri spracovaní odoslania"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Odomknúť"
+  },
+  "Unlocking": {
+    "message": "Odomykanie..."
+  },
   "Unsaved_Changes": {
     "message": "Neuložené zmeny"
   },
   "Untitled": {
     "message": "Bez názvu"
+  },
+  "Untrusted": {
+    "message": "Nedôveryhodné"
   },
   "Upcoming": {
     "message": "Nadchádzajúce"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Použiť vlastný API kľúč"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Použite svoje predplatné ChatGPT Plus/Pro namiesto API kľúča"
+  },
   "User_Center": {
     "message": "Centrum používateľa"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Používanie dodatočných kreditov"
+  },
+  "Vault_Locked": {
+    "message": "Trezor uzamknutý"
   },
   "Verbosity": {
     "message": "Verbóznosť"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Váš osobný AI asistent"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Vaša relácia vypršala. Prosím, prihláste sa znova."
-  },
   "DISCONNECTED": {
     "message": "[ODPOJENÉ]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (neznámy príkaz)"
   },
+  "more_results": {
+    "message": "viac výsledkov..."
+  },
   "optional": {
     "message": "voliteľné"
+  },
+  "or": {
+    "message": "alebo"
   },
   "remaining": {
     "message": "zostáva"

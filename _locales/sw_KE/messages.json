@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "Ufunguo wa API kwa uthibitishaji (hufanyiwa usimbaji fiche)"
   },
-  "API_key_has_expired": {
-    "message": "Ufunguo wa API umekwisha muda"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "Ufunguo wa API huna ruhusa za kutosha"
-  },
   "API_key_saved_successfully": {
     "message": "Ufunguo wa API umehifadhiwa kwa mafanikio!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Zana za Utekelezaji wa Wakala"
   },
-  "Agent_Turn_Complete": {
-    "message": "Mzunguko wa Wakala Umekamilika"
-  },
   "Agent_URL_is_required": {
     "message": "URL ya wakala inahitajika"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Wakala ameondolewa kwa mafanikio"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Mzunguko wa wakala umekamilika kwa mafanikio"
-  },
   "Agent_updated_successfully": {
     "message": "Wakala amesasishwa kwa mafanikio"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Vifunguo vyote vya API vimefichwa kwa usalama wakati wa kupumzika kwa kutumia AES-256-GCM. Washa ulinzi wa PIN kwa usalama wa ziada."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Vitendo vyote vinakubaliwa kiotomatiki kwenye vikoa hivi."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Idhinisha daima"
   },
+  "Always_dark": {
+    "message": "Daima giza"
+  },
+  "Always_light": {
+    "message": "Daima mwanga"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: AI yako binafsi (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Idhinisha"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Idhinisha mabadiliko ya: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Idhinisha utekelezaji: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Una uhakika unataka kughairi kazi hii?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Una uhakika unataka kufuta kipaji \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Una uhakika unataka kuondoa wakala huyu?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Cheti cha uthibitishaji (hifadhiwa kwa usimbuaji)"
-  },
-  "Authentication_failed": {
-    "message": "Uthibitishaji umeshindwa"
   },
   "Authentication_method_for_the_agent": {
     "message": "Njia ya uthibitishaji kwa wakala"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Seva ya nyuma haipatikani. Tafadhali subiri kidogo na ujaribu tena."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Hitilafu ya seva ya nyuma - tafadhali jaribu tena baadaye"
-  },
   "Backoff_Multiplier": {
     "message": "Kiwango cha kupunguza"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Vikoa vilivyofungwa"
+  },
+  "Body_Markdown": {
+    "message": "Mwandiko (Markdown)"
   },
   "Browser_Tools": {
     "message": "Zana za Kivinjari"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Imesitishwa"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Haiwezi kutekeleza kazi: Hakuna ufunguo wa API uliosetiwa kwa ${providerName}. Tafadhali nenda kwenye Mipangilio → Usanidi wa Modeli na uongeze ufunguo wako wa API."
-  },
   "Cannot_select_model_1": {
     "message": "Haiwezi kuchagua modeli: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Uwezo"
   },
+  "Change_PIN": {
+    "message": "Badilisha PIN"
+  },
+  "Changing": {
+    "message": "Inabadilisha..."
+  },
   "Chat_History": {
     "message": "Historia ya Mazungumzo"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Usajili wa ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Kipindi cha ChatGPT kimeisha. Tafadhali ingia tena."
   },
   "Checking_agent_status": {
     "message": "Inakagua hali ya wakala..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Chagua chaneli ya sasisho unayotaka kufuata"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Mtindo wa terminal ya jadi na maandishi ya kijani kwenye background nyeusi"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Kiolesura safi na cha kisasa cha gumzo kama ChatGPT"
+  "Clear_search": {
+    "message": "Futa utafutaji"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Bofya ikoni ya Browserx kwenye toolbar au bonyeza Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Funga"
   },
+  "Close_scheduler": {
+    "message": "Funga kipanga ratiba"
+  },
   "Close_settings": {
     "message": "Funga mipangilio"
   },
+  "Close_skills": {
+    "message": "Funga vipaji"
+  },
   "Collapse": {
     "message": "Fupisha"
-  },
-  "Command_Approval_Required": {
-    "message": "Uidhinishaji wa Amri Unahitajika"
   },
   "Command_completed": {
     "message": "Amri imekamilika"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Imekamilika"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Imekamilika: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Shinikiza data ya cache ili kuokoa nafasi ya uhifadhi"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Seva Waliosanidiwa"
+  },
+  "Confirm_New_PIN": {
+    "message": "Thibitisha PIN Mpya"
+  },
+  "Confirm_PIN": {
+    "message": "Thibitisha PIN"
   },
   "Connect": {
     "message": "Unganisha"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Imeunganishwa kwa mafanikio"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Imeunganishwa kupitia ChatGPT"
   },
   "Connecting": {
     "message": "Inaunganisha..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Jaribio la uunganishaji limefanikiwa! (Ufunguo wa API ni sahihi)"
   },
-  "Connection_was_refused": {
-    "message": "Uunganishaji ulikataliwa"
-  },
-  "Connection_was_reset": {
-    "message": "Uunganishaji uliregeshwa"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Maudhui yanakiuka sera: maudhui ya ${contentType} hairuhusiwi"
-  },
   "Context_Window": {
     "message": "Dirisha la Muktadha"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Inadhibiti jinsi wakala anavyotaka idhini kwa ukali."
   },
+  "Create": {
+    "message": "Unda"
+  },
+  "Create_New_Skill": {
+    "message": "Unda Kipaji Kipya"
+  },
   "Create_New_Tab": {
     "message": "Unda Kichupo Kipya"
+  },
+  "Create_Skill": {
+    "message": "Unda Kipaji"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Unda PIN ya tarakimu 6 kulinda vifunguo vyako vya API. Utahitaji PIN hii baada ya kuanzisha upya kivinjari."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Unda kipaji ili kuongeza amri za / maalum au tabia za wakala zinazoweza kuitwa kiotomatiki."
   },
   "Created": {
     "message": "Imeundwa"
   },
+  "Creating": {
+    "message": "Inatengenezwa..."
+  },
   "Creator": {
     "message": "Muundaji"
+  },
+  "Credential_Encryption": {
+    "message": "Usimbaji wa Kitambulisho"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Usimbaji wa kitambulisho na ulinzi wa PIN"
   },
   "Credit_Details": {
     "message": "Maelezo ya Mikopo"
   },
+  "Current_PIN": {
+    "message": "PIN ya Sasa"
+  },
   "Current_Plan": {
     "message": "Mpango wa Sasa:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Utafutaji wa DNS umeshindwa"
   },
   "DOM_Tool": {
     "message": "Zana ya DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Chaguo-msingi"
   },
+  "Delete": {
+    "message": "Futa"
+  },
   "Deny": {
     "message": "Kataa"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Imetengenezwa na kudumishwa na AI Republic"
+  },
+  "Disabled": {
+    "message": "Imezimwa"
   },
   "Discard_Changes": {
     "message": "Ondoa Mabadiliko"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Washa zana za Model Context Protocol kutoka kwa seva za MCP zilizounganishwa"
   },
+  "Enable_PIN": {
+    "message": "Washa PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Washa Ulinzi wa PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Washa kuunganisha kiotomatiki wakati browserx inapoanza"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Ingiza ufunguo wa API au token ya bearer"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Weka PIN yako ya tarakimu 6 ili kufungua funguo za API."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Ingiza funguo yako ya API ya LLM"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Weka PIN yako ya sasa ili kuondoa ulinzi. Funguo za API bado zitasimbwa kwa ufunguo chaguo-msingi."
   },
   "Enter_your_task": {
     "message": "Ingiza kazi yako..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Eleza kwa Browserx"
+  },
+  "Export": {
+    "message": "Hamisha"
   },
   "Extension_Permission": {
     "message": "Kiendelezo & Ruhusa"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Imeshindwa kutengeneza kichupo kipya. Tafadhali jaribu tena."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Imeshindwa kutengeneza kichupo cha kivinjari: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Imeshindwa kutenganisha: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Imeshindwa kusitisha kazi. Tafadhali jaribu tena."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Imeshindwa kubadili kwenye kichupo ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Imeshindwa kujaribu muunganisho"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Inahitajika idhini ya mabadiliko ya faili"
-  },
   "File_Operations_Not_Available": {
     "message": "Operesheni za Faili (Haipatikani)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Inafuata mandhari ya mfumo"
+  },
+  "Forgot_PIN": {
+    "message": "Umesahau PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Zana ya Kujaza Fomu Otomatiki"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Anza"
+  },
+  "Green_text_terminal": {
+    "message": "Terminal ya maandishi ya kijani"
   },
   "Hello_NAME": {
     "message": "Habari $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Ingizo la picha"
+  },
+  "Import": {
+    "message": "Ingiza"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Ingiza Ujuzi kutoka URL"
+  },
+  "Import_from_URL": {
+    "message": "Ingiza kutoka URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Ujuzi ulioingizwa hauaminwi kwa chaguo-msingi na hauwezi kujitumia kiotomatiki."
+  },
+  "Importing": {
+    "message": "Inaingiza..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Boresha maandishi haya: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Funguo la API batili"
   },
-  "Invalid_API_key_provided": {
-    "message": "Ufunguo wa API uliotolewa si sahihi"
-  },
   "Invalid_URL_format": {
     "message": "Muundo wa URL si sahihi"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Muundo wa usajili si sahihi: op haipo sehemu ya aina"
+  },
+  "Invocation_Mode": {
+    "message": "Njia ya Kuitwa"
   },
   "Keyboard_Shortcuts": {
     "message": "Vifupisho vya Kibodi"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Inapakia mipangilio..."
+  },
+  "Loading_skills": {
+    "message": "Inapakia ujuzi..."
   },
   "Loading_tabs": {
     "message": "Inapakia tabu..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Mipangilio ya mfano na mtoa huduma imepakuliwa kutoka usanidi chaguo-msingi (kusoma tu)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Mfano umebadilishwa kuwa $1$. Tafadhali sanidi ufunguo wako wa API.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Mfano imebadilishwa kuwa $1$. Mazungumzo yamehifadhiwa.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Mfano umebadilishwa kuwa $1$. Kikao kitaanzishwa upya.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Mfano umebadilishwa kuwa $1$. Tafadhali sanidi ufunguo wako wa API.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Mazungumzo ya Kisasa"
+  "Modern_Chat_Auto": {
+    "message": "Chat ya Kisasa Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Chat ya Kisasa Giza"
+  },
+  "Modern_Chat_Light": {
+    "message": "Chat ya Kisasa Mwanga"
   },
   "Monthly_Credits": {
     "message": "Staha za Kila Mwezi"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Hitilafu ya mtandao"
   },
-  "Network_error_occurred": {
-    "message": "Hitilafu ya mtandao imetokea"
-  },
   "Never_expire_permanent": {
     "message": "Haiisha kamwe (ya kudumu)"
   },
   "New_Conversation": {
     "message": "Mazungumzo Mpya"
+  },
+  "New_PIN": {
+    "message": "PIN Mpya"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Bado hakuna mawakala wa A2A yaliyo sanidiwa."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Hakuna muda uliopangwa"
   },
+  "No_settings_found": {
+    "message": "Hakuna mipangilio iliyopatikana"
+  },
   "No_skills_available": {
     "message": "Hakuna ujuzi unaopatikana."
+  },
+  "No_skills_configured_yet": {
+    "message": "Bado hakuna ujuzi ulio sanidiwa."
   },
   "No_steps_in_plan": {
     "message": "Hakuna hatua katika mpango"
   },
   "No_tabs_available": {
     "message": "Hakuna tabu zinazopatikana"
+  },
+  "No_tasks_in_plan": {
+    "message": "Hakuna kazi katika mpongo"
   },
   "No_time_set": {
     "message": "Hakuna muda uliowekwa"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Ulinzi wa PIN"
+  },
   "Page_Action_Tool": {
     "message": "Zana ya Vitendo vya Ukurasa"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Hifadhi Cache kwa Kudumu kwenye Hifadhi"
   },
-  "Plan_1_step_s": {
-    "message": "Mpango: hatua $1$",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Tafadhali angalia ufunguo wako wa API katika mipangilio."
-  },
   "Please_enter_a_task_description": {
     "message": "Tafadhali ingiza maelezo ya kazi"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Tafadhali ingiza funguo sahihi ya API."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Tafadhali ingia tena ili kuendelea kutumia wakala wa AI."
-  },
   "Please_select_a_provider": {
     "message": "Tafadhali chagua mtoa huduma"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Tafadhali boresha mpango ili kufungua modeli za kisasa zaidi duniani"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Bandari 1455 inatumika. Tafadhali funga programu yoyote inayotumia bandari hii na ujaribu tena."
   },
   "Power": {
     "message": "Nguvu"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Inasasishwa katika"
   },
-  "Reject": {
-    "message": "Kataa"
-  },
   "Release_Date": {
     "message": "Tarehe ya Kutolewa"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Ondoa ufunguo wa API"
   },
+  "Remove_PIN": {
+    "message": "Ondoa PIN"
+  },
+  "Removing": {
+    "message": "Inafuta..."
+  },
   "Request_Timeout": {
     "message": "Muda wa Ombi Kumalizika"
-  },
-  "Request_timed_out": {
-    "message": "Ombi limeisha muda"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Muda wa ombi kumalizika kwa milisekunde (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Muda wa ombi kumalizika kwa milisekunde (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Ombi ilisitishwa"
+  "Reset_Vault": {
+    "message": "Weka upya Hifadhi"
   },
-  "Response_failed": {
-    "message": "Jibu limefeli"
+  "Resetting": {
+    "message": "Inarejesha..."
   },
   "Restricted": {
     "message": "Kukomo"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Inafanya"
+  },
+  "SKILL_md_URL": {
+    "message": "URL ya SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "KOSA LA MTIRIRIKO"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Kazi Imeratibiwa"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Kazi Imeratibiwa Inaanza"
-  },
   "Scheduled_Tasks": {
     "message": "Kazi Zimeratibiwa"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Utafutaji umekamilika"
   },
+  "Search_settings": {
+    "message": "Tafuta mipangilio..."
+  },
   "Searching": {
     "message": "Inatafuta..."
+  },
+  "Security": {
+    "message": "Usalama"
   },
   "Security_Privacy": {
     "message": "Usalama & Faragha"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Hitilafu ya kikao"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Kikao kimeisha - tafadhali ingia tena ili kuendelea kutumia wakala wa AI"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Kikomo cha kikao kimefikiwa. Kazi mpya zitaweka foleni."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Weka wakati data ya utoaji itakapokwisha"
+  },
+  "Setting_up": {
+    "message": "Inaseti..."
   },
   "Settings": {
     "message": "Mipangilio"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Onyesha onyo wakati matumizi ya hifadhi yanapozidi asilimia hii (default: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Kuingia kumezeshwa"
+  },
   "Sign_in_to_your_account": {
     "message": "Ingia kwenye akaunti yako"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Ingia na ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Ingia..."
   },
   "Skills": {
     "message": "Ujuzi"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Maelezo ya Kazi"
   },
-  "Task_Failed": {
-    "message": "Kazi Imeshindwa"
-  },
   "Task_History": {
     "message": "Historia ya Kazi"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Kazi imeshindwa"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Kazi imepangwa kwa $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Kazi imeanza"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Wakala kwa sasa anatumia hali ya backend. Maombi ya LLM yataelekezwa kupitia seva ya AI Republic. Mazungumzo yako yanashughulikiwa salama kupitia miundombinu yetu."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Kubadilisha mtindo kutafuta mazungumzo ya sasa. Je, unataka kuendelea?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Seva ilikumbana na hitilafu. Tafadhali jaribu tena baadaye."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Hii itafuta kabisa funguo zote za API zilizohifadhiwa na kuweka upya hazina. Utahitaji kuingiza tena funguo zako za API."
   },
   "Time": {
     "message": "Muda"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Majaribio mengi yaliyoshindwa. Jaribu tena baada ya"
+  },
   "Tool_Timeout_ms": {
     "message": "Muda wa Zana (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Mipangilio ya Zana"
+  },
+  "Trust": {
+    "message": "Amini"
   },
   "Trusted": {
     "message": "Imethibitishwa"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Imeshindwa kupakia taarifa za mkopo"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Imeshindwa kufikia seva ya nyuma - tafadhali angalia muunganisho wako"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Imeshindwa kufikia seva. Tafadhali angalia muunganisho wako na ujaribu tena."
-  },
   "Unknown_Event": {
     "message": "Tukio lisilotambulika"
   },
   "Unknown_error": {
     "message": "Hitilafu isiyojulikana"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Hitilafu isiyojulikana wakati wa kukagua hali ya wakala"
-  },
-  "Unknown_error_occurred": {
-    "message": "Hitilafu isiyojulikana imetokea"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Hitilafu isiyojulikana imetokea wakati wa utekelezaji wa kazi"
   },
   "Unknown_error_processing_submission": {
     "message": "Hitilafu isiyojulikana wakati wa kuchakata uwasilishaji"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Fungua"
+  },
+  "Unlocking": {
+    "message": "Inafungua..."
+  },
   "Unsaved_Changes": {
     "message": "Mabadiliko Yasiyohifadhiwa"
   },
   "Untitled": {
     "message": "Bila jina"
+  },
+  "Untrusted": {
+    "message": "Isiyoaminika"
   },
   "Upcoming": {
     "message": "Ijayo"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Tumia ufunguo wako wa API"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Tumia usajili wako wa ChatGPT Plus/Pro badala ya funguo za API"
+  },
   "User_Center": {
     "message": "Kituo cha Mtumiaji"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Kutumia mikopo ya ziada"
+  },
+  "Vault_Locked": {
+    "message": "Hazina Imefungwa"
   },
   "Verbosity": {
     "message": "Ufafanuzi"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Msaidizi wako binafsi wa AI"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Kipindi chako kimeisha. Tafadhali ingia tena."
-  },
   "DISCONNECTED": {
     "message": "[HAIUNGANISHWA]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (amri isiyojulikana)"
   },
+  "more_results": {
+    "message": "matokeo zaidi..."
+  },
   "optional": {
     "message": "hiari"
+  },
+  "or": {
+    "message": "au"
   },
   "remaining": {
     "message": "iliyobaki"

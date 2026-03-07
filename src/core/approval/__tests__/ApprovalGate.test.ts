@@ -51,7 +51,6 @@ describe('ApprovalGate', () => {
   beforeEach(() => {
     mockManager = createMockApprovalManager();
     const rules: PolicyRule[] = [
-      { type: 'deny', match: { riskAbove: 85 }, description: 'Deny critical' },
       { type: 'ask', match: { riskAbove: 30 }, description: 'Ask medium+' },
       { type: 'allow', match: { tool: 'planning_tool' }, description: 'Allow planning' },
     ];
@@ -77,12 +76,14 @@ describe('ApprovalGate', () => {
   });
 
   describe('deny path', () => {
-    it('should deny critical-risk tools', async () => {
+    it('should ask user even for critical-risk tools (no riskAbove hard ceiling)', async () => {
       const assessor = createAssessor(90);
       const decision = await gate.check('terminal', { command: 'rm -rf /' }, assessor);
 
-      expect(decision).toBe('deny');
-      expect(mockManager.requestApproval).not.toHaveBeenCalled();
+      // With no riskAbove:85 deny rule, score 90 hits the ask rule (riskAbove:30)
+      expect(mockManager.requestApproval).toHaveBeenCalled();
+      // Mock manager returns 'approve' by default
+      expect(decision).toBe('auto_approve');
     });
   });
 

@@ -3,15 +3,15 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
-  import SchedulerTaskItem from './SchedulerTaskItem.svelte';
-  import type { ArchivedTaskSummary } from '@/core/models/types/SchedulerContracts';
+  import SchedulerJobItem from './SchedulerJobItem.svelte';
+  import type { ArchivedJobSummary } from '@/core/models/types/SchedulerContracts';
 
   export let show: boolean = false;
   export let onClose: () => void = () => {};
 
   let currentTheme: UITheme = 'terminal';
   let isLoading = true;
-  let archivedTasks: ArchivedTaskSummary[] = [];
+  let archivedJobs: ArchivedJobSummary[] = [];
   let hasMore = false;
   let offset = 0;
   const limit = 20;
@@ -24,30 +24,30 @@
   // Fetch data when view opens
   $: if (show) {
     offset = 0;
-    archivedTasks = [];
-    fetchArchivedTasks();
+    archivedJobs = [];
+    fetchArchivedJobs();
   }
 
-  async function fetchArchivedTasks() {
+  async function fetchArchivedJobs() {
     isLoading = true;
     try {
-      const response = await sendMessage<{ data?: { tasks?: ArchivedTaskSummary[]; hasMore?: boolean }; tasks?: ArchivedTaskSummary[]; hasMore?: boolean }>(
-        MessageType.SCHEDULER_GET_ARCHIVED_TASKS,
+      const response = await sendMessage<{ data?: { jobs?: ArchivedJobSummary[]; hasMore?: boolean }; jobs?: ArchivedJobSummary[]; hasMore?: boolean }>(
+        MessageType.SCHEDULER_GET_ARCHIVED_JOBS,
         { limit, offset }
       );
 
       const data = response?.data || response;
-      const newTasks = data?.tasks || [];
+      const newJobs = data?.jobs || [];
 
       if (offset === 0) {
-        archivedTasks = newTasks;
+        archivedJobs = newJobs;
       } else {
-        archivedTasks = [...archivedTasks, ...newTasks];
+        archivedJobs = [...archivedJobs, ...newJobs];
       }
 
       hasMore = data?.hasMore || false;
     } catch (error) {
-      console.error('[ArchivedTasksView] Failed to fetch data:', error);
+      console.error('[ArchivedJobsView] Failed to fetch data:', error);
     } finally {
       isLoading = false;
     }
@@ -55,7 +55,7 @@
 
   function loadMore() {
     offset += limit;
-    fetchArchivedTasks();
+    fetchArchivedJobs();
   }
 
   function handleClickOutside(event: MouseEvent) {
@@ -106,38 +106,38 @@
         {currentTheme === 'modern'
           ? 'text-chat-text dark:text-chat-text-dark font-chat'
           : 'text-term-bright-green font-terminal'}"
-      >{$_t('Task History')}</h3>
+      >{$_t('Job History')}</h3>
     </div>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-3">
-      {#if isLoading && archivedTasks.length === 0}
+      {#if isLoading && archivedJobs.length === 0}
         <div class="text-center py-6
           {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}"
         >{$_t('Loading...')}</div>
-      {:else if archivedTasks.length === 0}
+      {:else if archivedJobs.length === 0}
         <div class="text-center py-6
           {currentTheme === 'modern'
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}">
-          <p>{$_t('No completed tasks yet')}</p>
+          <p>{$_t('No completed jobs yet')}</p>
         </div>
       {:else}
         <div class="flex flex-col gap-2">
-          {#each archivedTasks as task (task.id)}
+          {#each archivedJobs as job (job.id)}
             <div class="relative">
-              <SchedulerTaskItem
-                {...task}
+              <SchedulerJobItem
+                {...job}
                 showActions={false}
               />
-              {#if task.completedAt}
+              {#if job.completedAt}
                 <div class="absolute top-2 right-2 text-sm opacity-70
                   {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
                     : 'text-term-dim-green'}">
-                  {formatCompletedTime(task.completedAt)}
+                  {formatCompletedTime(job.completedAt)}
                 </div>
               {/if}
             </div>

@@ -432,7 +432,6 @@ describe('getDefaultRules (defaultRules.ts)', () => {
       const rules = getDefaultRules('extension');
       expect(rules.find(r => r.match.tool === 'planning_tool')).toBeDefined();
       expect(rules.find(r => r.match.tool === 'web_search')).toBeDefined();
-      expect(rules.find(r => r.match.riskAbove === 85 && r.type === 'deny')).toBeDefined();
       expect(rules.find(r => r.match.riskAbove === 30 && r.type === 'ask')).toBeDefined();
     });
 
@@ -440,7 +439,6 @@ describe('getDefaultRules (defaultRules.ts)', () => {
       const rules = getDefaultRules('desktop');
       expect(rules.find(r => r.match.tool === 'planning_tool')).toBeDefined();
       expect(rules.find(r => r.match.tool === 'web_search')).toBeDefined();
-      expect(rules.find(r => r.match.riskAbove === 85 && r.type === 'deny')).toBeDefined();
       expect(rules.find(r => r.match.riskAbove === 30 && r.type === 'ask')).toBeDefined();
     });
   });
@@ -562,11 +560,10 @@ describe('getDefaultRules (defaultRules.ts)', () => {
   // -----------------------------------------------------------------------
 
   describe('shared rules', () => {
-    it('critical-risk deny rule should match riskAbove 85', () => {
+    it('should not have a blanket riskAbove deny rule (no hard ceiling)', () => {
       const rules = getDefaultRules('extension');
-      const rule = rules.find(r => r.type === 'deny' && r.match.riskAbove === 85);
-      expect(rule).toBeDefined();
-      expect(rule!.description).toContain('critical-risk');
+      const rule = rules.find(r => r.type === 'deny' && r.match.riskAbove !== undefined);
+      expect(rule).toBeUndefined();
     });
 
     it('medium-risk ask rule should match riskAbove 30', () => {

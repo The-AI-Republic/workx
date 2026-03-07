@@ -395,11 +395,11 @@
         on:paste={handlePaste}
         on:focus={() => isFocused = true}
         on:blur={handleBlur}
-        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-hidden leading-relaxed h-[37px] transition-[height] duration-200 text-sm
+        style="--textarea-py: {currentTheme === 'modern' ? '0.75rem' : '0.5rem'}"
+        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto leading-relaxed text-sm
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"
-        class:expanded={isFocused}
         aria-label="Message input"
       />
       <div
@@ -471,10 +471,9 @@
 </div>
 
 <style>
-  /* Textarea expanded state */
-  .expanded {
-    height: 142px !important;
-    overflow-y: auto !important;
+  /* Fixed height: 3 lines of text + vertical padding */
+  .terminal-textarea {
+    height: calc(3lh + 2 * var(--textarea-py, 0.5rem));
   }
 
   /* Placeholder styles - terminal theme */

@@ -1,20 +1,20 @@
 /**
  * Scheduler Alarms
  *
- * Chrome alarms API wrapper for persistent task scheduling.
- * Handles task alarms and SchedulerTaskQueue processor alarm.
+ * Chrome alarms API wrapper for persistent job scheduling.
+ * Handles job alarms and job queue processor alarm.
  */
 
-import type { ISchedulerAlarms, SchedulerAlarmConfig } from '../../core/models/types/SchedulerContracts';
+import type { ISchedulerAlarms, SchedulerAlarmConfig, SchedulerAlarm } from '../../core/models/types/SchedulerContracts';
 import {
   SCHEDULER_ALARM_PREFIX,
-  SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
+  SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
   DEFAULT_ALARM_CONFIG,
-  getTaskAlarmName,
+  getJobAlarmName,
 } from '../../core/models/types/SchedulerContracts';
 
 /**
- * SchedulerAlarms - manages Chrome alarms for task scheduling
+ * SchedulerAlarms - manages Chrome alarms for job scheduling
  */
 export class SchedulerAlarms implements ISchedulerAlarms {
   private config: SchedulerAlarmConfig;
@@ -27,17 +27,17 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Create an alarm for a scheduled task
-   * @param taskId - The task ID
-   * @param scheduledTime - Unix timestamp (ms) when task should execute
+   * Create an alarm for a scheduled job
+   * @param jobId - The job ID
+   * @param scheduledTime - Unix timestamp (ms) when job should execute
    */
-  async createTaskAlarm(taskId: string, scheduledTime: number): Promise<void> {
-    const alarmName = getTaskAlarmName(taskId);
+  async createJobAlarm(jobId: string, scheduledTime: number): Promise<void> {
+    const alarmName = getJobAlarmName(jobId);
     const now = Date.now();
 
     // Chrome alarms have a minimum of 1 minute
     // If scheduled time is less than 1 minute away, set alarm for 1 minute
-    // The task will execute immediately when the alarm fires
+    // The job will execute immediately when the alarm fires
     const delayMs = Math.max(scheduledTime - now, this.config.minScheduleDelay);
 
     // Convert to minutes for chrome.alarms API
@@ -55,11 +55,11 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Clear an alarm for a scheduled task
-   * @param taskId - The task ID
+   * Clear an alarm for a scheduled job
+   * @param jobId - The job ID
    */
-  async clearTaskAlarm(taskId: string): Promise<void> {
-    const alarmName = getTaskAlarmName(taskId);
+  async clearJobAlarm(jobId: string): Promise<void> {
+    const alarmName = getJobAlarmName(jobId);
 
     return new Promise((resolve, reject) => {
       chrome.alarms.clear(alarmName, (wasCleared) => {
@@ -73,11 +73,11 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Check if an alarm exists for a task
-   * @param taskId - The task ID
+   * Check if an alarm exists for a job
+   * @param jobId - The job ID
    */
-  async hasTaskAlarm(taskId: string): Promise<boolean> {
-    const alarmName = getTaskAlarmName(taskId);
+  async hasJobAlarm(jobId: string): Promise<boolean> {
+    const alarmName = getJobAlarmName(jobId);
 
     return new Promise((resolve, reject) => {
       chrome.alarms.get(alarmName, (alarm) => {
@@ -91,15 +91,15 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Start the SchedulerTaskQueue processor alarm
-   * Fires periodically to check for tasks that need processing
+   * Start the job queue processor alarm
+   * Fires periodically to check for jobs that need processing
    */
-  async startSchedulerTaskQueueProcessor(): Promise<void> {
+  async startJobQueueProcessor(): Promise<void> {
     return new Promise((resolve, reject) => {
       chrome.alarms.create(
-        SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM,
+        SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM,
         {
-          periodInMinutes: this.config.schedulerTaskQueueProcessorInterval,
+          periodInMinutes: this.config.jobQueueProcessorInterval,
         },
         () => {
           if (chrome.runtime.lastError) {
@@ -117,11 +117,11 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Stop the SchedulerTaskQueue processor alarm
+   * Stop the job queue processor alarm
    */
-  async stopSchedulerTaskQueueProcessor(): Promise<void> {
+  async stopJobQueueProcessor(): Promise<void> {
     return new Promise((resolve, reject) => {
-      chrome.alarms.clear(SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM, (wasCleared) => {
+      chrome.alarms.clear(SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM, (wasCleared) => {
         if (chrome.runtime.lastError) {
           reject(
             new Error(
@@ -138,7 +138,7 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   /**
    * Get all active scheduler alarms
    */
-  async getAllAlarms(): Promise<chrome.alarms.Alarm[]> {
+  async getAllAlarms(): Promise<SchedulerAlarm[]> {
     return new Promise((resolve, reject) => {
       chrome.alarms.getAll((alarms) => {
         if (chrome.runtime.lastError) {
@@ -148,7 +148,7 @@ export class SchedulerAlarms implements ISchedulerAlarms {
           const schedulerAlarms = alarms.filter(
             (alarm) =>
               alarm.name.startsWith(SCHEDULER_ALARM_PREFIX) ||
-              alarm.name === SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM
+              alarm.name === SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM
           );
           resolve(schedulerAlarms);
         }
@@ -180,11 +180,11 @@ export class SchedulerAlarms implements ISchedulerAlarms {
   }
 
   /**
-   * Check if the SchedulerTaskQueue processor is running
+   * Check if the job queue processor is running
    */
-  async isSchedulerTaskQueueProcessorRunning(): Promise<boolean> {
+  async isJobQueueProcessorRunning(): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      chrome.alarms.get(SCHEDULER_TASK_QUEUE_PROCESSOR_ALARM, (alarm) => {
+      chrome.alarms.get(SCHEDULER_JOB_QUEUE_PROCESSOR_ALARM, (alarm) => {
         if (chrome.runtime.lastError) {
           reject(
             new Error(

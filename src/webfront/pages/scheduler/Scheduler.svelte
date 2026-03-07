@@ -131,15 +131,15 @@
     const scheduledTime = getScheduledTimestamp();
     const now = Date.now();
 
-    // Must be at least 1 minute in the future
-    if (scheduledTime <= now + 60000) {
-      errorMessage = t('Scheduled time must be at least 1 minute in the future');
+    // Must be at least 30 seconds in the future
+    if (scheduledTime <= now + 30000) {
+      errorMessage = t('Scheduled time must be at least 30 seconds in the future');
       return;
     }
 
     try {
       if (!service) throw new Error('Message service not available');
-      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_TASK, {
+      const response = await service.send<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_JOB, {
         input: taskInput,
         scheduledTime,
       });
@@ -233,7 +233,7 @@
         <span class="block text-sm mb-2
           {currentTheme === 'modern' ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark' : 'text-term-dim-green'}">{$_t('Quick Schedule')}:</span>
         <div class="flex gap-2 flex-wrap">
-          {#each [{ label: '5m', min: 5 }, { label: '15m', min: 15 }, { label: '30m', min: 30 }, { label: '1h', min: 60 }, { label: '3h', min: 180 }, { label: '24h', min: 1440 }] as item}
+          {#each [{ label: '2m', min: 2 }, { label: '5m', min: 5 }, { label: '15m', min: 15 }, { label: '30m', min: 30 }, { label: '1h', min: 60 }, { label: '3h', min: 180 }, { label: '24h', min: 1440 }] as item}
             <button
               class="px-3 py-1.5 text-sm rounded cursor-pointer transition-all duration-200
                 {currentTheme === 'modern'

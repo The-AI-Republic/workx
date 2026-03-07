@@ -50,7 +50,7 @@ import { IndexedDBStorageProvider } from '../../extension/storage/IndexedDBStora
 import type { Skill, InvocationMode } from '../../core/skills/types';
 import { registerPromptExtension } from '../../core/PromptLoader';
 
-// Task Scheduler imports
+// Scheduler imports
 import { Scheduler, SchedulerStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
 import { createStorageAdapter } from '../../storage/createStorageAdapter';
@@ -65,14 +65,14 @@ import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
 import type {
-  CreateDraftTaskRequest,
-  ScheduleTaskRequest,
-  TriggerTaskRequest,
-  CancelTaskRequest,
-  GetTaskDetailsRequest,
-  GetArchivedTasksRequest,
+  CreateDraftJobRequest,
+  ScheduleJobRequest,
+  TriggerJobRequest,
+  CancelJobRequest,
+  GetJobDetailsRequest,
+  GetArchivedJobsRequest,
 } from '../../core/models/types/SchedulerContracts';
-import type { TaskResultRecord } from '../../core/models/types/Scheduler';
+import type { JobResultRecord } from '../../core/models/types/Scheduler';
 
 // Multi-agent registry imports (Feature 015)
 import { AgentRegistry, SessionStorage } from '../../core/registry';
@@ -95,7 +95,7 @@ let agentConfig: AgentConfig | null = null;
 let mcpManager: MCPManager | null = null; // MCP server connection manager
 let a2aManager: A2AManager | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
-let scheduler: Scheduler | null = null; // Task scheduler
+let scheduler: Scheduler | null = null; // Job scheduler
 let schedulerStorage: SchedulerStorage | null = null;
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
@@ -259,7 +259,7 @@ async function doInitialize(): Promise<void> {
   // Setup Skills message handlers
   setupSkillsMessageHandlers();
 
-  // Initialize Task Scheduler
+  // Initialize Scheduler
   await initializeScheduler();
 
   // Setup Scheduler message handlers
@@ -850,7 +850,7 @@ function setupMessageHandlers(): void {
 }
 
 /**
- * Initialize Task Scheduler
+ * Initialize Scheduler
  */
 async function initializeScheduler(): Promise<void> {
   try {
@@ -869,6 +869,30 @@ async function initializeScheduler(): Promise<void> {
       console.log('[ServiceWorker] Scheduler connected to AgentRegistry');
     }
 
+    // Wire platform-specific callbacks for Chrome extension
+    scheduler.setNotificationHandler(async (job) => {
+      const inputPreview = job.input.length > 50
+        ? job.input.slice(0, 50) + '...'
+        : job.input;
+      await chrome.notifications.create(`scheduler-job-${job.id}`, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title: 'Scheduled Job Starting',
+        message: inputPreview,
+        priority: 2,
+        requireInteraction: false,
+      });
+    });
+
+    scheduler.setJobLauncher(async (jobId, sessionId) => {
+      const extensionUrl = chrome.runtime.getURL(
+        `sidepanel/index.html?scheduledJob=${jobId}&sessionId=${sessionId}`
+      );
+      await chrome.tabs.create({ url: extensionUrl, active: true });
+    });
+
+    scheduler.setConnectivityCheck(() => navigator.onLine);
+
     // Set up event emitter to broadcast scheduler events to all clients (T020)
     scheduler.setEventEmitter((event) => {
       // Broadcast to all extension pages (sidepanel, popup, etc.)
@@ -880,32 +904,32 @@ async function initializeScheduler(): Promise<void> {
       });
     });
 
-    // Start the SchedulerTaskQueue processor
-    await schedulerAlarms.startSchedulerTaskQueueProcessor();
+    // Start the job queue processor
+    await schedulerAlarms.startJobQueueProcessor();
 
-    // Detect missed tasks on startup
-    const missedTasks = await scheduler.detectMissedTasks();
-    if (missedTasks.length > 0) {
-      console.log(`[ServiceWorker] Detected ${missedTasks.length} missed scheduler tasks`);
-      // Show notification for missed tasks
+    // Detect missed jobs on startup
+    const missedJobs = await scheduler.detectMissedJobs();
+    if (missedJobs.length > 0) {
+      console.log(`[ServiceWorker] Detected ${missedJobs.length} missed scheduler jobs`);
+      // Show notification for missed jobs
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-        title: t('Missed Scheduled Tasks'),
-        message: t(`${missedTasks.length} task(s) missed their scheduled time while the browser was closed.`),
+        title: t('Missed Scheduled Jobs'),
+        message: t(`${missedJobs.length} job(s) missed their scheduled time while the browser was closed.`),
         priority: 2,
       });
     }
 
-    // T042: Resume task processing when connectivity is restored
+    // T042: Resume job processing when connectivity is restored
     self.addEventListener('online', async () => {
-      console.log('[ServiceWorker] Online - resuming scheduler task processing');
+      console.log('[ServiceWorker] Online - resuming scheduler job processing');
       if (scheduler) {
-        await scheduler.processSchedulerTaskQueue();
+        await scheduler.processJobQueue();
       }
     });
 
-    console.log('[ServiceWorker] Task Scheduler initialized');
+    console.log('[ServiceWorker] Scheduler initialized');
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize scheduler:', error);
   }
@@ -917,142 +941,142 @@ async function initializeScheduler(): Promise<void> {
 function setupSchedulerMessageHandlers(): void {
   if (!router || !scheduler) return;
 
-  // Create draft task
-  router.on(MessageType.SCHEDULER_CREATE_DRAFT_TASK, async (message) => {
-    const { input } = message.payload as CreateDraftTaskRequest;
-    const taskId = await scheduler!.createDraftTask(input);
-    return { success: true, taskId };
+  // Create draft job
+  router.on(MessageType.SCHEDULER_CREATE_DRAFT_JOB, async (message) => {
+    const { input } = message.payload as CreateDraftJobRequest;
+    const jobId = await scheduler!.createDraftJob(input);
+    return { success: true, jobId };
   });
 
-  // Schedule a task
-  router.on(MessageType.SCHEDULER_SCHEDULE_TASK, async (message) => {
-    const { input, taskId, scheduledTime } = message.payload as ScheduleTaskRequest;
+  // Schedule a job
+  router.on(MessageType.SCHEDULER_SCHEDULE_JOB, async (message) => {
+    const { input, jobId, scheduledTime } = message.payload as ScheduleJobRequest;
 
-    if (taskId) {
+    if (jobId) {
       // Schedule existing draft
-      await scheduler!.scheduleExistingTask(taskId, scheduledTime);
-      return { success: true, taskId };
+      await scheduler!.scheduleExistingJob(jobId, scheduledTime);
+      return { success: true, jobId };
     } else if (input) {
-      // Create new scheduled task
-      const newTaskId = await scheduler!.scheduleTask(input, scheduledTime);
-      return { success: true, taskId: newTaskId };
+      // Create new scheduled job
+      const newJobId = await scheduler!.scheduleJob(input, scheduledTime);
+      return { success: true, jobId: newJobId };
     } else {
-      return { success: false, error: 'Either input or taskId is required' };
+      return { success: false, error: 'Either input or jobId is required' };
     }
   });
 
-  // Trigger a task manually
-  router.on(MessageType.SCHEDULER_TRIGGER_TASK, async (message) => {
-    const { taskId } = message.payload as TriggerTaskRequest;
-    await scheduler!.triggerTask(taskId);
+  // Trigger a job manually
+  router.on(MessageType.SCHEDULER_TRIGGER_JOB, async (message) => {
+    const { jobId } = message.payload as TriggerJobRequest;
+    await scheduler!.triggerJob(jobId);
     return { success: true };
   });
 
-  // Cancel a task
-  router.on(MessageType.SCHEDULER_CANCEL_TASK, async (message) => {
-    const { taskId } = message.payload as CancelTaskRequest;
-    await scheduler!.cancelTask(taskId);
+  // Cancel a job
+  router.on(MessageType.SCHEDULER_CANCEL_JOB, async (message) => {
+    const { jobId } = message.payload as CancelJobRequest;
+    await scheduler!.cancelJob(jobId);
     return { success: true };
   });
 
-  // Complete a task (called by executing tab)
-  router.on(MessageType.SCHEDULER_COMPLETE_TASK, async (message) => {
-    const { taskId, result } = message.payload as { taskId: string; result: TaskResultRecord };
-    await scheduler!.completeTask(taskId, result);
+  // Complete a job (called by executing tab)
+  router.on(MessageType.SCHEDULER_COMPLETE_JOB, async (message) => {
+    const { jobId, result } = message.payload as { jobId: string; result: JobResultRecord };
+    await scheduler!.completeJob(jobId, result);
     return { success: true };
   });
 
-  // Fail a task (called by executing tab)
-  router.on(MessageType.SCHEDULER_FAIL_TASK, async (message) => {
-    const { taskId, error } = message.payload as { taskId: string; error: string };
-    await scheduler!.failTask(taskId, error);
+  // Fail a job (called by executing tab)
+  router.on(MessageType.SCHEDULER_FAIL_JOB, async (message) => {
+    const { jobId, error } = message.payload as { jobId: string; error: string };
+    await scheduler!.failJob(jobId, error);
     return { success: true };
   });
 
-  // Pause SchedulerTaskQueue
+  // Pause job queue
   router.on(MessageType.SCHEDULER_PAUSE_QUEUE, async () => {
-    await scheduler!.pauseSchedulerTaskQueue();
+    await scheduler!.pauseJobQueue();
     return { success: true };
   });
 
-  // Resume SchedulerTaskQueue
+  // Resume job queue
   router.on(MessageType.SCHEDULER_RESUME_QUEUE, async () => {
-    await scheduler!.resumeSchedulerTaskQueue();
+    await scheduler!.resumeJobQueue();
     return { success: true };
   });
 
-  // Get draft tasks
-  router.on(MessageType.SCHEDULER_GET_DRAFT_TASKS, async () => {
-    const tasks = await schedulerStorage!.getDraftTasks();
+  // Get draft jobs
+  router.on(MessageType.SCHEDULER_GET_DRAFT_JOBS, async () => {
+    const jobs = await schedulerStorage!.getDraftJobs();
     return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        input: j.input.slice(0, 100),
+        scheduledTime: j.scheduledTime,
+        status: j.status,
+        createdAt: j.createdAt,
       })),
     };
   });
 
-  // Get scheduled tasks
-  router.on(MessageType.SCHEDULER_GET_SCHEDULED_TASKS, async () => {
-    const tasks = await schedulerStorage!.getScheduledTasks();
+  // Get scheduled jobs
+  router.on(MessageType.SCHEDULER_GET_SCHEDULED_JOBS, async () => {
+    const jobs = await schedulerStorage!.getScheduledJobs();
     return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        input: j.input.slice(0, 100),
+        scheduledTime: j.scheduledTime,
+        status: j.status,
+        createdAt: j.createdAt,
       })),
     };
   });
 
-  // Get missed tasks
-  router.on(MessageType.SCHEDULER_GET_MISSED_TASKS, async () => {
-    const tasks = await schedulerStorage!.getMissedTasks();
+  // Get missed jobs
+  router.on(MessageType.SCHEDULER_GET_MISSED_JOBS, async () => {
+    const jobs = await schedulerStorage!.getMissedJobs();
     return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        input: j.input.slice(0, 100),
+        scheduledTime: j.scheduledTime,
+        status: j.status,
+        createdAt: j.createdAt,
       })),
     };
   });
 
-  // Get SchedulerTaskQueue
+  // Get job queue
   router.on(MessageType.SCHEDULER_GET_QUEUE, async () => {
-    const tasks = await schedulerStorage!.getSchedulerTaskQueueTasks();
+    const jobs = await schedulerStorage!.getJobQueueJobs();
     return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        status: t.status,
-        createdAt: t.createdAt,
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        input: j.input.slice(0, 100),
+        scheduledTime: j.scheduledTime,
+        status: j.status,
+        createdAt: j.createdAt,
       })),
     };
   });
 
-  // Get archived tasks
-  router.on(MessageType.SCHEDULER_GET_ARCHIVED_TASKS, async (message) => {
-    const { limit = 50, offset = 0 } = (message.payload || {}) as GetArchivedTasksRequest;
-    const tasks = await schedulerStorage!.getArchivedTasks(limit, offset);
+  // Get archived jobs
+  router.on(MessageType.SCHEDULER_GET_ARCHIVED_JOBS, async (message) => {
+    const { limit = 50, offset = 0 } = (message.payload || {}) as GetArchivedJobsRequest;
+    const jobs = await schedulerStorage!.getArchivedJobs(limit, offset);
     return {
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        input: t.input.slice(0, 100),
-        scheduledTime: t.scheduledTime,
-        completedAt: t.completedAt,
-        status: t.status,
-        sessionId: t.sessionId,
-        error: t.error,
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        input: j.input.slice(0, 100),
+        scheduledTime: j.scheduledTime,
+        completedAt: j.completedAt,
+        status: j.status,
+        sessionId: j.sessionId,
+        error: j.error,
       })),
-      total: tasks.length,
-      hasMore: tasks.length === limit,
+      total: jobs.length,
+      hasMore: jobs.length === limit,
     };
   });
 
@@ -1061,11 +1085,11 @@ function setupSchedulerMessageHandlers(): void {
     return scheduler!.getSchedulerState();
   });
 
-  // Get task details
-  router.on(MessageType.SCHEDULER_GET_TASK_DETAILS, async (message) => {
-    const { taskId } = message.payload as GetTaskDetailsRequest;
-    const task = await schedulerStorage!.getTask(taskId);
-    return { task };
+  // Get job details
+  router.on(MessageType.SCHEDULER_GET_JOB_DETAILS, async (message) => {
+    const { jobId } = message.payload as GetJobDetailsRequest;
+    const job = await schedulerStorage!.getJob(jobId);
+    return { job };
   });
 
   console.log('[ServiceWorker] Scheduler message handlers registered');
@@ -2030,7 +2054,7 @@ function setupPeriodicTasks(): void {
 
       // Handle alarms
       chrome.alarms.onAlarm?.addListener(async (alarm) => {
-        // Handle scheduler alarms first (task alarms and queue processor)
+        // Handle scheduler alarms first (job alarms and queue processor)
         const schedulerEvent = parseAlarmName(alarm.name);
         if (schedulerEvent && scheduler) {
           await scheduler.handleAlarm(alarm.name);

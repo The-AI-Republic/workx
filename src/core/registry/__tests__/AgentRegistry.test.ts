@@ -127,11 +127,9 @@ describe('AgentRegistry', () => {
 
       const session = await registry.createSession({
         type: 'scheduled',
-        scheduledTaskId: 'task_123',
       });
 
       expect(session.metadata.type).toBe('scheduled');
-      expect(session.metadata.scheduledTaskId).toBe('task_123');
     });
 
     it('assigns unique letters to sessions', async () => {
@@ -139,8 +137,8 @@ describe('AgentRegistry', () => {
       registry.initialize(mockConfig, mockRouter);
 
       const session1 = await registry.createSession({ type: 'primary' });
-      const session2 = await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
-      const session3 = await registry.createSession({ type: 'scheduled', scheduledTaskId: 't2' });
+      const session2 = await registry.createSession({ type: 'scheduled' });
+      const session3 = await registry.createSession({ type: 'scheduled' });
 
       expect(session1.sessionLetter).toBe('a');
       expect(session2.sessionLetter).toBe('b');
@@ -152,10 +150,10 @@ describe('AgentRegistry', () => {
       registry.initialize(mockConfig, mockRouter);
 
       await registry.createSession({ type: 'primary' });
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
+      await registry.createSession({ type: 'scheduled' });
 
       await expect(
-        registry.createSession({ type: 'scheduled', scheduledTaskId: 't2' })
+        registry.createSession({ type: 'scheduled' })
       ).rejects.toThrow('Max concurrent sessions reached');
     });
 
@@ -218,7 +216,7 @@ describe('AgentRegistry', () => {
       const registry = AgentRegistry.getInstance();
       registry.initialize(mockConfig, mockRouter);
 
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
+      await registry.createSession({ type: 'scheduled' });
 
       expect(registry.getPrimarySession()).toBeUndefined();
     });
@@ -284,7 +282,7 @@ describe('AgentRegistry', () => {
       registry.initialize(mockConfig, mockRouter);
 
       await registry.createSession({ type: 'primary' });
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
+      await registry.createSession({ type: 'scheduled' });
 
       const sessions = registry.listSessions();
 
@@ -304,7 +302,7 @@ describe('AgentRegistry', () => {
       const session1 = await registry.createSession({ type: 'primary' });
       expect(registry.getActiveCount()).toBe(1);
 
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
+      await registry.createSession({ type: 'scheduled' });
       expect(registry.getActiveCount()).toBe(2);
 
       await registry.removeSession(session1.sessionId);
@@ -361,7 +359,7 @@ describe('AgentRegistry', () => {
       listener.mockClear();
       unsubscribe();
 
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
+      await registry.createSession({ type: 'scheduled' });
       expect(listener).not.toHaveBeenCalled();
     });
   });
@@ -372,7 +370,7 @@ describe('AgentRegistry', () => {
       registry.initialize(mockConfig, mockRouter);
 
       await registry.createSession({ type: 'primary' });
-      await registry.createSession({ type: 'scheduled', scheduledTaskId: 't1' });
+      await registry.createSession({ type: 'scheduled' });
 
       expect(registry.getActiveCount()).toBe(2);
 

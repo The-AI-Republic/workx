@@ -35,8 +35,8 @@ export const STORE_NAMES = {
   CONFIG: 'config',
   /** Rollout cache entries (for backward compatibility) */
   ROLLOUT_CACHE: 'rollout_cache',
-  /** Scheduler tasks */
-  SCHEDULER_TASKS: 'scheduler_tasks',
+  /** Scheduler jobs */
+  SCHEDULER_JOBS: 'scheduler_jobs',
   /** Feature 015: Agent session persistence */
   AGENT_SESSIONS: 'agent_sessions'
 } as const;
@@ -51,7 +51,7 @@ export const INDEX_NAMES = {
   BY_SESSION_TIMESTAMP: 'by_session_timestamp',
   /** Index on timestamp for global timestamp queries (outdated cleanup) */
   BY_TIMESTAMP: 'by_timestamp',
-  /** Scheduler task indexes */
+  /** Scheduler job indexes */
   SCHEDULER_BY_STATUS: 'by_status',
   SCHEDULER_BY_SCHEDULED_TIME: 'by_scheduled_time',
   SCHEDULER_BY_STATUS_TIME: 'by_status_time',
@@ -193,14 +193,14 @@ export class IndexedDBAdapter implements StorageAdapter {
           });
         }
 
-        // Version 2: Add scheduler_tasks object store
+        // Version 2: Add scheduler_jobs object store
         if (oldVersion < 2) {
-          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULER_TASKS)) {
-            const schedulerStore = db.createObjectStore(STORE_NAMES.SCHEDULER_TASKS, {
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULER_JOBS)) {
+            const schedulerStore = db.createObjectStore(STORE_NAMES.SCHEDULER_JOBS, {
               keyPath: 'id'
             });
 
-            // Index for querying tasks by status (draft, scheduled, waiting, running, etc.)
+            // Index for querying jobs by status (draft, scheduled, waiting, running, etc.)
             schedulerStore.createIndex(
               INDEX_NAMES.SCHEDULER_BY_STATUS,
               'status',

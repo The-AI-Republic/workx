@@ -54,12 +54,10 @@ describe('AgentSession', () => {
     it('creates session with scheduled type', () => {
       const config: SessionConfig = {
         type: 'scheduled',
-        scheduledTaskId: 'task_123',
       };
       const session = new AgentSession(config, 1);
 
       expect(session.metadata.type).toBe('scheduled');
-      expect(session.metadata.scheduledTaskId).toBe('task_123');
       expect(session.sessionLetter).toBe('b');
       expect(session.metadata.tabGroupName).toBe('browserx_s_b');
     });

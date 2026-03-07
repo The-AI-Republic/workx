@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API-nyckel för autentisering (lagrad krypterad)"
   },
-  "API_key_has_expired": {
-    "message": "API-nyckeln har gått ut"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API-nyckeln har otillräckliga behörigheter"
-  },
   "API_key_saved_successfully": {
     "message": "API-nyckel har sparats!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Verktyg för agentexekvering"
   },
-  "Agent_Turn_Complete": {
-    "message": "Agentens tur slutförd"
-  },
   "Agent_URL_is_required": {
     "message": "Agent-URL krävs"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Agenten har tagits bort"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Agentens tur har slutförts"
-  },
   "Agent_updated_successfully": {
     "message": "Agenten har uppdaterats"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Alla API-nycklar är krypterade i vila med AES-256-GCM. Aktivera PIN-skydd för extra säkerhet."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Alla åtgärder godkänns automatiskt på dessa domäner."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Godkänn alltid"
   },
+  "Always_dark": {
+    "message": "Alltid mörkt"
+  },
+  "Always_light": {
+    "message": "Alltid ljust"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Din personliga AI (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Godkänn"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Godkänn ändringar i: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Godkänn körning: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Är du säker på att du vill avbryta den här uppgiften?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Är du säker på att du vill ta bort skillen \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Är du säker på att du vill ta bort den här agenten?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Autentiseringsuppgift (lagrad krypterad)"
-  },
-  "Authentication_failed": {
-    "message": "Autentisering misslyckades"
   },
   "Authentication_method_for_the_agent": {
     "message": "Autentiseringsmetod för agenten"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend ej tillgänglig. Vänta ett ögonblick och försök igen."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Backend serverfel - försök igen senare"
-  },
   "Backoff_Multiplier": {
     "message": "Backoff-multiplikator"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Blockerade domäner"
+  },
+  "Body_Markdown": {
+    "message": "Innehåll (Markdown)"
   },
   "Browser_Tools": {
     "message": "Webbläsarverktyg"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Avbruten"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Kan inte utföra uppgift: Ingen API-nyckel konfigurerad för ${providerName}. Gå till Inställningar → Modellkonfiguration och lägg till din API-nyckel."
-  },
   "Cannot_select_model_1": {
     "message": "Kan inte välja modell: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Funktioner"
   },
+  "Change_PIN": {
+    "message": "Ändra PIN"
+  },
+  "Changing": {
+    "message": "Ändrar..."
+  },
   "Chat_History": {
     "message": "Chatthistorik"
+  },
+  "ChatGPT_Subscription": {
+    "message": "ChatGPT-prenumeration"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "ChatGPT-sessionen har gått ut. Logga in igen."
   },
   "Checking_agent_status": {
     "message": "Kontrollerar agentstatus..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Välj vilken uppdateringskanal som ska följas"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Klassisk terminalstil med grön text på svart bakgrund"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Rent, modernt chattgränssnitt liknande ChatGPT"
+  "Clear_search": {
+    "message": "Rensa sökning"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Klicka på Browserx-ikonen i verktygsfältet eller tryck Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Stäng"
   },
+  "Close_scheduler": {
+    "message": "Stäng schemaläggare"
+  },
   "Close_settings": {
     "message": "Stäng inställningar"
   },
+  "Close_skills": {
+    "message": "Stäng färdigheter"
+  },
   "Collapse": {
     "message": "Minimera"
-  },
-  "Command_Approval_Required": {
-    "message": "Godkännande av kommando krävs"
   },
   "Command_completed": {
     "message": "Kommando slutfört"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Slutförd"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Slutförd: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Komprimera cachelagrad data för att spara lagringsutrymme"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Konfigurerade servrar"
+  },
+  "Confirm_New_PIN": {
+    "message": "Bekräfta ny PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Bekräfta PIN"
   },
   "Connect": {
     "message": "Anslut"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Ansluten framgångsrikt"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Ansluten via ChatGPT"
   },
   "Connecting": {
     "message": "Ansluter..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Anslutningstest lyckades! (API-nyckeln är giltig)"
   },
-  "Connection_was_refused": {
-    "message": "Anslutning avvisades"
-  },
-  "Connection_was_reset": {
-    "message": "Anslutning återställdes"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Innehåll bryter mot policy: ${contentType} innehåll är inte tillåtet"
-  },
   "Context_Window": {
     "message": "Kontextfönster"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Styr hur aggressivt agenten ber om godkännande."
   },
+  "Create": {
+    "message": "Skapa"
+  },
+  "Create_New_Skill": {
+    "message": "Skapa ny skill"
+  },
   "Create_New_Tab": {
     "message": "Skapa ny flik"
+  },
+  "Create_Skill": {
+    "message": "Skapa skill"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Skapa en 6-siffrig PIN för att skydda dina API-nycklar. Du kommer behöva denna PIN efter att du startat om webbläsaren."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Skapa en skill för att lägga till anpassade /-kommandon eller automatiskt anropbara agentbeteenden."
   },
   "Created": {
     "message": "Skapad"
   },
+  "Creating": {
+    "message": "Skapar..."
+  },
   "Creator": {
     "message": "Skapare"
+  },
+  "Credential_Encryption": {
+    "message": "Kryptering av autentiseringsuppgifter"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Kryptering av autentiseringsuppgifter och PIN-skydd"
   },
   "Credit_Details": {
     "message": "Kreditdetaljer"
   },
+  "Current_PIN": {
+    "message": "Aktuell PIN"
+  },
   "Current_Plan": {
     "message": "Aktuell plan:"
-  },
-  "DNS_lookup_failed": {
-    "message": "DNS-uppslag misslyckades"
   },
   "DOM_Tool": {
     "message": "DOM-verktyg"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Standard"
   },
+  "Delete": {
+    "message": "Ta bort"
+  },
   "Deny": {
     "message": "Neka"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Utvecklad och stödd av AI Republic"
+  },
+  "Disabled": {
+    "message": "Inaktiverad"
   },
   "Discard_Changes": {
     "message": "Kassera ändringar"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Aktivera Model Context Protocol-verktyg från anslutna MCP-servrar"
   },
+  "Enable_PIN": {
+    "message": "Aktivera PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Aktivera PIN-skydd"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Aktivera automatisk anslutning när Browserx startar"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Ange API-nyckel eller bärartoken"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Ange din 6-siffriga PIN för att låsa upp dina API-nycklar."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Ange din LLM API-nyckel"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Ange din nuvarande PIN för att ta bort skyddet. API-nycklarna förblir krypterade med standardnyckeln."
   },
   "Enter_your_task": {
     "message": "Ange din uppgift..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Förklara med Browserx"
+  },
+  "Export": {
+    "message": "Exportera"
   },
   "Extension_Permission": {
     "message": "Tillägg och behörigheter"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Misslyckades att skapa en ny flik. Försök igen."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Misslyckades att skapa webbläsarflik: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Misslyckades att koppla från: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Misslyckades att stoppa uppgiften. Försök igen."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Det gick inte att byta till flik ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Det gick inte att testa anslutningen"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Godkännande av filändring krävs"
-  },
   "File_Operations_Not_Available": {
     "message": "Filoperationer (ej tillgängligt)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Flex"
+  },
+  "Follows_system_theme": {
+    "message": "Följer systemtema"
+  },
+  "Forgot_PIN": {
+    "message": "Glömt PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Verktyg för formulärautomatisering"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Kom igång"
+  },
+  "Green_text_terminal": {
+    "message": "Grönt textterminal"
   },
   "Hello_NAME": {
     "message": "Hej $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Bildinmatning"
+  },
+  "Import": {
+    "message": "Importera"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Importera färdighet från URL"
+  },
+  "Import_from_URL": {
+    "message": "Importera från URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Importerade färdigheter är som standard opålitliga och kan inte auto‑anropas."
+  },
+  "Importing": {
+    "message": "Importerar..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Förbättra denna text: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Ogiltig API-nyckel"
   },
-  "Invalid_API_key_provided": {
-    "message": "Ogiltig API-nyckel angiven"
-  },
   "Invalid_URL_format": {
     "message": "Ogiltigt URL-format"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Ogiltigt inlämningsformat: op saknar fältet type"
+  },
+  "Invocation_Mode": {
+    "message": "Anropsläge"
   },
   "Keyboard_Shortcuts": {
     "message": "Tangentbordsgenvägar"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Laddar inställningar..."
+  },
+  "Loading_skills": {
+    "message": "Laddar färdigheter..."
   },
   "Loading_tabs": {
     "message": "Läser in flikar..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Modell- och leverantörsinställningar laddade från standardkonfiguration (skrivskyddad)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Modellen har ändrats till $1$. Vänligen konfigurera din API-nyckel.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Modell ändrad till $1$. Konversation bevarad.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Modellen har ändrats till $1$. Sessionen kommer att initieras om.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Modellen har ändrats till $1$. Vänligen konfigurera din API-nyckel.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Modern Chat"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Dark"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Light"
   },
   "Monthly_Credits": {
     "message": "Månatliga krediter"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Nätverksfel"
   },
-  "Network_error_occurred": {
-    "message": "Nätverksfel inträffade"
-  },
   "Never_expire_permanent": {
     "message": "Upphör aldrig (permanent)"
   },
   "New_Conversation": {
     "message": "Ny konversation"
+  },
+  "New_PIN": {
+    "message": "Ny PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Inga A2A-agenter har konfigurerats ännu."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Ingen schemalagd tid"
   },
+  "No_settings_found": {
+    "message": "Inga inställningar hittades"
+  },
   "No_skills_available": {
     "message": "Inga färdigheter tillgängliga."
+  },
+  "No_skills_configured_yet": {
+    "message": "Inga färdigheter har konfigurerats ännu."
   },
   "No_steps_in_plan": {
     "message": "Inga steg i planen"
   },
   "No_tabs_available": {
     "message": "Inga flikar tillgängliga"
+  },
+  "No_tasks_in_plan": {
+    "message": "Inga uppgifter i planen"
   },
   "No_time_set": {
     "message": "Ingen tid angiven"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "PIN-skydd"
+  },
   "Page_Action_Tool": {
     "message": "Sidåtgärdsverktyg"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Spara cache till lagring"
   },
-  "Plan_1_step_s": {
-    "message": "Plan: $1$ steg",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Kontrollera din API-nyckel i inställningarna."
-  },
   "Please_enter_a_task_description": {
     "message": "Ange en uppgiftsbeskrivning"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Ange en giltig API-nyckel."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Logga in igen för att fortsätta använda AI-agenten."
-  },
   "Please_select_a_provider": {
     "message": "Välj en leverantör"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Uppgradera planen för att låsa upp världens mest avancerade modeller"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Port 1455 är i bruk. Stäng alla program som använder denna port och försök igen."
   },
   "Power": {
     "message": "Ström"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Uppdateras om"
   },
-  "Reject": {
-    "message": "Avvisa"
-  },
   "Release_Date": {
     "message": "Releasedatum"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Ta bort API-nyckel"
   },
+  "Remove_PIN": {
+    "message": "Ta bort PIN"
+  },
+  "Removing": {
+    "message": "Tar bort..."
+  },
   "Request_Timeout": {
     "message": "Timeout för begäran"
-  },
-  "Request_timed_out": {
-    "message": "Begäran har gått förbi tidsgränsen"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Timeout för begäran i millisekunder (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Timeout för begäran i millisekunder (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Begäran avbröts"
+  "Reset_Vault": {
+    "message": "Återställ valv"
   },
-  "Response_failed": {
-    "message": "Svar misslyckades"
+  "Resetting": {
+    "message": "Återställer..."
   },
   "Restricted": {
     "message": "Begränsad"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Körs"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "STRÖMFEL"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Schemalagd uppgift"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Schemalagd uppgift startar"
-  },
   "Scheduled_Tasks": {
     "message": "Schemalagda uppgifter"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Sökning klar"
   },
+  "Search_settings": {
+    "message": "Sök inställningar..."
+  },
   "Searching": {
     "message": "Söker..."
+  },
+  "Security": {
+    "message": "Säkerhet"
   },
   "Security_Privacy": {
     "message": "Säkerhet & integritet"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Sessionsfel"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Sessionen har gått ut - logga in igen för att fortsätta använda AI‑agenten"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Sessionsgränsen har nåtts. Nya uppgifter köas."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Ange när utrullningsdata ska gå ut"
+  },
+  "Setting_up": {
+    "message": "Ställer in..."
   },
   "Settings": {
     "message": "Inställningar"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Visa varning när lagringsanvändningen överstiger denna procentandel (förvalt: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Inloggning misslyckades"
+  },
   "Sign_in_to_your_account": {
     "message": "Logga in på ditt konto"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Logga in med ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Loggar in..."
   },
   "Skills": {
     "message": "Färdigheter"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Uppgiftsdetaljer"
   },
-  "Task_Failed": {
-    "message": "Uppgift misslyckades"
-  },
   "Task_History": {
     "message": "Uppgiftshistorik"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Uppgift misslyckades"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Uppgift schemalagd för $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Uppgift påbörjad"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Agenten använder just nu backend-läge. LLM-förfrågningar skickas via AI Republic-servern. Dina konversationer behandlas säkert genom vår infrastruktur."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Modellbytet rensar den aktuella konversationen. Vill du fortsätta?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Servern stötte på ett fel. Försök igen senare."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Detta kommer permanent att radera alla lagrade API-nycklar och återställa valvet. Du måste ange dina API-nycklar igen."
   },
   "Time": {
     "message": "Tid"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "För många misslyckade försök. Försök igen om"
+  },
   "Tool_Timeout_ms": {
     "message": "Verktygstidsgräns (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Verktygsinställningar"
+  },
+  "Trust": {
+    "message": "Lita på"
   },
   "Trusted": {
     "message": "Betrodd"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Det gick inte att läsa in kreditinformation"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Det gick inte att nå backend-servern – kontrollera din anslutning"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Det gick inte att nå servern. Kontrollera din anslutning och försök igen."
-  },
   "Unknown_Event": {
     "message": "Okänd händelse"
   },
   "Unknown_error": {
     "message": "Okänt fel"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Okänt fel vid kontroll av agentstatus"
-  },
-  "Unknown_error_occurred": {
-    "message": "Ett okänt fel inträffade"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Ett okänt fel inträffade under uppgiftsexekvering"
   },
   "Unknown_error_processing_submission": {
     "message": "Okänt fel vid bearbetning av inlämning"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Lås upp"
+  },
+  "Unlocking": {
+    "message": "Låser upp..."
+  },
   "Unsaved_Changes": {
     "message": "Osparade ändringar"
   },
   "Untitled": {
     "message": "Namnlös"
+  },
+  "Untrusted": {
+    "message": "Ej betrodd"
   },
   "Upcoming": {
     "message": "Kommande"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Använd egen API-nyckel"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Använd ditt ChatGPT Plus/Pro-abonnemang istället för en API-nyckel"
+  },
   "User_Center": {
     "message": "Användarcenter"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Använder extra krediter"
+  },
+  "Vault_Locked": {
+    "message": "Valvet låst"
   },
   "Verbosity": {
     "message": "Detaljnivå"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Din personliga AI-assistent"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Din session har gått ut. Logga in igen."
-  },
   "DISCONNECTED": {
     "message": "[FRÅNKOPPLAD]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (okänt kommando)"
   },
+  "more_results": {
+    "message": "fler resultat..."
+  },
   "optional": {
     "message": "valfri"
+  },
+  "or": {
+    "message": "eller"
   },
   "remaining": {
     "message": "återstående"

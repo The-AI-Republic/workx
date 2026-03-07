@@ -83,6 +83,7 @@ export class TurnManager {
   private toolRegistry: ToolRegistry;
   private config: TurnConfig;
   private cancelled = false;
+  private nativeWebSearchEnabled = false;
 
   constructor(
     session: Session,
@@ -355,23 +356,35 @@ export class TurnManager {
 
     // Add agent execution tools based on config
     // Only add web_search if not already registered in ToolRegistry
-    const hasWebSearch = tools.some(t => t.type === 'function' && t.function.name === 'web_search');
+    const hasWebSearch = tools.some(t =>
+      (t.type === 'function' && t.function.name === 'web_search') || t.type === 'web_search'
+    );
     if (!hasWebSearch && (enableAllTools || toolsConfig.webSearch)) {
-      tools.push({
-        type: 'function',
-        function: {
-          name: 'web_search',
-          description: 'Search the web for information',
-          strict: false,
-          parameters: {
-            type: 'object',
-            properties: {
-              query: { type: 'string', description: 'Search query' },
+      const modelClient = this.turnContext.getModelClient();
+      const useNative = toolsConfig.useNativeWebSearch !== false;
+      this.nativeWebSearchEnabled = useNative && modelClient.supportsNativeWebSearch();
+
+      if (this.nativeWebSearchEnabled) {
+        // Native provider web search — handled server-side
+        tools.push({ type: 'web_search' });
+      } else {
+        // CDP fallback — function tool triggers local scraping
+        tools.push({
+          type: 'function',
+          function: {
+            name: 'web_search',
+            description: 'Search the web for information',
+            strict: false,
+            parameters: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: 'Search query' },
+              },
+              required: ['query'],
             },
-            required: ['query'],
           },
-        },
-      });
+        });
+      }
     }
 
     // Add search_memory tool if memory service is available
@@ -597,19 +610,33 @@ export class TurnManager {
 
       // Handle web search response if needed
       if (item.type === 'web_search_call') {
-        const { call_id, action } = item;
+        if (this.nativeWebSearchEnabled) {
+          // Native web search — results are already in the model response
+          await this.emitEvent({
+            type: 'WebSearchEnd',
+            data: {
+              query: item.action?.query || '',
+              results_count: 0,
+            },
+          });
+          return undefined;
+        }
+
+        // CDP fallback — execute local scraping
+        const callId = item.id || item.call_id;
+        const { action } = item;
         if (action?.type === 'search') {
           try {
             const result = await this.executeWebSearch(action.query);
             return {
               type: 'function_call_output',
-              call_id,
+              call_id: callId,
               output: JSON.stringify(result),
             };
           } catch (error) {
             return {
               type: 'function_call_output',
-              call_id,
+              call_id: callId,
               output: `Error: ${error instanceof Error ? error.message : String(error)}`,
             };
           }

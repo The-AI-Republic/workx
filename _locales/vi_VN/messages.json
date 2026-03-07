@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "Khóa API để xác thực (được lưu trữ mã hoá)"
   },
-  "API_key_has_expired": {
-    "message": "Khóa API đã hết hạn"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "Khóa API không có đủ quyền"
-  },
   "API_key_saved_successfully": {
     "message": "Khóa API đã được lưu thành công!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Công cụ thực thi cho tác nhân"
   },
-  "Agent_Turn_Complete": {
-    "message": "Hoàn thành lượt Agent"
-  },
   "Agent_URL_is_required": {
     "message": "Yêu cầu URL của Agent"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Đã xóa Agent thành công"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Lượt Agent đã hoàn thành thành công"
-  },
   "Agent_updated_successfully": {
     "message": "Đã cập nhật Agent thành công"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Tất cả các khóa API đều được mã hoá khi lưu trữ bằng AES-256-GCM. Bật bảo vệ bằng PIN để tăng cường bảo mật."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Tất cả hành động đều được tự động chấp thuận trên các miền này."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Luôn phê duyệt"
   },
+  "Always_dark": {
+    "message": "Luôn tối"
+  },
+  "Always_light": {
+    "message": "Luôn sáng"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: AI cá nhân của bạn (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Phê duyệt"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Phê duyệt thay đổi cho: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Phê duyệt thực thi: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Bạn có chắc muốn hủy tác vụ này không?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Bạn có chắc muốn xóa kỹ năng \"/$1$\" không?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Bạn có chắc muốn xóa tác nhân này không?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Thông tin xác thực (được lưu trữ dưới dạng mã hoá)"
-  },
-  "Authentication_failed": {
-    "message": "Xác thực thất bại"
   },
   "Authentication_method_for_the_agent": {
     "message": "Phương thức xác thực cho tác nhân"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Backend không khả dụng. Vui lòng chờ một lúc và thử lại."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Lỗi máy chủ Backend - vui lòng thử lại sau"
-  },
   "Backoff_Multiplier": {
     "message": "Hệ số giảm tốc"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Miền bị chặn"
+  },
+  "Body_Markdown": {
+    "message": "Nội dung (Markdown)"
   },
   "Browser_Tools": {
     "message": "Công cụ trình duyệt"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Đã hủy"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Không thể thực hiện tác vụ: Không có khóa API được cấu hình cho ${providerName}. Vui lòng vào Cài đặt → Cấu hình mô hình và thêm khóa API của bạn."
-  },
   "Cannot_select_model_1": {
     "message": "Không thể chọn mô hình: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Khả năng"
   },
+  "Change_PIN": {
+    "message": "Thay đổi PIN"
+  },
+  "Changing": {
+    "message": "Đang thay đổi..."
+  },
   "Chat_History": {
     "message": "Lịch sử trò chuyện"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Đăng ký ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Phiên ChatGPT đã hết hạn. Vui lòng đăng nhập lại."
   },
   "Checking_agent_status": {
     "message": "Đang kiểm tra trạng thái đại lý..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Chọn kênh cập nhật muốn theo dõi"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Kiểu terminal cổ điển với chữ xanh trên nền đen"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Giao diện trò chuyện sạch sẽ, hiện đại giống ChatGPT"
+  "Clear_search": {
+    "message": "Xóa tìm kiếm"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Nhấn vào biểu tượng Browserx trên thanh công cụ hoặc nhấn Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Đóng"
   },
+  "Close_scheduler": {
+    "message": "Đóng bộ lập lịch"
+  },
   "Close_settings": {
     "message": "Đóng cài đặt"
   },
+  "Close_skills": {
+    "message": "Đóng kỹ năng"
+  },
   "Collapse": {
     "message": "Thu gọn"
-  },
-  "Command_Approval_Required": {
-    "message": "Yêu cầu phê duyệt lệnh"
   },
   "Command_completed": {
     "message": "Lệnh đã hoàn thành"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Đã hoàn thành"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Đã hoàn thành: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Nén dữ liệu bộ nhớ đệm để tiết kiệm không gian lưu trữ"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Các máy chủ đã cấu hình"
+  },
+  "Confirm_New_PIN": {
+    "message": "Xác nhận PIN mới"
+  },
+  "Confirm_PIN": {
+    "message": "Xác nhận PIN"
   },
   "Connect": {
     "message": "Kết nối"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Kết nối thành công"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Đã kết nối qua ChatGPT"
   },
   "Connecting": {
     "message": "Đang kết nối..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Kiểm tra kết nối thành công! (API key hợp lệ)"
   },
-  "Connection_was_refused": {
-    "message": "Kết nối bị từ chối"
-  },
-  "Connection_was_reset": {
-    "message": "Kết nối đã được đặt lại"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Nội dung vi phạm chính sách: nội dung ${contentType} không được phép"
-  },
   "Context_Window": {
     "message": "Cửa sổ ngữ cảnh"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Kiểm soát mức độ quyết liệt mà tác nhân yêu cầu phê duyệt."
   },
+  "Create": {
+    "message": "Tạo"
+  },
+  "Create_New_Skill": {
+    "message": "Tạo kỹ năng mới"
+  },
   "Create_New_Tab": {
     "message": "Tạo tab mới"
+  },
+  "Create_Skill": {
+    "message": "Tạo kỹ năng"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Tạo PIN 6 chữ số để bảo vệ các khóa API của bạn. Bạn sẽ cần PIN này sau khi khởi động lại trình duyệt."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Tạo một kỹ năng để thêm các lệnh / tùy chỉnh hoặc hành vi đại lý tự động gọi."
   },
   "Created": {
     "message": "Đã tạo"
   },
+  "Creating": {
+    "message": "Đang tạo..."
+  },
   "Creator": {
     "message": "Người tạo"
+  },
+  "Credential_Encryption": {
+    "message": "Mã hoá thông tin xác thực"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Mã hoá thông tin xác thực và bảo vệ bằng PIN"
   },
   "Credit_Details": {
     "message": "Chi tiết tín dụng"
   },
+  "Current_PIN": {
+    "message": "PIN hiện tại"
+  },
   "Current_Plan": {
     "message": "Gói hiện tại:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Tra cứu DNS thất bại"
   },
   "DOM_Tool": {
     "message": "Công cụ DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "Mặc định"
   },
+  "Delete": {
+    "message": "Xóa"
+  },
   "Deny": {
     "message": "Từ chối"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Được phát triển và hỗ trợ bởi AI Republic"
+  },
+  "Disabled": {
+    "message": "Đã tắt"
   },
   "Discard_Changes": {
     "message": "Hủy thay đổi"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Bật công cụ Model Context Protocol từ các máy chủ MCP đã kết nối"
   },
+  "Enable_PIN": {
+    "message": "Bật PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Bật bảo vệ PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Bật tự động kết nối khi browserx khởi động"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Nhập khóa API hoặc token bearer"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Nhập PIN 6 chữ số của bạn để mở khóa các khóa API."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Nhập khóa API LLM của bạn"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Nhập PIN hiện tại của bạn để gỡ bỏ bảo vệ. Các khóa API vẫn sẽ được mã hoá bằng khóa mặc định."
   },
   "Enter_your_task": {
     "message": "Nhập nhiệm vụ của bạn..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Giải thích với Browserx"
+  },
+  "Export": {
+    "message": "Xuất"
   },
   "Extension_Permission": {
     "message": "Tiện ích & Quyền"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Tạo thẻ mới thất bại. Vui lòng thử lại."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Tạo thẻ trình duyệt thất bại: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Ngắt kết nối thất bại: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Dừng tác vụ thất bại. Vui lòng thử lại."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Không thể chuyển sang tab ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Không thể kiểm tra kết nối"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Cần phê duyệt thay đổi tệp"
-  },
   "File_Operations_Not_Available": {
     "message": "Thao tác tệp (Không khả dụng)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Linh hoạt"
+  },
+  "Follows_system_theme": {
+    "message": "Theo giao diện hệ thống"
+  },
+  "Forgot_PIN": {
+    "message": "Quên PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Công cụ tự động hoá biểu mẫu"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Bắt đầu"
+  },
+  "Green_text_terminal": {
+    "message": "Terminal văn bản màu xanh lá"
   },
   "Hello_NAME": {
     "message": "Xin chào $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Đầu vào hình ảnh"
+  },
+  "Import": {
+    "message": "Nhập"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Nhập kỹ năng từ URL"
+  },
+  "Import_from_URL": {
+    "message": "Nhập từ URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Các kỹ năng đã nhập mặc định không được tin cậy và không thể tự động gọi."
+  },
+  "Importing": {
+    "message": "Đang nhập..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Cải thiện văn bản này: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Khóa API không hợp lệ"
   },
-  "Invalid_API_key_provided": {
-    "message": "Khóa API không hợp lệ"
-  },
   "Invalid_URL_format": {
     "message": "Định dạng URL không hợp lệ"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Định dạng gửi không hợp lệ: op thiếu trường type"
+  },
+  "Invocation_Mode": {
+    "message": "Chế độ gọi"
   },
   "Keyboard_Shortcuts": {
     "message": "Phím tắt"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Đang tải cài đặt..."
+  },
+  "Loading_skills": {
+    "message": "Đang tải kỹ năng..."
   },
   "Loading_tabs": {
     "message": "Đang tải các tab..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Cài đặt mô hình và nhà cung cấp được tải từ cấu hình mặc định (chỉ đọc)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Mô hình đã được đổi thành $1$. Vui lòng cấu hình khóa API của bạn.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Mô hình đã chuyển sang $1$. Cuộc trò chuyện được giữ nguyên.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Mô hình đã được đổi thành $1$. Phiên sẽ được khởi tạo lại.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Mô hình đã được đổi thành $1$. Vui lòng cấu hình khóa API của bạn.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Chat Hiện đại"
+  "Modern_Chat_Auto": {
+    "message": "Chat Hiện Đại Tự Động"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Chat Hiện Đại Chế Độ Tối"
+  },
+  "Modern_Chat_Light": {
+    "message": "Chat Hiện Đại Chế Độ Sáng"
   },
   "Monthly_Credits": {
     "message": "Tín dụng hàng tháng"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Lỗi mạng"
   },
-  "Network_error_occurred": {
-    "message": "Đã xảy ra lỗi mạng"
-  },
   "Never_expire_permanent": {
     "message": "Không bao giờ hết hạn (vĩnh viễn)"
   },
   "New_Conversation": {
     "message": "Cuộc trò chuyện mới"
+  },
+  "New_PIN": {
+    "message": "Mã PIN mới"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Chưa có agent A2A nào được cấu hình."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Không có thời gian đã lên lịch"
   },
+  "No_settings_found": {
+    "message": "Không tìm thấy cài đặt"
+  },
   "No_skills_available": {
     "message": "Không có kỹ năng nào khả dụng."
+  },
+  "No_skills_configured_yet": {
+    "message": "Chưa có kỹ năng nào được cấu hình."
   },
   "No_steps_in_plan": {
     "message": "Không có bước nào trong kế hoạch"
   },
   "No_tabs_available": {
     "message": "Không có tab nào khả dụng"
+  },
+  "No_tasks_in_plan": {
+    "message": "Không có nhiệm vụ trong kế hoạch"
   },
   "No_time_set": {
     "message": "Chưa đặt thời gian"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Bảo vệ PIN"
+  },
   "Page_Action_Tool": {
     "message": "Công cụ Hành động Trang"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Lưu bộ nhớ đệm vào kho lưu trữ"
   },
-  "Plan_1_step_s": {
-    "message": "Kế hoạch: $1$ bước",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Vui lòng kiểm tra khóa API của bạn trong cài đặt."
-  },
   "Please_enter_a_task_description": {
     "message": "Vui lòng nhập mô tả nhiệm vụ"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Vui lòng nhập khóa API hợp lệ."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Vui lòng đăng nhập lại để tiếp tục sử dụng AI agent."
-  },
   "Please_select_a_provider": {
     "message": "Vui lòng chọn nhà cung cấp"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Vui lòng nâng cấp gói để mở khóa các mô hình tiên tiến nhất thế giới"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Cổng 1455 đang được sử dụng. Vui lòng đóng bất kỳ ứng dụng nào đang dùng cổng này và thử lại."
   },
   "Power": {
     "message": "Công suất"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Sẽ làm mới sau"
   },
-  "Reject": {
-    "message": "Từ chối"
-  },
   "Release_Date": {
     "message": "Ngày phát hành"
   },
@@ -1441,11 +1510,14 @@
   "Remove_API_Key": {
     "message": "Xóa API Key"
   },
+  "Remove_PIN": {
+    "message": "Xóa PIN"
+  },
+  "Removing": {
+    "message": "Đang xóa..."
+  },
   "Request_Timeout": {
     "message": "Hết thời gian yêu cầu"
-  },
-  "Request_timed_out": {
-    "message": "Yêu cầu đã hết thời gian"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "Thời gian chờ yêu cầu tính bằng mili giây (5000-120000)"
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Thời gian chờ yêu cầu tính bằng mili giây (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Yêu cầu đã bị hủy"
+  "Reset_Vault": {
+    "message": "Đặt lại Kho"
   },
-  "Response_failed": {
-    "message": "Phản hồi thất bại"
+  "Resetting": {
+    "message": "Đang đặt lại..."
   },
   "Restricted": {
     "message": "Bị hạn chế"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Đang chạy"
+  },
+  "SKILL_md_URL": {
+    "message": "URL SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "LỖI STREAM"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Nhiệm vụ đã lên lịch"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Nhiệm vụ đã lên lịch đang bắt đầu"
-  },
   "Scheduled_Tasks": {
     "message": "Các nhiệm vụ đã lên lịch"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Tìm kiếm hoàn tất"
   },
+  "Search_settings": {
+    "message": "Tìm kiếm cài đặt..."
+  },
   "Searching": {
     "message": "Đang tìm kiếm..."
+  },
+  "Security": {
+    "message": "Bảo mật"
   },
   "Security_Privacy": {
     "message": "Bảo mật & Riêng tư"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Lỗi phiên"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Phiên đã hết hạn - vui lòng đăng nhập lại để tiếp tục sử dụng AI agent"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Đã đạt giới hạn phiên. Các tác vụ mới sẽ được xếp hàng."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Đặt thời gian hết hạn cho dữ liệu rollout"
+  },
+  "Setting_up": {
+    "message": "Đang thiết lập..."
   },
   "Settings": {
     "message": "Cài đặt"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Hiển thị cảnh báo khi mức sử dụng lưu trữ vượt quá phần trăm này (mặc định: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Đăng nhập thất bại"
+  },
   "Sign_in_to_your_account": {
     "message": "Đăng nhập vào tài khoản của bạn"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Đăng nhập bằng ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Đang đăng nhập..."
   },
   "Skills": {
     "message": "Kỹ năng"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Chi tiết công việc"
   },
-  "Task_Failed": {
-    "message": "Công việc thất bại"
-  },
   "Task_History": {
     "message": "Lịch sử công việc"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Công việc thất bại"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Nhiệm vụ đã được lên lịch cho $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Công việc đã bắt đầu"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Tác nhân hiện đang sử dụng chế độ backend. Các yêu cầu LLM sẽ được định tuyến qua máy chủ AI Republic. Cuộc hội thoại của bạn được xử lý an toàn thông qua cơ sở hạ tầng của chúng tôi."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Việc chuyển đổi mô hình sẽ xóa cuộc trò chuyện hiện tại. Bạn có muốn tiếp tục không?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Máy chủ gặp lỗi. Vui lòng thử lại sau."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Điều này sẽ xóa vĩnh viễn tất cả các khóa API đã lưu và đặt lại kho. Bạn sẽ cần nhập lại các khóa API của mình."
   },
   "Time": {
     "message": "Thời gian"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Quá nhiều lần thử thất bại. Thử lại trong"
+  },
   "Tool_Timeout_ms": {
     "message": "Thời gian chờ công cụ (ms)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Cài đặt công cụ"
+  },
+  "Trust": {
+    "message": "Tin cậy"
   },
   "Trusted": {
     "message": "Đáng tin cậy"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Không thể tải thông tin tín dụng"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Không thể kết nối tới máy chủ backend - vui lòng kiểm tra kết nối của bạn"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối và thử lại."
-  },
   "Unknown_Event": {
     "message": "Sự kiện không xác định"
   },
   "Unknown_error": {
     "message": "Lỗi không xác định"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Lỗi không xác định khi kiểm tra trạng thái tác nhân"
-  },
-  "Unknown_error_occurred": {
-    "message": "Đã xảy ra lỗi không xác định"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Đã xảy ra lỗi không xác định trong quá trình thực thi nhiệm vụ"
   },
   "Unknown_error_processing_submission": {
     "message": "Lỗi không xác định khi xử lý gửi"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Mở khóa"
+  },
+  "Unlocking": {
+    "message": "Đang mở khóa..."
+  },
   "Unsaved_Changes": {
     "message": "Thay đổi chưa lưu"
   },
   "Untitled": {
     "message": "Không tiêu đề"
+  },
+  "Untrusted": {
+    "message": "Không tin cậy"
   },
   "Upcoming": {
     "message": "Sắp tới"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Sử dụng khóa API của riêng bạn"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Sử dụng gói đăng ký ChatGPT Plus/Pro của bạn thay vì khóa API"
+  },
   "User_Center": {
     "message": "Trung tâm người dùng"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Sử dụng tín dụng bổ sung"
+  },
+  "Vault_Locked": {
+    "message": "Kho đã bị khóa"
   },
   "Verbosity": {
     "message": "Độ chi tiết"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Trợ lý AI cá nhân của bạn"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại."
-  },
   "DISCONNECTED": {
     "message": "[NGẮT KẾT NỐI]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (lệnh không xác định)"
   },
+  "more_results": {
+    "message": "thêm kết quả..."
+  },
   "optional": {
     "message": "tùy chọn"
+  },
+  "or": {
+    "message": "hoặc"
   },
   "remaining": {
     "message": "còn lại"

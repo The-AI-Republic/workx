@@ -177,6 +177,18 @@ describe('TerminalRiskAssessor', () => {
     expect(assessor.assess('terminal', { command: 'reboot' }).score).toBe(95);
   });
 
+  it('should score rm -f on specific files as 65 (dangerous), not 95 (critical)', () => {
+    expect(assessor.assess('terminal', { command: 'rm -f /home/user/file.txt' }).score).toBe(65);
+    expect(assessor.assess('terminal', { command: 'rm -f ~/Downloads/file.zip' }).score).toBe(65);
+  });
+
+  it('should still score rm -rf on root/home as 95 (critical)', () => {
+    expect(assessor.assess('terminal', { command: 'rm -rf /' }).score).toBe(95);
+    expect(assessor.assess('terminal', { command: 'rm -rf ~' }).score).toBe(95);
+    expect(assessor.assess('terminal', { command: 'rm -fr /' }).score).toBe(95);
+    expect(assessor.assess('terminal', { command: 'rm -r -f /' }).score).toBe(95);
+  });
+
   it('should deny critical commands', () => {
     const result = assessor.assess('terminal', { command: 'rm -rf /' });
     expect(result.action).toBe('deny');

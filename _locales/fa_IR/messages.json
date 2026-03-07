@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "کلید API برای احراز هویت (به‌صورت رمزگذاری‌شده ذخیره می‌شود)"
   },
-  "API_key_has_expired": {
-    "message": "کلید API منقضی شده است"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "کلید API دسترسی‌های کافی ندارد"
-  },
   "API_key_saved_successfully": {
     "message": "کلید API با موفقیت ذخیره شد!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "ابزارهای اجرای عامل"
   },
-  "Agent_Turn_Complete": {
-    "message": "نوبت عامل تکمیل شد"
-  },
   "Agent_URL_is_required": {
     "message": "آدرس URL عامل الزامی است"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "عامل با موفقیت حذف شد"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "نوبت عامل با موفقیت تکمیل شد"
-  },
   "Agent_updated_successfully": {
     "message": "عامل با موفقیت به‌روزرسانی شد"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "تمام کلیدهای API در حالت استراحت با استفاده از AES-256-GCM رمزگذاری می‌شوند. برای امنیت بیشتر، حفاظت با PIN را فعال کنید."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "تمام اقدامات در این دامنه‌ها به‌صورت خودکار تأیید می‌شوند."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "همیشه تأیید کن"
   },
+  "Always_dark": {
+    "message": "همیشه تاریک"
+  },
+  "Always_light": {
+    "message": "همیشه روشن"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: هوش مصنوعی شخصی شما (آلفا)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "تأیید"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "تأیید تغییرات برای: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "تأیید اجرا: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "آیا مطمئن هستید که می‌خواهید این کار را لغو کنید؟"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "آیا مطمئن هستید که می‌خواهید مهارت \"/$1$\" را حذف کنید؟",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "آیا مطمئن هستید که می‌خواهید این عامل را حذف کنید؟"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "اعتبار احراز هویت (به‌صورت رمزگذاری‌شده ذخیره می‌شود)"
-  },
-  "Authentication_failed": {
-    "message": "احراز هویت ناموفق بود"
   },
   "Authentication_method_for_the_agent": {
     "message": "روش احراز هویت برای عامل"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "پشت‌صحنه در دسترس نیست. لطفاً لحظه‌ای صبر کنید و دوباره تلاش کنید."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "خطای سرور پشت‌صحنه - لطفاً بعداً دوباره تلاش کنید"
-  },
   "Backoff_Multiplier": {
     "message": "ضریب بازگشت"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "دامنه‌های مسدود شده"
+  },
+  "Body_Markdown": {
+    "message": "متن (Markdown)"
   },
   "Browser_Tools": {
     "message": "ابزارهای مرورگر"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "لغو شد"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "نمی‌توان کار را اجرا کرد: کلید API برای ${providerName} پیکربندی نشده است. لطفاً به تنظیمات → پیکربندی مدل بروید و کلید API خود را اضافه کنید."
-  },
   "Cannot_select_model_1": {
     "message": "نمی‌توان مدل را انتخاب کرد: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "قابلیت‌ها"
   },
+  "Change_PIN": {
+    "message": "تغییر PIN"
+  },
+  "Changing": {
+    "message": "در حال تغییر..."
+  },
   "Chat_History": {
     "message": "تاریخچه گفتگو"
+  },
+  "ChatGPT_Subscription": {
+    "message": "اشتراک ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "جلسه ChatGPT منقضی شد. لطفاً دوباره وارد شوید."
   },
   "Checking_agent_status": {
     "message": "در حال بررسی وضعیت عامل..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "انتخاب کانال به‌روزرسانی برای دنبال کردن"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "سبک کلاسیک ترمینال با متن سبز روی پس‌زمینه سیاه"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "رابط چت تمیز و مدرن مشابه ChatGPT"
+  "Clear_search": {
+    "message": "پاک کردن جستجو"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "آیکون $1$ را در نوار ابزار کلیک کنید یا Alt+Shift+C را فشار دهید",
@@ -400,14 +402,17 @@
   "Close": {
     "message": "بستن"
   },
+  "Close_scheduler": {
+    "message": "بستن زمان‌بند"
+  },
   "Close_settings": {
     "message": "بستن تنظیمات"
   },
+  "Close_skills": {
+    "message": "بستن مهارت‌ها"
+  },
   "Collapse": {
     "message": "جمع کردن"
-  },
-  "Command_Approval_Required": {
-    "message": "نیاز به تأیید فرمان"
   },
   "Command_completed": {
     "message": "فرمان تکمیل شد"
@@ -420,9 +425,6 @@
   },
   "Completed": {
     "message": "تکمیل شد"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "تکمیل شد: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "فشرده‌سازی داده‌های کش برای صرفه‌جویی در فضای ذخیره‌سازی"
@@ -441,6 +443,12 @@
   },
   "Configured_Servers": {
     "message": "سرورهای پیکربندی شده"
+  },
+  "Confirm_New_PIN": {
+    "message": "تایید PIN جدید"
+  },
+  "Confirm_PIN": {
+    "message": "تایید PIN"
   },
   "Connect": {
     "message": "اتصال"
@@ -465,6 +473,9 @@
   },
   "Connected_successfully": {
     "message": "اتصال با موفقیت انجام شد"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "متصل شده از طریق ChatGPT"
   },
   "Connecting": {
     "message": "در حال اتصال..."
@@ -506,15 +517,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "آزمون اتصال موفق! (کلید API معتبر است)"
   },
-  "Connection_was_refused": {
-    "message": "اتصال رد شد"
-  },
-  "Connection_was_reset": {
-    "message": "اتصال بازنشانی شد"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "محتوا قوانین را نقض می‌کند: محتوای ${contentType} مجاز نیست"
-  },
   "Context_Window": {
     "message": "پنجره زمینه"
   },
@@ -529,23 +531,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "نحوهٔ درخواست تأیید توسط عامل و میزان پرخاشگری آن را کنترل می‌کند."
   },
+  "Create": {
+    "message": "ایجاد"
+  },
+  "Create_New_Skill": {
+    "message": "ایجاد مهارت جدید"
+  },
   "Create_New_Tab": {
     "message": "ایجاد برگه جدید"
+  },
+  "Create_Skill": {
+    "message": "ایجاد مهارت"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "یک PIN شش رقمی برای حفاظت از کلیدهای API خود ایجاد کنید. پس از راه‌اندازی مجدد مرورگر به این PIN نیاز خواهید داشت."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "یک مهارت ایجاد کنید تا دستورات سفارشی / یا رفتارهای خودکار قابل فراخوانی برای عامل اضافه کنید."
   },
   "Created": {
     "message": "ایجاد شد"
   },
+  "Creating": {
+    "message": "در حال ایجاد..."
+  },
   "Creator": {
     "message": "ایجادکننده"
+  },
+  "Credential_Encryption": {
+    "message": "رمزنگاری اعتبارنامه"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "رمزنگاری اعتبارنامه و حفاظت با PIN"
   },
   "Credit_Details": {
     "message": "جزئیات اعتبار"
   },
+  "Current_PIN": {
+    "message": "PIN فعلی"
+  },
   "Current_Plan": {
     "message": "پلن فعلی:"
-  },
-  "DNS_lookup_failed": {
-    "message": "جستجوی DNS ناموفق بود"
   },
   "DOM_Tool": {
     "message": "ابزار DOM"
@@ -571,6 +597,9 @@
   "Default": {
     "message": "پیش‌فرض"
   },
+  "Delete": {
+    "message": "حذف"
+  },
   "Deny": {
     "message": "رد"
   },
@@ -588,6 +617,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "توسعه و پشتیبانی شده توسط AI Republic"
+  },
+  "Disabled": {
+    "message": "غیرفعال"
   },
   "Discard_Changes": {
     "message": "حذف تغییرات"
@@ -643,6 +675,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "فعال‌سازی ابزارهای پروتکل زمینه مدل از سرورهای MCP متصل"
   },
+  "Enable_PIN": {
+    "message": "فعال‌سازی PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "فعال‌سازی حفاظت PIN"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "فعال‌سازی اتصال خودکار هنگام شروع browserx"
   },
@@ -664,8 +702,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "کلید API یا توکن Bearer را وارد کنید"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "کد PIN شش رقمی خود را وارد کنید تا کلیدهای API شما باز شود."
+  },
   "Enter_your_LLM_API_key": {
     "message": "کلید API LLM خود را وارد کنید"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "برای حذف حفاظت، PIN فعلی خود را وارد کنید. کلیدهای API همچنان با کلید پیش‌فرض رمزنگاری می‌شوند."
   },
   "Enter_your_task": {
     "message": "کار خود را وارد کنید..."
@@ -696,6 +740,9 @@
   },
   "Explain_with_Browserx": {
     "message": "توضیح با Browserx"
+  },
+  "Export": {
+    "message": "صادرات"
   },
   "Extension_Permission": {
     "message": "افزونه و دسترسی"
@@ -748,12 +795,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "ایجاد تب جدید ناموفق بود. لطفاً دوباره تلاش کنید."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "ایجاد تب مرورگر ناموفق بود: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "قطع اتصال ناموفق شد: $1$",
@@ -825,9 +866,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "توقف کار ناموفق بود. لطفاً دوباره تلاش کنید."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "تغییر به برگه ${newTabId} ناموفق بود: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "تست اتصال ناموفق بود"
   },
@@ -842,9 +880,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "نیاز به تأیید تغییر فایل"
-  },
   "File_Operations_Not_Available": {
     "message": "عملیات فایل (در دسترس نیست)"
   },
@@ -853,6 +888,12 @@
   },
   "Flex": {
     "message": "قابلیت انعطاف"
+  },
+  "Follows_system_theme": {
+    "message": "مطابق تم سیستم"
+  },
+  "Forgot_PIN": {
+    "message": "PIN را فراموش کرده‌اید؟"
   },
   "Form_Automation_Tool": {
     "message": "ابزار خودکارسازی فرم"
@@ -874,6 +915,9 @@
   },
   "Get_Started": {
     "message": "شروع کنید"
+  },
+  "Green_text_terminal": {
+    "message": "ترمینال متن سبز"
   },
   "Hello_NAME": {
     "message": "سلام $NAME$",
@@ -897,6 +941,21 @@
   },
   "Image_Input": {
     "message": "ورودی تصویر"
+  },
+  "Import": {
+    "message": "وارد کردن"
+  },
+  "Import_Skill_from_URL": {
+    "message": "وارد کردن مهارت از URL"
+  },
+  "Import_from_URL": {
+    "message": "وارد کردن از URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "مهارت‌های وارد شده به‌طور پیش‌فرض غیرقابل اعتماد هستند و نمی‌توانند به‌صورت خودکار فراخوانی شوند."
+  },
+  "Importing": {
+    "message": "در حال وارد کردن..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "بهبود این متن: ${info.selectionText}"
@@ -933,9 +992,6 @@
   "Invalid_API_key": {
     "message": "کلید API نامعتبر"
   },
-  "Invalid_API_key_provided": {
-    "message": "کلید API نامعتبر"
-  },
   "Invalid_URL_format": {
     "message": "قالب URL نامعتبر"
   },
@@ -944,6 +1000,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "قالب ارسال نامعتبر: فیلد type در op موجود نیست"
+  },
+  "Invocation_Mode": {
+    "message": "حالت فراخوانی"
   },
   "Keyboard_Shortcuts": {
     "message": "کلیدهای میانبر"
@@ -986,6 +1045,9 @@
   },
   "Loading_settings": {
     "message": "در حال بارگذاری تنظیمات..."
+  },
+  "Loading_skills": {
+    "message": "در حال بارگذاری مهارت‌ها..."
   },
   "Loading_tabs": {
     "message": "در حال بارگذاری زبانه‌ها..."
@@ -1109,16 +1171,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "تنظیمات مدل و ارائه‌دهنده از پیکربندی پیش‌فرض بارگذاری شد (فقط خواندنی)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "مدل به $1$ تغییر یافت. لطفاً کلید API خود را پیکربندی کنید.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "مدل به $1$ تغییر کرد. گفتگو حفظ شد.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "مدل به $1$ تغییر یافت. جلسه دوباره مقداردهی اولیه خواهد شد.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "مدل به $1$ تغییر یافت. لطفاً کلید API خود را پیکربندی کنید.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1136,8 +1198,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "چت پیشرفته"
+  "Modern_Chat_Auto": {
+    "message": "چت مدرن خودکار"
+  },
+  "Modern_Chat_Dark": {
+    "message": "چت مدرن تاریک"
+  },
+  "Modern_Chat_Light": {
+    "message": "چت مدرن روشن"
   },
   "Monthly_Credits": {
     "message": "اعتبار ماهانه"
@@ -1163,14 +1231,14 @@
   "Network_error": {
     "message": "خطای شبکه"
   },
-  "Network_error_occurred": {
-    "message": "خطای شبکه رخ داد"
-  },
   "Never_expire_permanent": {
     "message": "بدون تاریخ انقضا (همیشگی)"
   },
   "New_Conversation": {
     "message": "گفتگوی جدید"
+  },
+  "New_PIN": {
+    "message": "پین جدید"
   },
   "No_A2A_agents_configured_yet": {
     "message": "هیچ عامل A2A هنوز پیکربندی نشده است."
@@ -1208,14 +1276,23 @@
   "No_scheduled_time": {
     "message": "زمان زمان‌بندی نشده"
   },
+  "No_settings_found": {
+    "message": "هیچ تنظیمی یافت نشد"
+  },
   "No_skills_available": {
     "message": "هیچ مهارتی موجود نیست."
+  },
+  "No_skills_configured_yet": {
+    "message": "هنوز هیچ مهارتی پیکربندی نشده است."
   },
   "No_steps_in_plan": {
     "message": "هیچ مرحله‌ای در برنامه وجود ندارد"
   },
   "No_tabs_available": {
     "message": "هیچ زبانه‌ای موجود نیست"
+  },
+  "No_tasks_in_plan": {
+    "message": "هیچ کاری در برنامه وجود ندارد"
   },
   "No_time_set": {
     "message": "زمانی تنظیم نشده"
@@ -1278,6 +1355,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "پین"
+  },
+  "PIN_Protection": {
+    "message": "محافظت با پین"
+  },
   "Page_Action_Tool": {
     "message": "ابزار عملیات صفحه"
   },
@@ -1310,17 +1393,6 @@
   "Persist_Cache_to_Storage": {
     "message": "ذخیره‌سازی دائمی کش"
   },
-  "Plan_1_step_s": {
-    "message": "طرح: $1$ گام",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "لطفاً کلید API خود را در تنظیمات بررسی کنید."
-  },
   "Please_enter_a_task_description": {
     "message": "لطفاً توضیح وظیفه را وارد کنید"
   },
@@ -1330,9 +1402,6 @@
   "Please_input_a_valid_API_key": {
     "message": "لطفاً یک کلید API معتبر وارد کنید."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "لطفاً برای ادامه استفاده از عامل هوش مصنوعی دوباره وارد شوید."
-  },
   "Please_select_a_provider": {
     "message": "لطفاً یک ارائه‌دهنده را انتخاب کنید"
   },
@@ -1341,6 +1410,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "لطفاً طرح را ارتقا دهید تا مدل‌های پیشرفته‌ترین جهان را باز کنید"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "پورت 1455 در حال استفاده است. لطفاً هر برنامه‌ای که از این پورت استفاده می‌کند ببندید و دوباره تلاش کنید."
   },
   "Power": {
     "message": "توان"
@@ -1425,9 +1497,6 @@
   "Refreshes_in": {
     "message": "به‌روزرسانی طی"
   },
-  "Reject": {
-    "message": "رد کردن"
-  },
   "Release_Date": {
     "message": "تاریخ انتشار"
   },
@@ -1446,11 +1515,14 @@
   "Remove_API_Key": {
     "message": "حذف کلید API"
   },
+  "Remove_PIN": {
+    "message": "حذف پین"
+  },
+  "Removing": {
+    "message": "در حال حذف..."
+  },
   "Request_Timeout": {
     "message": "انقضای درخواست"
-  },
-  "Request_timed_out": {
-    "message": "درخواست منقضی شد"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
     "message": "زمان‌انقضای درخواست بر حسب میلی‌ثانیه (5000-120000)"
@@ -1458,11 +1530,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "زمان‌انقضای درخواست بر حسب میلی‌ثانیه (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "درخواست متوقف شد"
+  "Reset_Vault": {
+    "message": "بازنشانی مخزن"
   },
-  "Response_failed": {
-    "message": "پاسخ ناموفق بود"
+  "Resetting": {
+    "message": "در حال بازنشانی..."
   },
   "Restricted": {
     "message": "محدود شده"
@@ -1493,6 +1565,9 @@
   },
   "Running": {
     "message": "در حال اجرا"
+  },
+  "SKILL_md_URL": {
+    "message": "آدرس SKILL.md"
   },
   "STREAM_ERROR": {
     "message": "خطای استریم"
@@ -1527,9 +1602,6 @@
   "Scheduled_Task": {
     "message": "کار زمان‌بندی شده"
   },
-  "Scheduled_Task_Starting": {
-    "message": "شروع کار زمان‌بندی شده"
-  },
   "Scheduled_Tasks": {
     "message": "کارهای زمان‌بندی شده"
   },
@@ -1539,8 +1611,14 @@
   "Search_complete": {
     "message": "جستجو کامل شد"
   },
+  "Search_settings": {
+    "message": "جستجوی تنظیمات..."
+  },
   "Searching": {
     "message": "در حال جستجو..."
+  },
+  "Security": {
+    "message": "امنیت"
   },
   "Security_Privacy": {
     "message": "امنیت و حریم خصوصی"
@@ -1588,14 +1666,14 @@
   "Session_error": {
     "message": "خطای نشست"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "نشست منقضی شد - لطفاً برای ادامه استفاده از عامل هوش مصنوعی دوباره وارد شوید"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "حد نشست رسید. وظایف جدید در صف قرار می‌گیرند."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "زمان انقضای داده‌های انتشار را تنظیم کنید"
+  },
+  "Setting_up": {
+    "message": "در حال تنظیم..."
   },
   "Settings": {
     "message": "تنظیمات"
@@ -1618,8 +1696,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "نمایش هشدار وقتی استفاده از فضای ذخیره‌سازی از این درصد بیشتر شود (پیش‌فرض: 90٪)"
   },
+  "Sign_in_failed": {
+    "message": "ورود ناموفق"
+  },
   "Sign_in_to_your_account": {
     "message": "وارد حساب کاربری خود شوید"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "ورود با ChatGPT"
+  },
+  "Signing_in": {
+    "message": "در حال ورود..."
   },
   "Skills": {
     "message": "مهارت‌ها"
@@ -1693,9 +1780,6 @@
   "Task_Details": {
     "message": "جزئیات وظیفه"
   },
-  "Task_Failed": {
-    "message": "کار ناموفق"
-  },
   "Task_History": {
     "message": "سابقه کار"
   },
@@ -1721,6 +1805,14 @@
   },
   "Task_failed": {
     "message": "کار ناموفق"
+  },
+  "Task_scheduled_for_1": {
+    "message": "کار برای $1$ زمان‌بندی شد",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "کار آغاز شد"
@@ -1749,11 +1841,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "عامل در حال حاضر از حالت بک‌اند (Backend) استفاده می‌کند. درخواست‌های LLM از طریق سرور AI Republic مسیردهی می‌شوند. گفتگوهای شما به‌صورت ایمن از طریق زیرساخت ما پردازش می‌شوند."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "تغییر مدل، گفتگوی فعلی را پاک خواهد کرد. آیا می‌خواهید ادامه دهید؟"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "سرور با خطایی مواجه شد. لطفاً بعداً دوباره تلاش کنید."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "این کار تمام کلیدهای API ذخیره‌شده را به‌صورت دائمی حذف کرده و مخزن را بازنشانی می‌کند. شما باید کلیدهای API خود را دوباره وارد کنید."
   },
   "Time": {
     "message": "زمان"
@@ -1790,6 +1879,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "تعداد تلاش‌های ناموفق بیش از حد است. دوباره سعی کنید در"
+  },
   "Tool_Timeout_ms": {
     "message": "مهلت ابزار (میلی‌ثانیه)"
   },
@@ -1804,6 +1896,9 @@
   },
   "Tools_Settings": {
     "message": "تنظیمات ابزارها"
+  },
+  "Trust": {
+    "message": "اعتماد"
   },
   "Trusted": {
     "message": "مورد اعتماد"
@@ -1835,26 +1930,11 @@
   "Unable_to_load_credit_information": {
     "message": "بارگذاری اطلاعات اعتبار ناموفق بود"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "قادر به دسترسی به سرور پشتیبان نیست - لطفاً اتصال خود را بررسی کنید"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "قادر به دسترسی به سرور نیست. لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید."
-  },
   "Unknown_Event": {
     "message": "رویداد ناشناخته"
   },
   "Unknown_error": {
     "message": "خطای ناشناخته"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "خطای ناشناخته هنگام بررسی وضعیت عامل"
-  },
-  "Unknown_error_occurred": {
-    "message": "خطای ناشناخته‌ای رخ داد"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "خطای ناشناخته‌ای در حین اجرای کار رخ داد"
   },
   "Unknown_error_processing_submission": {
     "message": "خطای ناشناخته هنگام پردازش ارسال"
@@ -1867,11 +1947,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "قفل‌گشایی"
+  },
+  "Unlocking": {
+    "message": "در حال قفل‌گشایی..."
+  },
   "Unsaved_Changes": {
     "message": "تغییرات ذخیره‌نشده"
   },
   "Untitled": {
     "message": "بدون عنوان"
+  },
+  "Untrusted": {
+    "message": "غیرقابل اعتماد"
   },
   "Upcoming": {
     "message": "در حال آمدن"
@@ -1900,6 +1989,9 @@
   "Use_Own_API_Key": {
     "message": "استفاده از کلید API شخصی"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "به‌جای کلید API از اشتراک ChatGPT Plus/Pro خود استفاده کنید"
+  },
   "User_Center": {
     "message": "مرکز کاربر"
   },
@@ -1911,6 +2003,9 @@
   },
   "Using_extra_credits": {
     "message": "استفاده از اعتبار اضافی"
+  },
+  "Vault_Locked": {
+    "message": "مخزن قفل شده"
   },
   "Verbosity": {
     "message": "سطح جزئیات"
@@ -1984,9 +2079,6 @@
   "Your_personal_AI_assistant": {
     "message": "دستیار هوش مصنوعی شخصی شما"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "جلسه شما منقضی شده است. لطفاً دوباره وارد شوید."
-  },
   "DISCONNECTED": {
     "message": "[قطع اتصال]"
   },
@@ -2020,8 +2112,14 @@
   "exec_unknown_command": {
     "message": "exec (دستور ناشناخته)"
   },
+  "more_results": {
+    "message": "نتایج بیشتر..."
+  },
   "optional": {
     "message": "اختیاری"
+  },
+  "or": {
+    "message": "یا"
   },
   "remaining": {
     "message": "مانده"

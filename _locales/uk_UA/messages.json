@@ -68,12 +68,6 @@
   "API_key_for_authentication_stored_encryp_0d20": {
     "message": "API-ключ для автентифікації (збережено зашифрованим)"
   },
-  "API_key_has_expired": {
-    "message": "Термін дії API-ключа закінчився"
-  },
-  "API_key_has_insufficient_permissions": {
-    "message": "API-ключ має недостатні дозволи"
-  },
   "API_key_saved_successfully": {
     "message": "API-ключ успішно збережено!"
   },
@@ -122,9 +116,6 @@
   "Agent_Execution_Tools": {
     "message": "Інструменти виконання агента"
   },
-  "Agent_Turn_Complete": {
-    "message": "Хід агента завершено"
-  },
   "Agent_URL_is_required": {
     "message": "URL агента є обов'язковим"
   },
@@ -143,11 +134,11 @@
   "Agent_removed_successfully": {
     "message": "Агента успішно видалено"
   },
-  "Agent_turn_completed_successfully": {
-    "message": "Хід агента успішно завершено"
-  },
   "Agent_updated_successfully": {
     "message": "Агента успішно оновлено"
+  },
+  "All_API_keys_are_encrypted_at_rest_using_ca92": {
+    "message": "Усі API‑ключі зашифровані в спокої за допомогою AES-256-GCM. Увімкніть захист PIN для додаткової безпеки."
   },
   "All_actions_are_auto_approved_on_these_d_ffda": {
     "message": "Усі дії автоматично схвалюються для цих доменів."
@@ -179,6 +170,12 @@
   "Always_Approve": {
     "message": "Завжди схвалювати"
   },
+  "Always_dark": {
+    "message": "Завжди темний"
+  },
+  "Always_light": {
+    "message": "Завжди світлий"
+  },
   "Apple_Pi_Your_personal_AI_Alpha": {
     "message": "Apple Pi: Ваш особистий ШІ (Alpha)"
   },
@@ -200,14 +197,16 @@
   "Approve": {
     "message": "Затвердити"
   },
-  "Approve_changes_to_eventMsg_data_path": {
-    "message": "Схвалити зміни до: ${eventMsg.data.path}"
-  },
-  "Approve_execution_eventMsg_data_command": {
-    "message": "Схвалити виконання: ${eventMsg.data.command}"
-  },
   "Are_you_sure_you_want_to_cancel_this_tas_8573": {
     "message": "Ви впевнені, що хочете скасувати це завдання?"
+  },
+  "Are_you_sure_you_want_to_delete_the_skil_3268": {
+    "message": "Ви впевнені, що хочете видалити навичку \"/$1$\"?",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Are_you_sure_you_want_to_remove_this_age_b9ba": {
     "message": "Ви впевнені, що хочете видалити цього агента?"
@@ -234,9 +233,6 @@
   },
   "Authentication_credential_stored_encrypt_c46a": {
     "message": "Облікові дані автентифікації (зашифровані та збережені)"
-  },
-  "Authentication_failed": {
-    "message": "Помилка автентифікації"
   },
   "Authentication_method_for_the_agent": {
     "message": "Метод автентифікації для агента"
@@ -280,9 +276,6 @@
   "Backend_not_available_Please_wait_a_mome_9218": {
     "message": "Бекенд недоступний. Будь ласка, зачекайте хвилину і спробуйте знову."
   },
-  "Backend_server_error_please_try_again_la_0515": {
-    "message": "Помилка сервера бекенду — спробуйте пізніше"
-  },
   "Backoff_Multiplier": {
     "message": "Множник затримки"
   },
@@ -306,6 +299,9 @@
   },
   "Blocked_Domains": {
     "message": "Заблоковані домени"
+  },
+  "Body_Markdown": {
+    "message": "Тіло (Markdown)"
   },
   "Browser_Tools": {
     "message": "Інструменти браузера"
@@ -340,9 +336,6 @@
   "Cancelled": {
     "message": "Скасовано"
   },
-  "Cannot_execute_task_No_API_key_configure_c622": {
-    "message": "Не вдається виконати завдання: для ${providerName} не налаштовано API‑ключ. Будь ласка, перейдіть у Налаштування → Конфігурація моделей і додайте ваш API‑ключ."
-  },
   "Cannot_select_model_1": {
     "message": "Не вдається вибрати модель: $1$",
     "placeholders": {
@@ -362,8 +355,20 @@
   "Capabilities": {
     "message": "Можливості"
   },
+  "Change_PIN": {
+    "message": "Змінити PIN"
+  },
+  "Changing": {
+    "message": "Змінюється..."
+  },
   "Chat_History": {
     "message": "Історія чату"
+  },
+  "ChatGPT_Subscription": {
+    "message": "Підписка ChatGPT"
+  },
+  "ChatGPT_session_expired_Please_sign_in_a_f393": {
+    "message": "Сесія ChatGPT закінчилася. Будь ласка, увійдіть знову."
   },
   "Checking_agent_status": {
     "message": "Перевірка стану агента..."
@@ -377,11 +382,8 @@
   "Choose_which_update_channel_to_follow": {
     "message": "Виберіть канал оновлень"
   },
-  "Classic_terminal_style_with_green_text_o_02cc": {
-    "message": "Класичний стиль терміналу з зеленим текстом на чорному фоні"
-  },
-  "Clean_modern_chat_interface_similar_to_C_2401": {
-    "message": "Чистий, сучасний інтерфейс чату, схожий на ChatGPT"
+  "Clear_search": {
+    "message": "Очистити пошук"
   },
   "Click_the_Browserx_icon_in_your_toolbar__d881": {
     "message": "Клацніть іконку Browserx у панелі інструментів або натисніть Alt+Shift+C"
@@ -395,14 +397,17 @@
   "Close": {
     "message": "Закрити"
   },
+  "Close_scheduler": {
+    "message": "Закрити планувальник"
+  },
   "Close_settings": {
     "message": "Закрити налаштування"
   },
+  "Close_skills": {
+    "message": "Закрити навички"
+  },
   "Collapse": {
     "message": "Згорнути"
-  },
-  "Command_Approval_Required": {
-    "message": "Потрібне схвалення команди"
   },
   "Command_completed": {
     "message": "Команду виконано"
@@ -415,9 +420,6 @@
   },
   "Completed": {
     "message": "Завершено"
-  },
-  "Completed_lastAssistantMessage_substring_40c8": {
-    "message": "Завершено: ${lastAssistantMessage.substring(0, 100)}${lastAssistantMessage.length > 100 ? '...' : ''}"
   },
   "Compress_cached_data_to_save_storage_spa_6d03": {
     "message": "Стиснути кешовані дані для економії місця"
@@ -436,6 +438,12 @@
   },
   "Configured_Servers": {
     "message": "Налаштовані сервери"
+  },
+  "Confirm_New_PIN": {
+    "message": "Підтвердьте новий PIN"
+  },
+  "Confirm_PIN": {
+    "message": "Підтвердьте PIN"
   },
   "Connect": {
     "message": "Підключитися"
@@ -460,6 +468,9 @@
   },
   "Connected_successfully": {
     "message": "Успішно підключено"
+  },
+  "Connected_via_ChatGPT": {
+    "message": "Підключено через ChatGPT"
   },
   "Connecting": {
     "message": "Підключення..."
@@ -501,15 +512,6 @@
   "Connection_test_successful_API_key_is_va_3e34": {
     "message": "Тест підключення успішний! (API‑ключ дійсний)"
   },
-  "Connection_was_refused": {
-    "message": "З’єднання відхилено"
-  },
-  "Connection_was_reset": {
-    "message": "З’єднання скинуто"
-  },
-  "Content_violates_policy_contentType_cont_2034": {
-    "message": "Вміст порушує політику: вміст типу ${contentType} не дозволений"
-  },
   "Context_Window": {
     "message": "Вікно контексту"
   },
@@ -524,23 +526,47 @@
   "Controls_how_aggressively_the_agent_asks_d3ba": {
     "message": "Керує тим, наскільки настирливо агент запитує схвалення."
   },
+  "Create": {
+    "message": "Створити"
+  },
+  "Create_New_Skill": {
+    "message": "Створити нову навичку"
+  },
   "Create_New_Tab": {
     "message": "Створити нову вкладку"
+  },
+  "Create_Skill": {
+    "message": "Створити навичку"
+  },
+  "Create_a_6_digit_PIN_to_protect_your_API_2b1a": {
+    "message": "Створіть 6‑цифровий PIN для захисту ваших API‑ключів. Цей PIN знадобиться після перезапуску браузера."
+  },
+  "Create_a_skill_to_add_custom_commands_or_cb10": {
+    "message": "Створіть навичку, щоб додати власні команди / або автоматично викликаємі поведінки агента."
   },
   "Created": {
     "message": "Створено"
   },
+  "Creating": {
+    "message": "Створення..."
+  },
   "Creator": {
     "message": "Автор"
+  },
+  "Credential_Encryption": {
+    "message": "Шифрування облікових даних"
+  },
+  "Credential_encryption_and_PIN_protection": {
+    "message": "Шифрування облікових даних та захист PIN-кодом"
   },
   "Credit_Details": {
     "message": "Деталі кредиту"
   },
+  "Current_PIN": {
+    "message": "Поточний PIN"
+  },
   "Current_Plan": {
     "message": "Поточний план:"
-  },
-  "DNS_lookup_failed": {
-    "message": "Не вдалося виконати DNS‑запит"
   },
   "DOM_Tool": {
     "message": "Інструмент DOM"
@@ -566,6 +592,9 @@
   "Default": {
     "message": "За замовчуванням"
   },
+  "Delete": {
+    "message": "Видалити"
+  },
   "Deny": {
     "message": "Відхилити"
   },
@@ -583,6 +612,9 @@
   },
   "Developed_and_supported_by_AI_Republic": {
     "message": "Розроблено та підтримується AI Republic"
+  },
+  "Disabled": {
+    "message": "Вимкнено"
   },
   "Discard_Changes": {
     "message": "Відкинути зміни"
@@ -638,6 +670,12 @@
   "Enable_Model_Context_Protocol_tools_from_29ac": {
     "message": "Увімкнути інструменти Model Context Protocol з підключених серверів MCP"
   },
+  "Enable_PIN": {
+    "message": "Увімкнути PIN"
+  },
+  "Enable_PIN_Protection": {
+    "message": "Увімкнути захист PIN-кодом"
+  },
   "Enable_auto_connect_when_browserx_starts": {
     "message": "Увімкнути автоматичне підключення при запуску browserx"
   },
@@ -659,8 +697,14 @@
   "Enter_API_key_or_bearer_token": {
     "message": "Введіть API‑ключ або токен доступу"
   },
+  "Enter_your_6_digit_PIN_to_unlock_your_AP_1fff": {
+    "message": "Введіть ваш 6-цифровий PIN, щоб розблокувати ваші API-ключі."
+  },
   "Enter_your_LLM_API_key": {
     "message": "Введіть ваш API‑ключ LLM"
+  },
+  "Enter_your_current_PIN_to_remove_protect_8b75": {
+    "message": "Введіть ваш поточний PIN, щоб зняти захист. API-ключі залишаться зашифрованими за допомогою ключа за замовчуванням."
   },
   "Enter_your_task": {
     "message": "Введіть ваше завдання..."
@@ -691,6 +735,9 @@
   },
   "Explain_with_Browserx": {
     "message": "Пояснити за допомогою Browserx"
+  },
+  "Export": {
+    "message": "Експорт"
   },
   "Extension_Permission": {
     "message": "Розширення та дозволи"
@@ -743,12 +790,6 @@
         "content": "$1"
       }
     }
-  },
-  "Failed_to_create_a_new_tab_Please_try_ag_a7c3": {
-    "message": "Не вдалося створити нову вкладку. Спробуйте ще раз."
-  },
-  "Failed_to_create_browser_tab_errorMsg": {
-    "message": "Не вдалося створити вкладку браузера: ${errorMsg}"
   },
   "Failed_to_disconnect_1": {
     "message": "Не вдалося відключитися: $1$",
@@ -820,9 +861,6 @@
   "Failed_to_stop_the_task_Please_try_again": {
     "message": "Не вдалося зупинити завдання. Спробуйте ще раз."
   },
-  "Failed_to_switch_to_tab_newTabId_errorMs_633e": {
-    "message": "Не вдалося перейти до вкладки ${newTabId}: ${errorMsg}"
-  },
   "Failed_to_test_connection": {
     "message": "Не вдалося протестувати з’єднання"
   },
@@ -837,9 +875,6 @@
       }
     }
   },
-  "File_Change_Approval_Required": {
-    "message": "Потрібне схвалення змін файлу"
-  },
   "File_Operations_Not_Available": {
     "message": "Операції з файлами (Недоступно)"
   },
@@ -848,6 +883,12 @@
   },
   "Flex": {
     "message": "Гнучкість"
+  },
+  "Follows_system_theme": {
+    "message": "Відповідає темі системи"
+  },
+  "Forgot_PIN": {
+    "message": "Забули PIN?"
   },
   "Form_Automation_Tool": {
     "message": "Інструмент автоматизації форм"
@@ -869,6 +910,9 @@
   },
   "Get_Started": {
     "message": "Почати"
+  },
+  "Green_text_terminal": {
+    "message": "Термінал з зеленим текстом"
   },
   "Hello_NAME": {
     "message": "Привіт $NAME$",
@@ -892,6 +936,21 @@
   },
   "Image_Input": {
     "message": "Ввід зображення"
+  },
+  "Import": {
+    "message": "Імпорт"
+  },
+  "Import_Skill_from_URL": {
+    "message": "Імпорт навички з URL"
+  },
+  "Import_from_URL": {
+    "message": "Імпорт з URL"
+  },
+  "Imported_skills_are_untrusted_by_default_561a": {
+    "message": "Імпортовані навички за замовчуванням не довірені і не можуть автоматично викликатися."
+  },
+  "Importing": {
+    "message": "Імпорт..."
   },
   "Improve_this_text_info_selectionText": {
     "message": "Покращити цей текст: ${info.selectionText}"
@@ -928,9 +987,6 @@
   "Invalid_API_key": {
     "message": "Недійсний ключ API"
   },
-  "Invalid_API_key_provided": {
-    "message": "Невірний API‑ключ"
-  },
   "Invalid_URL_format": {
     "message": "Невірний формат URL"
   },
@@ -939,6 +995,9 @@
   },
   "Invalid_submission_format_op_missing_typ_0fc0": {
     "message": "Невірний формат подання: у op відсутнє поле type"
+  },
+  "Invocation_Mode": {
+    "message": "Режим виклику"
   },
   "Keyboard_Shortcuts": {
     "message": "Сполучення клавіш"
@@ -981,6 +1040,9 @@
   },
   "Loading_settings": {
     "message": "Завантаження налаштувань..."
+  },
+  "Loading_skills": {
+    "message": "Завантаження навичок..."
   },
   "Loading_tabs": {
     "message": "Завантаження вкладок..."
@@ -1104,16 +1166,16 @@
   "Model_and_provider_settings_loaded_from__55a3": {
     "message": "Налаштування моделі та провайдера завантажені з конфігурації за замовчуванням (тільки для читання)"
   },
-  "Model_changed_to_1_Please_configure_your_1c81": {
-    "message": "Модель змінена на $1$. Будь ласка, налаштуйте ваш API-ключ.",
+  "Model_changed_to_1_Conversation_preserve_2db6": {
+    "message": "Модель змінено на $1$. Розмова збережена.",
     "placeholders": {
       "1": {
         "content": "$1"
       }
     }
   },
-  "Model_changed_to_1_Session_will_be_reini_e2ce": {
-    "message": "Модель змінена на $1$. Сеанс буде переініціалізовано.",
+  "Model_changed_to_1_Please_configure_your_1c81": {
+    "message": "Модель змінена на $1$. Будь ласка, налаштуйте ваш API-ключ.",
     "placeholders": {
       "1": {
         "content": "$1"
@@ -1131,8 +1193,14 @@
       }
     }
   },
-  "Modern_Chat": {
-    "message": "Сучасний чат"
+  "Modern_Chat_Auto": {
+    "message": "Modern Chat Auto"
+  },
+  "Modern_Chat_Dark": {
+    "message": "Modern Chat Dark"
+  },
+  "Modern_Chat_Light": {
+    "message": "Modern Chat Light"
   },
   "Monthly_Credits": {
     "message": "Місячні кредити"
@@ -1158,14 +1226,14 @@
   "Network_error": {
     "message": "Помилка мережі"
   },
-  "Network_error_occurred": {
-    "message": "Сталася помилка мережі"
-  },
   "Never_expire_permanent": {
     "message": "Ніколи не закінчується (безстроково)"
   },
   "New_Conversation": {
     "message": "Нова розмова"
+  },
+  "New_PIN": {
+    "message": "Новий PIN"
   },
   "No_A2A_agents_configured_yet": {
     "message": "Ще не налаштовано жодних A2A агентів."
@@ -1203,14 +1271,23 @@
   "No_scheduled_time": {
     "message": "Немає запланованого часу"
   },
+  "No_settings_found": {
+    "message": "Налаштування не знайдено"
+  },
   "No_skills_available": {
     "message": "Немає доступних навичок."
+  },
+  "No_skills_configured_yet": {
+    "message": "Навички ще не налаштовано."
   },
   "No_steps_in_plan": {
     "message": "У плані немає кроків"
   },
   "No_tabs_available": {
     "message": "Немає доступних вкладок"
+  },
+  "No_tasks_in_plan": {
+    "message": "У плані немає завдань"
   },
   "No_time_set": {
     "message": "Час не встановлено"
@@ -1273,6 +1350,12 @@
       }
     }
   },
+  "PIN": {
+    "message": "PIN"
+  },
+  "PIN_Protection": {
+    "message": "Захист PIN"
+  },
   "Page_Action_Tool": {
     "message": "Інструмент дій сторінки"
   },
@@ -1305,17 +1388,6 @@
   "Persist_Cache_to_Storage": {
     "message": "Зберегти кеш постійно"
   },
-  "Plan_1_step_s": {
-    "message": "План: $1$ крок(и)",
-    "placeholders": {
-      "1": {
-        "content": "$1"
-      }
-    }
-  },
-  "Please_check_your_API_key_in_settings": {
-    "message": "Будь ласка, перевірте ваш API‑ключ у налаштуваннях."
-  },
   "Please_enter_a_task_description": {
     "message": "Будь ласка, введіть опис завдання"
   },
@@ -1325,9 +1397,6 @@
   "Please_input_a_valid_API_key": {
     "message": "Будь ласка, введіть дійсний API‑ключ."
   },
-  "Please_log_in_again_to_continue_using_th_3d8f": {
-    "message": "Будь ласка, увійдіть знову, щоб продовжити використання AI‑агента."
-  },
   "Please_select_a_provider": {
     "message": "Будь ласка, виберіть провайдера"
   },
@@ -1336,6 +1405,9 @@
   },
   "Please_upgrade_the_plan_to_unblock_world_9fed": {
     "message": "Будь ласка, оновіть план, щоб розблокувати найсучасніші моделі світу"
+  },
+  "Port_1455_is_in_use_Please_close_any_app_a809": {
+    "message": "Порт 1455 зайнятий. Будь ласка, закрийте будь-яку програму, що використовує цей порт, і спробуйте ще раз."
   },
   "Power": {
     "message": "Потужність"
@@ -1420,9 +1492,6 @@
   "Refreshes_in": {
     "message": "Оновлюється через"
   },
-  "Reject": {
-    "message": "Відхилити"
-  },
   "Release_Date": {
     "message": "Дата випуску"
   },
@@ -1441,10 +1510,13 @@
   "Remove_API_Key": {
     "message": "Видалити API‑ключ"
   },
-  "Request_Timeout": {
-    "message": "Тайм-аут запиту"
+  "Remove_PIN": {
+    "message": "Видалити PIN"
   },
-  "Request_timed_out": {
+  "Removing": {
+    "message": "Видалення..."
+  },
+  "Request_Timeout": {
     "message": "Тайм-аут запиту"
   },
   "Request_timeout_in_milliseconds_5000_120_0f28": {
@@ -1453,11 +1525,11 @@
   "Request_timeout_in_milliseconds_5000_180_5766": {
     "message": "Тайм-аут запиту в мілісекундах (5000-180000)"
   },
-  "Request_was_aborted": {
-    "message": "Запит був перерваний"
+  "Reset_Vault": {
+    "message": "Скинути сховище"
   },
-  "Response_failed": {
-    "message": "Відповідь не вдалася"
+  "Resetting": {
+    "message": "Скидання..."
   },
   "Restricted": {
     "message": "Обмежено"
@@ -1488,6 +1560,9 @@
   },
   "Running": {
     "message": "Виконується"
+  },
+  "SKILL_md_URL": {
+    "message": "SKILL.md URL"
   },
   "STREAM_ERROR": {
     "message": "ПОМИЛКА ПОТОКУ"
@@ -1522,9 +1597,6 @@
   "Scheduled_Task": {
     "message": "Заплановане завдання"
   },
-  "Scheduled_Task_Starting": {
-    "message": "Запуск запланованого завдання"
-  },
   "Scheduled_Tasks": {
     "message": "Заплановані завдання"
   },
@@ -1534,8 +1606,14 @@
   "Search_complete": {
     "message": "Пошук завершено"
   },
+  "Search_settings": {
+    "message": "Пошук налаштувань..."
+  },
   "Searching": {
     "message": "Пошук..."
+  },
+  "Security": {
+    "message": "Безпека"
   },
   "Security_Privacy": {
     "message": "Безпека та конфіденційність"
@@ -1583,14 +1661,14 @@
   "Session_error": {
     "message": "Помилка сесії"
   },
-  "Session_expired_please_log_in_again_to_c_5d31": {
-    "message": "Термін дії сесії закінчився — будь ласка, увійдіть знову, щоб продовжити використання AI‑агента"
-  },
   "Session_limit_reached_New_tasks_will_que_2877": {
     "message": "Досягнуто ліміту сесій. Нові завдання будуть поставлені в чергу."
   },
   "Set_when_rollout_data_should_expire": {
     "message": "Вкажіть, коли дані розгортання мають закінчитися"
+  },
+  "Setting_up": {
+    "message": "Налаштування..."
   },
   "Settings": {
     "message": "Налаштування"
@@ -1613,8 +1691,17 @@
   "Show_warning_when_storage_usage_exceeds__7c40": {
     "message": "Показувати попередження, коли використання сховища перевищує цей відсоток (за замовчуванням: 90%)"
   },
+  "Sign_in_failed": {
+    "message": "Не вдалося ввійти"
+  },
   "Sign_in_to_your_account": {
     "message": "Увійдіть у свій обліковий запис"
+  },
+  "Sign_in_with_ChatGPT": {
+    "message": "Увійти за допомогою ChatGPT"
+  },
+  "Signing_in": {
+    "message": "Вхід..."
   },
   "Skills": {
     "message": "Навички"
@@ -1688,9 +1775,6 @@
   "Task_Details": {
     "message": "Деталі завдання"
   },
-  "Task_Failed": {
-    "message": "Завдання не вдалося"
-  },
   "Task_History": {
     "message": "Історія завдань"
   },
@@ -1716,6 +1800,14 @@
   },
   "Task_failed": {
     "message": "Завдання не вдалося"
+  },
+  "Task_scheduled_for_1": {
+    "message": "Завдання заплановано на $1$",
+    "placeholders": {
+      "1": {
+        "content": "$1"
+      }
+    }
   },
   "Task_started": {
     "message": "Завдання розпочато"
@@ -1744,11 +1836,8 @@
   "The_agent_is_currently_using_backend_mod_2d4c": {
     "message": "Агент наразі працює у режимі бекенду. Запити до LLM будуть проходити через сервер AI Republic. Ваші розмови обробляються безпечно через нашу інфраструктуру."
   },
-  "The_model_switch_will_clear_the_current__3cd7": {
-    "message": "Перемикання моделі очистить поточну розмову. Ви хочете продовжити?"
-  },
-  "The_server_encountered_an_error_Please_t_9ecc": {
-    "message": "Сервер зіткнувся з помилкою. Будь ласка, спробуйте пізніше."
+  "This_will_permanently_delete_all_stored__7eee": {
+    "message": "Це назавжди видалить усі збережені API‑ключі та скине сховище. Вам доведеться знову ввести ваші API‑ключі."
   },
   "Time": {
     "message": "Час"
@@ -1785,6 +1874,9 @@
       }
     }
   },
+  "Too_many_failed_attempts_Try_again_in": {
+    "message": "Занадто багато невдалих спроб. Спробуйте знову через"
+  },
   "Tool_Timeout_ms": {
     "message": "Тайм-аут інструмента (мс)"
   },
@@ -1799,6 +1891,9 @@
   },
   "Tools_Settings": {
     "message": "Налаштування інструментів"
+  },
+  "Trust": {
+    "message": "Довіряти"
   },
   "Trusted": {
     "message": "Довірений"
@@ -1830,26 +1925,11 @@
   "Unable_to_load_credit_information": {
     "message": "Не вдалося завантажити інформацію про кредити"
   },
-  "Unable_to_reach_the_backend_server_pleas_3350": {
-    "message": "Не вдалося підключитися до бекенд‑сервера — перевірте підключення"
-  },
-  "Unable_to_reach_the_server_Please_check__e5d0": {
-    "message": "Не вдалося підключитися до сервера. Перевірте підключення та спробуйте ще раз."
-  },
   "Unknown_Event": {
     "message": "Невідома подія"
   },
   "Unknown_error": {
     "message": "Невідома помилка"
-  },
-  "Unknown_error_checking_agent_status": {
-    "message": "Невідома помилка під час перевірки статусу агента"
-  },
-  "Unknown_error_occurred": {
-    "message": "Виникла невідома помилка"
-  },
-  "Unknown_error_occurred_during_task_execu_c6be": {
-    "message": "Виникла невідома помилка під час виконання завдання"
   },
   "Unknown_error_processing_submission": {
     "message": "Невідома помилка під час обробки надсилання"
@@ -1862,11 +1942,20 @@
       }
     }
   },
+  "Unlock": {
+    "message": "Розблокувати"
+  },
+  "Unlocking": {
+    "message": "Розблокування..."
+  },
   "Unsaved_Changes": {
     "message": "Незбережені зміни"
   },
   "Untitled": {
     "message": "Без назви"
+  },
+  "Untrusted": {
+    "message": "Недовірений"
   },
   "Upcoming": {
     "message": "Незабаром"
@@ -1895,6 +1984,9 @@
   "Use_Own_API_Key": {
     "message": "Використовувати власний API-ключ"
   },
+  "Use_your_ChatGPT_Plus_Pro_subscription_i_e8b8": {
+    "message": "Використовуйте підписку ChatGPT Plus/Pro замість API‑ключа"
+  },
   "User_Center": {
     "message": "Центр користувача"
   },
@@ -1906,6 +1998,9 @@
   },
   "Using_extra_credits": {
     "message": "Використання додаткових кредитів"
+  },
+  "Vault_Locked": {
+    "message": "Сховище заблоковано"
   },
   "Verbosity": {
     "message": "Детальність"
@@ -1979,9 +2074,6 @@
   "Your_personal_AI_assistant": {
     "message": "Ваш особистий AI‑асистент"
   },
-  "Your_session_has_expired_Please_log_in_a_c52a": {
-    "message": "Термін вашої сесії закінчився. Будь ласка, увійдіть знову."
-  },
   "DISCONNECTED": {
     "message": "[ВІДКЛЮЧЕНО]"
   },
@@ -2015,8 +2107,14 @@
   "exec_unknown_command": {
     "message": "exec (невідома команда)"
   },
+  "more_results": {
+    "message": "більше результатів..."
+  },
   "optional": {
     "message": "необов'язково"
+  },
+  "or": {
+    "message": "або"
   },
   "remaining": {
     "message": "залишилось"

@@ -1184,8 +1184,8 @@ describe('MessageRouter', () => {
     });
 
     it('should include scheduler types', () => {
-      expect(MessageType.SCHEDULER_CREATE_DRAFT_TASK).toBe('SCHEDULER_CREATE_DRAFT_TASK');
-      expect(MessageType.SCHEDULER_SCHEDULE_TASK).toBe('SCHEDULER_SCHEDULE_TASK');
+      expect(MessageType.SCHEDULER_CREATE_DRAFT_JOB).toBe('SCHEDULER_CREATE_DRAFT_JOB');
+      expect(MessageType.SCHEDULER_SCHEDULE_JOB).toBe('SCHEDULER_SCHEDULE_JOB');
       expect(MessageType.SCHEDULER_EVENT).toBe('SCHEDULER_EVENT');
     });
 

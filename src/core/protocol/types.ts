@@ -23,8 +23,6 @@ export interface Submission {
     tabId?: number;
     /** Feature 015: Session ID for multi-agent routing */
     sessionId?: string;
-    /** Scheduled task ID (for scheduled task execution) */
-    scheduledTaskId?: string;
   };
 }
 
