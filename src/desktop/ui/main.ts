@@ -26,7 +26,6 @@ import '../../webfront/styles.css';
 import { mount } from 'svelte';
 import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
-import { initializeMessaging, TauriMessageService } from '@/core/messaging';
 import { initializeDesktopAgent } from '../agent/DesktopAgentBootstrap';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -68,18 +67,7 @@ async function init() {
     // Continue anyway - the app will show error state
   }
 
-  // 2. Initialize messaging service (Tauri-specific)
-  // This provides the UI-side abstraction for sending messages to the agent
-  try {
-    const messageService = new TauriMessageService();
-    await initializeMessaging(messageService);
-    console.log('[Desktop] Messaging service initialized');
-  } catch (error) {
-    console.warn('[Desktop] Failed to initialize messaging service:', error);
-    // Continue anyway - the app will show connection error state
-  }
-
-  // 3. Initialize desktop services (tray, hotkeys)
+  // 2. Initialize desktop services (tray, hotkeys)
   try {
     await initializeDesktop();
     console.log('[Desktop] Desktop services initialized');

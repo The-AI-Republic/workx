@@ -14,11 +14,9 @@
  */
 
 import { TauriChannel } from '../channels/TauriChannel';
-import { DesktopMessageRouter } from '../channels/DesktopMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { UserNotifier } from '@/core/UserNotifier';
-import { MessageType } from '@/core/MessageRouter';
 import { ApprovalGate } from '@/core/approval/ApprovalGate';
 import { PolicyRulesEngine } from '@/core/approval/PolicyRulesEngine';
 import { getDefaultRules } from '@/core/approval/defaultRules';
@@ -54,7 +52,6 @@ let _instance: DesktopAgentBootstrap | null = null;
 export class DesktopAgentBootstrap {
   private agent: RepublicAgent | null = null;
   private channel: TauriChannel | null = null;
-  private messageRouter: DesktopMessageRouter | null = null;
   private skillRegistry: SkillRegistry | null = null;
   private scheduler: Scheduler | null = null;
   private schedulerAlarms: DesktopSchedulerAlarms | null = null;
@@ -76,16 +73,11 @@ export class DesktopAgentBootstrap {
     console.log('[DesktopAgentBootstrap] Initializing...');
 
     try {
-      // 1. Create the message router for RepublicAgent
-      this.messageRouter = new DesktopMessageRouter('background');
-
-      // 2. Get agent config
+      // 1. Get agent config
       const config = await AgentConfig.getInstance();
 
-      // 3. Create RepublicAgent
-      // RepublicAgent expects a MessageRouter with updateState method
-      // DesktopMessageRouter provides this compatibility
-      this.agent = new RepublicAgent(config, this.messageRouter as any, undefined, undefined, new UserNotifier());
+      // 2. Create RepublicAgent
+      this.agent = new RepublicAgent(config, undefined, undefined, new UserNotifier());
 
       // 4. Configure PromptComposer with platform context BEFORE agent.initialize()
       // This must happen first so RepublicAgent.configurePromptComposition() sees
@@ -158,9 +150,12 @@ export class DesktopAgentBootstrap {
         console.log('[DesktopAgentBootstrap] Auth state changed, reloading auth mode...');
         await this.restoreAuthFromKeychain(config);
 
-        // Also notify the UI that auth has changed so it re-runs health check
-        if (this.messageRouter) {
-          this.messageRouter.send(MessageType.AGENT_REINITIALIZED);
+        // Notify the UI that auth has changed so it re-runs health check
+        if (this.agent && this.channel) {
+          channelManager.dispatchEvent(
+            { type: 'BackgroundEvent', data: { message: 'Agent reinitialized after auth change', level: 'info' } },
+            this.channel.channelId
+          ).catch(() => {});
         }
       });
 
@@ -171,6 +166,9 @@ export class DesktopAgentBootstrap {
 
       // 9. Initialize scheduler
       await this.initializeScheduler();
+
+      // 10. Register service handlers on ChannelManager (message_routing_v2)
+      await this.registerServices(channelManager);
 
       this.initialized = true;
       console.log('[DesktopAgentBootstrap] Initialization complete');
@@ -218,6 +216,28 @@ export class DesktopAgentBootstrap {
     // Desktop mode: browser tools come from MCP — enable mcpTools
     const agentConfig = await AgentConfig.getInstance();
     agentConfig.updateToolsConfig({ mcpTools: true });
+  }
+
+  /**
+   * Register service handlers on ChannelManager (message_routing_v2).
+   * Gives desktop mode full service parity with the extension.
+   */
+  private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    const { registerAllServices } = await import('@/core/services');
+    const registry = channelManager.getServiceRegistry();
+
+    const count = registerAllServices(registry, {
+      skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
+      session: {
+        getAgent: () => this.agent,
+      },
+      agent: {
+        getAgent: () => this.agent,
+        handleConfigUpdate: () => this.handleConfigUpdate(),
+      },
+    });
+
+    console.log(`[DesktopAgentBootstrap] Registered ${count} service handlers`);
   }
 
   /**
@@ -617,7 +637,7 @@ export class DesktopAgentBootstrap {
 
     // 5. Create a new RepublicAgent with the resumed initial history
     const config = await AgentConfig.getInstance();
-    this.agent = new RepublicAgent(config, this.messageRouter as any, {
+    this.agent = new RepublicAgent(config, {
       mode: 'resumed' as const,
       conversationId,
       rolloutItems: initialHistory.payload.history,
@@ -849,12 +869,6 @@ export class DesktopAgentBootstrap {
     if (this.agent) {
       await this.agent.cleanup();
       this.agent = null;
-    }
-
-    // Cleanup message router
-    if (this.messageRouter) {
-      this.messageRouter.destroy();
-      this.messageRouter = null;
     }
 
     this.channel = null;

@@ -424,7 +424,17 @@ Test cases:
 
 ---
 
-### T4.2 — Update Chrome Extension bootstrap
+### T4.2 — Map ResponseEvent to EventMsg
+
+**File:** `src/core/RepublicAgent.ts` (or wherever ResponseEvent is generated)
+
+- Instead of relying on `MessageRouter.sendTypedResponseEvent()` and specific `MessageType.RESPONSE_*` mappings, convert `ResponseEvent` variants into the core `EventMsg` variants (e.g. `AgentMessageDelta`, `AgentReasoningDelta`, `WebSearchBegin`, etc.) before dispatching via `this.emitEvent(...)`.
+
+**Acceptance:** Streaming events properly flow through the ChannelAdapter pipeline as `EventMsg` variants instead of dedicated `MessageType` enums.
+
+---
+
+### T4.3 — Update Chrome Extension bootstrap
 
 **File:** `src/extension/background/service-worker.ts`
 
@@ -627,7 +637,15 @@ Update Svelte components to use `UIChannelClient` directly instead of `sendMessa
 
 ---
 
-### T6.8 — Remove setupXxxMessageHandlers from service-worker
+### T6.8 — Replace DOM_CAPTURE usage in content scripts
+
+**Files:** `src/extension/content/**/*.ts` (or wherever DOM_CAPTURE is used)
+
+- Since `MessageType` is being deleted, replace `MessageType.DOM_CAPTURE_REQUEST` and `MessageType.DOM_CAPTURE_RESPONSE` with local string literals (`'DOM_CAPTURE_REQUEST'`) to ensure content-script logic doesn't break.
+
+---
+
+### T6.9 — Remove setupXxxMessageHandlers from service-worker
 
 **File:** `src/extension/background/service-worker.ts`
 
@@ -653,12 +671,35 @@ Update Svelte components to use `UIChannelClient` directly instead of `sendMessa
 
 ---
 
-### T6.10 — Final cleanup and verification
+### T6.11 — Final cleanup and verification
 
 - Run `npm test && npm run lint` — all tests pass
 - Run TypeScript compiler — no errors
 - Search codebase for any remaining references to `MessageRouter`, `MessageType`, `ChromeMessageService`, `TauriMessageService`, `DesktopMessageRouter`, `ServerMessageRouter` — should be zero
 - Verify no dead imports or unused files
+
+---
+
+## Phase 7: Verification
+
+### T7.1 — Write Integration Tests
+
+**Create/Update Integration Tests:**
+
+- Implement full-pipeline integration tests corresponding to the 3 platforms:
+  - Chrome Extension (`Frontend → SidePanelChannel → ChannelManager → ServiceRegistry → ServiceResponse → Frontend`)
+  - Desktop (`Frontend → TauriChannel → ChannelManager → ServiceRegistry → ServiceResponse → Frontend`)
+  - Server (`WebSocket client → ServerChannel → ChannelManager → ServiceRegistry → ServiceResponse → client`)
+
+### T7.2 — Execute Manual Verification Plan
+
+**Perform Manual Testing Sweeps:**
+
+- Verify MCP settings page works identically across Extension, Desktop, and Server.
+- Verify Scheduler task management functions correctly across all platforms.
+- Verify Skills CRUD operations (list, load, save, delete) execute completely.
+- Verify Vault locking, unlocking, and status operations succeed.
+- Verify core Conversation flows (submissions, streaming, approvals) work smoothly without regression.
 
 ---
 
@@ -711,7 +752,8 @@ Phase 6 (cleanup):     depends on Phase 4 + Phase 5
 | 1 | T1.1–T1.6 | Add ServiceRequest/ServiceResponse types, ServiceRegistry, ChannelManager routing |
 | 2 | T2.1–T2.12 | Extract service handlers into shared modules, register on all platforms |
 | 3 | T3.1–T3.9 | Create UIChannelClient, platform transports, compatibility shim |
-| 4 | T4.1–T4.5 | Remove RepublicAgent's MessageRouter dependency |
+| 4 | T4.1–T4.6 | Remove RepublicAgent's MessageRouter dependency |
 | 5 | T5.1–T5.10 | Migrate all UI components to UIChannelClient |
-| 6 | T6.1–T6.10 | Delete MessageRouter, shims, old services, legacy tests |
-| **Total** | **42 tasks** | |
+| 6 | T6.1–T6.11 | Delete MessageRouter, shims, old services, legacy tests |
+| 7 | T7.1–T7.2 | Final Integration testing and Manual Verification sweeps |
+| **Total** | **45 tasks** | |

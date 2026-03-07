@@ -174,11 +174,16 @@ export class ChannelPluginBridge implements ChannelAdapter {
     return false;
   }
 
+  supportsServices(): boolean {
+    return false;
+  }
+
   getCapabilities(): ChannelCapabilities {
     return {
       streaming: this.supportsStreaming(),
       approvals: this.supportsApprovals(),
       media: this.supportsMedia(),
+      services: this.supportsServices(),
     };
   }
 

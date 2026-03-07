@@ -91,12 +91,6 @@ const mockAgentConfig = {
   getProviderApiKey: vi.fn().mockResolvedValue('test-api-key'),
 };
 
-// Mock MessageRouter
-const mockRouter = {
-  on: vi.fn(),
-  broadcast: vi.fn(),
-};
-
 // Mock Chrome APIs
 const mockChrome = {
   tabs: {
@@ -151,7 +145,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
     // Create registry
     registry = AgentRegistry.getInstance();
-    registry.initialize(mockAgentConfig as any, mockRouter as any);
+    registry.initialize(mockAgentConfig as any);
     registry.setStorage(sessionStorage);
   });
 
@@ -499,7 +493,7 @@ describe('AgentRegistry Session Persistence (Feature 015)', () => {
 
       // 5. Reinitialize registry
       const newRegistry = AgentRegistry.getInstance();
-      newRegistry.initialize(mockAgentConfig as any, mockRouter as any);
+      newRegistry.initialize(mockAgentConfig as any);
 
       const newStorage = new SessionStorage(mockIndexedDBAdapter as any);
       newRegistry.setStorage(newStorage);

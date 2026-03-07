@@ -10,7 +10,6 @@
  */
 
 import { ServerChannel } from '../channels/ServerChannel';
-import { ServerMessageRouter } from '../channels/ServerMessageRouter';
 import { getChannelManager, type AgentHandler } from '@/core/channels/ChannelManager';
 import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig } from '@/config/AgentConfig';
@@ -76,7 +75,6 @@ let _instance: ServerAgentBootstrap | null = null;
 export class ServerAgentBootstrap {
   private agent: RepublicAgent | null = null;
   private channel: ServerChannel | null = null;
-  private messageRouter: ServerMessageRouter | null = null;
   private sessionIndex: SessionIndex | null = null;
   private transcriptStore: TranscriptStore | null = null;
   private backupManager: BackupManager | null = null;
@@ -116,14 +114,11 @@ export class ServerAgentBootstrap {
       // 1. Initialize config storage (must happen before AgentConfig)
       setConfigStorage(new FileConfigStorageProvider(dataDir));
 
-      // 2. Create message router
-      this.messageRouter = new ServerMessageRouter('background');
-
-      // 3. Get agent config
+      // 2. Get agent config
       const agentConfig = await AgentConfig.getInstance();
 
       // 3. Create RepublicAgent
-      this.agent = new RepublicAgent(agentConfig, this.messageRouter as any);
+      this.agent = new RepublicAgent(agentConfig);
 
       // 4. Configure PromptComposer with server platform context
       await this.configurePrompt();
@@ -232,12 +227,35 @@ export class ServerAgentBootstrap {
         }
       });
 
+      // 14. Register service handlers on ChannelManager (message_routing_v2)
+      await this.registerServices(channelManager);
+
       this.initialized = true;
       console.log('[ServerAgentBootstrap] Initialization complete');
     } catch (error) {
       console.error('[ServerAgentBootstrap] Initialization failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Register service handlers on ChannelManager (message_routing_v2).
+   * Gives server mode full service parity with the extension.
+   */
+  private async registerServices(channelManager: ReturnType<typeof getChannelManager>): Promise<void> {
+    const { registerAllServices } = await import('@/core/services');
+    const serviceRegistry = channelManager.getServiceRegistry();
+
+    const count = registerAllServices(serviceRegistry, {
+      session: {
+        getAgent: () => this.agent,
+      },
+      agent: {
+        getAgent: () => this.agent,
+      },
+    });
+
+    console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
   }
 
   /**
@@ -618,12 +636,6 @@ export class ServerAgentBootstrap {
     if (this.agent) {
       await this.agent.cleanup();
       this.agent = null;
-    }
-
-    // Cleanup message router
-    if (this.messageRouter) {
-      this.messageRouter.destroy();
-      this.messageRouter = null;
     }
 
     this.channel = null;

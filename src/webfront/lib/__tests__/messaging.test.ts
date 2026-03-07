@@ -1,20 +1,23 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { MessageType } from '@/core/MessageRouter';
+import { MessageType } from '@/core/message-types';
 
-// Mock tryGetMessageService before importing sendMessage
+// Mock getInitializedUIClient before importing sendMessage
+const mockServiceRequest = vi.fn();
 vi.mock('@/core/messaging', () => ({
-  tryGetMessageService: vi.fn(() => null),
+  getInitializedUIClient: vi.fn(() =>
+    Promise.resolve({ serviceRequest: mockServiceRequest }),
+  ),
 }));
 
 import { sendMessage } from '../messaging';
-import { tryGetMessageService } from '@/core/messaging';
+import { getInitializedUIClient } from '@/core/messaging';
 
-const mockedTryGetMessageService = vi.mocked(tryGetMessageService);
+const mockedGetInitializedUIClient = vi.mocked(getInitializedUIClient);
 
 describe('sendMessage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedTryGetMessageService.mockReturnValue(null);
+    mockServiceRequest.mockReset();
     // Reset chrome.runtime.lastError
     (globalThis as any).chrome.runtime.lastError = null;
   });
@@ -23,37 +26,52 @@ describe('sendMessage', () => {
     vi.restoreAllMocks();
   });
 
-  describe('IMessageService path', () => {
-    it('should delegate to IMessageService.send() when service is available', async () => {
-      const mockService = {
-        send: vi.fn().mockResolvedValue([{ name: 'test-skill' }]),
-        subscribe: vi.fn(),
-        destroy: vi.fn(),
-      };
-      mockedTryGetMessageService.mockReturnValue(mockService as any);
+  describe('UIChannelClient path', () => {
+    it('should delegate to serviceRequest when service path mapping exists', async () => {
+      mockServiceRequest.mockResolvedValue([{ name: 'test-skill' }]);
 
       const result = await sendMessage(MessageType.SKILLS_LIST);
 
-      expect(mockService.send).toHaveBeenCalledWith(MessageType.SKILLS_LIST, undefined);
+      expect(mockServiceRequest).toHaveBeenCalledWith('skills.list', {});
       expect(result).toEqual([{ name: 'test-skill' }]);
     });
 
-    it('should forward payload to IMessageService.send()', async () => {
-      const mockService = {
-        send: vi.fn().mockResolvedValue({ success: true }),
-        subscribe: vi.fn(),
-        destroy: vi.fn(),
-      };
-      mockedTryGetMessageService.mockReturnValue(mockService as any);
+    it('should forward object payload as params', async () => {
+      mockServiceRequest.mockResolvedValue({ success: true });
 
       const payload = { name: 'my-skill' };
       await sendMessage(MessageType.SKILLS_DELETE, payload);
 
-      expect(mockService.send).toHaveBeenCalledWith(MessageType.SKILLS_DELETE, payload);
+      expect(mockServiceRequest).toHaveBeenCalledWith('skills.delete', { name: 'my-skill' });
+    });
+
+    it('should wrap non-object payload in { payload }', async () => {
+      mockServiceRequest.mockResolvedValue({ success: true });
+
+      await sendMessage(MessageType.PING, 'hello');
+
+      expect(mockServiceRequest).toHaveBeenCalledWith('agent.ping', { payload: 'hello' });
+    });
+
+    it('should fall through to chrome.runtime on UIChannelClient error', async () => {
+      mockedGetInitializedUIClient.mockRejectedValue(new Error('No transport'));
+
+      const mockSendMessage = (globalThis as any).chrome.runtime.sendMessage;
+      mockSendMessage.mockImplementation((_msg: any, callback: (resp: any) => void) => {
+        callback({ success: true, data: 'fallback' });
+      });
+
+      const result = await sendMessage(MessageType.SKILLS_LIST);
+      expect(result).toBe('fallback');
     });
   });
 
   describe('chrome.runtime fallback path', () => {
+    beforeEach(() => {
+      // Make UIChannelClient unavailable so we hit the chrome fallback
+      mockedGetInitializedUIClient.mockRejectedValue(new Error('No transport'));
+    });
+
     it('should unwrap ResponseEnvelope and return data', async () => {
       const skillsData = [{ name: 'skill-1' }, { name: 'skill-2' }];
       const mockSendMessage = (globalThis as any).chrome.runtime.sendMessage;
@@ -157,7 +175,8 @@ describe('sendMessage', () => {
   });
 
   describe('no messaging available', () => {
-    it('should throw when neither IMessageService nor chrome.runtime is available', async () => {
+    it('should throw when neither UIChannelClient nor chrome.runtime is available', async () => {
+      mockedGetInitializedUIClient.mockRejectedValue(new Error('No transport'));
       const originalChrome = (globalThis as any).chrome;
       (globalThis as any).chrome = undefined;
 

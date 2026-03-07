@@ -4,6 +4,6 @@
  */
 
 export * from './content-script';
-export { MessageRouter, MessageType } from '../../core/MessageRouter';
+export { MessageType } from '../../core/message-types';
 
 // For convenience, export key functions

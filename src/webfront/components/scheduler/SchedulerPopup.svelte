@@ -2,7 +2,8 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
-  import { tryGetMessageService } from '@/core/messaging';
+  import { tryGetMessageService, getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
@@ -68,34 +69,9 @@
     }
   });
 
-  // T020: Real-time status updates via chrome.runtime.onMessage
-  function handleSchedulerEvent(message: { type: string; payload?: unknown }) {
-    if (message.type === MessageType.SCHEDULER_EVENT && show) {
-      // Refresh data when scheduler events occur
-      fetchAllData();
-    }
-    // Feature 015 (T051): Real-time session status updates
-    if (message.type === MessageType.SESSION_EVENT && show) {
-      const payload = message.payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
-
-      // T057: Handle session:error events for graceful degradation feedback
-      if (payload?.type === 'session:error') {
-        lastSessionError = {
-          message: payload.error || 'Unknown session error',
-          sessionId: payload.sessionId || 'unknown',
-          timestamp: payload.timestamp || Date.now()
-        };
-        // Auto-clear error after 5 seconds
-        setTimeout(() => {
-          if (lastSessionError?.timestamp === payload.timestamp) {
-            lastSessionError = null;
-          }
-        }, 5000);
-      }
-
-      fetchSessionData();
-    }
-  }
+  // UIChannelClient for event subscriptions
+  let channelClient: UIChannelClient | null = null;
+  let eventUnsubscribers: Array<() => void> = [];
 
   // T042: Handle online/offline events
   function handleOnline() {
@@ -108,10 +84,45 @@
 
   // Event listeners setup and cleanup
   $effect(() => {
-    // Listen for scheduler events from service worker (extension mode)
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
+    // Subscribe to scheduler and session events via UIChannelClient (extension mode)
+    (async () => {
+      try {
+        channelClient = await getInitializedUIClient();
+
+        // T020: Real-time scheduler status updates
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'scheduler_job_status' && show) {
+              fetchAllData();
+            }
+          })
+        );
+
+        // Feature 015 (T051): Real-time session status updates
+        eventUnsubscribers.push(
+          channelClient.onEvent('BackgroundEvent', (data: any) => {
+            if (data?.message === 'session_event' && show) {
+              const payload = data?.sessionEvent as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+              if (payload?.type === 'session:error') {
+                lastSessionError = {
+                  message: payload.error || 'Unknown session error',
+                  sessionId: payload.sessionId || 'unknown',
+                  timestamp: payload.timestamp || Date.now()
+                };
+                setTimeout(() => {
+                  if (lastSessionError?.timestamp === payload.timestamp) {
+                    lastSessionError = null;
+                  }
+                }, 5000);
+              }
+              fetchSessionData();
+            }
+          })
+        );
+      } catch (error) {
+        console.warn('[SchedulerPopup] Failed to initialize UIChannelClient:', error);
+      }
+    })();
 
     // Listen for scheduler events via message service (desktop/server mode)
     const localUnsubs: Array<() => void> = [];
@@ -148,10 +159,11 @@
     window.addEventListener('offline', handleOffline);
 
     return () => {
-      // Clean up extension event listener
-      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+      // Clean up UIChannelClient event subscriptions
+      for (const unsub of eventUnsubscribers) {
+        unsub();
       }
+      eventUnsubscribers = [];
 
       // Clean up message service listeners
       localUnsubs.forEach(fn => fn());
@@ -161,6 +173,7 @@
       window.removeEventListener('offline', handleOffline);
     };
   });
+
 
   async function fetchAllData() {
     isLoading = true;

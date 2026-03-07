@@ -3,6 +3,9 @@
   import { push } from 'svelte-spa-router';
   import { MessageType } from '@/core/MessageRouter';
   import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
+  import type { UIChannelClient } from '@/core/messaging';
+  import { sendMessage } from '../../lib/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
@@ -29,8 +32,8 @@
   import { schedulerStore } from '../../stores/schedulerStore';
   // i18n
   import { t, _t } from '../../lib/i18n';
-  // Message service (platform-agnostic)
-  let service: IMessageService | null = null;
+  // UI channel client (platform-agnostic)
+  let client: UIChannelClient | null = null;
   let unsubscribers: Array<() => void> = [];
   let eventProcessor: EventProcessor;
   let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = [];
@@ -126,55 +129,45 @@
       console.warn('[App] Failed to load UI preferences:', error);
     }
 
-    // Get the message service (initialized by entry point)
+    // Initialize UIChannelClient for event listening
     try {
-      service = getMessageService();
-      console.log('[App] Using message service');
-    } catch (error) {
-      console.error('[App] Message service not initialized:', error);
-      // Service not available - UI will show disconnected state
-    }
+      client = await getInitializedUIClient();
+      console.log('[App] UIChannelClient initialized');
 
-    // Setup event handlers if service is available
-    if (service) {
-      // Listen for events from backend
+      // Listen for all events from backend (wildcard)
       unsubscribers.push(
-        service.on(MessageType.EVENT, (payload) => {
-          const event = payload as Event;
+        client.onEvent('*', (eventMsg: any) => {
+          // Wrap EventMsg in Event envelope for handleEvent compatibility
+          const event: Event = { id: `evt_${Date.now()}`, msg: eventMsg };
           handleEvent(event);
         })
       );
 
       // Listen for state updates
       unsubscribers.push(
-        service.on(MessageType.STATE_UPDATE, (payload) => {
-          const state = payload as { tabId?: number };
-          if (state && 'tabId' in state) {
-            currentTabId = state.tabId!;
+        client.onEvent('StateUpdate', (data: any) => {
+          if (data && 'tabId' in data) {
+            currentTabId = data.tabId!;
           }
         })
       );
 
-      // Handle agent re-initialization (e.g., when model is changed)
+      // Handle agent re-initialization and scheduler events via BackgroundEvent
       unsubscribers.push(
-        service.on(MessageType.AGENT_REINITIALIZED, () => {
-          // Clear all messages and events for fresh start with new agent
-          messages = [];
-          processedEvents = [];
-          isProcessing = false;
-          eventProcessor.reset();
-
-          // Re-check connection/auth status since agent was reinitialized
-          checkConnection();
+        client.onEvent('BackgroundEvent', (data: any) => {
+          if (data?.message === 'Agent reinitialized') {
+            messages = [];
+            processedEvents = [];
+            isProcessing = false;
+            eventProcessor.reset();
+            checkConnection();
+          } else if (data?.message === 'scheduler_job_status' && data?.schedulerEvent) {
+            handleSchedulerEvent(data.schedulerEvent as JobStatusChangedEvent);
+          }
         })
       );
-
-      // Listen for scheduler events (for job cancellation)
-      unsubscribers.push(
-        service.on(MessageType.SCHEDULER_EVENT, (payload) => {
-          handleSchedulerEvent(payload as JobStatusChangedEvent);
-        })
-      );
+    } catch (error) {
+      console.error('[App] UIChannelClient initialization failed:', error);
     }
 
     // Check connection
@@ -207,10 +200,10 @@
     // Keep-alive ping for Chrome extension (service worker stays awake)
     // Only needed for extension mode - Tauri doesn't have this limitation
     let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
-    if (platform.platformName === 'extension' && service) {
+    if (platform.platformName === 'extension' && client) {
       keepAliveInterval = setInterval(async () => {
         try {
-          await service!.send(MessageType.PING);
+          await sendMessage(MessageType.PING);
           console.log('[App] Keep-alive ping sent');
         } catch (error) {
           console.warn('[App] Keep-alive ping failed:', error);
@@ -259,8 +252,8 @@
       processedEvents = [...processedEvents, cancelNotice];
 
       // Request agent to abort via message service
-      if (service) {
-        service.send(MessageType.INTERRUPT).catch((err) => {
+      if (client) {
+        sendMessage(MessageType.INTERRUPT).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -278,7 +271,7 @@
    * Also restores conversation history to sync UI with backend state
    */
   async function fetchCurrentTabId() {
-    if (!service) {
+    if (!client) {
       console.warn('[App] Service not available for fetchCurrentTabId');
       currentTabId = -1;
       return;
@@ -286,7 +279,7 @@
 
     try {
       // Request current session state from backend
-      const response = await service.send<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
+      const response = await sendMessage<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
       console.log('[App] Fetched session state:', response);
 
       const stateData = response || {};
@@ -447,14 +440,14 @@
 
   async function checkConnection() {
     try {
-      if (!service) {
+      if (!client) {
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
         return;
       }
 
-      const response = await service.send<{
+      const response = await sendMessage<{
         type?: string;
         ready?: boolean;
         message?: string;
@@ -463,7 +456,7 @@
         authMode?: 'login' | 'api_key' | 'none';
       }>(MessageType.HEALTH_CHECK);
 
-      isConnected = response?.type === MessageType.HEALTH_STATUS || response?.ready !== undefined;
+      isConnected = response?.ready !== undefined;
 
       if (response?.ready !== undefined) {
         agentReady = response.ready === true;
@@ -643,17 +636,16 @@
 
     // Send to agent with tab context
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SUBMISSION, {
-        id: `user_${Date.now()}`,
-        op: {
+      if (!client) throw new Error('Message service not available');
+      await client.submitOp(
+        {
           type: 'UserInput',
           items: [{ type: 'text', text }],
         },
-        context: {
+        {
           tabId: currentTabId, // Include current tab selection in context
         },
-      });
+      );
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -727,8 +719,8 @@
 
     // Request session reset from backend
     try {
-      if (!service) throw new Error('Message service not available');
-      await service.send(MessageType.SESSION_RESET);
+      if (!client) throw new Error('Message service not available');
+      await sendMessage(MessageType.SESSION_RESET);
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -754,9 +746,9 @@
     if (!isProcessing) return;
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await service.send(MessageType.INTERRUPT);
+      await sendMessage(MessageType.INTERRUPT);
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -787,9 +779,9 @@
     eventProcessor.reset();
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await service.send<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
+      const response = await sendMessage<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
 
       const historyItems = response?.history;
       console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
@@ -814,7 +806,7 @@
    * Called when a scheduled job finishes executing
    */
   async function notifySchedulerJobCompletion(success: boolean, msg: any) {
-    if (!scheduledJobId || !service) return;
+    if (!scheduledJobId || !client) return;
 
     try {
       if (success) {
@@ -822,7 +814,7 @@
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await service.send(MessageType.SCHEDULER_COMPLETE_JOB, {
+        await sendMessage(MessageType.SCHEDULER_COMPLETE_JOB, {
           jobId: scheduledJobId,
           result: {
             summary: resultSummary,
@@ -832,7 +824,7 @@
         console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
         const errorMessage = msg?.data?.message || 'Job failed';
-        await service.send(MessageType.SCHEDULER_FAIL_JOB, {
+        await sendMessage(MessageType.SCHEDULER_FAIL_JOB, {
           jobId: scheduledJobId,
           error: errorMessage,
         });
@@ -851,9 +843,9 @@
     console.log('[App] Loading scheduled job:', jobId, 'with session:', sessionId);
 
     try {
-      if (!service) throw new Error('Message service not available');
+      if (!client) throw new Error('Message service not available');
       // Fetch job details from scheduler
-      const response = await service.send<{ job?: { input: string; scheduledTime?: number } }>(
+      const response = await sendMessage<{ job?: { input: string; scheduledTime?: number } }>(
         MessageType.SCHEDULER_GET_JOB_DETAILS,
         { jobId }
       );
@@ -901,25 +893,24 @@
       // Execute the job via the agent
       // Feature 015: Include sessionId in context for multi-agent routing
       isProcessing = true;
-      await service.send(MessageType.SUBMISSION, {
-        id: `scheduled_${jobId}_${Date.now()}`,
-        op: {
+      await client!.submitOp(
+        {
           type: 'UserInput',
           items: [{ type: 'text', text: job.input }],
         },
-        context: {
+        {
           tabId: currentTabId,
           sessionId: sessionId, // Feature 015: Route to correct agent session
         },
-      });
+      );
 
     } catch (error) {
       console.error('[App] Failed to execute scheduled job:', error);
 
       // Notify scheduler of failure
       try {
-        if (service) {
-          await service.send(MessageType.SCHEDULER_FAIL_JOB, {
+        if (client) {
+          await sendMessage(MessageType.SCHEDULER_FAIL_JOB, {
             jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
