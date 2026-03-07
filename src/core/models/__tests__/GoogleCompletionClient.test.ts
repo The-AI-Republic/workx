@@ -208,13 +208,31 @@ describe('GoogleCompletionClient', () => {
   // -------------------------------------------------------------------------
 
   describe('complete()', () => {
-    it('should throw an error indicating stream() should be used', async () => {
-      await expect(
-        client.complete({
+    it('should return a non-streaming completion response', async () => {
+      const generateContent = vi.fn().mockResolvedValue({
+        text: 'Hello from Gemini!',
+        usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 4, totalTokenCount: 9 },
+      });
+      mocks.models.generateContent = generateContent;
+
+      const result = await client.complete({
+        model: 'gemini-2.0-flash-exp',
+        messages: [
+          { role: 'system', content: 'You are helpful.' },
+          { role: 'user', content: 'hello' },
+        ],
+      });
+
+      expect(result.choices[0].message.content).toBe('Hello from Gemini!');
+      expect(result.usage.totalTokens).toBe(9);
+      expect(generateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
           model: 'gemini-2.0-flash-exp',
-          messages: [{ role: 'user', content: 'hello' }],
+          config: expect.objectContaining({
+            systemInstruction: 'You are helpful.',
+          }),
         })
-      ).rejects.toThrow('Use stream() instead');
+      );
     });
   });
 
