@@ -45,7 +45,7 @@
   const AUTH_COOKIE_NAME = 'ai_access';
 
   // Store the cookie change listener for cleanup
-  let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = null;
+  let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
 
   /**
    * Check and update authentication state
@@ -272,7 +272,7 @@
 
 <AppShell>
   {#if $vaultStore.isLocked}
-    <PinUnlockOverlay on:unlocked={() => refreshVaultStatus()} />
+    <PinUnlockOverlay onUnlocked={() => refreshVaultStatus()} />
   {:else}
     <Router {routes} />
   {/if}

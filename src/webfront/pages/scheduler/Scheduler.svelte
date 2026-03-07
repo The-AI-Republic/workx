@@ -1,32 +1,27 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { push } from 'svelte-spa-router';
   import { MessageType } from '@/core/MessageRouter';
   import { getMessageService, type IMessageService } from '@/core/messaging';
   import { schedulerStore } from '../../stores/schedulerStore';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
 
-  let currentTheme: UITheme = 'terminal';
-  let selectedDate: string = '';
-  let selectedTime: string = '';
-  let errorMessage: string = '';
-  let editableInput: string = '';
-  let pendingInput: string = '';
-  let service: IMessageService | null = null;
-
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
+  let selectedDate: string = $state('');
+  let selectedTime: string = $state('');
+  let errorMessage: string = $state('');
+  let editableInput: string = $state('');
+  let pendingInput: string = $state('');
+  let service: IMessageService | null = $state(null);
 
   // Determine if input should be editable (when opened without pre-filled input)
-  $: isEditable = !pendingInput.trim();
+  let isEditable = $derived(!pendingInput.trim());
 
   onMount(() => {
     // Read pending input from store
-    const unsubStore = schedulerStore.subscribe((value) => {
-      pendingInput = value;
-    });
+    pendingInput = get(schedulerStore);
     // Clear store after reading
     schedulerStore.clear();
 
@@ -39,11 +34,6 @@
 
     // Initialize defaults
     initializeDefaults();
-
-    return () => {
-      unsubStore();
-      unsubTheme();
-    };
   });
 
   function initializeDefaults() {
@@ -176,7 +166,7 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="h-screen flex items-center justify-center {currentTheme === 'modern' ? 'bg-black/30' : 'bg-black/50'}">
   <div class="w-[90%] max-w-[28rem] max-h-[90vh] overflow-y-auto rounded-lg flex flex-col
@@ -193,7 +183,7 @@
           {currentTheme === 'modern'
             ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-surface dark:hover:bg-chat-surface-dark'
             : 'text-term-dim-green hover:text-term-green hover:bg-[#0a0a0a]'}"
-        on:click={handleClose}
+        onclick={handleClose}
         aria-label={t("Close scheduler")}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -239,7 +229,7 @@
                 {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-secondary dark:hover:border-chat-text-secondary-dark'
                   : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-green'}"
-              on:click={() => scheduleIn(item.min)}
+              onclick={() => scheduleIn(item.min)}
             >{item.label}</button>
           {/each}
         </div>
@@ -305,7 +295,7 @@
           {currentTheme === 'modern'
             ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-        on:click={handleClose}
+        onclick={handleClose}
       >
         {$_t('Cancel')}
       </button>
@@ -314,7 +304,7 @@
           {currentTheme === 'modern'
             ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-chat-send-text dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
             : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-green hover:border-term-green'}"
-        on:click={validateAndSchedule}
+        onclick={validateAndSchedule}
       >
         {$_t('Schedule')}
       </button>
