@@ -1,14 +1,16 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { t } from '../../lib/i18n';
   import SettingsSearch from './SettingsSearch.svelte';
 
-  const dispatch = createEventDispatcher<{
-    categorySelected: { categoryId: string; scrollToId?: string };
-  }>();
+  let {
+    onCategorySelected,
+  }: {
+    onCategorySelected?: (data: { categoryId: string; scrollToId?: string }) => void;
+  } = $props();
 
   // Desktop detection for conditional settings filtering
-  let isDesktop = false;
+  let isDesktop = $state(false);
   onMount(async () => {
     try {
       await import('@tauri-apps/api/core');
@@ -19,17 +21,17 @@
   });
 
   // Track whether search is active to hide/show category cards
-  let searchActive = false;
+  let searchActive = $state(false);
 
-  function handleSearchResult(event: CustomEvent<{ categoryId: string; scrollToId: string }>) {
-    dispatch('categorySelected', {
-      categoryId: event.detail.categoryId,
-      scrollToId: event.detail.scrollToId,
+  function handleSearchResult(data: { categoryId: string; scrollToId: string }) {
+    onCategorySelected?.({
+      categoryId: data.categoryId,
+      scrollToId: data.scrollToId,
     });
   }
 
-  function handleSearchActive(event: CustomEvent<{ active: boolean }>) {
-    searchActive = event.detail.active;
+  function handleSearchActive(data: { active: boolean }) {
+    searchActive = data.active;
   }
 
   interface Category {
@@ -120,7 +122,7 @@
   ];
 
   function selectCategory(categoryId: string) {
-    dispatch('categorySelected', { categoryId });
+    onCategorySelected?.({ categoryId });
   }
 </script>
 
@@ -128,14 +130,14 @@
   <h2 class="menu-title">{t("Settings")}</h2>
   <SettingsSearch
     {isDesktop}
-    on:resultSelected={handleSearchResult}
-    on:searchActive={handleSearchActive}
+    onResultSelected={handleSearchResult}
+    onSearchActive={handleSearchActive}
   />
   <div class="categories-grid" class:hidden-but-present={searchActive}>
     {#each categories as category}
       <button
         class="category-card"
-        on:click={() => selectCategory(category.id)}
+        onclick={() => selectCategory(category.id)}
         aria-label={t('Open $1$ settings', { substitutions: [category.label] })}
         tabindex={searchActive ? -1 : 0}
       >

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
-  import { uiTheme, themePreference, type UITheme, type ThemePreference } from '../stores/themeStore';
+  import { uiTheme, themePreference, type ThemePreference } from '../stores/themeStore';
   import { showTokenUsage } from '../stores/tokenUsageStore';
   import Switch from '../components/common/Switch.svelte';
   import { t, _t, getCurrentLocale, setLocale } from '../lib/i18n';
@@ -12,19 +12,20 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
 
-  export let settingsConfig: AgentConfig;
-  export let highlightSettingId: string | undefined = undefined;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let {
+    settingsConfig,
+    highlightSettingId = undefined,
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    highlightSettingId?: string | undefined;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
   // Theme
-  let currentTheme: UITheme = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
   // Form state
   let originalPreferences: IUserPreferences = {};
@@ -37,13 +38,15 @@
   let selectedLanguage = getCurrentLocale();
   let browserLanguage = getCurrentLocale();
 
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId);
-    highlightSettingId = undefined;
-  }
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId);
+      highlightSettingId = undefined;
+    }
+  });
 
   // Theme options - reactive to locale changes
-  $: themeOptions = [
+  let themeOptions = $derived([
     {
       value: 'terminal' as ThemePreference,
       label: $_t('Terminal'),
@@ -64,7 +67,7 @@
       label: $_t('Modern Chat Dark'),
       description: $_t('Always dark')
     }
-  ];
+  ]);
 
   onMount(async () => {
     await loadPreferences();
@@ -104,7 +107,7 @@
       saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
 
-      dispatch('saved', { success: true });
+      onSaved?.({ success: true });
 
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -117,7 +120,7 @@
       saveMessage = t('Failed to save settings') + `: ${errorMsg}`;
       saveMessageType = 'error';
 
-      dispatch('saved', { success: false, error: errorMsg });
+      onSaved?.({ success: false, error: errorMsg });
     } finally {
       isSaving = false;
     }
@@ -134,8 +137,7 @@
     autoSave();
   }
 
-  function handleShowTokenUsageChange(event: CustomEvent<boolean>) {
-    const show = event.detail;
+  function handleShowTokenUsageChange(show: boolean) {
     currentPreferences.showTokenUsage = show;
 
     // Apply immediately
@@ -169,8 +171,7 @@
     autoSave();
   }
 
-  async function handleAutoStartChange(event: CustomEvent<boolean>) {
-    const enabled = event.detail;
+  async function handleAutoStartChange(enabled: boolean) {
     currentPreferences.autoStartEnabled = enabled;
 
     // Sync OS-level autostart state immediately
@@ -185,7 +186,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 </script>
 
@@ -195,7 +196,7 @@
       {currentTheme === 'modern'
         ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
         : 'font-terminal text-term-green'}"
-    on:click={handleBack}
+    onclick={handleBack}
   >← {$_t("Back")}</button>
 
   <h2 class="m-0 mb-6 text-2xl font-semibold
@@ -238,7 +239,7 @@
                 name="uiTheme"
                 value={option.value}
                 checked={currentPreferences.uiTheme === option.value}
-                on:change={handleThemeChange}
+                onchange={handleThemeChange}
                 class="absolute opacity-0 w-0 h-0"
               />
               <div class="flex flex-col">
@@ -327,7 +328,7 @@
           </div>
           <Switch
             state={currentPreferences.showTokenUsage ?? false}
-            on:change={handleShowTokenUsageChange}
+            onChange={handleShowTokenUsageChange}
           />
         </div>
       </div>
@@ -357,7 +358,7 @@
           </div>
           <Switch
             state={currentPreferences.autoStartEnabled ?? false}
-            on:change={handleAutoStartChange}
+            onChange={handleAutoStartChange}
           />
         </div>
       </div>
@@ -382,7 +383,7 @@
         <select
           id="language"
           value={selectedLanguage}
-          on:change={handleLanguageChange}
+          onchange={handleLanguageChange}
           class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200
             {currentTheme === 'modern'
               ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
@@ -418,7 +419,7 @@
         <select
           id="maxSessions"
           value={currentPreferences.maxConcurrentSessions ?? 3}
-          on:change={handleMaxSessionsChange}
+          onchange={handleMaxSessionsChange}
           class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200
             {currentTheme === 'modern'
               ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'

@@ -1,43 +1,48 @@
 <!--
   SecuritySettings - PIN enable/disable/change UI for vault security
-  Dispatches: back, saved
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { t } from '../lib/i18n';
   import { sendMessage, MessageType } from '../lib/messaging';
   import PinSetupDialog from '../components/vault/PinSetupDialog.svelte';
   import { vaultStore, refreshVaultStatus } from '../stores/vaultStore';
 
-  export let isDirty = false;
+  let {
+    isDirty = $bindable(false),
+    onBack,
+    onSaved,
+  }: {
+    isDirty?: boolean;
+    onBack?: () => void;
+    onSaved?: () => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{ back: void; saved: void }>();
-
-  let showPinSetup = false;
-  let showChangePinForm = false;
-  let showRemovePinForm = false;
+  let showPinSetup = $state(false);
+  let showChangePinForm = $state(false);
+  let showRemovePinForm = $state(false);
 
   // Change PIN form state
-  let currentPinInput = '';
-  let newPinInput = '';
-  let newPinConfirmInput = '';
-  let changePinError = '';
-  let changePinSubmitting = false;
+  let currentPinInput = $state('');
+  let newPinInput = $state('');
+  let newPinConfirmInput = $state('');
+  let changePinError = $state('');
+  let changePinSubmitting = $state(false);
 
   // Remove PIN form state
-  let removePinInput = '';
-  let removePinError = '';
-  let removePinSubmitting = false;
+  let removePinInput = $state('');
+  let removePinError = $state('');
+  let removePinSubmitting = $state(false);
 
-  let statusMessage = '';
+  let statusMessage = $state('');
 
   onMount(async () => {
     await refreshVaultStatus();
   });
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   async function handlePinSetupSuccess() {
@@ -112,7 +117,7 @@
 
 <div class="settings-view">
   <div class="settings-view-header">
-    <button class="back-button" on:click={handleBack} aria-label={t("Back")}>
+    <button class="back-button" onclick={handleBack} aria-label={t("Back")}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 12H5M12 19l-7-7 7-7"/>
       </svg>
@@ -139,15 +144,15 @@
       </div>
 
       {#if !$vaultStore.isPinEnabled}
-        <button class="btn-action" on:click={() => (showPinSetup = true)}>
+        <button class="btn-action" onclick={() => (showPinSetup = true)}>
           {t("Enable PIN")}
         </button>
       {:else}
         <div class="pin-actions">
-          <button class="btn-action btn-secondary" on:click={() => { showChangePinForm = !showChangePinForm; showRemovePinForm = false; }}>
+          <button class="btn-action btn-secondary" onclick={() => { showChangePinForm = !showChangePinForm; showRemovePinForm = false; }}>
             {t("Change PIN")}
           </button>
-          <button class="btn-action btn-danger" on:click={() => { showRemovePinForm = !showRemovePinForm; showChangePinForm = false; }}>
+          <button class="btn-action btn-danger" onclick={() => { showRemovePinForm = !showRemovePinForm; showChangePinForm = false; }}>
             {t("Remove PIN")}
           </button>
         </div>
@@ -156,18 +161,18 @@
 
     <!-- Change PIN Form -->
     {#if showChangePinForm}
-      <form class="inline-form" on:submit|preventDefault={handleChangePinSubmit}>
+      <form class="inline-form" onsubmit={(e) => { e.preventDefault(); handleChangePinSubmit(); }}>
         <div class="form-field">
           <label>{t("Current PIN")}</label>
-          <input type="password" inputmode="numeric" maxlength="6" bind:value={currentPinInput} on:input={filterNumeric} placeholder="------" autocomplete="off" />
+          <input type="password" inputmode="numeric" maxlength="6" bind:value={currentPinInput} oninput={filterNumeric} placeholder="------" autocomplete="off" />
         </div>
         <div class="form-field">
           <label>{t("New PIN")}</label>
-          <input type="password" inputmode="numeric" maxlength="6" bind:value={newPinInput} on:input={filterNumeric} placeholder="------" autocomplete="off" />
+          <input type="password" inputmode="numeric" maxlength="6" bind:value={newPinInput} oninput={filterNumeric} placeholder="------" autocomplete="off" />
         </div>
         <div class="form-field">
           <label>{t("Confirm New PIN")}</label>
-          <input type="password" inputmode="numeric" maxlength="6" bind:value={newPinConfirmInput} on:input={filterNumeric} placeholder="------" autocomplete="off" />
+          <input type="password" inputmode="numeric" maxlength="6" bind:value={newPinConfirmInput} oninput={filterNumeric} placeholder="------" autocomplete="off" />
         </div>
         {#if changePinError}
           <div class="form-error">{changePinError}</div>
@@ -180,11 +185,11 @@
 
     <!-- Remove PIN Form -->
     {#if showRemovePinForm}
-      <form class="inline-form" on:submit|preventDefault={handleRemovePinSubmit}>
+      <form class="inline-form" onsubmit={(e) => { e.preventDefault(); handleRemovePinSubmit(); }}>
         <p class="form-warning">{t("Enter your current PIN to remove protection. API keys will still be encrypted with the default key.")}</p>
         <div class="form-field">
           <label>{t("Current PIN")}</label>
-          <input type="password" inputmode="numeric" maxlength="6" bind:value={removePinInput} on:input={filterNumeric} placeholder="------" autocomplete="off" />
+          <input type="password" inputmode="numeric" maxlength="6" bind:value={removePinInput} oninput={filterNumeric} placeholder="------" autocomplete="off" />
         </div>
         {#if removePinError}
           <div class="form-error">{removePinError}</div>
@@ -198,7 +203,7 @@
 </div>
 
 {#if showPinSetup}
-  <PinSetupDialog on:success={handlePinSetupSuccess} on:cancel={handlePinSetupCancel} />
+  <PinSetupDialog onSuccess={handlePinSetupSuccess} onCancel={handlePinSetupCancel} />
 {/if}
 
 <style>

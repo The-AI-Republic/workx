@@ -4,51 +4,55 @@
 -->
 
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { t, _t } from '../lib/i18n';
   import type { AgentConfig } from '@/config/AgentConfig';
 
-  export let settingsConfig: AgentConfig | null;
-  export let modelId: string;
-  export let providerId: string;
-
-  const dispatch = createEventDispatcher<{
-    back: void;
-  }>();
+  let {
+    settingsConfig,
+    modelId,
+    providerId,
+    onBack,
+  }: {
+    settingsConfig: AgentConfig | null;
+    modelId: string;
+    providerId: string;
+    onBack?: () => void;
+  } = $props();
 
   // State
-  let isLoading = true;
+  let isLoading = $state(true);
 
   // Model config fields (from IModelConfig)
-  let modelName = '';
-  let modelKey = '';
-  let creator = '';
-  let contextWindow = 0;
-  let maxOutputTokens = 0;
-  let supportsReasoning = false;
-  let reasoningEfforts: string[] = [];
-  let supportsReasoningSummaries = false;
-  let supportsVerbosity = false;
-  let verbosityLevels: string[] = [];
-  let supportsImage = true;
-  let releaseDate: string | null = null;
-  let deprecated = false;
-  let deprecationMessage: string | null = null;
-  let serviceTier: 'default' | 'flex' | 'priority' | undefined;
-  let pricingInputToken = '';
-  let pricingOutputToken = '';
-  let pricingLink = '';
+  let modelName = $state('');
+  let modelKey = $state('');
+  let creator = $state('');
+  let contextWindow = $state(0);
+  let maxOutputTokens = $state(0);
+  let supportsReasoning = $state(false);
+  let reasoningEfforts: string[] = $state([]);
+  let supportsReasoningSummaries = $state(false);
+  let supportsVerbosity = $state(false);
+  let verbosityLevels: string[] = $state([]);
+  let supportsImage = $state(true);
+  let releaseDate: string | null = $state(null);
+  let deprecated = $state(false);
+  let deprecationMessage: string | null = $state(null);
+  let serviceTier: 'default' | 'flex' | 'priority' | undefined = $state(undefined);
+  let pricingInputToken = $state('');
+  let pricingOutputToken = $state('');
+  let pricingLink = $state('');
 
   // Provider config fields (from IProviderConfig)
-  let providerName = '';
-  let organization: string | null = null;
-  let baseUrl: string | null = null;
-  let version: string | null = null;
-  let timeout = 60000;
-  let retryMaxRetries = 3;
-  let retryInitialDelay = 1000;
-  let retryMaxDelay = 30000;
-  let retryBackoffMultiplier = 2;
+  let providerName = $state('');
+  let organization: string | null = $state(null);
+  let baseUrl: string | null = $state(null);
+  let version: string | null = $state(null);
+  let timeout = $state(60000);
+  let retryMaxRetries = $state(3);
+  let retryInitialDelay = $state(1000);
+  let retryMaxDelay = $state(30000);
+  let retryBackoffMultiplier = $state(2);
 
   onMount(async () => {
     await loadConfig();
@@ -111,7 +115,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   function formatNumber(num: number): string {
@@ -120,7 +124,7 @@
 </script>
 
 <div class="advanced-config">
-  <button class="back-button" on:click={handleBack}>← {$_t("Back to Model Config")}</button>
+  <button class="back-button" onclick={handleBack}>{@html '&#8592;'} {$_t("Back to Model Config")}</button>
 
   <h2 class="config-title">{$_t("Advanced Configuration")}</h2>
   <p class="config-subtitle">{$_t("Model and provider settings loaded from default configuration (read-only)")}</p>

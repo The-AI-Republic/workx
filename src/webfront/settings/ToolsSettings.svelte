@@ -1,59 +1,63 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
   import { notifyConfigUpdate } from '../lib/messaging';
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme } from '../stores/themeStore';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
-  export let settingsConfig: AgentConfig;
-  export let highlightSettingId: string | undefined = undefined;
 
-  const dispatch = createEventDispatcher<{
-    back: void;
-    saved: { success: boolean; error?: string };
-  }>();
+  let {
+    settingsConfig,
+    highlightSettingId = undefined,
+    onBack,
+    onSaved,
+  }: {
+    settingsConfig: AgentConfig;
+    highlightSettingId?: string | undefined;
+    onBack?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
+  } = $props();
 
   // Theme
-  let currentTheme: UITheme = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
   // Form state
-  let originalTools: IToolsConfig = {};
-  let currentTools: IToolsConfig = {};
-  let isDirty = false;
-  let isSaving = false;
-  let saveMessage = '';
-  let saveMessageType: 'success' | 'error' | '' = '';
+  let originalTools: IToolsConfig = $state({});
+  let currentTools: IToolsConfig = $state({});
+  let isDirty = $state(false);
+  let isSaving = $state(false);
+  let saveMessage = $state('');
+  let saveMessageType: 'success' | 'error' | '' = $state('');
 
   // Terminal sandbox settings (persisted via Tauri config_storage)
-  let executionMode: 'safe' | 'power' | 'auto' = 'auto';
-  let workspaceAccess: 'rw' | 'ro' | 'none' = 'rw';
-  let networkMode: 'host' | 'sandbox' = 'host';
-  let bindMounts: Array<{ hostPath: string; access: 'rw' | 'ro' }> = [];
-  let newBindMountPath = '';
-  let newBindMountAccess: 'rw' | 'ro' = 'ro';
-  let sandboxStatus: string | null = null;
-  let isDesktop = false;
+  let executionMode: 'safe' | 'power' | 'auto' = $state('auto');
+  let workspaceAccess: 'rw' | 'ro' | 'none' = $state('rw');
+  let networkMode: 'host' | 'sandbox' = $state('host');
+  let bindMounts: Array<{ hostPath: string; access: 'rw' | 'ro' }> = $state([]);
+  let newBindMountPath = $state('');
+  let newBindMountAccess: 'rw' | 'ro' = $state('ro');
+  let sandboxStatus: string | null = $state(null);
+  let isDesktop = $state(false);
 
   // Collapsible sections state
-  let browserToolsExpanded = true;
-  let agentToolsExpanded = true;
-  let advancedExpanded = false;
-  let terminalSandboxExpanded = false;
+  let browserToolsExpanded = $state(true);
+  let agentToolsExpanded = $state(true);
+  let advancedExpanded = $state(false);
+  let terminalSandboxExpanded = $state(false);
 
-  $: if (highlightSettingId) {
-    highlightSetting(highlightSettingId, async () => {
-      browserToolsExpanded = true;
-      agentToolsExpanded = true;
-      advancedExpanded = true;
-      terminalSandboxExpanded = true;
-    });
-    highlightSettingId = undefined;
-  }
+  $effect(() => {
+    if (highlightSettingId) {
+      highlightSetting(highlightSettingId, async () => {
+        browserToolsExpanded = true;
+        agentToolsExpanded = true;
+        advancedExpanded = true;
+        terminalSandboxExpanded = true;
+      });
+      highlightSettingId = undefined;
+    }
+  });
 
   onMount(async () => {
     await loadSettings();
@@ -160,7 +164,7 @@
   }
 
   function handleBack() {
-    dispatch('back');
+    onBack?.();
   }
 
   async function handleSave() {
@@ -178,7 +182,7 @@
       saveMessage = t('Settings saved successfully');
       saveMessageType = 'success';
 
-      dispatch('saved', { success: true });
+      onSaved?.({ success: true });
 
       // Clear message after 3 seconds
       setTimeout(() => {
@@ -191,7 +195,7 @@
       saveMessage = t('Failed to save settings: $1$', { substitutions: [errorMsg] });
       saveMessageType = 'error';
 
-      dispatch('saved', { success: false, error: errorMsg });
+      onSaved?.({ success: false, error: errorMsg });
     } finally {
       isSaving = false;
     }
@@ -204,41 +208,41 @@
     else if (section === 'terminal-sandbox') terminalSandboxExpanded = !terminalSandboxExpanded;
   }
 
-  $: isModern = currentTheme === 'modern';
+  let isModern = $derived(currentTheme === 'modern');
 
   /* Reusable class helpers */
-  $: cardClasses = isModern
+  let cardClasses = $derived(isModern
     ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
-    : 'bg-term-bg border-term-dim-green';
+    : 'bg-term-bg border-term-dim-green');
 
-  $: textClasses = isModern
+  let textClasses = $derived(isModern
     ? 'font-chat text-chat-text dark:text-chat-text-dark'
-    : 'font-terminal text-term-green';
+    : 'font-terminal text-term-green');
 
-  $: textSecondaryClasses = isModern
+  let textSecondaryClasses = $derived(isModern
     ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
-    : 'font-terminal text-term-dim-green';
+    : 'font-terminal text-term-dim-green');
 
-  $: selectClasses = isModern
+  let selectClasses = $derived(isModern
     ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
-    : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10';
+    : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10');
 
-  $: inputClasses = selectClasses;
+  let inputClasses = $derived(selectClasses);
 
-  $: primaryClasses = isModern
+  let primaryClasses = $derived(isModern
     ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
-    : 'font-terminal text-term-green';
+    : 'font-terminal text-term-green');
 
-  $: checkboxAccent = isModern
+  let checkboxAccent = $derived(isModern
     ? 'accent-chat-primary dark:accent-chat-primary-dark'
-    : 'accent-term-green';
+    : 'accent-term-green');
 </script>
 
 <div class="p-6">
   <button
     class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
       {primaryClasses}"
-    on:click={handleBack}
+    onclick={handleBack}
   >← {$_t("Back")}</button>
 
   <h2 class="m-0 mb-6 text-2xl font-semibold {textClasses}">{$_t("Tools Settings")}</h2>
@@ -254,7 +258,7 @@
           <input
             type="checkbox"
             bind:checked={currentTools.enable_all_tools}
-            on:input={handleInput}
+            oninput={handleInput}
             class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
           />
           <span>{$_t("Enable All Tools")}</span>
@@ -270,7 +274,7 @@
           {isModern
             ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
             : 'bg-term-bg hover:bg-term-green/5'}"
-        on:click={() => toggleSection('browser')}
+        onclick={() => toggleSection('browser')}
         aria-expanded={browserToolsExpanded}
       >
         <svg
@@ -307,7 +311,7 @@
                 <input
                   type="checkbox"
                   bind:checked={currentTools[tool.bind]}
-                  on:input={handleInput}
+                  oninput={handleInput}
                   class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
                 />
                 <span>{tool.label}</span>
@@ -326,7 +330,7 @@
           {isModern
             ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
             : 'bg-term-bg hover:bg-term-green/5'}"
-        on:click={() => toggleSection('agent')}
+        onclick={() => toggleSection('agent')}
         aria-expanded={agentToolsExpanded}
       >
         <svg
@@ -351,7 +355,7 @@
               <input
                 type="checkbox"
                 bind:checked={currentTools.execCommand}
-                on:input={handleInput}
+                oninput={handleInput}
                 class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
               />
               <span>{$_t("Execute Commands")}</span>
@@ -364,7 +368,7 @@
               <input
                 type="checkbox"
                 bind:checked={currentTools.webSearch}
-                on:input={handleInput}
+                oninput={handleInput}
                 class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
               />
               <span>{$_t("Web Search")}</span>
@@ -377,7 +381,7 @@
               <input
                 type="checkbox"
                 bind:checked={currentTools.fileOperations}
-                on:input={handleInput}
+                oninput={handleInput}
                 disabled
                 class="w-[18px] h-[18px] cursor-not-allowed {checkboxAccent}"
               />
@@ -391,7 +395,7 @@
               <input
                 type="checkbox"
                 bind:checked={currentTools.mcpTools}
-                on:input={handleInput}
+                oninput={handleInput}
                 class="w-[18px] h-[18px] cursor-pointer {checkboxAccent}"
               />
               <span>{$_t("MCP Tools")}</span>
@@ -409,7 +413,7 @@
           {isModern
             ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
             : 'bg-term-bg hover:bg-term-green/5'}"
-        on:click={() => toggleSection('advanced')}
+        onclick={() => toggleSection('advanced')}
         aria-expanded={advancedExpanded}
       >
         <svg
@@ -437,7 +441,7 @@
               type="number"
               min="100"
               bind:value={currentTools.timeout}
-              on:input={handleInput}
+              oninput={handleInput}
               class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {inputClasses}"
               placeholder="30000"
             />
@@ -451,7 +455,7 @@
               <select
                 id="sandbox-mode"
                 bind:value={currentTools.sandboxPolicy.mode}
-                on:input={handleInput}
+                oninput={handleInput}
                 class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="read-only">{$_t("Read-only")}</option>
@@ -473,7 +477,7 @@
             {isModern
               ? 'bg-chat-surface dark:bg-chat-surface-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
               : 'bg-term-bg hover:bg-term-green/5'}"
-          on:click={() => toggleSection('terminal-sandbox')}
+          onclick={() => toggleSection('terminal-sandbox')}
           aria-expanded={terminalSandboxExpanded}
         >
           <svg
@@ -506,7 +510,7 @@
               <select
                 id="execution-mode"
                 bind:value={executionMode}
-                on:change={handleExecutionModeChange}
+                onchange={handleExecutionModeChange}
                 class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="auto">{$_t("Auto (default)")}</option>
@@ -530,7 +534,7 @@
               <select
                 id="workspace-access"
                 bind:value={workspaceAccess}
-                on:change={handleWorkspaceAccessChange}
+                onchange={handleWorkspaceAccessChange}
                 class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="rw">{$_t("Read-Write")}</option>
@@ -546,7 +550,7 @@
               <select
                 id="network-mode"
                 bind:value={networkMode}
-                on:change={handleNetworkModeChange}
+                onchange={handleNetworkModeChange}
                 class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {selectClasses}"
               >
                 <option value="host">{$_t("Allowed")}</option>
@@ -575,7 +579,7 @@
                           {isModern
                             ? 'text-chat-status-error dark:text-chat-status-error-dark'
                             : 'text-term-red'}"
-                        on:click={() => removeBindMount(i)}
+                        onclick={() => removeBindMount(i)}
                         title="Remove"
                       >&times;</button>
                     </div>
@@ -599,7 +603,7 @@
                     {isModern
                       ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
                       : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
-                  on:click={addBindMount}
+                  onclick={addBindMount}
                 >{$_t("Add")}</button>
               </div>
             </div>
@@ -616,7 +620,7 @@
           {isModern
             ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
             : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
-        on:click={handleSave}
+        onclick={handleSave}
         disabled={!isDirty || isSaving}
       >
         {isSaving ? $_t('Saving...') : $_t('Save Settings')}

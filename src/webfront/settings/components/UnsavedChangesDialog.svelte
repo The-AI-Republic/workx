@@ -1,22 +1,24 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../../lib/i18n';
 
-  export let isOpen = false;
-
-  const dispatch = createEventDispatcher<{
-    confirm: void;
-    cancel: void;
-  }>();
+  let {
+    isOpen = false,
+    onConfirm,
+    onCancel,
+  }: {
+    isOpen?: boolean;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  } = $props();
 
   let dialogElement: HTMLDivElement;
 
   function handleConfirm() {
-    dispatch('confirm');
+    onConfirm?.();
   }
 
   function handleCancel() {
-    dispatch('cancel');
+    onCancel?.();
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -33,23 +35,25 @@
     e.stopPropagation();
   }
 
-  $: if (isOpen && dialogElement) {
-    dialogElement.focus();
-  }
+  $effect(() => {
+    if (isOpen && dialogElement) {
+      dialogElement.focus();
+    }
+  });
 </script>
 
 {#if isOpen}
   <div
     class="dialog-overlay"
-    on:click={handleOverlayClick}
-    on:keydown={handleKeydown}
+    onclick={handleOverlayClick}
+    onkeydown={handleKeydown}
     role="dialog"
     aria-modal="true"
     aria-labelledby="dialog-title"
   >
     <div
       class="dialog-content"
-      on:click={handleContentClick}
+      onclick={handleContentClick}
       bind:this={dialogElement}
       tabindex="-1"
     >
@@ -58,10 +62,10 @@
         {t("You have unsaved changes. Do you want to discard them?")}
       </p>
       <div class="dialog-actions">
-        <button class="btn btn-danger" on:click={handleConfirm}>
+        <button class="btn btn-danger" onclick={handleConfirm}>
           {t("Discard Changes")}
         </button>
-        <button class="btn btn-secondary" on:click={handleCancel}>
+        <button class="btn btn-secondary" onclick={handleCancel}>
           {t("Cancel")}
         </button>
       </div>
