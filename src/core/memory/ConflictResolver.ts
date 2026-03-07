@@ -71,7 +71,13 @@ export class ConflictResolver {
       // Map integer IDs back to real UUIDs
       return decisions.map((d) => {
         if (d.memoryId) {
-          d.memoryId = indexToId.get(d.memoryId) ?? d.memoryId;
+          const realId = indexToId.get(d.memoryId);
+          if (!realId) {
+            console.warn(`[Memory] Conflict resolver returned unknown memoryId "${d.memoryId}", discarding`);
+            d.memoryId = undefined;
+          } else {
+            d.memoryId = realId;
+          }
         }
         return d;
       });

@@ -149,9 +149,8 @@ export class MemoryService {
    * Check if a schema migration is pending, and run re-embedding in background if so.
    */
   async checkAndRunMigration(): Promise<void> {
-    if (!this.config.enabled) return;
-
     try {
+      if (!this.config.enabled) return;
       const status = await this.store.getMigrationStatus();
       if (status !== 'PENDING') return;
 
@@ -514,8 +513,8 @@ ${coreMarkdown.trim()}
    * In-flight extractions will be short-circuited.
    */
   async close(): Promise<void> {
-    this.closed = true;
-    // Drain buffered messages before closing (best-effort)
+    // Drain buffered messages before closing (best-effort).
+    // Must run before setting `closed = true` since _doProcessConversation checks the flag.
     for (const [, { messages, scope }] of this.pendingMessages) {
       if (messages.length > 0) {
         try {
@@ -524,6 +523,7 @@ ${coreMarkdown.trim()}
       }
     }
     this.pendingMessages.clear();
+    this.closed = true;
     // Await in-flight processing before closing the store
     const inflight = Array.from(this.processingQueues.values());
     this.processingQueues.clear();

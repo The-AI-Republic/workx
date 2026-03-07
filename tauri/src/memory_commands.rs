@@ -236,9 +236,9 @@ pub async fn memory_insert(
 pub async fn memory_update(
     id: String,
     embedding: Vec<f32>,
-    fact_text: String,
-    category: String,
-    content_hash: String,
+    fact_text: Option<String>,
+    category: Option<String>,
+    content_hash: Option<String>,
     metadata: Option<String>,
 ) -> Result<(), String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
@@ -248,11 +248,42 @@ pub async fn memory_update(
     let tx = db.conn.unchecked_transaction()
         .map_err(|e| format!("Transaction start failed: {}", e))?;
 
-    tx.execute(
-        "UPDATE memory_facts SET fact_text = ?1, category = ?2, content_hash = ?3, updated_at = ?4, metadata = ?5 WHERE id = ?6",
-        params![fact_text, category, content_hash, now, metadata, id],
-    )
-    .map_err(|e| format!("Update memory_facts failed: {}", e))?;
+    // Build dynamic SET clause to avoid overwriting existing values with defaults
+    let mut set_clauses = vec!["updated_at = ?1".to_string()];
+    let mut params_vec: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(now)];
+    let mut idx = 2;
+
+    if let Some(ref ft) = fact_text {
+        set_clauses.push(format!("fact_text = ?{}", idx));
+        params_vec.push(Box::new(ft.clone()));
+        idx += 1;
+    }
+    if let Some(ref cat) = category {
+        set_clauses.push(format!("category = ?{}", idx));
+        params_vec.push(Box::new(cat.clone()));
+        idx += 1;
+    }
+    if let Some(ref ch) = content_hash {
+        set_clauses.push(format!("content_hash = ?{}", idx));
+        params_vec.push(Box::new(ch.clone()));
+        idx += 1;
+    }
+    if let Some(ref md) = metadata {
+        set_clauses.push(format!("metadata = ?{}", idx));
+        params_vec.push(Box::new(md.clone()));
+        idx += 1;
+    }
+
+    let query = format!(
+        "UPDATE memory_facts SET {} WHERE id = ?{}",
+        set_clauses.join(", "),
+        idx
+    );
+    params_vec.push(Box::new(id.clone()));
+
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+    tx.execute(&query, params_refs.as_slice())
+        .map_err(|e| format!("Update memory_facts failed: {}", e))?;
 
     // sqlite-vec: delete old embedding, insert new one
     tx.execute("DELETE FROM memory_embeddings WHERE memory_id = ?1", params![id])
@@ -468,9 +499,10 @@ pub async fn memory_get_all(
 
     query.push_str(" ORDER BY updated_at DESC");
 
-    if let Some(lim) = limit {
+    // SQLite requires LIMIT before OFFSET — add a large default LIMIT if only offset is provided
+    if limit.is_some() || offset.is_some() {
         query.push_str(&format!(" LIMIT ?{}", param_idx));
-        params_vec.push(Box::new(lim as i64));
+        params_vec.push(Box::new(limit.unwrap_or(1_000_000) as i64));
         param_idx += 1;
     }
 
@@ -691,9 +723,10 @@ pub async fn memory_get_history(
 
     query.push_str(" ORDER BY timestamp DESC");
 
-    if let Some(lim) = limit {
+    // SQLite requires LIMIT before OFFSET — add a large default LIMIT if only offset is provided
+    if limit.is_some() || offset.is_some() {
         query.push_str(&format!(" LIMIT ?{}", param_idx));
-        params_vec.push(Box::new(lim as i64));
+        params_vec.push(Box::new(limit.unwrap_or(1_000_000) as i64));
         param_idx += 1;
     }
 

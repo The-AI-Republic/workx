@@ -64,6 +64,11 @@ export class CachedEmbeddingProvider implements EmbeddingProvider {
     // Batch-embed uncached (normalized) texts
     if (uncachedTexts.length > 0) {
       const embeddings = await this.provider.embedBatch(uncachedTexts);
+      if (embeddings.length !== uncachedTexts.length) {
+        throw new Error(
+          `Embedding provider returned ${embeddings.length} results for ${uncachedTexts.length} inputs`
+        );
+      }
       for (let j = 0; j < uncachedIndices.length; j++) {
         const idx = uncachedIndices[j];
         results[idx] = embeddings[j];

@@ -108,10 +108,10 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     await invoke('memory_update', {
       id,
       embedding: Array.from(embedding),
-      factText: fact.factText ?? '',
-      category: fact.category ?? 'general',
-      contentHash: fact.contentHash ?? '',
-      metadata: fact.metadata ? JSON.stringify(fact.metadata) : null,
+      factText: fact.factText ?? null,
+      category: fact.category ?? null,
+      contentHash: fact.contentHash ?? null,
+      metadata: fact.metadata !== undefined ? JSON.stringify(fact.metadata) : null,
     });
   }
 

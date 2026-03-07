@@ -20,6 +20,7 @@ export class CoreMemoryManager {
   private llm: LLMCaller;
   private fs: FileSystem;
   private memoryDir: string;
+  private mergeQueue: Promise<void> = Promise.resolve();
 
   constructor(llm: LLMCaller, fs: FileSystem, memoryDir: string) {
     this.llm = llm;
@@ -65,6 +66,13 @@ export class CoreMemoryManager {
   async mergeCoreFacts(facts: string[]): Promise<void> {
     if (facts.length === 0) return;
 
+    // Serialize concurrent merges to prevent lost-update races on core-memory.md
+    const task = this.mergeQueue.then(() => this._doMergeCoreFacts(facts));
+    this.mergeQueue = task.catch(() => { /* swallow to keep chain alive */ });
+    return task;
+  }
+
+  private async _doMergeCoreFacts(facts: string[]): Promise<void> {
     const existingMarkdown = await this.getCoreMemoryContent();
     const newFactsText = facts.map((f, i) => `${i + 1}. ${f}`).join('\n');
 

@@ -724,6 +724,7 @@ export class Session {
       } catch (error) {
         console.error('Failed to close memory service:', error);
       }
+      this._memoryService = null;
     }
 
     if (this.services?.rollout) {
@@ -1054,15 +1055,28 @@ export class Session {
           }
         };
 
+        // For non-OpenAI/non-Google providers (xAI, Groq, Together, Fireworks),
+        // embeddings use OpenAI's text-embedding-3-small, so we need an OpenAI API key.
+        let embeddingApiKey = apiKey || '';
+        let embeddingBaseUrl: string | undefined;
+
+        if (providerId === 'openai') {
+          embeddingBaseUrl = agentConfig.getProvider(providerId)?.baseUrl ?? undefined;
+        } else if (providerId === 'google-ai-studio') {
+          embeddingBaseUrl = agentConfig.getProvider(providerId)?.baseUrl ?? undefined;
+        } else {
+          // Non-OpenAI provider: try to use a configured OpenAI key for embeddings
+          const openaiKey = await agentConfig.getProviderApiKey('openai');
+          if (openaiKey) {
+            embeddingApiKey = openaiKey;
+          }
+          // embeddingBaseUrl left undefined so OpenAI SDK defaults to api.openai.com
+        }
+
         const memoryService = await createMemoryService({
           llmProvider: providerId,
-          apiKey: apiKey || '', // Pass empty string to trigger graceful degradation inside createMemoryService
-          // Only pass baseUrl for providers that host their own embedding models.
-          // For xAI/Groq/Together/Fireworks, embeddings use OpenAI's text-embedding-3-small
-          // which must go to api.openai.com (the SDK default), not the LLM provider's endpoint.
-          baseUrl: (providerId === 'openai' || providerId === 'google-ai-studio')
-            ? agentConfig.getProvider(providerId)?.baseUrl ?? undefined
-            : undefined,
+          apiKey: embeddingApiKey,
+          baseUrl: embeddingBaseUrl,
           llmCaller
         });
 
@@ -1099,6 +1113,7 @@ export class Session {
       } catch (e) {
         console.error('Failed to close memory service:', e);
       }
+      this._memoryService = null;
     }
 
     if (this.services?.rollout) {
