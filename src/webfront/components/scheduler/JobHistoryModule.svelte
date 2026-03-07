@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import Fuse from 'fuse.js';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
@@ -9,44 +8,54 @@
   import StatusFilter from './StatusFilter.svelte';
   import type { ArchivedJobSummary } from '@/core/models/types/SchedulerContracts';
 
-  export let collapsible: boolean = false;
-  export let initialExpanded: boolean = true;
+  let {
+    collapsible = false,
+    initialExpanded = true,
+  }: {
+    collapsible?: boolean;
+    initialExpanded?: boolean;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let expanded = initialExpanded;
-  let isLoading = true;
-  let archivedJobs: ArchivedJobSummary[] = [];
-  let hasMore = false;
-  let offset = 0;
+  let currentTheme = $state<UITheme>('terminal');
+  let expanded = $state(initialExpanded);
+  let isLoading = $state(true);
+  let archivedJobs = $state<ArchivedJobSummary[]>([]);
+  let hasMore = $state(false);
+  let offset = $state(0);
   const limit = 20;
-  let eventUnsubscribers: Array<() => void> = [];
 
   // Search/Sort/Filter state
-  let searchQuery = '';
-  let sortDirection: 'newest' | 'oldest' = 'newest';
-  let selectedStatuses: Set<string> = new Set(['completed', 'failed', 'cancelled']);
+  let searchQuery = $state('');
+  let sortDirection = $state<'newest' | 'oldest'>('newest');
+  let selectedStatuses = $state(new Set(['completed', 'failed', 'cancelled']));
   let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Fuse.js instance
-  let fuse: Fuse<ArchivedJobSummary> | null = null;
+  let fuse = $state<Fuse<ArchivedJobSummary> | null>(null);
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   // Build Fuse index when jobs change
-  $: if (archivedJobs.length > 0) {
-    fuse = new Fuse(archivedJobs, {
-      keys: [
-        { name: 'input', weight: 2 },
-        { name: 'status', weight: 1 },
-      ],
-      threshold: 0.4,
-    });
-  }
+  $effect(() => {
+    if (archivedJobs.length > 0) {
+      fuse = new Fuse(archivedJobs, {
+        keys: [
+          { name: 'input', weight: 2 },
+          { name: 'status', weight: 1 },
+        ],
+        threshold: 0.4,
+      });
+    }
+  });
 
   // Computed filtered results
-  $: filteredJobs = getFilteredJobs(archivedJobs, searchQuery, selectedStatuses, sortDirection);
+  let filteredJobs = $derived(getFilteredJobs(archivedJobs, searchQuery, selectedStatuses, sortDirection));
 
   function getFilteredJobs(
     jobs: ArchivedJobSummary[],
@@ -86,15 +95,18 @@
     sortDirection = sortDirection === 'newest' ? 'oldest' : 'newest';
   }
 
-  function handleStatusChange(e: CustomEvent<Set<string>>) {
-    selectedStatuses = e.detail;
+  function handleStatusChange(statuses: Set<string>) {
+    selectedStatuses = statuses;
   }
 
   function handleSchedulerEvent(message: { type: string }) {
     if (message.type === MessageType.SCHEDULER_EVENT) {
-      offset = 0;
-      archivedJobs = [];
-      fetchArchivedJobs();
+      clearTimeout(eventDebounceTimer);
+      eventDebounceTimer = setTimeout(() => {
+        offset = 0;
+        archivedJobs = [];
+        fetchArchivedJobs();
+      }, 150);
     }
   }
 
@@ -138,29 +150,35 @@
     });
   }
 
-  onMount(() => {
+  $effect(() => {
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.addListener(handleSchedulerEvent);
     }
+
+    const localUnsubs: Array<() => void> = [];
     const service = tryGetMessageService();
     if (service) {
       const unsub = service.on(MessageType.SCHEDULER_EVENT, () => {
-        offset = 0;
-        archivedJobs = [];
-        fetchArchivedJobs();
+        clearTimeout(eventDebounceTimer);
+        eventDebounceTimer = setTimeout(() => {
+          offset = 0;
+          archivedJobs = [];
+          fetchArchivedJobs();
+        }, 150);
       });
-      if (unsub) eventUnsubscribers.push(unsub);
+      if (unsub) localUnsubs.push(unsub);
     }
-    fetchArchivedJobs();
-  });
 
-  onDestroy(() => {
-    unsubTheme();
-    clearTimeout(searchDebounceTimer);
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-    }
-    eventUnsubscribers.forEach(fn => fn());
+    fetchArchivedJobs();
+
+    return () => {
+      clearTimeout(searchDebounceTimer);
+      clearTimeout(eventDebounceTimer);
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+      }
+      localUnsubs.forEach(fn => fn());
+    };
   });
 </script>
 
@@ -176,7 +194,7 @@
       {currentTheme === 'modern'
         ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark font-chat'
         : 'bg-[rgba(0,255,0,0.05)] text-term-green font-terminal'}"
-    on:click={() => { if (collapsible) expanded = !expanded; }}
+    onclick={() => { if (collapsible) expanded = !expanded; }}
     disabled={!collapsible}
   >
     <span class="text-sm font-semibold">{$_t('Job History')}</span>
@@ -207,7 +225,7 @@
           {currentTheme === 'modern'
             ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
             : 'bg-black/50 border border-term-dim-green text-term-green font-terminal placeholder:text-term-dim-green/60 focus:border-term-green'}"
-        on:input={handleSearchInput}
+        oninput={handleSearchInput}
       />
 
       <!-- Sort + Filter row -->
@@ -217,7 +235,7 @@
             {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={toggleSort}
+          onclick={toggleSort}
           title={t(sortDirection === 'newest' ? 'Sort: Newest first' : 'Sort: Oldest first')}
         >
           {sortDirection === 'newest' ? $_t('Newest') : $_t('Oldest')}
@@ -233,7 +251,7 @@
         <StatusFilter
           statuses={['completed', 'failed', 'cancelled']}
           selected={selectedStatuses}
-          on:change={handleStatusChange}
+          onchange={handleStatusChange}
         />
       </div>
     </div>
@@ -267,7 +285,7 @@
               {currentTheme === 'modern'
                 ? 'border border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:enabled:bg-chat-button-hover dark:hover:enabled:bg-chat-button-hover-dark'
                 : 'border border-term-dim-green text-term-dim-green hover:enabled:bg-[rgba(0,255,0,0.1)]'}"
-            on:click={loadMore}
+            onclick={loadMore}
             disabled={isLoading}
           >
             {isLoading ? $_t('Loading...') : $_t('Load More')}

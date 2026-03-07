@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
@@ -7,29 +6,65 @@
   import SchedulerJobItem from './SchedulerJobItem.svelte';
   import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
 
-  export let collapsible: boolean = false;
-  export let initialExpanded: boolean = true;
+  let {
+    collapsible = false,
+    initialExpanded = true,
+  }: {
+    collapsible?: boolean;
+    initialExpanded?: boolean;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let expanded = initialExpanded;
-  let isLoading = true;
+  let currentTheme = $state<UITheme>('terminal');
+  let expanded = $state(initialExpanded);
+  let isLoading = $state(true);
 
-  let runningJob: SchedulerJobSummary | null = null;
-  let scheduledJobs: SchedulerJobSummary[] = [];
-  let missedJobs: SchedulerJobSummary[] = [];
-  let queuedJobs: SchedulerJobSummary[] = [];
+  let runningJob = $state<SchedulerJobSummary | null>(null);
+  let scheduledJobs = $state<SchedulerJobSummary[]>([]);
+  let missedJobs = $state<SchedulerJobSummary[]>([]);
+  let queuedJobs = $state<SchedulerJobSummary[]>([]);
 
-  let eventUnsubscribers: Array<() => void> = [];
+  let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  let totalActive = $derived((runningJob ? 1 : 0) + scheduledJobs.length + missedJobs.length + queuedJobs.length);
+
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
-  $: totalActive = (runningJob ? 1 : 0) + scheduledJobs.length + missedJobs.length + queuedJobs.length;
+  $effect(() => {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
+    }
+
+    const localUnsubs: Array<() => void> = [];
+    const service = tryGetMessageService();
+    if (service) {
+      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => debouncedFetch());
+      if (unsub) localUnsubs.push(unsub);
+    }
+
+    fetchAllData();
+
+    return () => {
+      clearTimeout(eventDebounceTimer);
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+      }
+      localUnsubs.forEach(fn => fn());
+    };
+  });
+
+  function debouncedFetch() {
+    clearTimeout(eventDebounceTimer);
+    eventDebounceTimer = setTimeout(() => fetchAllData(), 150);
+  }
 
   function handleSchedulerEvent(message: { type: string }) {
     if (message.type === MessageType.SCHEDULER_EVENT) {
-      fetchAllData();
+      debouncedFetch();
     }
   }
 
@@ -55,43 +90,21 @@
     }
   }
 
-  async function handleTrigger(e: CustomEvent<{ jobId: string }>) {
+  async function handleTrigger(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: e.detail.jobId });
+      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: data.jobId });
     } catch (error) {
       console.error('[ActiveJobsModule] Failed to trigger job:', error);
     }
   }
 
-  async function handleCancel(e: CustomEvent<{ jobId: string }>) {
+  async function handleCancel(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: e.detail.jobId });
+      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: data.jobId });
     } catch (error) {
       console.error('[ActiveJobsModule] Failed to cancel job:', error);
     }
   }
-
-  onMount(() => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleSchedulerEvent);
-    }
-
-    const service = tryGetMessageService();
-    if (service) {
-      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => fetchAllData());
-      if (unsub) eventUnsubscribers.push(unsub);
-    }
-
-    fetchAllData();
-  });
-
-  onDestroy(() => {
-    unsubTheme();
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-    }
-    eventUnsubscribers.forEach(fn => fn());
-  });
 </script>
 
 <div class="flex flex-col rounded-lg overflow-hidden
@@ -106,7 +119,7 @@
       {currentTheme === 'modern'
         ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark font-chat'
         : 'bg-[rgba(0,255,0,0.05)] text-term-green font-terminal'}"
-    on:click={() => { if (collapsible) expanded = !expanded; }}
+    onclick={() => { if (collapsible) expanded = !expanded; }}
     disabled={!collapsible}
   >
     <span class="text-sm font-semibold">{$_t('Active Jobs')}</span>
@@ -139,7 +152,7 @@
           <div class="mb-1">
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Running')}</span>
-            <SchedulerJobItem {...runningJob} on:trigger={handleTrigger} on:cancel={handleCancel} />
+            <SchedulerJobItem {...runningJob} ontrigger={handleTrigger} oncancel={handleCancel} />
           </div>
         {/if}
 
@@ -148,7 +161,7 @@
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-term-yellow' : 'text-term-yellow'}">{$_t('Missed')}</span>
             {#each missedJobs as job (job.id)}
-              <SchedulerJobItem {...job} on:trigger={handleTrigger} on:cancel={handleCancel} />
+              <SchedulerJobItem {...job} ontrigger={handleTrigger} oncancel={handleCancel} />
             {/each}
           </div>
         {/if}
@@ -158,7 +171,7 @@
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-blue-400' : 'text-blue-400'}">{$_t('Queued')}</span>
             {#each queuedJobs as job (job.id)}
-              <SchedulerJobItem {...job} on:trigger={handleTrigger} on:cancel={handleCancel} />
+              <SchedulerJobItem {...job} ontrigger={handleTrigger} oncancel={handleCancel} />
             {/each}
           </div>
         {/if}
@@ -168,7 +181,7 @@
             <span class="block text-xs uppercase tracking-wider mb-1
               {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">{$_t('Scheduled')}</span>
             {#each scheduledJobs as job (job.id)}
-              <SchedulerJobItem {...job} on:trigger={handleTrigger} on:cancel={handleCancel} />
+              <SchedulerJobItem {...job} ontrigger={handleTrigger} oncancel={handleCancel} />
             {/each}
           </div>
         {/if}

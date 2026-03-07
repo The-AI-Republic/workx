@@ -175,29 +175,6 @@ export function createScheduledJobRecord(
   };
 }
 
-/**
- * Creates a new scheduled job record with recurrence
- */
-export function createScheduledJobRecordWithRecurrence(
-  id: string,
-  input: string,
-  scheduledTime: number,
-  recurrence: RecurrenceRule
-): SchedulerJobRecord {
-  return {
-    id,
-    input,
-    scheduledTime,
-    createdAt: Date.now(),
-    status: 'scheduled',
-    sessionId: null,
-    completedAt: null,
-    error: null,
-    result: null,
-    recurrence,
-  };
-}
-
 // ============================================================================
 // Type Guards
 // ============================================================================

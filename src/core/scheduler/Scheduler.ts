@@ -12,6 +12,7 @@ import type {
   SchedulerJobRecord,
   SchedulerJobStatus,
   JobResultRecord,
+  RecurrenceRule,
 } from '../models/types/Scheduler';
 import {
   calculateNextRunTime,
@@ -129,20 +130,15 @@ export class Scheduler {
    * Schedule a new job for future execution
    * @returns The created job ID
    */
-  async scheduleJob(input: string, scheduledTime: number, recurrence?: import('../models/types/Scheduler').RecurrenceRule): Promise<string> {
+  async scheduleJob(input: string, scheduledTime: number, recurrence?: RecurrenceRule): Promise<string> {
     // Validate scheduled time is in the future
     const now = Date.now();
     if (scheduledTime <= now) {
       throw new Error('Scheduled time must be in the future');
     }
 
-    // Create the job with scheduled status
-    const job = await this.storage.createJob(input, scheduledTime);
-
-    // Store recurrence rule if provided
-    if (recurrence) {
-      await this.storage.updateJob(job.id, { recurrence });
-    }
+    // Create the job with scheduled status (recurrence stored atomically)
+    const job = await this.storage.createJob(input, scheduledTime, recurrence || undefined);
 
     // Create alarm for the job — clean up on failure to avoid orphaned jobs
     try {
@@ -158,7 +154,7 @@ export class Scheduler {
   /**
    * Schedule an existing draft job
    */
-  async scheduleExistingJob(jobId: string, scheduledTime: number): Promise<void> {
+  async scheduleExistingJob(jobId: string, scheduledTime: number, recurrence?: RecurrenceRule): Promise<void> {
     const job = await this.storage.getJob(jobId);
     if (!job) {
       throw new Error(`Job not found: ${jobId}`);
@@ -176,11 +172,15 @@ export class Scheduler {
 
     const previousStatus = job.status;
 
-    // Update job with scheduled time and status
-    await this.storage.updateJob(jobId, {
+    // Update job with scheduled time, status, and optional recurrence
+    const updates: Partial<SchedulerJobRecord> = {
       scheduledTime,
-      status: 'scheduled',
-    });
+      status: 'scheduled' as const,
+    };
+    if (recurrence) {
+      updates.recurrence = recurrence;
+    }
+    await this.storage.updateJob(jobId, updates);
 
     // Create alarm for the job
     await this.alarms.createJobAlarm(jobId, scheduledTime);
@@ -715,10 +715,16 @@ export class Scheduler {
       const nextRule = createNextRecurrenceRule(rule);
       nextRule.parentJobId = rule.parentJobId || job.id;
 
-      // Create via storage interface, then update with recurrence data
-      const nextJob = await this.storage.createJob(job.input, nextTime);
-      await this.storage.updateJob(nextJob.id, { recurrence: nextRule });
-      await this.alarms.createJobAlarm(nextJob.id, nextTime);
+      // Create job with recurrence atomically
+      const nextJob = await this.storage.createJob(job.input, nextTime, nextRule);
+
+      // Create alarm — clean up on failure to avoid orphaned jobs
+      try {
+        await this.alarms.createJobAlarm(nextJob.id, nextTime);
+      } catch (alarmError) {
+        await this.storage.deleteJob(nextJob.id);
+        throw alarmError;
+      }
       console.log(`[Scheduler] Created next recurrence job ${nextJob.id} scheduled at ${new Date(nextTime).toISOString()}`);
     } catch (error) {
       console.error(`[Scheduler] Failed to create next recurrence for job ${job.id}:`, error);

@@ -249,6 +249,14 @@ export abstract class ModelClient {
   }
 
   /**
+   * Whether this model supports native web search.
+   * Reads from model metadata. Defaults to false.
+   */
+  supportsNativeWebSearch(): boolean {
+    return this.modelConfig?.supportsWebSearch ?? false;
+  }
+
+  /**
    * Get auto-compact token limit for this model
    */
   abstract getAutoCompactTokenLimit(): number | undefined;

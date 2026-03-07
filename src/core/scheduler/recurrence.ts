@@ -40,7 +40,12 @@ export function calculateNextRunTime(
 
     case 'monthly': {
       const date = new Date(lastScheduledTime);
+      const originalDay = date.getDate();
       date.setMonth(date.getMonth() + 1);
+      // Clamp to last day of target month if day overflowed (e.g., Jan 31 → Mar 3)
+      if (date.getDate() !== originalDay) {
+        date.setDate(0); // Sets to last day of previous month (the intended target month)
+      }
       nextTime = date.getTime();
       break;
     }
@@ -57,6 +62,41 @@ export function calculateNextRunTime(
       return null;
   }
 
+  // Skip forward past current time to avoid cascading past-due jobs
+  // (e.g., system was offline for days — don't create one job per missed interval)
+  const now = Date.now();
+  if (nextTime <= now) {
+    if (rule.mode === 'monthly') {
+      // Monthly needs date arithmetic (can't just add a fixed ms offset)
+      while (nextTime <= now) {
+        const date = new Date(nextTime);
+        const originalDay = date.getDate();
+        date.setMonth(date.getMonth() + 1);
+        if (date.getDate() !== originalDay) {
+          date.setDate(0);
+        }
+        nextTime = date.getTime();
+      }
+    } else {
+      // For fixed-interval modes, calculate how many intervals to skip
+      let intervalMs: number;
+      switch (rule.mode) {
+        case 'daily': intervalMs = 24 * 60 * 60 * 1000; break;
+        case 'weekly': intervalMs = 7 * 24 * 60 * 60 * 1000; break;
+        case 'custom': {
+          const interval = rule.interval || 1;
+          const unit = rule.intervalUnit || 'days';
+          intervalMs = interval * (UNIT_TO_MS[unit] || UNIT_TO_MS.days);
+          break;
+        }
+        default: return null;
+      }
+      const elapsed = now - nextTime;
+      const periodsToSkip = Math.ceil(elapsed / intervalMs);
+      nextTime += periodsToSkip * intervalMs;
+    }
+  }
+
   // Check 'until' end condition against the calculated next time
   if (rule.endCondition === 'until' && rule.endUntilDate && nextTime > rule.endUntilDate) {
     return null;
@@ -67,9 +107,12 @@ export function calculateNextRunTime(
 
 /**
  * Check if another occurrence should be created based on the rule's end condition.
+ * Note: 'until' end condition is checked in calculateNextRunTime against the
+ * computed next time, not against Date.now(), to avoid prematurely rejecting
+ * a valid recurrence when a job completes slightly after the end date.
  */
 export function shouldContinueRecurrence(rule: RecurrenceRule): boolean {
-  if (rule.endCondition === 'never') {
+  if (rule.endCondition === 'never' || rule.endCondition === 'until') {
     return true;
   }
 
@@ -77,10 +120,6 @@ export function shouldContinueRecurrence(rule: RecurrenceRule): boolean {
     const completed = rule.completedCount || 0;
     const max = rule.endAfterCount || 1;
     return completed < max;
-  }
-
-  if (rule.endCondition === 'until') {
-    return Date.now() < (rule.endUntilDate || 0);
   }
 
   return true;
@@ -96,41 +135,3 @@ export function createNextRecurrenceRule(rule: RecurrenceRule): RecurrenceRule {
   };
 }
 
-/**
- * Format a recurrence rule for human-readable display.
- */
-export function formatRecurrenceRule(rule: RecurrenceRule): string {
-  let base: string;
-
-  switch (rule.mode) {
-    case 'daily':
-      base = 'Every day';
-      break;
-    case 'weekly':
-      base = 'Every week';
-      break;
-    case 'monthly':
-      base = 'Every month';
-      break;
-    case 'custom': {
-      const interval = rule.interval || 1;
-      const unit = rule.intervalUnit || 'days';
-      base = interval === 1
-        ? `Every ${unit.slice(0, -1)}`
-        : `Every ${interval} ${unit}`;
-      break;
-    }
-    default:
-      return 'Does not repeat';
-  }
-
-  if (rule.endCondition === 'after' && rule.endAfterCount) {
-    const completed = rule.completedCount || 0;
-    base += `, ${completed} of ${rule.endAfterCount} completed`;
-  } else if (rule.endCondition === 'until' && rule.endUntilDate) {
-    const date = new Date(rule.endUntilDate);
-    base += `, until ${date.toLocaleDateString()}`;
-  }
-
-  return base;
-}

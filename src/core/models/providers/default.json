@@ -80,6 +80,7 @@
           "high"
         ],
         "supportsImage": true,
+        "supportsWebSearch": true,
         "releaseDate": "2024-12-05",
         "deprecated": false,
         "serviceTier": "default",
@@ -111,6 +112,7 @@
           "high"
         ],
         "supportsImage": true,
+        "supportsWebSearch": true,
         "releaseDate": "2024-12-05",
         "deprecated": false,
         "serviceTier": "default",
@@ -150,6 +152,7 @@
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
         "supportsImage": true,
+        "supportsWebSearch": true,
         "releaseDate": "2025-11-18",
         "deprecated": false,
         "pricing": {
@@ -170,6 +173,7 @@
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
         "supportsImage": true,
+        "supportsWebSearch": true,
         "releaseDate": "2025-01-09",
         "deprecated": false,
         "pricing": {

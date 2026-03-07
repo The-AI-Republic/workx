@@ -39,7 +39,7 @@ export interface SchedulerJobCounts {
  */
 export interface ISchedulerStorage {
   // Job CRUD
-  createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord>; // No time = draft
+  createJob(input: string, scheduledTime?: number, recurrence?: RecurrenceRule): Promise<SchedulerJobRecord>; // No time = draft
   getJob(id: string): Promise<SchedulerJobRecord | null>;
   updateJob(id: string, updates: Partial<SchedulerJobRecord>): Promise<void>;
   deleteJob(id: string): Promise<void>;
@@ -49,8 +49,8 @@ export interface ISchedulerStorage {
   getScheduledJobs(): Promise<SchedulerJobRecord[]>; // Upcoming (status: scheduled)
   getMissedJobs(): Promise<SchedulerJobRecord[]>; // Overdue jobs (status: missed)
   getJobQueueJobs(): Promise<SchedulerJobRecord[]>; // Job queue (status: waiting)
-  getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]>;
-  getArchivedJobsCount(): Promise<number>;
+  getArchivedJobs(limit: number, offset: number, sortDirection?: 'newest' | 'oldest', statusFilter?: SchedulerJobStatus[]): Promise<SchedulerJobRecord[]>;
+  getArchivedJobsCount(statusFilter?: SchedulerJobStatus[]): Promise<number>;
   getNextJobInQueue(): Promise<SchedulerJobRecord | null>; // FIFO by createdAt
   getOverdueScheduledJobs(): Promise<SchedulerJobRecord[]>; // status: scheduled AND scheduledTime < now
 

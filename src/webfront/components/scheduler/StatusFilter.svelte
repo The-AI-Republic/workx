@@ -1,17 +1,24 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t } from '../../lib/i18n';
 
-  export let statuses: string[] = [];
-  export let selected: Set<string> = new Set(statuses);
+  let {
+    statuses = [],
+    selected = new Set<string>(),
+    onchange,
+  }: {
+    statuses?: string[];
+    selected?: Set<string>;
+    onchange?: (next: Set<string>) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{ change: Set<string> }>();
+  let currentTheme = $state<UITheme>('terminal');
 
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   function getStatusColor(status: string): string {
@@ -34,7 +41,7 @@
       next.add(status);
     }
     selected = next;
-    dispatch('change', next);
+    onchange?.(next);
   }
 
   function getLabel(status: string): string {
@@ -51,7 +58,7 @@
           : currentTheme === 'modern'
             ? 'bg-transparent border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark opacity-50'
             : 'bg-transparent border-[rgba(0,255,0,0.15)] text-term-dim-green opacity-50'}"
-      on:click={() => toggle(status)}
+      onclick={() => toggle(status)}
     >
       {getLabel(status)}
     </button>
