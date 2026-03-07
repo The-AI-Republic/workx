@@ -1,7 +1,7 @@
 /**
  * Server Agent Bootstrap
  *
- * Main orchestrator for server mode. Creates RepublicAgent, ServerMessageRouter,
+ * Main orchestrator for server mode. Creates RepublicAgent,
  * ServerChannel, ChannelManager, plugin loader, and maintenance timers.
  *
  * Pattern follows DesktopAgentBootstrap.

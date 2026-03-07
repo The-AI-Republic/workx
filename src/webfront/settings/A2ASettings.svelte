@@ -13,7 +13,7 @@
     IA2ASkill,
   } from '@/core/a2a/types';
   import { isDebugLoggingEnabled, setDebugLogging } from '@/core/a2a/A2AConfig';
-  import { sendMessage, MessageType } from '../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { t, _t } from '../lib/i18n';
 
   export let settingsConfig: AgentConfig;
@@ -109,8 +109,8 @@
 
   async function loadAgents() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IA2AAgentConfig[] }>(
-        MessageType.A2A_GET_AGENTS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IA2AAgentConfig[] }>(
+        'a2a.getAgents'
       );
       if (response?.success) {
         agents = response.data || [];
@@ -122,8 +122,8 @@
 
   async function loadConnections() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: IA2AConnection[] }>(
-        MessageType.A2A_GET_CONNECTIONS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: IA2AConnection[] }>(
+        'a2a.getConnections'
       );
       if (response?.success) {
         connections = response.data || [];
@@ -135,8 +135,8 @@
 
   async function loadSkills() {
     try {
-      const response = await sendMessage<{ success: boolean; data?: Array<{ agentName: string; skill: IA2ASkill }> }>(
-        MessageType.A2A_GET_ALL_SKILLS
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; data?: Array<{ agentName: string; skill: IA2ASkill }> }>(
+        'a2a.getAllSkills'
       );
       if (response?.success) {
         allSkills = response.data || [];
@@ -247,8 +247,8 @@
           updatePayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.A2A_UPDATE_AGENT,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'a2a.updateAgent',
           {
             id: editingAgentId,
             update: updatePayload,
@@ -272,8 +272,8 @@
           createPayload.apiKey = formApiKey.trim();
         }
 
-        const response = await sendMessage<{ success: boolean; error?: string }>(
-          MessageType.A2A_ADD_AGENT,
+        const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+          'a2a.addAgent',
           createPayload
         );
 
@@ -305,8 +305,8 @@
     }
 
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.A2A_REMOVE_AGENT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'a2a.removeAgent',
         { id: agentId }
       );
 
@@ -333,8 +333,8 @@
 
   async function handleConnect(agentId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.A2A_CONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'a2a.connect',
         { id: agentId }
       );
 
@@ -360,8 +360,8 @@
 
   async function handleDisconnect(agentId: string) {
     try {
-      const response = await sendMessage<{ success: boolean; error?: string }>(
-        MessageType.A2A_DISCONNECT,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean; error?: string }>(
+        'a2a.disconnect',
         { id: agentId }
       );
 

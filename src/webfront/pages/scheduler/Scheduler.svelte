@@ -3,7 +3,6 @@
   import { isWideMode } from '../../stores/layoutStore';
   import { push } from 'svelte-spa-router';
   import { AgentConfig } from '@/config/AgentConfig';
-  import { sendMessage, MessageType } from '../../lib/messaging';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
   import { schedulerStore } from '../../stores/schedulerStore';
@@ -152,7 +151,7 @@
 
     try {
       if (!client) throw new Error('Message service not available');
-      const response = await sendMessage<{ success: boolean }>(MessageType.SCHEDULER_SCHEDULE_TASK, {
+      const response = await (await getInitializedUIClient()).serviceRequest<{ success: boolean }>('scheduler.schedule', {
         input: taskInput,
         scheduledTime,
       });

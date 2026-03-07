@@ -6,7 +6,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { t } from '../../lib/i18n';
-  import { sendMessage, MessageType } from '../../lib/messaging';
+  import { getInitializedUIClient } from '@/core/messaging';
 
   const dispatch = createEventDispatcher<{ success: void; cancel: void }>();
 
@@ -37,7 +37,7 @@
 
     isSubmitting = true;
     try {
-      await sendMessage(MessageType.PIN_SET, { pin, pinConfirm });
+      await (await getInitializedUIClient()).serviceRequest('vault.pin.set', { pin, pinConfirm });
       dispatch('success');
     } catch (err) {
       error = (err as Error).message || 'Failed to set PIN';

@@ -5,7 +5,6 @@
   import { messageService, connectionState, getMessageService, type IMessageService } from '@/core/messaging';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
-  import { sendMessage } from '../../lib/messaging';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event } from '@/core/protocol/types';
   import type { ProcessedEvent } from '@/types/ui';
@@ -203,7 +202,7 @@
     if (platform.platformName === 'extension' && client) {
       keepAliveInterval = setInterval(async () => {
         try {
-          await sendMessage(MessageType.PING);
+          await (await getInitializedUIClient()).serviceRequest('agent.ping');
           console.log('[App] Keep-alive ping sent');
         } catch (error) {
           console.warn('[App] Keep-alive ping failed:', error);
@@ -253,7 +252,7 @@
 
       // Request agent to abort via message service
       if (client) {
-        sendMessage(MessageType.INTERRUPT).catch((err) => {
+        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt')).catch((err) => {
           console.warn('[App] Failed to send interrupt on cancel:', err);
         });
       }
@@ -279,7 +278,7 @@
 
     try {
       // Request current session state from backend
-      const response = await sendMessage<{ tabId?: number; history?: unknown[] }>(MessageType.GET_STATE);
+      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number; history?: unknown[] }>('session.getState');
       console.log('[App] Fetched session state:', response);
 
       const stateData = response || {};
@@ -447,14 +446,14 @@
         return;
       }
 
-      const response = await sendMessage<{
+      const response = await (await getInitializedUIClient()).serviceRequest<{
         type?: string;
         ready?: boolean;
         message?: string;
         provider?: string;
         model?: string;
         authMode?: 'login' | 'api_key' | 'none';
-      }>(MessageType.HEALTH_CHECK);
+      }>('agent.healthCheck');
 
       isConnected = response?.ready !== undefined;
 
@@ -720,7 +719,7 @@
     // Request session reset from backend
     try {
       if (!client) throw new Error('Message service not available');
-      await sendMessage(MessageType.SESSION_RESET);
+      await (await getInitializedUIClient()).serviceRequest('session.reset');
 
       // After session reset, auto-bind to the active tab
       // This ensures the new conversation starts with the current tab
@@ -748,7 +747,7 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await sendMessage(MessageType.INTERRUPT);
+      await (await getInitializedUIClient()).serviceRequest('agent.interrupt');
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
@@ -781,7 +780,7 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Request session resume from backend
-      const response = await sendMessage<{ history?: unknown[] }>(MessageType.RESUME_SESSION, { conversationId });
+      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { conversationId });
 
       const historyItems = response?.history;
       console.log('[App] Conversation resumed:', conversationId, 'with', historyItems?.length || 0, 'items');
@@ -814,7 +813,7 @@
         const lastAgentEvent = processedEvents.filter(e => e.title === 'browserx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await sendMessage(MessageType.SCHEDULER_COMPLETE_JOB, {
+        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
           jobId: scheduledJobId,
           result: {
             summary: resultSummary,
@@ -824,7 +823,7 @@
         console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
         const errorMessage = msg?.data?.message || 'Job failed';
-        await sendMessage(MessageType.SCHEDULER_FAIL_JOB, {
+        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
           jobId: scheduledJobId,
           error: errorMessage,
         });
@@ -845,8 +844,8 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Fetch job details from scheduler
-      const response = await sendMessage<{ job?: { input: string; scheduledTime?: number } }>(
-        MessageType.SCHEDULER_GET_JOB_DETAILS,
+      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+        'scheduler.getJobDetails',
         { jobId }
       );
 
@@ -910,7 +909,7 @@
       // Notify scheduler of failure
       try {
         if (client) {
-          await sendMessage(MessageType.SCHEDULER_FAIL_JOB, {
+          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
             jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
