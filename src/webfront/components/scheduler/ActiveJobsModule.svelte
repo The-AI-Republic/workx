@@ -20,6 +20,7 @@
   let queuedJobs: SchedulerJobSummary[] = [];
 
   let eventUnsubscribers: Array<() => void> = [];
+  let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
@@ -27,9 +28,14 @@
 
   $: totalActive = (runningJob ? 1 : 0) + scheduledJobs.length + missedJobs.length + queuedJobs.length;
 
+  function debouncedFetch() {
+    clearTimeout(eventDebounceTimer);
+    eventDebounceTimer = setTimeout(() => fetchAllData(), 150);
+  }
+
   function handleSchedulerEvent(message: { type: string }) {
     if (message.type === MessageType.SCHEDULER_EVENT) {
-      fetchAllData();
+      debouncedFetch();
     }
   }
 
@@ -78,7 +84,7 @@
 
     const service = tryGetMessageService();
     if (service) {
-      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => fetchAllData());
+      const unsub = service.on(MessageType.SCHEDULER_EVENT, () => debouncedFetch());
       if (unsub) eventUnsubscribers.push(unsub);
     }
 
@@ -87,6 +93,7 @@
 
   onDestroy(() => {
     unsubTheme();
+    clearTimeout(eventDebounceTimer);
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
     }

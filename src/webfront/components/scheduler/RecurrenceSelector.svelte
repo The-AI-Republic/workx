@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { RecurrenceRule, RecurrenceMode, RecurrenceIntervalUnit, RecurrenceEndCondition } from '@/core/models/types/Scheduler';
@@ -10,8 +10,12 @@
 
   let currentTheme: UITheme = 'terminal';
 
-  uiTheme.subscribe((theme) => {
+  const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
+  });
+
+  onDestroy(() => {
+    unsubTheme();
   });
 
   // Local state derived from prop
@@ -31,7 +35,28 @@
     return `${year}-${month}-${day}`;
   }
 
+  // Sync local state when parent resets the recurrence prop
+  let syncingFromProp = false;
+  $: {
+    const propMode = recurrence?.mode || 'none';
+    if (propMode !== mode || (!recurrence && mode !== 'none')) {
+      syncingFromProp = true;
+      mode = recurrence?.mode || 'none';
+      interval = recurrence?.interval || 1;
+      intervalUnit = recurrence?.intervalUnit || 'hours';
+      endCondition = recurrence?.endCondition || 'never';
+      endAfterCount = recurrence?.endAfterCount || 3;
+      endUntilDate = recurrence?.endUntilDate
+        ? formatDateForInput(new Date(recurrence.endUntilDate))
+        : '';
+      syncingFromProp = false;
+    }
+  }
+
   function emitChange() {
+    // Don't re-emit when syncing from a prop change
+    if (syncingFromProp) return;
+
     if (mode === 'none') {
       recurrence = null;
       dispatch('change', null);
@@ -59,7 +84,7 @@
     dispatch('change', rule);
   }
 
-  // Re-emit on any change
+  // Re-emit on any local state change
   $: mode, interval, intervalUnit, endCondition, endAfterCount, endUntilDate, emitChange();
 
   const inputClass = (theme: UITheme) => theme === 'modern'
@@ -123,7 +148,7 @@
         bind:value={endCondition}
       >
         <option value="never">{$_t('Never')}</option>
-        <option value="after">{$_t('After')} N {$_t('occurrences')}</option>
+        <option value="after">{$_t('After X occurrences')}</option>
         <option value="until">{$_t('Until date')}</option>
       </select>
     </div>

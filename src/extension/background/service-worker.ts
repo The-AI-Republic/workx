@@ -954,7 +954,7 @@ function setupSchedulerMessageHandlers(): void {
 
     if (jobId) {
       // Schedule existing draft
-      await scheduler!.scheduleExistingJob(jobId, scheduledTime);
+      await scheduler!.scheduleExistingJob(jobId, scheduledTime, recurrence);
       return { success: true, jobId };
     } else if (input) {
       // Create new scheduled job
@@ -1068,7 +1068,10 @@ function setupSchedulerMessageHandlers(): void {
   // Get archived jobs
   router.on(MessageType.SCHEDULER_GET_ARCHIVED_JOBS, async (message) => {
     const { limit = 50, offset = 0, sortDirection, statusFilter } = (message.payload || {}) as GetArchivedJobsRequest;
-    const jobs = await schedulerStorage!.getArchivedJobs(limit, offset, sortDirection, statusFilter);
+    const [jobs, total] = await Promise.all([
+      schedulerStorage!.getArchivedJobs(limit, offset, sortDirection, statusFilter),
+      schedulerStorage!.getArchivedJobsCount(statusFilter),
+    ]);
     return {
       jobs: jobs.map((j) => ({
         id: j.id,
@@ -1080,8 +1083,8 @@ function setupSchedulerMessageHandlers(): void {
         error: j.error,
         recurrence: j.recurrence,
       })),
-      total: jobs.length,
-      hasMore: jobs.length === limit,
+      total,
+      hasMore: offset + jobs.length < total,
     };
   });
 

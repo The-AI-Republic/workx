@@ -26,6 +26,7 @@
   let sortDirection: 'newest' | 'oldest' = 'newest';
   let selectedStatuses: Set<string> = new Set(['completed', 'failed', 'cancelled']);
   let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Fuse.js instance
   let fuse: Fuse<ArchivedJobSummary> | null = null;
@@ -92,9 +93,12 @@
 
   function handleSchedulerEvent(message: { type: string }) {
     if (message.type === MessageType.SCHEDULER_EVENT) {
-      offset = 0;
-      archivedJobs = [];
-      fetchArchivedJobs();
+      clearTimeout(eventDebounceTimer);
+      eventDebounceTimer = setTimeout(() => {
+        offset = 0;
+        archivedJobs = [];
+        fetchArchivedJobs();
+      }, 150);
     }
   }
 
@@ -145,9 +149,12 @@
     const service = tryGetMessageService();
     if (service) {
       const unsub = service.on(MessageType.SCHEDULER_EVENT, () => {
-        offset = 0;
-        archivedJobs = [];
-        fetchArchivedJobs();
+        clearTimeout(eventDebounceTimer);
+        eventDebounceTimer = setTimeout(() => {
+          offset = 0;
+          archivedJobs = [];
+          fetchArchivedJobs();
+        }, 150);
       });
       if (unsub) eventUnsubscribers.push(unsub);
     }
@@ -157,6 +164,7 @@
   onDestroy(() => {
     unsubTheme();
     clearTimeout(searchDebounceTimer);
+    clearTimeout(eventDebounceTimer);
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
     }

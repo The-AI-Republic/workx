@@ -8,7 +8,7 @@
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
   import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
-  import type { SchedulerJobRecord } from '@/core/models/types/Scheduler';
+  import type { SchedulerJobRecord, RecurrenceRule } from '@/core/models/types/Scheduler';
 
   export let show: boolean = false;
   export let onClose: () => void = () => {};
@@ -241,12 +241,12 @@
     showScheduleModal = true;
   }
 
-  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number; recurrence?: import('@/core/models/types/Scheduler').RecurrenceRule }>) {
+  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number; recurrence?: RecurrenceRule }>) {
     const { input, scheduledTime, recurrence } = event.detail;
     showScheduleModal = false;
 
     try {
-      const payload: { input: string; scheduledTime: number; recurrence?: import('@/core/models/types/Scheduler').RecurrenceRule } = { input, scheduledTime };
+      const payload: { input: string; scheduledTime: number; recurrence?: RecurrenceRule } = { input, scheduledTime };
       if (recurrence) {
         payload.recurrence = recurrence;
       }

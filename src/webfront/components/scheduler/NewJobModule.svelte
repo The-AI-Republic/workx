@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
@@ -22,6 +22,10 @@
 
   const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
+  });
+
+  onDestroy(() => {
+    unsubTheme();
   });
 
   // Initialize defaults
@@ -97,7 +101,16 @@
       return;
     }
 
+    if (!selectedDate || !selectedTime) {
+      errorMessage = t('Please select a date and time');
+      return;
+    }
+
     const scheduledTime = getScheduledTimestamp();
+    if (isNaN(scheduledTime)) {
+      errorMessage = t('Invalid date or time');
+      return;
+    }
     if (scheduledTime <= Date.now() + 30000) {
       errorMessage = t('Scheduled time must be at least 30 seconds in the future');
       return;

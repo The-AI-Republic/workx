@@ -3,7 +3,6 @@
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import type { SchedulerJobStatus, RecurrenceRule } from '@/core/models/types/Scheduler';
-  import { formatRecurrenceRule } from '@/core/scheduler/recurrence';
 
   export let id: string;
   export let input: string;
@@ -99,6 +98,31 @@
     dispatch('cancel', { jobId: id });
   }
 
+  function formatRecurrenceDisplay(rule: RecurrenceRule): string {
+    let base: string;
+    switch (rule.mode) {
+      case 'daily': base = t('Every day'); break;
+      case 'weekly': base = t('Every week'); break;
+      case 'monthly': base = t('Every month'); break;
+      case 'custom': {
+        const interval = rule.interval || 1;
+        const unit = rule.intervalUnit || 'days';
+        base = interval === 1
+          ? t(`Every ${unit.slice(0, -1)}`)
+          : t(`Every ${interval} ${unit}`);
+        break;
+      }
+      default: return t('Does not repeat');
+    }
+    if (rule.endCondition === 'after' && rule.endAfterCount) {
+      const completed = rule.completedCount || 0;
+      base += `, ${completed} ${t('of')} ${rule.endAfterCount} ${t('completed')}`;
+    } else if (rule.endCondition === 'until' && rule.endUntilDate) {
+      base += `, ${t('until')} ${new Date(rule.endUntilDate).toLocaleDateString()}`;
+    }
+    return base;
+  }
+
   function handleClick() {
     dispatch('details', { jobId: id });
   }
@@ -125,7 +149,7 @@
           {currentTheme === 'modern'
             ? 'bg-[rgba(96,165,250,0.15)] text-blue-400'
             : 'bg-[rgba(0,255,0,0.15)] text-term-dim-green'}"
-        title={formatRecurrenceRule(recurrence)}
+        title={formatRecurrenceDisplay(recurrence)}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="17 1 21 5 17 9"></polyline>

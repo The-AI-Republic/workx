@@ -10,7 +10,9 @@ import type { StorageAdapter } from '../../storage/StorageAdapter';
 import { STORE_NAMES, INDEX_NAMES } from '../../storage/IndexedDBAdapter';
 import type {
   SchedulerJobRecord,
+  SchedulerJobStatus,
   SchedulerState,
+  RecurrenceRule,
 } from '../models/types/Scheduler';
 import {
   createDefaultSchedulerState,
@@ -35,12 +37,17 @@ export class SchedulerStorage implements ISchedulerStorage {
    * Create a new job
    * @param input - Job input/prompt
    * @param scheduledTime - Optional scheduled time (if omitted, creates draft)
+   * @param recurrence - Optional recurrence rule (stored atomically with the job)
    */
-  async createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord> {
+  async createJob(input: string, scheduledTime?: number, recurrence?: RecurrenceRule): Promise<SchedulerJobRecord> {
     const id = uuidv4();
     const job = scheduledTime
       ? createScheduledJobRecord(id, input, scheduledTime)
       : createDraftJobRecord(id, input);
+
+    if (recurrence) {
+      job.recurrence = recurrence;
+    }
 
     await this.db.put(STORE_NAMES.SCHEDULER_JOBS, job);
     return job;
@@ -134,7 +141,7 @@ export class SchedulerStorage implements ISchedulerStorage {
     limit: number,
     offset: number,
     sortDirection: 'newest' | 'oldest' = 'newest',
-    statusFilter?: string[]
+    statusFilter?: SchedulerJobStatus[]
   ): Promise<SchedulerJobRecord[]> {
     const statuses = statusFilter && statusFilter.length > 0
       ? statusFilter
@@ -162,7 +169,7 @@ export class SchedulerStorage implements ISchedulerStorage {
   /**
    * Count archived jobs (completed, failed, or cancelled)
    */
-  async getArchivedJobsCount(statusFilter?: string[]): Promise<number> {
+  async getArchivedJobsCount(statusFilter?: SchedulerJobStatus[]): Promise<number> {
     const statuses = statusFilter && statusFilter.length > 0
       ? statusFilter
       : ['completed', 'failed', 'cancelled'];

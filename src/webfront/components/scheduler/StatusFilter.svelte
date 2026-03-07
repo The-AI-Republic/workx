@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t } from '../../lib/i18n';
 
@@ -10,8 +10,12 @@
 
   let currentTheme: UITheme = 'terminal';
 
-  uiTheme.subscribe((theme) => {
+  const unsubTheme = uiTheme.subscribe((theme) => {
     currentTheme = theme;
+  });
+
+  onDestroy(() => {
+    unsubTheme();
   });
 
   function getStatusColor(status: string): string {
