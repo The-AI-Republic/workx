@@ -52,8 +52,8 @@ export class ConflictResolver {
 
     const prompt = this.config.customConflictPrompt ?? conflictPrompt;
     const systemPrompt = prompt
-      .replace('{{existingMemories}}', existingText)
-      .replace('{{newFacts}}', newFactsText);
+      .replace('{{existingMemories}}', () => existingText)
+      .replace('{{newFacts}}', () => newFactsText);
 
     try {
       const response = await this.llm.complete(systemPrompt, '');

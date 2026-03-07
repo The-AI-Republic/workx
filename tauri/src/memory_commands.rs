@@ -448,6 +448,7 @@ pub async fn memory_get_by_id(id: String) -> Result<Option<MemoryFactRow>, Strin
 pub async fn memory_get_all(
     user_id: Option<String>,
     limit: Option<usize>,
+    offset: Option<usize>,
 ) -> Result<Vec<MemoryFactRow>, String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
@@ -470,6 +471,12 @@ pub async fn memory_get_all(
     if let Some(lim) = limit {
         query.push_str(&format!(" LIMIT ?{}", param_idx));
         params_vec.push(Box::new(lim as i64));
+        param_idx += 1;
+    }
+
+    if let Some(off) = offset {
+        query.push_str(&format!(" OFFSET ?{}", param_idx));
+        params_vec.push(Box::new(off as i64));
     }
 
     let mut stmt = db.conn.prepare(&query)

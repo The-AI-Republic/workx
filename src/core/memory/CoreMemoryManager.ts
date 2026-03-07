@@ -67,8 +67,8 @@ export class CoreMemoryManager {
     const newFactsText = facts.map((f, i) => `${i + 1}. ${f}`).join('\n');
 
     const systemPrompt = coreMergePrompt
-      .replace('{{existingMarkdown}}', existingMarkdown)
-      .replace('{{newFacts}}', newFactsText);
+      .replace('{{existingMarkdown}}', () => existingMarkdown)
+      .replace('{{newFacts}}', () => newFactsText);
 
     try {
       const updatedMarkdown = await this.llm.complete(systemPrompt, '');

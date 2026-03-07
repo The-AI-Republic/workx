@@ -157,10 +157,11 @@ export class TauriMemoryStore implements MemoryStore, MemoryHistoryStore {
     return row ? rowToFact(row) : null;
   }
 
-  async getAll(scope?: MemoryScope, limit?: number, _offset?: number): Promise<MemoryFact[]> {
+  async getAll(scope?: MemoryScope, limit?: number, offset?: number): Promise<MemoryFact[]> {
     const rows = await invoke<TauriMemoryFactRow[]>('memory_get_all', {
       userId: scope?.userId ?? null,
       limit: limit ?? null,
+      offset: offset ?? null,
     });
     return rows.map(rowToFact);
   }

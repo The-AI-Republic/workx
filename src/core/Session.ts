@@ -678,6 +678,16 @@ export class Session {
    * Reset session to initial state (for new conversation) using RolloutRecorder
    */
   async reset(): Promise<void> {
+    // Close memory service before re-initialization to avoid leaking DB connections
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (error) {
+        console.error('Failed to close memory service:', error);
+      }
+      this._memoryService = null;
+    }
+
     // Shutdown old RolloutRecorder if it exists
     if (this.services?.rollout) {
       try {
@@ -707,6 +717,15 @@ export class Session {
    * Close session and cleanup resources using RolloutRecorder
    */
   async close(): Promise<void> {
+    // Close memory service to release DB connections
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (error) {
+        console.error('Failed to close memory service:', error);
+      }
+    }
+
     if (this.services?.rollout) {
       try {
         // Record session close event
@@ -1038,7 +1057,12 @@ export class Session {
         const memoryService = await createMemoryService({
           llmProvider: providerId,
           apiKey: apiKey || '', // Pass empty string to trigger graceful degradation inside createMemoryService
-          baseUrl: agentConfig.getProvider(providerId)?.baseUrl ?? undefined,
+          // Only pass baseUrl for providers that host their own embedding models.
+          // For xAI/Groq/Together/Fireworks, embeddings use OpenAI's text-embedding-3-small
+          // which must go to api.openai.com (the SDK default), not the LLM provider's endpoint.
+          baseUrl: (providerId === 'openai' || providerId === 'google-ai-studio')
+            ? agentConfig.getProvider(providerId)?.baseUrl ?? undefined
+            : undefined,
           llmCaller
         });
 
@@ -1069,6 +1093,14 @@ export class Session {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    if (this._memoryService) {
+      try {
+        await this._memoryService.close();
+      } catch (e) {
+        console.error('Failed to close memory service:', e);
+      }
+    }
+
     if (this.services?.rollout) {
       try {
         await this.services.rollout.flush();

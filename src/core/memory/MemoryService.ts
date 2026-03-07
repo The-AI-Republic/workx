@@ -511,7 +511,10 @@ ${coreMarkdown.trim()}
   async close(): Promise<void> {
     this.closed = true;
     this.pendingMessages.clear();
+    // Await in-flight processing before closing the store
+    const inflight = Array.from(this.processingQueues.values());
     this.processingQueues.clear();
+    await Promise.allSettled(inflight);
     await this.store.close();
   }
 }

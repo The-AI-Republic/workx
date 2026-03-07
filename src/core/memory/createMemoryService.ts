@@ -39,13 +39,15 @@ export async function createMemoryService(
     // Select embedding provider first so we can use its config
     const embeddingConfig = selectEmbeddingProvider(init.llmProvider);
 
-    // L2: Don't mutate — create a new config with auto-selected embedding values,
-    // but let user overrides take precedence
+    // L2: Don't mutate — create a new config with auto-selected embedding values.
+    // Embedding dimensions/model are derived from the provider and must not be
+    // overridden by user config to avoid dimension mismatches with sqlite-vec.
+    const { embeddingDimensions: _d, embeddingModel: _m, ...userConfig } = init.config ?? {};
     const config: MemoryConfig = {
       ...DEFAULT_MEMORY_CONFIG,
+      ...userConfig,
       embeddingDimensions: embeddingConfig.dimensions,
       embeddingModel: embeddingConfig.model,
-      ...init.config,
     };
 
     if (!config.enabled) return null;
