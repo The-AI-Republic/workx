@@ -16,13 +16,13 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
-  let expanded = initialExpanded;
-  let editableInput = '';
-  let selectedDate = '';
-  let selectedTime = '';
-  let errorMessage = '';
-  let isScheduling = false;
-  let recurrence: RecurrenceRule | null = null;
+  let expanded = $state(initialExpanded);
+  let editableInput = $state('');
+  let selectedDate = $state('');
+  let selectedTime = $state('');
+  let errorMessage = $state('');
+  let isScheduling = $state(false);
+  let recurrence = $state<RecurrenceRule | null>(null);
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {

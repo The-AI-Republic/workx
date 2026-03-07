@@ -17,22 +17,22 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
-  let expanded = initialExpanded;
-  let isLoading = true;
-  let archivedJobs: ArchivedJobSummary[] = [];
-  let hasMore = false;
-  let offset = 0;
+  let expanded = $state(initialExpanded);
+  let isLoading = $state(true);
+  let archivedJobs = $state<ArchivedJobSummary[]>([]);
+  let hasMore = $state(false);
+  let offset = $state(0);
   const limit = 20;
 
   // Search/Sort/Filter state
-  let searchQuery = '';
-  let sortDirection: 'newest' | 'oldest' = 'newest';
-  let selectedStatuses: Set<string> = new Set(['completed', 'failed', 'cancelled']);
+  let searchQuery = $state('');
+  let sortDirection = $state<'newest' | 'oldest'>('newest');
+  let selectedStatuses = $state(new Set(['completed', 'failed', 'cancelled']));
   let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
   let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Fuse.js instance
-  let fuse: Fuse<ArchivedJobSummary> | null = null;
+  let fuse = $state<Fuse<ArchivedJobSummary> | null>(null);
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {

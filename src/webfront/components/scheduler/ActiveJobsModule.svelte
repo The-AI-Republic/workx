@@ -15,13 +15,13 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
-  let expanded = initialExpanded;
-  let isLoading = true;
+  let expanded = $state(initialExpanded);
+  let isLoading = $state(true);
 
-  let runningJob: SchedulerJobSummary | null = null;
-  let scheduledJobs: SchedulerJobSummary[] = [];
-  let missedJobs: SchedulerJobSummary[] = [];
-  let queuedJobs: SchedulerJobSummary[] = [];
+  let runningJob = $state<SchedulerJobSummary | null>(null);
+  let scheduledJobs = $state<SchedulerJobSummary[]>([]);
+  let missedJobs = $state<SchedulerJobSummary[]>([]);
+  let queuedJobs = $state<SchedulerJobSummary[]>([]);
 
   let eventDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 

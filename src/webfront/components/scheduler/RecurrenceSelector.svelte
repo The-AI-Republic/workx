@@ -22,14 +22,14 @@
   });
 
   // Local state derived from prop
-  let mode: RecurrenceMode | 'none' = recurrence?.mode || 'none';
-  let interval: number = recurrence?.interval || 1;
-  let intervalUnit: RecurrenceIntervalUnit = recurrence?.intervalUnit || 'hours';
-  let endCondition: RecurrenceEndCondition = recurrence?.endCondition || 'never';
-  let endAfterCount: number = recurrence?.endAfterCount || 3;
-  let endUntilDate: string = recurrence?.endUntilDate
+  let mode = $state<RecurrenceMode | 'none'>(recurrence?.mode || 'none');
+  let interval = $state(recurrence?.interval || 1);
+  let intervalUnit = $state<RecurrenceIntervalUnit>(recurrence?.intervalUnit || 'hours');
+  let endCondition = $state<RecurrenceEndCondition>(recurrence?.endCondition || 'never');
+  let endAfterCount = $state(recurrence?.endAfterCount || 3);
+  let endUntilDate = $state(recurrence?.endUntilDate
     ? formatDateForInput(new Date(recurrence.endUntilDate))
-    : '';
+    : '');
 
   function formatDateForInput(date: Date): string {
     const year = date.getFullYear();

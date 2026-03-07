@@ -18,38 +18,38 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
-  let isLoading = true;
-  let isPaused = false;
-  let showArchivedView = false;
-  let showScheduleModal = false;
+  let isLoading = $state(true);
+  let isPaused = $state(false);
+  let showArchivedView = $state(false);
+  let showScheduleModal = $state(false);
 
   // Job lists
-  let missedJobs: SchedulerJobSummary[] = [];
-  let scheduledJobs: SchedulerJobSummary[] = [];
-  let queuedJobs: SchedulerJobSummary[] = [];
-  let runningJob: SchedulerJobSummary | null = null;
+  let missedJobs = $state<SchedulerJobSummary[]>([]);
+  let scheduledJobs = $state<SchedulerJobSummary[]>([]);
+  let queuedJobs = $state<SchedulerJobSummary[]>([]);
+  let runningJob = $state<SchedulerJobSummary | null>(null);
 
   // Job details expansion (T019)
-  let expandedJobId: string | null = null;
-  let expandedJobDetails: SchedulerJobRecord | null = null;
-  let isLoadingDetails = false;
+  let expandedJobId = $state<string | null>(null);
+  let expandedJobDetails = $state<SchedulerJobRecord | null>(null);
+  let isLoadingDetails = $state(false);
 
   // T042: Offline status tracking
-  let isOffline = !navigator.onLine;
+  let isOffline = $state(!navigator.onLine);
 
   // Feature 015 (T050-T053): Session status tracking
-  let sessionCount = 0;
-  let maxSessions = 3;
-  let sessions: Array<{
+  let sessionCount = $state(0);
+  let maxSessions = $state(3);
+  let sessions = $state<Array<{
     sessionId: string;
     sessionLetter: string;
     type: string;
     state: string;
-  }> = [];
-  let showSessionDetails = false;
+  }>>([]);
+  let showSessionDetails = $state(false);
 
   // T057: Session error display for graceful degradation feedback
-  let lastSessionError: { message: string; sessionId: string; timestamp: number } | null = null;
+  let lastSessionError = $state<{ message: string; sessionId: string; timestamp: number } | null>(null);
 
   let totalJobs = $derived(missedJobs.length + scheduledJobs.length + queuedJobs.length + (runningJob ? 1 : 0));
 

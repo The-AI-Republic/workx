@@ -18,11 +18,11 @@
   } = $props();
 
   let currentTheme = $state<UITheme>('terminal');
-  let selectedDate: string = '';
-  let selectedTime: string = '';
-  let errorMessage: string = '';
-  let editableInput: string = '';
-  let recurrence: RecurrenceRule | null = null;
+  let selectedDate = $state('');
+  let selectedTime = $state('');
+  let errorMessage = $state('');
+  let editableInput = $state('');
+  let recurrence = $state<RecurrenceRule | null>(null);
 
   // Determine if input should be editable (when opened without pre-filled input)
   let isEditable = $derived(!input.trim());
