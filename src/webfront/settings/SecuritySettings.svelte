@@ -16,7 +16,7 @@
   }: {
     isDirty?: boolean;
     onBack?: () => void;
-    onSaved?: () => void;
+    onSaved?: (detail: { success: boolean; error?: string }) => void;
   } = $props();
 
   let showPinSetup = $state(false);

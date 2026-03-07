@@ -23,7 +23,7 @@
   let {
     settingsConfig,
     isDirty = $bindable(false),
-    highlightSettingId = $bindable<string | undefined>(undefined),
+    highlightSettingId = undefined as string | undefined,
     onBack,
     onSaved,
     onAuthUpdated,
