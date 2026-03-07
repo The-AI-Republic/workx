@@ -116,6 +116,9 @@
   "Agent_Execution_Tools": {
     "message": "Agent Execution Tools"
   },
+  "Agent_Memory": {
+    "message": "Agent Memory"
+  },
   "Agent_URL_is_required": {
     "message": "Agent URL is required"
   },
@@ -1503,6 +1506,9 @@
   },
   "Remaining": {
     "message": "Remaining:"
+  },
+  "Remember_facts_across_conversations_Requ_a1b2": {
+    "message": "Remember facts across conversations. Requires an OpenAI API key for embeddings."
   },
   "Remove": {
     "message": "Remove"

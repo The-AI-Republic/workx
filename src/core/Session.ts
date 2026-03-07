@@ -1057,8 +1057,11 @@ export class Session {
           }
         };
 
+        const memoryEnabled = agentConfig.getConfig().preferences?.memoryEnabled ?? false;
+
         const memoryService = await createMemoryService({
           openaiApiKey: openaiApiKey || '',
+          config: { enabled: memoryEnabled },
           llmCaller
         });
 

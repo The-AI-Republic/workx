@@ -144,6 +144,11 @@
     autoSave();
   }
 
+  function handleMemoryEnabledChange(event: CustomEvent<boolean>) {
+    currentPreferences.memoryEnabled = event.detail;
+    autoSave();
+  }
+
   // Feature 015: Handle max concurrent sessions change
   function handleMaxSessionsChange(event: Event) {
     const target = event.target as HTMLSelectElement;
@@ -332,6 +337,38 @@
         </div>
       </div>
     </div>
+
+    <!-- Agent Memory Toggle (desktop/server only) -->
+    {#if platform.hasMemory}
+    <div
+      class="rounded-xl px-5 py-4 border
+        {currentTheme === 'modern'
+          ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+          : 'bg-term-bg border-term-dim-green'}"
+      data-setting-id="memoryEnabled"
+    >
+      <div>
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex flex-col gap-1">
+            <span class="text-[15px] font-medium
+              {currentTheme === 'modern'
+                ? 'font-chat text-chat-text dark:text-chat-text-dark'
+                : 'font-terminal text-term-green'}"
+            >{$_t("Agent Memory")}</span>
+            <span class="text-sm leading-relaxed
+              {currentTheme === 'modern'
+                ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
+                : 'font-terminal text-term-dim-green'}"
+            >{$_t("Remember facts across conversations. Requires an OpenAI API key for embeddings.")}</span>
+          </div>
+          <Switch
+            state={currentPreferences.memoryEnabled ?? false}
+            on:change={handleMemoryEnabledChange}
+          />
+        </div>
+      </div>
+    </div>
+    {/if}
 
     <!-- Auto-Start on Login Toggle (desktop only) -->
     {#if platform.hasAutoStart}

@@ -311,6 +311,13 @@ export interface IUserPreferences {
    * User's preferred language code (e.g., 'en', 'es', 'zh')
    */
   language?: string;
+  /**
+   * Whether agent long-term memory is enabled (desktop/server only)
+   * - When true: Agent remembers facts across conversations using sqlite-vec + OpenAI embeddings
+   * - When false: No memory persistence between conversations
+   * - Default: false (opt-in; requires OpenAI API key for embeddings)
+   */
+  memoryEnabled?: boolean;
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;

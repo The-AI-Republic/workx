@@ -99,6 +99,17 @@ export const settingsRegistry: SettingsSearchItem[] = [
     elementId: 'showTokenUsage',
   },
   {
+    id: 'general.memoryEnabled',
+    labelKey: 'Agent Memory',
+    descriptionKey: 'Remember facts across conversations. Requires an OpenAI API key for embeddings.',
+    section: SettingsSection.GENERAL,
+    sectionLabelKey: 'General',
+    keywords: ['memory', 'remember', 'facts', 'long-term', 'embedding', 'openai'],
+    navigationTarget: 'general',
+    elementId: 'memoryEnabled',
+    conditional: { type: 'platform', value: 'desktop' },
+  },
+  {
     id: 'general.language',
     labelKey: 'Language',
     descriptionKey: 'Select your preferred language for the interface',
