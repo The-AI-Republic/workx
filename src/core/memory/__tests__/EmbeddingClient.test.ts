@@ -1,60 +1,20 @@
 /**
- * Unit tests for EmbeddingClient (selectEmbeddingProvider, createEmbeddingProvider)
+ * Unit tests for EmbeddingClient (EMBEDDING_CONFIG)
  * and CachedEmbeddingProvider.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { selectEmbeddingProvider, type EmbeddingProvider } from '../EmbeddingClient';
+import { EMBEDDING_CONFIG, type EmbeddingProvider } from '../EmbeddingClient';
 import { CachedEmbeddingProvider } from '../EmbeddingCache';
 
 // ---------------------------------------------------------------------------
-// selectEmbeddingProvider
+// EMBEDDING_CONFIG
 // ---------------------------------------------------------------------------
 
-describe('selectEmbeddingProvider', () => {
-  it('selects OpenAI provider for openai', () => {
-    const config = selectEmbeddingProvider('openai');
-    expect(config.provider).toBe('openai');
-    expect(config.model).toBe('text-embedding-3-small');
-    expect(config.dimensions).toBe(1536);
-  });
-
-  it('selects OpenAI provider for xai', () => {
-    const config = selectEmbeddingProvider('xai');
-    expect(config.provider).toBe('openai');
-  });
-
-  it('selects OpenAI provider for groq', () => {
-    const config = selectEmbeddingProvider('groq');
-    expect(config.provider).toBe('openai');
-  });
-
-  it('selects OpenAI provider for together', () => {
-    const config = selectEmbeddingProvider('together');
-    expect(config.provider).toBe('openai');
-  });
-
-  it('selects OpenAI provider for fireworks', () => {
-    const config = selectEmbeddingProvider('fireworks');
-    expect(config.provider).toBe('openai');
-  });
-
-  it('selects Google provider for google-ai-studio', () => {
-    const config = selectEmbeddingProvider('google-ai-studio');
-    expect(config.provider).toBe('google');
-    expect(config.model).toBe('text-embedding-004');
-    expect(config.dimensions).toBe(768);
-  });
-
-  it('falls back to OpenAI for anthropic', () => {
-    const config = selectEmbeddingProvider('anthropic');
-    expect(config.provider).toBe('openai');
-    expect(config.model).toBe('text-embedding-3-small');
-  });
-
-  it('falls back to OpenAI for unknown providers', () => {
-    const config = selectEmbeddingProvider('unknown-provider');
-    expect(config.provider).toBe('openai');
+describe('EMBEDDING_CONFIG', () => {
+  it('is hardcoded to OpenAI text-embedding-3-small at 1536 dims', () => {
+    expect(EMBEDDING_CONFIG.model).toBe('text-embedding-3-small');
+    expect(EMBEDDING_CONFIG.dimensions).toBe(1536);
   });
 });
 

@@ -90,8 +90,8 @@ describe('Category completeness', () => {
 // ---------------------------------------------------------------------------
 
 describe('DEFAULT_MEMORY_CONFIG', () => {
-  it('has memory enabled by default', () => {
-    expect(DEFAULT_MEMORY_CONFIG.enabled).toBe(true);
+  it('has memory disabled by default', () => {
+    expect(DEFAULT_MEMORY_CONFIG.enabled).toBe(false);
   });
 
   it('uses text-embedding-3-small as default model', () => {

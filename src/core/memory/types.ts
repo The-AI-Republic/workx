@@ -89,7 +89,7 @@ export interface MemoryConfig {
 }
 
 export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
-  enabled: true,
+  enabled: false,
   embeddingModel: 'text-embedding-3-small',
   embeddingDimensions: 1536,
   maxMemories: 10000,

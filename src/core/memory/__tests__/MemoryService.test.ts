@@ -103,7 +103,7 @@ function createService(overrides: {
   const embedding = overrides.embedding ?? createMockEmbedding();
   const llm = overrides.llm ?? createMockLLM();
   const fs = overrides.fs ?? createMockFS({ [CORE_FILE]: '# User Profile' });
-  const config = { ...DEFAULT_MEMORY_CONFIG, ...overrides.config };
+  const config = { ...DEFAULT_MEMORY_CONFIG, enabled: true, ...overrides.config };
 
   const service = new MemoryService(store, embedding, llm, fs, MEMORY_DIR, config);
   return { service, store, embedding, llm, fs };

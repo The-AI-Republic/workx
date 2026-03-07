@@ -1025,19 +1025,21 @@ export class Session {
     }
 
     // Initialize memory service (for desktop/server only)
+    // Memory requires an OpenAI API key for embeddings (text-embedding-3-small),
+    // independent of which LLM provider the user selects for chat.
     try {
       if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
         const agentConfig = config || await AgentConfig.getInstance();
-        const selectedKey = agentConfig.getConfig().selectedModelKey;
-        // Handle format 'providerId:modelId'
-        const providerId = selectedKey.includes(':') ? selectedKey.split(':')[0] : 'openai';
-        const apiKey = await agentConfig.getProviderApiKey(providerId);
+
+        // Always use OpenAI key for embeddings — shared with agent if OpenAI is the LLM provider
+        const openaiApiKey = await agentConfig.getProviderApiKey('openai');
+        if (!openaiApiKey) {
+          // Memory is opt-in (disabled by default). If enabled but no OpenAI key,
+          // createMemoryService will log a warning and return null.
+        }
 
         const llmCaller = {
           complete: async (systemPrompt: string, userPrompt: string) => {
-            // Model client is set lazily during turn execution.
-            // Memory operations (extraction, conflict resolution) only run after
-            // the first turn, so the client should always be available by then.
             const client = this.turnContext?.getModelClient?.();
             if (!client) {
               throw new Error(
@@ -1055,28 +1057,8 @@ export class Session {
           }
         };
 
-        // For non-OpenAI/non-Google providers (xAI, Groq, Together, Fireworks),
-        // embeddings use OpenAI's text-embedding-3-small, so we need an OpenAI API key.
-        let embeddingApiKey = apiKey || '';
-        let embeddingBaseUrl: string | undefined;
-
-        if (providerId === 'openai') {
-          embeddingBaseUrl = agentConfig.getProvider(providerId)?.baseUrl ?? undefined;
-        } else if (providerId === 'google-ai-studio') {
-          embeddingBaseUrl = agentConfig.getProvider(providerId)?.baseUrl ?? undefined;
-        } else {
-          // Non-OpenAI provider: try to use a configured OpenAI key for embeddings
-          const openaiKey = await agentConfig.getProviderApiKey('openai');
-          if (openaiKey) {
-            embeddingApiKey = openaiKey;
-          }
-          // embeddingBaseUrl left undefined so OpenAI SDK defaults to api.openai.com
-        }
-
         const memoryService = await createMemoryService({
-          llmProvider: providerId,
-          apiKey: embeddingApiKey,
-          baseUrl: embeddingBaseUrl,
+          openaiApiKey: openaiApiKey || '',
           llmCaller
         });
 

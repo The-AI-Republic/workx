@@ -2,12 +2,15 @@
  * Factory to create and initialize the full MemoryService.
  * Wires together: MemoryStore, EmbeddingProvider, FactExtractor,
  * ConflictResolver, CoreMemoryManager.
+ *
+ * The embedding model is always OpenAI text-embedding-3-small,
+ * independent of the user's LLM provider choice.
  */
 
 import { createMemoryStore } from './createMemoryStore';
 import {
   createEmbeddingProvider,
-  selectEmbeddingProvider,
+  EMBEDDING_CONFIG,
 } from './EmbeddingClient';
 import { CachedEmbeddingProvider } from './EmbeddingCache';
 import { MemoryService } from './MemoryService';
@@ -18,9 +21,8 @@ import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './type
 declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
 
 export interface MemoryServiceInit {
-  llmProvider: string;
-  apiKey: string;
-  baseUrl?: string;
+  /** OpenAI API key — required for embeddings regardless of LLM provider. */
+  openaiApiKey: string;
   config?: Partial<MemoryConfig>;
   llmCaller: LLMCaller;
 }
@@ -37,42 +39,26 @@ export async function createMemoryService(
   }
 
   try {
-    // Select embedding provider first so we can use its config
-    const embeddingConfig = selectEmbeddingProvider(init.llmProvider);
-
-    // L2: Don't mutate — create a new config with auto-selected embedding values.
-    // Embedding dimensions/model are derived from the provider and must not be
-    // overridden by user config to avoid dimension mismatches with sqlite-vec.
+    // Embedding config is fixed — always OpenAI text-embedding-3-small.
+    // Strip any user-supplied embedding overrides to prevent dimension mismatches.
     const { embeddingDimensions: _d, embeddingModel: _m, ...userConfig } = init.config ?? {};
     const config: MemoryConfig = {
       ...DEFAULT_MEMORY_CONFIG,
       ...userConfig,
-      embeddingDimensions: embeddingConfig.dimensions,
-      embeddingModel: embeddingConfig.model,
+      embeddingDimensions: EMBEDDING_CONFIG.dimensions,
+      embeddingModel: EMBEDDING_CONFIG.model,
     };
 
     if (!config.enabled) return null;
 
-    // L3: Anthropic doesn't offer embeddings. If user is on Anthropic and has no
-    // separate OpenAI key, we can't create an embedding provider.
-    if (!init.apiKey) {
-      console.warn(`[Memory] Memory system disabled: no API key configured for embedding provider (${init.llmProvider})`);
-      return null;
-    }
-    if (init.llmProvider === 'anthropic') {
-      console.warn('[Memory] Anthropic does not offer embeddings. Memory system requires an OpenAI-compatible API key.');
+    if (!init.openaiApiKey) {
+      console.warn('[Memory] Memory system disabled: no OpenAI API key configured for embeddings.');
       return null;
     }
 
-    const rawProvider = await createEmbeddingProvider(
-      embeddingConfig,
-      init.apiKey,
-      init.baseUrl
-    );
+    const rawProvider = await createEmbeddingProvider(init.openaiApiKey);
     const embeddingProvider = new CachedEmbeddingProvider(rawProvider);
 
-    // M5: createMemoryStore returns MemoryStore; all implementations also
-    // implement MemoryHistoryStore, but verify at runtime
     const store = await createMemoryStore();
     if (!('logOperation' in store)) {
       console.warn('[Memory] Store does not implement MemoryHistoryStore');
@@ -94,7 +80,6 @@ export async function createMemoryService(
     );
 
     // Run background migration check (non-blocking).
-    // Set the readiness gate first so search/write operations wait until migration completes.
     memoryService.beginMigration();
     memoryService.checkAndRunMigration().catch(err => {
       console.error('[Memory] Background migration check failed:', err);

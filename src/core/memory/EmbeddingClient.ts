@@ -1,6 +1,9 @@
 /**
- * Embedding provider abstraction for the memory system.
- * Selects the appropriate embedding model based on the user's LLM provider.
+ * Embedding provider for the memory system.
+ * Hardcoded to OpenAI text-embedding-3-small (1536 dims).
+ *
+ * The embedding model is independent of the user's LLM provider choice.
+ * This ensures stored memory vectors remain valid across provider switches.
  */
 
 export interface EmbeddingProvider {
@@ -9,71 +12,25 @@ export interface EmbeddingProvider {
   getDimensions(): number;
 }
 
-export interface EmbeddingProviderConfig {
-  provider: 'openai' | 'google';
-  model: string;
-  dimensions: number;
-}
+/** Fixed embedding configuration — never changes with LLM provider. */
+export const EMBEDDING_CONFIG = {
+  model: 'text-embedding-3-small',
+  dimensions: 1536,
+} as const;
 
 /**
- * Select embedding provider based on the user's LLM provider.
- */
-export function selectEmbeddingProvider(
-  llmProvider: string
-): EmbeddingProviderConfig {
-  switch (llmProvider) {
-    case 'openai':
-    case 'xai':
-    case 'groq':
-    case 'together':
-    case 'fireworks':
-      return {
-        provider: 'openai',
-        model: 'text-embedding-3-small',
-        dimensions: 1536,
-      };
-
-    case 'google-ai-studio':
-      return {
-        provider: 'google',
-        model: 'text-embedding-004',
-        dimensions: 768,
-      };
-
-    default:
-      // Default to OpenAI-compatible embeddings for unknown providers.
-      // Note: Anthropic users are blocked earlier in createMemoryService
-      // since Anthropic API keys won't work with OpenAI embedding endpoints.
-      return {
-        provider: 'openai',
-        model: 'text-embedding-3-small',
-        dimensions: 1536,
-      };
-  }
-}
-
-/**
- * Create an EmbeddingProvider based on provider config and API key.
+ * Create the embedding provider. Always uses OpenAI's text-embedding-3-small.
+ * Requires an OpenAI API key regardless of which LLM provider the user selects.
  */
 export async function createEmbeddingProvider(
-  config: EmbeddingProviderConfig,
   apiKey: string,
-  baseUrl?: string
 ): Promise<EmbeddingProvider> {
-  if (config.provider === 'google') {
-    const { GoogleEmbeddingProvider } = await import(
-      '@/core/models/client/GoogleEmbeddingProvider'
-    );
-    return new GoogleEmbeddingProvider(apiKey, config.model, config.dimensions);
-  }
-
   const { OpenAIEmbeddingProvider } = await import(
     '@/core/models/client/OpenAIEmbeddingProvider'
   );
   return new OpenAIEmbeddingProvider(
     apiKey,
-    config.model,
-    config.dimensions,
-    baseUrl
+    EMBEDDING_CONFIG.model,
+    EMBEDDING_CONFIG.dimensions,
   );
 }
