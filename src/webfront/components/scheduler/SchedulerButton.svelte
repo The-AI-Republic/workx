@@ -1,22 +1,17 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import Tooltip from '../common/Tooltip.svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
 
-  const dispatch = createEventDispatcher<{
-    click: void;
-  }>();
+  let { onClick }: {
+    onClick?: () => void;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let jobCount = 0;
-  let hasRunningJob = false;
-
-  // Subscribe to theme store
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
+  let jobCount = $state(0);
+  let hasRunningJob = $state(false);
 
   onMount(async () => {
     await fetchSchedulerState();
@@ -44,7 +39,7 @@
   }
 
   function handleClick() {
-    dispatch('click');
+    onClick?.();
   }
 </script>
 
@@ -58,7 +53,7 @@
         {jobCount > 0 && currentTheme !== 'modern' ? 'border-term-bright-green text-term-bright-green' : ''}
         {jobCount > 0 && currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark' : ''}
         {hasRunningJob ? 'animate-pulse' : ''}"
-      on:click={handleClick}
+      onclick={handleClick}
       aria-label={$_t("Scheduled Jobs")}
     >
       <!-- Calendar/Clock Icon -->

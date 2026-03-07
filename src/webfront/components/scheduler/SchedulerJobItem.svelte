@@ -1,27 +1,21 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
 
-  export let id: string;
-  export let input: string;
-  export let scheduledTime: number | null;
-  export let status: SchedulerJobStatus;
-  export let createdAt: number;
-  export let showActions: boolean = true;
+  let { id, input, scheduledTime, status, createdAt, showActions = true, onTrigger, onCancel, onDetails }: {
+    id: string;
+    input: string;
+    scheduledTime: number | null;
+    status: SchedulerJobStatus;
+    createdAt: number;
+    showActions?: boolean;
+    onTrigger?: (value: { jobId: string }) => void;
+    onCancel?: (value: { jobId: string }) => void;
+    onDetails?: (value: { jobId: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    trigger: { jobId: string };
-    cancel: { jobId: string };
-    details: { jobId: string };
-  }>();
-
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
   function getStatusBadgeClasses(s: SchedulerJobStatus): string {
     switch (s) {
@@ -90,15 +84,15 @@
   }
 
   function handleTrigger() {
-    dispatch('trigger', { jobId: id });
+    onTrigger?.({ jobId: id });
   }
 
   function handleCancel() {
-    dispatch('cancel', { jobId: id });
+    onCancel?.({ jobId: id });
   }
 
   function handleClick() {
-    dispatch('details', { jobId: id });
+    onDetails?.({ jobId: id });
   }
 </script>
 
@@ -107,8 +101,8 @@
     {currentTheme === 'modern'
       ? 'bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
       : 'bg-[rgba(0,0,0,0.4)] border border-[rgba(0,255,0,0.2)] hover:bg-[rgba(0,255,0,0.05)] hover:border-[rgba(0,255,0,0.4)] ' + getItemBorderClass(status)}"
-  on:click={handleClick}
-  on:keydown={(e) => e.key === 'Enter' && handleClick()}
+  onclick={handleClick}
+  onkeydown={(e) => e.key === 'Enter' && handleClick()}
   role="button"
   tabindex="0"
 >
@@ -145,7 +139,7 @@
             {currentTheme === 'modern'
               ? 'bg-[rgba(16,185,129,0.1)] text-emerald-500 hover:bg-[rgba(16,185,129,0.2)]'
               : 'bg-[rgba(0,255,0,0.1)] text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-          on:click|stopPropagation={handleTrigger}
+          onclick={(e: MouseEvent) => { e.stopPropagation(); handleTrigger(); }}
           title={$_t("Run Now")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -158,7 +152,7 @@
         <button
           class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
             bg-[rgba(239,68,68,0.1)] text-[#ff6b6b] hover:bg-[rgba(239,68,68,0.2)]"
-          on:click|stopPropagation={handleCancel}
+          onclick={(e: MouseEvent) => { e.stopPropagation(); handleCancel(); }}
           title={$_t("Cancel")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

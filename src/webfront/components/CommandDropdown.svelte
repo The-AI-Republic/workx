@@ -1,24 +1,22 @@
 <script lang="ts">
-  import { createEventDispatcher, afterUpdate } from 'svelte';
   import type { FilteredCommand } from '../commands';
   import { uiTheme } from '../stores/themeStore';
 
-  export let commands: FilteredCommand[] = [];
-  export let selectedIndex: number = 0;
-  export let visible: boolean = false;
-
-  const dispatch = createEventDispatcher<{
-    hover: number;
-    select: FilteredCommand;
-  }>();
+  let { commands = [], selectedIndex = 0, visible = false, onHover, onSelect }: {
+    commands?: FilteredCommand[];
+    selectedIndex?: number;
+    visible?: boolean;
+    onHover?: (index: number) => void;
+    onSelect?: (command: FilteredCommand) => void;
+  } = $props();
 
   let dropdownEl: HTMLDivElement;
-  let renderAbove = true;
+  let renderAbove = $state(true);
 
-  $: currentTheme = $uiTheme;
+  let currentTheme = $derived($uiTheme);
 
   // Scroll selected item into view when selectedIndex changes
-  afterUpdate(() => {
+  $effect(() => {
     if (!visible || !dropdownEl) return;
     const items = dropdownEl.querySelectorAll('[role="option"]');
     const selected = items[selectedIndex];
@@ -36,9 +34,11 @@
     renderAbove = spaceAbove >= 200 || spaceAbove > spaceBelow;
   }
 
-  $: if (visible) {
-    setTimeout(updatePosition, 0);
-  }
+  $effect(() => {
+    if (visible) {
+      setTimeout(updatePosition, 0);
+    }
+  });
 </script>
 
 {#if visible && commands.length > 0}
@@ -63,8 +63,8 @@
             : (i === selectedIndex ? 'bg-green-500/15' : '')}"
         role="option"
         aria-selected={i === selectedIndex}
-        on:mouseenter={() => dispatch('hover', i)}
-        on:click={() => dispatch('select', item)}
+        onmouseenter={() => onHover?.(i)}
+        onclick={() => onSelect?.(item)}
       >
         <span class="font-semibold text-sm shrink-0
           {currentTheme === 'modern'

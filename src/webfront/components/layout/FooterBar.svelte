@@ -1,24 +1,17 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
   import { push, location } from 'svelte-spa-router';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import { userStore } from '../../stores/userStore';
   import Tooltip from '../common/Tooltip.svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import { isWideMode, NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import NavTab from './NavTab.svelte';
 
-  let currentTheme: UITheme = 'terminal';
+  let currentTheme = $derived($uiTheme);
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  onDestroy(unsubTheme);
-
-  function handleNavigate(event: CustomEvent<{ route: string }>) {
-    push(event.detail.route);
+  function handleNavigate(data: { route: string }) {
+    push(data.route);
   }
 
   function handleOpenSettings() {
@@ -48,7 +41,7 @@
           {item}
           active={isNavActive(item.route, $location)}
           compact={true}
-          on:navigate={handleNavigate}
+          onNavigate={handleNavigate}
         />
       {/each}
     </div>
@@ -62,7 +55,7 @@
             {currentTheme === 'modern'
               ? 'bg-transparent border-none rounded-lg text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
               : 'bg-term-bg border border-term-dim-green text-term-dim-green hover:scale-110 hover:bg-term-dim-green/10 active:scale-95'}"
-          on:click={handleOpenSettings}
+          onclick={handleOpenSettings}
           aria-label={$_t("Settings")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

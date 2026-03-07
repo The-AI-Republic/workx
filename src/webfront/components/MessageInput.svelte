@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
@@ -16,37 +16,48 @@
   import type { FilteredCommand } from '../commands';
   import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
 
-  export let value: string = '';
-  export let placeholder: string = t('>> Enter command...');
-  export let onSubmit: (value: string) => void = () => {};
-  export let onStop: () => void = () => {};
-  export let onSelectConversation: (conversationId: string) => void = () => {};
-  export let onNewConversation: () => void = () => {};
-  export let tabId: number = -1;
-  export let isProcessing: boolean = false;
+  let {
+    value = $bindable(''),
+    placeholder = t('>> Enter command...'),
+    onSubmit = () => {},
+    onStop = () => {},
+    onSelectConversation = () => {},
+    onNewConversation = () => {},
+    tabId = -1,
+    isProcessing = false,
+    onModelChanged,
+    onTabSelected,
+    onCommandOutput,
+  }: {
+    value?: string;
+    placeholder?: string;
+    onSubmit?: (value: string) => void;
+    onStop?: () => void;
+    onSelectConversation?: (conversationId: string) => void;
+    onNewConversation?: () => void;
+    tabId?: number;
+    isProcessing?: boolean;
+    onModelChanged?: (data: { modelId: string; modelName: string }) => void;
+    onTabSelected?: (data: { tabId: number }) => void;
+    onCommandOutput?: (data: { title: string; content: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    modelChanged: { modelId: string; modelName: string };
-    tabSelected: { tabId: number };
-    commandOutput: { title: string; content: string };
-  }>();
+  let isFocused = $state(false);
 
-  let isFocused = false;
-
-  $: currentTheme = $uiTheme;
+  let currentTheme = $derived($uiTheme);
 
   // Long-press detection for scheduling
   const LONG_PRESS_DURATION = 500; // milliseconds
   let pressTimer: ReturnType<typeof setTimeout> | null = null;
-  let isLongPress = false;
+  let isLongPress = $state(false);
 
   // Command mode state
-  let isCommandMode = false;
-  let filterText = '';
-  let showDropdown = false;
-  let selectedIndex = 0;
-  let filteredCommands: FilteredCommand[] = [];
-  let errorMessage: string | null = null;
+  let isCommandMode = $state(false);
+  let filterText = $state('');
+  let showDropdown = $state(false);
+  let selectedIndex = $state(0);
+  let filteredCommands: FilteredCommand[] = $state([]);
+  let errorMessage: string | null = $state(null);
   let errorTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastExecuted = new Map<string, number>();
   let builtinsInitialized = false;
@@ -60,7 +71,7 @@
     initBuiltinCommands({
       onNewConversation: () => onNewConversation(),
       onCommandOutput: (title: string, content: string) => {
-        dispatch('commandOutput', { title, content });
+        onCommandOutput?.({ title, content });
       },
       onOpenSettings: () => {
         push('/settings');
@@ -74,14 +85,16 @@
   }
 
   // Reactive tooltip content based on state
-  $: buttonTooltipContent = isProcessing
-    ? $_t('Stop the current task run')
-    : !value.trim()
-      ? $_t('Please type a valid command')
-      : $_t('Long press to schedule task');
+  let buttonTooltipContent = $derived(
+    isProcessing
+      ? $_t('Stop the current task run')
+      : !value.trim()
+        ? $_t('Please type a valid command')
+        : $_t('Long press to schedule task')
+  );
 
-  function handleModelChanged(event: CustomEvent<{ modelId: string; modelName: string }>) {
-    dispatch('modelChanged', event.detail);
+  function handleModelChanged(data: { modelId: string; modelName: string }) {
+    onModelChanged?.(data);
   }
 
   function resetCommandMode(): void {
@@ -273,9 +286,8 @@
     executeCommand(command.command.name);
   }
 
-  function handleTabSelected(event: CustomEvent<{ tabId: number }>) {
-    // Forward the event to parent component
-    dispatch('tabSelected', event.detail);
+  function handleTabSelected(data: { tabId: number }) {
+    onTabSelected?.(data);
   }
 
   function handleButtonClick() {
@@ -340,8 +352,8 @@
   <div class="mb-2 flex items-center gap-2">
     {#if platform.hasTabSelection}
       <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
-      <div class="contents" on:mousedown|preventDefault>
-        <TabContext {tabId} on:tabSelected={handleTabSelected} />
+      <div class="contents" onmousedown={(e) => e.preventDefault()}>
+        <TabContext {tabId} onTabSelected={handleTabSelected} />
       </div>
     {/if}
     <ApprovalModeIndicator />
@@ -355,7 +367,7 @@
             {currentTheme === 'modern'
               ? 'border-none rounded-md text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
               : 'border border-gray-500/50 rounded text-gray-500/80 hover:border-gray-500/80 hover:text-gray-400 hover:bg-gray-500/10'}"
-          on:click={onNewConversation}
+          onclick={onNewConversation}
           aria-label={$_t("Start New Conversation")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -377,8 +389,8 @@
       commands={filteredCommands}
       {selectedIndex}
       visible={showDropdown}
-      on:hover={(e) => handleDropdownHover(e.detail)}
-      on:select={(e) => handleDropdownSelect(e.detail)}
+      onHover={handleDropdownHover}
+      onSelect={handleDropdownSelect}
     />
 
     <div
@@ -390,11 +402,11 @@
       <textarea
         bind:value
         {placeholder}
-        on:keydown={handleKeyDown}
-        on:input={handleInput}
-        on:paste={handlePaste}
-        on:focus={() => isFocused = true}
-        on:blur={handleBlur}
+        onkeydown={handleKeyDown}
+        oninput={handleInput}
+        onpaste={handlePaste}
+        onfocus={() => isFocused = true}
+        onblur={handleBlur}
         style="--textarea-py: {currentTheme === 'modern' ? '0.75rem' : '0.5rem'}"
         class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto leading-relaxed text-sm
           {currentTheme === 'modern'
@@ -410,7 +422,7 @@
       >
         <!-- Model Selection - Left aligned -->
         <div class="shrink-0">
-          <ModelSelection on:modelChanged={handleModelChanged} />
+          <ModelSelection onModelChanged={handleModelChanged} />
         </div>
 
         <!-- Spacer to push button to the right -->
@@ -434,10 +446,10 @@
                       : (!value.trim()
                         ? ' cursor-not-allowed text-term-bright-green/40 border-term-bright-green/25'
                         : ' border-term-green bg-term-bg text-term-green hover:scale-110 active:scale-95'))}"
-              on:click={handleButtonClick}
-              on:pointerdown={handlePointerDown}
-              on:pointerup={handlePointerUp}
-              on:pointerleave={handlePointerLeave}
+              onclick={handleButtonClick}
+              onpointerdown={handlePointerDown}
+              onpointerup={handlePointerUp}
+              onpointerleave={handlePointerLeave}
               disabled={!isProcessing && !value.trim()}
               aria-label={isProcessing ? $_t('Stop the current task') : $_t('Long press to schedule task')}
             >

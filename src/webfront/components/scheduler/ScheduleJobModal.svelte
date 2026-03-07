@@ -1,34 +1,34 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
 
-  export let show: boolean = false;
-  export let input: string = '';
+  let {
+    show = false,
+    input = '',
+    onClose,
+    onSchedule,
+  }: {
+    show?: boolean;
+    input?: string;
+    onClose?: () => void;
+    onSchedule?: (data: { input: string; scheduledTime: number }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    close: void;
-    schedule: { input: string; scheduledTime: number };
-  }>();
-
-  let currentTheme: UITheme = 'terminal';
-  let selectedDate: string = '';
-  let selectedTime: string = '';
-  let errorMessage: string = '';
-  let editableInput: string = '';
+  let currentTheme = $derived($uiTheme);
+  let selectedDate: string = $state('');
+  let selectedTime: string = $state('');
+  let errorMessage: string = $state('');
+  let editableInput: string = $state('');
 
   // Determine if input should be editable (when opened without pre-filled input)
-  $: isEditable = !input.trim();
-
-  // Subscribe to theme
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let isEditable = $derived(!input.trim());
 
   // Initialize with defaults when modal opens
-  $: if (show) {
-    initializeDefaults();
-  }
+  $effect(() => {
+    if (show) {
+      initializeDefaults();
+    }
+  });
 
   function initializeDefaults() {
     // Default to 1 hour from now
@@ -121,11 +121,11 @@
       return;
     }
 
-    dispatch('schedule', { input: jobInput, scheduledTime });
+    onSchedule?.({ input: jobInput, scheduledTime });
   }
 
   function handleClose() {
-    dispatch('close');
+    onClose?.();
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -150,12 +150,12 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if show}
   <div
     class="fixed inset-0 bg-black/75 flex items-center justify-center z-[10000] animate-fade-in"
-    on:click={handleBackdropClick}
+    onclick={handleBackdropClick}
     role="dialog"
     aria-modal="true"
     aria-labelledby="schedule-modal-title"
@@ -180,7 +180,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleClose}
+          onclick={handleClose}
           aria-label="Close"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -235,7 +235,7 @@
                   {currentTheme === 'modern'
                     ? 'bg-chat-code-bg dark:bg-chat-code-bg-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
                     : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-bright-green'}"
-                on:click={() => scheduleIn(btn.min)}
+                onclick={() => scheduleIn(btn.min)}
               >{btn.label}</button>
             {/each}
           </div>
@@ -311,7 +311,7 @@
             {currentTheme === 'modern'
               ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleClose}
+          onclick={handleClose}
         >
           {$_t('Cancel')}
         </button>
@@ -320,7 +320,7 @@
             {currentTheme === 'modern'
               ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-white dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
               : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-bright-green hover:border-term-bright-green'}"
-          on:click={validateAndSchedule}
+          onclick={validateAndSchedule}
         >
           {$_t('Schedule')}
         </button>

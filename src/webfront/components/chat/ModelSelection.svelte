@@ -4,26 +4,26 @@
    * Allows user to quickly select a model from the chat interface
    * Aggregates models from providers and groups by model name
    */
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
   import { AgentConfig } from '@/config/AgentConfig';
   import { userStore } from '../../stores/userStore';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme } from '../../stores/themeStore';
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
   import { t, _t } from '../../lib/i18n';
   import { notifyConfigUpdate } from '../../lib/messaging';
 
-  const dispatch = createEventDispatcher<{
-    modelChanged: { modelId: string; modelName: string };
-  }>();
+  let { onModelChanged }: {
+    onModelChanged?: (value: { modelId: string; modelName: string }) => void;
+  } = $props();
 
   // State
-  let isOpen = false;
-  let isLoading = true;
-  let selectedModelKey = '';
-  let selectedModelName = '';
-  let useOwnApiKey = false;
-  let currentTheme: UITheme = 'terminal';
+  let isOpen = $state(false);
+  let isLoading = $state(true);
+  let selectedModelKey = $state('');
+  let selectedModelName = $state('');
+  let useOwnApiKey = $state(false);
+  let currentTheme = $derived($uiTheme);
 
   // Model data
   interface ModelSelectionItem {
@@ -34,11 +34,11 @@
     providerName: string;
     supportBackendMode?: number;
   }
-  let modelSelectionItems: ModelSelectionItem[] = [];
+  let modelSelectionItems: ModelSelectionItem[] = $state([]);
 
   // Subscribe to stores
-  $: isUserLoggedIn = $userStore.isLoggedIn;
-  $: isFreeUser = $userStore.userType === 0;
+  let isUserLoggedIn = $derived($userStore.isLoggedIn);
+  let isFreeUser = $derived($userStore.userType === 0);
 
   // Default model for free users (Kimi K2 Thinking)
   const FREE_USER_DEFAULT_MODEL = 'kimi-k2-thinking';
@@ -49,14 +49,10 @@
     return modelKey.toLowerCase().includes(FREE_USER_DEFAULT_MODEL);
   }
 
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
   // Filter models based on useOwnApiKey setting
-  $: filteredModelItems = isUserLoggedIn && !useOwnApiKey
+  let filteredModelItems = $derived(isUserLoggedIn && !useOwnApiKey
     ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0)
-    : modelSelectionItems;
+    : modelSelectionItems);
 
   // Group models by name
   interface GroupedModel {
@@ -70,7 +66,7 @@
     }>;
   }
 
-  $: groupedModels = (() => {
+  let groupedModels = $derived((() => {
     const groups = new Map<string, GroupedModel>();
 
     for (const item of filteredModelItems) {
@@ -101,12 +97,12 @@
     }
 
     return Array.from(groups.values());
-  })();
+  })());
 
   // Get the selected model's group
-  $: selectedGroup = groupedModels.find(g =>
+  let selectedGroup = $derived(groupedModels.find(g =>
     g.providers.some(p => p.modelId === selectedModelKey)
-  );
+  ));
 
   onMount(async () => {
     await loadModels();
@@ -205,7 +201,7 @@
       // Notify backend of config update
       notifyConfigUpdate();
 
-      dispatch('modelChanged', { modelId, modelName });
+      onModelChanged?.({ modelId, modelName });
     } catch (error) {
       console.error('[ModelSelection] Failed to change model:', error);
     }
@@ -218,11 +214,11 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeyDown} />
+<svelte:window onkeydown={handleKeyDown} />
 
 <div class="relative inline-flex">
   <PopupCard title="" show={isOpen} onClose={closeDropdown}>
-    <div slot="trigger">
+    {#snippet trigger()}
       <Tooltip content={$_t("Click to select a model")} disabled={isOpen}>
         <button
           type="button"
@@ -230,7 +226,7 @@
             {currentTheme === 'modern'
               ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark rounded-2xl text-chat-text dark:text-chat-text-dark font-chat text-sm py-1.5 px-2.5 hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green rounded text-term-green font-terminal text-sm py-1 px-2 hover:border-term-bright-green hover:bg-term-green/5'}"
-          on:click={toggleDropdown}
+          onclick={toggleDropdown}
           disabled={isLoading}
           aria-label={$_t('Select model: $1$', { substitutions: [selectedModelName] })}
           aria-expanded={isOpen}
@@ -254,9 +250,10 @@
           </svg>
         </button>
       </Tooltip>
-    </div>
+    {/snippet}
 
-    <div slot="content" class="min-w-[180px] max-w-[250px] max-h-[300px] overflow-y-auto" role="listbox" aria-label="Available models">
+    {#snippet content()}
+      <div class="min-w-[180px] max-w-[250px] max-h-[300px] overflow-y-auto" role="listbox" aria-label="Available models">
       {#each groupedModels as group (group.modelName)}
         {@const isSelected = selectedGroup?.modelName === group.modelName}
         {@const hasMultipleProviders = group.providers.length > 1}
@@ -301,7 +298,7 @@
                         {currentTheme === 'modern'
                           ? 'font-chat bg-white/10 border border-white/20 rounded-2xl text-white/80 py-1 px-2.5 hover:bg-white/15 hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark ' + (isProviderSelected ? 'bg-blue-400/25 border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark' : '')
                           : 'font-terminal bg-transparent border border-term-dim-green/40 rounded py-1 px-2 text-term-dim-green hover:border-term-green hover:bg-term-green/10 ' + (isProviderSelected ? 'bg-term-green/20 border-term-bright-green text-term-bright-green' : '')}"
-                      on:click={() => selectModel(provider.modelId, group.modelName, provider.modelKey)}
+                      onclick={() => selectModel(provider.modelId, group.modelName, provider.modelKey)}
                       role="option"
                       aria-selected={isProviderSelected}
                     >
@@ -340,7 +337,7 @@
                   {currentTheme === 'modern'
                     ? 'font-chat text-sm py-2.5 px-3.5 text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/10 ' + (isSelected ? 'bg-blue-400/20 text-chat-primary dark:text-chat-primary-dark' : '')
                     : 'font-terminal text-sm py-2 px-3 text-term-dim-green hover:bg-term-green/10 hover:text-term-green ' + (isSelected ? 'bg-term-green/15 text-term-bright-green' : '')}"
-                on:click={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey)}
+                onclick={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey)}
                 role="option"
                 aria-selected={isSelected}
               >
@@ -356,6 +353,7 @@
           {/if}
         </div>
       {/each}
-    </div>
+      </div>
+    {/snippet}
   </PopupCard>
 </div>

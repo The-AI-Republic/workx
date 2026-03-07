@@ -3,24 +3,25 @@
   import { marked } from 'marked';
   import type { UIUpdate } from '@/core/StreamProcessor';
   import { t, _t } from '../lib/i18n';
-  import { uiTheme, type UITheme } from '../stores/themeStore';
+  import { uiTheme } from '../stores/themeStore';
 
-  export let message: {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-    timestamp?: number;
-    streaming?: boolean;
-  };
+  let {
+    message,
+  }: {
+    message: {
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      timestamp?: number;
+      streaming?: boolean;
+    };
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
+  let currentTheme = $derived($uiTheme);
 
-  let content = message.content || '';
-  let isStreaming = message.streaming || false;
-  let streamBuffer = '';
-  let updateTimer: number | null = null;
+  let content: string = $state(message.content || '');
+  let isStreaming: boolean = $state(message.streaming || false);
+  let streamBuffer: string = $state('');
+  let updateTimer: number | null = $state(null);
 
   function handleStreamUpdate(event: CustomEvent<UIUpdate>) {
     const update = event.detail;
@@ -108,39 +109,49 @@
   }
 
   // Role-specific background classes
-  $: roleBgClasses = message.role === 'user'
-    ? (currentTheme === 'modern'
-      ? 'bg-blue-50 dark:bg-blue-900/30 ml-5'
-      : 'bg-term-bg ml-5')
-    : message.role === 'assistant'
+  let roleBgClasses = $derived(
+    message.role === 'user'
       ? (currentTheme === 'modern'
-        ? 'bg-chat-surface dark:bg-chat-surface-dark mr-5'
-        : 'bg-term-bg mr-5')
-      : (currentTheme === 'modern'
-        ? 'bg-orange-50 dark:bg-orange-900/30 text-sm opacity-80'
-        : 'bg-term-bg text-sm opacity-80');
+        ? 'bg-blue-50 dark:bg-blue-900/30 ml-5'
+        : 'bg-term-bg ml-5')
+      : message.role === 'assistant'
+        ? (currentTheme === 'modern'
+          ? 'bg-chat-surface dark:bg-chat-surface-dark mr-5'
+          : 'bg-term-bg mr-5')
+        : (currentTheme === 'modern'
+          ? 'bg-orange-50 dark:bg-orange-900/30 text-sm opacity-80'
+          : 'bg-term-bg text-sm opacity-80')
+  );
 
   // Role label color
-  $: roleLabelClasses = currentTheme === 'modern'
-    ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
-    : 'text-term-dim-green';
+  let roleLabelClasses = $derived(
+    currentTheme === 'modern'
+      ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark'
+      : 'text-term-dim-green'
+  );
 
   // Timestamp color
-  $: timestampClasses = currentTheme === 'modern'
-    ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
-    : 'text-term-dim-green';
+  let timestampClasses = $derived(
+    currentTheme === 'modern'
+      ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+      : 'text-term-dim-green'
+  );
 
   // Text color for content
-  $: textColorClasses = currentTheme === 'modern'
-    ? 'text-chat-text dark:text-chat-text-dark'
-    : 'text-term-green';
+  let textColorClasses = $derived(
+    currentTheme === 'modern'
+      ? 'text-chat-text dark:text-chat-text-dark'
+      : 'text-term-green'
+  );
 
   // System message special text color
-  $: systemTextClasses = message.role === 'system'
-    ? (currentTheme === 'modern'
-      ? 'text-chat-text dark:text-chat-text-dark'
-      : 'text-term-yellow')
-    : '';
+  let systemTextClasses = $derived(
+    message.role === 'system'
+      ? (currentTheme === 'modern'
+        ? 'text-chat-text dark:text-chat-text-dark'
+        : 'text-term-yellow')
+      : ''
+  );
 </script>
 
 <div
@@ -247,7 +258,7 @@
     }
   }
 
-  /* Markdown styling — :global() selectors for rendered content */
+  /* Markdown styling -- :global() selectors for rendered content */
   .content-text :global(h1),
   .content-text :global(h2),
   .content-text :global(h3),
