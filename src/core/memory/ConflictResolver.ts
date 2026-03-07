@@ -117,13 +117,22 @@ export class ConflictResolver {
       }
       if (start === -1) return [];
 
+      // Walk forwards to find balanced closing }, skipping braces inside strings
       let depth = 0;
+      let inString = false;
       for (let i = start; i < response.length; i++) {
-        if (response[i] === '{') depth++;
-        else if (response[i] === '}') {
-          depth--;
-          if (depth === 0) {
-            return extractDecisions(JSON.parse(response.slice(start, i + 1)));
+        const ch = response[i];
+        if (inString) {
+          if (ch === '\\') { i++; continue; }
+          if (ch === '"') inString = false;
+        } else {
+          if (ch === '"') inString = true;
+          else if (ch === '{') depth++;
+          else if (ch === '}') {
+            depth--;
+            if (depth === 0) {
+              return extractDecisions(JSON.parse(response.slice(start, i + 1)));
+            }
           }
         }
       }

@@ -26,7 +26,7 @@ function rowToFact(row: Record<string, unknown>): MemoryFact {
     lastAccessedAt: row.last_accessed_at as number,
     accessCount: row.access_count as number,
     metadata: row.metadata
-      ? JSON.parse(row.metadata as string)
+      ? (() => { try { return JSON.parse(row.metadata as string); } catch { return undefined; } })()
       : undefined,
   };
 }
@@ -218,16 +218,19 @@ export class NodeMemoryStore implements MemoryStore, MemoryHistoryStore {
     const now = Date.now();
 
     const updateFn = db.transaction(() => {
+      // Build SET clause dynamically to avoid overwriting existing values with empty defaults
+      const setClauses: string[] = ['updated_at = ?'];
+      const params: unknown[] = [now];
+
+      if (fact.factText !== undefined) { setClauses.push('fact_text = ?'); params.push(fact.factText); }
+      if (fact.category !== undefined) { setClauses.push('category = ?'); params.push(fact.category); }
+      if (fact.contentHash !== undefined) { setClauses.push('content_hash = ?'); params.push(fact.contentHash); }
+      if (fact.metadata !== undefined) { setClauses.push('metadata = ?'); params.push(JSON.stringify(fact.metadata)); }
+
+      params.push(id);
       db.prepare(
-        'UPDATE memory_facts SET fact_text = ?, category = ?, content_hash = ?, updated_at = ?, metadata = ? WHERE id = ?'
-      ).run(
-        fact.factText ?? '',
-        fact.category ?? 'general',
-        fact.contentHash ?? '',
-        now,
-        fact.metadata ? JSON.stringify(fact.metadata) : null,
-        id
-      );
+        `UPDATE memory_facts SET ${setClauses.join(', ')} WHERE id = ?`
+      ).run(...params);
 
       // sqlite-vec: delete old, insert new
       db.prepare('DELETE FROM memory_embeddings WHERE memory_id = ?').run(id);

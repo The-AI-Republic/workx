@@ -32,6 +32,9 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
       input: text,
       dimensions: this.dimensions,
     });
+    if (!response.data?.[0]?.embedding) {
+      throw new Error('OpenAI embedding API returned empty result');
+    }
     return new Float32Array(response.data[0].embedding);
   }
 

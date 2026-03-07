@@ -24,6 +24,7 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
     const result = await this.client.models.embedContent({
       model: this.model,
       contents: text,
+      config: { outputDimensionality: this.dimensions },
     });
     // H4: Guard against empty/malformed API response
     if (!result.embeddings?.[0]?.values) {

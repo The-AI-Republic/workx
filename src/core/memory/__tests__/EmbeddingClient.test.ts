@@ -98,11 +98,22 @@ describe('CachedEmbeddingProvider', () => {
       expect(stats.misses).toBe(1);
     });
 
-    it('normalizes keys (replaces newlines, trims)', async () => {
+    it('uses distinct cache keys for different texts (avoids normalization collisions)', async () => {
       await cached.embed('hello\nworld');
       await cached.embed('hello world');
 
-      // Both should resolve to the same key 'hello world'
+      // These are semantically distinct inputs and should not collide
+      expect(mockProvider.embed).toHaveBeenCalledTimes(2);
+    });
+
+    it('normalizes newlines for provider call but caches by original', async () => {
+      await cached.embed('hello\nworld');
+
+      // Provider should receive normalized text (newline→space)
+      expect(mockProvider.embed).toHaveBeenCalledWith('hello world');
+
+      // Same original text hits cache
+      await cached.embed('hello\nworld');
       expect(mockProvider.embed).toHaveBeenCalledTimes(1);
     });
 

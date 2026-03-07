@@ -113,7 +113,7 @@ export class MemoryService {
   private config: MemoryConfig;
   private processingQueues = new Map<string, Promise<void>>();
   private lastExtractionTime = new Map<string, number>();
-  private pendingMessages = new Map<string, ConversationMessage[]>();
+  private pendingMessages = new Map<string, { messages: ConversationMessage[]; scope: MemoryScope }>();
   private minExtractionIntervalMs = 10000; // 10 seconds cooldown
   private migrationReady: Promise<void> = Promise.resolve();
   private migrationReadyResolve: (() => void) | null = null;
@@ -157,38 +157,34 @@ export class MemoryService {
 
       console.log('[Memory] Dimension migration PENDING detected. Starting background re-embedding job...');
 
-      // Paginate to avoid loading entire DB into memory (#14)
-      const PAGE_SIZE = 500;
+      // Paginate and re-embed inline to avoid loading entire DB into memory
+      const PAGE_SIZE = 25; // Small pages to stay within cloud embedding API limits
       let offset = 0;
-      let allFacts: import('./types').MemoryFact[] = [];
+      let totalReEmbedded = 0;
+
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const page = await this.store.getAll(undefined, PAGE_SIZE, offset);
         if (page.length === 0) break;
-        allFacts = allFacts.concat(page);
-        offset += PAGE_SIZE;
-        if (page.length < PAGE_SIZE) break;
-      }
 
-      const batchSize = 25; // Smaller batches for cloud embedding API limits
-
-      for (let i = 0; i < allFacts.length; i += batchSize) {
-        const batch = allFacts.slice(i, i + batchSize);
-        const texts = batch.map(f => f.factText);
-
+        const texts = page.map(f => f.factText);
         try {
           const embeddings = await this.embeddingProvider.embedBatch(texts);
-          for (let j = 0; j < batch.length; j++) {
-            await this.store.update(batch[j].id, batch[j], embeddings[j]);
+          for (let j = 0; j < page.length; j++) {
+            await this.store.update(page[j].id, page[j], embeddings[j]);
           }
+          totalReEmbedded += page.length;
         } catch (err) {
-          console.error(`[Memory] Failed to re-embed batch ${i}-${i + batchSize}. Aborting migration for this run.`, err);
+          console.error(`[Memory] Failed to re-embed batch at offset ${offset}. Aborting migration for this run.`, err);
           return; // Abort, will retry on next startup
         }
+
+        if (page.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
       }
 
       await this.store.setMigrationStatus('COMPLETE');
-      console.log(`[Memory] Dimension migration COMPLETE. Re-embedded ${allFacts.length} memories.`);
+      console.log(`[Memory] Dimension migration COMPLETE. Re-embedded ${totalReEmbedded} memories.`);
     } catch (err) {
       console.error('[Memory] Failed to check or run migration status:', err);
     } finally {
@@ -222,16 +218,19 @@ export class MemoryService {
     const lastTime = this.lastExtractionTime.get(queueKey) ?? 0;
     if (now - lastTime < this.minExtractionIntervalMs) {
       // Buffer these messages — they will be included in the next extraction
-      const pending = this.pendingMessages.get(queueKey) ?? [];
-      pending.push(...messages);
-      this.pendingMessages.set(queueKey, pending);
+      const existing = this.pendingMessages.get(queueKey);
+      if (existing) {
+        existing.messages.push(...messages);
+      } else {
+        this.pendingMessages.set(queueKey, { messages: [...messages], scope });
+      }
       return;
     }
 
     // Drain any buffered messages and combine with current
     const buffered = this.pendingMessages.get(queueKey);
-    const allMessages = buffered && buffered.length > 0
-      ? [...buffered, ...messages]
+    const allMessages = buffered && buffered.messages.length > 0
+      ? [...buffered.messages, ...messages]
       : messages;
     this.pendingMessages.delete(queueKey);
 
@@ -353,6 +352,12 @@ export class MemoryService {
 
             const id = uuidv4();
             const hash = await contentHash(decision.fact);
+
+            // Duplicate check: skip if nearest neighbor has the same content hash
+            const nearest = await this.store.search(embedding, 1, scope);
+            if (nearest.length > 0 && nearest[0].fact.contentHash === hash) {
+              continue;
+            }
             const category = classifyFact(decision.fact);
             const now = Date.now();
 
@@ -510,6 +515,14 @@ ${coreMarkdown.trim()}
    */
   async close(): Promise<void> {
     this.closed = true;
+    // Drain buffered messages before closing (best-effort)
+    for (const [, { messages, scope }] of this.pendingMessages) {
+      if (messages.length > 0) {
+        try {
+          await this._doProcessConversation(messages, scope);
+        } catch { /* best-effort; don't fail close */ }
+      }
+    }
     this.pendingMessages.clear();
     // Await in-flight processing before closing the store
     const inflight = Array.from(this.processingQueues.values());

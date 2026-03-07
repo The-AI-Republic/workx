@@ -29,8 +29,10 @@ export class CoreMemoryManager {
 
   private get filePath(): string {
     // Ensure no double-separator: strip trailing sep, then append
+    // Preserve the separator style from the input path
+    const sep = this.memoryDir.includes('\\') ? '\\' : '/';
     const dir = this.memoryDir.replace(/[/\\]$/, '');
-    return `${dir}/core-memory.md`;
+    return `${dir}${sep}core-memory.md`;
   }
 
   /**

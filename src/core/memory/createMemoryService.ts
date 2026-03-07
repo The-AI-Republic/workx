@@ -11,6 +11,7 @@ import {
 } from './EmbeddingClient';
 import { CachedEmbeddingProvider } from './EmbeddingCache';
 import { MemoryService } from './MemoryService';
+import type { MemoryStore, MemoryHistoryStore } from './MemoryStore';
 import { createMemoryFileSystem } from './MemoryFileSystem';
 import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './types';
 
@@ -84,7 +85,7 @@ export async function createMemoryService(
 
     // Wire everything together
     const memoryService = new MemoryService(
-      store as any, // Verified to have logOperation above
+      store as MemoryStore & MemoryHistoryStore,
       embeddingProvider,
       init.llmCaller,
       fs,

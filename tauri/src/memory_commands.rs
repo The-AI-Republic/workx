@@ -651,16 +651,16 @@ pub async fn memory_log_operation(
     event: String,
     old_content: Option<String>,
     new_content: Option<String>,
+    timestamp: i64,
 ) -> Result<(), String> {
     let db = MEMORY_DB.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("Memory DB not initialized")?;
-    let now = now_millis();
 
     db.conn
         .execute(
             "INSERT INTO memory_history (id, memory_id, event, old_content, new_content, timestamp)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![id, memory_id, event, old_content, new_content, now],
+            params![id, memory_id, event, old_content, new_content, timestamp],
         )
         .map_err(|e| format!("Log operation failed: {}", e))?;
 

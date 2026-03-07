@@ -299,10 +299,12 @@ export class OpenAIResponsesClient extends ModelClient {
 
     const response = await this.client.chat.completions.create({
       model: request.model,
-      messages: request.messages.map(m => ({
-        role: m.role,
-        content: m.content ?? '',
-      })),
+      messages: request.messages
+        .filter(m => m.role !== 'tool')
+        .map(m => ({
+          role: m.role as 'system' | 'user' | 'assistant',
+          content: m.content ?? '',
+        })),
       temperature: request.temperature,
       max_tokens: request.maxTokens,
       stream: false,

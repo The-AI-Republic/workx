@@ -94,14 +94,19 @@ export class FactExtractor {
   }
 
   private parseFacts(response: string): string[] {
+    const MAX_FACTS = 50;
+
+    const filterFacts = (facts: unknown[]): string[] =>
+      facts
+        .filter((f: unknown) => typeof f === 'string' && f.length > 0)
+        .slice(0, MAX_FACTS) as string[];
+
     try {
       // Strategy 1: Try parsing the entire response as JSON
       try {
         const direct = JSON.parse(response);
         if (Array.isArray(direct.facts)) {
-          return direct.facts.filter(
-            (f: unknown) => typeof f === 'string' && f.length > 0
-          );
+          return filterFacts(direct.facts);
         }
       } catch { /* not pure JSON — try extraction */ }
 
@@ -116,20 +121,26 @@ export class FactExtractor {
       }
       if (start === -1) return [];
 
-      // Walk forwards to find balanced closing }
+      // Walk forwards to find balanced closing }, skipping braces inside strings
       let depth = 0;
+      let inString = false;
       for (let i = start; i < response.length; i++) {
-        if (response[i] === '{') depth++;
-        else if (response[i] === '}') {
-          depth--;
-          if (depth === 0) {
-            const parsed = JSON.parse(response.slice(start, i + 1));
-            if (Array.isArray(parsed.facts)) {
-              return parsed.facts.filter(
-                (f: unknown) => typeof f === 'string' && f.length > 0
-              );
+        const ch = response[i];
+        if (inString) {
+          if (ch === '\\') { i++; continue; }
+          if (ch === '"') inString = false;
+        } else {
+          if (ch === '"') inString = true;
+          else if (ch === '{') depth++;
+          else if (ch === '}') {
+            depth--;
+            if (depth === 0) {
+              const parsed = JSON.parse(response.slice(start, i + 1));
+              if (Array.isArray(parsed.facts)) {
+                return filterFacts(parsed.facts);
+              }
+              break;
             }
-            break;
           }
         }
       }

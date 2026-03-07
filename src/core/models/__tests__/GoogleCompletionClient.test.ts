@@ -22,9 +22,10 @@ import { ModelClientError } from '../ModelClient';
 
 const mocks = vi.hoisted(() => {
   const generateContentStream = vi.fn();
-  const models = { generateContentStream };
+  const generateContent = vi.fn();
+  const models = { generateContentStream, generateContent };
   const GoogleGenAI = vi.fn().mockImplementation(() => ({ models }));
-  return { GoogleGenAI, models, generateContentStream };
+  return { GoogleGenAI, models, generateContentStream, generateContent };
 });
 
 vi.mock('@google/genai', () => ({
