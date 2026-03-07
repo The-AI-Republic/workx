@@ -31,6 +31,7 @@ export class ServerScheduleStorage implements IScheduleStorage {
     const Database = (await import('better-sqlite3')).default;
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
+    this.db.pragma('foreign_keys = ON');
 
     // Create schedule_events table
     this.db.exec(`

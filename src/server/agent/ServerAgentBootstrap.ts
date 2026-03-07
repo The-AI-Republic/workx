@@ -84,6 +84,8 @@ export class ServerAgentBootstrap {
   private healthMonitor: HealthMonitor | null = null;
   private scheduler: Scheduler | null = null;
   private schedulerStorage: ServerSchedulerStorage | null = null;
+  private scheduleEventStorage: ServerScheduleStorage | null = null;
+  private executionRecordStorage: ServerExecutionStorage | null = null;
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
@@ -399,10 +401,12 @@ export class ServerAgentBootstrap {
       await this.schedulerStorage.initialize();
 
       // 1b. Create new model storage (schedule events + executions)
-      const scheduleStorage = new ServerScheduleStorage(dataDir);
-      await scheduleStorage.initialize();
-      const executionStorage = new ServerExecutionStorage(dataDir);
-      await executionStorage.initialize();
+      this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
+      await this.scheduleEventStorage.initialize();
+      this.executionRecordStorage = new ServerExecutionStorage(dataDir);
+      await this.executionRecordStorage.initialize();
+      const scheduleStorage = this.scheduleEventStorage;
+      const executionStorage = this.executionRecordStorage;
 
       // 2. Create alarms (Node.js timers)
       this.schedulerAlarms = new ServerSchedulerAlarms();
@@ -604,6 +608,8 @@ export class ServerAgentBootstrap {
     // Shutdown scheduler
     this.schedulerAlarms?.shutdown();
     this.schedulerStorage?.close();
+    this.scheduleEventStorage?.close();
+    this.executionRecordStorage?.close();
 
     // Stop backup manager
     this.backupManager?.stop();

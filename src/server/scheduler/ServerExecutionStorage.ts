@@ -34,6 +34,7 @@ export class ServerExecutionStorage implements IExecutionStorage {
         id TEXT PRIMARY KEY,
         scheduleEventId TEXT NOT NULL,
         instanceTime INTEGER NOT NULL,
+        input TEXT NOT NULL DEFAULT '',
         sessionId TEXT,
         status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
         result TEXT,
@@ -65,12 +66,13 @@ export class ServerExecutionStorage implements IExecutionStorage {
   async createExecution(record: ExecutionRecord): Promise<void> {
     const db = this.ensureDb();
     db.prepare(`
-      INSERT INTO execution_records (id, scheduleEventId, instanceTime, sessionId, status, result, error, startedAt, completedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO execution_records (id, scheduleEventId, instanceTime, input, sessionId, status, result, error, startedAt, completedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       record.id,
       record.scheduleEventId,
       record.instanceTime,
+      record.input,
       record.sessionId,
       record.status,
       record.result ? JSON.stringify(record.result) : null,
@@ -94,12 +96,13 @@ export class ServerExecutionStorage implements IExecutionStorage {
     const updated = { ...existing, ...updates, id };
     db.prepare(`
       UPDATE execution_records
-      SET scheduleEventId = ?, instanceTime = ?, sessionId = ?, status = ?,
+      SET scheduleEventId = ?, instanceTime = ?, input = ?, sessionId = ?, status = ?,
           result = ?, error = ?, startedAt = ?, completedAt = ?
       WHERE id = ?
     `).run(
       updated.scheduleEventId,
       updated.instanceTime,
+      updated.input,
       updated.sessionId,
       updated.status,
       updated.result ? JSON.stringify(updated.result) : null,
@@ -182,6 +185,7 @@ export class ServerExecutionStorage implements IExecutionStorage {
       id: row.id,
       scheduleEventId: row.scheduleEventId,
       instanceTime: row.instanceTime,
+      input: row.input ?? '',
       sessionId: row.sessionId ?? null,
       status: row.status,
       result,

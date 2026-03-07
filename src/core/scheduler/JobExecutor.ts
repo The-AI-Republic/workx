@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type { IExecutionStorage } from '../models/types/ScheduleContracts';
 import type {
   ExecutionRecord,
-  ScheduleEvent,
 } from '../models/types/ScheduleEvent';
 import { createExecutionRecord } from '../models/types/ScheduleEvent';
 import type { JobResultRecord, SchedulerState } from '../models/types/Scheduler';
@@ -127,9 +126,9 @@ export class JobExecutor {
     try {
       // Mutex: prevent concurrent execution starts
       if (this.isExecuting) {
-        // Queue as a pending execution
+        // Queue as a pending execution (input preserved for later execution)
         const id = uuidv4();
-        const record = createExecutionRecord(id, scheduleEventId, instanceTime);
+        const record = createExecutionRecord(id, scheduleEventId, instanceTime, input);
         await this.executionStorage.createExecution(record);
         return id;
       }
@@ -138,7 +137,7 @@ export class JobExecutor {
       try {
         // Create execution record
         const executionId = uuidv4();
-        const record = createExecutionRecord(executionId, scheduleEventId, instanceTime);
+        const record = createExecutionRecord(executionId, scheduleEventId, instanceTime, input);
         record.status = 'running';
         record.startedAt = Date.now();
 
@@ -231,8 +230,9 @@ export class JobExecutor {
       await this.executionCompleteHandler(execution.scheduleEventId);
     }
 
-    // Process queue
-    await this.processQueue();
+    // Schedule queue processing asynchronously to avoid recursion
+    // (failExecution can be called from launchJob → executePendingRecord → processQueue)
+    queueMicrotask(() => { this.processQueue().catch(() => {}); });
   }
 
   /**
@@ -311,6 +311,9 @@ export class JobExecutor {
       });
 
       this.emitEvent(record.id, record.scheduleEventId, 'running');
+
+      // Show notification with the stored input
+      await this.showNotification(record.scheduleEventId, record.instanceTime, record.input);
 
       await this.launchJob(record.id, sessionId);
     } finally {

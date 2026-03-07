@@ -298,9 +298,10 @@ async function handleCreateEvent(
   const scheduledTime = params?.scheduledTime as number;
   const rrule = (params?.rrule as string) || null;
 
-  if (!input || typeof input !== 'string') throw invalidRequest('"input" is required');
+  if (typeof input !== 'string' || !input) throw invalidRequest('"input" is required');
   if (input.length > MAX_INPUT_LENGTH) throw invalidRequest(`Input too long (max ${MAX_INPUT_LENGTH})`);
-  if (!scheduledTime || typeof scheduledTime !== 'number') throw invalidRequest('"scheduledTime" is required');
+  if (typeof scheduledTime !== 'number') throw invalidRequest('"scheduledTime" must be a number');
+  if (rrule !== null && typeof rrule !== 'string') throw invalidRequest('"rrule" must be a string or null');
 
   const event = await scheduleManager.createEvent(input, scheduledTime, rrule);
   return { success: true, eventId: event.id };
@@ -317,7 +318,17 @@ async function handleUpdateEvent(
   const eventId = params?.eventId as string;
   if (!eventId) throw invalidRequest('"eventId" is required');
 
-  const updates = params?.updates as Record<string, unknown> || {};
+  const rawUpdates = params?.updates as Record<string, unknown> || {};
+  // Allowlist: only permitted fields pass through
+  const updates: Record<string, unknown> = {};
+  if ('input' in rawUpdates && typeof rawUpdates.input === 'string') {
+    if (rawUpdates.input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
+    updates.input = rawUpdates.input;
+  }
+  if ('scheduledTime' in rawUpdates && typeof rawUpdates.scheduledTime === 'number') updates.scheduledTime = rawUpdates.scheduledTime;
+  if ('rrule' in rawUpdates && (typeof rawUpdates.rrule === 'string' || rawUpdates.rrule === null)) updates.rrule = rawUpdates.rrule;
+  if ('enabled' in rawUpdates && typeof rawUpdates.enabled === 'boolean') updates.enabled = rawUpdates.enabled;
+
   await scheduleManager.editSeries(eventId, updates);
   return { success: true };
 }
@@ -345,12 +356,17 @@ async function handleGetEventsInRange(
   const scheduleManager = scheduler.getScheduleManager();
   if (!scheduleManager) return { instances: [] };
 
-  const startTime = params?.startTime as number;
-  const endTime = params?.endTime as number;
+  const startTime = params?.startTime;
+  const endTime = params?.endTime;
 
-  if (!startTime || !endTime) throw invalidRequest('"startTime" and "endTime" are required');
+  if (typeof startTime !== 'number' || typeof endTime !== 'number') throw invalidRequest('"startTime" and "endTime" must be numbers');
+  if (endTime <= startTime) throw invalidRequest('"endTime" must be after "startTime"');
 
-  const instances = await scheduleManager.getInstancesInRange(startTime, endTime);
+  // Limit range to 1 year to prevent unbounded RRULE expansion
+  const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+  const clampedEnd = Math.min(endTime, startTime + MAX_RANGE_MS);
+
+  const instances = await scheduleManager.getInstancesInRange(startTime, clampedEnd);
   return { instances };
 }
 
@@ -362,11 +378,17 @@ async function handleEditInstance(
   const scheduleManager = scheduler.getScheduleManager();
   if (!scheduleManager) throw new Error('Schedule manager not available');
 
-  const scheduleEventId = params?.scheduleEventId as string;
-  const instanceTime = params?.instanceTime as number;
-  if (!scheduleEventId || !instanceTime) throw invalidRequest('"scheduleEventId" and "instanceTime" are required');
+  const scheduleEventId = params?.scheduleEventId;
+  const instanceTime = params?.instanceTime;
+  if (typeof scheduleEventId !== 'string' || !scheduleEventId) throw invalidRequest('"scheduleEventId" is required');
+  if (typeof instanceTime !== 'number') throw invalidRequest('"instanceTime" must be a number');
 
-  const overrides = params?.overrides as Record<string, unknown> || {};
+  // Allowlist: only permitted override fields
+  const rawOverrides = params?.overrides as Record<string, unknown> || {};
+  const overrides: Record<string, unknown> = {};
+  if ('overrideInput' in rawOverrides && typeof rawOverrides.overrideInput === 'string') overrides.overrideInput = rawOverrides.overrideInput;
+  if ('overrideTime' in rawOverrides && typeof rawOverrides.overrideTime === 'number') overrides.overrideTime = rawOverrides.overrideTime;
+
   await scheduleManager.editInstance(scheduleEventId, instanceTime, overrides);
   return { success: true };
 }
@@ -379,9 +401,10 @@ async function handleDeleteInstance(
   const scheduleManager = scheduler.getScheduleManager();
   if (!scheduleManager) throw new Error('Schedule manager not available');
 
-  const scheduleEventId = params?.scheduleEventId as string;
-  const instanceTime = params?.instanceTime as number;
-  if (!scheduleEventId || !instanceTime) throw invalidRequest('"scheduleEventId" and "instanceTime" are required');
+  const scheduleEventId = params?.scheduleEventId;
+  const instanceTime = params?.instanceTime;
+  if (typeof scheduleEventId !== 'string' || !scheduleEventId) throw invalidRequest('"scheduleEventId" is required');
+  if (typeof instanceTime !== 'number') throw invalidRequest('"instanceTime" must be a number');
 
   await scheduleManager.deleteInstance(scheduleEventId, instanceTime);
   return { success: true };

@@ -221,17 +221,17 @@ export class Scheduler {
       throw error;
     }
 
-    // Also create in new model if available
+    // Also create in new model if available (use same ID for consistent routing)
     if (this.scheduleManager && recurrence) {
       try {
         const rruleString = recurrenceRuleToRRule(recurrence, scheduledTime);
-        await this.scheduleManager.createEvent(input, scheduledTime, rruleString);
+        await this.scheduleManager.createEvent(input, scheduledTime, rruleString, job.id);
       } catch (error) {
         console.warn('[Scheduler] Failed to create ScheduleEvent for new model:', error);
       }
     } else if (this.scheduleManager) {
       try {
-        await this.scheduleManager.createEvent(input, scheduledTime, null);
+        await this.scheduleManager.createEvent(input, scheduledTime, null, job.id);
       } catch (error) {
         console.warn('[Scheduler] Failed to create ScheduleEvent for new model:', error);
       }

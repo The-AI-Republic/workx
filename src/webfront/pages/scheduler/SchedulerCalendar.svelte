@@ -80,9 +80,13 @@
       const jobs = data?.jobs || [];
       const legacyEvents = jobsToCalendarEvents(jobs, theme);
 
-      // Merge: new model events take precedence, deduplicate by time
-      const newModelTimes = new Set(newModelEvents.map(e => e.start.getTime()));
-      const uniqueLegacy = legacyEvents.filter(e => !newModelTimes.has(e.start.getTime()));
+      // Merge: new model events take precedence, deduplicate by event/job ID
+      const newModelIds = new Set(newModelEvents.map(e => {
+        // Instance IDs are "eventId:instanceTime" — extract the eventId part
+        const colonIdx = e.id.indexOf(':');
+        return colonIdx >= 0 ? e.id.substring(0, colonIdx) : e.id;
+      }));
+      const uniqueLegacy = legacyEvents.filter(e => !newModelIds.has(e.id));
       calendarEvents = [...newModelEvents, ...uniqueLegacy];
     } catch (error) {
       console.error('[SchedulerCalendar] Failed to fetch events:', error);
@@ -133,14 +137,25 @@
 
   async function handleEventDrop(detail: { event: any; oldEvent: any }) {
     const event = detail.event;
-    const jobId = event.id;
+    const eventId = event.id as string;
     const newTime = event.start.getTime();
+    const instance = event.extendedProps?.instance;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_RESCHEDULE_JOB, { jobId, scheduledTime: newTime });
+      if (instance) {
+        // New model: edit instance with overrideTime
+        await sendMessage(MessageType.SCHEDULE_EDIT_INSTANCE, {
+          scheduleEventId: instance.scheduleEventId,
+          instanceTime: instance.instanceTime,
+          overrides: { overrideTime: newTime },
+        });
+      } else {
+        // Legacy model: reschedule job
+        await sendMessage(MessageType.SCHEDULER_RESCHEDULE_JOB, { jobId: eventId, scheduledTime: newTime });
+      }
       await fetchEvents();
     } catch (error) {
-      console.error('[SchedulerCalendar] Failed to reschedule job:', error);
+      console.error('[SchedulerCalendar] Failed to reschedule:', error);
       await fetchEvents(); // Revert by re-fetching
     }
   }

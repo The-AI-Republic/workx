@@ -54,15 +54,16 @@
     }
   }
 
-  function getStatusColor(status: SchedulerJobStatus): string {
+  function getStatusColor(status: string): string {
     switch (status) {
       case 'running': return 'text-blue-400';
       case 'scheduled': return 'text-green-400';
+      case 'upcoming': return 'text-green-400';
       case 'missed': return 'text-yellow-400';
       case 'failed': return 'text-red-400';
       case 'completed': return 'text-gray-400';
       case 'cancelled': return 'text-gray-500';
-      default: return '';
+      default: return 'text-gray-400';
     }
   }
 
@@ -101,7 +102,7 @@
       {currentTheme === 'modern'
         ? 'bg-chat-surface dark:bg-chat-surface-dark border-b border-chat-border dark:border-chat-border-dark'
         : 'bg-[rgba(0,255,0,0.05)] border-b border-term-dim-green'}">
-      <span class="text-xs font-semibold uppercase {getStatusColor(instance?.status as SchedulerJobStatus || job?.status || 'scheduled')}">{instance?.status || job?.status}</span>
+      <span class="text-xs font-semibold uppercase {getStatusColor(instance?.status || job?.status || 'scheduled')}">{instance?.status || job?.status}</span>
       <button
         class="p-0.5 bg-transparent border-none cursor-pointer
           {currentTheme === 'modern'

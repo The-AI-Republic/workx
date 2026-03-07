@@ -55,18 +55,13 @@ export class ScheduleEventStorage implements IScheduleStorage {
   }
 
   async getEnabledEvents(): Promise<ScheduleEvent[]> {
+    // IndexedDB stores booleans natively — query with true, not 1
     return this.db.queryByIndex<ScheduleEvent>(
       SCHEDULE_EVENTS_STORE,
       'by_enabled',
-      1 // IndexedDB stores booleans as 0/1 in some cases; we store as true/false
-    ).then(results => {
-      // Fallback: if index query returns empty, filter manually
-      if (results.length === 0) {
-        return this.getAllEvents().then(all => all.filter(e => e.enabled));
-      }
-      return results;
-    }).catch(() => {
-      // If index doesn't work with boolean values, filter manually
+      true
+    ).catch(() => {
+      // Fallback: filter manually if index query fails
       return this.getAllEvents().then(all => all.filter(e => e.enabled));
     });
   }

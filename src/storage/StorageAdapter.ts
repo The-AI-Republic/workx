@@ -21,6 +21,9 @@ export const STORE_KEY_PATHS: Record<string, string> = {
   rollout_cache: 'key',
   scheduler_jobs: 'id',
   agent_sessions: 'sessionId',
+  schedule_events: 'id',
+  schedule_exceptions: 'id',
+  execution_records: 'id',
 };
 
 /**

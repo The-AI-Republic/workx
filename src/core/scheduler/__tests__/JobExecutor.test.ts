@@ -59,6 +59,7 @@ function createTestExecution(overrides: Partial<ExecutionRecord> = {}): Executio
     id: 'exec-1',
     scheduleEventId: 'event-1',
     instanceTime: Date.now(),
+    input: 'Test input',
     sessionId: null,
     status: 'running',
     result: null,
@@ -259,6 +260,51 @@ describe('JobExecutor', () => {
     it('should respect connectivity check', () => {
       executor.setConnectivityCheck(() => false);
       expect(executor.isOnline()).toBe(false);
+    });
+  });
+
+  describe('execute queuing', () => {
+    it('should queue as pending when isExecuting is true', async () => {
+      const launcher = vi.fn().mockImplementation(() => new Promise(r => setTimeout(r, 100)));
+      executor.setJobLauncher(launcher);
+
+      // Start first execution
+      const p1 = executor.execute('event-1', Date.now(), 'First');
+
+      // Second execute for a different instance should queue (isExecuting is true)
+      const id2 = await executor.execute('event-2', Date.now() + 1000, 'Second');
+
+      expect(id2).toBe('mock-exec-uuid');
+      expect(executionStorage.createExecution).toHaveBeenCalledTimes(2);
+      // Second call should create a pending record with input preserved
+      const secondCall = (executionStorage.createExecution as any).mock.calls[1][0];
+      expect(secondCall.status).toBe('pending');
+      expect(secondCall.input).toBe('Second');
+
+      await p1;
+    });
+  });
+
+  describe('processQueue', () => {
+    it('should process pending executions in FIFO order', async () => {
+      const pending = [
+        createTestExecution({ id: 'p2', status: 'pending', instanceTime: Date.now() + 2000, input: 'Second' }),
+        createTestExecution({ id: 'p1', status: 'pending', instanceTime: Date.now() + 1000, input: 'First' }),
+      ];
+      (executionStorage.getExecutionsByStatus as any).mockResolvedValue(pending);
+
+      await executor.processQueue();
+
+      // Should pick the earlier instanceTime (p1)
+      expect(executionStorage.updateExecution).toHaveBeenCalledWith('p1', expect.objectContaining({
+        status: 'running',
+      }));
+    });
+
+    it('should not process when offline', async () => {
+      executor.setConnectivityCheck(() => false);
+      await executor.processQueue();
+      expect(executionStorage.getExecutionsByStatus).not.toHaveBeenCalled();
     });
   });
 

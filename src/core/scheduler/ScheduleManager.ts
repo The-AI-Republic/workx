@@ -55,22 +55,23 @@ export class ScheduleManager {
   async createEvent(
     input: string,
     scheduledTime: number,
-    rrule: string | null = null
+    rrule: string | null = null,
+    id?: string
   ): Promise<ScheduleEvent> {
     const now = Date.now();
     if (scheduledTime <= now) {
       throw new Error('Scheduled time must be in the future');
     }
 
-    const id = uuidv4();
-    const event = createScheduleEvent(id, input, scheduledTime, rrule);
+    const eventId = id || uuidv4();
+    const event = createScheduleEvent(eventId, input, scheduledTime, rrule);
     await this.scheduleStorage.createEvent(event);
 
     // Arm alarm for the first occurrence
     try {
-      await this.alarms.createJobAlarm(id, scheduledTime);
+      await this.alarms.createJobAlarm(eventId, scheduledTime);
     } catch (error) {
-      await this.scheduleStorage.deleteEvent(id);
+      await this.scheduleStorage.deleteEvent(eventId);
       throw error;
     }
 
@@ -93,6 +94,11 @@ export class ScheduleManager {
   ): Promise<void> {
     const event = await this.scheduleStorage.getEvent(eventId);
     if (!event) throw new Error(`Schedule event not found: ${eventId}`);
+
+    // Validate scheduledTime is in the future if being updated
+    if (updates.scheduledTime !== undefined && updates.scheduledTime <= Date.now()) {
+      throw new Error('Scheduled time must be in the future');
+    }
 
     await this.scheduleStorage.updateEvent(eventId, {
       ...updates,
@@ -154,6 +160,13 @@ export class ScheduleManager {
   async deleteEvent(eventId: string): Promise<void> {
     await this.alarms.clearJobAlarm(eventId);
     await this.scheduleStorage.deleteAllExceptions(eventId);
+
+    // Clean up orphaned execution records
+    const executions = await this.executionStorage.getExecutionsByEvent(eventId);
+    for (const exec of executions) {
+      await this.executionStorage.deleteExecution(exec.id);
+    }
+
     await this.scheduleStorage.deleteEvent(eventId);
   }
 
@@ -310,16 +323,19 @@ export class ScheduleManager {
     let instanceTime: number;
 
     if (event.rrule) {
-      // Find the most recent instance at or before now
+      // Find the most recent instance at or before now (with 5s tolerance for alarm jitter)
       const instances = expandInstances(
         event.rrule,
         event.scheduledTime,
         event.scheduledTime,
-        now + 60000, // 1-minute buffer for alarm timing
+        now + 5000,
         event.exdates
       );
       if (instances.length === 0) return;
-      instanceTime = instances[instances.length - 1];
+      // Use the last instance that is at or before now (not future)
+      const pastInstances = instances.filter(t => t <= now + 5000);
+      if (pastInstances.length === 0) return;
+      instanceTime = pastInstances[pastInstances.length - 1];
     } else {
       instanceTime = event.scheduledTime;
     }

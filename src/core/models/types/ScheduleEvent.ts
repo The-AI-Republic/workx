@@ -70,6 +70,9 @@ export interface ExecutionRecord {
   /** Which occurrence this execution is for (Unix ms) */
   instanceTime: number;
 
+  /** The input/prompt text for this execution (preserved for queued jobs) */
+  input: string;
+
   /** AgentRegistry session ID */
   sessionId: string | null;
 
@@ -190,12 +193,14 @@ export function createScheduleEvent(
 export function createExecutionRecord(
   id: string,
   scheduleEventId: string,
-  instanceTime: number
+  instanceTime: number,
+  input: string = ''
 ): ExecutionRecord {
   return {
     id,
     scheduleEventId,
     instanceTime,
+    input,
     sessionId: null,
     status: 'pending',
     result: null,

@@ -1133,14 +1133,25 @@ function setupSchedulerMessageHandlers(): void {
     const scheduleManager = scheduler!.getScheduleManager();
     if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
     const { input, scheduledTime, rrule } = message.payload;
-    const event = await scheduleManager.createEvent(input, scheduledTime, rrule || null);
+    if (typeof input !== 'string' || !input) throw new Error('"input" is required');
+    if (typeof scheduledTime !== 'number') throw new Error('"scheduledTime" must be a number');
+    const event = await scheduleManager.createEvent(input, scheduledTime, (typeof rrule === 'string' ? rrule : null));
     return { success: true, eventId: event.id };
   });
 
   router.on(MessageType.SCHEDULE_UPDATE_EVENT, async (message) => {
     const scheduleManager = scheduler!.getScheduleManager();
     if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
-    const { eventId, updates } = message.payload;
+    const { eventId, updates: rawUpdates } = message.payload;
+    if (typeof eventId !== 'string' || !eventId) throw new Error('"eventId" is required');
+    // Allowlist update fields
+    const updates: Record<string, unknown> = {};
+    if (rawUpdates && typeof rawUpdates === 'object') {
+      if ('input' in rawUpdates && typeof rawUpdates.input === 'string') updates.input = rawUpdates.input;
+      if ('scheduledTime' in rawUpdates && typeof rawUpdates.scheduledTime === 'number') updates.scheduledTime = rawUpdates.scheduledTime;
+      if ('rrule' in rawUpdates && (typeof rawUpdates.rrule === 'string' || rawUpdates.rrule === null)) updates.rrule = rawUpdates.rrule;
+      if ('enabled' in rawUpdates && typeof rawUpdates.enabled === 'boolean') updates.enabled = rawUpdates.enabled;
+    }
     await scheduleManager.editSeries(eventId, updates);
     return { success: true };
   });
@@ -1149,6 +1160,7 @@ function setupSchedulerMessageHandlers(): void {
     const scheduleManager = scheduler!.getScheduleManager();
     if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
     const { eventId } = message.payload;
+    if (typeof eventId !== 'string' || !eventId) throw new Error('"eventId" is required');
     await scheduleManager.deleteEvent(eventId);
     return { success: true };
   });
@@ -1157,15 +1169,27 @@ function setupSchedulerMessageHandlers(): void {
     const scheduleManager = scheduler!.getScheduleManager();
     if (!scheduleManager) return { instances: [] };
     const { startTime, endTime } = message.payload;
-    const instances = await scheduleManager.getInstancesInRange(startTime, endTime);
+    if (typeof startTime !== 'number' || typeof endTime !== 'number') throw new Error('"startTime" and "endTime" must be numbers');
+    // Limit range to 1 year
+    const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+    const clampedEnd = Math.min(endTime, startTime + MAX_RANGE_MS);
+    const instances = await scheduleManager.getInstancesInRange(startTime, clampedEnd);
     return { instances };
   });
 
   router.on(MessageType.SCHEDULE_EDIT_INSTANCE, async (message) => {
     const scheduleManager = scheduler!.getScheduleManager();
     if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
-    const { scheduleEventId, instanceTime, overrides } = message.payload;
-    await scheduleManager.editInstance(scheduleEventId, instanceTime, overrides || {});
+    const { scheduleEventId, instanceTime, overrides: rawOverrides } = message.payload;
+    if (typeof scheduleEventId !== 'string' || !scheduleEventId) throw new Error('"scheduleEventId" is required');
+    if (typeof instanceTime !== 'number') throw new Error('"instanceTime" must be a number');
+    // Allowlist override fields
+    const overrides: Record<string, unknown> = {};
+    if (rawOverrides && typeof rawOverrides === 'object') {
+      if ('overrideInput' in rawOverrides && typeof rawOverrides.overrideInput === 'string') overrides.overrideInput = rawOverrides.overrideInput;
+      if ('overrideTime' in rawOverrides && typeof rawOverrides.overrideTime === 'number') overrides.overrideTime = rawOverrides.overrideTime;
+    }
+    await scheduleManager.editInstance(scheduleEventId, instanceTime, overrides);
     return { success: true };
   });
 
@@ -1173,6 +1197,8 @@ function setupSchedulerMessageHandlers(): void {
     const scheduleManager = scheduler!.getScheduleManager();
     if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
     const { scheduleEventId, instanceTime } = message.payload;
+    if (typeof scheduleEventId !== 'string' || !scheduleEventId) throw new Error('"scheduleEventId" is required');
+    if (typeof instanceTime !== 'number') throw new Error('"instanceTime" must be a number');
     await scheduleManager.deleteInstance(scheduleEventId, instanceTime);
     return { success: true };
   });
@@ -1181,6 +1207,7 @@ function setupSchedulerMessageHandlers(): void {
     const jobExecutor = scheduler!.getJobExecutor();
     if (!jobExecutor) return { executions: [] };
     const { scheduleEventId } = message.payload;
+    if (typeof scheduleEventId !== 'string' || !scheduleEventId) throw new Error('"scheduleEventId" is required');
     const executions = await jobExecutor.getExecutionHistory(scheduleEventId);
     return { executions };
   });

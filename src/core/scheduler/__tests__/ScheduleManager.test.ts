@@ -239,6 +239,7 @@ describe('ScheduleManager', () => {
         id: 'exec-1',
         scheduleEventId: 'event-1',
         instanceTime: futureTime,
+        input: 'Test event',
         sessionId: 'session-1',
         status: 'completed',
         result: null,
@@ -280,6 +281,70 @@ describe('ScheduleManager', () => {
       await manager.handleAlarmFired('event-1');
 
       expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getInstancesInRange with recurring events', () => {
+    it('should expand recurring event instances', async () => {
+      const dtstart = Date.now() + 3600000;
+      const event = createTestEvent({
+        scheduledTime: dtstart,
+        rrule: 'FREQ=DAILY;INTERVAL=1',
+      });
+      (scheduleStorage.getEventsInRange as any).mockResolvedValue([event]);
+      (executionStorage.getExecutionsInRange as any).mockResolvedValue([]);
+      (scheduleStorage.getExceptions as any).mockResolvedValue([]);
+
+      const instances = await manager.getInstancesInRange(dtstart, dtstart + 3 * 86400000);
+
+      expect(instances.length).toBeGreaterThanOrEqual(3);
+      expect(instances[0].status).toBe('upcoming');
+      expect(instances[0].isVirtual).toBe(true);
+      expect(instances[0].rruleDescription).toBeDefined();
+    });
+
+    it('should apply exception overrides in getInstancesInRange', async () => {
+      const dtstart = Date.now() + 3600000;
+      const event = createTestEvent({
+        scheduledTime: dtstart,
+        rrule: 'FREQ=DAILY;INTERVAL=1',
+      });
+      (scheduleStorage.getEventsInRange as any).mockResolvedValue([event]);
+      (executionStorage.getExecutionsInRange as any).mockResolvedValue([]);
+      (scheduleStorage.getExceptions as any).mockResolvedValue([
+        { scheduleEventId: 'event-1', instanceTime: dtstart, overrideInput: 'Modified task' },
+      ]);
+
+      const instances = await manager.getInstancesInRange(dtstart, dtstart + 86400000);
+
+      const firstInstance = instances.find(i => i.instanceTime === dtstart);
+      expect(firstInstance).toBeDefined();
+      expect(firstInstance!.input).toBe('Modified task');
+    });
+  });
+
+  describe('editSeries validation', () => {
+    it('should reject past scheduledTime', async () => {
+      const event = createTestEvent();
+      (scheduleStorage.getEvent as any).mockResolvedValue(event);
+
+      await expect(
+        manager.editSeries('event-1', { scheduledTime: Date.now() - 1000 })
+      ).rejects.toThrow('Scheduled time must be in the future');
+    });
+  });
+
+  describe('deleteEvent cleanup', () => {
+    it('should delete associated execution records', async () => {
+      const executions = [
+        { id: 'exec-1', scheduleEventId: 'event-1', instanceTime: Date.now(), input: '', sessionId: null, status: 'completed' as const, result: null, error: null, startedAt: null, completedAt: null },
+      ];
+      (executionStorage.getExecutionsByEvent as any).mockResolvedValue(executions);
+
+      await manager.deleteEvent('event-1');
+
+      expect(executionStorage.deleteExecution).toHaveBeenCalledWith('exec-1');
+      expect(scheduleStorage.deleteEvent).toHaveBeenCalledWith('event-1');
     });
   });
 

@@ -64,7 +64,7 @@ export function isReschedulable(status: SchedulerJobStatus): boolean {
 }
 
 export function jobToCalendarEvent(job: JobLike, theme: 'modern' | 'terminal'): CalendarEvent | null {
-  if (!job.scheduledTime) return null;
+  if (job.scheduledTime == null) return null;
   return {
     id: job.id,
     start: new Date(job.scheduledTime),

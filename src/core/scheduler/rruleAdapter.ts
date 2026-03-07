@@ -124,11 +124,13 @@ export function expandInstances(
       true // inclusive
     );
 
-    const exdateSet = new Set(exdates);
+    // Normalize exdates to minute-level to handle rrule library timestamp jitter
+    const normalizeToMinute = (t: number) => Math.floor(t / 60000) * 60000;
+    const exdateSet = new Set(exdates.map(normalizeToMinute));
 
     return instances
       .map(d => d.getTime())
-      .filter(t => !exdateSet.has(t));
+      .filter(t => !exdateSet.has(normalizeToMinute(t)));
   } catch {
     return [];
   }
@@ -153,7 +155,9 @@ export function getNextInstance(
     options.dtstart = new Date(dtstart);
     const rrule = new RRule(options);
 
-    const exdateSet = new Set(exdates);
+    // Normalize exdates to minute-level to handle rrule library timestamp jitter
+    const normalizeToMinute = (t: number) => Math.floor(t / 60000) * 60000;
+    const exdateSet = new Set(exdates.map(normalizeToMinute));
 
     // Search a reasonable window (up to 1 year ahead, checking in chunks)
     const chunkMs = 90 * 24 * 60 * 60 * 1000; // 90 days
@@ -170,7 +174,7 @@ export function getNextInstance(
 
       for (const inst of instances) {
         const t = inst.getTime();
-        if (t > afterTime && !exdateSet.has(t)) {
+        if (t > afterTime && !exdateSet.has(normalizeToMinute(t))) {
           return t;
         }
       }
