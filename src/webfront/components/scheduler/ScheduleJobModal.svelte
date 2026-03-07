@@ -1,19 +1,23 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import RecurrenceSelector from './RecurrenceSelector.svelte';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  export let show: boolean = false;
-  export let input: string = '';
+  let {
+    show = false,
+    input = '',
+    onclose,
+    onschedule,
+  }: {
+    show?: boolean;
+    input?: string;
+    onclose?: () => void;
+    onschedule?: (detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    close: void;
-    schedule: { input: string; scheduledTime: number; recurrence?: RecurrenceRule };
-  }>();
-
-  let currentTheme: UITheme = 'terminal';
+  let currentTheme = $state<UITheme>('terminal');
   let selectedDate: string = '';
   let selectedTime: string = '';
   let errorMessage: string = '';
@@ -21,17 +25,22 @@
   let recurrence: RecurrenceRule | null = null;
 
   // Determine if input should be editable (when opened without pre-filled input)
-  $: isEditable = !input.trim();
+  let isEditable = $derived(!input.trim());
 
   // Subscribe to theme
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   // Initialize with defaults when modal opens
-  $: if (show) {
-    initializeDefaults();
-  }
+  $effect(() => {
+    if (show) {
+      untrack(() => initializeDefaults());
+    }
+  });
 
   function initializeDefaults() {
     // Default to 1 hour from now
@@ -129,11 +138,11 @@
     if (recurrence) {
       detail.recurrence = recurrence;
     }
-    dispatch('schedule', detail);
+    onschedule?.(detail);
   }
 
   function handleClose() {
-    dispatch('close');
+    onclose?.();
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -158,12 +167,12 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if show}
   <div
     class="fixed inset-0 bg-black/75 flex items-center justify-center z-[10000] animate-fade-in"
-    on:click={handleBackdropClick}
+    onclick={handleBackdropClick}
     role="dialog"
     aria-modal="true"
     aria-labelledby="schedule-modal-title"
@@ -188,7 +197,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleClose}
+          onclick={handleClose}
           aria-label="Close"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -243,7 +252,7 @@
                   {currentTheme === 'modern'
                     ? 'bg-chat-code-bg dark:bg-chat-code-bg-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
                     : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)] hover:border-term-bright-green'}"
-                on:click={() => scheduleIn(btn.min)}
+                onclick={() => scheduleIn(btn.min)}
               >{btn.label}</button>
             {/each}
           </div>
@@ -290,7 +299,7 @@
         <div class="mb-4">
           <RecurrenceSelector
             {recurrence}
-            on:change={(e) => { recurrence = e.detail; }}
+            onchange={(rule) => { recurrence = rule; }}
           />
         </div>
 
@@ -327,7 +336,7 @@
             {currentTheme === 'modern'
               ? 'bg-transparent border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green text-term-dim-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleClose}
+          onclick={handleClose}
         >
           {$_t('Cancel')}
         </button>
@@ -336,7 +345,7 @@
             {currentTheme === 'modern'
               ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-white dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark hover:border-chat-send-hover dark:hover:border-chat-send-hover-dark'
               : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-bright-green hover:border-term-bright-green'}"
-          on:click={validateAndSchedule}
+          onclick={validateAndSchedule}
         >
           {$_t('Schedule')}
         </button>

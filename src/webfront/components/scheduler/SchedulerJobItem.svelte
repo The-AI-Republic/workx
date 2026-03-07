@@ -1,27 +1,39 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import type { SchedulerJobStatus, RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  export let id: string;
-  export let input: string;
-  export let scheduledTime: number | null;
-  export let status: SchedulerJobStatus;
-  export let createdAt: number;
-  export let showActions: boolean = true;
-  export let recurrence: RecurrenceRule | null | undefined = undefined;
+  let {
+    id,
+    input,
+    scheduledTime,
+    status,
+    createdAt,
+    showActions = true,
+    recurrence = undefined,
+    ontrigger,
+    oncancel,
+    ondetails,
+  }: {
+    id: string;
+    input: string;
+    scheduledTime: number | null;
+    status: SchedulerJobStatus;
+    createdAt: number;
+    showActions?: boolean;
+    recurrence?: RecurrenceRule | null | undefined;
+    ontrigger?: (data: { jobId: string }) => void;
+    oncancel?: (data: { jobId: string }) => void;
+    ondetails?: (data: { jobId: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    trigger: { jobId: string };
-    cancel: { jobId: string };
-    details: { jobId: string };
-  }>();
+  let currentTheme = $state<UITheme>('terminal');
 
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   function getStatusBadgeClasses(s: SchedulerJobStatus): string {
@@ -91,11 +103,11 @@
   }
 
   function handleTrigger() {
-    dispatch('trigger', { jobId: id });
+    ontrigger?.({ jobId: id });
   }
 
   function handleCancel() {
-    dispatch('cancel', { jobId: id });
+    oncancel?.({ jobId: id });
   }
 
   function formatRecurrenceDisplay(rule: RecurrenceRule): string {
@@ -124,7 +136,7 @@
   }
 
   function handleClick() {
-    dispatch('details', { jobId: id });
+    ondetails?.({ jobId: id });
   }
 </script>
 
@@ -133,8 +145,8 @@
     {currentTheme === 'modern'
       ? 'bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
       : 'bg-[rgba(0,0,0,0.4)] border border-[rgba(0,255,0,0.2)] hover:bg-[rgba(0,255,0,0.05)] hover:border-[rgba(0,255,0,0.4)] ' + getItemBorderClass(status)}"
-  on:click={handleClick}
-  on:keydown={(e) => e.key === 'Enter' && handleClick()}
+  onclick={handleClick}
+  onkeydown={(e) => e.key === 'Enter' && handleClick()}
   role="button"
   tabindex="0"
 >
@@ -187,7 +199,7 @@
             {currentTheme === 'modern'
               ? 'bg-[rgba(16,185,129,0.1)] text-emerald-500 hover:bg-[rgba(16,185,129,0.2)]'
               : 'bg-[rgba(0,255,0,0.1)] text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-          on:click|stopPropagation={handleTrigger}
+          onclick={(e) => { e.stopPropagation(); handleTrigger(); }}
           title={$_t("Run Now")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -200,7 +212,7 @@
         <button
           class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
             bg-[rgba(239,68,68,0.1)] text-[#ff6b6b] hover:bg-[rgba(239,68,68,0.2)]"
-          on:click|stopPropagation={handleCancel}
+          onclick={(e) => { e.stopPropagation(); handleCancel(); }}
           title={$_t("Cancel")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

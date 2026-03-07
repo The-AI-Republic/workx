@@ -1,17 +1,21 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
   import RecurrenceSelector from './RecurrenceSelector.svelte';
   import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  export let collapsible: boolean = false;
-  export let initialExpanded: boolean = true;
+  let {
+    collapsible = false,
+    initialExpanded = true,
+    onscheduled,
+  }: {
+    collapsible?: boolean;
+    initialExpanded?: boolean;
+    onscheduled?: () => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{ scheduled: void }>();
-
-  let currentTheme: UITheme = 'terminal';
+  let currentTheme = $state<UITheme>('terminal');
   let expanded = initialExpanded;
   let editableInput = '';
   let selectedDate = '';
@@ -20,12 +24,11 @@
   let isScheduling = false;
   let recurrence: RecurrenceRule | null = null;
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  onDestroy(() => {
-    unsubTheme();
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   // Initialize defaults
@@ -131,7 +134,7 @@
         editableInput = '';
         recurrence = null;
         initializeDefaults();
-        dispatch('scheduled');
+        onscheduled?.();
       } else {
         throw new Error(data?.error || 'Failed to schedule task');
       }
@@ -155,7 +158,7 @@
       {currentTheme === 'modern'
         ? 'bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark font-chat'
         : 'bg-[rgba(0,255,0,0.05)] text-term-green font-terminal'}"
-    on:click={() => { if (collapsible) expanded = !expanded; }}
+    onclick={() => { if (collapsible) expanded = !expanded; }}
     disabled={!collapsible}
   >
     <span class="text-sm font-semibold">{$_t('New Job')}</span>
@@ -193,7 +196,7 @@
                 {currentTheme === 'modern'
                   ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
                   : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
-              on:click={() => scheduleIn(item.min)}
+              onclick={() => scheduleIn(item.min)}
             >{item.label}</button>
           {/each}
         </div>
@@ -233,7 +236,7 @@
       <!-- Recurrence -->
       <RecurrenceSelector
         {recurrence}
-        on:change={(e) => { recurrence = e.detail; }}
+        onchange={(rule) => { recurrence = rule; }}
       />
 
       <!-- Schedule Preview -->
@@ -260,7 +263,7 @@
           {currentTheme === 'modern'
             ? 'bg-chat-send dark:bg-chat-send-dark border border-chat-send dark:border-chat-send-dark text-chat-send-text dark:text-chat-send-text-dark font-chat hover:bg-chat-send-hover dark:hover:bg-chat-send-hover-dark'
             : 'bg-term-dim-green border border-term-dim-green text-black font-terminal hover:bg-term-green hover:border-term-green'}"
-        on:click={validateAndSchedule}
+        onclick={validateAndSchedule}
         disabled={isScheduling}
       >
         {isScheduling ? $_t('Scheduling...') : $_t('Schedule')}

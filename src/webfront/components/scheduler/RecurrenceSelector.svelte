@@ -1,21 +1,24 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { untrack } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
   import type { RecurrenceRule, RecurrenceMode, RecurrenceIntervalUnit, RecurrenceEndCondition } from '@/core/models/types/Scheduler';
 
-  export let recurrence: RecurrenceRule | null = null;
+  let {
+    recurrence = null,
+    onchange,
+  }: {
+    recurrence?: RecurrenceRule | null;
+    onchange?: (rule: RecurrenceRule | null) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{ change: RecurrenceRule | null }>();
+  let currentTheme = $state<UITheme>('terminal');
 
-  let currentTheme: UITheme = 'terminal';
-
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
-  });
-
-  onDestroy(() => {
-    unsubTheme();
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   // Local state derived from prop
@@ -36,30 +39,25 @@
   }
 
   // Sync local state when parent resets the recurrence prop
-  let syncingFromProp = false;
-  $: {
-    const propMode = recurrence?.mode || 'none';
-    if (propMode !== mode || (!recurrence && mode !== 'none')) {
-      syncingFromProp = true;
-      mode = recurrence?.mode || 'none';
-      interval = recurrence?.interval || 1;
-      intervalUnit = recurrence?.intervalUnit || 'hours';
-      endCondition = recurrence?.endCondition || 'never';
-      endAfterCount = recurrence?.endAfterCount || 3;
-      endUntilDate = recurrence?.endUntilDate
-        ? formatDateForInput(new Date(recurrence.endUntilDate))
+  $effect(() => {
+    const rec = recurrence;
+    const propMode = rec?.mode || 'none';
+    const localMode = untrack(() => mode);
+    if (propMode !== localMode || (!rec && localMode !== 'none')) {
+      mode = rec?.mode || 'none';
+      interval = rec?.interval || 1;
+      intervalUnit = rec?.intervalUnit || 'hours';
+      endCondition = rec?.endCondition || 'never';
+      endAfterCount = rec?.endAfterCount || 3;
+      endUntilDate = rec?.endUntilDate
+        ? formatDateForInput(new Date(rec.endUntilDate))
         : '';
-      syncingFromProp = false;
     }
-  }
+  });
 
   function emitChange() {
-    // Don't re-emit when syncing from a prop change
-    if (syncingFromProp) return;
-
     if (mode === 'none') {
-      recurrence = null;
-      dispatch('change', null);
+      onchange?.(null);
       return;
     }
 
@@ -80,12 +78,8 @@
       rule.endUntilDate = new Date(endUntilDate + 'T23:59:59').getTime();
     }
 
-    recurrence = rule;
-    dispatch('change', rule);
+    onchange?.(rule);
   }
-
-  // Re-emit on any local state change
-  $: mode, interval, intervalUnit, endCondition, endAfterCount, endUntilDate, emitChange();
 
   const inputClass = (theme: UITheme) => theme === 'modern'
     ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:outline-none focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'
@@ -103,6 +97,7 @@
     <select
       class="w-full px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
       bind:value={mode}
+      onchange={() => emitChange()}
     >
       <option value="none">{$_t('Does not repeat')}</option>
       <option value="daily">{$_t('Daily')}</option>
@@ -124,12 +119,14 @@
             max="999"
             class="w-full px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
             bind:value={interval}
+            oninput={() => emitChange()}
           />
         </div>
         <div class="flex-1">
           <select
             class="w-full px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
             bind:value={intervalUnit}
+            onchange={() => emitChange()}
           >
             <option value="minutes">{$_t('minutes')}</option>
             <option value="hours">{$_t('hours')}</option>
@@ -146,6 +143,7 @@
       <select
         class="w-full px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
         bind:value={endCondition}
+        onchange={() => emitChange()}
       >
         <option value="never">{$_t('Never')}</option>
         <option value="after">{$_t('After X occurrences')}</option>
@@ -163,6 +161,7 @@
             max="999"
             class="w-20 px-2 py-1.5 text-sm rounded {inputClass(currentTheme)}"
             bind:value={endAfterCount}
+            oninput={() => emitChange()}
           />
           <span class="text-sm {labelClass(currentTheme)}">{$_t('occurrences')}</span>
         </div>
@@ -177,6 +176,7 @@
           class="w-full px-2 py-1.5 text-sm rounded picker-input {inputClass(currentTheme)}"
           bind:value={endUntilDate}
           min={formatDateForInput(new Date())}
+          onchange={() => emitChange()}
         />
       </div>
     {/if}

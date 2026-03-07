@@ -1,33 +1,44 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   import { isWideMode } from '../../stores/layoutStore';
+  import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
   import ActiveJobsModule from '../../components/scheduler/ActiveJobsModule.svelte';
   import NewJobModule from '../../components/scheduler/NewJobModule.svelte';
   import JobHistoryModule from '../../components/scheduler/JobHistoryModule.svelte';
 
-  let currentTheme: UITheme = 'terminal';
-  let wide = false;
+  let currentTheme = $state<UITheme>('terminal');
+  let wide = $state(false);
 
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
-  const unsubWide = isWideMode.subscribe((value) => {
-    wide = value;
+  $effect(() => {
+    const unsub = isWideMode.subscribe((value) => {
+      wide = value;
+    });
+    return unsub;
   });
 
-  onDestroy(() => {
-    unsubTheme();
-    unsubWide();
+  // Initialize theme from saved config (same as chat page)
+  $effect(() => {
+    AgentConfig.getInstance().then((config) => {
+      const preferences = config.getConfig().preferences;
+      if (preferences?.uiTheme) {
+        themePreference.initialize(preferences.uiTheme);
+      }
+    });
   });
 </script>
 
 <div class="h-screen overflow-y-auto {currentTheme}
   {currentTheme === 'modern'
-    ? 'bg-chat-bg dark:bg-chat-bg-dark'
-    : 'bg-term-bg'}">
+    ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}">
 
   <!-- Page Header -->
   <div class="px-4 py-3 flex items-center gap-2
