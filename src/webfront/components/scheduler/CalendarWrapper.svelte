@@ -90,12 +90,12 @@
     --ec-today-bg-color: rgba(0, 255, 0, 0.05);
     --ec-highlight-color: rgba(0, 255, 0, 0.1);
     --ec-active-bg-color: rgba(0, 255, 0, 0.15);
-    --ec-btn-bg-color: transparent;
-    --ec-btn-border-color: rgba(0, 255, 0, 0.3);
-    --ec-btn-text-color: #00ff00;
-    --ec-btn-hover-bg-color: rgba(0, 255, 0, 0.1);
-    --ec-btn-active-bg-color: rgba(0, 255, 0, 0.2);
-    --ec-btn-active-border-color: #00ff00;
+    --ec-button-bg-color: transparent;
+    --ec-button-border-color: rgba(0, 255, 0, 0.3);
+    --ec-button-text-color: #00ff00;
+    --ec-button-active-bg-color: rgba(0, 255, 0, 0.2);
+    --ec-button-active-border-color: #00ff00;
+    --ec-button-active-text-color: #00ff00;
     --ec-now-indicator-color: #00ff00;
     --ec-event-text-color: #000;
     --ec-list-day-bg-color: rgba(0, 255, 0, 0.05);
@@ -126,5 +126,11 @@
     --ec-bg-color: var(--color-chat-bg-dark, #1a1a2e);
     --ec-border-color: var(--color-chat-border-dark, #374151);
     --ec-text-color: var(--color-chat-text-dark, #e5e7eb);
+    --ec-button-bg-color: var(--color-chat-bg-dark, #1a1a2e);
+    --ec-button-border-color: var(--color-chat-border-dark, #374151);
+    --ec-button-text-color: var(--color-chat-text-dark, #e5e7eb);
+    --ec-button-active-bg-color: rgba(96, 165, 250, 0.2);
+    --ec-button-active-border-color: #3b82f6;
+    --ec-button-active-text-color: #e5e7eb;
   }
 </style>
