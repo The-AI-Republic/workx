@@ -1,88 +1,70 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Calendar, DayGrid, TimeGrid, Interaction } from '@event-calendar/core';
-  import '@event-calendar/core/dist/index.css';
+  import '@event-calendar/core/index.css';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import type { CalendarEvent } from '../../lib/calendarUtils';
 
-  export let events: CalendarEvent[] = [];
-  export let initialView: string = 'timeGridWeek';
+  let {
+    events = [],
+    initialView = 'timeGridWeek',
+    ondatesset,
+    ondateclick,
+    oneventclick,
+    oneventdrop,
+    onselect,
+  }: {
+    events?: CalendarEvent[];
+    initialView?: string;
+    ondatesset?: (detail: { start: Date; end: Date; view: any }) => void;
+    ondateclick?: (detail: { date: Date; dateStr: string }) => void;
+    oneventclick?: (detail: { event: any; el: any; jsEvent: MouseEvent }) => void;
+    oneventdrop?: (detail: { event: any; oldEvent: any }) => void;
+    onselect?: (detail: { start: Date; end: Date; startStr: string; endStr: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher();
+  let currentTheme = $state<UITheme>('terminal');
 
-  let currentTheme: UITheme = 'terminal';
-  let calendarEl: HTMLDivElement;
-  let calendarComponent: any;
-
-  const unsubTheme = uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
-  function getCalendarOptions() {
-    return {
-      view: initialView,
-      events: events,
-      headerToolbar: {
-        start: 'prev,next today',
-        center: 'title',
-        end: 'dayGridMonth,timeGridWeek,timeGridDay',
-      },
-      editable: true,
-      eventStartEditable: true,
-      selectable: true,
-      nowIndicator: true,
-      scrollTime: '08:00:00',
-      dateClick: (info: any) => {
-        dispatch('dateClick', { date: info.date, dateStr: info.dateStr });
-      },
-      eventClick: (info: any) => {
-        dispatch('eventClick', { event: info.event, el: info.el, jsEvent: info.jsEvent });
-      },
-      eventDrop: (info: any) => {
-        dispatch('eventDrop', { event: info.event, oldEvent: info.oldEvent });
-      },
-      datesSet: (info: any) => {
-        dispatch('datesSet', { start: info.start, end: info.end, view: info.view });
-      },
-      select: (info: any) => {
-        dispatch('select', { start: info.start, end: info.end, startStr: info.startStr, endStr: info.endStr });
-      },
-    };
-  }
-
-  onMount(() => {
-    if (calendarEl) {
-      calendarComponent = new Calendar({
-        target: calendarEl,
-        props: {
-          plugins: [DayGrid, TimeGrid, Interaction],
-          options: getCalendarOptions(),
-        },
-      });
-    }
+  let calendarOptions = $derived({
+    view: initialView,
+    events: events,
+    headerToolbar: {
+      start: 'prev,next today',
+      center: 'title',
+      end: 'dayGridMonth,timeGridWeek,timeGridDay',
+    },
+    editable: true,
+    eventStartEditable: true,
+    selectable: true,
+    nowIndicator: true,
+    scrollTime: '08:00:00',
+    dateClick: (info: any) => {
+      ondateclick?.({ date: info.date, dateStr: info.dateStr });
+    },
+    eventClick: (info: any) => {
+      oneventclick?.({ event: info.event, el: info.el, jsEvent: info.jsEvent });
+    },
+    eventDrop: (info: any) => {
+      oneventdrop?.({ event: info.event, oldEvent: info.oldEvent });
+    },
+    datesSet: (info: any) => {
+      ondatesset?.({ start: info.start, end: info.end, view: info.view });
+    },
+    select: (info: any) => {
+      onselect?.({ start: info.start, end: info.end, startStr: info.startStr, endStr: info.endStr });
+    },
   });
-
-  onDestroy(() => {
-    unsubTheme();
-    if (calendarComponent) {
-      calendarComponent.$destroy();
-    }
-  });
-
-  // Update events when they change
-  $: if (calendarComponent) {
-    calendarComponent.setOption('events', events);
-  }
-
-  export function getApi() {
-    return calendarComponent;
-  }
 </script>
 
-<div
-  class="calendar-wrapper {currentTheme === 'terminal' ? 'calendar-terminal' : 'calendar-modern'}"
-  bind:this={calendarEl}
-></div>
+<div class="calendar-wrapper {currentTheme === 'terminal' ? 'calendar-terminal' : 'calendar-modern'}">
+  <Calendar plugins={[DayGrid, TimeGrid, Interaction]} options={calendarOptions} />
+</div>
 
 <style>
   .calendar-wrapper {

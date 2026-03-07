@@ -369,17 +369,21 @@ export class DesktopAgentBootstrap {
       // Use platform-aware StorageAdapter factory (IndexedDB/SQLite/Node depending on build)
       const { createStorageAdapter } = await import('@/storage/createStorageAdapter');
       const { SchedulerStorage } = await import('@/core/scheduler/SchedulerStorage');
+      const { ScheduleEventStorage } = await import('@/core/scheduler/ScheduleEventStorage');
+      const { ExecutionStorage } = await import('@/core/scheduler/ExecutionStorage');
 
       const storageAdapter = await createStorageAdapter();
       await storageAdapter.initialize();
 
       const schedulerStorage = new SchedulerStorage(storageAdapter);
+      const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
+      const executionStorage = new ExecutionStorage(storageAdapter);
 
       // Create hybrid alarms (in-process timers + OS-level jobs)
       this.schedulerAlarms = new DesktopSchedulerAlarms();
 
       // Create scheduler
-      this.scheduler = new Scheduler(schedulerStorage, this.schedulerAlarms);
+      this.scheduler = new Scheduler(schedulerStorage, this.schedulerAlarms, scheduleEventStorage, executionStorage);
 
       // Wire alarm handler
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {

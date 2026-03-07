@@ -54,6 +54,8 @@ import { registerSchedulerHandlers } from '../handlers/scheduler';
 
 // Scheduler
 import { ServerSchedulerStorage } from '../scheduler/ServerSchedulerStorage';
+import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
+import { ServerExecutionStorage } from '../scheduler/ServerExecutionStorage';
 import { ServerSchedulerAlarms } from '../scheduler/ServerSchedulerAlarms';
 import { Scheduler } from '@/core/scheduler/Scheduler';
 
@@ -396,11 +398,17 @@ export class ServerAgentBootstrap {
       this.schedulerStorage = new ServerSchedulerStorage(dataDir);
       await this.schedulerStorage.initialize();
 
+      // 1b. Create new model storage (schedule events + executions)
+      const scheduleStorage = new ServerScheduleStorage(dataDir);
+      await scheduleStorage.initialize();
+      const executionStorage = new ServerExecutionStorage(dataDir);
+      await executionStorage.initialize();
+
       // 2. Create alarms (Node.js timers)
       this.schedulerAlarms = new ServerSchedulerAlarms();
 
-      // 3. Create scheduler
-      this.scheduler = new Scheduler(this.schedulerStorage, this.schedulerAlarms);
+      // 3. Create scheduler (with new model storage)
+      this.scheduler = new Scheduler(this.schedulerStorage, this.schedulerAlarms, scheduleStorage, executionStorage);
 
       // 4. Wire alarm handler → scheduler.handleAlarm()
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {

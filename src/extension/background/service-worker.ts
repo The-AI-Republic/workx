@@ -51,7 +51,7 @@ import type { Skill, InvocationMode } from '../../core/skills/types';
 import { registerPromptExtension } from '../../core/PromptLoader';
 
 // Scheduler imports
-import { Scheduler, SchedulerStorage } from '../../core/scheduler';
+import { Scheduler, SchedulerStorage, ScheduleEventStorage, ExecutionStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
 import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
@@ -863,7 +863,9 @@ async function initializeScheduler(): Promise<void> {
     // Create scheduler components
     schedulerStorage = new SchedulerStorage(storageAdapter);
     schedulerAlarms = new SchedulerAlarms();
-    scheduler = new Scheduler(schedulerStorage, schedulerAlarms);
+    const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
+    const executionStorage = new ExecutionStorage(storageAdapter);
+    scheduler = new Scheduler(schedulerStorage, schedulerAlarms, scheduleEventStorage, executionStorage);
 
     // Feature 015: Connect scheduler to AgentRegistry for isolated session creation
     if (registry) {
@@ -1123,6 +1125,64 @@ function setupSchedulerMessageHandlers(): void {
         recurrence: j.recurrence,
       })),
     };
+  });
+
+  // ─── New Schedule Event message handlers ───
+
+  router.on(MessageType.SCHEDULE_CREATE_EVENT, async (message) => {
+    const scheduleManager = scheduler!.getScheduleManager();
+    if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+    const { input, scheduledTime, rrule } = message.payload;
+    const event = await scheduleManager.createEvent(input, scheduledTime, rrule || null);
+    return { success: true, eventId: event.id };
+  });
+
+  router.on(MessageType.SCHEDULE_UPDATE_EVENT, async (message) => {
+    const scheduleManager = scheduler!.getScheduleManager();
+    if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+    const { eventId, updates } = message.payload;
+    await scheduleManager.editSeries(eventId, updates);
+    return { success: true };
+  });
+
+  router.on(MessageType.SCHEDULE_DELETE_EVENT, async (message) => {
+    const scheduleManager = scheduler!.getScheduleManager();
+    if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+    const { eventId } = message.payload;
+    await scheduleManager.deleteEvent(eventId);
+    return { success: true };
+  });
+
+  router.on(MessageType.SCHEDULE_GET_EVENTS_IN_RANGE, async (message) => {
+    const scheduleManager = scheduler!.getScheduleManager();
+    if (!scheduleManager) return { instances: [] };
+    const { startTime, endTime } = message.payload;
+    const instances = await scheduleManager.getInstancesInRange(startTime, endTime);
+    return { instances };
+  });
+
+  router.on(MessageType.SCHEDULE_EDIT_INSTANCE, async (message) => {
+    const scheduleManager = scheduler!.getScheduleManager();
+    if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+    const { scheduleEventId, instanceTime, overrides } = message.payload;
+    await scheduleManager.editInstance(scheduleEventId, instanceTime, overrides || {});
+    return { success: true };
+  });
+
+  router.on(MessageType.SCHEDULE_DELETE_INSTANCE, async (message) => {
+    const scheduleManager = scheduler!.getScheduleManager();
+    if (!scheduleManager) return { success: false, error: 'Schedule manager not available' };
+    const { scheduleEventId, instanceTime } = message.payload;
+    await scheduleManager.deleteInstance(scheduleEventId, instanceTime);
+    return { success: true };
+  });
+
+  router.on(MessageType.EXECUTION_GET_HISTORY, async (message) => {
+    const jobExecutor = scheduler!.getJobExecutor();
+    if (!jobExecutor) return { executions: [] };
+    const { scheduleEventId } = message.payload;
+    const executions = await jobExecutor.getExecutionHistory(scheduleEventId);
+    return { executions };
   });
 
   console.log('[ServiceWorker] Scheduler message handlers registered');

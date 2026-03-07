@@ -44,6 +44,15 @@ export function registerSchedulerHandlers(deps: SchedulerHandlerDeps): void {
   registerMethodHandler('scheduler.getArchivedJobs', handleGetArchivedJobs);
   registerMethodHandler('scheduler.getState', handleGetState);
   registerMethodHandler('scheduler.getJobDetails', handleGetJobDetails);
+
+  // New schedule event handlers
+  registerMethodHandler('schedule.createEvent', handleCreateEvent);
+  registerMethodHandler('schedule.updateEvent', handleUpdateEvent);
+  registerMethodHandler('schedule.deleteEvent', handleDeleteEvent);
+  registerMethodHandler('schedule.getEventsInRange', handleGetEventsInRange);
+  registerMethodHandler('schedule.editInstance', handleEditInstance);
+  registerMethodHandler('schedule.deleteInstance', handleDeleteInstance);
+  registerMethodHandler('schedule.getExecutionHistory', handleGetExecutionHistory);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -271,4 +280,124 @@ async function handleGetJobDetails(
 
   const job = await storage.getJob(jobId);
   return { job };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// New Schedule Event Handlers
+// ─────────────────────────────────────────────────────────────────────────
+
+async function handleCreateEvent(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const scheduleManager = scheduler.getScheduleManager();
+  if (!scheduleManager) throw new Error('Schedule manager not available');
+
+  const input = params?.input as string;
+  const scheduledTime = params?.scheduledTime as number;
+  const rrule = (params?.rrule as string) || null;
+
+  if (!input || typeof input !== 'string') throw invalidRequest('"input" is required');
+  if (input.length > MAX_INPUT_LENGTH) throw invalidRequest(`Input too long (max ${MAX_INPUT_LENGTH})`);
+  if (!scheduledTime || typeof scheduledTime !== 'number') throw invalidRequest('"scheduledTime" is required');
+
+  const event = await scheduleManager.createEvent(input, scheduledTime, rrule);
+  return { success: true, eventId: event.id };
+}
+
+async function handleUpdateEvent(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const scheduleManager = scheduler.getScheduleManager();
+  if (!scheduleManager) throw new Error('Schedule manager not available');
+
+  const eventId = params?.eventId as string;
+  if (!eventId) throw invalidRequest('"eventId" is required');
+
+  const updates = params?.updates as Record<string, unknown> || {};
+  await scheduleManager.editSeries(eventId, updates);
+  return { success: true };
+}
+
+async function handleDeleteEvent(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const scheduleManager = scheduler.getScheduleManager();
+  if (!scheduleManager) throw new Error('Schedule manager not available');
+
+  const eventId = params?.eventId as string;
+  if (!eventId) throw invalidRequest('"eventId" is required');
+
+  await scheduleManager.deleteEvent(eventId);
+  return { success: true };
+}
+
+async function handleGetEventsInRange(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const scheduleManager = scheduler.getScheduleManager();
+  if (!scheduleManager) return { instances: [] };
+
+  const startTime = params?.startTime as number;
+  const endTime = params?.endTime as number;
+
+  if (!startTime || !endTime) throw invalidRequest('"startTime" and "endTime" are required');
+
+  const instances = await scheduleManager.getInstancesInRange(startTime, endTime);
+  return { instances };
+}
+
+async function handleEditInstance(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const scheduleManager = scheduler.getScheduleManager();
+  if (!scheduleManager) throw new Error('Schedule manager not available');
+
+  const scheduleEventId = params?.scheduleEventId as string;
+  const instanceTime = params?.instanceTime as number;
+  if (!scheduleEventId || !instanceTime) throw invalidRequest('"scheduleEventId" and "instanceTime" are required');
+
+  const overrides = params?.overrides as Record<string, unknown> || {};
+  await scheduleManager.editInstance(scheduleEventId, instanceTime, overrides);
+  return { success: true };
+}
+
+async function handleDeleteInstance(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const scheduleManager = scheduler.getScheduleManager();
+  if (!scheduleManager) throw new Error('Schedule manager not available');
+
+  const scheduleEventId = params?.scheduleEventId as string;
+  const instanceTime = params?.instanceTime as number;
+  if (!scheduleEventId || !instanceTime) throw invalidRequest('"scheduleEventId" and "instanceTime" are required');
+
+  await scheduleManager.deleteInstance(scheduleEventId, instanceTime);
+  return { success: true };
+}
+
+async function handleGetExecutionHistory(
+  params: Record<string, unknown> | undefined,
+  _ctx: MethodContext
+): Promise<unknown> {
+  const { scheduler } = getDeps();
+  const jobExecutor = scheduler.getJobExecutor();
+  if (!jobExecutor) return { executions: [] };
+
+  const scheduleEventId = params?.scheduleEventId as string;
+  if (!scheduleEventId) throw invalidRequest('"scheduleEventId" is required');
+
+  const executions = await jobExecutor.getExecutionHistory(scheduleEventId);
+  return { executions };
 }

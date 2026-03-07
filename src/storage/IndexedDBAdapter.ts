@@ -21,7 +21,7 @@ import type { StorageAdapter } from './StorageAdapter';
  * IndexedDB database constants
  */
 export const DB_NAME = 'applepi_cache';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /**
  * Object store names
@@ -38,7 +38,13 @@ export const STORE_NAMES = {
   /** Scheduler jobs */
   SCHEDULER_JOBS: 'scheduler_jobs',
   /** Feature 015: Agent session persistence */
-  AGENT_SESSIONS: 'agent_sessions'
+  AGENT_SESSIONS: 'agent_sessions',
+  /** Schedule events (new schedule/execution model) */
+  SCHEDULE_EVENTS: 'schedule_events',
+  /** Schedule exceptions (per-instance overrides) */
+  SCHEDULE_EXCEPTIONS: 'schedule_exceptions',
+  /** Execution records (one per actual job run) */
+  EXECUTION_RECORDS: 'execution_records',
 } as const;
 
 /**
@@ -55,7 +61,18 @@ export const INDEX_NAMES = {
   SCHEDULER_BY_STATUS: 'by_status',
   SCHEDULER_BY_SCHEDULED_TIME: 'by_scheduled_time',
   SCHEDULER_BY_STATUS_TIME: 'by_status_time',
-  SCHEDULER_BY_CREATED_AT: 'by_created_at'
+  SCHEDULER_BY_CREATED_AT: 'by_created_at',
+  /** Schedule event indexes */
+  SCHEDULE_BY_ENABLED: 'by_enabled',
+  SCHEDULE_BY_SCHEDULED_TIME: 'by_scheduled_time',
+  /** Schedule exception indexes */
+  EXCEPTION_BY_EVENT_INSTANCE: 'by_event_instance',
+  EXCEPTION_BY_EVENT_ID: 'by_event_id',
+  /** Execution record indexes */
+  EXECUTION_BY_EVENT_ID: 'by_event_id',
+  EXECUTION_BY_STATUS: 'by_status',
+  EXECUTION_BY_EVENT_INSTANCE: 'by_event_instance',
+  EXECUTION_BY_INSTANCE_TIME: 'by_instance_time',
 } as const;
 
 /**
@@ -231,7 +248,7 @@ export class IndexedDBAdapter implements StorageAdapter {
         }
 
         // Version 3: Feature 015 - Add agent_sessions object store for session persistence
-        if (oldVersion < 3) {
+        if (oldVersion < 3 ) {
           if (!db.objectStoreNames.contains(STORE_NAMES.AGENT_SESSIONS)) {
             const agentSessionsStore = db.createObjectStore(STORE_NAMES.AGENT_SESSIONS, {
               keyPath: 'sessionId'
@@ -250,6 +267,38 @@ export class IndexedDBAdapter implements StorageAdapter {
               'state',
               { unique: false }
             );
+          }
+        }
+
+        // Version 4: Add schedule_events, schedule_exceptions, execution_records stores
+        if (oldVersion < 4) {
+          // Schedule events store
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EVENTS)) {
+            const eventsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EVENTS, {
+              keyPath: 'id'
+            });
+            eventsStore.createIndex('by_enabled', 'enabled', { unique: false });
+            eventsStore.createIndex('by_scheduled_time', 'scheduledTime', { unique: false });
+          }
+
+          // Schedule exceptions store
+          if (!db.objectStoreNames.contains(STORE_NAMES.SCHEDULE_EXCEPTIONS)) {
+            const exceptionsStore = db.createObjectStore(STORE_NAMES.SCHEDULE_EXCEPTIONS, {
+              keyPath: 'id'
+            });
+            exceptionsStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: true });
+            exceptionsStore.createIndex('by_event_id', 'scheduleEventId', { unique: false });
+          }
+
+          // Execution records store
+          if (!db.objectStoreNames.contains(STORE_NAMES.EXECUTION_RECORDS)) {
+            const execStore = db.createObjectStore(STORE_NAMES.EXECUTION_RECORDS, {
+              keyPath: 'id'
+            });
+            execStore.createIndex('by_event_id', 'scheduleEventId', { unique: false });
+            execStore.createIndex('by_status', 'status', { unique: false });
+            execStore.createIndex('by_event_instance', ['scheduleEventId', 'instanceTime'], { unique: false });
+            execStore.createIndex('by_instance_time', 'instanceTime', { unique: false });
           }
         }
 

@@ -1,8 +1,9 @@
 /**
- * Scheduler
+ * Scheduler (Facade)
  *
- * Main orchestrator class for the Job Scheduler feature.
- * Manages job lifecycle: creation, scheduling, execution, and completion.
+ * Thin wrapper that delegates to ScheduleManager (when to run) and
+ * JobExecutor (how to run). All existing public method signatures are
+ * preserved for backwards compatibility with 35+ consumer files.
  *
  * Feature 015: Integrates with AgentRegistry to create isolated sessions for scheduled jobs
  */
@@ -30,7 +31,11 @@ import type {
 import {
   parseAlarmName,
 } from '../models/types/SchedulerContracts';
+import type { IScheduleStorage, IExecutionStorage } from '../models/types/ScheduleContracts';
 import type { AgentRegistry } from '../registry/AgentRegistry';
+import { ScheduleManager } from './ScheduleManager';
+import { JobExecutor } from './JobExecutor';
+import { recurrenceRuleToRRule } from './rruleAdapter';
 
 /**
  * Event emitter type for scheduler events
@@ -57,7 +62,8 @@ export type JobLauncher = (jobId: string, sessionId: string, agent: import('../R
 export type ConnectivityCheck = () => boolean;
 
 /**
- * Scheduler - main orchestrator for scheduled job execution
+ * Scheduler - facade orchestrator for scheduled job execution
+ * Delegates to ScheduleManager + JobExecutor internally.
  * Feature 015: Supports isolated AgentSession per scheduled job
  */
 export class Scheduler {
@@ -70,10 +76,58 @@ export class Scheduler {
   private triggeringJobs: Set<string> = new Set(); // guard against concurrent triggers
   private isExecuting = false; // mutex to prevent concurrent executeJob calls
 
+  // New architecture: delegates
+  private scheduleManager: ScheduleManager | null = null;
+  private jobExecutor: JobExecutor | null = null;
+
   constructor(
     private storage: ISchedulerStorage,
-    private alarms: ISchedulerAlarms
-  ) {}
+    private alarms: ISchedulerAlarms,
+    scheduleStorage?: IScheduleStorage,
+    executionStorage?: IExecutionStorage,
+  ) {
+    // Wire up new architecture if storage implementations are provided
+    if (scheduleStorage && executionStorage) {
+      this.scheduleManager = new ScheduleManager(scheduleStorage, executionStorage, alarms);
+      this.jobExecutor = new JobExecutor(executionStorage, storage);
+
+      // Wire ScheduleManager alarm → JobExecutor execution
+      this.scheduleManager.setAlarmFiredHandler(async (eventId, instanceTime, input) => {
+        if (this.jobExecutor) {
+          await this.jobExecutor.execute(eventId, instanceTime, input);
+        }
+      });
+
+      // Wire JobExecutor completion → ScheduleManager alarm re-arming
+      this.jobExecutor.setExecutionCompleteHandler(async (eventId) => {
+        if (this.scheduleManager) {
+          await this.scheduleManager.armNextAlarm(eventId);
+        }
+      });
+    }
+  }
+
+  // ==========================================================================
+  // New architecture accessors
+  // ==========================================================================
+
+  /**
+   * Get the ScheduleManager for direct access to new schedule event API.
+   */
+  getScheduleManager(): ScheduleManager | null {
+    return this.scheduleManager;
+  }
+
+  /**
+   * Get the JobExecutor for direct access to new execution API.
+   */
+  getJobExecutor(): JobExecutor | null {
+    return this.jobExecutor;
+  }
+
+  // ==========================================================================
+  // Legacy API (preserved for backwards compatibility)
+  // ==========================================================================
 
   /**
    * Get the storage adapter (for direct queries from message handlers)
@@ -87,6 +141,9 @@ export class Scheduler {
    */
   setRegistry(registry: AgentRegistry): void {
     this.registry = registry;
+    if (this.jobExecutor) {
+      this.jobExecutor.setRegistry(registry);
+    }
   }
 
   /**
@@ -101,6 +158,13 @@ export class Scheduler {
    */
   setNotificationHandler(handler: NotificationHandler): void {
     this.notificationHandler = handler;
+    if (this.jobExecutor) {
+      this.jobExecutor.setNotificationHandler(async (_eventId, _instanceTime, input) => {
+        // Adapt to legacy NotificationHandler signature
+        const fakeJob = { input } as SchedulerJobRecord;
+        await handler(fakeJob);
+      });
+    }
   }
 
   /**
@@ -108,6 +172,11 @@ export class Scheduler {
    */
   setJobLauncher(launcher: JobLauncher): void {
     this.jobLauncher = launcher;
+    if (this.jobExecutor) {
+      this.jobExecutor.setJobLauncher(async (executionId, sessionId, agent) => {
+        await launcher(executionId, sessionId, agent);
+      });
+    }
   }
 
   /**
@@ -115,6 +184,9 @@ export class Scheduler {
    */
   setConnectivityCheck(check: ConnectivityCheck): void {
     this.connectivityCheck = check;
+    if (this.jobExecutor) {
+      this.jobExecutor.setConnectivityCheck(check);
+    }
   }
 
   /**
@@ -127,7 +199,8 @@ export class Scheduler {
   }
 
   /**
-   * Schedule a new job for future execution
+   * Schedule a new job for future execution.
+   * Also creates a ScheduleEvent in the new model if ScheduleManager is available.
    * @returns The created job ID
    */
   async scheduleJob(input: string, scheduledTime: number, recurrence?: RecurrenceRule): Promise<string> {
@@ -146,6 +219,22 @@ export class Scheduler {
     } catch (error) {
       await this.storage.deleteJob(job.id);
       throw error;
+    }
+
+    // Also create in new model if available
+    if (this.scheduleManager && recurrence) {
+      try {
+        const rruleString = recurrenceRuleToRRule(recurrence, scheduledTime);
+        await this.scheduleManager.createEvent(input, scheduledTime, rruleString);
+      } catch (error) {
+        console.warn('[Scheduler] Failed to create ScheduleEvent for new model:', error);
+      }
+    } else if (this.scheduleManager) {
+      try {
+        await this.scheduleManager.createEvent(input, scheduledTime, null);
+      } catch (error) {
+        console.warn('[Scheduler] Failed to create ScheduleEvent for new model:', error);
+      }
     }
 
     return job.id;
@@ -560,14 +649,24 @@ export class Scheduler {
   }
 
   /**
-   * Handle alarm event from chrome.alarms
+   * Handle alarm event from chrome.alarms.
+   * Routes to either legacy job alarm handling or new ScheduleManager.
    */
   async handleAlarm(alarmName: string): Promise<void> {
     const event = parseAlarmName(alarmName);
     if (!event) return;
 
     if (event.type === 'job') {
-      // Job alarm fired - trigger the job
+      // Try new model first (ScheduleManager)
+      if (this.scheduleManager) {
+        const scheduleEvent = await this.scheduleManager.getEvent(event.jobId);
+        if (scheduleEvent) {
+          await this.scheduleManager.handleAlarmFired(event.jobId);
+          return;
+        }
+      }
+
+      // Fallback to legacy: job alarm fired - trigger the job
       const job = await this.storage.getJob(event.jobId);
       if (job && job.status === 'scheduled') {
         await this.triggerJob(event.jobId);
@@ -580,11 +679,14 @@ export class Scheduler {
 
   /**
    * Detect and clean up stale running jobs on startup.
-   * If the app was quit/crashed while a job was running, the job is stuck
-   * in 'running' status and currentJobId blocks the queue forever.
-   * Called on startup before detectMissedJobs.
    */
   async recoverStaleRunningJob(): Promise<void> {
+    // Recover new model executions
+    if (this.jobExecutor) {
+      await this.jobExecutor.recoverStaleExecutions();
+    }
+
+    // Legacy recovery
     const state = await this.storage.getSchedulerState();
     if (!state.currentJobId) return;
 
@@ -649,6 +751,15 @@ export class Scheduler {
       jobQueueCount: counts.waitingCount,
       runningJob,
     };
+  }
+
+  /**
+   * Restore alarms for new model events on startup.
+   */
+  async restoreScheduleAlarms(): Promise<void> {
+    if (this.scheduleManager) {
+      await this.scheduleManager.restoreAlarms();
+    }
   }
 
   /**

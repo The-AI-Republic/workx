@@ -120,8 +120,8 @@ describe('Scheduler WebSocket handlers', () => {
     registerSchedulerHandlers({ scheduler, storage } as any);
   });
 
-  it('should register all 15 handlers', () => {
-    expect(handlerMap.size).toBe(15);
+  it('should register all 22 handlers', () => {
+    expect(handlerMap.size).toBe(22);
     expect(handlerMap.has('scheduler.createDraft')).toBe(true);
     expect(handlerMap.has('scheduler.schedule')).toBe(true);
     expect(handlerMap.has('scheduler.trigger')).toBe(true);
@@ -137,6 +137,14 @@ describe('Scheduler WebSocket handlers', () => {
     expect(handlerMap.has('scheduler.getArchivedJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getState')).toBe(true);
     expect(handlerMap.has('scheduler.getJobDetails')).toBe(true);
+    // New schedule event handlers
+    expect(handlerMap.has('schedule.createEvent')).toBe(true);
+    expect(handlerMap.has('schedule.updateEvent')).toBe(true);
+    expect(handlerMap.has('schedule.deleteEvent')).toBe(true);
+    expect(handlerMap.has('schedule.getEventsInRange')).toBe(true);
+    expect(handlerMap.has('schedule.editInstance')).toBe(true);
+    expect(handlerMap.has('schedule.deleteInstance')).toBe(true);
+    expect(handlerMap.has('schedule.getExecutionHistory')).toBe(true);
   });
 
   // ───────────────────────────────────────────────────────────────────
