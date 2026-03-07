@@ -226,7 +226,7 @@ describe('handleSchedulerEventCompletion (bootstrap pattern)', () => {
     it('should use default message when both error and reason are missing', () => {
       const msg: EventMsg = {
         type: 'TaskFailed',
-        data: {},
+        data: {} as any,
       };
 
       handleSchedulerEventCompletion(state, msg);
