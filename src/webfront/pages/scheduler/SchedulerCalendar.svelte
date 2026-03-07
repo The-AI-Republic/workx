@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { push } from 'svelte-spa-router';
-  import { uiTheme, type UITheme } from '../../stores/themeStore';
+  import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   import { isWideMode } from '../../stores/layoutStore';
+  import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
   import { tryGetMessageService } from '@/core/messaging';
@@ -29,6 +30,16 @@
   let showPopover = $state(false);
   let popoverJob = $state<any>(null);
   let popoverPosition = $state({ x: 0, y: 0 });
+
+  // Initialize theme from saved config (same as Scheduler.svelte)
+  $effect(() => {
+    AgentConfig.getInstance().then((config) => {
+      const preferences = config.getConfig().preferences;
+      if (preferences?.uiTheme) {
+        themePreference.initialize(preferences.uiTheme);
+      }
+    });
+  });
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {
@@ -236,7 +247,10 @@
   });
 </script>
 
-<div class="flex flex-col h-full {currentTheme === 'modern' ? 'font-chat' : 'font-terminal'}">
+<div class="flex flex-col h-full {currentTheme}
+  {currentTheme === 'modern'
+    ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}">
   <!-- Header -->
   <div class="flex items-center gap-3 px-4 py-3 shrink-0
     {currentTheme === 'modern'
