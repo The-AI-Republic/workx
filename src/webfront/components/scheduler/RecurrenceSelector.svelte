@@ -90,7 +90,7 @@
     : 'text-term-dim-green';
 </script>
 
-<div class="flex flex-col gap-2">
+<div class="flex flex-col gap-2 {currentTheme === 'modern' ? 'recurrence-modern' : 'recurrence-terminal'}">
   <!-- Repeat Mode -->
   <div>
     <span class="block text-xs mb-1 {labelClass(currentTheme)}">{$_t('Repeat')}</span>
@@ -184,6 +184,15 @@
 </div>
 
 <style>
+  .recurrence-terminal {
+    color-scheme: dark;
+  }
+  .recurrence-modern {
+    color-scheme: light;
+  }
+  :global(.dark) .recurrence-modern {
+    color-scheme: dark;
+  }
   .picker-input::-webkit-calendar-picker-indicator {
     cursor: pointer;
   }
