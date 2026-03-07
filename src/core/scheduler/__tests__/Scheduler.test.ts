@@ -223,7 +223,7 @@ describe('Scheduler', () => {
 
       const id = await scheduler.scheduleJob('Run analysis', futureTime);
       expect(id).toBe('sched-1');
-      expect(storage.createJob).toHaveBeenCalledWith('Run analysis', futureTime);
+      expect(storage.createJob).toHaveBeenCalledWith('Run analysis', futureTime, undefined);
     });
 
     it('should create an alarm for the scheduled job', async () => {

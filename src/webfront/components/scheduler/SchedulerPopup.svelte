@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
   import { sendMessage, MessageType } from '../../lib/messaging';
@@ -8,51 +7,65 @@
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
   import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
-  import type { SchedulerJobRecord } from '@/core/models/types/Scheduler';
+  import type { SchedulerJobRecord, RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  export let show: boolean = false;
-  export let onClose: () => void = () => {};
+  let {
+    show = false,
+    onClose = () => {},
+  }: {
+    show?: boolean;
+    onClose?: () => void;
+  } = $props();
 
-  let currentTheme: UITheme = 'terminal';
-  let isLoading = true;
-  let isPaused = false;
-  let showArchivedView = false;
-  let showScheduleModal = false;
+  let currentTheme = $state<UITheme>('terminal');
+  let isLoading = $state(true);
+  let isPaused = $state(false);
+  let showArchivedView = $state(false);
+  let showScheduleModal = $state(false);
 
   // Job lists
-  let missedJobs: SchedulerJobSummary[] = [];
-  let scheduledJobs: SchedulerJobSummary[] = [];
-  let queuedJobs: SchedulerJobSummary[] = [];
-  let runningJob: SchedulerJobSummary | null = null;
+  let missedJobs = $state<SchedulerJobSummary[]>([]);
+  let scheduledJobs = $state<SchedulerJobSummary[]>([]);
+  let queuedJobs = $state<SchedulerJobSummary[]>([]);
+  let runningJob = $state<SchedulerJobSummary | null>(null);
 
   // Job details expansion (T019)
-  let expandedJobId: string | null = null;
-  let expandedJobDetails: SchedulerJobRecord | null = null;
-  let isLoadingDetails = false;
+  let expandedJobId = $state<string | null>(null);
+  let expandedJobDetails = $state<SchedulerJobRecord | null>(null);
+  let isLoadingDetails = $state(false);
 
   // T042: Offline status tracking
-  let isOffline = !navigator.onLine;
+  let isOffline = $state(!navigator.onLine);
 
   // Feature 015 (T050-T053): Session status tracking
-  let sessionCount = 0;
-  let maxSessions = 3;
-  let sessions: Array<{
+  let sessionCount = $state(0);
+  let maxSessions = $state(3);
+  let sessions = $state<Array<{
     sessionId: string;
     sessionLetter: string;
     type: string;
     state: string;
-  }> = [];
-  let showSessionDetails = false;
+  }>>([]);
+  let showSessionDetails = $state(false);
 
   // T057: Session error display for graceful degradation feedback
-  let lastSessionError: { message: string; sessionId: string; timestamp: number } | null = null;
+  let lastSessionError = $state<{ message: string; sessionId: string; timestamp: number } | null>(null);
 
-  // Event listener cleanup for desktop/server mode
-  let eventUnsubscribers: Array<() => void> = [];
+  let totalJobs = $derived(missedJobs.length + scheduledJobs.length + queuedJobs.length + (runningJob ? 1 : 0));
 
   // Subscribe to theme
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
+  });
+
+  // Fetch data when popup opens
+  $effect(() => {
+    if (show) {
+      fetchAllData();
+    }
   });
 
   // T020: Real-time status updates via chrome.runtime.onMessage
@@ -93,68 +106,61 @@
     isOffline = true;
   }
 
-  onMount(() => {
+  // Event listeners setup and cleanup
+  $effect(() => {
     // Listen for scheduler events from service worker (extension mode)
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
       chrome.runtime.onMessage.addListener(handleSchedulerEvent);
     }
 
     // Listen for scheduler events via message service (desktop/server mode)
+    const localUnsubs: Array<() => void> = [];
     const service = tryGetMessageService();
     if (service) {
-      eventUnsubscribers.push(
-        service.on(MessageType.SCHEDULER_EVENT, () => {
-          if (show) fetchAllData();
-        })
-      );
-      eventUnsubscribers.push(
-        service.on(MessageType.SESSION_EVENT, (payload) => {
-          if (show) {
-            const p = payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
-            if (p?.type === 'session:error') {
-              lastSessionError = {
-                message: p.error || 'Unknown session error',
-                sessionId: p.sessionId || 'unknown',
-                timestamp: p.timestamp || Date.now()
-              };
-              setTimeout(() => {
-                if (lastSessionError?.timestamp === p.timestamp) {
-                  lastSessionError = null;
-                }
-              }, 5000);
-            }
-            fetchSessionData();
+      const u1 = service.on(MessageType.SCHEDULER_EVENT, () => {
+        if (show) fetchAllData();
+      });
+      if (u1) localUnsubs.push(u1);
+
+      const u2 = service.on(MessageType.SESSION_EVENT, (payload) => {
+        if (show) {
+          const p = payload as { type?: string; sessionId?: string; error?: string; timestamp?: number } | undefined;
+          if (p?.type === 'session:error') {
+            lastSessionError = {
+              message: p.error || 'Unknown session error',
+              sessionId: p.sessionId || 'unknown',
+              timestamp: p.timestamp || Date.now()
+            };
+            setTimeout(() => {
+              if (lastSessionError?.timestamp === p.timestamp) {
+                lastSessionError = null;
+              }
+            }, 5000);
           }
-        })
-      );
+          fetchSessionData();
+        }
+      });
+      if (u2) localUnsubs.push(u2);
     }
 
     // T042: Listen for online/offline events
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    return () => {
+      // Clean up extension event listener
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
+      }
+
+      // Clean up message service listeners
+      localUnsubs.forEach(fn => fn());
+
+      // T042: Clean up online/offline listeners
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   });
-
-  onDestroy(() => {
-    // Clean up extension event listener
-    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.removeListener(handleSchedulerEvent);
-    }
-
-    // Clean up message service listeners
-    for (const unsub of eventUnsubscribers) {
-      unsub();
-    }
-    eventUnsubscribers = [];
-
-    // T042: Clean up online/offline listeners
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
-  });
-
-  // Fetch data when popup opens
-  $: if (show) {
-    fetchAllData();
-  }
 
   async function fetchAllData() {
     isLoading = true;
@@ -196,20 +202,20 @@
     }
   }
 
-  async function handleTriggerJob(event: CustomEvent<{ jobId: string }>) {
+  async function handleTriggerJob(data: { jobId: string }) {
     try {
-      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: event.detail.jobId });
+      await sendMessage(MessageType.SCHEDULER_TRIGGER_JOB, { jobId: data.jobId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to trigger job:', error);
     }
   }
 
-  async function handleCancelJob(event: CustomEvent<{ jobId: string }>) {
+  async function handleCancelJob(data: { jobId: string }) {
     if (!confirm(t('Are you sure you want to cancel this job?'))) return;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: event.detail.jobId });
+      await sendMessage(MessageType.SCHEDULER_CANCEL_JOB, { jobId: data.jobId });
       await fetchAllData();
     } catch (error) {
       console.error('[SchedulerPopup] Failed to cancel job:', error);
@@ -241,12 +247,16 @@
     showScheduleModal = true;
   }
 
-  async function handleScheduleJob(event: CustomEvent<{ input: string; scheduledTime: number }>) {
-    const { input, scheduledTime } = event.detail;
+  async function handleScheduleJob(detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule }) {
+    const { input, scheduledTime, recurrence } = detail;
     showScheduleModal = false;
 
     try {
-      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, { input, scheduledTime });
+      const payload: { input: string; scheduledTime: number; recurrence?: RecurrenceRule } = { input, scheduledTime };
+      if (recurrence) {
+        payload.recurrence = recurrence;
+      }
+      await sendMessage(MessageType.SCHEDULER_SCHEDULE_JOB, payload);
       // Refresh the job list
       await fetchAllData();
     } catch (error) {
@@ -254,11 +264,9 @@
     }
   }
 
-  $: totalJobs = missedJobs.length + scheduledJobs.length + queuedJobs.length + (runningJob ? 1 : 0);
-
   // T019: Handle job details expansion
-  async function handleJobDetails(event: CustomEvent<{ jobId: string }>) {
-    const { jobId } = event.detail;
+  async function handleJobDetails(data: { jobId: string }) {
+    const { jobId } = data;
 
     // Toggle off if clicking same job
     if (expandedJobId === jobId) {
@@ -300,7 +308,7 @@
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 {#if show}
   <div class="scheduler-popup fixed bottom-[70px] left-4 right-4 max-w-[400px] max-h-[60vh] rounded-lg z-[9999] flex flex-col animate-slide-up
@@ -329,7 +337,7 @@
                 ? '!bg-amber-500/10 !border-amber-500 !text-amber-500 dark:!bg-amber-400/10 dark:!border-amber-400 dark:!text-amber-400'
                 : '!bg-[rgba(255,255,0,0.1)] !border-term-yellow !text-term-yellow')
               : ''}"
-          on:click={() => showSessionDetails = !showSessionDetails}
+          onclick={() => showSessionDetails = !showSessionDetails}
           title={$_t('Active Sessions')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -347,7 +355,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={handleAddJob}
+          onclick={handleAddJob}
           title={$_t('Add Job')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -362,7 +370,7 @@
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}
             {isPaused && currentTheme === 'modern' ? '!text-amber-500' : ''}
             {isPaused && currentTheme !== 'modern' ? '!text-term-yellow' : ''}"
-          on:click={togglePause}
+          onclick={togglePause}
           title={isPaused ? $_t('Resume Queue') : $_t('Pause Queue')}
         >
           {#if isPaused}
@@ -381,7 +389,7 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'text-term-dim-green hover:text-term-bright-green hover:bg-[rgba(0,255,0,0.1)]'}"
-          on:click={onClose}
+          onclick={onClose}
           aria-label="Close"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -429,7 +437,7 @@
                   {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                     : 'text-term-dim-green hover:text-term-bright-green'}"
-                on:click={() => showSessionDetails = false}
+                onclick={() => showSessionDetails = false}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -504,7 +512,7 @@
             <span>{$_t('Session error')}: {lastSessionError.message}</span>
             <button
               class="ml-auto p-0.5 bg-transparent border-none text-inherit cursor-pointer opacity-70 transition-opacity duration-200 hover:opacity-100"
-              on:click={() => lastSessionError = null}
+              onclick={() => lastSessionError = null}
               aria-label={$_t('Dismiss')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -572,7 +580,7 @@
                   {currentTheme === 'modern'
                     ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:text-chat-text dark:hover:text-chat-text-dark'
                     : 'text-term-dim-green hover:text-term-bright-green'}"
-                on:click={closeDetails}
+                onclick={closeDetails}
                 aria-label="Close details"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -698,7 +706,7 @@
                     {currentTheme === 'modern'
                       ? 'bg-chat-button dark:bg-chat-button-dark border-none text-white hover:opacity-90'
                       : 'bg-[rgba(0,255,0,0.1)] border border-term-dim-green text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-                  on:click={() => navigateToSession(expandedJobDetails.sessionId)}
+                  onclick={() => navigateToSession(expandedJobDetails.sessionId)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -726,8 +734,8 @@
               <SchedulerJobItem
                 {...runningJob}
                 showActions={true}
-                on:cancel={handleCancelJob}
-                on:details={handleJobDetails}
+                oncancel={handleCancelJob}
+                ondetails={handleJobDetails}
               />
             </div>
           {/if}
@@ -743,9 +751,9 @@
               {#each missedJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
-                  on:trigger={handleTriggerJob}
-                  on:cancel={handleCancelJob}
-                  on:details={handleJobDetails}
+                  ontrigger={handleTriggerJob}
+                  oncancel={handleCancelJob}
+                  ondetails={handleJobDetails}
                 />
               {/each}
             </div>
@@ -762,9 +770,9 @@
               {#each queuedJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
-                  on:trigger={handleTriggerJob}
-                  on:cancel={handleCancelJob}
-                  on:details={handleJobDetails}
+                  ontrigger={handleTriggerJob}
+                  oncancel={handleCancelJob}
+                  ondetails={handleJobDetails}
                 />
               {/each}
             </div>
@@ -781,9 +789,9 @@
               {#each scheduledJobs as job (job.id)}
                 <SchedulerJobItem
                   {...job}
-                  on:trigger={handleTriggerJob}
-                  on:cancel={handleCancelJob}
-                  on:details={handleJobDetails}
+                  ontrigger={handleTriggerJob}
+                  oncancel={handleCancelJob}
+                  ondetails={handleJobDetails}
                 />
               {/each}
             </div>
@@ -796,7 +804,7 @@
             {currentTheme === 'modern'
               ? 'border border-dashed border-chat-border dark:border-chat-border-dark text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark hover:border-solid'
               : 'border border-dashed border-term-dim-green text-term-dim-green hover:bg-[rgba(0,255,0,0.05)] hover:border-solid hover:text-term-bright-green'}"
-          on:click={() => showArchivedView = true}
+          onclick={() => showArchivedView = true}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
@@ -819,8 +827,8 @@
 <ScheduleJobModal
   show={showScheduleModal}
   input=""
-  on:close={() => showScheduleModal = false}
-  on:schedule={handleScheduleJob}
+  onclose={() => { showScheduleModal = false; }}
+  onschedule={handleScheduleJob}
 />
 
 <style>

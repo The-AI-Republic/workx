@@ -19,6 +19,7 @@ import type {
 import type {
   SchedulerJobRecord,
   SchedulerState,
+  RecurrenceRule,
 } from '../../core/models/types/Scheduler';
 import {
   createDefaultSchedulerState,
@@ -109,12 +110,16 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
   // Job CRUD
   // ─────────────────────────────────────────────────────────────────────
 
-  async createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord> {
+  async createJob(input: string, scheduledTime?: number, recurrence?: RecurrenceRule): Promise<SchedulerJobRecord> {
     const db = this.ensureDb();
     const id = uuidv4();
     const job = scheduledTime
       ? createScheduledJobRecord(id, input, scheduledTime)
       : createDraftJobRecord(id, input);
+
+    if (recurrence) {
+      job.recurrence = recurrence;
+    }
 
     db.prepare(`
       INSERT INTO scheduler_jobs (id, input, scheduledTime, createdAt, status, sessionId, completedAt, error, result)
@@ -214,22 +219,36 @@ export class ServerSchedulerStorage implements ISchedulerStorage {
     return rows.map(r => this.rowToJob(r));
   }
 
-  async getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]> {
+  async getArchivedJobs(
+    limit: number,
+    offset: number,
+    sortDirection: 'newest' | 'oldest' = 'newest',
+    statusFilter?: string[]
+  ): Promise<SchedulerJobRecord[]> {
     const db = this.ensureDb();
+    const statuses = statusFilter && statusFilter.length > 0
+      ? statusFilter
+      : ['completed', 'failed', 'cancelled'];
+    const placeholders = statuses.map(() => '?').join(', ');
+    const orderDir = sortDirection === 'oldest' ? 'ASC' : 'DESC';
     const rows = db.prepare(
       `SELECT * FROM scheduler_jobs
-       WHERE status IN ('completed', 'failed')
-       ORDER BY completedAt DESC
+       WHERE status IN (${placeholders})
+       ORDER BY completedAt ${orderDir}
        LIMIT ? OFFSET ?`
-    ).all(limit, offset) as any[];
+    ).all(...statuses, limit, offset) as any[];
     return rows.map(r => this.rowToJob(r));
   }
 
-  async getArchivedJobsCount(): Promise<number> {
+  async getArchivedJobsCount(statusFilter?: string[]): Promise<number> {
     const db = this.ensureDb();
+    const statuses = statusFilter && statusFilter.length > 0
+      ? statusFilter
+      : ['completed', 'failed', 'cancelled'];
+    const placeholders = statuses.map(() => '?').join(', ');
     const row = db.prepare(
-      `SELECT COUNT(*) as count FROM scheduler_jobs WHERE status IN ('completed', 'failed')`
-    ).get() as { count: number };
+      `SELECT COUNT(*) as count FROM scheduler_jobs WHERE status IN (${placeholders})`
+    ).get(...statuses) as { count: number };
     return row.count;
   }
 

@@ -950,15 +950,15 @@ function setupSchedulerMessageHandlers(): void {
 
   // Schedule a job
   router.on(MessageType.SCHEDULER_SCHEDULE_JOB, async (message) => {
-    const { input, jobId, scheduledTime } = message.payload as ScheduleJobRequest;
+    const { input, jobId, scheduledTime, recurrence } = message.payload as ScheduleJobRequest;
 
     if (jobId) {
       // Schedule existing draft
-      await scheduler!.scheduleExistingJob(jobId, scheduledTime);
+      await scheduler!.scheduleExistingJob(jobId, scheduledTime, recurrence);
       return { success: true, jobId };
     } else if (input) {
       // Create new scheduled job
-      const newJobId = await scheduler!.scheduleJob(input, scheduledTime);
+      const newJobId = await scheduler!.scheduleJob(input, scheduledTime, recurrence);
       return { success: true, jobId: newJobId };
     } else {
       return { success: false, error: 'Either input or jobId is required' };
@@ -1015,6 +1015,7 @@ function setupSchedulerMessageHandlers(): void {
         scheduledTime: j.scheduledTime,
         status: j.status,
         createdAt: j.createdAt,
+        recurrence: j.recurrence,
       })),
     };
   });
@@ -1029,6 +1030,7 @@ function setupSchedulerMessageHandlers(): void {
         scheduledTime: j.scheduledTime,
         status: j.status,
         createdAt: j.createdAt,
+        recurrence: j.recurrence,
       })),
     };
   });
@@ -1043,6 +1045,7 @@ function setupSchedulerMessageHandlers(): void {
         scheduledTime: j.scheduledTime,
         status: j.status,
         createdAt: j.createdAt,
+        recurrence: j.recurrence,
       })),
     };
   });
@@ -1057,14 +1060,18 @@ function setupSchedulerMessageHandlers(): void {
         scheduledTime: j.scheduledTime,
         status: j.status,
         createdAt: j.createdAt,
+        recurrence: j.recurrence,
       })),
     };
   });
 
   // Get archived jobs
   router.on(MessageType.SCHEDULER_GET_ARCHIVED_JOBS, async (message) => {
-    const { limit = 50, offset = 0 } = (message.payload || {}) as GetArchivedJobsRequest;
-    const jobs = await schedulerStorage!.getArchivedJobs(limit, offset);
+    const { limit = 50, offset = 0, sortDirection, statusFilter } = (message.payload || {}) as GetArchivedJobsRequest;
+    const [jobs, total] = await Promise.all([
+      schedulerStorage!.getArchivedJobs(limit, offset, sortDirection, statusFilter),
+      schedulerStorage!.getArchivedJobsCount(statusFilter),
+    ]);
     return {
       jobs: jobs.map((j) => ({
         id: j.id,
@@ -1074,9 +1081,10 @@ function setupSchedulerMessageHandlers(): void {
         status: j.status,
         sessionId: j.sessionId,
         error: j.error,
+        recurrence: j.recurrence,
       })),
-      total: jobs.length,
-      hasMore: jobs.length === limit,
+      total,
+      hasMore: offset + jobs.length < total,
     };
   });
 

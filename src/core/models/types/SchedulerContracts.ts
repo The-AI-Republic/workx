@@ -4,7 +4,7 @@
  * Interfaces for storage, alarms, and messaging in the Job Scheduler feature.
  */
 
-import type { SchedulerJobRecord, SchedulerJobStatus, SchedulerState } from './Scheduler';
+import type { SchedulerJobRecord, SchedulerJobStatus, SchedulerState, RecurrenceRule } from './Scheduler';
 
 // ============================================================================
 // Platform-neutral Alarm Type
@@ -39,7 +39,7 @@ export interface SchedulerJobCounts {
  */
 export interface ISchedulerStorage {
   // Job CRUD
-  createJob(input: string, scheduledTime?: number): Promise<SchedulerJobRecord>; // No time = draft
+  createJob(input: string, scheduledTime?: number, recurrence?: RecurrenceRule): Promise<SchedulerJobRecord>; // No time = draft
   getJob(id: string): Promise<SchedulerJobRecord | null>;
   updateJob(id: string, updates: Partial<SchedulerJobRecord>): Promise<void>;
   deleteJob(id: string): Promise<void>;
@@ -49,8 +49,8 @@ export interface ISchedulerStorage {
   getScheduledJobs(): Promise<SchedulerJobRecord[]>; // Upcoming (status: scheduled)
   getMissedJobs(): Promise<SchedulerJobRecord[]>; // Overdue jobs (status: missed)
   getJobQueueJobs(): Promise<SchedulerJobRecord[]>; // Job queue (status: waiting)
-  getArchivedJobs(limit: number, offset: number): Promise<SchedulerJobRecord[]>;
-  getArchivedJobsCount(): Promise<number>;
+  getArchivedJobs(limit: number, offset: number, sortDirection?: 'newest' | 'oldest', statusFilter?: SchedulerJobStatus[]): Promise<SchedulerJobRecord[]>;
+  getArchivedJobsCount(statusFilter?: SchedulerJobStatus[]): Promise<number>;
   getNextJobInQueue(): Promise<SchedulerJobRecord | null>; // FIFO by createdAt
   getOverdueScheduledJobs(): Promise<SchedulerJobRecord[]>; // status: scheduled AND scheduledTime < now
 
@@ -207,6 +207,7 @@ export interface ScheduleJobRequest {
   input?: string; // For new job with time
   jobId?: string; // For scheduling existing draft
   scheduledTime: number; // Unix timestamp in ms
+  recurrence?: RecurrenceRule; // Optional repeat configuration
 }
 
 export interface TriggerJobRequest {
@@ -224,6 +225,8 @@ export interface GetJobDetailsRequest {
 export interface GetArchivedJobsRequest {
   limit?: number; // Default: 50
   offset?: number; // Default: 0
+  sortDirection?: 'newest' | 'oldest';
+  statusFilter?: SchedulerJobStatus[];
 }
 
 // ============================================================================
@@ -314,6 +317,7 @@ export interface SchedulerJobSummary {
   scheduledTime: number | null; // Null for draft jobs
   status: SchedulerJobStatus;
   createdAt: number;
+  recurrence?: RecurrenceRule | null;
 }
 
 export interface ArchivedJobSummary {
@@ -321,9 +325,10 @@ export interface ArchivedJobSummary {
   input: string; // First 100 chars
   scheduledTime: number | null;
   completedAt: number;
-  status: 'completed' | 'failed';
+  status: 'completed' | 'failed' | 'cancelled';
   sessionId: string | null;
   error?: string;
+  recurrence?: RecurrenceRule | null;
 }
 
 export interface SchedulerJobFull {

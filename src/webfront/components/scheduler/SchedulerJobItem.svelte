@@ -1,26 +1,39 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
+  import type { SchedulerJobStatus, RecurrenceRule } from '@/core/models/types/Scheduler';
 
-  export let id: string;
-  export let input: string;
-  export let scheduledTime: number | null;
-  export let status: SchedulerJobStatus;
-  export let createdAt: number;
-  export let showActions: boolean = true;
+  let {
+    id,
+    input,
+    scheduledTime,
+    status,
+    createdAt,
+    showActions = true,
+    recurrence = undefined,
+    ontrigger,
+    oncancel,
+    ondetails,
+  }: {
+    id: string;
+    input: string;
+    scheduledTime: number | null;
+    status: SchedulerJobStatus;
+    createdAt: number;
+    showActions?: boolean;
+    recurrence?: RecurrenceRule | null | undefined;
+    ontrigger?: (data: { jobId: string }) => void;
+    oncancel?: (data: { jobId: string }) => void;
+    ondetails?: (data: { jobId: string }) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher<{
-    trigger: { jobId: string };
-    cancel: { jobId: string };
-    details: { jobId: string };
-  }>();
+  let currentTheme = $state<UITheme>('terminal');
 
-  let currentTheme: UITheme = 'terminal';
-
-  uiTheme.subscribe((theme) => {
-    currentTheme = theme;
+  $effect(() => {
+    const unsub = uiTheme.subscribe((theme) => {
+      currentTheme = theme;
+    });
+    return unsub;
   });
 
   function getStatusBadgeClasses(s: SchedulerJobStatus): string {
@@ -90,15 +103,40 @@
   }
 
   function handleTrigger() {
-    dispatch('trigger', { jobId: id });
+    ontrigger?.({ jobId: id });
   }
 
   function handleCancel() {
-    dispatch('cancel', { jobId: id });
+    oncancel?.({ jobId: id });
+  }
+
+  function formatRecurrenceDisplay(rule: RecurrenceRule): string {
+    let base: string;
+    switch (rule.mode) {
+      case 'daily': base = t('Every day'); break;
+      case 'weekly': base = t('Every week'); break;
+      case 'monthly': base = t('Every month'); break;
+      case 'custom': {
+        const interval = rule.interval || 1;
+        const unit = rule.intervalUnit || 'days';
+        base = interval === 1
+          ? t(`Every ${unit.slice(0, -1)}`)
+          : t(`Every ${interval} ${unit}`);
+        break;
+      }
+      default: return t('Does not repeat');
+    }
+    if (rule.endCondition === 'after' && rule.endAfterCount) {
+      const completed = rule.completedCount || 0;
+      base += `, ${completed} ${t('of')} ${rule.endAfterCount} ${t('completed')}`;
+    } else if (rule.endCondition === 'until' && rule.endUntilDate) {
+      base += `, ${t('until')} ${new Date(rule.endUntilDate).toLocaleDateString()}`;
+    }
+    return base;
   }
 
   function handleClick() {
-    dispatch('details', { jobId: id });
+    ondetails?.({ jobId: id });
   }
 </script>
 
@@ -107,8 +145,8 @@
     {currentTheme === 'modern'
       ? 'bg-chat-card dark:bg-chat-card-dark border border-chat-border dark:border-chat-border-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:border-chat-text-muted dark:hover:border-chat-text-muted-dark'
       : 'bg-[rgba(0,0,0,0.4)] border border-[rgba(0,255,0,0.2)] hover:bg-[rgba(0,255,0,0.05)] hover:border-[rgba(0,255,0,0.4)] ' + getItemBorderClass(status)}"
-  on:click={handleClick}
-  on:keydown={(e) => e.key === 'Enter' && handleClick()}
+  onclick={handleClick}
+  onkeydown={(e) => e.key === 'Enter' && handleClick()}
   role="button"
   tabindex="0"
 >
@@ -117,6 +155,22 @@
     <span class="inline-block px-1.5 py-0.5 text-sm font-semibold uppercase rounded mb-1 {getStatusBadgeClasses(status)}">
       {getStatusLabel(status)}
     </span>
+    {#if recurrence}
+      <span
+        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-sm rounded mb-1 ml-1
+          {currentTheme === 'modern'
+            ? 'bg-[rgba(96,165,250,0.15)] text-blue-400'
+            : 'bg-[rgba(0,255,0,0.15)] text-term-dim-green'}"
+        title={formatRecurrenceDisplay(recurrence)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+      </span>
+    {/if}
 
     <!-- Job Input Preview -->
     <p class="m-0 text-sm leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap
@@ -145,7 +199,7 @@
             {currentTheme === 'modern'
               ? 'bg-[rgba(16,185,129,0.1)] text-emerald-500 hover:bg-[rgba(16,185,129,0.2)]'
               : 'bg-[rgba(0,255,0,0.1)] text-term-bright-green hover:bg-[rgba(0,255,0,0.2)]'}"
-          on:click|stopPropagation={handleTrigger}
+          onclick={(e) => { e.stopPropagation(); handleTrigger(); }}
           title={$_t("Run Now")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -158,7 +212,7 @@
         <button
           class="p-1.5 border-none rounded cursor-pointer flex items-center justify-center transition-all duration-200
             bg-[rgba(239,68,68,0.1)] text-[#ff6b6b] hover:bg-[rgba(239,68,68,0.2)]"
-          on:click|stopPropagation={handleCancel}
+          onclick={(e) => { e.stopPropagation(); handleCancel(); }}
           title={$_t("Cancel")}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

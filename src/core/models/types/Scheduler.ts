@@ -8,6 +8,25 @@
 import type { TokenUsage } from './TokenUsage';
 
 // ============================================================================
+// Recurrence Types
+// ============================================================================
+
+export type RecurrenceMode = 'daily' | 'weekly' | 'monthly' | 'custom';
+export type RecurrenceIntervalUnit = 'minutes' | 'hours' | 'days' | 'weeks';
+export type RecurrenceEndCondition = 'never' | 'after' | 'until';
+
+export interface RecurrenceRule {
+  mode: RecurrenceMode;
+  interval?: number;
+  intervalUnit?: RecurrenceIntervalUnit;
+  endCondition: RecurrenceEndCondition;
+  endAfterCount?: number;
+  endUntilDate?: number;
+  completedCount?: number;
+  parentJobId?: string;
+}
+
+// ============================================================================
 // Job Status
 // ============================================================================
 
@@ -80,6 +99,9 @@ export interface SchedulerJobRecord {
 
   /** Execution result summary (set on completion) */
   result: JobResultRecord | null;
+
+  /** Optional recurrence rule for repeat jobs */
+  recurrence?: RecurrenceRule | null;
 }
 
 // ============================================================================
@@ -219,5 +241,22 @@ export function isSchedulerState(obj: unknown): obj is SchedulerState {
     typeof state.isPaused === 'boolean' &&
     (state.currentJobId === null || typeof state.currentJobId === 'string') &&
     typeof state.lastProcessedTime === 'number'
+  );
+}
+
+const VALID_RECURRENCE_MODES: RecurrenceMode[] = ['daily', 'weekly', 'monthly', 'custom'];
+const VALID_END_CONDITIONS: RecurrenceEndCondition[] = ['never', 'after', 'until'];
+
+/**
+ * Type guard to check if object is a valid RecurrenceRule
+ */
+export function isRecurrenceRule(obj: unknown): obj is RecurrenceRule {
+  if (!obj || typeof obj !== 'object') return false;
+  const rule = obj as Record<string, unknown>;
+  return (
+    typeof rule.mode === 'string' &&
+    VALID_RECURRENCE_MODES.includes(rule.mode as RecurrenceMode) &&
+    typeof rule.endCondition === 'string' &&
+    VALID_END_CONDITIONS.includes(rule.endCondition as RecurrenceEndCondition)
   );
 }
