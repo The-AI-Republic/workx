@@ -139,14 +139,6 @@ vi.mock('@/storage/rollout/RolloutRecorder', () => ({
   },
 }));
 
-// Mock DesktopMessageRouter
-vi.mock('../../channels/DesktopMessageRouter', () => ({
-  DesktopMessageRouter: vi.fn().mockImplementation(() => ({
-    send: vi.fn(),
-    destroy: vi.fn(),
-  })),
-}));
-
 // Mock TauriChannel
 vi.mock('../../channels/TauriChannel', () => ({
   TauriChannel: vi.fn().mockImplementation(() => ({
@@ -183,13 +175,6 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 vi.mock('@tauri-apps/api/path', () => ({
   homeDir: vi.fn().mockResolvedValue('/home/testuser'),
-}));
-
-// Mock MessageRouter enum
-vi.mock('@/core/MessageRouter', () => ({
-  MessageType: {
-    AGENT_REINITIALIZED: 'AGENT_REINITIALIZED',
-  },
 }));
 
 // Mock auth service
@@ -254,7 +239,6 @@ function createInitializedBootstrap(): DesktopAgentBootstrap {
   // resumeSession() depends on.
   (bootstrap as any).agent = mockOldAgent;
   (bootstrap as any).channel = { channelId: 'tauri-test-channel' };
-  (bootstrap as any).messageRouter = { send: vi.fn(), destroy: vi.fn() };
   (bootstrap as any).initialized = true;
   currentAgent = 'old';
 
@@ -383,7 +367,7 @@ describe('DesktopAgentBootstrap.resumeSession', () => {
 
     expect(RepublicAgent).toHaveBeenCalled();
     const lastCall = piAgentConstructorCalls[piAgentConstructorCalls.length - 1];
-    const initialHistory = lastCall[2];
+    const initialHistory = lastCall[1];
     expect(initialHistory).toEqual({
       mode: 'resumed',
       conversationId,

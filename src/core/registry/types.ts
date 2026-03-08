@@ -141,7 +141,7 @@ export interface RegistryConfig {
   maxConcurrent?: number;
 
   /** Optional factory to create RepublicAgent instances (replaces hardcoded extension logic) */
-  agentFactory?: (config: import('../../config/AgentConfig').AgentConfig, router: import('../MessageRouter').MessageRouter) => Promise<import('../RepublicAgent').RepublicAgent>;
+  agentFactory?: (config: import('../../config/AgentConfig').AgentConfig) => Promise<import('../RepublicAgent').RepublicAgent>;
 
   /** Optional factory to create event dispatchers per session (replaces chrome.runtime.sendMessage) */
   eventDispatcherFactory?: (sessionId: string) => ((event: { msg: import('../protocol/events').EventMsg }) => void);

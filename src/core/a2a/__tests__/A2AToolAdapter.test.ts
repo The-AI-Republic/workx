@@ -223,6 +223,10 @@ describe('A2AConfig — Zod Validation Schemas', () => {
       expect(A2APlatformScopeSchema.parse('desktop')).toBe('desktop');
     });
 
+    it('accepts "server"', () => {
+      expect(A2APlatformScopeSchema.parse('server')).toBe('server');
+    });
+
     it('rejects an invalid platform scope', () => {
       expect(() => A2APlatformScopeSchema.parse('web')).toThrow();
     });

@@ -35,9 +35,6 @@ vi.mock('@/config/AgentConfig', () => ({
 
 // Stub out imports that DesktopAgentBootstrap pulls in at module scope
 vi.mock('../../channels/TauriChannel', () => ({ TauriChannel: vi.fn() }));
-vi.mock('../../channels/DesktopMessageRouter', () => ({
-  DesktopMessageRouter: vi.fn(() => ({ send: vi.fn(), destroy: vi.fn() })),
-}));
 vi.mock('@/core/channels/ChannelManager', () => ({
   getChannelManager: vi.fn(() => ({
     setAgentHandler: vi.fn(),
@@ -47,9 +44,6 @@ vi.mock('@/core/channels/ChannelManager', () => ({
   })),
 }));
 vi.mock('@/core/RepublicAgent', () => ({ RepublicAgent: vi.fn() }));
-vi.mock('@/core/MessageRouter', () => ({
-  MessageType: { AGENT_REINITIALIZED: 'AGENT_REINITIALIZED', CONFIG_UPDATE: 'CONFIG_UPDATE' },
-}));
 vi.mock('@/core/PromptLoader', () => ({
   configurePromptComposer: vi.fn(),
   registerPromptExtension: vi.fn(),
@@ -124,16 +118,6 @@ describe('DesktopAgentBootstrap.handleConfigUpdate()', () => {
 
     expect(mockAgent.hotSwapModelClient).toHaveBeenCalledTimes(1);
     expect(mockAgent.refreshModelClient).not.toHaveBeenCalled();
-  });
-
-  it('should NOT emit AGENT_REINITIALIZED', async () => {
-    const bootstrap = createBootstrapWithAgent();
-    const mockMessageRouter = { send: vi.fn() };
-    (bootstrap as any).messageRouter = mockMessageRouter;
-
-    await bootstrap.handleConfigUpdate();
-
-    expect(mockMessageRouter.send).not.toHaveBeenCalled();
   });
 
   it('should return early when agent is not initialized (no error)', async () => {

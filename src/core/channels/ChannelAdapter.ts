@@ -121,6 +121,11 @@ export interface ChannelAdapter {
   supportsMedia(): boolean;
 
   /**
+   * Check if this channel can send service requests (MCP, scheduler, vault, etc.)
+   */
+  supportsServices(): boolean;
+
+  /**
    * Get all capabilities as an object
    */
   getCapabilities(): ChannelCapabilities;

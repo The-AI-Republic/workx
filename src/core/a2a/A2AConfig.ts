@@ -64,7 +64,7 @@ export const A2AAuthTypeSchema = z.enum(['apiKey', 'bearer', 'none']);
 /**
  * Schema for platform scope.
  */
-export const A2APlatformScopeSchema = z.enum(['shared', 'extension', 'desktop']);
+export const A2APlatformScopeSchema = z.enum(['shared', 'extension', 'desktop', 'server']);
 
 /**
  * Full schema for a persisted A2A agent configuration.
