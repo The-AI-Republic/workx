@@ -578,7 +578,7 @@ export class ModelClientFactory {
     const modelFamily = {
       family: selectedModel,
       base_instructions: providerName === 'google-ai-studio'
-        ? 'You are Gemini 2.5 Pro integrated with the ApplePi agent. Provide accurate answers and suggest tool usage when relevant.'
+        ? 'You are Gemini 2.5 Pro integrated with the Apple Pi agent. Provide accurate answers and suggest tool usage when relevant.'
         : 'You are a helpful coding assistant.',
       supports_reasoning: supportsReasoning,
       supports_reasoning_summaries: supportsReasoningSummaries,

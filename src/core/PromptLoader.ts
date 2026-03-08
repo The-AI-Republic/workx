@@ -82,7 +82,7 @@ export async function loadPrompt(): Promise<string> {
   }
   // Fallback: return static default prompt based on build mode
   let fallback: string;
-  if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop') {
+  if (typeof __BUILD_MODE__ !== 'undefined' && (__BUILD_MODE__ === 'desktop' || __BUILD_MODE__ === 'server')) {
     fallback = defaultPiPrompt;
   } else {
     fallback = defaultPiExtensionPrompt;
