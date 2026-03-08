@@ -318,6 +318,13 @@ export interface IUserPreferences {
    * - Default: false (opt-in; requires OpenAI API key for embeddings)
    */
   memoryEnabled?: boolean;
+  /**
+   * Whether to use own OpenAI API key for memory (embeddings + extraction)
+   * - When true: Memory embedding requests go directly to OpenAI using user's own API key
+   * - When false: Memory embedding requests route through AI Republic backend (requires login + paid tier)
+   * - Default: true (own key); set to false by UI for logged-in paid-tier users
+   */
+  memoryUseOwnApiKey?: boolean;
   zoomLevel?: number;
   shortcuts?: Record<string, string>;
   experimental?: Record<string, boolean>;

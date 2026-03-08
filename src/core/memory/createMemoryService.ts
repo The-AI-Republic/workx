@@ -5,11 +5,16 @@
  *
  * The embedding model is always OpenAI text-embedding-3-small,
  * independent of the user's LLM provider choice.
+ *
+ * Embedding routing:
+ * - Direct mode (default): calls OpenAI API with user's own API key
+ * - Backend mode: proxies through AI Republic backend (paid-tier users)
  */
 
 import { createMemoryStore } from './createMemoryStore';
 import {
   createEmbeddingProvider,
+  createBackendEmbeddingProvider,
   EMBEDDING_CONFIG,
 } from './EmbeddingClient';
 import { CachedEmbeddingProvider } from './EmbeddingCache';
@@ -20,11 +25,42 @@ import { DEFAULT_MEMORY_CONFIG, type LLMCaller, type MemoryConfig } from './type
 
 declare const __BUILD_MODE__: 'desktop' | 'server' | 'extension';
 
+// ---------------------------------------------------------------------------
+// Module-level token getter for backend-routed memory embeddings.
+// Set by bootstrap code (DesktopAgentBootstrap, service-worker) after auth
+// is established. Read lazily at embed time by BackendEmbeddingProvider.
+// ---------------------------------------------------------------------------
+let _memoryTokenGetter: (() => Promise<string | null>) | null = null;
+
+/**
+ * Register the access-token getter used for backend-routed memory embeddings.
+ * Called by bootstrap code after authentication is established.
+ */
+export function setMemoryTokenGetter(getter: () => Promise<string | null>): void {
+  _memoryTokenGetter = getter;
+}
+
+/**
+ * Get the currently registered access-token getter.
+ * Returns null if no getter has been registered (non-logged-in users).
+ */
+export function getMemoryTokenGetter(): (() => Promise<string | null>) | null {
+  return _memoryTokenGetter;
+}
+
 export interface MemoryServiceInit {
-  /** OpenAI API key — required for embeddings regardless of LLM provider. */
+  /** OpenAI API key — required for direct-mode embeddings. Can be empty for backend routing. */
   openaiApiKey: string;
   config?: Partial<MemoryConfig>;
   llmCaller: LLMCaller;
+  /**
+   * Whether to route embedding requests through the AI Republic backend.
+   * When true, uses the registered token getter and backend URL instead of the OpenAI API key.
+   * Requires a paid-tier account and prior call to setMemoryTokenGetter().
+   */
+  backendRouting?: boolean;
+  /** Backend LLM API URL. Required when backendRouting is true. */
+  backendBaseUrl?: string;
 }
 
 /**
@@ -51,12 +87,32 @@ export async function createMemoryService(
 
     if (!config.enabled) return null;
 
-    if (!init.openaiApiKey) {
-      console.warn('[Memory] Memory system disabled: no OpenAI API key configured for embeddings.');
-      return null;
+    // Determine embedding provider based on routing mode
+    let rawProvider;
+
+    if (init.backendRouting && init.backendBaseUrl) {
+      // Backend routing: token getter must be registered (may be registered later, called lazily)
+      const tokenGetter = () => {
+        const getter = getMemoryTokenGetter();
+        if (!getter) {
+          return Promise.reject(new Error(
+            'Memory backend routing configured but no access token getter registered. ' +
+            'Ensure setMemoryTokenGetter() is called during bootstrap.'
+          ));
+        }
+        return getter();
+      };
+
+      rawProvider = createBackendEmbeddingProvider(init.backendBaseUrl, tokenGetter);
+    } else {
+      // Direct mode: requires OpenAI API key
+      if (!init.openaiApiKey) {
+        console.warn('[Memory] Memory system disabled: no OpenAI API key configured for embeddings.');
+        return null;
+      }
+      rawProvider = await createEmbeddingProvider(init.openaiApiKey);
     }
 
-    const rawProvider = await createEmbeddingProvider(init.openaiApiKey);
     const embeddingProvider = new CachedEmbeddingProvider(rawProvider);
 
     const store = await createMemoryStore();

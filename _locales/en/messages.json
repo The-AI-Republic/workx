@@ -1507,8 +1507,17 @@
   "Remaining": {
     "message": "Remaining:"
   },
-  "Remember_facts_across_conversations_Requ_a1b2": {
-    "message": "Remember facts across conversations. Requires an OpenAI API key. Takes effect on next conversation."
+  "Remember_facts_across_conversations_Take_e5f6": {
+    "message": "Remember facts across conversations. Takes effect on next conversation."
+  },
+  "Use_own_OpenAI_API_key_g7h8": {
+    "message": "Use own OpenAI API key"
+  },
+  "When_off_memory_uses_your_account_credit_i9j0": {
+    "message": "When off, memory uses your account credits via backend routing."
+  },
+  "Free_tier_requires_your_own_OpenAI_API_ke_k1l2": {
+    "message": "Free tier requires your own OpenAI API key for memory. Upgrade to use account credits."
   },
   "Memory_is_enabled_but_no_OpenAI_API_key__c3d4": {
     "message": "Memory is enabled but no OpenAI API key is configured. Add one in Model Settings to activate memory."

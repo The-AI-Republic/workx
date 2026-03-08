@@ -1025,18 +1025,21 @@ export class Session {
     }
 
     // Initialize memory service (for desktop/server only)
-    // Memory requires an OpenAI API key for embeddings (text-embedding-3-small),
-    // independent of which LLM provider the user selects for chat.
+    // Memory requires either:
+    // - An OpenAI API key for direct embeddings (own API key mode)
+    // - Backend routing through AI Republic backend (paid-tier logged-in users)
     try {
       if (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ !== 'extension') {
         const agentConfig = config || await AgentConfig.getInstance();
+        const preferences = agentConfig.getConfig().preferences;
+        const memoryEnabled = preferences?.memoryEnabled ?? false;
 
-        // Always use OpenAI key for embeddings — shared with agent if OpenAI is the LLM provider
+        // Determine memory routing: own API key vs backend
+        const memoryUseOwnApiKey = preferences?.memoryUseOwnApiKey ?? true;
+        const useBackendForMemory = !memoryUseOwnApiKey;
+
+        // Get OpenAI key (needed for own-key mode; may be empty for backend mode)
         const openaiApiKey = await agentConfig.getProviderApiKey('openai');
-        if (!openaiApiKey) {
-          // Memory is opt-in (disabled by default). If enabled but no OpenAI key,
-          // createMemoryService will log a warning and return null.
-        }
 
         const llmCaller = {
           complete: async (systemPrompt: string, userPrompt: string) => {
@@ -1057,12 +1060,23 @@ export class Session {
           }
         };
 
-        const memoryEnabled = agentConfig.getConfig().preferences?.memoryEnabled ?? false;
+        // Build backend routing config if applicable
+        let backendRouting = false;
+        let backendBaseUrl: string | undefined;
+        if (useBackendForMemory) {
+          const { LLM_API_URL } = await import('../config/constants');
+          if (LLM_API_URL) {
+            backendRouting = true;
+            backendBaseUrl = LLM_API_URL;
+          }
+        }
 
         const memoryService = await createMemoryService({
           openaiApiKey: openaiApiKey || '',
           config: { enabled: memoryEnabled },
-          llmCaller
+          llmCaller,
+          backendRouting,
+          backendBaseUrl,
         });
 
         this.setMemoryService(memoryService);
