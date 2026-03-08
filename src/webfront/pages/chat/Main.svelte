@@ -438,14 +438,17 @@
   }
 
   async function checkConnection() {
+    console.log('[App] checkConnection called, client:', !!client);
     try {
       if (!client) {
+        console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
         healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
         return;
       }
 
+      console.log('[App] Sending agent.healthCheck serviceRequest...');
       const response = await (await getInitializedUIClient()).serviceRequest<{
         type?: string;
         ready?: boolean;
@@ -455,6 +458,7 @@
         authMode?: 'login' | 'api_key' | 'none';
       }>('agent.healthCheck');
 
+      console.log('[App] healthCheck response:', JSON.stringify(response));
       isConnected = response?.ready !== undefined;
 
       if (response?.ready !== undefined) {

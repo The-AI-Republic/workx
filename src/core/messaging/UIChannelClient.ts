@@ -39,14 +39,18 @@ export class UIChannelClient {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
+    console.log('[UIChannelClient] Initializing transport...');
     await this.transport.initialize();
+    console.log('[UIChannelClient] Transport initialized');
 
     // Listen for all events from the transport
     this.unlistenTransport = this.transport.onEvent((event: EventMsg) => {
+      console.log('[UIChannelClient] Received event from transport:', event.type, 'data' in event ? JSON.stringify((event as any).data).slice(0, 200) : '');
       this.handleEvent(event);
     });
 
     this.initialized = true;
+    console.log('[UIChannelClient] Initialization complete');
   }
 
   /**
@@ -83,6 +87,7 @@ export class UIChannelClient {
     });
 
     // Send the ServiceRequest Op through the transport
+    console.log(`[UIChannelClient] Sending ServiceRequest: ${service} (${requestId})`);
     await this.transport.sendOp(
       {
         type: 'ServiceRequest',

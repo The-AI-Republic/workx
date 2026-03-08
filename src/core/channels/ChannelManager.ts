@@ -57,6 +57,7 @@ export class ChannelManager {
 
     // Set up submission routing
     channel.onSubmission(async (op, context) => {
+      console.log(`[ChannelManager] Received submission: op.type=${op.type} from channel ${channel.channelId}`);
       if (op.type === 'ServiceRequest') {
         await this.handleServiceRequest(op, context, channel);
       } else if (this.agentHandler) {
@@ -168,8 +169,10 @@ export class ChannelManager {
     context: SubmissionContext,
     channel: ChannelAdapter
   ): Promise<void> {
+    console.log(`[ChannelManager] handleServiceRequest: ${op.service} (${op.requestId}) via channel ${channel.channelId}`);
     try {
       const result = await this.serviceRegistry.handle(op.service, op.params, context);
+      console.log(`[ChannelManager] ServiceRequest ${op.service} succeeded, sending response`);
       await channel.sendEvent(
         {
           type: 'ServiceResponse',
