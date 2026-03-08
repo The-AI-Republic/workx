@@ -467,23 +467,27 @@ export class TaskRunner {
   }
 
   private persistTokenUsage(total: TokenUsage | undefined, turnCount: number): void {
-    const usage = total ?? { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };
-    const record: TokenUsageRecord = {
-      id: `${this.session.getSessionId()}_${this.submissionId}_${Date.now()}`,
-      sessionId: this.session.getSessionId(),
-      taskId: this.submissionId,
-      model: this.turnContext.getModel(),
-      timestamp: new Date().toISOString(),
-      input_tokens: usage.input_tokens,
-      cached_input_tokens: usage.cached_input_tokens,
-      output_tokens: usage.output_tokens,
-      reasoning_output_tokens: usage.reasoning_output_tokens,
-      total_tokens: usage.total_tokens,
-      turn_count: turnCount,
-    };
-    TokenUsageStore.getInstance().save(record).catch((err) =>
-      console.warn('[TaskRunner] Token usage save failed:', err)
-    );
+    try {
+      const usage = total ?? { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };
+      const record: TokenUsageRecord = {
+        id: `${this.session.getSessionId()}_${this.submissionId}_${Date.now()}`,
+        sessionId: this.session.getSessionId(),
+        taskId: this.submissionId,
+        model: this.turnContext.getModel(),
+        timestamp: new Date().toISOString(),
+        input_tokens: usage.input_tokens,
+        cached_input_tokens: usage.cached_input_tokens,
+        output_tokens: usage.output_tokens,
+        reasoning_output_tokens: usage.reasoning_output_tokens,
+        total_tokens: usage.total_tokens,
+        turn_count: turnCount,
+      };
+      TokenUsageStore.getInstance().save(record).catch((err) =>
+        console.warn('[TaskRunner] Token usage save failed:', err)
+      );
+    } catch (err) {
+      console.warn('[TaskRunner] Token usage persist failed:', err);
+    }
   }
 
   private async emitErrorEvent(message: string): Promise<void> {
