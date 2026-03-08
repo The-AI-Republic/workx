@@ -170,6 +170,37 @@ export class ServerExecutionStorage implements IExecutionStorage {
   }
 
   // ==========================================================================
+  // Archive Queries
+  // ==========================================================================
+
+  async getArchivedExecutions(
+    limit: number,
+    offset: number,
+    sortDirection: 'newest' | 'oldest' = 'newest',
+    statusFilter?: ExecutionStatus[]
+  ): Promise<ExecutionRecord[]> {
+    const db = this.ensureDb();
+    const statuses = statusFilter || ['completed', 'failed', 'cancelled'];
+    const placeholders = statuses.map(() => '?').join(', ');
+    const orderCol = 'completedAt';
+    const order = sortDirection === 'newest' ? 'DESC' : 'ASC';
+    const rows = db.prepare(
+      `SELECT * FROM execution_records WHERE status IN (${placeholders}) ORDER BY ${orderCol} ${order} LIMIT ? OFFSET ?`
+    ).all(...statuses, limit, offset) as any[];
+    return rows.map(r => this.rowToRecord(r));
+  }
+
+  async getArchivedExecutionsCount(statusFilter?: ExecutionStatus[]): Promise<number> {
+    const db = this.ensureDb();
+    const statuses = statusFilter || ['completed', 'failed', 'cancelled'];
+    const placeholders = statuses.map(() => '?').join(', ');
+    const row = db.prepare(
+      `SELECT COUNT(*) as cnt FROM execution_records WHERE status IN (${placeholders})`
+    ).get(...statuses) as any;
+    return row?.cnt ?? 0;
+  }
+
+  // ==========================================================================
   // Helpers
   // ==========================================================================
 

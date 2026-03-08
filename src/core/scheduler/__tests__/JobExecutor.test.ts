@@ -7,7 +7,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { JobExecutor } from '../JobExecutor';
 import type { IExecutionStorage } from '../../models/types/ScheduleContracts';
-import type { ISchedulerStorage } from '../../models/types/SchedulerContracts';
 import type { ExecutionRecord } from '../../models/types/ScheduleEvent';
 import type { JobResultRecord } from '../../models/types/Scheduler';
 
@@ -27,30 +26,8 @@ function createMockExecutionStorage(): IExecutionStorage {
     getExecutionsInRange: vi.fn().mockResolvedValue([]),
     getLatestExecution: vi.fn().mockResolvedValue(null),
     getRunningExecutions: vi.fn().mockResolvedValue([]),
-  };
-}
-
-function createMockSchedulerStorage(): ISchedulerStorage {
-  return {
-    createJob: vi.fn(),
-    getJob: vi.fn(),
-    updateJob: vi.fn(),
-    deleteJob: vi.fn(),
-    getDraftJobs: vi.fn(),
-    getScheduledJobs: vi.fn(),
-    getMissedJobs: vi.fn(),
-    getJobQueueJobs: vi.fn(),
-    getArchivedJobs: vi.fn(),
-    getArchivedJobsCount: vi.fn(),
-    getNextJobInQueue: vi.fn(),
-    getOverdueScheduledJobs: vi.fn(),
-    getSchedulerState: vi.fn().mockResolvedValue({
-      isPaused: false,
-      currentJobId: null,
-      lastProcessedTime: 0,
-    }),
-    setSchedulerState: vi.fn(),
-    getJobCounts: vi.fn(),
+    getArchivedExecutions: vi.fn().mockResolvedValue([]),
+    getArchivedExecutionsCount: vi.fn().mockResolvedValue(0),
   };
 }
 
@@ -73,13 +50,11 @@ function createTestExecution(overrides: Partial<ExecutionRecord> = {}): Executio
 describe('JobExecutor', () => {
   let executor: JobExecutor;
   let executionStorage: ReturnType<typeof createMockExecutionStorage>;
-  let schedulerStorage: ReturnType<typeof createMockSchedulerStorage>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     executionStorage = createMockExecutionStorage();
-    schedulerStorage = createMockSchedulerStorage();
-    executor = new JobExecutor(executionStorage, schedulerStorage);
+    executor = new JobExecutor(executionStorage);
     mockUuid.mockReturnValue('mock-exec-uuid');
   });
 
@@ -305,6 +280,29 @@ describe('JobExecutor', () => {
       executor.setConnectivityCheck(() => false);
       await executor.processQueue();
       expect(executionStorage.getExecutionsByStatus).not.toHaveBeenCalled();
+    });
+
+    it('should not process when paused', async () => {
+      executor.pauseQueue();
+      await executor.processQueue();
+      expect(executionStorage.getExecutionsByStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('pause/resume', () => {
+    it('should start unpaused', () => {
+      expect(executor.getPauseState()).toBe(false);
+    });
+
+    it('should pause the queue', () => {
+      executor.pauseQueue();
+      expect(executor.getPauseState()).toBe(true);
+    });
+
+    it('should resume the queue', () => {
+      executor.pauseQueue();
+      executor.resumeQueue();
+      expect(executor.getPauseState()).toBe(false);
     });
   });
 

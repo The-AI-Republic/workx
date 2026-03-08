@@ -2,8 +2,6 @@
   import { onMount, onDestroy } from 'svelte';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
-
   import type { CalendarInstance } from '@/core/models/types/ScheduleEvent';
 
   let {
@@ -22,7 +20,7 @@
       id: string;
       input: string;
       scheduledTime: number | null;
-      status: SchedulerJobStatus;
+      status: string;
       createdAt: number;
       sessionId?: string;
       [key: string]: unknown;

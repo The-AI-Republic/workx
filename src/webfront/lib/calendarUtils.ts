@@ -4,7 +4,6 @@
  * Maps SchedulerJobRecord and CalendarInstance data to @event-calendar/core event objects.
  */
 
-import type { SchedulerJobStatus } from '@/core/models/types/Scheduler';
 import type { CalendarInstance, CalendarInstanceStatus } from '@/core/models/types/ScheduleEvent';
 
 export interface CalendarEvent {
@@ -16,7 +15,7 @@ export interface CalendarEvent {
   editable: boolean;
   classNames?: string[];
   extendedProps: {
-    job?: { id: string; input: string; scheduledTime: number | null; status: SchedulerJobStatus; createdAt: number; [key: string]: unknown };
+    job?: { id: string; input: string; scheduledTime: number | null; status: string; createdAt: number; [key: string]: unknown };
     instance?: CalendarInstance;
   };
 }
@@ -25,7 +24,7 @@ interface JobLike {
   id: string;
   input: string;
   scheduledTime: number | null;
-  status: SchedulerJobStatus;
+  status: string;
   createdAt: number;
   [key: string]: unknown;
 }
@@ -54,12 +53,12 @@ const STATUS_COLORS_TERMINAL: Record<string, string> = {
   upcoming: '#00ff00',
 };
 
-export function statusToColor(status: SchedulerJobStatus | CalendarInstanceStatus, theme: 'modern' | 'terminal'): string {
+export function statusToColor(status: string, theme: 'modern' | 'terminal'): string {
   const colors = theme === 'modern' ? STATUS_COLORS_MODERN : STATUS_COLORS_TERMINAL;
   return colors[status] || colors.scheduled;
 }
 
-export function isReschedulable(status: SchedulerJobStatus): boolean {
+export function isReschedulable(status: string): boolean {
   return ['scheduled', 'missed', 'draft'].includes(status);
 }
 

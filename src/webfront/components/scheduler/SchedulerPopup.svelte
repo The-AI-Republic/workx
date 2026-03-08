@@ -7,7 +7,7 @@
   import ArchivedJobsView from './ArchivedJobsView.svelte';
   import ScheduleJobModal from './ScheduleJobModal.svelte';
   import type { SchedulerJobSummary } from '@/core/models/types/SchedulerContracts';
-  import type { SchedulerJobRecord, RecurrenceRule } from '@/core/models/types/Scheduler';
+  import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
   let {
     show = false,
@@ -31,7 +31,7 @@
 
   // Job details expansion (T019)
   let expandedJobId = $state<string | null>(null);
-  let expandedJobDetails = $state<SchedulerJobRecord | null>(null);
+  let expandedJobDetails = $state<Record<string, any> | null>(null);
   let isLoadingDetails = $state(false);
 
   // T042: Offline status tracking
@@ -279,13 +279,13 @@
     isLoadingDetails = true;
 
     try {
-      const response = await sendMessage<{ job?: SchedulerJobRecord; data?: SchedulerJobRecord } | SchedulerJobRecord>(
+      const response = await sendMessage<Record<string, any>>(
         MessageType.SCHEDULER_GET_JOB_DETAILS,
         { jobId }
       );
       // Handler returns { job: ... }, unwrap accordingly
-      const r = response as { job?: SchedulerJobRecord; data?: SchedulerJobRecord };
-      expandedJobDetails = r?.job || r?.data || response as SchedulerJobRecord;
+      const r = response as Record<string, any>;
+      expandedJobDetails = r?.job || r?.data || response;
     } catch (error) {
       console.error('[SchedulerPopup] Failed to fetch job details:', error);
       expandedJobDetails = null;

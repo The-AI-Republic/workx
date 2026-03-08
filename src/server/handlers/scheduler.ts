@@ -2,7 +2,7 @@
  * Scheduler Method Handlers
  *
  * Handles scheduler.* WebSocket method calls for server mode.
- * Follows sessions.ts handler pattern for job management.
+ * Delegates to Scheduler facade (ScheduleManager + JobExecutor).
  *
  * @module server/handlers/scheduler
  */
@@ -10,7 +10,6 @@
 import { registerMethodHandler, type MethodContext } from '@applepi/ws-server';
 import { invalidRequest } from '@applepi/ws-server';
 import type { Scheduler } from '../../core/scheduler/Scheduler';
-import type { ISchedulerStorage } from '../../core/models/types/SchedulerContracts';
 import type { JobResultRecord } from '../../core/models/types/Scheduler';
 
 const MAX_INPUT_LENGTH = 50_000;
@@ -21,7 +20,6 @@ const MAX_INPUT_LENGTH = 50_000;
 
 export interface SchedulerHandlerDeps {
   scheduler: Scheduler;
-  storage: ISchedulerStorage;
 }
 
 let _deps: SchedulerHandlerDeps | null = null;
@@ -29,7 +27,6 @@ let _deps: SchedulerHandlerDeps | null = null;
 export function registerSchedulerHandlers(deps: SchedulerHandlerDeps): void {
   _deps = deps;
 
-  registerMethodHandler('scheduler.createDraft', handleCreateDraft);
   registerMethodHandler('scheduler.schedule', handleSchedule);
   registerMethodHandler('scheduler.trigger', handleTrigger);
   registerMethodHandler('scheduler.cancel', handleCancel);
@@ -37,7 +34,6 @@ export function registerSchedulerHandlers(deps: SchedulerHandlerDeps): void {
   registerMethodHandler('scheduler.fail', handleFail);
   registerMethodHandler('scheduler.pauseQueue', handlePauseQueue);
   registerMethodHandler('scheduler.resumeQueue', handleResumeQueue);
-  registerMethodHandler('scheduler.getDraftJobs', handleGetDraftJobs);
   registerMethodHandler('scheduler.getScheduledJobs', handleGetScheduledJobs);
   registerMethodHandler('scheduler.getMissedJobs', handleGetMissedJobs);
   registerMethodHandler('scheduler.getQueue', handleGetQueue);
@@ -64,33 +60,9 @@ function getDeps(): SchedulerHandlerDeps {
   return _deps;
 }
 
-function toJobSummary(job: any) {
-  return {
-    id: job.id,
-    input: job.input.slice(0, 100),
-    scheduledTime: job.scheduledTime,
-    status: job.status,
-    createdAt: job.createdAt,
-  };
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Handlers
 // ─────────────────────────────────────────────────────────────────────────
-
-async function handleCreateDraft(
-  params: Record<string, unknown> | undefined,
-  _ctx: MethodContext
-): Promise<unknown> {
-  const { scheduler } = getDeps();
-  const input = params?.input as string;
-  if (!input) throw invalidRequest('"input" is required');
-  if (typeof input !== 'string') throw invalidRequest('"input" must be a string');
-  if (input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
-
-  const jobId = await scheduler.createDraftJob(input);
-  return { success: true, jobId };
-}
 
 async function handleSchedule(
   params: Record<string, unknown> | undefined,
@@ -98,23 +70,16 @@ async function handleSchedule(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const input = params?.input as string | undefined;
-  const jobId = params?.jobId as string | undefined;
   const scheduledTime = params?.scheduledTime as number | undefined;
+  const recurrence = params?.recurrence as any | undefined;
 
   if (!scheduledTime) throw invalidRequest('"scheduledTime" is required');
   if (typeof scheduledTime !== 'number' || scheduledTime <= 0) throw invalidRequest('"scheduledTime" must be a positive number');
-  if (input !== undefined && typeof input !== 'string') throw invalidRequest('"input" must be a string');
-  if (typeof input === 'string' && input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
+  if (!input || typeof input !== 'string') throw invalidRequest('"input" is required and must be a string');
+  if (input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
 
-  if (jobId) {
-    await scheduler.scheduleExistingJob(jobId, scheduledTime);
-    return { success: true, jobId };
-  } else if (input) {
-    const newJobId = await scheduler.scheduleJob(input, scheduledTime);
-    return { success: true, jobId: newJobId };
-  } else {
-    throw invalidRequest('Either "input" or "jobId" is required');
-  }
+  const newJobId = await scheduler.scheduleJob(input, scheduledTime, recurrence);
+  return { success: true, jobId: newJobId };
 }
 
 async function handleTrigger(
@@ -190,51 +155,43 @@ async function handleResumeQueue(
   return { success: true };
 }
 
-async function handleGetDraftJobs(
-  _params: Record<string, unknown> | undefined,
-  _ctx: MethodContext
-): Promise<unknown> {
-  const { storage } = getDeps();
-  const jobs = await storage.getDraftJobs();
-  return { jobs: jobs.map(toJobSummary) };
-}
-
 async function handleGetScheduledJobs(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
-  const { storage } = getDeps();
-  const jobs = await storage.getScheduledJobs();
-  return { jobs: jobs.map(toJobSummary) };
+  const { scheduler } = getDeps();
+  const jobs = await scheduler.getScheduledJobs();
+  return { jobs };
 }
 
 async function handleGetMissedJobs(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
-  const { storage } = getDeps();
-  const jobs = await storage.getMissedJobs();
-  return { jobs: jobs.map(toJobSummary) };
+  const { scheduler } = getDeps();
+  const jobs = await scheduler.getMissedJobs();
+  return { jobs };
 }
 
 async function handleGetQueue(
   _params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
-  const { storage } = getDeps();
-  const jobs = await storage.getJobQueueJobs();
-  return { jobs: jobs.map(toJobSummary) };
+  const { scheduler } = getDeps();
+  const jobs = await scheduler.getJobQueue();
+  return { jobs };
 }
 
 async function handleGetArchivedJobs(
   params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
-  const { storage } = getDeps();
+  const { scheduler } = getDeps();
   const rawLimit = params?.limit;
   const rawOffset = params?.offset;
+  const sortDirection = params?.sortDirection as 'newest' | 'oldest' | undefined;
+  const statusFilter = params?.statusFilter as string[] | undefined;
 
-  // Validate and clamp limit/offset
   const limit = typeof rawLimit === 'number' && rawLimit > 0
     ? Math.min(Math.floor(rawLimit), 200)
     : 50;
@@ -242,24 +199,7 @@ async function handleGetArchivedJobs(
     ? Math.floor(rawOffset)
     : 0;
 
-  const [jobs, total] = await Promise.all([
-    storage.getArchivedJobs(limit, offset),
-    storage.getArchivedJobsCount(),
-  ]);
-
-  return {
-    jobs: jobs.map(j => ({
-      id: j.id,
-      input: j.input.slice(0, 100),
-      scheduledTime: j.scheduledTime,
-      completedAt: j.completedAt,
-      status: j.status,
-      sessionId: j.sessionId,
-      error: j.error,
-    })),
-    total,
-    hasMore: offset + jobs.length < total,
-  };
+  return scheduler.getArchivedJobs(limit, offset, sortDirection, statusFilter);
 }
 
 async function handleGetState(
@@ -274,11 +214,11 @@ async function handleGetJobDetails(
   params: Record<string, unknown> | undefined,
   _ctx: MethodContext
 ): Promise<unknown> {
-  const { storage } = getDeps();
+  const { scheduler } = getDeps();
   const jobId = params?.jobId as string;
   if (!jobId) throw invalidRequest('"jobId" is required');
 
-  const job = await storage.getJob(jobId);
+  const job = await scheduler.getJobDetails(jobId);
   return { job };
 }
 
@@ -292,7 +232,6 @@ async function handleCreateEvent(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const scheduleManager = scheduler.getScheduleManager();
-  if (!scheduleManager) throw new Error('Schedule manager not available');
 
   const input = params?.input as string;
   const scheduledTime = params?.scheduledTime as number;
@@ -313,13 +252,11 @@ async function handleUpdateEvent(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const scheduleManager = scheduler.getScheduleManager();
-  if (!scheduleManager) throw new Error('Schedule manager not available');
 
   const eventId = params?.eventId as string;
   if (!eventId) throw invalidRequest('"eventId" is required');
 
   const rawUpdates = params?.updates as Record<string, unknown> || {};
-  // Allowlist: only permitted fields pass through
   const updates: Record<string, unknown> = {};
   if ('input' in rawUpdates && typeof rawUpdates.input === 'string') {
     if (rawUpdates.input.length > MAX_INPUT_LENGTH) throw invalidRequest(`"input" exceeds max length of ${MAX_INPUT_LENGTH} characters`);
@@ -339,7 +276,6 @@ async function handleDeleteEvent(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const scheduleManager = scheduler.getScheduleManager();
-  if (!scheduleManager) throw new Error('Schedule manager not available');
 
   const eventId = params?.eventId as string;
   if (!eventId) throw invalidRequest('"eventId" is required');
@@ -354,7 +290,6 @@ async function handleGetEventsInRange(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const scheduleManager = scheduler.getScheduleManager();
-  if (!scheduleManager) return { instances: [] };
 
   const startTime = params?.startTime;
   const endTime = params?.endTime;
@@ -362,7 +297,6 @@ async function handleGetEventsInRange(
   if (typeof startTime !== 'number' || typeof endTime !== 'number') throw invalidRequest('"startTime" and "endTime" must be numbers');
   if (endTime <= startTime) throw invalidRequest('"endTime" must be after "startTime"');
 
-  // Limit range to 1 year to prevent unbounded RRULE expansion
   const MAX_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
   const clampedEnd = Math.min(endTime, startTime + MAX_RANGE_MS);
 
@@ -376,14 +310,12 @@ async function handleEditInstance(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const scheduleManager = scheduler.getScheduleManager();
-  if (!scheduleManager) throw new Error('Schedule manager not available');
 
   const scheduleEventId = params?.scheduleEventId;
   const instanceTime = params?.instanceTime;
   if (typeof scheduleEventId !== 'string' || !scheduleEventId) throw invalidRequest('"scheduleEventId" is required');
   if (typeof instanceTime !== 'number') throw invalidRequest('"instanceTime" must be a number');
 
-  // Allowlist: only permitted override fields
   const rawOverrides = params?.overrides as Record<string, unknown> || {};
   const overrides: Record<string, unknown> = {};
   if ('overrideInput' in rawOverrides && typeof rawOverrides.overrideInput === 'string') overrides.overrideInput = rawOverrides.overrideInput;
@@ -399,7 +331,6 @@ async function handleDeleteInstance(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const scheduleManager = scheduler.getScheduleManager();
-  if (!scheduleManager) throw new Error('Schedule manager not available');
 
   const scheduleEventId = params?.scheduleEventId;
   const instanceTime = params?.instanceTime;
@@ -416,7 +347,6 @@ async function handleGetExecutionHistory(
 ): Promise<unknown> {
   const { scheduler } = getDeps();
   const jobExecutor = scheduler.getJobExecutor();
-  if (!jobExecutor) return { executions: [] };
 
   const scheduleEventId = params?.scheduleEventId as string;
   if (!scheduleEventId) throw invalidRequest('"scheduleEventId" is required');

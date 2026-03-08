@@ -13,8 +13,7 @@ import type {
   ExecutionRecord,
 } from '../models/types/ScheduleEvent';
 import { createExecutionRecord } from '../models/types/ScheduleEvent';
-import type { JobResultRecord, SchedulerState } from '../models/types/Scheduler';
-import type { ISchedulerStorage } from '../models/types/SchedulerContracts';
+import type { JobResultRecord } from '../models/types/Scheduler';
 import type { AgentRegistry } from '../registry/AgentRegistry';
 
 /**
@@ -63,12 +62,12 @@ export class JobExecutor {
   private connectivityCheck: ExecutionConnectivityCheck = () => true;
   private executionCompleteHandler: ExecutionCompleteHandler | null = null;
   private eventEmitter: ExecutionEventEmitter | null = null;
+  private isPaused = false;
   private isExecuting = false; // mutex to prevent concurrent execution
   private executingIds: Set<string> = new Set(); // guard against concurrent triggers
 
   constructor(
     private executionStorage: IExecutionStorage,
-    private schedulerState: ISchedulerStorage, // for legacy scheduler state (isPaused, currentJobId)
   ) {}
 
   // ==========================================================================
@@ -263,6 +262,22 @@ export class JobExecutor {
   }
 
   // ==========================================================================
+  // Pause / Resume
+  // ==========================================================================
+
+  pauseQueue(): void {
+    this.isPaused = true;
+  }
+
+  resumeQueue(): void {
+    this.isPaused = false;
+  }
+
+  getPauseState(): boolean {
+    return this.isPaused;
+  }
+
+  // ==========================================================================
   // Queue Management
   // ==========================================================================
 
@@ -270,6 +285,7 @@ export class JobExecutor {
    * Process pending executions (FIFO).
    */
   async processQueue(): Promise<void> {
+    if (this.isPaused) return;
     if (this.isExecuting) return;
     if (!this.connectivityCheck()) return;
 

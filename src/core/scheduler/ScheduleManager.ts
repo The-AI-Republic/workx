@@ -192,6 +192,72 @@ export class ScheduleManager {
   }
 
   // ==========================================================================
+  // Query Methods
+  // ==========================================================================
+
+  /**
+   * Get all enabled events with future scheduled times (replaces legacy getScheduledJobs).
+   */
+  async getScheduledEvents(): Promise<ScheduleEvent[]> {
+    const events = await this.scheduleStorage.getEnabledEvents();
+    const now = Date.now();
+    return events.filter(e => {
+      if (e.rrule) {
+        // Recurring events are always "scheduled" while enabled
+        return true;
+      }
+      // One-shot: only if scheduledTime is in the future
+      return e.scheduledTime > now;
+    });
+  }
+
+  /**
+   * Get enabled events that are past their scheduled time with no execution
+   * (replaces legacy getMissedJobs).
+   */
+  async getMissedInstances(): Promise<Array<{ event: ScheduleEvent; instanceTime: number }>> {
+    const events = await this.scheduleStorage.getEnabledEvents();
+    const now = Date.now();
+    const missed: Array<{ event: ScheduleEvent; instanceTime: number }> = [];
+
+    for (const event of events) {
+      if (event.rrule) {
+        // For recurring: find instances between scheduledTime and now with no execution
+        const instances = expandInstances(
+          event.rrule,
+          event.scheduledTime,
+          event.scheduledTime,
+          now,
+          event.exdates
+        );
+        for (const instanceTime of instances) {
+          const execution = await this.executionStorage.getExecutionByInstance(event.id, instanceTime);
+          if (!execution) {
+            missed.push({ event, instanceTime });
+          }
+        }
+      } else {
+        // One-shot: missed if scheduledTime < now and no execution
+        if (event.scheduledTime < now) {
+          const execution = await this.executionStorage.getExecutionByInstance(event.id, event.scheduledTime);
+          if (!execution) {
+            missed.push({ event, instanceTime: event.scheduledTime });
+          }
+        }
+      }
+    }
+
+    return missed;
+  }
+
+  /**
+   * Get all events (for reconciliation, etc.)
+   */
+  async getAllEvents(): Promise<ScheduleEvent[]> {
+    return this.scheduleStorage.getAllEvents();
+  }
+
+  // ==========================================================================
   // Instance Expansion
   // ==========================================================================
 

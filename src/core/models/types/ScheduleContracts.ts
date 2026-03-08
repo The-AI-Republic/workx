@@ -81,6 +81,21 @@ export interface IExecutionStorage {
    * Get all executions with a specific status (e.g., 'running' for stale detection).
    */
   getRunningExecutions(): Promise<ExecutionRecord[]>;
+
+  /**
+   * Get archived (completed/failed/cancelled) executions with pagination.
+   */
+  getArchivedExecutions(
+    limit: number,
+    offset: number,
+    sortDirection?: 'newest' | 'oldest',
+    statusFilter?: ExecutionStatus[]
+  ): Promise<ExecutionRecord[]>;
+
+  /**
+   * Get total count of archived executions.
+   */
+  getArchivedExecutionsCount(statusFilter?: ExecutionStatus[]): Promise<number>;
 }
 
 // ============================================================================

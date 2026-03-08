@@ -44,6 +44,8 @@ function createMockExecutionStorage(): IExecutionStorage {
     getExecutionsInRange: vi.fn().mockResolvedValue([]),
     getLatestExecution: vi.fn().mockResolvedValue(null),
     getRunningExecutions: vi.fn().mockResolvedValue([]),
+    getArchivedExecutions: vi.fn().mockResolvedValue([]),
+    getArchivedExecutionsCount: vi.fn().mockResolvedValue(0),
   };
 }
 

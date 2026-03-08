@@ -1,13 +1,13 @@
 <script lang="ts">
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
-  import type { SchedulerJobStatus, RecurrenceRule } from '@/core/models/types/Scheduler';
+  import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
   interface JobDetail {
     id: string;
     input: string;
     scheduledTime: number | null;
-    status: SchedulerJobStatus;
+    status: string;
     createdAt: number;
     recurrence?: RecurrenceRule | null;
     sessionId?: string | null;
@@ -55,7 +55,7 @@
     }
   }
 
-  function getStatusBadgeClasses(s: SchedulerJobStatus): string {
+  function getStatusBadgeClasses(s: string): string {
     switch (s) {
       case 'running': return 'bg-term-bright-green text-black';
       case 'scheduled': return 'bg-[rgba(0,255,0,0.2)] text-term-bright-green';
@@ -69,7 +69,7 @@
     }
   }
 
-  function getStatusLabel(s: SchedulerJobStatus): string {
+  function getStatusLabel(s: string): string {
     switch (s) {
       case 'running': return 'Running';
       case 'scheduled': return 'Scheduled';

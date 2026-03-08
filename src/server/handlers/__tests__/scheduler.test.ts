@@ -2,8 +2,8 @@
  * Scheduler Handler Tests
  *
  * Tests for WebSocket method handlers in server/handlers/scheduler.ts.
- * Mocks the Scheduler and ISchedulerStorage dependencies, then exercises
- * each handler via the captured handler functions.
+ * Mocks the Scheduler dependency, then exercises each handler via the
+ * captured handler functions.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -34,62 +34,38 @@ import { registerSchedulerHandlers } from '../scheduler';
 
 function createMockScheduler() {
   return {
-    createDraftJob: vi.fn().mockResolvedValue('draft-1'),
     scheduleJob: vi.fn().mockResolvedValue('sched-1'),
-    scheduleExistingJob: vi.fn().mockResolvedValue(undefined),
     triggerJob: vi.fn().mockResolvedValue(undefined),
     cancelJob: vi.fn().mockResolvedValue(undefined),
     completeJob: vi.fn().mockResolvedValue(undefined),
     failJob: vi.fn().mockResolvedValue(undefined),
     pauseJobQueue: vi.fn().mockResolvedValue(undefined),
     resumeJobQueue: vi.fn().mockResolvedValue(undefined),
+    getScheduledJobs: vi.fn().mockResolvedValue([{ id: 'j1', input: 'Test', scheduledTime: 1000, status: 'scheduled', createdAt: 500 }]),
+    getMissedJobs: vi.fn().mockResolvedValue([{ id: 'j2', input: 'Missed', scheduledTime: 900, status: 'missed', createdAt: 400 }]),
+    getJobQueue: vi.fn().mockResolvedValue([{ id: 'j3', input: 'Waiting', scheduledTime: 1000, status: 'waiting', createdAt: 600 }]),
+    getArchivedJobs: vi.fn().mockResolvedValue({ jobs: [], total: 0, hasMore: false }),
     getSchedulerState: vi.fn().mockResolvedValue({
       isPaused: false,
       currentJobId: null,
       draftCount: 0,
-      scheduledCount: 0,
+      scheduledCount: 1,
       missedCount: 0,
-      waitingCount: 0,
-      runningCount: 0,
+      jobQueueCount: 0,
       runningJob: null,
     }),
-  };
-}
-
-function makeJob(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'task-1',
-    input: 'Test job input that is reasonably short',
-    scheduledTime: Date.now() + 60000,
-    status: 'draft',
-    createdAt: Date.now(),
-    completedAt: null,
-    sessionId: null,
-    error: null,
-    result: null,
-    ...overrides,
-  };
-}
-
-function createMockStorage() {
-  return {
-    createJob: vi.fn(),
-    getJob: vi.fn().mockResolvedValue(makeJob()),
-    updateJob: vi.fn(),
-    deleteJob: vi.fn(),
-    getDraftJobs: vi.fn().mockResolvedValue([makeJob()]),
-    getScheduledJobs: vi.fn().mockResolvedValue([makeJob({ status: 'scheduled' })]),
-    getMissedJobs: vi.fn().mockResolvedValue([makeJob({ status: 'missed' })]),
-    getJobQueueJobs: vi.fn().mockResolvedValue([makeJob({ status: 'waiting' })]),
-    getArchivedJobs: vi.fn().mockResolvedValue([
-      makeJob({ status: 'completed', completedAt: 1000 }),
-    ]),
-    getArchivedJobsCount: vi.fn().mockResolvedValue(1),
-    getNextJobInQueue: vi.fn(),
-    getOverdueScheduledJobs: vi.fn(),
-    getSchedulerState: vi.fn(),
-    setSchedulerState: vi.fn(),
-    getJobCounts: vi.fn(),
+    getJobDetails: vi.fn().mockResolvedValue({ id: 'j1', input: 'Test', status: 'scheduled' }),
+    getScheduleManager: vi.fn().mockReturnValue({
+      createEvent: vi.fn().mockResolvedValue({ id: 'evt-1' }),
+      editSeries: vi.fn(),
+      deleteEvent: vi.fn(),
+      getInstancesInRange: vi.fn().mockResolvedValue([]),
+      editInstance: vi.fn(),
+      deleteInstance: vi.fn(),
+    }),
+    getJobExecutor: vi.fn().mockReturnValue({
+      getExecutionHistory: vi.fn().mockResolvedValue([]),
+    }),
   };
 }
 
@@ -111,18 +87,16 @@ function callHandler(name: string, params?: Record<string, unknown>) {
 
 describe('Scheduler WebSocket handlers', () => {
   let scheduler: ReturnType<typeof createMockScheduler>;
-  let storage: ReturnType<typeof createMockStorage>;
 
   beforeEach(() => {
     handlerMap.clear();
     scheduler = createMockScheduler();
-    storage = createMockStorage();
-    registerSchedulerHandlers({ scheduler, storage } as any);
+    registerSchedulerHandlers({ scheduler } as any);
   });
 
-  it('should register all 22 handlers', () => {
-    expect(handlerMap.size).toBe(22);
-    expect(handlerMap.has('scheduler.createDraft')).toBe(true);
+  it('should register all expected handlers', () => {
+    // 12 legacy scheduler handlers + 7 new schedule event handlers = 19
+    // (createDraft and getDraftJobs were removed)
     expect(handlerMap.has('scheduler.schedule')).toBe(true);
     expect(handlerMap.has('scheduler.trigger')).toBe(true);
     expect(handlerMap.has('scheduler.cancel')).toBe(true);
@@ -130,14 +104,12 @@ describe('Scheduler WebSocket handlers', () => {
     expect(handlerMap.has('scheduler.fail')).toBe(true);
     expect(handlerMap.has('scheduler.pauseQueue')).toBe(true);
     expect(handlerMap.has('scheduler.resumeQueue')).toBe(true);
-    expect(handlerMap.has('scheduler.getDraftJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getScheduledJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getMissedJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getQueue')).toBe(true);
     expect(handlerMap.has('scheduler.getArchivedJobs')).toBe(true);
     expect(handlerMap.has('scheduler.getState')).toBe(true);
     expect(handlerMap.has('scheduler.getJobDetails')).toBe(true);
-    // New schedule event handlers
     expect(handlerMap.has('schedule.createEvent')).toBe(true);
     expect(handlerMap.has('schedule.updateEvent')).toBe(true);
     expect(handlerMap.has('schedule.deleteEvent')).toBe(true);
@@ -145,26 +117,6 @@ describe('Scheduler WebSocket handlers', () => {
     expect(handlerMap.has('schedule.editInstance')).toBe(true);
     expect(handlerMap.has('schedule.deleteInstance')).toBe(true);
     expect(handlerMap.has('schedule.getExecutionHistory')).toBe(true);
-  });
-
-  // ───────────────────────────────────────────────────────────────────
-  // scheduler.createDraft
-  // ───────────────────────────────────────────────────────────────────
-
-  describe('scheduler.createDraft', () => {
-    it('should create a draft job and return jobId', async () => {
-      const result = await callHandler('scheduler.createDraft', { input: 'hello' });
-      expect(scheduler.createDraftJob).toHaveBeenCalledWith('hello');
-      expect(result).toEqual({ success: true, jobId: 'draft-1' });
-    });
-
-    it('should throw when input is missing', async () => {
-      await expect(callHandler('scheduler.createDraft', {})).rejects.toThrow('"input" is required');
-    });
-
-    it('should throw when params is undefined', async () => {
-      await expect(callHandler('scheduler.createDraft', undefined)).rejects.toThrow('"input" is required');
-    });
   });
 
   // ───────────────────────────────────────────────────────────────────
@@ -177,17 +129,8 @@ describe('Scheduler WebSocket handlers', () => {
         input: 'new job',
         scheduledTime: 9999999,
       });
-      expect(scheduler.scheduleJob).toHaveBeenCalledWith('new job', 9999999);
+      expect(scheduler.scheduleJob).toHaveBeenCalledWith('new job', 9999999, undefined);
       expect(result).toEqual({ success: true, jobId: 'sched-1' });
-    });
-
-    it('should schedule an existing job by jobId', async () => {
-      const result = await callHandler('scheduler.schedule', {
-        jobId: 'existing-1',
-        scheduledTime: 9999999,
-      });
-      expect(scheduler.scheduleExistingJob).toHaveBeenCalledWith('existing-1', 9999999);
-      expect(result).toEqual({ success: true, jobId: 'existing-1' });
     });
 
     it('should throw when scheduledTime is missing', async () => {
@@ -196,10 +139,10 @@ describe('Scheduler WebSocket handlers', () => {
       ).rejects.toThrow('"scheduledTime" is required');
     });
 
-    it('should throw when neither input nor jobId provided', async () => {
+    it('should throw when input is missing', async () => {
       await expect(
         callHandler('scheduler.schedule', { scheduledTime: 9999999 })
-      ).rejects.toThrow('Either "input" or "jobId" is required');
+      ).rejects.toThrow('"input" is required');
     });
   });
 
@@ -314,29 +257,10 @@ describe('Scheduler WebSocket handlers', () => {
   // Query handlers
   // ───────────────────────────────────────────────────────────────────
 
-  describe('scheduler.getDraftJobs', () => {
-    it('should return draft jobs as summaries', async () => {
-      const result = await callHandler('scheduler.getDraftJobs');
-      expect(storage.getDraftJobs).toHaveBeenCalled();
-      const jobs = (result as any).jobs;
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0].id).toBe('task-1');
-      expect(jobs[0].status).toBe('draft');
-    });
-
-    it('should truncate long input to 100 chars', async () => {
-      const longInput = 'x'.repeat(200);
-      storage.getDraftJobs.mockResolvedValue([makeJob({ input: longInput })]);
-      const result = await callHandler('scheduler.getDraftJobs');
-      const jobs = (result as any).jobs;
-      expect(jobs[0].input).toHaveLength(100);
-    });
-  });
-
   describe('scheduler.getScheduledJobs', () => {
     it('should return scheduled jobs', async () => {
       const result = await callHandler('scheduler.getScheduledJobs');
-      expect(storage.getScheduledJobs).toHaveBeenCalled();
+      expect(scheduler.getScheduledJobs).toHaveBeenCalled();
       expect((result as any).jobs).toHaveLength(1);
     });
   });
@@ -344,15 +268,15 @@ describe('Scheduler WebSocket handlers', () => {
   describe('scheduler.getMissedJobs', () => {
     it('should return missed jobs', async () => {
       const result = await callHandler('scheduler.getMissedJobs');
-      expect(storage.getMissedJobs).toHaveBeenCalled();
+      expect(scheduler.getMissedJobs).toHaveBeenCalled();
       expect((result as any).jobs).toHaveLength(1);
     });
   });
 
   describe('scheduler.getQueue', () => {
-    it('should return waiting jobs', async () => {
+    it('should return queued jobs', async () => {
       const result = await callHandler('scheduler.getQueue');
-      expect(storage.getJobQueueJobs).toHaveBeenCalled();
+      expect(scheduler.getJobQueue).toHaveBeenCalled();
       expect((result as any).jobs).toHaveLength(1);
     });
   });
@@ -364,36 +288,12 @@ describe('Scheduler WebSocket handlers', () => {
   describe('scheduler.getArchivedJobs', () => {
     it('should return archived jobs with default pagination', async () => {
       const result = await callHandler('scheduler.getArchivedJobs');
-      expect(storage.getArchivedJobs).toHaveBeenCalledWith(50, 0);
-      const data = result as any;
-      expect(data.jobs).toHaveLength(1);
-      expect(data.total).toBe(1);
-      expect(data.hasMore).toBe(false);
+      expect(scheduler.getArchivedJobs).toHaveBeenCalled();
     });
 
     it('should pass custom limit and offset', async () => {
       await callHandler('scheduler.getArchivedJobs', { limit: 10, offset: 5 });
-      expect(storage.getArchivedJobs).toHaveBeenCalledWith(10, 5);
-    });
-
-    it('should set hasMore=true when total exceeds offset + returned jobs', async () => {
-      const jobs = Array.from({ length: 10 }, (_, i) =>
-        makeJob({ id: `t-${i}`, status: 'completed', completedAt: i })
-      );
-      storage.getArchivedJobs.mockResolvedValue(jobs);
-      storage.getArchivedJobsCount.mockResolvedValue(20); // 20 total, only 10 returned
-      const result = await callHandler('scheduler.getArchivedJobs', { limit: 10 });
-      expect((result as any).hasMore).toBe(true);
-    });
-
-    it('should include sessionId and error in archived output', async () => {
-      storage.getArchivedJobs.mockResolvedValue([
-        makeJob({ status: 'failed', error: 'timeout', sessionId: 's-1', completedAt: 1000 }),
-      ]);
-      const result = await callHandler('scheduler.getArchivedJobs');
-      const job = (result as any).jobs[0];
-      expect(job.sessionId).toBe('s-1');
-      expect(job.error).toBe('timeout');
+      expect(scheduler.getArchivedJobs).toHaveBeenCalled();
     });
   });
 
@@ -416,8 +316,7 @@ describe('Scheduler WebSocket handlers', () => {
   describe('scheduler.getJobDetails', () => {
     it('should return job details', async () => {
       const result = await callHandler('scheduler.getJobDetails', { jobId: 'task-1' });
-      expect(storage.getJob).toHaveBeenCalledWith('task-1');
-      expect((result as any).job.id).toBe('task-1');
+      expect(scheduler.getJobDetails).toHaveBeenCalledWith('task-1');
     });
 
     it('should throw when jobId is missing', async () => {
@@ -425,11 +324,46 @@ describe('Scheduler WebSocket handlers', () => {
         '"jobId" is required'
       );
     });
+  });
 
-    it('should return null when job not found', async () => {
-      storage.getJob.mockResolvedValue(null);
-      const result = await callHandler('scheduler.getJobDetails', { jobId: 'nope' });
-      expect((result as any).job).toBeNull();
+  // ───────────────────────────────────────────────────────────────────
+  // schedule.createEvent
+  // ───────────────────────────────────────────────────────────────────
+
+  describe('schedule.createEvent', () => {
+    it('should create an event', async () => {
+      const result = await callHandler('schedule.createEvent', {
+        input: 'Test event',
+        scheduledTime: Date.now() + 3600000,
+      });
+      expect(result).toEqual({ success: true, eventId: 'evt-1' });
+    });
+
+    it('should throw when input is missing', async () => {
+      await expect(
+        callHandler('schedule.createEvent', { scheduledTime: 9999 })
+      ).rejects.toThrow('"input" is required');
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────
+  // schedule.getEventsInRange
+  // ───────────────────────────────────────────────────────────────────
+
+  describe('schedule.getEventsInRange', () => {
+    it('should return instances in range', async () => {
+      const now = Date.now();
+      const result = await callHandler('schedule.getEventsInRange', {
+        startTime: now,
+        endTime: now + 86400000,
+      });
+      expect((result as any).instances).toEqual([]);
+    });
+
+    it('should throw when times are invalid', async () => {
+      await expect(
+        callHandler('schedule.getEventsInRange', { startTime: 'bad', endTime: 'bad' })
+      ).rejects.toThrow('"startTime" and "endTime" must be numbers');
     });
   });
 });

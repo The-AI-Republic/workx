@@ -102,4 +102,27 @@ export class ExecutionStorage implements IExecutionStorage {
   async getRunningExecutions(): Promise<ExecutionRecord[]> {
     return this.getExecutionsByStatus('running');
   }
+
+  async getArchivedExecutions(
+    limit: number,
+    offset: number,
+    sortDirection: 'newest' | 'oldest' = 'newest',
+    statusFilter?: ExecutionStatus[]
+  ): Promise<ExecutionRecord[]> {
+    const archiveStatuses: ExecutionStatus[] = statusFilter || ['completed', 'failed', 'cancelled'];
+    const all = await this.db.getAll<ExecutionRecord>(EXECUTION_RECORDS_STORE);
+    const archived = all.filter(r => archiveStatuses.includes(r.status));
+    archived.sort((a, b) =>
+      sortDirection === 'newest'
+        ? (b.completedAt ?? b.instanceTime) - (a.completedAt ?? a.instanceTime)
+        : (a.completedAt ?? a.instanceTime) - (b.completedAt ?? b.instanceTime)
+    );
+    return archived.slice(offset, offset + limit);
+  }
+
+  async getArchivedExecutionsCount(statusFilter?: ExecutionStatus[]): Promise<number> {
+    const archiveStatuses: ExecutionStatus[] = statusFilter || ['completed', 'failed', 'cancelled'];
+    const all = await this.db.getAll<ExecutionRecord>(EXECUTION_RECORDS_STORE);
+    return all.filter(r => archiveStatuses.includes(r.status)).length;
+  }
 }

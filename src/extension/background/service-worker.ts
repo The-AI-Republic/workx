@@ -51,7 +51,7 @@ import type { Skill, InvocationMode } from '../../core/skills/types';
 import { registerPromptExtension } from '../../core/PromptLoader';
 
 // Scheduler imports
-import { Scheduler, SchedulerStorage, ScheduleEventStorage, ExecutionStorage } from '../../core/scheduler';
+import { Scheduler, ScheduleManager, JobExecutor, ScheduleEventStorage, ExecutionStorage } from '../../core/scheduler';
 import { SchedulerAlarms } from './scheduler-alarms';
 import { createStorageAdapter } from '../../storage/createStorageAdapter';
 import { parseAlarmName } from '../../core/models/types/SchedulerContracts';
@@ -65,7 +65,6 @@ import { ChromeConfigStorage } from '../../extension/storage/ChromeConfigStorage
 import { ChromeCredentialStore } from '../../extension/storage/ChromeCredentialStore';
 import * as VaultManager from '../../core/crypto/VaultManager';
 import type {
-  CreateDraftJobRequest,
   ScheduleJobRequest,
   TriggerJobRequest,
   CancelJobRequest,
@@ -98,7 +97,6 @@ let mcpManager: MCPManager | null = null; // MCP server connection manager
 let a2aManager: A2AManager | null = null; // A2A agent connection manager
 let currentAuthManager: AuthManager | null = null; // Preserve auth state across agent recreation
 let scheduler: Scheduler | null = null; // Job scheduler
-let schedulerStorage: SchedulerStorage | null = null;
 let schedulerAlarms: SchedulerAlarms | null = null;
 let sessionStorage: SessionStorage | null = null; // Feature 015: Session persistence
 let skillRegistry: SkillRegistry | null = null; // Agent skills
@@ -860,12 +858,15 @@ async function initializeScheduler(): Promise<void> {
     const storageAdapter = await createStorageAdapter();
     await storageAdapter.initialize();
 
-    // Create scheduler components
-    schedulerStorage = new SchedulerStorage(storageAdapter);
+    // Create new model components
     schedulerAlarms = new SchedulerAlarms();
     const scheduleEventStorage = new ScheduleEventStorage(storageAdapter);
     const executionStorage = new ExecutionStorage(storageAdapter);
-    scheduler = new Scheduler(schedulerStorage, schedulerAlarms, scheduleEventStorage, executionStorage);
+    const scheduleManager = new ScheduleManager(scheduleEventStorage, executionStorage, schedulerAlarms);
+    const jobExecutor = new JobExecutor(executionStorage);
+
+    // Create scheduler with new constructor
+    scheduler = new Scheduler(scheduleManager, jobExecutor, schedulerAlarms);
 
     // Feature 015: Connect scheduler to AgentRegistry for isolated session creation
     if (registry) {
@@ -874,11 +875,11 @@ async function initializeScheduler(): Promise<void> {
     }
 
     // Wire platform-specific callbacks for Chrome extension
-    scheduler.setNotificationHandler(async (job) => {
-      const inputPreview = job.input.length > 50
-        ? job.input.slice(0, 50) + '...'
-        : job.input;
-      await chrome.notifications.create(`scheduler-job-${job.id}`, {
+    scheduler.setNotificationHandler(async (info) => {
+      const inputPreview = info.input.length > 50
+        ? info.input.slice(0, 50) + '...'
+        : info.input;
+      await chrome.notifications.create(`scheduler-job-${Date.now()}`, {
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
         title: 'Scheduled Job Starting',
@@ -888,9 +889,9 @@ async function initializeScheduler(): Promise<void> {
       });
     });
 
-    scheduler.setJobLauncher(async (jobId, sessionId) => {
+    scheduler.setJobLauncher(async (executionId, sessionId) => {
       const extensionUrl = chrome.runtime.getURL(
-        `sidepanel/index.html?scheduledJob=${jobId}&sessionId=${sessionId}`
+        `sidepanel/index.html?scheduledJob=${executionId}&sessionId=${sessionId}`
       );
       await chrome.tabs.create({ url: extensionUrl, active: true });
     });
@@ -908,22 +909,28 @@ async function initializeScheduler(): Promise<void> {
       });
     });
 
+    // Recover stale running jobs from previous app session
+    await scheduler.recoverStaleRunningJob();
+
     // Start the job queue processor
     await schedulerAlarms.startJobQueueProcessor();
 
     // Detect missed jobs on startup
-    const missedJobs = await scheduler.detectMissedJobs();
-    if (missedJobs.length > 0) {
-      console.log(`[ServiceWorker] Detected ${missedJobs.length} missed scheduler jobs`);
+    const missed = await scheduler.detectMissedJobs();
+    if (missed.length > 0) {
+      console.log(`[ServiceWorker] Detected ${missed.length} missed scheduler instances`);
       // Show notification for missed jobs
       chrome.notifications.create({
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon128.png'),
         title: t('Missed Scheduled Jobs'),
-        message: t(`${missedJobs.length} job(s) missed their scheduled time while the browser was closed.`),
+        message: t(`${missed.length} job(s) missed their scheduled time while the browser was closed.`),
         priority: 2,
       });
     }
+
+    // Restore alarms for ScheduleEvents
+    await scheduler.restoreScheduleAlarms();
 
     // T042: Resume job processing when connectivity is restored
     self.addEventListener('online', async () => {
@@ -945,27 +952,15 @@ async function initializeScheduler(): Promise<void> {
 function setupSchedulerMessageHandlers(): void {
   if (!router || !scheduler) return;
 
-  // Create draft job
-  router.on(MessageType.SCHEDULER_CREATE_DRAFT_JOB, async (message) => {
-    const { input } = message.payload as CreateDraftJobRequest;
-    const jobId = await scheduler!.createDraftJob(input);
-    return { success: true, jobId };
-  });
-
   // Schedule a job
   router.on(MessageType.SCHEDULER_SCHEDULE_JOB, async (message) => {
-    const { input, jobId, scheduledTime, recurrence } = message.payload as ScheduleJobRequest;
+    const { input, scheduledTime, recurrence } = message.payload as ScheduleJobRequest;
 
-    if (jobId) {
-      // Schedule existing draft
-      await scheduler!.scheduleExistingJob(jobId, scheduledTime, recurrence);
-      return { success: true, jobId };
-    } else if (input) {
-      // Create new scheduled job
+    if (input) {
       const newJobId = await scheduler!.scheduleJob(input, scheduledTime, recurrence);
       return { success: true, jobId: newJobId };
     } else {
-      return { success: false, error: 'Either input or jobId is required' };
+      return { success: false, error: '"input" is required' };
     }
   });
 
@@ -1009,87 +1004,28 @@ function setupSchedulerMessageHandlers(): void {
     return { success: true };
   });
 
-  // Get draft jobs
-  router.on(MessageType.SCHEDULER_GET_DRAFT_JOBS, async () => {
-    const jobs = await schedulerStorage!.getDraftJobs();
-    return {
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        input: j.input.slice(0, 100),
-        scheduledTime: j.scheduledTime,
-        status: j.status,
-        createdAt: j.createdAt,
-        recurrence: j.recurrence,
-      })),
-    };
-  });
-
   // Get scheduled jobs
   router.on(MessageType.SCHEDULER_GET_SCHEDULED_JOBS, async () => {
-    const jobs = await schedulerStorage!.getScheduledJobs();
-    return {
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        input: j.input.slice(0, 100),
-        scheduledTime: j.scheduledTime,
-        status: j.status,
-        createdAt: j.createdAt,
-        recurrence: j.recurrence,
-      })),
-    };
+    const jobs = await scheduler!.getScheduledJobs();
+    return { jobs };
   });
 
   // Get missed jobs
   router.on(MessageType.SCHEDULER_GET_MISSED_JOBS, async () => {
-    const jobs = await schedulerStorage!.getMissedJobs();
-    return {
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        input: j.input.slice(0, 100),
-        scheduledTime: j.scheduledTime,
-        status: j.status,
-        createdAt: j.createdAt,
-        recurrence: j.recurrence,
-      })),
-    };
+    const jobs = await scheduler!.getMissedJobs();
+    return { jobs };
   });
 
   // Get job queue
   router.on(MessageType.SCHEDULER_GET_QUEUE, async () => {
-    const jobs = await schedulerStorage!.getJobQueueJobs();
-    return {
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        input: j.input.slice(0, 100),
-        scheduledTime: j.scheduledTime,
-        status: j.status,
-        createdAt: j.createdAt,
-        recurrence: j.recurrence,
-      })),
-    };
+    const jobs = await scheduler!.getJobQueue();
+    return { jobs };
   });
 
   // Get archived jobs
   router.on(MessageType.SCHEDULER_GET_ARCHIVED_JOBS, async (message) => {
     const { limit = 50, offset = 0, sortDirection, statusFilter } = (message.payload || {}) as GetArchivedJobsRequest;
-    const [jobs, total] = await Promise.all([
-      schedulerStorage!.getArchivedJobs(limit, offset, sortDirection, statusFilter),
-      schedulerStorage!.getArchivedJobsCount(statusFilter),
-    ]);
-    return {
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        input: j.input.slice(0, 100),
-        scheduledTime: j.scheduledTime,
-        completedAt: j.completedAt,
-        status: j.status,
-        sessionId: j.sessionId,
-        error: j.error,
-        recurrence: j.recurrence,
-      })),
-      total,
-      hasMore: offset + jobs.length < total,
-    };
+    return scheduler!.getArchivedJobs(limit, offset, sortDirection, statusFilter);
   });
 
   // Get scheduler state
@@ -1100,7 +1036,7 @@ function setupSchedulerMessageHandlers(): void {
   // Get job details
   router.on(MessageType.SCHEDULER_GET_JOB_DETAILS, async (message) => {
     const { jobId } = message.payload as GetJobDetailsRequest;
-    const job = await schedulerStorage!.getJob(jobId);
+    const job = await scheduler!.getJobDetails(jobId);
     return { job };
   });
 
@@ -1114,17 +1050,8 @@ function setupSchedulerMessageHandlers(): void {
   // Get all jobs in a date range
   router.on(MessageType.SCHEDULER_GET_ALL_JOBS_IN_RANGE, async (message) => {
     const { startTime, endTime } = message.payload as GetAllJobsInRangeRequest;
-    const jobs = await schedulerStorage!.getAllJobsInRange(startTime, endTime);
-    return {
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        input: j.input.slice(0, 100),
-        scheduledTime: j.scheduledTime,
-        status: j.status,
-        createdAt: j.createdAt,
-        recurrence: j.recurrence,
-      })),
-    };
+    const jobs = await scheduler!.getAllJobsInRange(startTime, endTime);
+    return { jobs };
   });
 
   // ─── New Schedule Event message handlers ───
