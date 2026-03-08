@@ -25,19 +25,19 @@ import {
   type ResolvedField,
 } from '../config/configSchema';
 import { STORAGE_KEYS } from '../config/defaults';
+import { getConfigStorage } from '../core/storage/ConfigStorageProvider';
 import { z } from 'zod';
 
 // ── Storage helpers ────────────────────────────────────────────────────
 
 /**
- * Read a value from chrome.storage.local at a dot-notation path
+ * Read a value from config storage at a dot-notation path
  */
 async function readStorageValue(
   storageKey: string,
   configPath: string
 ): Promise<unknown> {
-  const result = await chrome.storage.local.get(storageKey);
-  const config = result[storageKey];
+  const config = await getConfigStorage().get<Record<string, unknown>>(storageKey);
   if (config == null) return undefined;
 
   const parts = configPath.split('.');
@@ -50,15 +50,15 @@ async function readStorageValue(
 }
 
 /**
- * Write a value to chrome.storage.local at a dot-notation path
+ * Write a value to config storage at a dot-notation path
  */
 async function writeStorageValue(
   storageKey: string,
   configPath: string,
   value: unknown
 ): Promise<void> {
-  const result = await chrome.storage.local.get(storageKey);
-  const config = result[storageKey] ?? {};
+  const storage = getConfigStorage();
+  const config = await storage.get<Record<string, unknown>>(storageKey) ?? {};
 
   const parts = configPath.split('.');
   let current: any = config;
@@ -70,7 +70,7 @@ async function writeStorageValue(
   }
   current[parts[parts.length - 1]] = value;
 
-  await chrome.storage.local.set({ [storageKey]: config });
+  await storage.set(storageKey, config);
 }
 
 // ── Response types ─────────────────────────────────────────────────────
@@ -292,8 +292,7 @@ export class SettingTool extends BaseTool {
    * Check if the current approval mode is YOLO
    */
   private async checkYoloMode(): Promise<boolean> {
-    const result = await chrome.storage.local.get(STORAGE_KEYS.CONFIG);
-    const config = result[STORAGE_KEYS.CONFIG] as Record<string, any> | undefined;
+    const config = await getConfigStorage().get<Record<string, any>>(STORAGE_KEYS.CONFIG);
     return config?.approval?.mode === 'yolo';
   }
 

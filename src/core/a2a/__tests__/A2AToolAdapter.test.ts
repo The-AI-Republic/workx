@@ -11,7 +11,36 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setChromeStorageData } from '../../../__test-utils__/chrome-storage-mock';
+import { setConfigStorage, type ConfigStorageProvider } from '../../storage/ConfigStorageProvider';
+
+// Map-based ConfigStorageProvider mock
+const store = new Map<string, any>();
+
+function createMockConfigStorage(): ConfigStorageProvider {
+  return {
+    get: vi.fn(async <T>(key: string): Promise<T | null> => (store.get(key) as T) ?? null),
+    set: vi.fn(async <T>(key: string, value: T): Promise<void> => { store.set(key, value); }),
+    remove: vi.fn(async (key: string): Promise<void> => { store.delete(key); }),
+    getMany: vi.fn(async <T>(keys: string[]): Promise<Record<string, T>> => {
+      const result: Record<string, T> = {};
+      for (const key of keys) {
+        if (store.has(key)) result[key] = store.get(key);
+      }
+      return result;
+    }),
+    setMany: vi.fn(async <T>(items: Record<string, T>): Promise<void> => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    }),
+    removeMany: vi.fn(async (keys: string[]): Promise<void> => {
+      for (const key of keys) store.delete(key);
+    }),
+    getAll: vi.fn(async (): Promise<Record<string, unknown>> => Object.fromEntries(store)),
+    clear: vi.fn(async (): Promise<void> => { store.clear(); }),
+    getBytesInUse: vi.fn(async (): Promise<number | null> => null),
+  };
+}
 
 // A2AConfig imports
 import {
@@ -111,6 +140,16 @@ function makeMockManager(overrides: Partial<IA2AManager> = {}): IA2AManager {
     ...overrides,
   } as unknown as IA2AManager;
 }
+
+// ============================================================================
+// Setup
+// ============================================================================
+
+beforeEach(() => {
+  store.clear();
+  const mockStorage = createMockConfigStorage();
+  setConfigStorage(mockStorage);
+});
 
 // ============================================================================
 // A2AConfig — Zod Validation Schemas
@@ -378,14 +417,14 @@ describe('A2AConfig — Storage Helpers', () => {
     });
 
     it('returns empty array when storage has non-array value', async () => {
-      setChromeStorageData('local', { a2aAgents: 'not-an-array' });
+      store.set('a2aAgents', 'not-an-array');
       const agents = await loadAgents();
       expect(agents).toEqual([]);
     });
 
     it('loads valid agents from storage', async () => {
       const agent = makeValidAgent();
-      setChromeStorageData('local', { a2aAgents: [agent] });
+      store.set('a2aAgents', [agent]);
 
       const agents = await loadAgents();
       expect(agents).toHaveLength(1);
@@ -395,7 +434,7 @@ describe('A2AConfig — Storage Helpers', () => {
     it('skips invalid agents during load', async () => {
       const validAgent = makeValidAgent();
       const invalidAgent = { name: 123, url: 'bad' }; // invalid
-      setChromeStorageData('local', { a2aAgents: [validAgent, invalidAgent] });
+      store.set('a2aAgents', [validAgent, invalidAgent]);
 
       const agents = await loadAgents();
       expect(agents).toHaveLength(1);
@@ -408,9 +447,9 @@ describe('A2AConfig — Storage Helpers', () => {
       const agent = makeValidAgent();
       await saveAgents([agent]);
 
-      const stored = await chrome.storage.local.get('a2aAgents') as Record<string, any>;
-      expect(stored.a2aAgents).toHaveLength(1);
-      expect(stored.a2aAgents[0].id).toBe(agent.id);
+      const stored = store.get('a2aAgents');
+      expect(stored).toHaveLength(1);
+      expect(stored[0].id).toBe(agent.id);
     });
 
     it('throws on validation failure', async () => {
@@ -426,13 +465,13 @@ describe('A2AConfig — Storage Helpers', () => {
     });
 
     it('returns true when enabled', async () => {
-      setChromeStorageData('local', { a2aDebugLogging: true });
+      store.set('a2aDebugLogging', true);
       const result = await isDebugLoggingEnabled();
       expect(result).toBe(true);
     });
 
     it('returns false for non-boolean values', async () => {
-      setChromeStorageData('local', { a2aDebugLogging: 'yes' });
+      store.set('a2aDebugLogging', 'yes');
       const result = await isDebugLoggingEnabled();
       expect(result).toBe(false);
     });
@@ -441,15 +480,15 @@ describe('A2AConfig — Storage Helpers', () => {
   describe('setDebugLogging', () => {
     it('enables debug logging', async () => {
       await setDebugLogging(true);
-      const stored = await chrome.storage.local.get('a2aDebugLogging');
-      expect(stored.a2aDebugLogging).toBe(true);
+      const stored = store.get('a2aDebugLogging');
+      expect(stored).toBe(true);
     });
 
     it('disables debug logging', async () => {
-      setChromeStorageData('local', { a2aDebugLogging: true });
+      store.set('a2aDebugLogging', true);
       await setDebugLogging(false);
-      const stored = await chrome.storage.local.get('a2aDebugLogging');
-      expect(stored.a2aDebugLogging).toBe(false);
+      const stored = store.get('a2aDebugLogging');
+      expect(stored).toBe(false);
     });
   });
 });

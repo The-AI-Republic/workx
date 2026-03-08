@@ -6,20 +6,36 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MCPManager } from '../MCPManager';
 import type { IMCPServerConfig } from '../types';
+import { setConfigStorage, type ConfigStorageProvider } from '../../storage/ConfigStorageProvider';
 
-// Mock chrome.storage.local
-const mockStorage: Record<string, any> = {};
-const mockChromeStorage = {
-  storage: {
-    local: {
-      get: vi.fn((key: string) => Promise.resolve({ [key]: mockStorage[key] })),
-      set: vi.fn((data: Record<string, any>) => {
-        Object.assign(mockStorage, data);
-        return Promise.resolve();
-      }),
-    },
-  },
-};
+// Map-based ConfigStorageProvider mock
+const store = new Map<string, any>();
+
+function createMockConfigStorage(): ConfigStorageProvider {
+  return {
+    get: vi.fn(async <T>(key: string): Promise<T | null> => (store.get(key) as T) ?? null),
+    set: vi.fn(async <T>(key: string, value: T): Promise<void> => { store.set(key, value); }),
+    remove: vi.fn(async (key: string): Promise<void> => { store.delete(key); }),
+    getMany: vi.fn(async <T>(keys: string[]): Promise<Record<string, T>> => {
+      const result: Record<string, T> = {};
+      for (const key of keys) {
+        if (store.has(key)) result[key] = store.get(key);
+      }
+      return result;
+    }),
+    setMany: vi.fn(async <T>(items: Record<string, T>): Promise<void> => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    }),
+    removeMany: vi.fn(async (keys: string[]): Promise<void> => {
+      for (const key of keys) store.delete(key);
+    }),
+    getAll: vi.fn(async (): Promise<Record<string, unknown>> => Object.fromEntries(store)),
+    clear: vi.fn(async (): Promise<void> => { store.clear(); }),
+    getBytesInUse: vi.fn(async (): Promise<number | null> => null),
+  };
+}
 
 // Mock crypto.randomUUID
 let uuidCounter = 0;
@@ -97,11 +113,13 @@ vi.mock('../../utils/encryption', () => ({
 
 describe('MCPManager Multi-Server', () => {
   beforeEach(() => {
-    (globalThis as any).chrome = mockChromeStorage;
+    // Clear mock storage and install ConfigStorageProvider
+    store.clear();
+    const mockStorage = createMockConfigStorage();
+    setConfigStorage(mockStorage);
+
     vi.spyOn(crypto, 'randomUUID').mockImplementation(mockRandomUUID as any);
 
-    // Clear mock storage
-    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
     uuidCounter = 0;
 
     // Reset mocks and set up default return values
@@ -145,7 +163,6 @@ describe('MCPManager Multi-Server', () => {
   });
 
   afterEach(() => {
-    (globalThis as any).chrome = undefined;
     MCPManager.resetInstance();
   });
 

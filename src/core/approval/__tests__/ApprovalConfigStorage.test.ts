@@ -11,26 +11,39 @@ import { getDefaultRules } from '../defaultRules';
 import { DEFAULT_APPROVAL_CONFIG, RiskLevel } from '../types';
 import type { ApprovalHistoryEntry, IApprovalConfig, PolicyRule } from '../types';
 import { STORAGE_KEYS } from '../../../config/defaults';
+import type { ConfigStorageProvider } from '../../storage/ConfigStorageProvider';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function createMockStorage(initialData: Record<string, any> = {}) {
-  const store: Record<string, any> = { ...initialData };
-  return {
-    get: vi.fn(async (keys: string[]) => {
-      const result: Record<string, any> = {};
+  const store = new Map<string, any>(Object.entries(initialData));
+  const mockStorage: ConfigStorageProvider & { _store: Map<string, any> } = {
+    get: vi.fn(async <T>(key: string): Promise<T | null> => (store.get(key) as T) ?? null),
+    set: vi.fn(async <T>(key: string, value: T): Promise<void> => { store.set(key, value); }),
+    remove: vi.fn(async (key: string): Promise<void> => { store.delete(key); }),
+    getMany: vi.fn(async <T>(keys: string[]): Promise<Record<string, T>> => {
+      const result: Record<string, T> = {};
       for (const key of keys) {
-        if (store[key] !== undefined) result[key] = store[key];
+        if (store.has(key)) result[key] = store.get(key);
       }
       return result;
     }),
-    set: vi.fn(async (items: Record<string, any>) => {
-      Object.assign(store, items);
+    setMany: vi.fn(async <T>(items: Record<string, T>): Promise<void> => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
     }),
+    removeMany: vi.fn(async (keys: string[]): Promise<void> => {
+      for (const key of keys) store.delete(key);
+    }),
+    getAll: vi.fn(async (): Promise<Record<string, unknown>> => Object.fromEntries(store)),
+    clear: vi.fn(async (): Promise<void> => { store.clear(); }),
+    getBytesInUse: vi.fn(async (): Promise<number | null> => null),
     _store: store,
   };
+  return mockStorage;
 }
 
 function makeHistoryEntry(overrides: Partial<ApprovalHistoryEntry> = {}): ApprovalHistoryEntry {
@@ -98,11 +111,11 @@ describe('ApprovalConfigStorage', () => {
 
     it('should read the correct storage key', async () => {
       await storage.loadConfig();
-      expect(mockStorage.get).toHaveBeenCalledWith([STORAGE_KEYS.CONFIG]);
+      expect(mockStorage.get).toHaveBeenCalledWith(STORAGE_KEYS.CONFIG);
     });
 
     it('should merge stored mode with defaults', async () => {
-      mockStorage._store[STORAGE_KEYS.CONFIG] = { approval: { mode: 'yolo' } };
+      mockStorage._store.set(STORAGE_KEYS.CONFIG, { approval: { mode: 'yolo' } });
       const config = await storage.loadConfig();
       expect(config.mode).toBe('yolo');
       expect(config.version).toBe(DEFAULT_APPROVAL_CONFIG.version);
@@ -112,9 +125,9 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should deep-merge timeouts: stored overrides + default fallbacks', async () => {
-      mockStorage._store[STORAGE_KEYS.CONFIG] = {
+      mockStorage._store.set(STORAGE_KEYS.CONFIG, {
         approval: { timeouts: { low: 999, high: 888 } },
-      };
+      });
       const config = await storage.loadConfig();
       expect(config.timeouts.low).toBe(999);
       expect(config.timeouts.high).toBe(888);
@@ -123,7 +136,7 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should use default timeouts when stored config has no timeouts key', async () => {
-      mockStorage._store[STORAGE_KEYS.CONFIG] = { approval: { mode: 'balanced' } };
+      mockStorage._store.set(STORAGE_KEYS.CONFIG, { approval: { mode: 'balanced' } });
       const config = await storage.loadConfig();
       expect(config.timeouts).toEqual(DEFAULT_APPROVAL_CONFIG.timeouts);
     });
@@ -134,29 +147,27 @@ describe('ApprovalConfigStorage', () => {
         match: { tool: 'dangerous_tool' },
         description: 'block it',
       };
-      mockStorage._store[STORAGE_KEYS.CONFIG] = { approval: { userRules: [customRule] } };
+      mockStorage._store.set(STORAGE_KEYS.CONFIG, { approval: { userRules: [customRule] } });
       const config = await storage.loadConfig();
       expect(config.userRules).toHaveLength(1);
       expect(config.userRules[0].match.tool).toBe('dangerous_tool');
     });
 
     it('should preserve stored trustedDomains and blockedDomains', async () => {
-      mockStorage._store[STORAGE_KEYS.CONFIG] = {
+      mockStorage._store.set(STORAGE_KEYS.CONFIG, {
         approval: {
           trustedDomains: ['safe.com'],
           blockedDomains: ['evil.com'],
         },
-      };
+      });
       const config = await storage.loadConfig();
       expect(config.trustedDomains).toEqual(['safe.com']);
       expect(config.blockedDomains).toEqual(['evil.com']);
     });
 
     it('should return defaults when storage.get throws an error', async () => {
-      const errStorage = {
-        get: vi.fn(async () => { throw new Error('storage failure'); }),
-        set: vi.fn(),
-      };
+      const errStorage = createMockStorage();
+      errStorage.get = vi.fn(async () => { throw new Error('storage failure'); });
       const errInstance = new ApprovalConfigStorage(() => errStorage);
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const config = await errInstance.loadConfig();
@@ -177,16 +188,14 @@ describe('ApprovalConfigStorage', () => {
         mode: 'high_speed',
       };
       await storage.saveConfig(config);
-      expect(mockStorage.set).toHaveBeenCalledWith({
-        [STORAGE_KEYS.CONFIG]: { approval: config },
-      });
+      // saveConfig reads existing config, merges approval, writes back
+      const saved = mockStorage._store.get(STORAGE_KEYS.CONFIG);
+      expect(saved.approval).toEqual(config);
     });
 
     it('should propagate errors from storage.set', async () => {
-      const errStorage = {
-        get: vi.fn(async () => ({})),
-        set: vi.fn(async () => { throw new Error('write failure'); }),
-      };
+      const errStorage = createMockStorage();
+      errStorage.set = vi.fn(async () => { throw new Error('write failure'); });
       const errInstance = new ApprovalConfigStorage(() => errStorage);
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       await expect(errInstance.saveConfig(DEFAULT_APPROVAL_CONFIG)).rejects.toThrow('write failure');
@@ -203,24 +212,24 @@ describe('ApprovalConfigStorage', () => {
         timeouts: { low: 1, medium: 2, high: 3, critical: 4 },
       };
       await storage.saveConfig(fullConfig);
-      expect(mockStorage._store[STORAGE_KEYS.CONFIG].approval).toEqual(fullConfig);
+      expect(mockStorage._store.get(STORAGE_KEYS.CONFIG).approval).toEqual(fullConfig);
     });
 
     it('should preserve existing agent_config fields when saving approval', async () => {
-      mockStorage._store[STORAGE_KEYS.CONFIG] = {
+      mockStorage._store.set(STORAGE_KEYS.CONFIG, {
         selectedModelKey: 'openai:gpt-4o',
         tools: { dom_tool: true },
-      };
+      });
       const config: IApprovalConfig = {
         ...DEFAULT_APPROVAL_CONFIG,
         mode: 'high_speed',
       };
       await storage.saveConfig(config);
       // Approval should be set
-      expect(mockStorage._store[STORAGE_KEYS.CONFIG].approval).toEqual(config);
+      expect(mockStorage._store.get(STORAGE_KEYS.CONFIG).approval).toEqual(config);
       // Existing fields should be preserved
-      expect(mockStorage._store[STORAGE_KEYS.CONFIG].selectedModelKey).toBe('openai:gpt-4o');
-      expect(mockStorage._store[STORAGE_KEYS.CONFIG].tools).toEqual({ dom_tool: true });
+      expect(mockStorage._store.get(STORAGE_KEYS.CONFIG).selectedModelKey).toBe('openai:gpt-4o');
+      expect(mockStorage._store.get(STORAGE_KEYS.CONFIG).tools).toEqual({ dom_tool: true });
     });
   });
 
@@ -236,14 +245,14 @@ describe('ApprovalConfigStorage', () => {
 
     it('should read from the correct storage key', async () => {
       await storage.loadHistory();
-      expect(mockStorage.get).toHaveBeenCalledWith([STORAGE_KEYS.APPROVAL_HISTORY]);
+      expect(mockStorage.get).toHaveBeenCalledWith(STORAGE_KEYS.APPROVAL_HISTORY);
     });
 
     it('should return all entries when no limit is provided', async () => {
       const entries = Array.from({ length: 5 }, (_, i) =>
         makeHistoryEntry({ timestamp: i })
       );
-      mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY] = entries;
+      mockStorage._store.set(STORAGE_KEYS.APPROVAL_HISTORY, entries);
       const result = await storage.loadHistory();
       expect(result).toHaveLength(5);
     });
@@ -252,7 +261,7 @@ describe('ApprovalConfigStorage', () => {
       const entries = Array.from({ length: 10 }, (_, i) =>
         makeHistoryEntry({ timestamp: i, toolName: `tool_${i}` })
       );
-      mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY] = entries;
+      mockStorage._store.set(STORAGE_KEYS.APPROVAL_HISTORY, entries);
       const result = await storage.loadHistory(3);
       expect(result).toHaveLength(3);
       expect(result[0].toolName).toBe('tool_7');
@@ -261,23 +270,21 @@ describe('ApprovalConfigStorage', () => {
 
     it('should return all entries when limit exceeds total count', async () => {
       const entries = [makeHistoryEntry(), makeHistoryEntry()];
-      mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY] = entries;
+      mockStorage._store.set(STORAGE_KEYS.APPROVAL_HISTORY, entries);
       const result = await storage.loadHistory(100);
       expect(result).toHaveLength(2);
     });
 
     it('should return all entries when limit is zero (falsy)', async () => {
       const entries = Array.from({ length: 4 }, () => makeHistoryEntry());
-      mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY] = entries;
+      mockStorage._store.set(STORAGE_KEYS.APPROVAL_HISTORY, entries);
       const result = await storage.loadHistory(0);
       expect(result).toHaveLength(4);
     });
 
     it('should return empty array when storage.get throws', async () => {
-      const errStorage = {
-        get: vi.fn(async () => { throw new Error('read error'); }),
-        set: vi.fn(),
-      };
+      const errStorage = createMockStorage();
+      errStorage.get = vi.fn(async () => { throw new Error('read error'); });
       const errInstance = new ApprovalConfigStorage(() => errStorage);
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const result = await errInstance.loadHistory();
@@ -308,7 +315,7 @@ describe('ApprovalConfigStorage', () => {
       await storage.appendHistory(makeHistoryEntry({ toolName: 'flushed_tool' }));
       await vi.advanceTimersByTimeAsync(2000);
       expect(mockStorage.set).toHaveBeenCalled();
-      const saved = mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY];
+      const saved = mockStorage._store.get(STORAGE_KEYS.APPROVAL_HISTORY);
       expect(saved).toHaveLength(1);
       expect(saved[0].toolName).toBe('flushed_tool');
     });
@@ -319,7 +326,7 @@ describe('ApprovalConfigStorage', () => {
       await storage.appendHistory(makeHistoryEntry({ toolName: 'third' }));
       await vi.advanceTimersByTimeAsync(2000);
       expect(mockStorage.set).toHaveBeenCalledTimes(1);
-      const saved = mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY];
+      const saved = mockStorage._store.get(STORAGE_KEYS.APPROVAL_HISTORY);
       expect(saved).toHaveLength(3);
       expect(saved.map((e: ApprovalHistoryEntry) => e.toolName)).toEqual([
         'first', 'second', 'third',
@@ -327,12 +334,12 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should merge new entries with existing history in storage', async () => {
-      mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY] = [
+      mockStorage._store.set(STORAGE_KEYS.APPROVAL_HISTORY, [
         makeHistoryEntry({ toolName: 'existing' }),
-      ];
+      ]);
       await storage.appendHistory(makeHistoryEntry({ toolName: 'new_one' }));
       await vi.advanceTimersByTimeAsync(2000);
-      const saved = mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY];
+      const saved = mockStorage._store.get(STORAGE_KEYS.APPROVAL_HISTORY);
       expect(saved).toHaveLength(2);
       expect(saved[0].toolName).toBe('existing');
       expect(saved[1].toolName).toBe('new_one');
@@ -340,16 +347,16 @@ describe('ApprovalConfigStorage', () => {
 
     it('should cap total history at 100 entries', async () => {
       // Pre-fill with 99 entries
-      mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY] = Array.from(
+      mockStorage._store.set(STORAGE_KEYS.APPROVAL_HISTORY, Array.from(
         { length: 99 },
         (_, i) => makeHistoryEntry({ timestamp: i, toolName: `old_${i}` })
-      );
+      ));
       // Add 3 new entries => 102 total, should trim to 100
       await storage.appendHistory(makeHistoryEntry({ toolName: 'new_100' }));
       await storage.appendHistory(makeHistoryEntry({ toolName: 'new_101' }));
       await storage.appendHistory(makeHistoryEntry({ toolName: 'new_102' }));
       await vi.advanceTimersByTimeAsync(2000);
-      const saved = mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY];
+      const saved = mockStorage._store.get(STORAGE_KEYS.APPROVAL_HISTORY);
       expect(saved).toHaveLength(100);
       // Oldest entries trimmed, newest at the end
       expect(saved[saved.length - 1].toolName).toBe('new_102');
@@ -363,7 +370,7 @@ describe('ApprovalConfigStorage', () => {
       // Storage returns empty result (no approval_history key)
       await storage.appendHistory(makeHistoryEntry({ toolName: 'solo' }));
       await vi.advanceTimersByTimeAsync(2000);
-      const saved = mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY];
+      const saved = mockStorage._store.get(STORAGE_KEYS.APPROVAL_HISTORY);
       expect(saved).toHaveLength(1);
       expect(saved[0].toolName).toBe('solo');
     });
@@ -380,10 +387,8 @@ describe('ApprovalConfigStorage', () => {
     });
 
     it('should handle error during flush gracefully', async () => {
-      const errStorage = {
-        get: vi.fn(async () => { throw new Error('flush read error'); }),
-        set: vi.fn(),
-      };
+      const errStorage = createMockStorage();
+      errStorage.get = vi.fn(async () => { throw new Error('flush read error'); });
       const errInstance = new ApprovalConfigStorage(() => errStorage);
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       await errInstance.appendHistory(makeHistoryEntry());
@@ -401,7 +406,7 @@ describe('ApprovalConfigStorage', () => {
       await vi.advanceTimersByTimeAsync(2000);
 
       expect(mockStorage.set).toHaveBeenCalledTimes(2);
-      const saved = mockStorage._store[STORAGE_KEYS.APPROVAL_HISTORY];
+      const saved = mockStorage._store.get(STORAGE_KEYS.APPROVAL_HISTORY);
       expect(saved).toHaveLength(2);
       expect(saved[0].toolName).toBe('batch1');
       expect(saved[1].toolName).toBe('batch2');

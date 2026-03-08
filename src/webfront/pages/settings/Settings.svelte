@@ -54,7 +54,7 @@
   });
 
   /**
-   * Load settings from chrome.storage.local with isolated AgentConfig
+   * Load settings from ConfigStorageProvider with isolated AgentConfig
    */
   async function loadSettings() {
     try {

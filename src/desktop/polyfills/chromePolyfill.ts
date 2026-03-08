@@ -11,6 +11,7 @@
  */
 
 import { t } from '@/webfront/lib/i18n';
+import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
 
 type MessageCallback = (message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => boolean | void;
 type UnlistenFn = () => void;
@@ -155,12 +156,12 @@ const runtimePolyfill = {
           (async () => {
             try {
               // 1. Save to storage (nested under agent_config.approval)
-              const result = await storagePolyfill.local.get('agent_config');
-              const agentConfig = (result as any)['agent_config'] || {};
+              const storage = getConfigStorage();
+              const agentConfig = await storage.get<Record<string, any>>('agent_config') || {};
               const existing = agentConfig.approval || {};
               const merged = { ...existing, ...config };
               agentConfig.approval = merged;
-              await storagePolyfill.local.set({ agent_config: agentConfig });
+              await storage.set('agent_config', agentConfig);
               // 2. Update ApprovalGate directly
               const { getDesktopAgentBootstrap } = await import('../agent/DesktopAgentBootstrap');
               const agent = getDesktopAgentBootstrap().getAgent();
@@ -257,116 +258,6 @@ const runtimePolyfill = {
   },
 
   id: 'pi-desktop',
-};
-
-// In-memory storage fallback when Tauri storage isn't available
-const memoryStorage: Record<string, unknown> = {};
-
-/**
- * Chrome storage polyfill using Tauri commands or memory fallback
- */
-const storagePolyfill = {
-  local: {
-    async get(keys: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> {
-      const keyArray = typeof keys === 'string'
-        ? [keys]
-        : Array.isArray(keys)
-          ? keys
-          : keys ? Object.keys(keys) : [];
-
-      const defaults = typeof keys === 'object' && !Array.isArray(keys) ? keys : {};
-
-      // If no Tauri core API, use memory storage
-      if (!tauriCore) {
-        const result: Record<string, unknown> = { ...defaults };
-        for (const key of keyArray) {
-          if (key in memoryStorage) {
-            result[key] = memoryStorage[key];
-          }
-        }
-        return result;
-      }
-
-      try {
-        // Try to get values from Tauri storage
-        const result = await tauriCore.invoke<Record<string, unknown>>('storage_get', { keys: keyArray });
-        return { ...defaults, ...result };
-      } catch {
-        // Return defaults if storage fails
-        return defaults || {};
-      }
-    },
-
-    async set(items: Record<string, unknown>): Promise<void> {
-      // If no Tauri core API, use memory storage
-      if (!tauriCore) {
-        Object.assign(memoryStorage, items);
-        return;
-      }
-
-      try {
-        await tauriCore.invoke('storage_set', { items });
-      } catch (error) {
-        console.warn('[chromePolyfill] storage.set failed:', error);
-        // Fall back to memory storage
-        Object.assign(memoryStorage, items);
-      }
-    },
-
-    async remove(keys: string | string[]): Promise<void> {
-      const keyArray = typeof keys === 'string' ? [keys] : keys;
-
-      // If no Tauri core API, use memory storage
-      if (!tauriCore) {
-        for (const key of keyArray) {
-          delete memoryStorage[key];
-        }
-        return;
-      }
-
-      try {
-        await tauriCore.invoke('storage_remove', { keys: keyArray });
-      } catch (error) {
-        console.warn('[chromePolyfill] storage.remove failed:', error);
-        // Fall back to memory storage
-        for (const key of keyArray) {
-          delete memoryStorage[key];
-        }
-      }
-    },
-
-    async clear(): Promise<void> {
-      // If no Tauri core API, clear memory storage
-      if (!tauriCore) {
-        Object.keys(memoryStorage).forEach(key => delete memoryStorage[key]);
-        return;
-      }
-
-      try {
-        await tauriCore.invoke('storage_clear');
-      } catch (error) {
-        console.warn('[chromePolyfill] storage.clear failed:', error);
-        // Fall back to memory storage
-        Object.keys(memoryStorage).forEach(key => delete memoryStorage[key]);
-      }
-    },
-  },
-
-  sync: {
-    // Sync storage uses same implementation as local for desktop
-    async get(keys: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>> {
-      return storagePolyfill.local.get(keys);
-    },
-    async set(items: Record<string, unknown>): Promise<void> {
-      return storagePolyfill.local.set(items);
-    },
-    async remove(keys: string | string[]): Promise<void> {
-      return storagePolyfill.local.remove(keys);
-    },
-    async clear(): Promise<void> {
-      return storagePolyfill.local.clear();
-    },
-  },
 };
 
 // Tab event listener registry
@@ -488,7 +379,6 @@ const windowsPolyfill = {
  */
 export const chromePolyfill = {
   runtime: runtimePolyfill,
-  storage: storagePolyfill,
   tabs: tabsPolyfill,
   tabGroups: tabGroupsPolyfill,
   windows: windowsPolyfill,

@@ -15,6 +15,7 @@ import { getDefaultRules } from '../approval/defaultRules';
 import { DomainSensitivityEnhancer } from '../approval/enhancers/DomainSensitivityEnhancer';
 import { SemanticElementEnhancer } from '../approval/enhancers/SemanticElementEnhancer';
 import { ApprovalConfigStorage } from '../approval/ApprovalConfigStorage';
+import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { MessageRouter } from '../MessageRouter';
 import { TabManager } from '../TabManager';
 import type {
@@ -184,7 +185,7 @@ export class AgentRegistry {
         const approvalGate = new ApprovalGate(approvalManager, policyEngine);
         approvalGate.addEnhancer(new DomainSensitivityEnhancer());
         approvalGate.addEnhancer(new SemanticElementEnhancer());
-        const configStorage = new ApprovalConfigStorage(() => chrome.storage.local);
+        const configStorage = new ApprovalConfigStorage(() => getConfigStorage());
         approvalGate.setConfigStorage(configStorage);
         try {
           const storedConfig = await configStorage.loadConfig();

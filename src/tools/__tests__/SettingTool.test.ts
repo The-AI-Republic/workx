@@ -8,27 +8,40 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SettingTool } from '../SettingTool';
+import { setConfigStorage, type ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-// Mock chrome.storage.local
-const mockStorage: Record<string, any> = {};
+// Map-based ConfigStorageProvider mock
+const store = new Map<string, any>();
 
-(global as any).chrome = {
-  storage: {
-    local: {
-      get: vi.fn((key: string) => {
-        return Promise.resolve({ [key]: mockStorage[key] });
-      }),
-      set: vi.fn((data: Record<string, any>) => {
-        Object.assign(mockStorage, data);
-        return Promise.resolve();
-      }),
-    },
-  },
-};
+function createMockConfigStorage(): ConfigStorageProvider {
+  return {
+    get: vi.fn(async <T>(key: string): Promise<T | null> => (store.get(key) as T) ?? null),
+    set: vi.fn(async <T>(key: string, value: T): Promise<void> => { store.set(key, value); }),
+    remove: vi.fn(async (key: string): Promise<void> => { store.delete(key); }),
+    getMany: vi.fn(async <T>(keys: string[]): Promise<Record<string, T>> => {
+      const result: Record<string, T> = {};
+      for (const key of keys) {
+        if (store.has(key)) result[key] = store.get(key);
+      }
+      return result;
+    }),
+    setMany: vi.fn(async <T>(items: Record<string, T>): Promise<void> => {
+      for (const [key, value] of Object.entries(items)) {
+        store.set(key, value);
+      }
+    }),
+    removeMany: vi.fn(async (keys: string[]): Promise<void> => {
+      for (const key of keys) store.delete(key);
+    }),
+    getAll: vi.fn(async (): Promise<Record<string, unknown>> => Object.fromEntries(store)),
+    clear: vi.fn(async (): Promise<void> => { store.clear(); }),
+    getBytesInUse: vi.fn(async (): Promise<number | null> => null),
+  };
+}
 
 // Mock the defaults module
 vi.mock('../../config/defaults', () => ({
@@ -46,19 +59,14 @@ describe('SettingTool', () => {
 
   beforeEach(() => {
     // Reset storage
-    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+    store.clear();
 
-    // Re-setup mock implementations (vi.clearAllMocks clears them)
-    (global as any).chrome.storage.local.get = vi.fn((key: string) => {
-      return Promise.resolve({ [key]: mockStorage[key] });
-    });
-    (global as any).chrome.storage.local.set = vi.fn((data: Record<string, any>) => {
-      Object.assign(mockStorage, data);
-      return Promise.resolve();
-    });
+    // Install mock ConfigStorageProvider
+    const mockStorage = createMockConfigStorage();
+    setConfigStorage(mockStorage);
 
     // Set up default storage state
-    mockStorage['agent_config'] = {
+    store.set('agent_config', {
       tools: {
         dom_tool: true,
         enable_all_tools: false,
@@ -74,7 +82,7 @@ describe('SettingTool', () => {
         trustedDomains: ['example.com'],
         blockedDomains: [],
       },
-    };
+    });
 
     tool = new SettingTool();
   });
@@ -156,7 +164,9 @@ describe('SettingTool', () => {
 
     it('returns undefined for field not yet in storage', async () => {
       // Remove webSearch from storage — it was never set
-      delete mockStorage['agent_config'].tools.webSearch;
+      const config = store.get('agent_config');
+      delete config.tools.webSearch;
+      store.set('agent_config', config);
       const result = await tool.execute({ action: 'get', key: 'tools.webSearch' });
       expect(result.data.success).toBe(true);
       expect(result.data.value).toBeUndefined();
@@ -285,7 +295,7 @@ describe('SettingTool', () => {
         value: 'high_speed',
       });
       // Verify storage was actually mutated
-      expect(mockStorage['agent_config'].approval.mode).toBe('high_speed');
+      expect(store.get('agent_config').approval.mode).toBe('high_speed');
     });
 
     it('alias write persists to correct storage path', async () => {
@@ -295,7 +305,7 @@ describe('SettingTool', () => {
         value: 'terminal',
       });
       // Alias general.uiTheme maps to preferences.uiTheme
-      expect(mockStorage['agent_config'].preferences.uiTheme).toBe('terminal');
+      expect(store.get('agent_config').preferences.uiTheme).toBe('terminal');
     });
 
     it('does not include YOLO warning when setting to non-yolo mode', async () => {
@@ -313,14 +323,15 @@ describe('SettingTool', () => {
 
   describe('YOLO mode blocking', () => {
     beforeEach(() => {
-      mockStorage['agent_config'] = {
-        ...mockStorage['agent_config'],
+      const config = store.get('agent_config');
+      store.set('agent_config', {
+        ...config,
         approval: {
           mode: 'yolo',
           trustedDomains: [],
           blockedDomains: [],
         },
-      };
+      });
     });
 
     it('blocks set action in YOLO mode', async () => {
