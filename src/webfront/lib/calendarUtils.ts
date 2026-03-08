@@ -53,6 +53,9 @@ const STATUS_COLORS_TERMINAL: Record<string, string> = {
   upcoming: '#00ff00',
 };
 
+/** Visual duration for calendar event blocks (15 minutes). */
+const EVENT_DISPLAY_DURATION_MS = 15 * 60 * 1000;
+
 export function statusToColor(status: string, theme: 'modern' | 'terminal'): string {
   const colors = theme === 'modern' ? STATUS_COLORS_MODERN : STATUS_COLORS_TERMINAL;
   return colors[status] || colors.scheduled;
@@ -67,7 +70,7 @@ export function jobToCalendarEvent(job: JobLike, theme: 'modern' | 'terminal'): 
   return {
     id: job.id,
     start: new Date(job.scheduledTime),
-    end: new Date(job.scheduledTime + 30 * 60 * 1000),
+    end: new Date(job.scheduledTime + EVENT_DISPLAY_DURATION_MS),
     title: job.input.slice(0, 50),
     backgroundColor: statusToColor(job.status, theme),
     editable: isReschedulable(job.status),
@@ -104,7 +107,7 @@ export function instanceToCalendarEvent(
   return {
     id: `${instance.scheduleEventId}:${instance.instanceTime}`,
     start: new Date(instance.instanceTime),
-    end: new Date(instance.instanceTime + 30 * 60 * 1000),
+    end: new Date(instance.instanceTime + EVENT_DISPLAY_DURATION_MS),
     title: instance.input.slice(0, 50),
     backgroundColor: statusToColor(instance.status, theme),
     editable: instance.status === 'upcoming' && instance.enabled,
