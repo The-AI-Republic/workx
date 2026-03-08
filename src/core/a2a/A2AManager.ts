@@ -71,7 +71,9 @@ export class A2AManager implements IA2AManager {
     this.platform = platform ?? (
       typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop'
         ? 'desktop'
-        : 'extension'
+        : typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'server'
+          ? 'server'
+          : 'extension'
     );
   }
 

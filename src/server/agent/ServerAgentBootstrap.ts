@@ -246,7 +246,50 @@ export class ServerAgentBootstrap {
     const { registerAllServices } = await import('@/core/services');
     const serviceRegistry = channelManager.getServiceRegistry();
 
+    // Get MCPManager instance
+    let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    try {
+      const { MCPManager } = await import('@/core/mcp/MCPManager');
+      const mcpManager = await MCPManager.getInstance('server');
+      mcpDeps = { mcpManager: mcpManager as any };
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] MCPManager not available for service registration:', error);
+    }
+
+    // Get A2AManager instance
+    let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
+    try {
+      const { A2AManager } = await import('@/core/a2a/A2AManager');
+      const a2aManager = await A2AManager.getInstance('server');
+      a2aDeps = { a2aManager: a2aManager as any };
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] A2AManager not available for service registration:', error);
+    }
+
+    // Get SkillRegistry with StorageProvider-backed skill provider
+    let skillsDeps: import('@/core/services').SkillsServiceDeps | undefined;
+    try {
+      const { getStorageProvider } = await import('@/core/storage');
+      const { IndexedDBSkillProvider } = await import('@/extension/storage/IndexedDBSkillProvider');
+      const { SkillRegistry } = await import('@/core/skills/SkillRegistry');
+
+      const storageProvider = getStorageProvider();
+      const skillProvider = new IndexedDBSkillProvider(storageProvider);
+      await skillProvider.initialize();
+
+      const skillRegistry = new SkillRegistry(skillProvider);
+      await skillRegistry.discover();
+      skillsDeps = { skillRegistry };
+
+      console.log(`[ServerAgentBootstrap] Skills initialized, found ${skillRegistry.getSkillMetas().length} skills`);
+    } catch (error) {
+      console.warn('[ServerAgentBootstrap] SkillRegistry not available for service registration:', error);
+    }
+
     const count = registerAllServices(serviceRegistry, {
+      mcp: mcpDeps,
+      a2a: a2aDeps,
+      skills: skillsDeps,
       session: {
         getAgent: () => this.agent,
       },

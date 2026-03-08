@@ -236,8 +236,19 @@ export class DesktopAgentBootstrap {
       console.warn('[DesktopAgentBootstrap] MCPManager not available for service registration:', error);
     }
 
+    // Get A2AManager instance
+    let a2aDeps: import('@/core/services').A2AServiceDeps | undefined;
+    try {
+      const { A2AManager } = await import('@/core/a2a/A2AManager');
+      const a2aManager = await A2AManager.getInstance('desktop');
+      a2aDeps = { a2aManager: a2aManager as any };
+    } catch (error) {
+      console.warn('[DesktopAgentBootstrap] A2AManager not available for service registration:', error);
+    }
+
     const count = registerAllServices(registry, {
       mcp: mcpDeps,
+      a2a: a2aDeps,
       skills: this.skillRegistry ? { skillRegistry: this.skillRegistry } : undefined,
       session: {
         getAgent: () => this.agent,
