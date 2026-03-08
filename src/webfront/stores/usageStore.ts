@@ -41,15 +41,15 @@ function createUsageStore() {
 
       const modelSummaries = TokenUsageStore.aggregateByModel(records);
 
-      set({
+      update((s) => ({
+        ...s,
         records,
         sessionSummaries,
         dailySummaries,
         modelSummaries,
-        groupByModel: false,
         loading: false,
         error: null,
-      });
+      }));
     } catch (err) {
       update((s) => ({
         ...s,
