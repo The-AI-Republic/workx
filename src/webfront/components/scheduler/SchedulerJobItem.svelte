@@ -1,7 +1,7 @@
 <script lang="ts">
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import { t, _t } from '../../lib/i18n';
-  import type { SchedulerJobStatus, RecurrenceRule } from '@/core/models/types/Scheduler';
+  import type { RecurrenceRule } from '@/core/models/types/Scheduler';
 
   let {
     id,
@@ -18,7 +18,7 @@
     id: string;
     input: string;
     scheduledTime: number | null;
-    status: SchedulerJobStatus;
+    status: string;
     createdAt: number;
     showActions?: boolean;
     recurrence?: RecurrenceRule | null | undefined;
@@ -36,7 +36,7 @@
     return unsub;
   });
 
-  function getStatusBadgeClasses(s: SchedulerJobStatus): string {
+  function getStatusBadgeClasses(s: string): string {
     switch (s) {
       case 'running': return 'bg-term-bright-green text-black';
       case 'scheduled': return 'bg-[rgba(0,255,0,0.2)] text-term-bright-green';
@@ -50,13 +50,13 @@
     }
   }
 
-  function getItemBorderClass(s: SchedulerJobStatus): string {
+  function getItemBorderClass(s: string): string {
     if (s === 'running') return 'border-term-bright-green animate-running-pulse';
     if (s === 'missed') return 'border-term-yellow';
     return '';
   }
 
-  function getStatusLabel(status: SchedulerJobStatus): string {
+  function getStatusLabel(status: string): string {
     switch (status) {
       case 'running': return t('Running');
       case 'scheduled': return t('Scheduled');

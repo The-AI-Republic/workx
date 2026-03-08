@@ -8,11 +8,15 @@
   let {
     show = false,
     input = '',
+    prefillDate = '',
+    prefillTime = '',
     onclose,
     onschedule,
   }: {
     show?: boolean;
     input?: string;
+    prefillDate?: string;
+    prefillTime?: string;
     onclose?: () => void;
     onschedule?: (detail: { input: string; scheduledTime: number; recurrence?: RecurrenceRule }) => void;
   } = $props();
@@ -43,15 +47,18 @@
   });
 
   function initializeDefaults() {
-    // Default to 1 hour from now
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    now.setMinutes(0);
-    now.setSeconds(0);
-    now.setMilliseconds(0);
+    if (prefillDate) {
+      selectedDate = prefillDate;
+    } else {
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+      now.setSeconds(0);
+      now.setMilliseconds(0);
+      selectedDate = formatDateForInput(now);
+    }
 
-    selectedDate = formatDateForInput(now);
-    selectedTime = formatTimeForInput(now);
+    selectedTime = prefillTime || formatTimeForInput(new Date(new Date().setHours(new Date().getHours() + 1, 0, 0, 0)));
     errorMessage = '';
     editableInput = input || '';
     recurrence = null;
@@ -179,8 +186,8 @@
   >
     <div class="w-[90%] max-w-[400px] max-h-[90vh] overflow-hidden flex flex-col rounded-lg animate-slide-in
       {currentTheme === 'modern'
-        ? 'bg-chat-bg dark:bg-chat-bg-dark border-none shadow-[0_4px_24px_rgba(0,0,0,0.2)] rounded-xl'
-        : 'bg-[#0a0a0a] border border-term-dim-green'}">
+        ? 'bg-chat-bg dark:bg-chat-bg-dark border-none shadow-[0_4px_24px_rgba(0,0,0,0.2)] rounded-xl modal-modern'
+        : 'bg-[#0a0a0a] border border-term-dim-green modal-terminal'}">
       <!-- Header -->
       <div class="flex justify-between items-center p-4
         {currentTheme === 'modern'
@@ -371,6 +378,20 @@
 
   .animate-slide-in {
     animation: slideIn 0.2s ease-out;
+  }
+
+  /* color-scheme tells the browser to render native form controls (select, option,
+     date/time pickers) in the correct light/dark appearance */
+  .modal-terminal {
+    color-scheme: dark;
+  }
+
+  .modal-modern {
+    color-scheme: light;
+  }
+
+  :global(.dark) .modal-modern {
+    color-scheme: dark;
   }
 
   /* Style the date/time picker icons - green filter for terminal theme */

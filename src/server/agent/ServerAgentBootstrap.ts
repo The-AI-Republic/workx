@@ -53,9 +53,12 @@ import { registerExecHandlers } from '../handlers/exec';
 import { registerSchedulerHandlers } from '../handlers/scheduler';
 
 // Scheduler
-import { ServerSchedulerStorage } from '../scheduler/ServerSchedulerStorage';
+import { ServerScheduleStorage } from '../scheduler/ServerScheduleStorage';
+import { ServerExecutionStorage } from '../scheduler/ServerExecutionStorage';
 import { ServerSchedulerAlarms } from '../scheduler/ServerSchedulerAlarms';
 import { Scheduler } from '@/core/scheduler/Scheduler';
+import { ScheduleManager } from '@/core/scheduler/ScheduleManager';
+import { JobExecutor } from '@/core/scheduler/JobExecutor';
 
 // Session isolation
 import { AgentRegistry } from '@/core/registry/AgentRegistry';
@@ -81,7 +84,8 @@ export class ServerAgentBootstrap {
   private pluginRegistry: PluginRegistry | null = null;
   private healthMonitor: HealthMonitor | null = null;
   private scheduler: Scheduler | null = null;
-  private schedulerStorage: ServerSchedulerStorage | null = null;
+  private scheduleEventStorage: ServerScheduleStorage | null = null;
+  private executionRecordStorage: ServerExecutionStorage | null = null;
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
@@ -392,22 +396,29 @@ export class ServerAgentBootstrap {
     channelManager: ReturnType<typeof getChannelManager>
   ): Promise<void> {
     try {
-      // 1. Create storage and initialize
-      this.schedulerStorage = new ServerSchedulerStorage(dataDir);
-      await this.schedulerStorage.initialize();
+      // 1. Create new model storage (schedule events + executions)
+      this.scheduleEventStorage = new ServerScheduleStorage(dataDir);
+      await this.scheduleEventStorage.initialize();
+      this.executionRecordStorage = new ServerExecutionStorage(dataDir);
+      await this.executionRecordStorage.initialize();
+      const executionStorage = this.executionRecordStorage;
 
       // 2. Create alarms (Node.js timers)
       this.schedulerAlarms = new ServerSchedulerAlarms();
 
-      // 3. Create scheduler
-      this.scheduler = new Scheduler(this.schedulerStorage, this.schedulerAlarms);
+      // 3. Create new model components directly
+      const scheduleManager = new ScheduleManager(this.scheduleEventStorage, executionStorage, this.schedulerAlarms);
+      const jobExecutor = new JobExecutor(executionStorage);
 
-      // 4. Wire alarm handler → scheduler.handleAlarm()
+      // 4. Create scheduler with new constructor
+      this.scheduler = new Scheduler(scheduleManager, jobExecutor, this.schedulerAlarms);
+
+      // 5. Wire alarm handler → scheduler.handleAlarm()
       this.schedulerAlarms.setAlarmHandler(async (alarmName) => {
         await this.scheduler!.handleAlarm(alarmName);
       });
 
-      // 5. Wire event emitter → broadcast to WebSocket clients
+      // 6. Wire event emitter → broadcast to WebSocket clients
       this.scheduler.setEventEmitter((event) => {
         if (this.channel) {
           channelManager.dispatchEvent(
@@ -419,16 +430,14 @@ export class ServerAgentBootstrap {
         }
       });
 
-      // 6. Wire job launcher → submit job input to agent
-      // `registryAgent` is the isolated agent created by AgentRegistry for this job's session.
-      // Falls back to the primary agent when registry is not available.
-      this.scheduler.setJobLauncher(async (jobId, sessionId, registryAgent) => {
-        this.runningSchedulerJobId = jobId;
+      // 7. Wire job launcher → submit job input to agent
+      this.scheduler.setJobLauncher(async (executionId, sessionId, registryAgent) => {
+        this.runningSchedulerJobId = executionId;
         this.runningJobStartTime = Date.now();
-        console.log(`[ServerAgentBootstrap] Scheduled job ${jobId} launched (session: ${sessionId})`);
-        const job = await this.schedulerStorage!.getJob(jobId);
-        if (!job) {
-          throw new Error(`Job not found for execution: ${jobId}`);
+        console.log(`[ServerAgentBootstrap] Scheduled job ${executionId} launched (session: ${sessionId})`);
+        const execution = await executionStorage.getExecution(executionId);
+        if (!execution) {
+          throw new Error(`Execution not found: ${executionId}`);
         }
 
         const targetAgent = registryAgent ?? this.agent;
@@ -439,16 +448,16 @@ export class ServerAgentBootstrap {
         await targetAgent.submitOperation(
           {
             type: 'UserInput',
-            items: [{ type: 'text', text: job.input }],
+            items: [{ type: 'text', text: execution.input }],
           },
           {}
         );
       });
 
-      // 6a. Connectivity check — ensure agent is initialized before executing jobs
+      // 7a. Connectivity check — ensure agent is initialized before executing jobs
       this.scheduler.setConnectivityCheck(() => this.agent !== null && this.initialized);
 
-      // 6b. Initialize AgentRegistry for session isolation
+      // 7b. Initialize AgentRegistry for session isolation
       try {
         const agentConfig = await AgentConfig.getInstance();
         const registry = new AgentRegistry({
@@ -471,30 +480,24 @@ export class ServerAgentBootstrap {
         console.warn('[ServerAgentBootstrap] AgentRegistry init failed (non-fatal, using legacy sessions):', error);
       }
 
-      // 7. Start queue processor
+      // 8. Start queue processor
       await this.schedulerAlarms.startJobQueueProcessor();
 
-      // 7b. Recover stale running jobs from previous server session
+      // 8b. Recover stale running jobs from previous server session
       await this.scheduler.recoverStaleRunningJob();
 
-      // 8. Detect missed jobs
-      const missedJobs = await this.scheduler.detectMissedJobs();
-      if (missedJobs.length > 0) {
-        console.log(`[ServerAgentBootstrap] Detected ${missedJobs.length} missed scheduler jobs`);
+      // 9. Detect missed jobs
+      const missed = await this.scheduler.detectMissedJobs();
+      if (missed.length > 0) {
+        console.log(`[ServerAgentBootstrap] Detected ${missed.length} missed scheduler instances`);
       }
 
-      // 9. Restore timers for future scheduled jobs
-      const scheduledJobs = await this.schedulerStorage.getScheduledJobs();
-      for (const job of scheduledJobs) {
-        if (job.scheduledTime && job.scheduledTime > Date.now()) {
-          await this.schedulerAlarms.createJobAlarm(job.id, job.scheduledTime);
-        }
-      }
+      // 10. Restore alarms for ScheduleEvents
+      await this.scheduler.restoreScheduleAlarms();
 
-      // 10. Register handlers
+      // 11. Register handlers
       registerSchedulerHandlers({
         scheduler: this.scheduler,
-        storage: this.schedulerStorage,
       });
 
       console.log('[ServerAgentBootstrap] Scheduler initialized');
@@ -595,7 +598,8 @@ export class ServerAgentBootstrap {
 
     // Shutdown scheduler
     this.schedulerAlarms?.shutdown();
-    this.schedulerStorage?.close();
+    this.scheduleEventStorage?.close();
+    this.executionRecordStorage?.close();
 
     // Stop backup manager
     this.backupManager?.stop();

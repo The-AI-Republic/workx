@@ -1,6 +1,7 @@
 <script lang="ts">
   import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   import { isWideMode } from '../../stores/layoutStore';
+  import { push } from 'svelte-spa-router';
   import { AgentConfig } from '@/config/AgentConfig';
   import { _t } from '../../lib/i18n';
   import ActiveJobsModule from '../../components/scheduler/ActiveJobsModule.svelte';
@@ -9,6 +10,7 @@
 
   let currentTheme = $state<UITheme>('terminal');
   let wide = $state(false);
+  let jobRefreshCounter = $state(0);
 
   $effect(() => {
     const unsub = uiTheme.subscribe((theme) => {
@@ -52,27 +54,48 @@
       {currentTheme === 'modern'
         ? 'text-chat-text dark:text-chat-text-dark font-chat'
         : 'text-term-green font-terminal'}">{$_t('Scheduler')}</h1>
+    <div class="ml-auto">
+      <button
+        class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded cursor-pointer transition-all duration-200
+          {currentTheme === 'modern'
+            ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
+            : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+        on:click={() => push('/scheduler/calendar')}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        {$_t('Calendar View')}
+      </button>
+    </div>
   </div>
 
   <!-- Modules Layout -->
   {#if wide}
-    <!-- Wide mode: 3-column grid -->
-    <div class="grid grid-cols-3 gap-4 p-4 h-[calc(100vh-52px)]">
-      <div class="overflow-y-auto">
-        <ActiveJobsModule collapsible={false} initialExpanded={true} />
+    <!-- Wide mode: 2-column split -->
+    <div class="grid grid-cols-2 gap-4 p-4 h-[calc(100vh-52px)]">
+      <!-- Left column: NewJob + JobHistory -->
+      <div class="flex flex-col gap-4 overflow-hidden">
+        <div class="shrink-0">
+          <NewJobModule collapsible={false} initialExpanded={true} onscheduled={() => jobRefreshCounter++} />
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden">
+          <JobHistoryModule collapsible={false} initialExpanded={true} />
+        </div>
       </div>
-      <div class="overflow-y-auto">
-        <NewJobModule collapsible={false} initialExpanded={true} />
-      </div>
-      <div class="overflow-y-auto">
-        <JobHistoryModule collapsible={false} initialExpanded={true} />
+      <!-- Right column: ActiveJobs -->
+      <div class="overflow-hidden">
+        <ActiveJobsModule collapsible={false} initialExpanded={true} refreshTrigger={jobRefreshCounter} />
       </div>
     </div>
   {:else}
     <!-- Narrow mode: vertical stack with collapsible sections -->
     <div class="flex flex-col gap-3 p-3">
-      <NewJobModule collapsible={true} initialExpanded={true} />
-      <ActiveJobsModule collapsible={true} initialExpanded={true} />
+      <NewJobModule collapsible={true} initialExpanded={true} onscheduled={() => jobRefreshCounter++} />
+      <ActiveJobsModule collapsible={true} initialExpanded={true} refreshTrigger={jobRefreshCounter} />
       <JobHistoryModule collapsible={true} initialExpanded={false} />
     </div>
   {/if}

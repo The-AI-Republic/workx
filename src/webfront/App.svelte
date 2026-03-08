@@ -4,6 +4,7 @@
   import Chat from './pages/chat/Main.svelte';
   import Settings from './pages/settings/Settings.svelte';
   import Scheduler from './pages/scheduler/Scheduler.svelte';
+  import SchedulerCalendar from './pages/scheduler/SchedulerCalendar.svelte';
   import AppShell from './components/layout/AppShell.svelte';
   import Skills from './pages/skills/Skills.svelte';
   import { userStore } from './stores/userStore';
@@ -30,7 +31,8 @@
     // Settings page
     '/settings': Settings,
 
-    // Scheduler page
+    // Scheduler pages
+    '/scheduler/calendar': SchedulerCalendar,
     '/scheduler': Scheduler,
 
     // Skills page
