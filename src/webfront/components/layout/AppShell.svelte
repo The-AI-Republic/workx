@@ -3,6 +3,7 @@
   import { isWideMode } from '../../stores/layoutStore';
   import { uiTheme, type UITheme } from '../../stores/themeStore';
   import LeftPanel from './LeftPanel.svelte';
+  import FooterBar from './FooterBar.svelte';
 
   let currentTheme: UITheme = 'terminal';
 
@@ -24,7 +25,12 @@
       <LeftPanel />
     </div>
   {/if}
-  <div class="flex-1 overflow-hidden">
-    <slot />
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 min-h-0 overflow-hidden">
+      <slot />
+    </div>
+    <div class="shrink-0">
+      <FooterBar />
+    </div>
   </div>
 </div>

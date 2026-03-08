@@ -22,7 +22,6 @@
   import { AgentConfig } from '@/config/AgentConfig';
   // User components and store
   import { getLoginPageUrl, userStore } from '../../stores/userStore';
-  import FooterBar from '../../components/layout/FooterBar.svelte';
   // Agent store for auth mode tracking
   import { agentStore } from '../../stores/agentStore';
   // Scheduler store (for scheduling result feedback)
@@ -946,7 +945,7 @@
 </script>
 
 <!-- Single UI with theme-aware styling -->
-<div class="h-screen overflow-hidden {currentTheme}">
+<div class="h-full overflow-hidden {currentTheme}">
   <TerminalContainer theme={currentTheme}>
     <div class="flex flex-col h-full min-h-0 max-w-[1200px] mx-auto w-full">
         <!-- Status Line -->
@@ -1090,8 +1089,6 @@
             />
           </div>
 
-          <!-- Footer Bar -->
-          <FooterBar />
         </div>
       </div>
     </TerminalContainer>

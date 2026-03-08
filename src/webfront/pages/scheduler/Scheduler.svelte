@@ -37,7 +37,7 @@
   });
 </script>
 
-<div class="h-screen overflow-y-auto {currentTheme}
+<div class="h-full overflow-y-auto {currentTheme}
   {currentTheme === 'modern'
     ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
     : 'font-terminal bg-term-bg text-term-green'}">
